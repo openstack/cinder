@@ -21,6 +21,7 @@ from unittest import mock
 import ddt
 from oslo_utils import units
 
+from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder.objects import volume_type
@@ -1642,13 +1643,13 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(BASE_DRIVER_OBJ + ".create_consistencygroup")
     def test_create_consistencygroup_from_cgsnapshot(self, mock_create_cg,
                                                      mock_create_vol):
-        mock_context = mock.Mock()
+        ctxt = context.get_admin_context()
         mock_group = mock.Mock()
         mock_cgsnapshot = mock.Mock()
         mock_snapshots = [mock.Mock() for i in range(5)]
         mock_volumes = [mock.Mock() for i in range(5)]
         self.driver.create_consistencygroup_from_src(
-            mock_context,
+            ctxt,
             mock_group,
             mock_volumes,
             cgsnapshot=mock_cgsnapshot,
@@ -1656,7 +1657,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             source_cg=None,
             source_vols=None
         )
-        mock_create_cg.assert_called_with(mock_context, mock_group)
+        mock_create_cg.assert_called_with(ctxt, mock_group)
         expected_calls = [mock.call(vol, snap)
                           for vol, snap in zip(mock_volumes, mock_snapshots)]
         mock_create_vol.assert_has_calls(expected_calls,
@@ -1665,7 +1666,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assert_error_propagates(
             [mock_create_vol, mock_create_cg],
             self.driver.create_consistencygroup_from_src,
-            mock_context,
+            ctxt,
             mock_group,
             mock_volumes,
             cgsnapshot=mock_cgsnapshot,
@@ -1677,30 +1678,30 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(BASE_DRIVER_OBJ + ".create_consistencygroup")
     def test_create_consistencygroup_from_cg(self, mock_create_cg):
         num_volumes = 5
-        mock_context = mock.MagicMock()
+        ctxt = context.get_admin_context()
         mock_group = mock.MagicMock()
         mock_source_cg = mock.MagicMock()
         mock_volumes = [mock.MagicMock() for i in range(num_volumes)]
         mock_source_vols = [mock.MagicMock() for i in range(num_volumes)]
         self.driver.create_consistencygroup_from_src(
-            mock_context,
+            ctxt,
             mock_group,
             mock_volumes,
             source_cg=mock_source_cg,
             source_vols=mock_source_vols
         )
-        mock_create_cg.assert_called_with(mock_context, mock_group)
+        mock_create_cg.assert_called_with(ctxt, mock_group)
         self.assertTrue(self.array.create_pgroup_snapshot.called)
         self.assertTrue(self.array.destroy_pgroup.called)
 
     @mock.patch(BASE_DRIVER_OBJ + ".delete_volume", autospec=True)
     def test_delete_consistencygroup(self, mock_delete_volume):
-        mock_context = mock.Mock()
-        mock_cgroup = fake_group.fake_group_obj(mock_context)
-        mock_volume = fake_volume.fake_volume_obj(mock_context)
+        ctxt = context.get_admin_context()
+        mock_cgroup = fake_group.fake_group_obj(ctxt)
+        mock_volume = fake_volume.fake_volume_obj(ctxt)
 
         model_update, volumes = self.driver.delete_consistencygroup(
-            mock_context, mock_cgroup, [mock_volume])
+            ctxt, mock_cgroup, [mock_volume])
 
         expected_name = "consisgroup-%s-cinder" % mock_cgroup.id
         self.array.destroy_pgroup.assert_called_with(expected_name)
@@ -1714,7 +1715,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 code=http.client.BAD_REQUEST,
                 text="Protection group has been destroyed."
             )
-        self.driver.delete_consistencygroup(mock_context,
+        self.driver.delete_consistencygroup(ctxt,
                                             mock_cgroup,
                                             [mock_volume])
         self.array.destroy_pgroup.assert_called_with(expected_name)
@@ -1726,7 +1727,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 code=http.client.BAD_REQUEST,
                 text="Protection group does not exist"
             )
-        self.driver.delete_consistencygroup(mock_context,
+        self.driver.delete_consistencygroup(ctxt,
                                             mock_cgroup,
                                             [mock_volume])
         self.array.destroy_pgroup.assert_called_with(expected_name)
@@ -1740,7 +1741,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             )
         self.assertRaises(self.purestorage_module.PureHTTPError,
                           self.driver.delete_consistencygroup,
-                          mock_context,
+                          ctxt,
                           mock_cgroup,
                           [mock_volume])
 
@@ -1751,7 +1752,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             )
         self.assertRaises(self.purestorage_module.PureHTTPError,
                           self.driver.delete_consistencygroup,
-                          mock_context,
+                          ctxt,
                           mock_cgroup,
                           [mock_volume])
 
@@ -1759,7 +1760,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assert_error_propagates(
             [self.array.destroy_pgroup],
             self.driver.delete_consistencygroup,
-            mock_context,
+            ctxt,
             mock_cgroup,
             [mock_volume]
         )
@@ -1847,18 +1848,18 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         )
 
     def test_create_cgsnapshot(self):
-        mock_context = mock.Mock()
-        mock_group = fake_group.fake_group_obj(mock_context)
+        ctxt = context.get_admin_context()
+        mock_group = fake_group.fake_group_obj(ctxt)
         mock_cgsnap = fake_group_snapshot.fake_group_snapshot_obj(
-            mock_context, group_id=mock_group.id)
-        mock_snap = fake_snapshot.fake_snapshot_obj(mock_context)
+            ctxt, group_id=mock_group.id)
+        mock_snap = fake_snapshot.fake_snapshot_obj(ctxt)
 
         # Avoid having the group snapshot object load from the db
         with mock.patch('cinder.objects.Group.get_by_id') as mock_get_group:
             mock_get_group.return_value = mock_group
 
             model_update, snapshots = self.driver.create_cgsnapshot(
-                mock_context, mock_cgsnap, [mock_snap])
+                ctxt, mock_cgsnap, [mock_snap])
 
         expected_pgroup_name = self.driver._get_pgroup_name(mock_group)
         expected_snap_suffix = self.driver._get_pgroup_snap_suffix(mock_cgsnap)
@@ -1870,7 +1871,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
         self.assert_error_propagates(
             [self.array.create_pgroup_snapshot],
-            self.driver.create_cgsnapshot, mock_context, mock_cgsnap, [])
+            self.driver.create_cgsnapshot, ctxt, mock_cgsnap, [])
 
     @mock.patch(BASE_DRIVER_OBJ + "._get_pgroup_snap_name",
                 spec=pure.PureBaseVolumeDriver._get_pgroup_snap_name)
@@ -1880,10 +1881,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_get_snap_name.return_value = snap_name
         mock_cgsnap = mock.Mock()
         mock_cgsnap.status = 'deleted'
-        mock_context = mock.Mock()
+        ctxt = context.get_admin_context()
         mock_snap = mock.Mock()
 
-        model_update, snapshots = self.driver.delete_cgsnapshot(mock_context,
+        model_update, snapshots = self.driver.delete_cgsnapshot(ctxt,
                                                                 mock_cgsnap,
                                                                 [mock_snap])
 
@@ -1897,7 +1898,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 code=http.client.BAD_REQUEST,
                 text="Protection group snapshot has been destroyed."
             )
-        self.driver.delete_cgsnapshot(mock_context, mock_cgsnap, [mock_snap])
+        self.driver.delete_cgsnapshot(ctxt, mock_cgsnap, [mock_snap])
         self.array.destroy_pgroup.assert_called_with(snap_name)
         self.assertFalse(self.array.eradicate_pgroup.called)
 
@@ -1906,7 +1907,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 code=http.client.BAD_REQUEST,
                 text="Protection group snapshot does not exist"
             )
-        self.driver.delete_cgsnapshot(mock_context, mock_cgsnap, [mock_snap])
+        self.driver.delete_cgsnapshot(ctxt, mock_cgsnap, [mock_snap])
         self.array.destroy_pgroup.assert_called_with(snap_name)
         self.assertFalse(self.array.eradicate_pgroup.called)
 
@@ -1917,7 +1918,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             )
         self.assertRaises(self.purestorage_module.PureHTTPError,
                           self.driver.delete_cgsnapshot,
-                          mock_context,
+                          ctxt,
                           mock_cgsnap,
                           [mock_snap])
 
@@ -1928,7 +1929,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             )
         self.assertRaises(self.purestorage_module.PureHTTPError,
                           self.driver.delete_cgsnapshot,
-                          mock_context,
+                          ctxt,
                           mock_cgsnap,
                           [mock_snap])
 
@@ -1937,7 +1938,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assert_error_propagates(
             [self.array.destroy_pgroup],
             self.driver.delete_cgsnapshot,
-            mock_context,
+            ctxt,
             mock_cgsnap,
             [mock_snap]
         )
@@ -2545,15 +2546,15 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                 expected_did_retype,
                                 expected_add_to_group,
                                 expected_remove_from_pgroup):
-        mock_context = mock.MagicMock()
+        ctxt = context.get_admin_context()
         vol, vol_name = self.new_fake_vol(type_extra_specs=current_spec)
-        new_type = fake_volume.fake_volume_type_obj(mock_context)
+        new_type = fake_volume.fake_volume_type_obj(ctxt)
         new_type.extra_specs = new_spec
         get_voltype = "cinder.objects.volume_type.VolumeType.get_by_name_or_id"
         with mock.patch(get_voltype) as mock_get_vol_type:
             mock_get_vol_type.return_value = new_type
             did_retype, model_update = self.driver.retype(
-                mock_context,
+                ctxt,
                 vol,
                 {"id": new_type.id, "extra_specs": new_spec},
                 None,  # ignored by driver
@@ -3085,7 +3086,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     @mock.patch.object(qos_specs, "get_qos_specs")
     def test_get_qos_settings_from_specs_id(self, mock_get_qos_specs):
-        qos = qos_specs.create(mock.MagicMock(), "qos-iops-bws", QOS_IOPS_BWS)
+        ctxt = context.get_admin_context()
+        qos = qos_specs.create(ctxt, "qos-iops-bws", QOS_IOPS_BWS)
         mock_get_qos_specs.return_value = qos
 
         voltype = fake_volume.fake_volume_type_obj(mock.MagicMock())
@@ -3143,7 +3145,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                     mock_get_qos_specs,
                                     mock_get_repl_type,
                                     mock_add_to_group):
-        qos = qos_specs.create(mock.MagicMock(), "qos-iops-bws", QOS_IOPS_BWS)
+        ctxt = context.get_admin_context()
+        qos = qos_specs.create(ctxt, "qos-iops-bws", QOS_IOPS_BWS)
         vol, vol_name = self.new_fake_vol(spec={"size": 1},
                                           type_qos_specs_id=qos.id)
 
@@ -3169,10 +3172,11 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                   mock_get_qos_specs,
                                                   mock_get_repl_type,
                                                   mock_add_to_group):
+        ctxt = context.get_admin_context()
         srcvol, _ = self.new_fake_vol()
         snap = fake_snapshot.fake_snapshot_obj(mock.MagicMock(), volume=srcvol)
         snap_name = snap["volume_name"] + "-cinder." + snap["name"]
-        qos = qos_specs.create(mock.MagicMock(), "qos-iops-bws", QOS_IOPS_BWS)
+        qos = qos_specs.create(ctxt, "qos-iops-bws", QOS_IOPS_BWS)
         vol, vol_name = self.new_fake_vol(set_provider_id=False,
                                           type_qos_specs_id=qos.id)
 
@@ -3197,9 +3201,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_manage_existing_with_qos(self, mock_get_volume_type,
                                       mock_get_qos_specs):
+        ctxt = context.get_admin_context()
         ref_name = 'vol1'
         volume_ref = {'name': ref_name}
-        qos = qos_specs.create(mock.MagicMock(), "qos-iops-bws", QOS_IOPS_BWS)
+        qos = qos_specs.create(ctxt, "qos-iops-bws", QOS_IOPS_BWS)
         vol, vol_name = self.new_fake_vol(set_provider_id=False,
                                           type_qos_specs_id=qos.id)
 
@@ -3216,17 +3221,17 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             bandwidth_limit=int(QOS_IOPS_BWS["maxBWS"]) * 1024 * 1024)
 
     def test_retype_qos(self):
-        mock_context = mock.MagicMock()
+        ctxt = context.get_admin_context()
         vol, vol_name = self.new_fake_vol()
-        qos = qos_specs.create(mock.MagicMock(), "qos-iops-bws", QOS_IOPS_BWS)
-        new_type = fake_volume.fake_volume_type_obj(mock_context)
+        qos = qos_specs.create(ctxt, "qos-iops-bws", QOS_IOPS_BWS)
+        new_type = fake_volume.fake_volume_type_obj(ctxt)
         new_type.qos_specs_id = qos.id
 
         get_voltype = "cinder.objects.volume_type.VolumeType.get_by_name_or_id"
         with mock.patch(get_voltype) as mock_get_vol_type:
             mock_get_vol_type.return_value = new_type
             did_retype, model_update = self.driver.retype(
-                mock_context,
+                ctxt,
                 vol,
                 new_type,
                 None,  # ignored by driver
@@ -3241,15 +3246,15 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertIsNone(model_update)
 
     def test_retype_qos_reset_iops(self):
-        mock_context = mock.MagicMock()
+        ctxt = context.get_admin_context()
         vol, vol_name = self.new_fake_vol()
-        new_type = fake_volume.fake_volume_type_obj(mock_context)
+        new_type = fake_volume.fake_volume_type_obj(ctxt)
 
         get_voltype = "cinder.objects.volume_type.VolumeType.get_by_name_or_id"
         with mock.patch(get_voltype) as mock_get_vol_type:
             mock_get_vol_type.return_value = new_type
             did_retype, model_update = self.driver.retype(
-                mock_context,
+                ctxt,
                 vol,
                 new_type,
                 None,  # ignored by driver
@@ -4092,7 +4097,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
     def setUp(self):
         super(PureVolumeGroupsTestCase, self).setUp()
         self.array.get.side_effect = self.fake_get_array
-        self.mock_context = mock.Mock()
+        self.ctxt = context.get_admin_context()
         self.driver.db = mock.Mock()
         self.driver.db.group_get = mock.Mock()
 
@@ -4134,7 +4139,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         self.assertRaises(
             NotImplementedError,
             self.driver.create_group,
-            self.mock_context, group
+            self.ctxt, group
         )
         mock_is_cg.assert_called_once_with(group)
 
@@ -4146,7 +4151,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         self.assertRaises(
             NotImplementedError,
             self.driver.delete_group,
-            self.mock_context, group, volumes
+            self.ctxt, group, volumes
         )
         mock_is_cg.assert_called_once_with(group)
 
@@ -4157,7 +4162,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         self.assertRaises(
             NotImplementedError,
             self.driver.update_group,
-            self.mock_context, group
+            self.ctxt, group
         )
         mock_is_cg.assert_called_once_with(group)
 
@@ -4169,7 +4174,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         self.assertRaises(
             NotImplementedError,
             self.driver.create_group_from_src,
-            self.mock_context, group, volumes
+            self.ctxt, group, volumes
         )
         mock_is_cg.assert_called_once_with(group)
 
@@ -4181,7 +4186,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         self.assertRaises(
             NotImplementedError,
             self.driver.create_group_snapshot,
-            self.mock_context, group_snapshot, snapshots
+            self.ctxt, group_snapshot, snapshots
         )
         mock_is_cg.assert_called_once_with(group_snapshot)
 
@@ -4193,7 +4198,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         self.assertRaises(
             NotImplementedError,
             self.driver.create_group_snapshot,
-            self.mock_context, group_snapshot, snapshots
+            self.ctxt, group_snapshot, snapshots
         )
         mock_is_cg.assert_called_once_with(group_snapshot)
 
@@ -4202,8 +4207,8 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
     def test_create_group_with_cg(self, mock_get_specs, mock_create_cg):
         mock_get_specs.return_value = '<is> True'
         group = mock.MagicMock()
-        self.driver.create_group(self.mock_context, group)
-        mock_create_cg.assert_called_once_with(self.mock_context, group)
+        self.driver.create_group(self.ctxt, group)
+        mock_create_cg.assert_called_once_with(self.ctxt, group)
 
     @mock.patch(BASE_DRIVER_OBJ + '.delete_consistencygroup')
     @mock.patch('cinder.volume.group_types.get_group_type_specs')
@@ -4211,8 +4216,8 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         mock_get_specs.return_value = '<is> True'
         group = mock.MagicMock()
         volumes = [fake_volume.fake_volume_obj(None)]
-        self.driver.delete_group(self.mock_context, group, volumes)
-        mock_delete_cg.assert_called_once_with(self.mock_context,
+        self.driver.delete_group(self.ctxt, group, volumes)
+        mock_delete_cg.assert_called_once_with(self.ctxt,
                                                group,
                                                volumes)
 
@@ -4224,13 +4229,13 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         addvollist = [mock.Mock()]
         remvollist = [mock.Mock()]
         self.driver.update_group(
-            self.mock_context,
+            self.ctxt,
             group,
             addvollist,
             remvollist
         )
         mock_update_cg.assert_called_once_with(
-            self.mock_context,
+            self.ctxt,
             group,
             addvollist,
             remvollist
@@ -4248,7 +4253,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         source_vols = [mock.Mock()]
 
         self.driver.create_group_from_src(
-            self.mock_context,
+            self.ctxt,
             group,
             volumes,
             group_snapshot,
@@ -4257,7 +4262,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
             source_vols
         )
         mock_create.assert_called_once_with(
-            self.mock_context,
+            self.ctxt,
             group,
             volumes,
             group_snapshot,
@@ -4275,12 +4280,12 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         snapshots = [mock.Mock()]
 
         self.driver.create_group_snapshot(
-            self.mock_context,
+            self.ctxt,
             group_snapshot,
             snapshots
         )
         mock_create_cgsnap.assert_called_once_with(
-            self.mock_context,
+            self.ctxt,
             group_snapshot,
             snapshots
         )
@@ -4294,12 +4299,12 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         snapshots = [mock.Mock()]
 
         self.driver.delete_group_snapshot(
-            self.mock_context,
+            self.ctxt,
             group_snapshot,
             snapshots
         )
         mock_delete_cg.assert_called_once_with(
-            self.mock_context,
+            self.ctxt,
             group_snapshot,
             snapshots
         )
