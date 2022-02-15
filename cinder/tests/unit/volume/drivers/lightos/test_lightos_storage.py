@@ -71,19 +71,23 @@ class InitiatorConnectorFactoryMocker:
 
 
 class InitialConnectorMock:
-    hostnqn = FAKE_CLIENT_HOSTNQN
+    nqn = FAKE_CLIENT_HOSTNQN
     found_discovery_client = True
 
     def get_hostnqn(self):
-        return self.__class__.hostnqn
+        return self.__class__.nqn
 
     def find_dsc(self):
         return self.__class__.found_discovery_client
 
+    def get_connector_properties(self, root):
+        return dict(nqn=self.__class__.nqn,
+                    found_dsc=self.__class__.found_discovery_client)
+
 
 def get_connector_properties():
     connector = InitialConnectorMock()
-    return dict(hostnqn=connector.get_hostnqn(),
+    return dict(nqn=connector.get_hostnqn(),
                 found_dsc=connector.find_dsc())
 
 
@@ -522,7 +526,7 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         db.snapshot_destroy(self.ctxt, snapshot.id)
 
     def test_initialize_connection(self):
-        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.nqn = "hostnqn1"
         InitialConnectorMock.found_discovery_client = True
         self.driver.do_setup(None)
         vol_type = test_utils.create_volume_type(self.ctxt, self,
@@ -535,10 +539,8 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
                                               get_connector_properties())
         self.assertIn('driver_volume_type', connection_props)
         self.assertEqual('lightos', connection_props['driver_volume_type'])
-        self.assertEqual(FAKE_CLIENT_HOSTNQN,
-                         connection_props['data']['hostnqn'])
         self.assertEqual(FAKE_LIGHTOS_CLUSTER_INFO['subsystemNQN'],
-                         connection_props['data']['nqn'])
+                         connection_props['data']['subsysnqn'])
         self.assertEqual(
             self.db.data['projects']['default']['volumes'][0]['UUID'],
             connection_props['data']['uuid'])
@@ -547,7 +549,7 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         db.volume_destroy(self.ctxt, volume.id)
 
     def test_initialize_connection_no_hostnqn_should_fail(self):
-        InitialConnectorMock.hostnqn = ""
+        InitialConnectorMock.nqn = ""
         InitialConnectorMock.found_discovery_client = True
         self.driver.do_setup(None)
         vol_type = test_utils.create_volume_type(self.ctxt, self,
@@ -562,7 +564,7 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         db.volume_destroy(self.ctxt, volume.id)
 
     def test_initialize_connection_no_dsc_should_fail(self):
-        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.nqn = "hostnqn1"
         InitialConnectorMock.found_discovery_client = False
         self.driver.do_setup(None)
         vol_type = test_utils.create_volume_type(self.ctxt, self,
@@ -577,7 +579,7 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         db.volume_destroy(self.ctxt, volume.id)
 
     def test_terminate_connection_with_hostnqn(self):
-        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.nqn = "hostnqn1"
         InitialConnectorMock.found_discovery_client = True
         self.driver.do_setup(None)
         vol_type = test_utils.create_volume_type(self.ctxt, self,
@@ -590,7 +592,7 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         db.volume_destroy(self.ctxt, volume.id)
 
     def test_terminate_connection_with_empty_hostnqn_should_fail(self):
-        InitialConnectorMock.hostnqn = ""
+        InitialConnectorMock.nqn = ""
         InitialConnectorMock.found_discovery_client = True
         self.driver.do_setup(None)
         vol_type = test_utils.create_volume_type(self.ctxt, self,
@@ -605,7 +607,7 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         db.volume_destroy(self.ctxt, volume.id)
 
     def test_force_terminate_connection_with_empty_hostnqn(self):
-        InitialConnectorMock.hostnqn = ""
+        InitialConnectorMock.nqn = ""
         InitialConnectorMock.found_discovery_client = True
         self.driver.do_setup(None)
         vol_type = test_utils.create_volume_type(self.ctxt, self,
@@ -619,13 +621,13 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         db.volume_destroy(self.ctxt, volume.id)
 
     def test_check_for_setup_error(self):
-        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.nqn = "hostnqn1"
         InitialConnectorMock.found_discovery_client = True
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
 
     def test_check_for_setup_error_no_subsysnqn_should_fail(self):
-        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.nqn = "hostnqn1"
         InitialConnectorMock.found_discovery_client = True
         self.driver.do_setup(None)
         self.driver.cluster.subsystemNQN = ""
@@ -633,14 +635,14 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
                           self.driver.check_for_setup_error)
 
     def test_check_for_setup_error_no_hostnqn_should_fail(self):
-        InitialConnectorMock.hostnqn = ""
+        InitialConnectorMock.nqn = ""
         InitialConnectorMock.found_discovery_client = True
         self.driver.do_setup(None)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.check_for_setup_error)
 
     def test_check_for_setup_error_no_dsc_should_succeed(self):
-        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.nqn = "hostnqn1"
         InitialConnectorMock.found_discovery_client = False
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
