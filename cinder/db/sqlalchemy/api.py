@@ -2072,6 +2072,8 @@ def apply_like_filters(model):
     return decorator_filters
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 @require_context
 def _volume_get_query(context, session=None, project_only=False,
                       joined_load=True):
@@ -2110,6 +2112,7 @@ def _volume_get_query(context, session=None, project_only=False,
             options(joinedload('group'))
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _volume_get(context, volume_id, session=None, joined_load=True,
                 for_update=False):
@@ -2146,6 +2149,7 @@ def _attachment_get_all(context, filters=None, marker=None, limit=None,
         return query.all()
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 def _attachment_get(context, attachment_id, session=None, read_deleted=False,
                     project_only=True):
     result = (model_query(context, models.VolumeAttachment, session=session,
@@ -2160,6 +2164,8 @@ def _attachment_get(context, attachment_id, session=None, read_deleted=False,
     return result
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 def _attachment_get_query(context, session=None, project_only=False):
     return model_query(context, models.VolumeAttachment, session=session,
                        project_only=project_only).options(joinedload('volume'))
@@ -3258,6 +3264,7 @@ def snapshot_destroy(context, snapshot_id):
     return updated_values
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _snapshot_get(context, snapshot_id, session=None):
     result = model_query(context, models.Snapshot, session=session,
@@ -3316,6 +3323,8 @@ def snapshot_get_all(context, filters=None, marker=None, limit=None,
     return query.all()
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 def _snaps_get_query(context, session=None, project_only=False,
                      joined_load=True):
     query = model_query(context, models.Snapshot, session=session,
@@ -3789,6 +3798,8 @@ def group_type_create(context, values, projects=None):
         return group_type_ref
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 def _volume_type_get_query(context, session=None, read_deleted='no',
                            expected_fields=None):
     expected_fields = expected_fields or []
@@ -3812,6 +3823,8 @@ def _volume_type_get_query(context, session=None, read_deleted='no',
     return query
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 def _group_type_get_query(context, session=None, read_deleted='no',
                           expected_fields=None):
     expected_fields = expected_fields or []
@@ -4094,6 +4107,7 @@ def _group_type_get_id_from_group_type(context, id, session=None):
     return result[0]
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 def _volume_type_get_db_object(context, id, session=None, inactive=False,
                                expected_fields=None):
     read_deleted = "yes" if inactive else "no"
@@ -4104,6 +4118,7 @@ def _volume_type_get_db_object(context, id, session=None, inactive=False,
     return result
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 def _group_type_get_db_object(context, id, session=None, inactive=False,
                               expected_fields=None):
     read_deleted = "yes" if inactive else "no"
@@ -5004,6 +5019,8 @@ def qos_specs_get_all(context, filters=None, marker=None, limit=None,
         return _dict_with_qos_specs(rows)
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 @require_admin_context
 def _qos_specs_get_query(context, session):
     rows = model_query(context, models.QualityOfServiceSpecs,
@@ -5022,6 +5039,7 @@ def _process_qos_specs_filters(query, filters):
     return query
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_admin_context
 def _qos_specs_get(context, qos_spec_id, session=None):
     result = model_query(context, models.QualityOfServiceSpecs,
@@ -5514,6 +5532,8 @@ def _backup_get_all(context, filters=None, marker=None, limit=None,
         return query.all()
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 def _backups_get_query(context, session=None, project_only=False,
                        joined_load=True):
     query = model_query(
@@ -5736,6 +5756,7 @@ def backup_metadata_update(context, backup_id, metadata, delete):
 ###############################
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _transfer_get(context, transfer_id, session=None):
     query = model_query(context, models.Transfer,
@@ -5804,6 +5825,8 @@ def transfer_get_all(context, marker=None, limit=None, sort_keys=None,
                              filters=filters, offset=offset)
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 def _transfer_get_query(context, session=None, project_only=False):
     return model_query(context, models.Transfer, session=session,
                        project_only=project_only)
@@ -5977,6 +6000,7 @@ def _consistencygroup_data_get_for_project(context, project_id,
     return (0, result[0] or 0)
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _consistencygroup_get(context, consistencygroup_id, session=None):
     result = model_query(context, models.ConsistencyGroup, session=session,
@@ -5996,6 +6020,8 @@ def consistencygroup_get(context, consistencygroup_id):
     return _consistencygroup_get(context, consistencygroup_id)
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 def _consistencygroups_get_query(context, session=None, project_only=False):
     return model_query(context, models.ConsistencyGroup, session=session,
                        project_only=project_only)
@@ -6288,6 +6314,7 @@ def _group_data_get_for_project(context, project_id,
     return (0, result[0] or 0)
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _group_get(context, group_id, session=None):
     result = (model_query(context, models.Group, session=session,
@@ -6306,11 +6333,15 @@ def group_get(context, group_id):
     return _group_get(context, group_id)
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 def _groups_get_query(context, session=None, project_only=False):
     return model_query(context, models.Group, session=session,
                        project_only=project_only)
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 def _group_snapshot_get_query(context, session=None, project_only=False):
     return model_query(context, models.GroupSnapshot, session=session,
                        project_only=project_only)
@@ -6742,6 +6773,7 @@ def cgsnapshot_creating_from_src():
 ###############################
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _group_snapshot_get(context, group_snapshot_id, session=None):
     result = model_query(context, models.GroupSnapshot, session=session,
@@ -7006,6 +7038,7 @@ def _translate_message(message):
     }
 
 
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 def _message_get(context, message_id, session=None):
     query = model_query(context,
                         models.Message,
@@ -7072,6 +7105,8 @@ def _process_messages_filters(query, filters):
     return query
 
 
+# TODO: Remove 'session' argument when all of the '_get_query' helpers are
+# converted
 def _messages_get_query(context, session=None, project_only=False):
     return model_query(context, models.Message, session=session,
                        project_only=project_only)
