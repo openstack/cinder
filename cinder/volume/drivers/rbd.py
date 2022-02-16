@@ -642,12 +642,15 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         total_capacity: float
         free_capacity: float
+
+        # In Nautilus bytes_used was renamed to stored
+        bytes_used = pool_stats.get('stored', pool_stats['bytes_used'])
         quota_outbuf = encodeutils.safe_decode(quota_outbuf)
         bytes_quota = json.loads(quota_outbuf)['quota_max_bytes']
         # With quota the total is the quota limit and free is quota - used
         if bytes_quota:
             total_capacity = bytes_quota
-            free_capacity = max(min(total_capacity - pool_stats['bytes_used'],
+            free_capacity = max(min(total_capacity - bytes_used,
                                     pool_stats['max_avail']),
                                 0)
         # Without quota free is pools max available and total is global size
@@ -657,7 +660,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         # If we want dynamic total capacity (default behavior)
         if self.configuration.safe_get('report_dynamic_total_capacity'):
-            total_capacity = free_capacity + pool_stats['bytes_used']
+            total_capacity = free_capacity + bytes_used
 
         free_capacity = round((float(free_capacity) / units.Gi), 2)
         total_capacity = round((float(total_capacity) / units.Gi), 2)
