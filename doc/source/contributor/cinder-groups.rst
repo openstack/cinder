@@ -53,7 +53,7 @@ The Cinder project has total control over the membership of these groups.
      - https://review.opendev.org/#/admin/groups/83,members
    * - cinder-specs-core
      - +2 powers in cinder-specs repository
-     - cinder-core (plus others if appropriate; currently only cinder-core)
+     - cinder-core plus other appropriate people
      - https://review.opendev.org/#/admin/groups/344,members
    * - cinder-tempest-plugin-core
      - +2 powers on the cinder-tempest-plugin repository
