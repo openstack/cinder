@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Pure Storage FlashArray driver: Enabled support for Active/Active
+    replication for the FlashArray driver. This allows users to configure
+    FlashArray backends in clustered environments.
