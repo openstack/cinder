@@ -1966,6 +1966,31 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     @pure_driver_debug_trace
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
+        """Failover to replication target.
+
+        This function combines calls to failover() and failover_completed() to
+        perform failover when Active/Active is not enabled.
+        """
+        active_backend_id, volume_update_list, group_update_list = (
+            self.failover(context, volumes, secondary_id, groups))
+        self.failover_completed(context, secondary_id)
+        return active_backend_id, volume_update_list, group_update_list
+
+    @pure_driver_debug_trace
+    def failover_completed(self, context, secondary_id=None):
+        """Failover to replication target."""
+        LOG.info('Driver failover completion started.')
+        if secondary_id == 'default':
+            self._swap_replication_state(self._get_current_array(),
+                                         self._failed_over_primary_array,
+                                         failback=True)
+        else:
+            self._swap_replication_state(self._get_current_array(),
+                                         self._find_sync_failover_target())
+        LOG.info('Driver failover completion completed.')
+
+    @pure_driver_debug_trace
+    def failover(self, context, volumes, secondary_id=None, groups=None):
         """Failover backend to a secondary array
 
         This action will not affect the original volumes in any
@@ -2001,9 +2026,6 @@ class PureBaseVolumeDriver(san.SanDriver):
                                 'status': 'error',
                             }
                         })
-                self._swap_replication_state(current_array,
-                                             self._failed_over_primary_array,
-                                             failback=True)
                 return secondary_id, model_updates, []
             else:
                 msg = _('Unable to failback to "default", this can only be '
@@ -2074,7 +2096,6 @@ class PureBaseVolumeDriver(san.SanDriver):
             model_updates = self._sync_failover_host(volumes, secondary_array)
 
         current_array = self._get_current_array()
-        self._swap_replication_state(current_array, secondary_array)
 
         return secondary_array.backend_id, model_updates, []
 
@@ -2151,7 +2172,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             if secondary_array in self._uniform_active_cluster_target_arrays:
                 self._uniform_active_cluster_target_arrays.remove(
                     secondary_array)
-            current_array.unform = True
+            current_array.uniform = True
             self._uniform_active_cluster_target_arrays.append(current_array)
 
         self._set_current_array(secondary_array)
