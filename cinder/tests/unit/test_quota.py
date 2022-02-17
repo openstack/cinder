@@ -1392,9 +1392,6 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         self.usages_created = {}
         self.reservations_created = {}
 
-        def fake_get_session():
-            return FakeSession()
-
         def fake_get_quota_usages(context, project_id, resources=None):
             return self.usages.copy()
 
@@ -1418,8 +1415,6 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
 
             return reservation_ref
 
-        self.mock_object(sqa_api, 'get_session',
-                         fake_get_session)
         self.mock_object(sqa_api, '_get_quota_usages',
                          fake_get_quota_usages)
         self.mock_object(sqa_api, '_quota_usage_create',

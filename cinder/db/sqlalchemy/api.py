@@ -86,13 +86,7 @@ def configure(conf):
 
 
 def get_engine():
-    return main_context_manager._factory.get_legacy_facade().get_engine()
-
-
-def get_session(**kwargs):
-    return main_context_manager._factory.get_legacy_facade().get_session(
-        **kwargs
-    )
+    return main_context_manager.writer.get_engine()
 
 
 def dispose_engine():
