@@ -446,9 +446,10 @@ class VolumeTransferTestCase(test.TestCase):
 
         tx_api.accept(self.ctxt, transfer['id'], transfer['auth_key'])
 
-        xfer = db_api.model_query(self.ctxt, models.Transfer,
-                                  read_deleted='yes'
-                                  ).filter_by(id=transfer['id']).first()
+        with db_api.main_context_manager.reader.using(self.ctxt):
+            xfer = db_api.model_query(
+                self.ctxt, models.Transfer, read_deleted='yes'
+            ).filter_by(id=transfer['id']).first()
         self.assertEqual(volume.project_id, xfer['source_project_id'])
         self.assertTrue(xfer['accepted'])
         self.assertEqual(fake.PROJECT2_ID, xfer['destination_project_id'])

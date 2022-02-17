@@ -135,9 +135,12 @@ class TransfersTableTestCase(test.TestCase):
         db.transfer_accept(nctxt.elevated(), xfer_id, fake.USER2_ID,
                            fake.PROJECT2_ID)
 
-        xfer = db_api.model_query(
-            nctxt.elevated(), models.Transfer, read_deleted='yes'
-        ).filter_by(id=xfer_id).first()
+        nctxt_admin = nctxt.elevated()
+
+        with db_api.main_context_manager.reader.using(nctxt_admin):
+            xfer = db_api.model_query(
+                nctxt_admin, models.Transfer, read_deleted='yes'
+            ).filter_by(id=xfer_id).first()
 
         self.assertEqual(volume.project_id, xfer['source_project_id'])
         self.assertTrue(xfer['accepted'])

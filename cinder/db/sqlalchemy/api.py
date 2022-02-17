@@ -22,7 +22,6 @@ import collections
 from collections import abc
 import datetime as dt
 import functools
-import inspect
 import itertools
 import re
 import sys
@@ -81,8 +80,9 @@ def configure(conf):
     CONF.import_group("profiler", "cinder.service")
     if CONF.profiler.enabled:
         if CONF.profiler.trace_sqlalchemy:
-            lambda eng: osprofiler_sqlalchemy.add_tracing(sqlalchemy,
-                                                          eng, "db")
+            lambda eng: osprofiler_sqlalchemy.add_tracing(
+                sqlalchemy, eng, "db"
+            )
 
 
 def get_engine():
@@ -91,7 +91,8 @@ def get_engine():
 
 def get_session(**kwargs):
     return main_context_manager._factory.get_legacy_facade().get_session(
-        **kwargs)
+        **kwargs
+    )
 
 
 def dispose_engine():
@@ -111,7 +112,8 @@ def is_admin_context(context):
     """Indicates if the request context is an administrator."""
     if not context:
         raise exception.CinderException(
-            'Use of empty request context is deprecated')
+            'Use of empty request context is deprecated'
+        )
     return context.is_admin
 
 
@@ -160,11 +162,12 @@ def require_admin_context(f):
 
     """
 
+    @functools.wraps(f)
     def wrapper(*args, **kwargs):
         if not is_admin_context(args[0]):
             raise exception.AdminRequired()
         return f(*args, **kwargs)
-    wrapper.__signature__ = inspect.signature(f)
+
     return wrapper
 
 
@@ -179,12 +182,27 @@ def require_context(f):
 
     """
 
+    @functools.wraps(f)
     def wrapper(*args, **kwargs):
         if not is_admin_context(args[0]) and not is_user_context(args[0]):
             raise exception.NotAuthorized()
         return f(*args, **kwargs)
-    wrapper.__signature__ = inspect.signature(f)
+
     return wrapper
+
+
+@require_context
+@main_context_manager.reader
+def resource_exists(context, model, resource_id):
+    conditions = [model.id == resource_id]
+    # Match non deleted resources by the id
+    if 'no' == context.read_deleted:
+        conditions.append(~model.deleted)
+    # If the context is not admin we limit it to the context's project
+    if is_user_context(context) and hasattr(model, 'project_id'):
+        conditions.append(model.project_id == context.project_id)
+    query = context.session.query(sql.exists().where(and_(*conditions)))
+    return query.scalar()
 
 
 def require_volume_exists(f):
@@ -199,6 +217,7 @@ def require_volume_exists(f):
         if not resource_exists(context, models.Volume, volume_id):
             raise exception.VolumeNotFound(volume_id=volume_id)
         return f(context, volume_id, *args, **kwargs)
+
     return wrapper
 
 
@@ -214,6 +233,7 @@ def require_snapshot_exists(f):
         if not resource_exists(context, models.Snapshot, snapshot_id):
             raise exception.SnapshotNotFound(snapshot_id=snapshot_id)
         return f(context, snapshot_id, *args, **kwargs)
+
     return wrapper
 
 
@@ -229,10 +249,33 @@ def require_backup_exists(f):
         if not resource_exists(context, models.Backup, backup_id):
             raise exception.BackupNotFound(backup_id=backup_id)
         return f(context, backup_id, *args, **kwargs)
+
+    return wrapper
+
+
+def require_qos_specs_exists(f):
+    """Decorator to require the specified QoS speces exist.
+
+    Requires the wrapped function to use context and qos_specs_id as
+    their first two arguments.
+    """
+
+    @functools.wraps(f)
+    def wrapper(context, qos_specs_id, *args, **kwargs):
+        if not resource_exists(
+            context,
+            models.QualityOfServiceSpecs,
+            qos_specs_id,
+        ):
+            raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
+        return f(context, qos_specs_id, *args, **kwargs)
+
     return wrapper
 
 
 def handle_db_data_error(f):
+
+    @functools.wraps(f)
     def wrapper(*args, **kwargs):
         try:
             return f(*args, **kwargs)
@@ -254,18 +297,10 @@ def model_query(context, model, *args, **kwargs):
     :param project_only: if present and context is user-type, then restrict
         query to match the context's project_id.
     """
-    session = kwargs.get('session')
-
-    if hasattr(context, 'session') and context.session:
-        session = context.session
-
-    if not session:
-        session = get_session()
-
     read_deleted = kwargs.get('read_deleted') or context.read_deleted
     project_only = kwargs.get('project_only')
 
-    query = session.query(model, *args)
+    query = context.session.query(model, *args)
 
     if read_deleted == 'no':
         query = query.filter_by(deleted=False)
@@ -299,7 +334,9 @@ def _sync_volumes(
     volume_type_name=None,
 ):
     volumes, _ = _volume_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id,
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
     )
     key = 'volumes'
     if volume_type_name:
@@ -314,7 +351,9 @@ def _sync_snapshots(
     volume_type_name=None,
 ):
     snapshots, _ = _snapshot_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id,
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
     )
     key = 'snapshots'
     if volume_type_name:
@@ -329,7 +368,9 @@ def _sync_backups(
     volume_type_name=None,
 ):
     backups, _ = _backup_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id,
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
     )
     key = 'backups'
     return {key: backups}
@@ -342,7 +383,9 @@ def _sync_gigabytes(
     volume_type_name=None,
 ):
     _, vol_gigs = _volume_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id,
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
     )
 
     key = 'gigabytes'
@@ -353,7 +396,9 @@ def _sync_gigabytes(
         return {key: vol_gigs}
 
     _, snap_gigs = _snapshot_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id,
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
     )
 
     return {key: vol_gigs + snap_gigs}
@@ -378,7 +423,9 @@ def _sync_backup_gigabytes(
 ):
     key = 'backup_gigabytes'
     _, backup_gigs = _backup_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id,
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
     )
     return {key: backup_gigs}
 
@@ -406,25 +453,6 @@ QUOTA_SYNC_FUNCTIONS = {
 
 
 ###################
-
-
-@require_context
-def resource_exists(context, model, resource_id, session=None):
-    if hasattr(context, 'session') and context.session:
-        session = context.session
-
-    if not session:
-        session = get_session()
-
-    conditions = [model.id == resource_id]
-    # Match non deleted resources by the id
-    if 'no' == context.read_deleted:
-        conditions.append(~model.deleted)
-    # If the context is not admin we limit it to the context's project
-    if is_user_context(context) and hasattr(model, 'project_id'):
-        conditions.append(model.project_id == context.project_id)
-    query = session.query(sql.exists().where(and_(*conditions)))
-    return query.scalar()
 
 
 def get_model_for_versioned_object(versioned_object):
@@ -464,6 +492,7 @@ _GET_METHODS = {}
 
 
 @require_context
+@main_context_manager.reader
 def get_by_id(context, model, id, *args, **kwargs):
     # Add get method to cache dictionary if it's not already there
     if not _GET_METHODS.get(model):
@@ -482,10 +511,7 @@ def condition_db_filter(model, field, value):
     """
     orm_field = getattr(model, field)
     # For values that must match and are iterables we use IN
-    if (
-        isinstance(value, abc.Iterable) and
-        not isinstance(value, str)
-    ):
+    if isinstance(value, abc.Iterable) and not isinstance(value, str):
         # We cannot use in_ when one of the values is None
         if None not in value:
             return orm_field.in_(value)
@@ -525,8 +551,13 @@ def condition_not_db_filter(model, field, value, auto_none=True):
 
 def is_orm_value(obj):
     """Check if object is an ORM field or expression."""
-    return isinstance(obj, (sqlalchemy.orm.attributes.InstrumentedAttribute,
-                            sqlalchemy.sql.expression.ColumnElement))
+    return isinstance(
+        obj,
+        (
+            sqlalchemy.orm.attributes.InstrumentedAttribute,
+            sqlalchemy.sql.expression.ColumnElement,
+        ),
+    )
 
 
 def _check_is_not_multitable(values, model):
@@ -543,23 +574,37 @@ def _check_is_not_multitable(values, model):
             used_models.add(model)
         else:
             raise exception.ProgrammingError(
-                reason='DB Conditional update - Unknown field type, must be '
-                       'string or ORM field.')
+                reason=(
+                    'DB Conditional update - Unknown field type, must be '
+                    'string or ORM field.'
+                ),
+            )
         if len(used_models) > 1:
             raise exception.ProgrammingError(
-                reason='DB Conditional update - Error in query, multitable '
-                       'updates are not supported.')
+                reason=(
+                    'DB Conditional update - Error in query, multitable '
+                    'updates are not supported.'
+                ),
+            )
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def conditional_update(context, model, values, expected_values, filters=(),
-                       include_deleted='no', project_only=False, order=None):
+def _conditional_update(
+    context,
+    model,
+    values,
+    expected_values,
+    filters=None,
+    include_deleted='no',
+    project_only=False,
+    order=None,
+):
     """Compare-and-swap conditional update SQLAlchemy implementation."""
     _check_is_not_multitable(values, model)
 
     # Provided filters will become part of the where clause
-    where_conds = list(filters)
+    where_conds = list(filters) if filters else []
 
     # Build where conditions with operators ==, !=, NOT IN and IN
     for field, condition in expected_values.items():
@@ -568,8 +613,9 @@ def conditional_update(context, model, values, expected_values, filters=(),
         where_conds.append(condition.get_filter(model, field))
 
     # Create the query with the where clause
-    query = model_query(context, model, read_deleted=include_deleted,
-                        project_only=project_only).filter(*where_conds)
+    query = model_query(
+        context, model, read_deleted=include_deleted, project_only=project_only
+    ).filter(*where_conds)
 
     # NOTE(geguileo): Some DBs' update method are order dependent, and they
     # behave differently depending on the order of the values, example on a
@@ -597,9 +643,9 @@ def conditional_update(context, model, values, expected_values, filters=(),
         if isinstance(value, db.Case):
             # TODO: This uses deprecated whens kwarg, so once our minimum
             # version of SQLA is 1.4 replace with: value = case(*value.whens,
-            value = case(whens=value.whens,
-                         value=value.value,
-                         else_=value.else_)
+            value = case(
+                whens=value.whens, value=value.value, else_=value.else_
+            )
 
         if key in order:
             # pylint: disable=E1137; ("order" is known to be a list, here)
@@ -621,14 +667,40 @@ def conditional_update(context, model, values, expected_values, filters=(),
     if order or orm_field_list or case_list:
         # If we are doing an update with ordered parameters, we need to add
         # remaining values to the list
-        values = itertools.chain(order, orm_field_list, case_list,
-                                 unordered_list)
+        values = itertools.chain(
+            order, orm_field_list, case_list, unordered_list
+        )
         # And we have to tell SQLAlchemy that we want to preserve the order
         update_args['update_args'] = {'preserve_parameter_order': True}
 
     # Return True if we were able to change any DB entry, False otherwise
     result = query.update(values, **update_args)
     return 0 != result
+
+
+@require_context
+@main_context_manager.writer
+def conditional_update(
+    context,
+    model,
+    values,
+    expected_values,
+    filters=None,
+    include_deleted='no',
+    project_only=False,
+    order=None,
+):
+    """Compare-and-swap conditional update SQLAlchemy implementation."""
+    return _conditional_update(
+        context,
+        model,
+        values,
+        expected_values,
+        filters=filters,
+        include_deleted=include_deleted,
+        project_only=project_only,
+        order=order,
+    )
 
 
 ###################
@@ -711,14 +783,22 @@ def _clustered_bool_field_filter(query, field_name, filter_value):
     # itself is disabled/frozen.
     if filter_value is not None:
         query_filter = or_(
-            and_(models.Service.cluster_name.is_(None),
-                 getattr(models.Service, field_name)),
-            and_(models.Service.cluster_name.isnot(None),
-                 sql.exists().where(and_(
-                     models.Cluster.name == models.Service.cluster_name,
-                     models.Cluster.binary == models.Service.binary,
-                     ~models.Cluster.deleted,
-                     getattr(models.Cluster, field_name)))))
+            and_(
+                models.Service.cluster_name.is_(None),
+                getattr(models.Service, field_name),
+            ),
+            and_(
+                models.Service.cluster_name.isnot(None),
+                sql.exists().where(
+                    and_(
+                        models.Cluster.name == models.Service.cluster_name,
+                        models.Cluster.binary == models.Service.binary,
+                        ~models.Cluster.deleted,
+                        getattr(models.Cluster, field_name),
+                    )
+                ),
+            ),
+        )
         if not filter_value:
             query_filter = ~query_filter
         query = query.filter(query_filter)
@@ -1122,8 +1202,9 @@ def _dict_with_extra_specs_if_authorized(context, inst_type_query):
 
     inst_type_dict = dict(inst_type_query)
 
-    extra_specs = {x['key']: x['value']
-                   for x in inst_type_query['extra_specs']}
+    extra_specs = {
+        x['key']: x['value'] for x in inst_type_query['extra_specs']
+    }
     inst_type_dict['extra_specs'] = extra_specs
 
     return inst_type_dict
@@ -1152,10 +1233,11 @@ def _dict_with_group_specs_if_authorized(context, inst_type_query):
 
     inst_type_dict = dict(inst_type_query)
     if not is_admin_context(context):
-        del(inst_type_dict['group_specs'])
+        del inst_type_dict['group_specs']
     else:
-        group_specs = {x['key']: x['value']
-                       for x in inst_type_query['group_specs']}
+        group_specs = {
+            x['key']: x['value'] for x in inst_type_query['group_specs']
+        }
         inst_type_dict['group_specs'] = group_specs
     return inst_type_dict
 
@@ -1258,6 +1340,7 @@ def _quota_class_get(context, class_name, resource):
 
 
 @require_context
+@main_context_manager.reader
 def quota_class_get(context, class_name, resource):
     return _quota_class_get(context, class_name, resource)
 
@@ -2089,7 +2172,6 @@ def volume_destroy(context, volume_id):
     return updated_values
 
 
-# TODO: Remove call to 'get_session' once all callers of this are wrapped
 def _include_in_cluster(context, cluster, model, partial_rename, filters):
     """Generic include in cluster method.
 
@@ -2110,14 +2192,7 @@ def _include_in_cluster(context, cluster, model, partial_rename, filters):
     if filters and not is_valid_model_filters(model, filters):
         return None
 
-    session = None
-    if hasattr(context, 'session') and context.session:
-        session = context.session
-
-    if not session:
-        session = get_session()
-
-    query = session.query(model)
+    query = context.session.query(model)
     if hasattr(model, 'deleted'):
         query = query.filter_by(deleted=False)
 
@@ -2277,16 +2352,11 @@ def apply_like_filters(model):
     return decorator_filters
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
 @require_context
-def _volume_get_query(
-    context, session=None, project_only=False, joined_load=True
-):
+def _volume_get_query(context, project_only=False, joined_load=True):
     """Get the query to retrieve the volume.
 
     :param context: the context used to run the method _volume_get_query
-    :param session: the session to use
     :param project_only: the boolean used to decide whether to query the
         volume in the current project or all projects
     :param joined_load: the boolean used to decide whether the query loads
@@ -2296,16 +2366,13 @@ def _volume_get_query(
     :returns: updated query or None
     """
     if not joined_load:
-        return model_query(
-            context, models.Volume, session=session, project_only=project_only
-        )
+        return model_query(context, models.Volume, project_only=project_only)
 
     if is_admin_context(context):
         return (
             model_query(
                 context,
                 models.Volume,
-                session=session,
                 project_only=project_only,
             )
             .options(joinedload('volume_metadata'))
@@ -2320,7 +2387,6 @@ def _volume_get_query(
             model_query(
                 context,
                 models.Volume,
-                session=session,
                 project_only=project_only,
             )
             .options(joinedload('volume_metadata'))
@@ -2331,7 +2397,6 @@ def _volume_get_query(
         )
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _volume_get(context, volume_id, joined_load=True, for_update=False):
     result = _volume_get_query(
@@ -2370,7 +2435,6 @@ def _attachment_get_all(
     # Generate the paginate query
     query = _generate_paginate_query(
         context,
-        None,  # TODO: Remove
         marker,
         limit,
         sort_keys,
@@ -2384,20 +2448,15 @@ def _attachment_get_all(
     return query.all()
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 def _attachment_get(
     context,
     attachment_id,
-    session=None,
     read_deleted=False,
     project_only=True,
 ):
     result = (
         model_query(
-            context,
-            models.VolumeAttachment,
-            session=session,
-            read_deleted=read_deleted
+            context, models.VolumeAttachment, read_deleted=read_deleted
         )
         .filter_by(id=attachment_id)
         .options(joinedload('volume'))
@@ -2411,13 +2470,10 @@ def _attachment_get(
     return result
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
-def _attachment_get_query(context, session=None, project_only=False):
+def _attachment_get_query(context, project_only=False):
     return model_query(
         context,
         models.VolumeAttachment,
-        session=session,
         project_only=project_only,
     ).options(joinedload('volume'))
 
@@ -2578,6 +2634,8 @@ def attachment_destroy(context, attachment_id):
     return updated_values
 
 
+@require_context
+@main_context_manager.writer
 def attachment_specs_exist(context):
     query = model_query(context, models.AttachmentSpecs, read_deleted='no')
     return bool(query.first())
@@ -2695,13 +2753,13 @@ def volume_get_all(
     # Generate the query
     query = _generate_paginate_query(
         context,
-        None,  # TODO: Remove
         marker,
         limit,
         sort_keys,
         sort_dirs,
         filters,
         offset,
+        models.Volume,
     )
     # No volumes would match, return empty list
     if query is None:
@@ -2872,13 +2930,13 @@ def volume_get_all_by_project(
     # Generate the query
     query = _generate_paginate_query(
         context,
-        None,  # TODO: Remove
         marker,
         limit,
         sort_keys,
         sort_dirs,
         filters,
         offset,
+        models.Volume,
     )
     # No volumes would match, return empty list
     if query is None:
@@ -2886,10 +2944,8 @@ def volume_get_all_by_project(
     return query.all()
 
 
-# TODO: Remove 'session'  argument once all callers have been converted
 def _generate_paginate_query(
     context,
-    session,
     marker,
     limit,
     sort_keys,
@@ -2904,7 +2960,6 @@ def _generate_paginate_query(
     if the given filters will not yield any results.
 
     :param context: context to query under
-    :param session: the session to use
     :param marker: the last item of the previous page; we returns the next
         results after this value.
     :param limit: maximum number of items to return
@@ -2919,17 +2974,6 @@ def _generate_paginate_query(
     :param paginate_type: type of pagination to generate
     :returns: updated query or None
     """
-    if hasattr(context, 'session'):
-        if session:
-            # sanity check
-            raise RuntimeError(
-                "Looks like someone forgot to remove the 'session' argument "
-                "from a call to '_generate_paginate_query'. This is "
-                "programmer error"
-            )
-
-        session = context.session
-
     get_query, process_filters, get = PAGINATION_HELPERS[paginate_type]
 
     sort_keys, sort_dirs = process_sort_params(
@@ -2937,7 +2981,7 @@ def _generate_paginate_query(
         sort_dirs,
         default_dir='desc',
     )
-    query = get_query(context, session=session)
+    query = get_query(context)
 
     if filters:
         query = process_filters(query, filters)
@@ -2946,7 +2990,7 @@ def _generate_paginate_query(
 
     marker_object = None
     if marker is not None:
-        marker_object = get(context, marker, session)
+        marker_object = get(context, marker)
 
     return sqlalchemyutils.paginate_query(
         query,
@@ -2959,15 +3003,15 @@ def _generate_paginate_query(
     )
 
 
+@main_context_manager.reader
 def calculate_resource_count(context, resource_type, filters):
     """Calculate total count with filters applied"""
-
-    session = get_session()
     if resource_type not in CALCULATE_COUNT_HELPERS.keys():
         msg = _("Model %s doesn't support counting resource.")
         raise exception.InvalidInput(reason=msg % resource_type)
+
     get_query, process_filters = CALCULATE_COUNT_HELPERS[resource_type]
-    query = get_query(context, session=session, joined_load=False)
+    query = get_query(context, joined_load=False)
     if filters:
         query = process_filters(query, filters)
         if query is None:
@@ -3428,7 +3472,7 @@ def _volume_x_metadata_update(
         # We don't want to delete keys we are going to update
         if metadata:
             expected_values['key'] = db.Not(metadata.keys())
-        conditional_update(
+        _conditional_update(
             context,
             model,
             {'deleted': True, 'deleted_at': timeutils.utcnow()},
@@ -3704,16 +3748,10 @@ def snapshot_destroy(context, snapshot_id):
     return updated_values
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
-def _snapshot_get(context, snapshot_id, session=None):
+def _snapshot_get(context, snapshot_id):
     result = (
-        model_query(
-            context,
-            models.Snapshot,
-            session=session,
-            project_only=True,
-        )
+        model_query(context, models.Snapshot, project_only=True)
         .options(joinedload('volume'))
         .options(joinedload('snapshot_metadata'))
         .filter_by(id=snapshot_id)
@@ -3770,7 +3808,6 @@ def snapshot_get_all(
 
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
@@ -3786,20 +3823,12 @@ def snapshot_get_all(
     return query.all()
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
 def _snaps_get_query(
     context,
-    session=None,
     project_only=False,
     joined_load=True,
 ):
-    query = model_query(
-        context,
-        models.Snapshot,
-        session=session,
-        project_only=project_only,
-    )
+    query = model_query(context, models.Snapshot, project_only=project_only)
     if joined_load:
         query = query.options(joinedload('snapshot_metadata'))
     return query
@@ -4005,7 +4034,6 @@ def snapshot_get_all_by_project(
 
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
@@ -4023,13 +4051,11 @@ def snapshot_get_all_by_project(
     return query.all()
 
 
-# TODO: Remove 'session' parameter once all callers are updated
 @require_context
 def _snapshot_data_get_for_project(
     context,
     project_id,
     volume_type_id=None,
-    session=None,
     host=None,
     skip_internal=True,
 ):
@@ -4039,7 +4065,6 @@ def _snapshot_data_get_for_project(
         func.count(models.Snapshot.id),
         func.sum(models.Snapshot.volume_size),
         read_deleted="no",
-        session=session,
     )
     if skip_internal:
         # TODO: (Y release) replace next line with:
@@ -4359,14 +4384,10 @@ def group_type_create(context, values, projects=None):
     return group_type_ref
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
-def _volume_type_get_query(
-    context, session=None, read_deleted='no', expected_fields=None
-):
+def _volume_type_get_query(context, read_deleted='no', expected_fields=None):
     expected_fields = expected_fields or []
     query = model_query(
-        context, models.VolumeType, session=session, read_deleted=read_deleted
+        context, models.VolumeType, read_deleted=read_deleted
     ).options(joinedload('extra_specs'))
 
     for expected in expected_fields:
@@ -4381,14 +4402,10 @@ def _volume_type_get_query(
     return query
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
-def _group_type_get_query(
-    context, session=None, read_deleted='no', expected_fields=None
-):
+def _group_type_get_query(context, read_deleted='no', expected_fields=None):
     expected_fields = expected_fields or []
     query = model_query(
-        context, models.GroupType, session=session, read_deleted=read_deleted
+        context, models.GroupType, read_deleted=read_deleted
     ).options(joinedload('group_specs'))
 
     if 'projects' in expected_fields:
@@ -4584,7 +4601,6 @@ def volume_type_get_all(
     # Generate the query
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
@@ -4654,7 +4670,6 @@ def group_type_get_all(
     # Generate the query
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
@@ -4714,46 +4729,39 @@ def _group_type_get_id_from_group_type(context, id):
     return result[0]
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 def _volume_type_get_db_object(
-    context, id, session=None, inactive=False, expected_fields=None
+    context, id, inactive=False, expected_fields=None
 ):
     read_deleted = "yes" if inactive else "no"
     result = (
-        _volume_type_get_query(context, session, read_deleted, expected_fields)
+        _volume_type_get_query(context, read_deleted, expected_fields)
         .filter_by(id=id)
         .first()
     )
     return result
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 def _group_type_get_db_object(
-    context, id, session=None, inactive=False, expected_fields=None,
-):
-    read_deleted = "yes" if inactive else "no"
-    result = (
-        _group_type_get_query(context, session, read_deleted, expected_fields)
-        .filter_by(id=id)
-        .first()
-    )
-    return result
-
-
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
-@require_context
-def _volume_type_get(
     context,
     id,
-    session=None,
     inactive=False,
     expected_fields=None,
 ):
+    read_deleted = "yes" if inactive else "no"
+    result = (
+        _group_type_get_query(context, read_deleted, expected_fields)
+        .filter_by(id=id)
+        .first()
+    )
+    return result
+
+
+@require_context
+def _volume_type_get(context, id, inactive=False, expected_fields=None):
     expected_fields = expected_fields or []
     result = _volume_type_get_db_object(
         context,
         id,
-        session,
         inactive,
         expected_fields,
     )
@@ -4771,23 +4779,10 @@ def _volume_type_get(
     return vtype
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
-def _group_type_get(
-    context,
-    id,
-    session=None,
-    inactive=False,
-    expected_fields=None,
-):
+def _group_type_get(context, id, inactive=False, expected_fields=None):
     expected_fields = expected_fields or []
-    result = _group_type_get_db_object(
-        context,
-        id,
-        session,
-        inactive,
-        expected_fields,
-    )
+    result = _group_type_get_db_object(context, id, inactive, expected_fields)
     if not result:
         raise exception.GroupTypeNotFound(group_type_id=id)
 
@@ -4953,14 +4948,10 @@ def group_types_get_by_name_or_id(context, group_type_list):
 
 
 @require_admin_context
+@require_qos_specs_exists
 @main_context_manager.reader
 def volume_type_qos_associations_get(context, qos_specs_id, inactive=False):
     read_deleted = "yes" if inactive else "no"
-    # Raise QoSSpecsNotFound if no specs found
-    if not resource_exists(
-        context, models.QualityOfServiceSpecs, qos_specs_id
-    ):
-        raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
     vts = (
         model_query(context, models.VolumeType, read_deleted=read_deleted)
         .options(joinedload('extra_specs'))
@@ -5394,7 +5385,7 @@ def group_type_access_remove(context, type_id, project_id):
 ####################
 
 
-def _volume_type_extra_specs_query(context, volume_type_id, session=None):
+def _volume_type_extra_specs_query(context, volume_type_id):
     return model_query(
         context,
         models.VolumeTypeExtraSpecs,
@@ -5480,7 +5471,7 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id, specs):
 ####################
 
 
-def _group_type_specs_query(context, group_type_id, session=None):
+def _group_type_specs_query(context, group_type_id):
     return model_query(
         context,
         models.GroupTypeSpecs,
@@ -5763,7 +5754,6 @@ def qos_specs_get_all(
     # Generate the query
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
@@ -5779,15 +5769,12 @@ def qos_specs_get_all(
     return _dict_with_qos_specs(rows)
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
 @require_admin_context
-def _qos_specs_get_query(context, session=None):
+def _qos_specs_get_query(context):
     rows = (
         model_query(
             context,
             models.QualityOfServiceSpecs,
-            session=session,
             read_deleted='no',
         )
         .options(joinedload('specs'))
@@ -5805,16 +5792,10 @@ def _process_qos_specs_filters(query, filters):
     return query
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_admin_context
-def _qos_specs_get(context, qos_spec_id, session=None):
+def _qos_specs_get(context, qos_spec_id):
     result = (
-        model_query(
-            context,
-            models.QualityOfServiceSpecs,
-            session=session,
-            read_deleted='no',
-        )
+        model_query(context, models.QualityOfServiceSpecs, read_deleted='no')
         .filter_by(id=qos_spec_id)
         .filter_by(key='QoS_Specs_Name')
         .first()
@@ -5934,18 +5915,13 @@ def _qos_specs_get_item(context, qos_specs_id, key):
 
 @handle_db_data_error
 @require_admin_context
+@require_qos_specs_exists
 @main_context_manager.writer
 def qos_specs_update(context, qos_specs_id, updates):
     """Make updates to an existing qos specs.
 
     Perform add, update or delete key/values to a qos specs.
     """
-    # make sure qos specs exists
-    exists = resource_exists(
-        context, models.QualityOfServiceSpecs, qos_specs_id
-    )
-    if not exists:
-        raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
     specs = updates.get('specs', {})
 
     if 'consumer' in updates:
@@ -5983,11 +5959,15 @@ def qos_specs_update(context, qos_specs_id, updates):
 
 @require_context
 def _volume_type_encryption_get(context, volume_type_id):
-    return model_query(
-        context,
-        models.Encryption,
-        read_deleted="no",
-    ).filter_by(volume_type_id=volume_type_id).first()
+    return (
+        model_query(
+            context,
+            models.Encryption,
+            read_deleted="no",
+        )
+        .filter_by(volume_type_id=volume_type_id)
+        .first()
+    )
 
 
 @require_context
@@ -6098,7 +6078,8 @@ def volume_glance_metadata_list_get(context, volume_id_list):
     """Return the glance metadata for a volume list."""
     query = model_query(context, models.VolumeGlanceMetadata)
     query = query.filter(
-        models.VolumeGlanceMetadata.volume_id.in_(volume_id_list))
+        models.VolumeGlanceMetadata.volume_id.in_(volume_id_list)
+    )
     return query.all()
 
 
@@ -6161,7 +6142,8 @@ def volume_glance_metadata_create(context, volume_id, key, value):
         context.session.query(models.VolumeGlanceMetadata)
         .filter_by(volume_id=volume_id)
         .filter_by(key=key)
-        .filter_by(deleted=False).all()
+        .filter_by(deleted=False)
+        .all()
     )
 
     if len(rows) > 0:
@@ -6190,7 +6172,8 @@ def volume_glance_metadata_bulk_create(context, volume_id, metadata):
             context.session.query(models.VolumeGlanceMetadata)
             .filter_by(volume_id=volume_id)
             .filter_by(key=key)
-            .filter_by(deleted=False).all()
+            .filter_by(deleted=False)
+            .all()
         )
 
         if len(rows) > 0:
@@ -6333,11 +6316,9 @@ def backup_get(context, backup_id, read_deleted=None, project_only=True):
     )
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 def _backup_get(
     context,
     backup_id,
-    session=None,
     read_deleted=None,
     project_only=True,
 ):
@@ -6345,7 +6326,6 @@ def _backup_get(
         model_query(
             context,
             models.Backup,
-            session=session,
             project_only=project_only,
             read_deleted=read_deleted,
         )
@@ -6375,7 +6355,6 @@ def _backup_get_all(
     # Generate the paginate query
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
@@ -6389,14 +6368,8 @@ def _backup_get_all(
     return query.all()
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
-def _backups_get_query(
-    context, session=None, project_only=False, joined_load=True
-):
-    query = model_query(
-        context, models.Backup, session=session, project_only=project_only
-    )
+def _backups_get_query(context, project_only=False, joined_load=True):
+    query = model_query(context, models.Backup, project_only=project_only)
     if joined_load:
         query = query.options(joinedload('backup_metadata'))
     return query
@@ -6654,13 +6627,11 @@ def backup_metadata_update(context, backup_id, metadata, delete):
 ###############################
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
-def _transfer_get(context, transfer_id, session=None):
+def _transfer_get(context, transfer_id):
     query = model_query(
         context,
         models.Transfer,
-        session=session,
     ).filter_by(id=transfer_id)
 
     if not is_admin_context(context):
@@ -6728,7 +6699,6 @@ def _transfer_get_all(
     # Generate the query
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
@@ -6743,6 +6713,7 @@ def _transfer_get_all(
 
 
 @require_admin_context
+@main_context_manager.reader
 def transfer_get_all(
     context,
     marker=None,
@@ -6763,12 +6734,8 @@ def transfer_get_all(
     )
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
-def _transfer_get_query(context, session=None, project_only=False):
-    return model_query(
-        context, models.Transfer, session=session, project_only=project_only
-    )
+def _transfer_get_query(context, project_only=False):
+    return model_query(context, models.Transfer, project_only=project_only)
 
 
 @require_context
@@ -6807,7 +6774,7 @@ def transfer_create(context, values):
     volume_id = values['volume_id']
     expected = {'id': volume_id, 'status': 'available'}
     update = {'status': 'awaiting-transfer'}
-    if not conditional_update(context, models.Volume, update, expected):
+    if not _conditional_update(context, models.Volume, update, expected):
         msg = _(
             'Transfer %(transfer_id)s: Volume id %(volume_id)s '
             'expected in available state.'
@@ -6829,7 +6796,7 @@ def transfer_destroy(context, transfer_id):
     volume_id = _transfer_get(context, transfer_id)['volume_id']
     expected = {'id': volume_id, 'status': 'awaiting-transfer'}
     update = {'status': 'available'}
-    if not conditional_update(context, models.Volume, update, expected):
+    if not _conditional_update(context, models.Volume, update, expected):
         # If the volume state is not 'awaiting-transfer' don't change it,
         # but we can still mark the transfer record as deleted.
         msg = _(
@@ -6862,7 +6829,7 @@ def _roll_back_transferred_volume_and_snapshots(
         'project_id': old_project_id,
         'updated_at': timeutils.utcnow(),
     }
-    if not conditional_update(context, models.Volume, update, expected):
+    if not _conditional_update(context, models.Volume, update, expected):
         LOG.warning(
             'Volume: %(volume_id)s is not in the expected available '
             'status. Rolling it back.',
@@ -6880,7 +6847,7 @@ def _roll_back_transferred_volume_and_snapshots(
             'project_id': old_project_id,
             'updated_at': timeutils.utcnow(),
         }
-        if not conditional_update(context, models.Snapshot, update, expected):
+        if not _conditional_update(context, models.Snapshot, update, expected):
             LOG.warning(
                 'Snapshot: %(snapshot_id)s is not in the expected '
                 'available state. Rolling it back.',
@@ -6902,7 +6869,7 @@ def transfer_accept(
         'project_id': project_id,
         'updated_at': timeutils.utcnow(),
     }
-    if not conditional_update(context, models.Volume, update, expected):
+    if not _conditional_update(context, models.Volume, update, expected):
         msg = _(
             'Transfer %(transfer_id)s: Volume id %(volume_id)s '
             'expected in awaiting-transfer state.'
@@ -6924,7 +6891,7 @@ def transfer_accept(
                 'project_id': project_id,
                 'updated_at': timeutils.utcnow(),
             }
-            if not conditional_update(
+            if not _conditional_update(
                 context, models.Snapshot, update, expected
             ):
                 msg = _(
@@ -6972,14 +6939,12 @@ def _consistencygroup_data_get_for_project(context, project_id):
     return (0, result[0] or 0)
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
-def _consistencygroup_get(context, consistencygroup_id, session=None):
+def _consistencygroup_get(context, consistencygroup_id):
     result = (
         model_query(
             context,
             models.ConsistencyGroup,
-            session=session,
             project_only=True,
         )
         .filter_by(id=consistencygroup_id)
@@ -7000,13 +6965,10 @@ def consistencygroup_get(context, consistencygroup_id):
     return _consistencygroup_get(context, consistencygroup_id)
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
-def _consistencygroups_get_query(context, session=None, project_only=False):
+def _consistencygroups_get_query(context, project_only=False):
     return model_query(
         context,
         models.ConsistencyGroup,
-        session=session,
         project_only=project_only,
     )
 
@@ -7037,7 +6999,6 @@ def _consistencygroup_get_all(
     # Generate the paginate query
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
@@ -7360,11 +7321,10 @@ def _group_data_get_for_project(context, project_id):
     return (0, result[0] or 0)
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
-def _group_get(context, group_id, session=None):
+def _group_get(context, group_id):
     result = (
-        model_query(context, models.Group, session=session, project_only=True)
+        model_query(context, models.Group, project_only=True)
         .filter_by(id=group_id)
         .first()
     )
@@ -7381,21 +7341,14 @@ def group_get(context, group_id):
     return _group_get(context, group_id)
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
-def _groups_get_query(context, session=None, project_only=False):
-    return model_query(
-        context, models.Group, session=session, project_only=project_only
-    )
+def _groups_get_query(context, project_only=False):
+    return model_query(context, models.Group, project_only=project_only)
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
-def _group_snapshot_get_query(context, session=None, project_only=False):
+def _group_snapshot_get_query(context, project_only=False):
     return model_query(
         context,
         models.GroupSnapshot,
-        session=session,
         project_only=project_only,
     )
 
@@ -7448,7 +7401,6 @@ def _group_get_all(
     # Generate the paginate query
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
@@ -7912,16 +7864,10 @@ def cgsnapshot_creating_from_src():
 ###############################
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
-def _group_snapshot_get(context, group_snapshot_id, session=None):
+def _group_snapshot_get(context, group_snapshot_id):
     result = (
-        model_query(
-            context,
-            models.GroupSnapshot,
-            session=session,
-            project_only=True,
-        )
+        model_query(context, models.GroupSnapshot, project_only=True)
         .filter_by(id=group_snapshot_id)
         .first()
     )
@@ -7957,7 +7903,6 @@ def _group_snapshot_get_all(
     # Generate the paginate query
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
@@ -8214,8 +8159,8 @@ def reset_active_backend(
     )
     if not service.frozen:
         raise exception.ServiceUnavailable(
-            'Service for host %(host)s must first be frozen.' %
-            {'host': backend_host},
+            'Service for host %(host)s must first be frozen.'
+            % {'host': backend_host},
         )
 
     actions = {
@@ -8261,14 +8206,12 @@ def _translate_message(message):
     }
 
 
-# TODO: Remove 'session' argument when all of the '_get' helpers are converted
-def _message_get(context, message_id, session=None):
+def _message_get(context, message_id):
     query = model_query(
         context,
         models.Message,
         read_deleted="no",
         project_only="yes",
-        session=session,
     )
     result = query.filter_by(id=message_id).first()
     if not result:
@@ -8313,19 +8256,16 @@ def message_get_all(
         values, see _process_messages_filters function for more information
     :returns: list of matching messages
     """
-    messages = models.Message
-
     # Generate the paginate query
     query = _generate_paginate_query(
         context,
-        None,
         marker,
         limit,
         sort_keys,
         sort_dirs,
         filters,
         offset,
-        messages,
+        models.Message,
     )
     if query is None:
         return []
@@ -8343,12 +8283,8 @@ def _process_messages_filters(query, filters):
     return query
 
 
-# TODO: Remove 'session' argument when all of the '_get_query' helpers are
-# converted
-def _messages_get_query(context, session=None, project_only=False):
-    return model_query(
-        context, models.Message, session=session, project_only=project_only
-    )
+def _messages_get_query(context, project_only=False):
+    return model_query(context, models.Message, project_only=project_only)
 
 
 @require_context
@@ -8437,28 +8373,47 @@ PAGINATION_HELPERS = {
     models.Volume: (_volume_get_query, _process_volume_filters, _volume_get),
     models.Snapshot: (_snaps_get_query, _process_snaps_filters, _snapshot_get),
     models.Backup: (_backups_get_query, _process_backups_filters, _backup_get),
-    models.QualityOfServiceSpecs: (_qos_specs_get_query,
-                                   _process_qos_specs_filters, _qos_specs_get),
-    models.VolumeType: (_volume_type_get_query, _process_volume_types_filters,
-                        _volume_type_get_db_object),
-    models.ConsistencyGroup: (_consistencygroups_get_query,
-                              _process_consistencygroups_filters,
-                              _consistencygroup_get),
-    models.Message: (_messages_get_query, _process_messages_filters,
-                     _message_get),
-    models.GroupType: (_group_type_get_query, _process_group_types_filters,
-                       _group_type_get_db_object),
-    models.Group: (_groups_get_query,
-                   _process_groups_filters,
-                   _group_get),
-    models.GroupSnapshot: (_group_snapshot_get_query,
-                           _process_group_snapshot_filters,
-                           _group_snapshot_get),
-    models.VolumeAttachment: (_attachment_get_query,
-                              _process_attachment_filters,
-                              _attachment_get),
-    models.Transfer: (_transfer_get_query, _process_transfer_filters,
-                      _transfer_get),
+    models.QualityOfServiceSpecs: (
+        _qos_specs_get_query,
+        _process_qos_specs_filters,
+        _qos_specs_get,
+    ),
+    models.VolumeType: (
+        _volume_type_get_query,
+        _process_volume_types_filters,
+        _volume_type_get_db_object,
+    ),
+    models.ConsistencyGroup: (
+        _consistencygroups_get_query,
+        _process_consistencygroups_filters,
+        _consistencygroup_get,
+    ),
+    models.Message: (
+        _messages_get_query,
+        _process_messages_filters,
+        _message_get,
+    ),
+    models.GroupType: (
+        _group_type_get_query,
+        _process_group_types_filters,
+        _group_type_get_db_object,
+    ),
+    models.Group: (_groups_get_query, _process_groups_filters, _group_get),
+    models.GroupSnapshot: (
+        _group_snapshot_get_query,
+        _process_group_snapshot_filters,
+        _group_snapshot_get,
+    ),
+    models.VolumeAttachment: (
+        _attachment_get_query,
+        _process_attachment_filters,
+        _attachment_get,
+    ),
+    models.Transfer: (
+        _transfer_get_query,
+        _process_transfer_filters,
+        _transfer_get,
+    ),
 }
 
 
@@ -8723,13 +8678,18 @@ def volume_use_quota_online_data_migration(context, max_count):
         if volume.volume_admin_metadata:
             for admin_meta in volume.volume_admin_metadata:
                 if (admin_meta.key == 'temporary') and (
-                        admin_meta.value == 'True'):
+                    admin_meta.value == 'True'
+                ):
                     is_temporary = True
                     break
         return not (is_migrating or is_temporary)
 
-    return use_quota_online_data_migration(context, max_count, 'Volume',
-                                           calculate_use_quota)
+    return use_quota_online_data_migration(
+        context,
+        max_count,
+        'Volume',
+        calculate_use_quota,
+    )
 
 
 # TODO: (Y Release) remove method and this comment
@@ -8761,9 +8721,9 @@ def use_quota_online_data_migration(
     calculate_use_quota,
 ):
     updated = 0
-    query = model_query(
-        context, getattr(models, resource_name)
-    ).filter_by(use_quota=None)
+    query = model_query(context, getattr(models, resource_name)).filter_by(
+        use_quota=None
+    )
     if resource_name == 'Volume':
         query = query.options(joinedload('volume_admin_metadata'))
     total = query.count()

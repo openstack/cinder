@@ -561,8 +561,9 @@ class DBAPIVolumeTestCase(BaseTest):
                                      'volume_type_id': fake.VOLUME_TYPE_ID,
                                      'use_quota': False})
 
-        result = sqlalchemy_api._volume_data_get_for_project(
-            self.ctxt, 'project', skip_internal=skip_internal)
+        with sqlalchemy_api.main_context_manager.reader.using(self.ctxt):
+            result = sqlalchemy_api._volume_data_get_for_project(
+                self.ctxt, 'project', skip_internal=skip_internal)
         self.assertEqual((count, gigabytes), result)
 
     @ddt.data((True, THREE_HUNDREDS, THREE),
@@ -583,8 +584,9 @@ class DBAPIVolumeTestCase(BaseTest):
                                      'volume_type_id': fake.VOLUME_TYPE_ID,
                                      'admin_metadata': {'temporary': 'True'}})
 
-        result = sqlalchemy_api._volume_data_get_for_project(
-            self.ctxt, 'project', skip_internal=skip_internal)
+        with sqlalchemy_api.main_context_manager.reader.using(self.ctxt):
+            result = sqlalchemy_api._volume_data_get_for_project(
+                self.ctxt, 'project', skip_internal=skip_internal)
         self.assertEqual((count, gigabytes), result)
 
     def test_volume_data_get_for_project_with_host(self):
@@ -1521,7 +1523,7 @@ class DBAPIVolumeTestCase(BaseTest):
     @ddt.data(common.METADATA_TYPES.user, common.METADATA_TYPES.image)
     @mock.patch.object(timeutils, 'utcnow')
     @mock.patch.object(sqlalchemy_api, 'resource_exists')
-    @mock.patch.object(sqlalchemy_api, 'conditional_update')
+    @mock.patch.object(sqlalchemy_api, '_conditional_update')
     @mock.patch.object(sqlalchemy_api, '_volume_x_metadata_get_query')
     def test_volume_metadata_delete_deleted_at_updated(self,
                                                        meta_type,
@@ -2187,8 +2189,9 @@ class DBAPISnapshotTestCase(BaseTest):
              'use_quota': False,
              'volume_size': ONE_HUNDREDS})
 
-        result = sqlalchemy_api._snapshot_data_get_for_project(
-            self.ctxt, 'project', skip_internal=skip_internal)
+        with sqlalchemy_api.main_context_manager.reader.using(self.ctxt):
+            result = sqlalchemy_api._snapshot_data_get_for_project(
+                self.ctxt, 'project', skip_internal=skip_internal)
         self.assertEqual(expected, result)
 
 
@@ -2411,7 +2414,8 @@ class DBAPIVolumeTypeTestCase(BaseTest):
                                     'extra_specs': vt_extra_specs})
         volume_ref = db.volume_create(self.ctxt, {'volume_type_id': vt.id})
 
-        volume = sqlalchemy_api._volume_get(self.ctxt, volume_ref.id)
+        with sqlalchemy_api.main_context_manager.reader.using(self.ctxt):
+            volume = sqlalchemy_api._volume_get(self.ctxt, volume_ref.id)
 
         actual_specs = {}
         for spec in volume.volume_type.extra_specs:
@@ -2568,8 +2572,9 @@ class DBAPIReservationTestCase(BaseTest):
     def test__get_reservation_resources(self):
         reservations = _quota_reserve(self.ctxt, 'project1')
         expected = ['gigabytes', 'volumes']
-        resources = sqlalchemy_api._get_reservation_resources(
-            self.ctxt, reservations)
+        with sqlalchemy_api.main_context_manager.reader.using(self.ctxt):
+            resources = sqlalchemy_api._get_reservation_resources(
+                self.ctxt, reservations)
         self.assertEqual(expected, sorted(resources))
 
     def test_reservation_commit(self):
@@ -2908,15 +2913,17 @@ class DBAPIQuotaTestCase(BaseTest):
 
     def test__get_quota_usages(self):
         _quota_reserve(self.ctxt, 'project1')
-        quota_usage = sqlalchemy_api._get_quota_usages(
-            self.ctxt, 'project1')
+        with sqlalchemy_api.main_context_manager.reader.using(self.ctxt):
+            quota_usage = sqlalchemy_api._get_quota_usages(
+                self.ctxt, 'project1')
         self.assertEqual(['gigabytes', 'volumes'],
                          sorted(quota_usage.keys()))
 
     def test__get_quota_usages_with_resources(self):
         _quota_reserve(self.ctxt, 'project1')
-        quota_usage = sqlalchemy_api._get_quota_usages(
-            self.ctxt, 'project1', resources=['volumes'])
+        with sqlalchemy_api.main_context_manager.reader.using(self.ctxt):
+            quota_usage = sqlalchemy_api._get_quota_usages(
+                self.ctxt, 'project1', resources=['volumes'])
         self.assertEqual(['volumes'], list(quota_usage.keys()))
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=UTC_NOW)
