@@ -7358,10 +7358,11 @@ def _group_data_get_for_project(context, project_id):
 # TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _group_get(context, group_id, session=None):
-    result = (model_query(context, models.Group, session=session,
-                          project_only=True).
-              filter_by(id=group_id).
-              first())
+    result = (
+        model_query(context, models.Group, session=session, project_only=True)
+        .filter_by(id=group_id)
+        .first()
+    )
 
     if not result:
         raise exception.GroupNotFound(group_id=group_id)
@@ -7370,6 +7371,7 @@ def _group_get(context, group_id, session=None):
 
 
 @require_context
+@main_context_manager.reader
 def group_get(context, group_id):
     return _group_get(context, group_id)
 
@@ -7377,15 +7379,20 @@ def group_get(context, group_id):
 # TODO: Remove 'session' argument when all of the '_get_query' helpers are
 # converted
 def _groups_get_query(context, session=None, project_only=False):
-    return model_query(context, models.Group, session=session,
-                       project_only=project_only)
+    return model_query(
+        context, models.Group, session=session, project_only=project_only
+    )
 
 
 # TODO: Remove 'session' argument when all of the '_get_query' helpers are
 # converted
 def _group_snapshot_get_query(context, session=None, project_only=False):
-    return model_query(context, models.GroupSnapshot, session=session,
-                       project_only=project_only)
+    return model_query(
+        context,
+        models.GroupSnapshot,
+        session=session,
+        project_only=project_only,
+    )
 
 
 @apply_like_filters(model=models.Group)
@@ -7399,8 +7406,11 @@ def _process_groups_filters(query, filters):
         # backend_match_level first.
         host = filters.pop('host', None)
         if host:
-            query = query.filter(_filter_host(models.Group.host, host,
-                                              match_level=backend_match_level))
+            query = query.filter(
+                _filter_host(
+                    models.Group.host, host, match_level=backend_match_level
+                )
+            )
         # Ensure that filters' keys exist on the model
         if not is_valid_model_filters(models.Group, filters):
             return
@@ -7418,24 +7428,45 @@ def _process_group_snapshot_filters(query, filters):
     return query
 
 
-def _group_get_all(context, filters=None, marker=None, limit=None,
-                   offset=None, sort_keys=None, sort_dirs=None):
+def _group_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
     # No need to call is_valid_model_filters here. It is called
     # in _process_group_filters when _generate_paginate_query
     # is called below.
-    session = get_session()
-    with session.begin():
-        # Generate the paginate query
-        query = _generate_paginate_query(context, session, marker,
-                                         limit, sort_keys, sort_dirs, filters,
-                                         offset, models.Group)
+    # Generate the paginate query
+    query = _generate_paginate_query(
+        context,
+        None,
+        marker,
+        limit,
+        sort_keys,
+        sort_dirs,
+        filters,
+        offset,
+        models.Group,
+    )
 
-        return query.all() if query else []
+    return query.all() if query else []
 
 
 @require_admin_context
-def group_get_all(context, filters=None, marker=None, limit=None,
-                  offset=None, sort_keys=None, sort_dirs=None):
+@main_context_manager.reader
+def group_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
     """Retrieves all groups.
 
     If no sort parameters are specified then the returned groups are sorted
@@ -7444,23 +7475,32 @@ def group_get_all(context, filters=None, marker=None, limit=None,
 
     :param context: context to query under
     :param marker: the last item of the previous page, used to determine the
-                   next page of results to return
+        next page of results to return
     :param limit: maximum number of items to return
     :param sort_keys: list of attributes by which results should be sorted,
-                      paired with corresponding item in sort_dirs
+        paired with corresponding item in sort_dirs
     :param sort_dirs: list of directions in which results should be sorted,
-                      paired with corresponding item in sort_keys
+        paired with corresponding item in sort_keys
     :param filters: Filters for the query in the form of key/value.
     :returns: list of matching  groups
     """
-    return _group_get_all(context, filters, marker, limit, offset,
-                          sort_keys, sort_dirs)
+    return _group_get_all(
+        context, filters, marker, limit, offset, sort_keys, sort_dirs
+    )
 
 
 @require_context
-def group_get_all_by_project(context, project_id, filters=None,
-                             marker=None, limit=None, offset=None,
-                             sort_keys=None, sort_dirs=None):
+@main_context_manager.reader
+def group_get_all_by_project(
+    context,
+    project_id,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
     """Retrieves all groups in a project.
 
     If no sort parameters are specified then the returned groups are sorted
@@ -7469,12 +7509,12 @@ def group_get_all_by_project(context, project_id, filters=None,
 
     :param context: context to query under
     :param marker: the last item of the previous page, used to determine the
-                   next page of results to return
+        next page of results to return
     :param limit: maximum number of items to return
     :param sort_keys: list of attributes by which results should be sorted,
-                      paired with corresponding item in sort_dirs
+        paired with corresponding item in sort_dirs
     :param sort_dirs: list of directions in which results should be sorted,
-                      paired with corresponding item in sort_keys
+        paired with corresponding item in sort_keys
     :param filters: Filters for the query in the form of key/value.
     :returns: list of matching groups
     """
@@ -7485,81 +7525,84 @@ def group_get_all_by_project(context, project_id, filters=None,
         filters = filters.copy()
 
     filters['project_id'] = project_id
-    return _group_get_all(context, filters, marker, limit, offset,
-                          sort_keys, sort_dirs)
+    return _group_get_all(
+        context, filters, marker, limit, offset, sort_keys, sort_dirs
+    )
 
 
 @handle_db_data_error
 @require_context
-def group_create(context, values, group_snapshot_id=None,
-                 source_group_id=None):
+@main_context_manager.writer
+def group_create(
+    context, values, group_snapshot_id=None, source_group_id=None
+):
     group_model = models.Group
 
     values = values.copy()
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
 
-    session = get_session()
-    with session.begin():
-        if group_snapshot_id:
-            conditions = [group_model.id == models.GroupSnapshot.group_id,
-                          models.GroupSnapshot.id == group_snapshot_id]
-        elif source_group_id:
-            conditions = [group_model.id == source_group_id]
-        else:
-            conditions = None
+    if group_snapshot_id:
+        conditions = [
+            group_model.id == models.GroupSnapshot.group_id,
+            models.GroupSnapshot.id == group_snapshot_id,
+        ]
+    elif source_group_id:
+        conditions = [group_model.id == source_group_id]
+    else:
+        conditions = None
 
-        if conditions:
-            # We don't want duplicated field values
-            values.pop('group_type_id', None)
-            values.pop('availability_zone', None)
-            values.pop('host', None)
-            values.pop('cluster_name', None)
-            # NOTE(xyang): Save volume_type_ids to update later.
-            volume_type_ids = values.pop('volume_type_ids', [])
+    if conditions:
+        # We don't want duplicated field values
+        values.pop('group_type_id', None)
+        values.pop('availability_zone', None)
+        values.pop('host', None)
+        values.pop('cluster_name', None)
+        # NOTE(xyang): Save volume_type_ids to update later.
+        volume_type_ids = values.pop('volume_type_ids', [])
 
-            sel = session.query(group_model.group_type_id,
-                                group_model.availability_zone,
-                                group_model.host,
-                                group_model.cluster_name,
-                                *(bindparam(k, v) for k, v in values.items())
-                                ).filter(*conditions)
-            names = ['group_type_id', 'availability_zone', 'host',
-                     'cluster_name']
-            names.extend(values.keys())
-            insert_stmt = group_model.__table__.insert().from_select(
-                names, sel)
-            result = session.execute(insert_stmt)
-            # If we couldn't insert the row because of the conditions raise
-            # the right exception
-            if not result.rowcount:
-                if source_group_id:
-                    raise exception.GroupNotFound(
-                        group_id=source_group_id)
-                raise exception.GroupSnapshotNotFound(
-                    group_snapshot_id=group_snapshot_id)
+        sel = context.session.query(
+            group_model.group_type_id,
+            group_model.availability_zone,
+            group_model.host,
+            group_model.cluster_name,
+            *(bindparam(k, v) for k, v in values.items()),
+        ).filter(*conditions)
+        names = ['group_type_id', 'availability_zone', 'host', 'cluster_name']
+        names.extend(values.keys())
+        insert_stmt = group_model.__table__.insert().from_select(names, sel)
+        result = context.session.execute(insert_stmt)
+        # If we couldn't insert the row because of the conditions raise
+        # the right exception
+        if not result.rowcount:
+            if source_group_id:
+                raise exception.GroupNotFound(group_id=source_group_id)
+            raise exception.GroupSnapshotNotFound(
+                group_snapshot_id=group_snapshot_id
+            )
 
-            for item in volume_type_ids:
-                mapping = models.GroupVolumeTypeMapping()
-                mapping['volume_type_id'] = item
-                mapping['group_id'] = values['id']
-                session.add(mapping)
-        else:
-            for item in values.get('volume_type_ids') or []:
-                mapping = models.GroupVolumeTypeMapping()
-                mapping['volume_type_id'] = item
-                mapping['group_id'] = values['id']
-                session.add(mapping)
+        for item in volume_type_ids:
+            mapping = models.GroupVolumeTypeMapping()
+            mapping['volume_type_id'] = item
+            mapping['group_id'] = values['id']
+            context.session.add(mapping)
+    else:
+        for item in values.get('volume_type_ids') or []:
+            mapping = models.GroupVolumeTypeMapping()
+            mapping['volume_type_id'] = item
+            mapping['group_id'] = values['id']
+            context.session.add(mapping)
 
-            group = group_model()
-            group.update(values)
-            session.add(group)
+        group = group_model()
+        group.update(values)
+        context.session.add(group)
 
-        return _group_get(context, values['id'], session=session)
+    return _group_get(context, values['id'])
 
 
 @handle_db_data_error
 @require_context
+@main_context_manager.writer
 def group_volume_type_mapping_create(context, group_id, volume_type_id):
     """Add group volume_type mapping entry."""
     # Verify group exists
@@ -7568,29 +7611,28 @@ def group_volume_type_mapping_create(context, group_id, volume_type_id):
     _volume_type_get_id_from_volume_type(context, volume_type_id)
 
     existing = _group_volume_type_mapping_get_all_by_group_volume_type(
-        context, group_id, volume_type_id)
+        context, group_id, volume_type_id
+    )
     if existing:
         raise exception.GroupVolumeTypeMappingExists(
-            group_id=group_id,
-            volume_type_id=volume_type_id)
+            group_id=group_id, volume_type_id=volume_type_id
+        )
 
     mapping = models.GroupVolumeTypeMapping()
-    mapping.update({"group_id": group_id,
-                    "volume_type_id": volume_type_id})
+    mapping.update({"group_id": group_id, "volume_type_id": volume_type_id})
 
-    session = get_session()
-    with session.begin():
-        try:
-            mapping.save(session=session)
-        except db_exc.DBDuplicateEntry:
-            raise exception.GroupVolumeTypeMappingExists(
-                group_id=group_id,
-                volume_type_id=volume_type_id)
-        return mapping
+    try:
+        mapping.save(context.session)
+    except db_exc.DBDuplicateEntry:
+        raise exception.GroupVolumeTypeMappingExists(
+            group_id=group_id, volume_type_id=volume_type_id
+        )
+    return mapping
 
 
 @handle_db_data_error
 @require_context
+@main_context_manager.writer
 def group_update(context, group_id, values):
     query = model_query(context, models.Group, project_only=True)
     result = query.filter_by(id=group_id).update(values)
@@ -7599,42 +7641,58 @@ def group_update(context, group_id, values):
 
 
 @require_admin_context
+@main_context_manager.writer
 def group_destroy(context, group_id):
-    session = get_session()
-    with session.begin():
-        query = model_query(context, models.Group, session=session).\
-            filter_by(id=group_id)
-        entity = query.column_descriptions[0]['entity']
-        query.update({'status': fields.GroupStatus.DELETED,
-                      'deleted': True,
-                      'deleted_at': timeutils.utcnow(),
-                      'updated_at': entity.updated_at})
+    query = model_query(context, models.Group).filter_by(id=group_id)
+    entity = query.column_descriptions[0]['entity']
+    query.update(
+        {
+            'status': fields.GroupStatus.DELETED,
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': entity.updated_at,
+        }
+    )
 
-        query = session.query(models.GroupVolumeTypeMapping).\
-            filter_by(group_id=group_id)
-        entity = query.column_descriptions[0]['entity']
-        query.update({'deleted': True,
-                      'deleted_at': timeutils.utcnow(),
-                      'updated_at': entity.updated_at})
+    query = context.session.query(
+        models.GroupVolumeTypeMapping,
+    ).filter_by(group_id=group_id)
+    entity = query.column_descriptions[0]['entity']
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': entity.updated_at,
+        }
+    )
 
 
 def group_has_group_snapshot_filter():
-    return sql.exists().where(and_(
-        models.GroupSnapshot.group_id == models.Group.id,
-        ~models.GroupSnapshot.deleted))
+    return sql.exists().where(
+        and_(
+            models.GroupSnapshot.group_id == models.Group.id,
+            ~models.GroupSnapshot.deleted,
+        )
+    )
 
 
 def group_has_volumes_filter(attached_or_with_snapshots=False):
     query = sql.exists().where(
-        and_(models.Volume.group_id == models.Group.id,
-             ~models.Volume.deleted))
+        and_(models.Volume.group_id == models.Group.id, ~models.Volume.deleted)
+    )
 
     if attached_or_with_snapshots:
-        query = query.where(or_(
-            models.Volume.attach_status == 'attached',
-            sql.exists().where(
-                and_(models.Volume.id == models.Snapshot.volume_id,
-                     ~models.Snapshot.deleted))))
+        query = query.where(
+            or_(
+                models.Volume.attach_status == 'attached',
+                sql.exists().where(
+                    and_(
+                        models.Volume.id == models.Snapshot.volume_id,
+                        ~models.Snapshot.deleted,
+                    )
+                ),
+            )
+        )
     return query
 
 
@@ -7642,27 +7700,33 @@ def group_creating_from_src(group_id=None, group_snapshot_id=None):
     # NOTE(geguileo): As explained in devref api_conditional_updates we use a
     # subquery to trick MySQL into using the same table in the update and the
     # where clause.
-    subq = sql.select([models.Group]).where(
-        and_(~models.Group.deleted,
-             models.Group.status == 'creating')).alias('group2')
+    subq = (
+        sql.select([models.Group])
+        .where(and_(~models.Group.deleted, models.Group.status == 'creating'))
+        .alias('group2')
+    )
 
     if group_id:
         match_id = subq.c.source_group_id == group_id
     elif group_snapshot_id:
         match_id = subq.c.group_snapshot_id == group_snapshot_id
     else:
-        msg = _('group_creating_from_src must be called with group_id or '
-                'group_snapshot_id parameter.')
+        msg = _(
+            'group_creating_from_src must be called with group_id or '
+            'group_snapshot_id parameter.'
+        )
         raise exception.ProgrammingError(reason=msg)
 
     return sql.exists([subq]).where(match_id)
 
 
 @require_admin_context
+@main_context_manager.writer
 def group_include_in_cluster(context, cluster, partial_rename=True, **filters):
     """Include all generic groups matching the filters into a cluster."""
-    return _include_in_cluster(context, cluster, models.Group, partial_rename,
-                               filters)
+    return _include_in_cluster(
+        context, cluster, models.Group, partial_rename, filters
+    )
 
 
 ###############################
