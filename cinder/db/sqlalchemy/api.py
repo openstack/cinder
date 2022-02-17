@@ -7733,11 +7733,12 @@ def group_include_in_cluster(context, cluster, partial_rename=True, **filters):
 
 
 @require_context
-def _cgsnapshot_get(context, cgsnapshot_id, session=None):
-    result = model_query(context, models.CGSnapshot, session=session,
-                         project_only=True).\
-        filter_by(id=cgsnapshot_id).\
-        first()
+def _cgsnapshot_get(context, cgsnapshot_id):
+    result = (
+        model_query(context, models.CGSnapshot, project_only=True)
+        .filter_by(id=cgsnapshot_id)
+        .first()
+    )
 
     if not result:
         raise exception.CgSnapshotNotFound(cgsnapshot_id=cgsnapshot_id)
@@ -7746,6 +7747,7 @@ def _cgsnapshot_get(context, cgsnapshot_id, session=None):
 
 
 @require_context
+@main_context_manager.reader
 def cgsnapshot_get(context, cgsnapshot_id):
     return _cgsnapshot_get(context, cgsnapshot_id)
 
@@ -7759,17 +7761,20 @@ def is_valid_model_filters(model, filters, exclude_list=None):
     for key in filters.keys():
         if exclude_list and key in exclude_list:
             continue
+
         if key == 'metadata':
             if not isinstance(filters[key], dict):
                 LOG.debug("Metadata filter value is not valid dictionary")
                 return False
             continue
+
         try:
             key = key.rstrip('~')
             getattr(model, key)
         except AttributeError:
             LOG.debug("'%s' filter key is not valid.", key)
             return False
+
     return True
 
 
@@ -7779,6 +7784,7 @@ def _cgsnapshot_get_all(context, project_id=None, group_id=None, filters=None):
     if filters:
         if not is_valid_model_filters(models.CGSnapshot, filters):
             return []
+
         query = query.filter_by(**filters)
 
     if project_id:
@@ -7791,16 +7797,19 @@ def _cgsnapshot_get_all(context, project_id=None, group_id=None, filters=None):
 
 
 @require_admin_context
+@main_context_manager.reader
 def cgsnapshot_get_all(context, filters=None):
     return _cgsnapshot_get_all(context, filters=filters)
 
 
 @require_admin_context
+@main_context_manager.reader
 def cgsnapshot_get_all_by_group(context, group_id, filters=None):
     return _cgsnapshot_get_all(context, group_id=group_id, filters=filters)
 
 
 @require_context
+@main_context_manager.reader
 def cgsnapshot_get_all_by_project(context, project_id, filters=None):
     authorize_project_context(context, project_id)
     return _cgsnapshot_get_all(context, project_id=project_id, filters=filters)
@@ -7808,49 +7817,58 @@ def cgsnapshot_get_all_by_project(context, project_id, filters=None):
 
 @handle_db_data_error
 @require_context
+@main_context_manager.writer
 def cgsnapshot_create(context, values):
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
 
     cg_id = values.get('consistencygroup_id')
-    session = get_session()
     model = models.CGSnapshot
-    with session.begin():
-        if cg_id:
-            # There has to exist at least 1 volume in the CG and the CG cannot
-            # be updating the composing volumes or being created.
-            conditions = [
-                sql.exists().where(and_(
+    if cg_id:
+        # There has to exist at least 1 volume in the CG and the CG cannot
+        # be updating the composing volumes or being created.
+        conditions = [
+            sql.exists().where(
+                and_(
                     ~models.Volume.deleted,
-                    models.Volume.consistencygroup_id == cg_id)),
-                ~models.ConsistencyGroup.deleted,
-                models.ConsistencyGroup.id == cg_id,
-                ~models.ConsistencyGroup.status.in_(('creating', 'updating'))]
+                    models.Volume.consistencygroup_id == cg_id,
+                ),
+            ),
+            ~models.ConsistencyGroup.deleted,
+            models.ConsistencyGroup.id == cg_id,
+            ~models.ConsistencyGroup.status.in_(('creating', 'updating')),
+        ]
 
-            # NOTE(geguileo): We build a "fake" from_select clause instead of
-            # using transaction isolation on the session because we would need
-            # SERIALIZABLE level and that would have a considerable performance
-            # penalty.
-            binds = (bindparam(k, v) for k, v in values.items())
-            sel = session.query(*binds).filter(*conditions)
-            insert_stmt = model.__table__.insert().from_select(values.keys(),
-                                                               sel)
-            result = session.execute(insert_stmt)
-            # If we couldn't insert the row because of the conditions raise
-            # the right exception
-            if not result.rowcount:
-                msg = _("Source CG cannot be empty or in 'creating' or "
-                        "'updating' state. No cgsnapshot will be created.")
-                raise exception.InvalidConsistencyGroup(reason=msg)
-        else:
-            cgsnapshot = model()
-            cgsnapshot.update(values)
-            session.add(cgsnapshot)
-    return _cgsnapshot_get(context, values['id'], session=session)
+        # NOTE(geguileo): We build a "fake" from_select clause instead of
+        # using transaction isolation on the session because we would need
+        # SERIALIZABLE level and that would have a considerable performance
+        # penalty.
+        binds = (bindparam(k, v) for k, v in values.items())
+        sel = context.session.query(*binds).filter(*conditions)
+        insert_stmt = model.__table__.insert().from_select(
+            values.keys(),
+            sel,
+        )
+        result = context.session.execute(insert_stmt)
+        # If we couldn't insert the row because of the conditions raise
+        # the right exception
+        if not result.rowcount:
+            msg = _(
+                "Source CG cannot be empty or in 'creating' or "
+                "'updating' state. No cgsnapshot will be created."
+            )
+            raise exception.InvalidConsistencyGroup(reason=msg)
+    else:
+        cgsnapshot = model()
+        cgsnapshot.update(values)
+        context.session.add(cgsnapshot)
+
+    return _cgsnapshot_get(context, values['id'])
 
 
 @require_context
 @handle_db_data_error
+@main_context_manager.writer
 def cgsnapshot_update(context, cgsnapshot_id, values):
     query = model_query(context, models.CGSnapshot, project_only=True)
     result = query.filter_by(id=cgsnapshot_id).update(values)
@@ -7859,27 +7877,31 @@ def cgsnapshot_update(context, cgsnapshot_id, values):
 
 
 @require_admin_context
+@main_context_manager.writer
 def cgsnapshot_destroy(context, cgsnapshot_id):
-    session = get_session()
-    with session.begin():
-        query = model_query(context, models.CGSnapshot, session=session).\
-            filter_by(id=cgsnapshot_id)
-        entity = query.column_descriptions[0]['entity']
-        updated_values = {'status': 'deleted',
-                          'deleted': True,
-                          'deleted_at': timeutils.utcnow(),
-                          'updated_at': entity.updated_at}
-        query.update(updated_values)
+    query = model_query(context, models.CGSnapshot).filter_by(id=cgsnapshot_id)
+    entity = query.column_descriptions[0]['entity']
+    updated_values = {
+        'status': 'deleted',
+        'deleted': True,
+        'deleted_at': timeutils.utcnow(),
+        'updated_at': entity.updated_at,
+    }
+    query.update(updated_values)
     del updated_values['updated_at']
     return updated_values
 
 
 def cgsnapshot_creating_from_src():
     """Get a filter that checks if a CGSnapshot is being created from a CG."""
-    return sql.exists().where(and_(
-        models.CGSnapshot.consistencygroup_id == models.ConsistencyGroup.id,
-        ~models.CGSnapshot.deleted,
-        models.CGSnapshot.status == 'creating'))
+    return sql.exists().where(
+        and_(
+            models.CGSnapshot.consistencygroup_id
+            == models.ConsistencyGroup.id,
+            ~models.CGSnapshot.deleted,
+            models.CGSnapshot.status == 'creating',
+        )
+    )
 
 
 ###############################
