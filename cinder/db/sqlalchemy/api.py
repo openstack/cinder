@@ -6070,30 +6070,28 @@ def volume_encryption_metadata_get(context, volume_id):
 
 
 @require_context
-def _volume_glance_metadata_get_all(context, session=None):
-    query = model_query(context,
-                        models.VolumeGlanceMetadata,
-                        session=session)
+def _volume_glance_metadata_get_all(context):
+    query = model_query(context, models.VolumeGlanceMetadata)
     if is_user_context(context):
         query = query.filter(
             models.Volume.id == models.VolumeGlanceMetadata.volume_id,
-            models.Volume.project_id == context.project_id)
+            models.Volume.project_id == context.project_id,
+        )
     return query.all()
 
 
 @require_context
+@main_context_manager.reader
 def volume_glance_metadata_get_all(context):
     """Return the Glance metadata for all volumes."""
-
     return _volume_glance_metadata_get_all(context)
 
 
 @require_context
+@main_context_manager.reader
 def volume_glance_metadata_list_get(context, volume_id_list):
     """Return the glance metadata for a volume list."""
-    query = model_query(context,
-                        models.VolumeGlanceMetadata,
-                        session=None)
+    query = model_query(context, models.VolumeGlanceMetadata)
     query = query.filter(
         models.VolumeGlanceMetadata.volume_id.in_(volume_id_list))
     return query.all()
@@ -6101,11 +6099,13 @@ def volume_glance_metadata_list_get(context, volume_id_list):
 
 @require_context
 @require_volume_exists
-def _volume_glance_metadata_get(context, volume_id, session=None):
-    rows = model_query(context, models.VolumeGlanceMetadata, session=session).\
-        filter_by(volume_id=volume_id).\
-        filter_by(deleted=False).\
-        all()
+def _volume_glance_metadata_get(context, volume_id):
+    rows = (
+        model_query(context, models.VolumeGlanceMetadata)
+        .filter_by(volume_id=volume_id)
+        .filter_by(deleted=False)
+        .all()
+    )
 
     if not rows:
         raise exception.GlanceMetadataNotFound(id=volume_id)
@@ -6114,19 +6114,21 @@ def _volume_glance_metadata_get(context, volume_id, session=None):
 
 
 @require_context
+@main_context_manager.reader
 def volume_glance_metadata_get(context, volume_id):
     """Return the Glance metadata for the specified volume."""
-
     return _volume_glance_metadata_get(context, volume_id)
 
 
 @require_context
 @require_snapshot_exists
-def _volume_snapshot_glance_metadata_get(context, snapshot_id, session=None):
-    rows = model_query(context, models.VolumeGlanceMetadata, session=session).\
-        filter_by(snapshot_id=snapshot_id).\
-        filter_by(deleted=False).\
-        all()
+def _volume_snapshot_glance_metadata_get(context, snapshot_id):
+    rows = (
+        model_query(context, models.VolumeGlanceMetadata)
+        .filter_by(snapshot_id=snapshot_id)
+        .filter_by(deleted=False)
+        .all()
+    )
 
     if not rows:
         raise exception.GlanceMetadataNotFound(id=snapshot_id)
@@ -6135,71 +6137,70 @@ def _volume_snapshot_glance_metadata_get(context, snapshot_id, session=None):
 
 
 @require_context
+@main_context_manager.reader
 def volume_snapshot_glance_metadata_get(context, snapshot_id):
     """Return the Glance metadata for the specified snapshot."""
-
     return _volume_snapshot_glance_metadata_get(context, snapshot_id)
 
 
 @require_context
 @require_volume_exists
+@main_context_manager.writer
 def volume_glance_metadata_create(context, volume_id, key, value):
     """Update the Glance metadata for a volume by adding a new key:value pair.
 
     This API does not support changing the value of a key once it has been
     created.
     """
+    rows = (
+        context.session.query(models.VolumeGlanceMetadata)
+        .filter_by(volume_id=volume_id)
+        .filter_by(key=key)
+        .filter_by(deleted=False).all()
+    )
 
-    session = get_session()
-    with session.begin():
-        rows = session.query(models.VolumeGlanceMetadata).\
-            filter_by(volume_id=volume_id).\
-            filter_by(key=key).\
-            filter_by(deleted=False).all()
+    if len(rows) > 0:
+        raise exception.GlanceMetadataExists(key=key, volume_id=volume_id)
 
-        if len(rows) > 0:
-            raise exception.GlanceMetadataExists(key=key,
-                                                 volume_id=volume_id)
-
-        vol_glance_metadata = models.VolumeGlanceMetadata()
-        vol_glance_metadata.volume_id = volume_id
-        vol_glance_metadata.key = key
-        vol_glance_metadata.value = str(value)
-        session.add(vol_glance_metadata)
+    vol_glance_metadata = models.VolumeGlanceMetadata()
+    vol_glance_metadata.volume_id = volume_id
+    vol_glance_metadata.key = key
+    vol_glance_metadata.value = str(value)
+    context.session.add(vol_glance_metadata)
 
     return
 
 
 @require_context
 @require_volume_exists
+@main_context_manager.writer
 def volume_glance_metadata_bulk_create(context, volume_id, metadata):
     """Update the Glance metadata for a volume by adding new key:value pairs.
 
     This API does not support changing the value of a key once it has been
     created.
     """
+    for key, value in metadata.items():
+        rows = (
+            context.session.query(models.VolumeGlanceMetadata)
+            .filter_by(volume_id=volume_id)
+            .filter_by(key=key)
+            .filter_by(deleted=False).all()
+        )
 
-    session = get_session()
-    with session.begin():
-        for (key, value) in metadata.items():
-            rows = session.query(models.VolumeGlanceMetadata).\
-                filter_by(volume_id=volume_id).\
-                filter_by(key=key).\
-                filter_by(deleted=False).all()
+        if len(rows) > 0:
+            raise exception.GlanceMetadataExists(key=key, volume_id=volume_id)
 
-            if len(rows) > 0:
-                raise exception.GlanceMetadataExists(key=key,
-                                                     volume_id=volume_id)
-
-            vol_glance_metadata = models.VolumeGlanceMetadata()
-            vol_glance_metadata.volume_id = volume_id
-            vol_glance_metadata.key = key
-            vol_glance_metadata.value = str(value)
-            session.add(vol_glance_metadata)
+        vol_glance_metadata = models.VolumeGlanceMetadata()
+        vol_glance_metadata.volume_id = volume_id
+        vol_glance_metadata.key = key
+        vol_glance_metadata.value = str(value)
+        context.session.add(vol_glance_metadata)
 
 
 @require_context
 @require_snapshot_exists
+@main_context_manager.writer
 def volume_glance_metadata_copy_to_snapshot(context, snapshot_id, volume_id):
     """Update the Glance metadata for a snapshot.
 
@@ -6207,24 +6208,22 @@ def volume_glance_metadata_copy_to_snapshot(context, snapshot_id, volume_id):
     ensure that a volume created from the snapshot will retain the
     original metadata.
     """
-
-    session = get_session()
-    with session.begin():
-        metadata = _volume_glance_metadata_get(context, volume_id,
-                                               session=session)
-        for meta in metadata:
-            vol_glance_metadata = models.VolumeGlanceMetadata()
-            vol_glance_metadata.snapshot_id = snapshot_id
-            vol_glance_metadata.key = meta['key']
-            vol_glance_metadata.value = meta['value']
-
-            vol_glance_metadata.save(session=session)
+    metadata = _volume_glance_metadata_get(context, volume_id)
+    for meta in metadata:
+        vol_glance_metadata = models.VolumeGlanceMetadata()
+        vol_glance_metadata.snapshot_id = snapshot_id
+        vol_glance_metadata.key = meta['key']
+        vol_glance_metadata.value = meta['value']
+        vol_glance_metadata.save(context.session)
 
 
 @require_context
-def volume_glance_metadata_copy_from_volume_to_volume(context,
-                                                      src_volume_id,
-                                                      volume_id):
+@main_context_manager.writer
+def volume_glance_metadata_copy_from_volume_to_volume(
+    context,
+    src_volume_id,
+    volume_id,
+):
     """Update the Glance metadata for a volume.
 
     This copies all of the key:value pairs from the originating volume,
@@ -6232,22 +6231,18 @@ def volume_glance_metadata_copy_from_volume_to_volume(context,
     retain the original metadata.
     """
 
-    session = get_session()
-    with session.begin():
-        metadata = _volume_glance_metadata_get(context,
-                                               src_volume_id,
-                                               session=session)
-        for meta in metadata:
-            vol_glance_metadata = models.VolumeGlanceMetadata()
-            vol_glance_metadata.volume_id = volume_id
-            vol_glance_metadata.key = meta['key']
-            vol_glance_metadata.value = meta['value']
-
-            vol_glance_metadata.save(session=session)
+    metadata = _volume_glance_metadata_get(context, src_volume_id)
+    for meta in metadata:
+        vol_glance_metadata = models.VolumeGlanceMetadata()
+        vol_glance_metadata.volume_id = volume_id
+        vol_glance_metadata.key = meta['key']
+        vol_glance_metadata.value = meta['value']
+        vol_glance_metadata.save(context.session)
 
 
 @require_context
 @require_volume_exists
+@main_context_manager.writer
 def volume_glance_metadata_copy_to_volume(context, volume_id, snapshot_id):
     """Update Glance metadata from a volume.
 
@@ -6256,38 +6251,49 @@ def volume_glance_metadata_copy_to_volume(context, volume_id, snapshot_id):
 
     This is so that the Glance metadata from the original volume is retained.
     """
-
-    session = get_session()
-    with session.begin():
-        metadata = _volume_snapshot_glance_metadata_get(context, snapshot_id,
-                                                        session=session)
-        for meta in metadata:
-            vol_glance_metadata = models.VolumeGlanceMetadata()
-            vol_glance_metadata.volume_id = volume_id
-            vol_glance_metadata.key = meta['key']
-            vol_glance_metadata.value = meta['value']
-
-            vol_glance_metadata.save(session=session)
+    metadata = _volume_snapshot_glance_metadata_get(context, snapshot_id)
+    for meta in metadata:
+        vol_glance_metadata = models.VolumeGlanceMetadata()
+        vol_glance_metadata.volume_id = volume_id
+        vol_glance_metadata.key = meta['key']
+        vol_glance_metadata.value = meta['value']
+        vol_glance_metadata.save(context.session)
 
 
 @require_context
+@main_context_manager.writer
 def volume_glance_metadata_delete_by_volume(context, volume_id):
-    query = model_query(context, models.VolumeGlanceMetadata,
-                        read_deleted='no').filter_by(volume_id=volume_id)
+    query = model_query(
+        context,
+        models.VolumeGlanceMetadata,
+        read_deleted='no',
+    ).filter_by(volume_id=volume_id)
     entity = query.column_descriptions[0]['entity']
-    query.update({'deleted': True,
-                  'deleted_at': timeutils.utcnow(),
-                  'updated_at': entity.updated_at})
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': entity.updated_at,
+        },
+    )
 
 
 @require_context
+@main_context_manager.writer
 def volume_glance_metadata_delete_by_snapshot(context, snapshot_id):
-    query = model_query(context, models.VolumeGlanceMetadata,
-                        read_deleted='no').filter_by(snapshot_id=snapshot_id)
+    query = model_query(
+        context,
+        models.VolumeGlanceMetadata,
+        read_deleted='no',
+    ).filter_by(snapshot_id=snapshot_id)
     entity = query.column_descriptions[0]['entity']
-    query.update({'deleted': True,
-                  'deleted_at': timeutils.utcnow(),
-                  'updated_at': entity.updated_at})
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': entity.updated_at,
+        },
+    )
 
 
 ###############################
