@@ -53,6 +53,7 @@ Amazon EC2 Elastic Block Storage (EBS) offering.
    blockstorage-volume-multiattach.rst
    blockstorage-volume-number-weigher.rst
    blockstorage-default-volume-types.rst
+   api-configuration
 
 .. _`Storage Decisions`: https://docs.openstack.org/arch-design/design-storage/design-storage-arch.html
 .. _`OpenStack Operations Guide`: https://wiki.openstack.org/wiki/OpsGuide
