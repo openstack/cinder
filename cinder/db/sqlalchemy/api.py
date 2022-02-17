@@ -8373,30 +8373,36 @@ def cleanup_expired_messages(context):
 
 
 @require_context
-def driver_initiator_data_insert_by_key(context, initiator, namespace,
-                                        key, value):
+@main_context_manager.writer
+def driver_initiator_data_insert_by_key(
+    context,
+    initiator,
+    namespace,
+    key,
+    value,
+):
     data = models.DriverInitiatorData()
     data.initiator = initiator
     data.namespace = namespace
     data.key = key
     data.value = value
-    session = get_session()
     try:
-        with session.begin():
-            session.add(data)
-        return True
+        with main_context_manager.writer.savepoint.using(context):
+            data.save(context.session)
+            return True
     except db_exc.DBDuplicateEntry:
         return False
 
 
 @require_context
+@main_context_manager.reader
 def driver_initiator_data_get(context, initiator, namespace):
-    session = get_session()
-    with session.begin():
-        return session.query(models.DriverInitiatorData).\
-            filter_by(initiator=initiator).\
-            filter_by(namespace=namespace).\
-            all()
+    return (
+        context.session.query(models.DriverInitiatorData)
+        .filter_by(initiator=initiator)
+        .filter_by(namespace=namespace)
+        .all()
+    )
 
 
 ###############################
