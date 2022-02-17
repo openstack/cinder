@@ -2411,10 +2411,7 @@ class DBAPIVolumeTypeTestCase(BaseTest):
                                     'extra_specs': vt_extra_specs})
         volume_ref = db.volume_create(self.ctxt, {'volume_type_id': vt.id})
 
-        session = sqlalchemy_api.get_session()
-        volume = sqlalchemy_api._volume_get(self.ctxt, volume_ref.id,
-                                            session=session)
-        session.close()
+        volume = sqlalchemy_api._volume_get(self.ctxt, volume_ref.id)
 
         actual_specs = {}
         for spec in volume.volume_type.extra_specs:

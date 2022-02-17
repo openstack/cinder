@@ -514,11 +514,9 @@ def volume_attachment_get(context, attachment_id):
     return IMPL.volume_attachment_get(context, attachment_id)
 
 
-def volume_attachment_get_all_by_volume_id(context, volume_id,
-                                           session=None):
+def volume_attachment_get_all_by_volume_id(context, volume_id):
     return IMPL.volume_attachment_get_all_by_volume_id(context,
-                                                       volume_id,
-                                                       session)
+                                                       volume_id)
 
 
 def volume_attachment_get_all_by_host(context, host, filters=None):
