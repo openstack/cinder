@@ -8448,74 +8448,92 @@ CALCULATE_COUNT_HELPERS = {
 
 
 @require_context
-def image_volume_cache_create(context, host, cluster_name, image_id,
-                              image_updated_at, volume_id, size):
-    session = get_session()
-    with session.begin():
-        cache_entry = models.ImageVolumeCacheEntry()
-        cache_entry.host = host
-        cache_entry.cluster_name = cluster_name
-        cache_entry.image_id = image_id
-        cache_entry.image_updated_at = image_updated_at
-        cache_entry.volume_id = volume_id
-        cache_entry.size = size
-        session.add(cache_entry)
-        return cache_entry
+@main_context_manager.writer
+def image_volume_cache_create(
+    context,
+    host,
+    cluster_name,
+    image_id,
+    image_updated_at,
+    volume_id,
+    size,
+):
+    cache_entry = models.ImageVolumeCacheEntry()
+    cache_entry.host = host
+    cache_entry.cluster_name = cluster_name
+    cache_entry.image_id = image_id
+    cache_entry.image_updated_at = image_updated_at
+    cache_entry.volume_id = volume_id
+    cache_entry.size = size
+    context.session.add(cache_entry)
+    return cache_entry
 
 
 @require_context
+@main_context_manager.writer
 def image_volume_cache_delete(context, volume_id):
-    session = get_session()
-    with session.begin():
-        session.query(models.ImageVolumeCacheEntry).\
-            filter_by(volume_id=volume_id).\
-            delete()
+    context.session.query(
+        models.ImageVolumeCacheEntry,
+    ).filter_by(volume_id=volume_id).delete()
 
 
 @require_context
+@main_context_manager.writer
 def image_volume_cache_get_and_update_last_used(context, image_id, **filters):
     filters = _clean_filters(filters)
-    session = get_session()
-    with session.begin():
-        entry = session.query(models.ImageVolumeCacheEntry).\
-            filter_by(image_id=image_id).\
-            filter_by(**filters).\
-            order_by(desc(models.ImageVolumeCacheEntry.last_used)).\
-            first()
+    entry = (
+        context.session.query(models.ImageVolumeCacheEntry)
+        .filter_by(image_id=image_id)
+        .filter_by(**filters)
+        .order_by(desc(models.ImageVolumeCacheEntry.last_used))
+        .first()
+    )
 
-        if entry:
-            entry.last_used = timeutils.utcnow()
-            entry.save(session=session)
-        return entry
+    if entry:
+        entry.last_used = timeutils.utcnow()
+        entry.save(context.session)
+    return entry
 
 
 @require_context
+@main_context_manager.reader
 def image_volume_cache_get_by_volume_id(context, volume_id):
-    session = get_session()
-    with session.begin():
-        return session.query(models.ImageVolumeCacheEntry).\
-            filter_by(volume_id=volume_id).\
-            first()
+    return (
+        context.session.query(models.ImageVolumeCacheEntry)
+        .filter_by(volume_id=volume_id)
+        .first()
+    )
 
 
 @require_context
+@main_context_manager.reader
 def image_volume_cache_get_all(context, **filters):
     filters = _clean_filters(filters)
-    session = get_session()
-    with session.begin():
-        return session.query(models.ImageVolumeCacheEntry).\
-            filter_by(**filters).\
-            order_by(desc(models.ImageVolumeCacheEntry.last_used)).\
-            all()
+    return (
+        context.session.query(models.ImageVolumeCacheEntry)
+        .filter_by(**filters)
+        .order_by(desc(models.ImageVolumeCacheEntry.last_used))
+        .all()
+    )
 
 
 @require_admin_context
-def image_volume_cache_include_in_cluster(context, cluster,
-                                          partial_rename=True, **filters):
+@main_context_manager.writer
+def image_volume_cache_include_in_cluster(
+    context,
+    cluster,
+    partial_rename=True,
+    **filters,
+):
     """Include all volumes matching the filters into a cluster."""
     filters = _clean_filters(filters)
-    return _include_in_cluster(context, cluster, models.ImageVolumeCacheEntry,
-                               partial_rename, filters)
+    return _include_in_cluster(
+        context,
+        cluster,
+        models.ImageVolumeCacheEntry,
+        partial_rename,
+        filters,
+    )
 
 
 ###################
