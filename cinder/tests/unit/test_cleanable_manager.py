@@ -47,9 +47,8 @@ class TestCleanableManager(test.TestCase):
                                               is_admin=True)
         self.service = db.service_create(self.context, {})
 
-    @mock.patch('cinder.db.workers_init', autospec=True)
     @mock.patch('cinder.manager.CleanableManager.do_cleanup', autospec=True)
-    def test_init_host_with_service(self, mock_cleanup, mock_workers_init):
+    def test_init_host_with_service(self, mock_cleanup):
         mngr = FakeManager()
         self.assertFalse(hasattr(mngr, 'service_id'))
         mngr.init_host(service_id=self.service.id)
@@ -59,7 +58,6 @@ class TestCleanableManager(test.TestCase):
         clean_req = mock_cleanup.call_args[0][2]
         self.assertIsInstance(clean_req, objects.CleanupRequest)
         self.assertEqual(self.service.id, clean_req.service_id)
-        mock_workers_init.assert_called_once_with()
 
     def test_do_cleanup(self):
         """Basic successful cleanup."""

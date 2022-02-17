@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Support for MySQL 5.5 has been dropped.

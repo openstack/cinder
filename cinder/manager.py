@@ -318,8 +318,5 @@ class CleanableManager(object):
     def init_host(self, service_id, added_to_cluster=None, **kwargs):
         ctxt = context.get_admin_context()
         self.service_id = service_id
-        # TODO(geguileo): Once we don't support MySQL 5.5 anymore we can remove
-        # call to workers_init.
-        db.workers_init()
         cleanup_request = objects.CleanupRequest(service_id=service_id)
         self.do_cleanup(ctxt, cleanup_request)

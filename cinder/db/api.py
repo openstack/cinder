@@ -1892,17 +1892,6 @@ def cleanup_expired_messages(context):
 ###################
 
 
-def workers_init():
-    """Check if DB supports subsecond resolution and set global flag.
-
-    MySQL 5.5 doesn't support subsecond resolution in datetime fields, so we
-    have to take it into account when working with the worker's table.
-
-    Once we drop support for MySQL 5.5 we can remove this method.
-    """
-    return IMPL.workers_init()
-
-
 def worker_create(context, **values):
     """Create a worker entry from optional arguments."""
     return IMPL.worker_create(context, **values)

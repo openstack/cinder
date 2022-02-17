@@ -7272,7 +7272,9 @@ def _worker_query(context, session=None, until=None, db_filters=None,
 
     query = model_query(context, models.Worker, session=session)
 
-    # TODO(geguileo): Once we remove support for MySQL 5.5 we can remove this
+    # TODO: Once we stop creating the SENTINEL entry in the database (which
+    # was only needed to support MySQL 5.5), we can drop this. Probably in the
+    # A release or later
     if ignore_sentinel:
         # We don't want to retrieve the workers sentinel
         query = query.filter(models.Worker.resource_type != 'SENTINEL')
@@ -7292,35 +7294,10 @@ def _worker_query(context, session=None, until=None, db_filters=None,
     return query
 
 
-DB_SUPPORTS_SUBSECOND_RESOLUTION = True
-
-
-def workers_init():
-    """Check if DB supports subsecond resolution and set global flag.
-
-    MySQL 5.5 doesn't support subsecond resolution in datetime fields, so we
-    have to take it into account when working with the worker's table.
-
-    To do this we'll have 1 row in the DB, created by the migration script,
-    where we have tried to set the microseconds and we'll check it.
-
-    Once we drop support for MySQL 5.5 we can remove this method.
-    """
-    global DB_SUPPORTS_SUBSECOND_RESOLUTION
-    session = get_session()
-    query = session.query(models.Worker).filter_by(resource_type='SENTINEL')
-    worker = query.first()
-    DB_SUPPORTS_SUBSECOND_RESOLUTION = bool(worker.updated_at.microsecond)
-
-
 def _worker_set_updated_at_field(values):
-    # TODO(geguileo): Once we drop support for MySQL 5.5 we can simplify this
-    # method.
     updated_at = values.get('updated_at', timeutils.utcnow())
     if isinstance(updated_at, str):
         return
-    if not DB_SUPPORTS_SUBSECOND_RESOLUTION:
-        updated_at = updated_at.replace(microsecond=0)
     values['updated_at'] = updated_at
 
 
