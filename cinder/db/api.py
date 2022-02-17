@@ -1031,8 +1031,8 @@ def group_type_specs_update_or_create(context,
 ###################
 
 
-def volume_type_encryption_get(context, volume_type_id, session=None):
-    return IMPL.volume_type_encryption_get(context, volume_type_id, session)
+def volume_type_encryption_get(context, volume_type_id):
+    return IMPL.volume_type_encryption_get(context, volume_type_id)
 
 
 def volume_type_encryption_delete(context, volume_type_id):
@@ -1049,13 +1049,12 @@ def volume_type_encryption_update(context, volume_type_id, encryption_specs):
                                               encryption_specs)
 
 
-def volume_type_encryption_volume_get(context, volume_type_id, session=None):
-    return IMPL.volume_type_encryption_volume_get(context, volume_type_id,
-                                                  session)
+def volume_type_encryption_volume_get(context, volume_type_id):
+    return IMPL.volume_type_encryption_volume_get(context, volume_type_id)
 
 
-def volume_encryption_metadata_get(context, volume_id, session=None):
-    return IMPL.volume_encryption_metadata_get(context, volume_id, session)
+def volume_encryption_metadata_get(context, volume_id):
+    return IMPL.volume_encryption_metadata_get(context, volume_id)
 
 
 ###################

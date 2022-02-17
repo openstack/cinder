@@ -5977,47 +5977,56 @@ def qos_specs_update(context, qos_specs_id, updates):
 
 
 @require_context
-def volume_type_encryption_get(context, volume_type_id, session=None):
-    return model_query(context, models.Encryption, session=session,
-                       read_deleted="no").\
-        filter_by(volume_type_id=volume_type_id).first()
+def _volume_type_encryption_get(context, volume_type_id):
+    return model_query(
+        context,
+        models.Encryption,
+        read_deleted="no",
+    ).filter_by(volume_type_id=volume_type_id).first()
+
+
+@require_context
+@main_context_manager.reader
+def volume_type_encryption_get(context, volume_type_id):
+    return _volume_type_encryption_get(context, volume_type_id)
 
 
 @require_admin_context
+@main_context_manager.writer
 def volume_type_encryption_delete(context, volume_type_id):
-    session = get_session()
-    with session.begin():
-        encryption = volume_type_encryption_get(context, volume_type_id,
-                                                session)
-        if not encryption:
-            raise exception.VolumeTypeEncryptionNotFound(
-                type_id=volume_type_id)
-        encryption.update({'deleted': True,
-                           'deleted_at': timeutils.utcnow(),
-                           'updated_at': encryption.updated_at})
+    encryption = _volume_type_encryption_get(context, volume_type_id)
+    if not encryption:
+        raise exception.VolumeTypeEncryptionNotFound(type_id=volume_type_id)
+    encryption.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': encryption.updated_at,
+        },
+    )
 
 
 @handle_db_data_error
 @require_admin_context
+@main_context_manager.writer
 def volume_type_encryption_create(context, volume_type_id, values):
-    session = get_session()
-    with session.begin():
-        encryption = models.Encryption()
+    encryption = models.Encryption()
 
-        if 'volume_type_id' not in values:
-            values['volume_type_id'] = volume_type_id
+    if 'volume_type_id' not in values:
+        values['volume_type_id'] = volume_type_id
 
-        if 'encryption_id' not in values:
-            values['encryption_id'] = str(uuid.uuid4())
+    if 'encryption_id' not in values:
+        values['encryption_id'] = str(uuid.uuid4())
 
-        encryption.update(values)
-        session.add(encryption)
+    encryption.update(values)
+    context.session.add(encryption)
 
-        return encryption
+    return encryption
 
 
 @handle_db_data_error
 @require_admin_context
+@main_context_manager.writer
 def volume_type_encryption_update(context, volume_type_id, values):
     query = model_query(context, models.Encryption)
     result = query.filter_by(volume_type_id=volume_type_id).update(values)
@@ -6025,23 +6034,26 @@ def volume_type_encryption_update(context, volume_type_id, values):
         raise exception.VolumeTypeEncryptionNotFound(type_id=volume_type_id)
 
 
-def volume_type_encryption_volume_get(context, volume_type_id, session=None):
-    volume_list = _volume_get_query(context, session=session,
-                                    project_only=False).\
-        filter_by(volume_type_id=volume_type_id).\
-        all()
+@main_context_manager.reader
+def volume_type_encryption_volume_get(context, volume_type_id):
+    volume_list = (
+        _volume_get_query(context, project_only=False)
+        .filter_by(volume_type_id=volume_type_id)
+        .all()
+    )
     return volume_list
-
-####################
 
 
 @require_context
-def volume_encryption_metadata_get(context, volume_id, session=None):
+@main_context_manager.reader
+def volume_encryption_metadata_get(context, volume_id):
     """Return the encryption metadata for a given volume."""
 
     volume_ref = _volume_get(context, volume_id)
-    encryption_ref = volume_type_encryption_get(context,
-                                                volume_ref['volume_type_id'])
+    encryption_ref = _volume_type_encryption_get(
+        context,
+        volume_ref['volume_type_id'],
+    )
 
     values = {
         'encryption_key_id': volume_ref['encryption_key_id'],
