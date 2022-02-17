@@ -5554,6 +5554,7 @@ def group_type_specs_update_or_create(context, group_type_id, specs):
 
 
 @require_admin_context
+@main_context_manager.writer
 def qos_specs_create(context, values):
     """Create a new QoS specs.
 
@@ -5575,60 +5576,66 @@ def qos_specs_create(context, values):
 
     """
     specs_id = str(uuid.uuid4())
-    session = get_session()
-    with session.begin():
-        try:
-            _qos_specs_get_all_by_name(context, values['name'], session)
-            raise exception.QoSSpecsExists(specs_id=values['name'])
-        except exception.QoSSpecsNotFound:
-            pass
-        try:
-            # Insert a root entry for QoS specs
-            specs_root = models.QualityOfServiceSpecs()
-            root = dict(id=specs_id)
-            # 'QoS_Specs_Name' is an internal reserved key to store
-            # the name of QoS specs
-            root['key'] = 'QoS_Specs_Name'
-            root['value'] = values['name']
-            LOG.debug("DB qos_specs_create(): root %s", root)
-            specs_root.update(root)
-            specs_root.save(session=session)
+    try:
+        _qos_specs_get_all_by_name(context, values['name'])
+        raise exception.QoSSpecsExists(specs_id=values['name'])
+    except exception.QoSSpecsNotFound:
+        pass
+    try:
+        # Insert a root entry for QoS specs
+        specs_root = models.QualityOfServiceSpecs()
+        root = {'id': specs_id}
+        # 'QoS_Specs_Name' is an internal reserved key to store
+        # the name of QoS specs
+        root['key'] = 'QoS_Specs_Name'
+        root['value'] = values['name']
+        LOG.debug("DB qos_specs_create(): root %s", root)
+        specs_root.update(root)
+        specs_root.save(context.session)
 
-            # Save 'consumer' value directly as it will not be in
-            # values['specs'] and so we avoid modifying/copying passed in dict
-            consumer = {'key': 'consumer',
-                        'value': values['consumer'],
-                        'specs_id': specs_id,
-                        'id': str(uuid.uuid4())}
-            cons_entry = models.QualityOfServiceSpecs()
-            cons_entry.update(consumer)
-            cons_entry.save(session=session)
+        # Save 'consumer' value directly as it will not be in
+        # values['specs'] and so we avoid modifying/copying passed in dict
+        consumer = {
+            'key': 'consumer',
+            'value': values['consumer'],
+            'specs_id': specs_id,
+            'id': str(uuid.uuid4()),
+        }
+        cons_entry = models.QualityOfServiceSpecs()
+        cons_entry.update(consumer)
+        cons_entry.save(context.session)
 
-            # Insert all specification entries for QoS specs
-            for k, v in values.get('specs', {}).items():
-                item = dict(key=k, value=v, specs_id=specs_id)
-                item['id'] = str(uuid.uuid4())
-                spec_entry = models.QualityOfServiceSpecs()
-                spec_entry.update(item)
-                spec_entry.save(session=session)
-        except db_exc.DBDataError:
-            msg = _('Error writing field to database')
-            LOG.exception(msg)
-            raise exception.Invalid(msg)
-        except Exception as e:
-            raise db_exc.DBError(e)
+        # Insert all specification entries for QoS specs
+        for k, v in values.get('specs', {}).items():
+            item = {'key': k, 'value': v, 'specs_id': specs_id}
+            item['id'] = str(uuid.uuid4())
+            spec_entry = models.QualityOfServiceSpecs()
+            spec_entry.update(item)
+            spec_entry.save(context.session)
+    except db_exc.DBDataError:
+        msg = _('Error writing field to database')
+        LOG.exception(msg)
+        raise exception.Invalid(msg)
+    except Exception as e:
+        raise db_exc.DBError(e)
 
-        return dict(id=specs_root.id, name=specs_root.value)
+    return {'id': specs_root.id, 'name': specs_root.value}
 
 
 @require_admin_context
-def _qos_specs_get_all_by_name(context, name, session=None, inactive=False):
+def _qos_specs_get_all_by_name(context, name, inactive=False):
     read_deleted = 'yes' if inactive else 'no'
-    results = model_query(context, models.QualityOfServiceSpecs,
-                          read_deleted=read_deleted, session=session). \
-        filter_by(key='QoS_Specs_Name'). \
-        filter_by(value=name). \
-        options(joinedload('specs')).all()
+    results = (
+        model_query(
+            context,
+            models.QualityOfServiceSpecs,
+            read_deleted=read_deleted,
+        )
+        .filter_by(key='QoS_Specs_Name')
+        .filter_by(value=name)
+        .options(joinedload('specs'))
+        .all()
+    )
 
     if not results:
         raise exception.QoSSpecsNotFound(specs_id=name)
@@ -5637,13 +5644,18 @@ def _qos_specs_get_all_by_name(context, name, session=None, inactive=False):
 
 
 @require_admin_context
-def _qos_specs_get_all_ref(context, qos_specs_id, session=None,
-                           inactive=False):
+def _qos_specs_get_all_ref(context, qos_specs_id, inactive=False):
     read_deleted = 'yes' if inactive else 'no'
-    result = model_query(context, models.QualityOfServiceSpecs,
-                         read_deleted=read_deleted, session=session). \
-        filter_by(id=qos_specs_id). \
-        options(joinedload('specs')).all()
+    result = (
+        model_query(
+            context,
+            models.QualityOfServiceSpecs,
+            read_deleted=read_deleted,
+        )
+        .filter_by(id=qos_specs_id)
+        .options(joinedload('specs'))
+        .all()
+    )
 
     if not result:
         raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
@@ -5663,8 +5675,7 @@ def _dict_with_children_specs(specs):
             if not update_time and spec['updated_at']:
                 update_time = spec['updated_at']
             elif update_time and spec['updated_at']:
-                if (update_time -
-                        spec['updated_at']).total_seconds() < 0:
+                if (update_time - spec['updated_at']).total_seconds() < 0:
                     update_time = spec['updated_at']
             result.update({spec['key']: spec['value']})
     if update_time:
@@ -5685,28 +5696,40 @@ def _dict_with_qos_specs(rows):
         if row['key'] == 'QoS_Specs_Name':
             # Add create time for member, in order to get the keyword
             # 'created_at' in the specs info when printing logs.
-            member = {'name': row['value'], 'id': row['id'],
-                      'created_at': row['created_at']}
+            member = {
+                'name': row['value'],
+                'id': row['id'],
+                'created_at': row['created_at'],
+            }
             if row.specs:
                 spec_dict = _dict_with_children_specs(row.specs)
                 member['consumer'] = spec_dict.pop('consumer')
                 if spec_dict.get('updated_at'):
                     member['updated_at'] = spec_dict.pop('updated_at')
-                member.update(dict(specs=spec_dict))
+                member.update({'specs': spec_dict})
             result.append(member)
     return result
 
 
 @require_admin_context
+@main_context_manager.reader
 def qos_specs_get(context, qos_specs_id, inactive=False):
-    rows = _qos_specs_get_all_ref(context, qos_specs_id, None, inactive)
+    rows = _qos_specs_get_all_ref(context, qos_specs_id, inactive)
 
     return _dict_with_qos_specs(rows)[0]
 
 
 @require_admin_context
-def qos_specs_get_all(context, filters=None, marker=None, limit=None,
-                      offset=None, sort_keys=None, sort_dirs=None):
+@main_context_manager.reader
+def qos_specs_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
     """Returns a list of all qos_specs.
 
     Results is like:
@@ -5732,27 +5755,39 @@ def qos_specs_get_all(context, filters=None, marker=None, limit=None,
          },
         ]
     """
-    session = get_session()
-    with session.begin():
-        # Generate the query
-        query = _generate_paginate_query(context, session, marker, limit,
-                                         sort_keys, sort_dirs, filters,
-                                         offset, models.QualityOfServiceSpecs)
-        # No Qos specs would match, return empty list
-        if query is None:
-            return []
-        rows = query.all()
-        return _dict_with_qos_specs(rows)
+    # Generate the query
+    query = _generate_paginate_query(
+        context,
+        None,
+        marker,
+        limit,
+        sort_keys,
+        sort_dirs,
+        filters,
+        offset,
+        models.QualityOfServiceSpecs,
+    )
+    # No Qos specs would match, return empty list
+    if query is None:
+        return []
+    rows = query.all()
+    return _dict_with_qos_specs(rows)
 
 
 # TODO: Remove 'session' argument when all of the '_get_query' helpers are
 # converted
 @require_admin_context
-def _qos_specs_get_query(context, session):
-    rows = model_query(context, models.QualityOfServiceSpecs,
-                       session=session,
-                       read_deleted='no').\
-        options(joinedload('specs')).filter_by(key='QoS_Specs_Name')
+def _qos_specs_get_query(context, session=None):
+    rows = (
+        model_query(
+            context,
+            models.QualityOfServiceSpecs,
+            session=session,
+            read_deleted='no',
+        )
+        .options(joinedload('specs'))
+        .filter_by(key='QoS_Specs_Name')
+    )
     return rows
 
 
@@ -5768,10 +5803,17 @@ def _process_qos_specs_filters(query, filters):
 # TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_admin_context
 def _qos_specs_get(context, qos_spec_id, session=None):
-    result = model_query(context, models.QualityOfServiceSpecs,
-                         session=session,
-                         read_deleted='no').\
-        filter_by(id=qos_spec_id).filter_by(key='QoS_Specs_Name').first()
+    result = (
+        model_query(
+            context,
+            models.QualityOfServiceSpecs,
+            session=session,
+            read_deleted='no',
+        )
+        .filter_by(id=qos_spec_id)
+        .filter_by(key='QoS_Specs_Name')
+        .first()
+    )
 
     if not result:
         raise exception.QoSSpecsNotFound(specs_id=qos_spec_id)
@@ -5780,13 +5822,15 @@ def _qos_specs_get(context, qos_spec_id, session=None):
 
 
 @require_admin_context
+@main_context_manager.reader
 def qos_specs_get_by_name(context, name, inactive=False):
-    rows = _qos_specs_get_all_by_name(context, name, None, inactive)
+    rows = _qos_specs_get_all_by_name(context, name, inactive)
 
     return _dict_with_qos_specs(rows)[0]
 
 
 @require_admin_context
+@main_context_manager.reader
 def qos_specs_associations_get(context, qos_specs_id):
     """Return all entities associated with specified qos specs.
 
@@ -5800,18 +5844,21 @@ def qos_specs_associations_get(context, qos_specs_id):
 
 
 @require_admin_context
+@main_context_manager.writer
 def qos_specs_associate(context, qos_specs_id, type_id):
     """Associate volume type from specified qos specs."""
     return volume_type_qos_associate(context, type_id, qos_specs_id)
 
 
 @require_admin_context
+@main_context_manager.writer
 def qos_specs_disassociate(context, qos_specs_id, type_id):
     """Disassociate volume type from specified qos specs."""
     return volume_type_qos_disassociate(context, qos_specs_id, type_id)
 
 
 @require_admin_context
+@main_context_manager.writer
 def qos_specs_disassociate_all(context, qos_specs_id):
     """Disassociate all entities associated with specified qos specs.
 
@@ -5825,94 +5872,106 @@ def qos_specs_disassociate_all(context, qos_specs_id):
 
 
 @require_admin_context
+@main_context_manager.writer
 def qos_specs_item_delete(context, qos_specs_id, key):
-    session = get_session()
-    with session.begin():
-        query = session.query(models.QualityOfServiceSpecs). \
-            filter(models.QualityOfServiceSpecs.key == key). \
-            filter(models.QualityOfServiceSpecs.specs_id == qos_specs_id)
-        entity = query.column_descriptions[0]['entity']
-        query.update({'deleted': True,
-                      'deleted_at': timeutils.utcnow(),
-                      'updated_at': entity.updated_at})
+    query = (
+        context.session.query(models.QualityOfServiceSpecs)
+        .filter(models.QualityOfServiceSpecs.key == key)
+        .filter(models.QualityOfServiceSpecs.specs_id == qos_specs_id)
+    )
+    entity = query.column_descriptions[0]['entity']
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': entity.updated_at,
+        }
+    )
 
 
 @require_admin_context
+@main_context_manager.writer
 def qos_specs_delete(context, qos_specs_id):
-    session = get_session()
-    with session.begin():
-        _qos_specs_get_all_ref(context, qos_specs_id, session)
-        query = session.query(models.QualityOfServiceSpecs).\
-            filter(or_(models.QualityOfServiceSpecs.id == qos_specs_id,
-                       models.QualityOfServiceSpecs.specs_id ==
-                       qos_specs_id))
-        entity = query.column_descriptions[0]['entity']
-        updated_values = {'deleted': True,
-                          'deleted_at': timeutils.utcnow(),
-                          'updated_at': entity.updated_at}
-        query.update(updated_values)
+    _qos_specs_get_all_ref(context, qos_specs_id)
+    query = context.session.query(models.QualityOfServiceSpecs).filter(
+        or_(
+            models.QualityOfServiceSpecs.id == qos_specs_id,
+            models.QualityOfServiceSpecs.specs_id == qos_specs_id,
+        )
+    )
+    entity = query.column_descriptions[0]['entity']
+    updated_values = {
+        'deleted': True,
+        'deleted_at': timeutils.utcnow(),
+        'updated_at': entity.updated_at,
+    }
+    query.update(updated_values)
     del updated_values['updated_at']
     return updated_values
 
 
 @require_admin_context
-def _qos_specs_get_item(context, qos_specs_id, key, session=None):
-    result = model_query(context, models.QualityOfServiceSpecs,
-                         session=session). \
-        filter(models.QualityOfServiceSpecs.key == key). \
-        filter(models.QualityOfServiceSpecs.specs_id == qos_specs_id). \
-        first()
+def _qos_specs_get_item(context, qos_specs_id, key):
+    result = (
+        model_query(context, models.QualityOfServiceSpecs)
+        .filter(models.QualityOfServiceSpecs.key == key)
+        .filter(models.QualityOfServiceSpecs.specs_id == qos_specs_id)
+        .first()
+    )
 
     if not result:
         raise exception.QoSSpecsKeyNotFound(
-            specs_key=key,
-            specs_id=qos_specs_id)
+            specs_key=key, specs_id=qos_specs_id
+        )
 
     return result
 
 
 @handle_db_data_error
 @require_admin_context
+@main_context_manager.writer
 def qos_specs_update(context, qos_specs_id, updates):
     """Make updates to an existing qos specs.
 
     Perform add, update or delete key/values to a qos specs.
     """
+    # make sure qos specs exists
+    exists = resource_exists(
+        context, models.QualityOfServiceSpecs, qos_specs_id
+    )
+    if not exists:
+        raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
+    specs = updates.get('specs', {})
 
-    session = get_session()
-    with session.begin():
-        # make sure qos specs exists
-        exists = resource_exists(context, models.QualityOfServiceSpecs,
-                                 qos_specs_id, session)
-        if not exists:
-            raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
-        specs = updates.get('specs', {})
+    if 'consumer' in updates:
+        # Massage consumer to the right place for DB and copy specs
+        # before updating so we don't modify dict for caller
+        specs = specs.copy()
+        specs['consumer'] = updates['consumer']
+    spec_ref = None
+    for key in specs.keys():
+        try:
+            spec_ref = _qos_specs_get_item(context, qos_specs_id, key)
+        except exception.QoSSpecsKeyNotFound:
+            spec_ref = models.QualityOfServiceSpecs()
+        id = None
+        if spec_ref.get('id', None):
+            id = spec_ref['id']
+        else:
+            id = str(uuid.uuid4())
+        value = {
+            'id': id,
+            'key': key,
+            'value': specs[key],
+            'specs_id': qos_specs_id,
+            'deleted': False,
+        }
+        LOG.debug('qos_specs_update() value: %s', value)
+        spec_ref.update(value)
+        spec_ref.save(context.session)
 
-        if 'consumer' in updates:
-            # Massage consumer to the right place for DB and copy specs
-            # before updating so we don't modify dict for caller
-            specs = specs.copy()
-            specs['consumer'] = updates['consumer']
-        spec_ref = None
-        for key in specs.keys():
-            try:
-                spec_ref = _qos_specs_get_item(
-                    context, qos_specs_id, key, session)
-            except exception.QoSSpecsKeyNotFound:
-                spec_ref = models.QualityOfServiceSpecs()
-            id = None
-            if spec_ref.get('id', None):
-                id = spec_ref['id']
-            else:
-                id = str(uuid.uuid4())
-            value = dict(id=id, key=key, value=specs[key],
-                         specs_id=qos_specs_id,
-                         deleted=False)
-            LOG.debug('qos_specs_update() value: %s', value)
-            spec_ref.update(value)
-            spec_ref.save(session=session)
+    return specs
 
-        return specs
 
 ####################
 
