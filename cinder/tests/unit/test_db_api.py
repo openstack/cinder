@@ -2373,20 +2373,18 @@ class DBAPICgsnapshotTestCase(BaseTest):
 
 
 class DBAPIVolumeTypeTestCase(BaseTest):
-
     """Tests for the db.api.volume_type_* methods."""
 
-    def setUp(self):
-        self.ctxt = context.get_admin_context()
-        super(DBAPIVolumeTypeTestCase, self).setUp()
+    def test_volume_type_create__exists(self):
+        vt = db.volume_type_create(self.ctxt, {'name': 'n2'})
+        self.assertRaises(
+            exception.VolumeTypeExists,
+            db.volume_type_create,
+            self.ctxt,
+            {'name': 'n2', 'id': vt['id']},
+        )
 
-    def test_volume_type_create_exists(self):
-        self.assertRaises(exception.VolumeTypeExists,
-                          db.volume_type_create,
-                          self.ctxt,
-                          {'name': 'n2', 'id': self.vt['id']})
-
-    def test_volume_type_access_remove(self):
+    def test_volume_type_access_add_remove(self):
         vt = db.volume_type_create(self.ctxt, {'name': 'n2'})
         db.volume_type_access_add(self.ctxt, vt['id'], 'fake_project')
         vtas = db.volume_type_access_get_all(self.ctxt, vt['id'])
@@ -2395,7 +2393,20 @@ class DBAPIVolumeTypeTestCase(BaseTest):
         vtas = db.volume_type_access_get_all(self.ctxt, vt['id'])
         self.assertEqual(0, len(vtas))
 
-    def test_volume_type_access_remove_high_id(self):
+    def test_volume_type_access_add__exists(self):
+        vt = db.volume_type_create(self.ctxt, {'name': 'n2'})
+        db.volume_type_access_add(self.ctxt, vt['id'], 'fake_project')
+        vtas = db.volume_type_access_get_all(self.ctxt, vt['id'])
+        self.assertEqual(1, len(vtas))
+        self.assertRaises(
+            exception.VolumeTypeAccessExists,
+            db.volume_type_access_add,
+            self.ctxt,
+            vt['id'],
+            'fake_project',
+        )
+
+    def test_volume_type_access_remove__high_id(self):
         vt = db.volume_type_create(self.ctxt, {'name': 'n2'})
         vta = db.volume_type_access_add(self.ctxt, vt['id'], 'fake_project')
         vtas = db.volume_type_access_get_all(self.ctxt, vt['id'])
@@ -3720,7 +3731,40 @@ class DBAPIBackendTestCase(BaseTest):
 
 
 @ddt.ddt
-class DBAPIGroupTestCase(BaseTest):
+class DBAPIGroupTypeTestCase(BaseTest):
+    """Tests for the db.api.group_type_* methods."""
+
+    def test_group_type_create__exists(self):
+        gt = db.group_type_create(self.ctxt, {'name': 'n2'})
+        self.assertRaises(
+            exception.GroupTypeExists,
+            db.group_type_create,
+            self.ctxt,
+            {'name': gt['name'], 'id': gt['id']},
+        )
+
+    def test_volume_type_access_add_remove(self):
+        gt = db.group_type_create(self.ctxt, {'name': 'n2'})
+        db.group_type_access_add(self.ctxt, gt['id'], 'fake_project')
+        gtas = db.group_type_access_get_all(self.ctxt, gt['id'])
+        self.assertEqual(1, len(gtas))
+        db.group_type_access_remove(self.ctxt, gt['id'], 'fake_project')
+        gtas = db.group_type_access_get_all(self.ctxt, gt['id'])
+        self.assertEqual(0, len(gtas))
+
+    def test_group_type_access_add__exists(self):
+        gt = db.group_type_create(self.ctxt, {'name': 'my_group_type'})
+        db.group_type_access_add(self.ctxt, gt['id'], 'fake_project')
+        gtas = db.group_type_access_get_all(self.ctxt, gt['id'])
+        self.assertEqual(1, len(gtas))
+        self.assertRaises(
+            exception.GroupTypeAccessExists,
+            db.group_type_access_add,
+            self.ctxt,
+            gt['id'],
+            'fake_project',
+        )
+
     def test_group_get_all_by_host(self):
         grp_type = db.group_type_create(self.ctxt, {'name': 'my_group_type'})
         groups = []

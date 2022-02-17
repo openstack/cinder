@@ -68,6 +68,25 @@ class VolumeTypeTestCase(test.TestCase):
         db.group_destroy(self.ctxt, group['id'])
         volume_types.destroy(self.ctxt, volume_type['id'])
 
+    def test_volume_type_mark_in_use_exists(self):
+        volume_type = db.volume_type_create(
+            self.ctxt,
+            {'name': 'fake volume type'},
+        )
+        group = db.group_create(self.ctxt, {})
+        db.group_volume_type_mapping_create(
+            self.ctxt,
+            group['id'],
+            volume_type['id'],
+        )
+        self.assertRaises(
+            exception.GroupVolumeTypeMappingExists,
+            db.group_volume_type_mapping_create,
+            self.ctxt,
+            group['id'],
+            volume_type['id'],
+        )
+
     def test_volume_type_delete_with_consistencygroups_in_use(self):
         volume_type = db.volume_type_create(self.ctxt, {'name':
                                                         'fake volume type'})
