@@ -35,7 +35,7 @@ options.set_defaults(cfg.CONF)
 LOG = logging.getLogger(__name__)
 
 MIGRATE_INIT_VERSION = 134
-MIGRATE_MIGRATIONS_PATH = ALEMBIC_INIT_VERSION = '921e1a36b076'
+ALEMBIC_INIT_VERSION = '921e1a36b076'
 
 
 def _find_migrate_repo():
