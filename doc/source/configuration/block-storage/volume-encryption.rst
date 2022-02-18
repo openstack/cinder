@@ -27,7 +27,7 @@ Steps to update ``cinder-api`` servers:
 
         backend = barbican
 
-#. Restart ``cinder-api``.
+#. Restart ``cinder-api``, ``cinder-volume`` and ``cinder-backup``.
 
 Update ``nova-compute`` servers:
 
