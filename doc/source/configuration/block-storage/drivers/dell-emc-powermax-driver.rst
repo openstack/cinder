@@ -3056,6 +3056,13 @@ information on setup, configuration and usage please see the official
 OpenStack `volume backup`_ documentation and related `volume backup CLI`_
 guide.
 
+.. note::
+
+   ``rpc_response_timeout`` may need to be increased significantly in volume
+   backup operations especially in replication scenarios where the creation
+   operation will be longer.  For more information on ``rpc_response_timeout``
+   please refer to `Live migration configuration`_
+
 
 Port group & port load balancing
 --------------------------------
