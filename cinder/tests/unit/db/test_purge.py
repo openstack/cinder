@@ -36,7 +36,6 @@ class PurgeDeletedTest(test.TestCase):
         super(PurgeDeletedTest, self).setUp()
         self.context = context.get_admin_context()
         self.engine = db_api.get_engine()
-        self.session = db_api.get_session()
         self.conn = self.engine.connect()
         self.volumes = sqlalchemyutils.get_table(
             self.engine, "volumes")
@@ -266,14 +265,17 @@ class PurgeDeletedTest(test.TestCase):
         # Purge at age_in_days=0, should delete one more row
         db.purge_deleted_rows(self.context, age_in_days=0)
 
-        vol_rows = self.session.query(self.volumes).count()
-        vol_meta_rows = self.session.query(self.vm).count()
-        vol_type_rows = self.session.query(self.vol_types).count()
-        vol_type_proj_rows = self.session.query(self.vol_type_proj).count()
-        snap_rows = self.session.query(self.snapshots).count()
-        snap_meta_rows = self.session.query(self.sm).count()
-        vol_glance_meta_rows = self.session.query(self.vgm).count()
-        qos_rows = self.session.query(self.qos).count()
+        with db_api.main_context_manager.writer.using(self.context):
+            vol_rows = self.context.session.query(self.volumes).count()
+            vol_meta_rows = self.context.session.query(self.vm).count()
+            vol_type_rows = self.context.session.query(self.vol_types).count()
+            vol_type_proj_rows = self.context.session.query(
+                self.vol_type_proj,
+            ).count()
+            snap_rows = self.context.session.query(self.snapshots).count()
+            snap_meta_rows = self.context.session.query(self.sm).count()
+            vol_glance_meta_rows = self.context.session.query(self.vgm).count()
+            qos_rows = self.context.session.query(self.qos).count()
 
         # Verify that we only have 1 rows now
         self.assertEqual(1, vol_rows)
@@ -292,14 +294,17 @@ class PurgeDeletedTest(test.TestCase):
         # Purge at 30 days old, should only delete 2 rows
         db.purge_deleted_rows(self.context, age_in_days=30)
 
-        vol_rows = self.session.query(self.volumes).count()
-        vol_meta_rows = self.session.query(self.vm).count()
-        vol_type_rows = self.session.query(self.vol_types).count()
-        vol_type_proj_rows = self.session.query(self.vol_type_proj).count()
-        snap_rows = self.session.query(self.snapshots).count()
-        snap_meta_rows = self.session.query(self.sm).count()
-        vol_glance_meta_rows = self.session.query(self.vgm).count()
-        qos_rows = self.session.query(self.qos).count()
+        with db_api.main_context_manager.writer.using(self.context):
+            vol_rows = self.context.session.query(self.volumes).count()
+            vol_meta_rows = self.context.session.query(self.vm).count()
+            vol_type_rows = self.context.session.query(self.vol_types).count()
+            vol_type_proj_rows = self.context.session.query(
+                self.vol_type_proj,
+            ).count()
+            snap_rows = self.context.session.query(self.snapshots).count()
+            snap_meta_rows = self.context.session.query(self.sm).count()
+            vol_glance_meta_rows = self.context.session.query(self.vgm).count()
+            qos_rows = self.context.session.query(self.qos).count()
 
         # Verify that we only deleted 2
         self.assertEqual(4, vol_rows)
@@ -318,14 +323,17 @@ class PurgeDeletedTest(test.TestCase):
         # Purge at 10 days old now, should delete 2 more rows
         db.purge_deleted_rows(self.context, age_in_days=10)
 
-        vol_rows = self.session.query(self.volumes).count()
-        vol_meta_rows = self.session.query(self.vm).count()
-        vol_type_rows = self.session.query(self.vol_types).count()
-        vol_type_proj_rows = self.session.query(self.vol_type_proj).count()
-        snap_rows = self.session.query(self.snapshots).count()
-        snap_meta_rows = self.session.query(self.sm).count()
-        vol_glance_meta_rows = self.session.query(self.vgm).count()
-        qos_rows = self.session.query(self.qos).count()
+        with db_api.main_context_manager.writer.using(self.context):
+            vol_rows = self.context.session.query(self.volumes).count()
+            vol_meta_rows = self.context.session.query(self.vm).count()
+            vol_type_rows = self.context.session.query(self.vol_types).count()
+            vol_type_proj_rows = self.context.session.query(
+                self.vol_type_proj,
+            ).count()
+            snap_rows = self.context.session.query(self.snapshots).count()
+            snap_meta_rows = self.context.session.query(self.sm).count()
+            vol_glance_meta_rows = self.context.session.query(self.vgm).count()
+            qos_rows = self.context.session.query(self.qos).count()
 
         # Verify that we only have 2 rows now
         self.assertEqual(2, vol_rows)
