@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family driver: Added support to manage host
+    attachment using portsets for code level >= 8.4.2.0

@@ -88,7 +88,9 @@ class StorwizeSVCManagementSimulator(object):
         self._other_pools = {'openstack2': {}, 'openstack3': {}}
         self._next_cmd_error = {
             'lsportip': '',
+            'lsip': '',
             'lsfabric': '',
+            'lsfcportsetmember': '',
             'lsiscsiauth': '',
             'lsnodecanister': '',
             'mkvdisk': '',
@@ -747,45 +749,45 @@ port_speed!N/A
         ports = [None] * 17
         ports[0] = ['id', 'WWPN', 'WWNN', 'port_id', 'owning_node_id',
                     'current_node_id', 'nportid', 'host_io_permitted',
-                    'virtualized']
+                    'virtualized', 'fc_io_port_id']
         ports[1] = ['0', '5005076801106CFE', '5005076801106CFE', '1', '1',
-                    '1', '042200', 'no', 'no']
+                    '1', '042200', 'no', 'no', '']
         ports[2] = ['0', '5005076801996CFE', '5005076801106CFE', '1', '1',
-                    '1', '042200', 'yes', 'yes']
+                    '1', '042200', 'yes', 'yes', '']
         ports[3] = ['0', '5005076801206CFE', '5005076801106CFE', '2', '1',
-                    '1', '042200', 'no', 'no']
+                    '1', '042200', 'no', 'no', '']
         ports[4] = ['0', '5005076801A96CFE', '5005076801106CFE', '2', '1',
-                    '1', '042200', 'yes', 'yes']
+                    '1', '042200', 'yes', 'yes', '']
         ports[5] = ['0', '5005076801306CFE', '5005076801106CFE', '3', '1',
-                    '', '042200', 'no', 'no']
+                    '', '042200', 'no', 'no', '']
         ports[6] = ['0', '5005076801B96CFE', '5005076801106CFE', '3', '1',
-                    '', '042200', 'yes', 'yes']
+                    '', '042200', 'yes', 'yes', '']
         ports[7] = ['0', '5005076801406CFE', '5005076801106CFE', '4', '1',
-                    '', '042200', 'no', 'no']
+                    '', '042200', 'no', 'no', '']
         ports[8] = ['0', '5005076801C96CFE', '5005076801106CFE', '4', '1',
-                    '', '042200', 'yes', 'yes']
+                    '', '042200', 'yes', 'yes', '']
         ports[9] = ['0', '5005076801101806', '5005076801101806', '1', '2',
-                    '2', '042200', 'no', 'no']
+                    '2', '042200', 'no', 'no', '']
         ports[10] = ['0', '5005076801991806', '5005076801101806', '1', '2',
-                     '2', '042200', 'yes', 'yes']
+                     '2', '042200', 'yes', 'yes', '']
         ports[11] = ['0', '5005076801201806', '5005076801101806', '2', '2',
-                     '2', '042200', 'no', 'no']
+                     '2', '042200', 'no', 'no', '']
         ports[12] = ['0', '5005076801A91806', '5005076801101806', '2', '2',
-                     '2', '042200', 'yes', 'yes']
+                     '2', '042200', 'yes', 'yes', '']
         ports[13] = ['0', '5005076801301806', '5005076801101806', '3', '2',
-                     '', '042200', 'no', 'no']
+                     '', '042200', 'no', 'no', '']
         ports[14] = ['0', '5005076801B91806', '5005076801101806', '3', '2',
-                     '', '042200', 'yes', 'yes']
+                     '', '042200', 'yes', 'yes', '']
         ports[15] = ['0', '5005076801401806', '5005076801101806', '4', '2',
-                     '', '042200', 'no', 'no']
+                     '', '042200', 'no', 'no', '']
         ports[16] = ['0', '5005076801C91806', '5005076801101806', '4', '2',
-                     '', '042200', 'yes', 'yes']
+                     '', '042200', 'yes', 'yes', '']
 
         if 'filtervalue' in kwargs:
             rows = []
             rows.append(['id', 'WWPN', 'WWNN', 'port_id', 'owning_node_id',
                          'current_node_id', 'nportid', 'host_io_permitted',
-                         'virtualized'])
+                         'virtualized', 'fc_io_port_id'])
 
             if ':' in kwargs['filtervalue']:
                 filter1 = kwargs['filtervalue'].split(':')[0]
@@ -803,6 +805,73 @@ port_speed!N/A
                         rows.append(v)
         else:
             rows = ports
+        return self._print_info_cmd(rows=rows, **kwargs)
+
+    # Print mostly made-up stuff in the correct syntax
+    def _cmd_lsfcportsetmember(self, **kwargs):
+        rows = [None] * 7
+        rows[0] = ['id', 'fc_io_port_id', 'portset_id', 'portset_name',
+                   'owner_id', 'owner_name']
+        rows[1] = ['0', '5', '6', 'portset6', '', '']
+        rows[2] = ['1', '5', '64', 'portset64', '', '']
+        rows[3] = ['2', '6', '6', 'portset6', '', '']
+        rows[4] = ['3', '6', '64', 'portset64', '', '']
+        rows[5] = ['4', '7', '64', 'portset64', '', '']
+        rows[6] = ['5', '8', '64', 'portset64', '', '']
+
+        if self._next_cmd_error['lsfcportsetmember'] == 'header_mismatch':
+            rows[0].pop(2)
+            self._next_cmd_error['lsfcportsetmember'] = ''
+        if self._next_cmd_error['lsfcportsetmember'] == 'remove_field':
+            for row in rows:
+                row.pop(1)
+            self._next_cmd_error['lsfcportsetmember'] = ''
+
+        return self._print_info_cmd(rows=rows, **kwargs)
+
+    # Print mostly made-up stuff in the correct syntax
+    def _cmd_lsip(self, **kwargs):
+        ports = [None] * 9
+        ports[0] = ['id', 'node_id', 'node_name', 'port_id', 'portset_id',
+                    'portset_name', 'IP_address', 'prefix', 'vlan', 'gateway',
+                    'owner_id', 'owner_name']
+        ports[1] = ['0', '1', 'node1', '5', '0', 'portset0', '1.234.50.11',
+                    '24', '1001', '', '', '']
+        ports[2] = ['1', '1', 'node1', '6', '4', 'portset4', '1.234.51.11',
+                    '24', '1002', '', '', '']
+        ports[3] = ['2', '1', 'node1', '7', '5', 'portset5', '1.234.52.11',
+                    '24', '1003', '', '', '']
+        ports[4] = ['3', '1', 'node1', '8', '6', 'portset6', '1.234.53.11',
+                    '24', '1004', '', '', '']
+        ports[5] = ['4', '2', 'node2', '5', '0', 'portset0', '1.234.54.11',
+                    '24', '1005', '', '', '']
+        ports[6] = ['5', '2', 'node2', '6', '4', 'portset4', '1.234.55.11',
+                    '24', '1006', '', '', '']
+        ports[7] = ['6', '2', 'node2', '7', '5', 'portset5', '1.234.56.11',
+                    '24', '1007', '', '', '']
+        ports[8] = ['7', '2', 'node2', '8', '6', 'portset6', '1.234.57.11',
+                    '24', '1008', '', '', '']
+
+        if 'filtervalue' in kwargs:
+            rows = []
+            rows.append(['id', 'node_id', 'node_name', 'port_id', 'portset_id',
+                         'portset_name', 'IP_address', 'prefix', 'vlan',
+                         'gateway', 'owner_id', 'owner_name'])
+
+            value = kwargs['filtervalue'].split('=')[1]
+            for v in ports:
+                if six.text_type(v[5]) == value:
+                    rows.append(v)
+        else:
+            rows = ports
+
+        if self._next_cmd_error['lsip'] == 'header_mismatch':
+            rows[0].pop(2)
+            self._next_cmd_error['lsip'] = ''
+        if self._next_cmd_error['lsip'] == 'remove_field':
+            for row in rows:
+                row.pop(1)
+            self._next_cmd_error['lsip'] = ''
         return self._print_info_cmd(rows=rows, **kwargs)
 
     # Print mostly made-up stuff in the correct syntax
@@ -1247,6 +1316,10 @@ port_speed!N/A
             host_info['site_name'] = kwargs['site'].strip('\'\"')
         else:
             host_info['site_name'] = ''
+        if 'portset' in kwargs:
+            host_info['portset_name'] = kwargs['portset'].strip('\'\"')
+        else:
+            host_info['portset_name'] = ''
         out, err = self._add_port_to_host(host_info, **kwargs)
         if not len(err):
             self._hosts_list[host_name] = host_info
@@ -4826,6 +4899,26 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.sim.error_injection('lsportip', 'remove_field')
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.do_setup, None)
+            self.sim.error_injection('lsfcportsetmember', 'invalid_input')
+            self.driver.do_setup(None)
+
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (8, 5, 0, 0),
+                                'topology': 'standard',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+
+            if self.USESIM:
+                self.sim.error_injection('lsip', 'invalid_portset')
+                self.driver.do_setup(None)
+                self.sim.error_injection('lsip', 'header_mismatch')
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.driver.do_setup, None)
+                self.sim.error_injection('lsip', 'remove_field')
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.driver.do_setup, None)
 
         # Check with bad parameters
         self._set_flag('san_ip', '')
@@ -4872,6 +4965,37 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Finally, check with good parameters
         self.driver.do_setup(None)
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'mkhost')
+    def test_storwize_create_host_with_portset(self, mkhost):
+        self.driver.do_setup(self.ctxt)
+        connector = {'host': 'storwize-svc-host',
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa',
+                     'ip': '127.0.0.1'}
+        # Using portset other than default portset0
+        portset = "portset1"
+        self.driver._helpers.create_host(connector, iscsi=True,
+                                         portset=portset)
+        host_name = self.driver._helpers.get_host_from_connector(
+            connector, iscsi=True)
+        self.assertIsNotNone(host_name)
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'mkhost')
+    def test_storwize_create_host_with_portset_from_config(self, mkhost):
+        self.driver.do_setup(self.ctxt)
+        connector = {'host': 'storwize-svc-host',
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa',
+                     'ip': '127.0.0.1'}
+        # Using portset other than default portset0
+        self._set_flag('storwize_portset', "portset1")
+        self.driver._helpers.create_host(
+            connector, iscsi=True,
+            portset=self.driver.configuration.storwize_portset)
+        host_name = self.driver._helpers.get_host_from_connector(
+            connector, iscsi=True)
+        self.assertIsNotNone(host_name)
 
     @mock.patch.object(ssh_utils, 'SSHPool')
     @mock.patch.object(processutils, 'ssh_execute')
@@ -5288,6 +5412,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'mirror_pool': None,
                'volume_topology': None,
                'peer_pool': None,
+               'storwize_portset': None,
                'storwize_svc_src_child_pool': None,
                'storwize_svc_target_child_pool': None,
                'cycle_period_seconds': 300

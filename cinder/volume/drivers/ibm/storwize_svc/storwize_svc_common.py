@@ -133,6 +133,10 @@ storwize_svc_opts = [
                default=None,
                help='Specifies the name of the pool in which mirrored copy '
                     'is stored. Example: "pool2"'),
+    cfg.StrOpt('storwize_portset',
+               default=None,
+               help='Specifies the name of the portset in which '
+                    'host to be created.'),
     cfg.StrOpt('storwize_svc_src_child_pool',
                default=None,
                help='Specifies the name of the source child pool in which '
@@ -272,11 +276,13 @@ class StorwizeSSH(object):
         port.append(port_name)
         return port
 
-    def mkhost(self, host_name, port_type, port_name, site=None):
+    def mkhost(self, host_name, port_type, port_name, site=None, portset=None):
         port = self._create_port_arg(port_type, port_name)
         ssh_cmd = ['svctask', 'mkhost', '-force'] + port
         if site:
             ssh_cmd += ['-site', '"%s"' % site]
+        if portset:
+            ssh_cmd += ['-portset', '"%s"' % portset]
         ssh_cmd += ['-name', '"%s"' % host_name]
         return self.run_ssh_check_created(ssh_cmd)
 
@@ -316,6 +322,12 @@ class StorwizeSSH(object):
 
     def lsiscsiauth(self):
         ssh_cmd = ['svcinfo', 'lsiscsiauth', '-delim', '!']
+        return self.run_ssh_info(ssh_cmd, with_header=True)
+
+    def lsip(self, portset=None):
+        ssh_cmd = ['svcinfo', 'lsip', '-delim', '!']
+        if portset:
+            ssh_cmd += ['-filtervalue', 'portset_name=%s' % portset]
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
     def lsfabric(self, wwpn=None, host=None):
@@ -765,6 +777,10 @@ class StorwizeSSH(object):
             ssh_cmd += ['-filtervalue', 'current_node_id=%s' % current_node_id]
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
+    def lsfcportsetmember(self):
+        ssh_cmd = ['svcinfo', 'lsfcportsetmember', '-delim', '!']
+        return self.run_ssh_info(ssh_cmd, with_header=True)
+
     def migratevdisk(self, vdisk, dest_pool, copy_id='0'):
         ssh_cmd = ['svctask', 'migratevdisk', '-mdiskgrp', dest_pool, '-copy',
                    copy_id, '-vdisk', vdisk]
@@ -1070,6 +1086,7 @@ class StorwizeHelpers(object):
                 node['WWPN'] = []
                 node['ipv4'] = []
                 node['ipv6'] = []
+                node['IP_address'] = []
                 node['enabled_protocols'] = []
                 nodes[node['id']] = node
                 node['site_id'] = (node_data['site_id']
@@ -1080,21 +1097,37 @@ class StorwizeHelpers(object):
                 self.handle_keyerror('lsnode', node_data)
         return nodes
 
-    def add_iscsi_ip_addrs(self, storage_nodes):
+    def add_iscsi_ip_addrs(self, storage_nodes, code_level, portset=None):
         """Add iSCSI IP addresses to system node information."""
-        resp = self.ssh.lsportip()
-        for ip_data in resp:
-            try:
-                state = ip_data['state']
-                if ip_data['node_id'] in storage_nodes and (
-                        state == 'configured' or state == 'online'):
-                    node = storage_nodes[ip_data['node_id']]
-                    if len(ip_data['IP_address']):
-                        node['ipv4'].append(ip_data['IP_address'])
-                    if len(ip_data['IP_address_6']):
-                        node['ipv6'].append(ip_data['IP_address_6'])
-            except KeyError:
-                self.handle_keyerror('lsportip', ip_data)
+        if code_level >= (8, 4, 2, 0):
+            portset_name = portset if portset else 'portset0'
+            lsip_resp = self.ssh.lsip(portset=portset_name)
+            for node_data in storage_nodes:
+                ip_addresses = []
+                try:
+                    for ip_data in lsip_resp:
+                        if ip_data['node_id'] in node_data:
+                            if (ip_data['IP_address']):
+                                ip_addresses.append(ip_data['IP_address'])
+                except KeyError:
+                    self.handle_keyerror('lsip', ip_data)
+                if ip_addresses:
+                    storage_nodes[ip_data['node_id']]['IP_address'] = (
+                        ip_addresses)
+        else:
+            lsportip_resp = self.ssh.lsportip()
+            for ip_data in lsportip_resp:
+                try:
+                    state = ip_data['state']
+                    if ip_data['node_id'] in storage_nodes and (
+                            state == 'configured' or state == 'online'):
+                        node = storage_nodes[ip_data['node_id']]
+                        if len(ip_data['IP_address']):
+                            node['ipv4'].append(ip_data['IP_address'])
+                        if len(ip_data['IP_address_6']):
+                            node['ipv6'].append(ip_data['IP_address_6'])
+                except KeyError:
+                    self.handle_keyerror('lsportip', ip_data)
 
     def add_fc_wwpns(self, storage_nodes, code_level):
         """Add FC WWPNs to system node information."""
@@ -1110,20 +1143,36 @@ class StorwizeHelpers(object):
                             port_info['status'] == 'active'):
                         wwpns.add(port_info['WWPN'])
             else:
-                npiv_wwpns = self.get_npiv_wwpns(node_id=node['id'])
+                npiv_wwpns = self.get_npiv_wwpns(code_level,
+                                                 node_id=node['id'])
                 wwpns.update(npiv_wwpns)
             node['WWPN'] = list(wwpns)
             LOG.info('WWPN on node %(node)s: %(wwpn)s.',
                      {'node': node['id'], 'wwpn': node['WWPN']})
 
-    def get_npiv_wwpns(self, node_id=None, host_io=None):
+    def get_npiv_wwpns(self, code_level, node_id=None, host_io=None,
+                       portset=None):
         wwpns = set()
         # In the response of lstargetportfc, the host_io_permitted
         # indicates whether the port can be used for host I/O
-        resp = self.ssh.lstargetportfc(current_node_id=node_id,
-                                       host_io_permitted=host_io)
-        for port_info in resp:
-            wwpns.add(port_info['WWPN'])
+        targetportfc_resp = self.ssh.lstargetportfc(current_node_id=node_id,
+                                                    host_io_permitted=host_io)
+        if code_level >= (8, 4, 2, 0):
+            portset_name = portset if portset else 'portset64'
+            port_ids = set()
+            fcportsetmember_resp = self.ssh.lsfcportsetmember()
+            for portset_member in fcportsetmember_resp:
+                if portset_member['portset_name'] == portset_name:
+                    port_ids.add(portset_member['fc_io_port_id'])
+
+            for port_info in targetportfc_resp:
+                for port_id in port_ids:
+                    if port_id == port_info['fc_io_port_id']:
+                        wwpns.add(port_info['WWPN'])
+                        break
+        else:
+            for port_info in targetportfc_resp:
+                wwpns.add(port_info['WWPN'])
         return list(wwpns)
 
     def add_chap_secret_to_host(self, host_name):
@@ -1288,7 +1337,7 @@ class StorwizeHelpers(object):
         LOG.debug('Leave: get_host_from_connector: host %s.', host_name)
         return host_name
 
-    def create_host(self, connector, iscsi=False, site=None):
+    def create_host(self, connector, iscsi=False, site=None, portset=None):
         """Create a new host on the storage system.
 
         We create a host name and associate it with the given connection
@@ -1343,7 +1392,7 @@ class StorwizeHelpers(object):
         # Create a host with one port
         port = ports.pop(0)
         # Host site_id is necessary for hyperswap volume.
-        self.ssh.mkhost(host_name, port[0], port[1], site)
+        self.ssh.mkhost(host_name, port[0], port[1], site, portset)
 
         # Add any additional ports to the host
         for port in ports:
@@ -1514,6 +1563,7 @@ class StorwizeHelpers(object):
                'mirror_pool': config.storwize_svc_mirror_pool,
                'volume_topology': None,
                'peer_pool': config.storwize_peer_pool,
+               'storwize_portset': config.storwize_portset,
                'storwize_svc_src_child_pool':
                    config.storwize_svc_src_child_pool,
                'storwize_svc_target_child_pool':
@@ -3279,14 +3329,15 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         state['storage_nodes'] = helper.get_node_info()
 
         # Add the iSCSI IP addresses and WWPNs to the storage node info
-        helper.add_iscsi_ip_addrs(state['storage_nodes'])
+        helper.add_iscsi_ip_addrs(state['storage_nodes'], state['code_level'])
         helper.add_fc_wwpns(state['storage_nodes'], state['code_level'])
 
         # For each node, check what connection modes it supports.  Delete any
         # nodes that do not support any types (may be partially configured).
         to_delete = []
         for k, node in state['storage_nodes'].items():
-            if ((len(node['ipv4']) or len(node['ipv6']))
+            if ((len(node['ipv4']) or len(node['ipv6']) or
+                    len(node['IP_address']))
                     and len(node['iscsi_name'])):
                 node['enabled_protocols'].append('iSCSI')
                 state['enabled_protocols'].add('iSCSI')
