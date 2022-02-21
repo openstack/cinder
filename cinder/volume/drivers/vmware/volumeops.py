@@ -984,6 +984,20 @@ class VMwareVolumeOps(object):
                                         self._session.vim, datastore,
                                         'summary')
 
+    def get_datastore_properties(self, datastore):
+        """Get datastore summary.
+
+        :param datastore: Reference to the datastore
+        :return: 'summary' property of the datastore
+        """
+        return self._session.invoke_api(vim_util, 'get_object_properties_dict',
+                                        self._session.vim, datastore,
+                                        properties_to_collect=[
+                                            "summary",
+                                            "availableField",
+                                            "customValue"
+                                        ])
+
     def _create_relocate_spec_disk_locator(self, datastore, disk_type,
                                            disk_device, profile_id=None):
         """Creates spec for disk type conversion during relocate."""

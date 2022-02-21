@@ -502,6 +502,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             for ds_name in datastores:
                 datastore = datastores[ds_name]
                 summary = datastore["summary"]
+
                 pool_state = "up" if summary.accessible is True else "down"
                 pool = {'pool_name': summary.name,
                         'total_capacity_gb': round(
@@ -521,6 +522,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         'storage_profile': datastore["storage_profile"],
                         'connection_capabilities': connection_capabilities,
                         }
+
+                # Add any custom attributes associated with the datastore
+                if "custom_attributes" in datastore:
+                    pool['custom_attributes'] = datastore['custom_attributes']
+
                 pools.append(pool)
             data['pools'] = pools
             return data
@@ -2415,10 +2421,25 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     # Reconstruct a managed object reference to that
                     # datastore
                     ds = vim_util.get_moref(h.hubId, "Datastore")
-                    summary = self.volumeops.get_summary(ds)
+                    objects = self.volumeops.get_datastore_properties(ds)
+                    summary = objects['summary']
                     datastores[summary.name] = {'summary': summary,
-                                                'storage_profile': profile}
+                                                'storage_profile': profile,
+                                                'datastore_object': ds}
+                    if ('availableField' in objects and
+                            'customValue' in objects):
+                        custom_fields = {}
+                        for junk, field in objects['availableField']:
+                            for v in field:
+                                custom_fields[v.key] = v.name
 
+                        custom_attributes = {}
+                        for junk, attr in objects['customValue']:
+                            for v in attr:
+                                field = custom_fields[v.key]
+                                custom_attributes[field] = v.value
+                        datastores[summary.name][
+                            "custom_attributes"] = custom_attributes
         return datastores
 
     def _new_host_for_volume(self, volume):
