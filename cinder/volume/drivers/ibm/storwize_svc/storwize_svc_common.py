@@ -2664,6 +2664,19 @@ class StorwizeHelpers(object):
         else:
             return None
 
+    def get_rccg_name_by_volume_name(self, volume_name):
+        vol_attrs = self.get_vdisk_attributes(volume_name)
+        if not vol_attrs:
+            LOG.warning("Unable to get volume attributes for "
+                        "volume %s", volume_name)
+            return None
+
+        rcrel = self.ssh.lsrcrelationship(vol_attrs['RC_name'])
+        if len(rcrel) > 0 and rcrel[0].get('consistency_group_name'):
+            return rcrel[0]['consistency_group_name']
+        else:
+            return None
+
     def get_partnership_info(self, system_name):
         partnership = self.ssh.lspartnership(system_name)
         return partnership[0] if len(partnership) > 0 else None
@@ -6227,9 +6240,14 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         if rep_type:
             try:
-                self._helpers.stop_relationship(volume.name, access=False)
+                rccg_name = self._helpers.get_rccg_name_by_volume_name(
+                    volume.name)
+                if rccg_name:
+                    self._helpers.stop_rccg(rccg_name, access=False)
+                else:
+                    self._helpers.stop_relationship(volume.name, access=False)
             except Exception as err:
-                msg = (_("Stop RC relationship has failed for %(vol)s"
+                msg = (_("Stop RC or rccg relationship has failed for %(vol)s "
                          "due to: %(err)s.")
                        % {"vol": volume.name, "err": err})
                 LOG.error(msg)
@@ -6249,7 +6267,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 self.configuration.storwize_svc_flashcopy_timeout,
                 opts['flashcopy_rate'], opts['clean_rate'], True, True)
             if rep_type:
-                self._helpers.start_relationship(volume.name, primary=None)
+                if rccg_name:
+                    self._helpers.start_rccg(rccg_name, primary=None)
+                else:
+                    self._helpers.start_relationship(volume.name, primary=None)
         except Exception as err:
             msg = (_("Reverting volume %(vol)s to snapshot %(snap)s failed "
                      "due to: %(err)s.")

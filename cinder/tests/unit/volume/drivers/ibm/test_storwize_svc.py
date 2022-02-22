@@ -8033,6 +8033,17 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             mkfcmap.assert_not_called()
             prepare_fc_map.assert_not_called()
             startfcmap.assert_not_called()
+            with mock.patch.object(
+                    storwize_svc_common.StorwizeHelpers,
+                    'get_rccg_name_by_volume_name') as rccg_name:
+                vol_rep_type.side_effect = [True]
+                rccg_name.side_effect = ["fake_rccg-1"]
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.driver.revert_to_snapshot, self.ctxt,
+                                  vol2, snap2)
+                mkfcmap.assert_not_called()
+                prepare_fc_map.assert_not_called()
+                startfcmap.assert_not_called()
 
     def test_storwize_create_volume_with_group_id(self):
         """Tests creating volume with gorup_id."""
@@ -10466,6 +10477,41 @@ class StorwizeHelpersTestCase(test.TestCase):
                                                        access=access)
             startrcrelationship.assert_called_once_with(opts['RC_name'], None)
 
+    @ddt.data(({'RC_name': 'fake_rcrel',
+                'consistency_group_name': 'fake_rccg-1',
+                'name': 'rep_volume-12d-6'}),
+              ({'RC_name': 'fake_rcrel',
+                'consistency_group_name': None,
+                'name': 'rep_volume-12d-6'}))
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_attributes')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'lsrcrelationship')
+    def test_get_rccg_name_by_volume_name(self, opts, lsrcrelationship,
+                                          get_vdisk_attributes):
+        get_vdisk_attributes.side_effect = [{'RC_name': opts['RC_name']}]
+        lsrcrelationship.side_effect = \
+            [[{'consistency_group_name': opts['consistency_group_name']}]]
+        rccg_name = self.storwize_svc_common.get_rccg_name_by_volume_name(
+            opts['name'])
+        get_vdisk_attributes.assert_called_with(opts['name'])
+        lsrcrelationship.assert_called_with(opts['RC_name'])
+        self.assertEqual(rccg_name, opts['consistency_group_name'])
+
+    @ddt.data(({'name': 'rep_volume-12d-6'}))
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_attributes')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'lsrcrelationship')
+    def test_get_rccg_name_by_volume_name_with_None_volume_attributes(
+            self, opts, lsrcrelationship, get_vdisk_attributes):
+        get_vdisk_attributes.side_effect = [None]
+        rccg_name = self.storwize_svc_common.get_rccg_name_by_volume_name(
+            opts['name'])
+        get_vdisk_attributes.assert_called_with(opts['name'])
+        lsrcrelationship.assert_not_called()
+        self.assertIsNone(rccg_name)
+
     @ddt.data(({'RC_name': None,
                 'name': 'volume-12d-7'}, 'multi'),
               ({'RC_name': 'fake_rcrel',
@@ -11787,6 +11833,46 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                                       access=False)
             start_relationship.assert_called_once_with("volume-" + vol1.id,
                                                        primary=None)
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'mkfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_prepare_fc_map')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'startfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_rccg_name_by_volume_name')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'stop_rccg')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'start_rccg')
+    def test_revert_to_snapshot_mirror_vol_in_group(
+            self, start_rccg, stop_rccg, get_rccg_name_by_volume_name,
+            startfcmap, prepare_fc_map, mkfcmap):
+        mkfcmap.side_effect = ['1']
+        vol1 = self._generate_vol_info(self.gm_type,
+                                       replication_status='enabled')
+        snap1 = self._generate_snap_info(vol1.id)
+        fake_rccg_name = "fake_rccg-1"
+        with mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                               '_get_volume_replicated_type') as vol_rep_type:
+            vol_rep_type.side_effect = [True]
+            get_rccg_name_by_volume_name.side_effect = [fake_rccg_name]
+            self.driver.revert_to_snapshot(self.ctxt, vol1, snap1)
+            mkfcmap.assert_called_once_with(
+                snap1.name, vol1.name, True,
+                self.driver.configuration.storwize_svc_flashcopy_rate,
+                self.driver.configuration.storwize_svc_clean_rate)
+            prepare_fc_map.assert_called_once_with(
+                '1', self.driver.configuration.storwize_svc_flashcopy_timeout,
+                True)
+            startfcmap.assert_called_once_with('1', True)
+            self.assertEqual(fields.ReplicationStatus.ENABLED,
+                             vol1.replication_status)
+            stop_rccg.assert_called_once_with(fake_rccg_name,
+                                              access=False)
+            start_rccg.assert_called_once_with(fake_rccg_name,
+                                               primary=None)
 
     def test_storwize_extend_volume_replication(self):
         # Set replication target.
