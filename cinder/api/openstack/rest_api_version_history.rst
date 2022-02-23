@@ -505,3 +505,11 @@ Volume snapshots of in-use volumes can be created without the 'force' flag.
 Although the 'force' flag is now considered invalid when passed in a volume
 snapshot request, for backward compatibility, the 'force' flag with a value
 evaluating to True is silently ignored.
+
+3.67
+----
+API URLs no longer need a "project_id" argument in them. For example, the API
+route: ``https://$(controller)s/volume/v3/$(project_id)s/volumes`` is
+equivalent to ``https://$(controller)s/volume/v3/volumes``. When interacting
+with the cinder service as system or domain scoped users, a project_id should
+not be specified in the API path.

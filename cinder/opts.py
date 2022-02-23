@@ -29,6 +29,7 @@ from cinder import objects  # noqa
 objects.register_all()
 from cinder.api import common as cinder_api_common
 from cinder.api.middleware import auth as cinder_api_middleware_auth
+import cinder.api.openstack
 from cinder.api.views import versions as cinder_api_views_versions
 from cinder.backup import api as cinder_backup_api
 from cinder.backup import chunkeddriver as cinder_backup_chunkeddriver
@@ -219,6 +220,7 @@ def list_opts():
             itertools.chain(
                 cinder_api_common.api_common_opts,
                 [cinder_api_middleware_auth.use_forwarded_for_opt],
+                cinder.api.openstack.openstack_api_opts,
                 cinder_api_views_versions.versions_opts,
                 cinder_backup_api.backup_opts,
                 cinder_backup_chunkeddriver.backup_opts,

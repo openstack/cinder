@@ -125,15 +125,17 @@ class CinderKeystoneContext(base_wsgi.Middleware):
         return self.application
 
 
-class NoAuthMiddleware(base_wsgi.Middleware):
+class NoAuthMiddlewareBase(base_wsgi.Middleware):
     """Return a fake token if one isn't specified."""
 
-    @webob.dec.wsgify(RequestClass=wsgi.Request)
-    def __call__(self, req):
+    def base_call(self, req, project_id_in_path=False):
         if 'X-Auth-Token' not in req.headers:
             user_id = req.headers.get('X-Auth-User', 'admin')
             project_id = req.headers.get('X-Auth-Project-Id', 'admin')
-            os_url = os.path.join(req.url, project_id)
+            if project_id_in_path:
+                os_url = os.path.join(req.url.rstrip('/'), project_id)
+            else:
+                os_url = req.url.rstrip('/')
             res = webob.Response()
             # NOTE(vish): This is expecting and returning Auth(1.1), whereas
             #             keystone uses 2.0 auth.  We should probably allow
@@ -157,3 +159,24 @@ class NoAuthMiddleware(base_wsgi.Middleware):
 
         req.environ['cinder.context'] = ctx
         return self.application
+
+
+class NoAuthMiddleware(NoAuthMiddlewareBase):
+    """Return a fake token if one isn't specified.
+
+    Sets project_id in URLs.
+    """
+
+    @webob.dec.wsgify(RequestClass=wsgi.Request)
+    def __call__(self, req):
+        return self.base_call(req)
+
+
+class NoAuthMiddlewareIncludeProjectID(NoAuthMiddlewareBase):
+    """Return a fake token if one isn't specified.
+
+    Does not set project_id in URLs.
+    """
+    @webob.dec.wsgify(RequestClass=wsgi.Request)
+    def __call__(self, req):
+        return self.base_call(req, project_id_in_path=True)

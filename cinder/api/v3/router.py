@@ -94,27 +94,31 @@ class APIRouter(cinder.api.openstack.APIRouter):
                         controller=self.resources['groups'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
-        mapper.connect("groups",
-                       "/{project_id}/groups/{id}/action",
-                       controller=self.resources["groups"],
-                       action="action",
-                       conditions={"method": ["POST"]})
-        mapper.connect("groups/action",
-                       "/{project_id}/groups/action",
-                       controller=self.resources["groups"],
-                       action="action",
-                       conditions={"method": ["POST"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("groups",
+                           "%s/groups/{id}/action" % path_prefix,
+                           controller=self.resources["groups"],
+                           action="action",
+                           conditions={"method": ["POST"]})
+            mapper.connect("groups/action",
+                           "%s/groups/action" % path_prefix,
+                           controller=self.resources["groups"],
+                           action="action",
+                           conditions={"method": ["POST"]})
 
         self.resources['group_snapshots'] = group_snapshots.create_resource()
         mapper.resource("group_snapshot", "group_snapshots",
                         controller=self.resources['group_snapshots'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
-        mapper.connect("group_snapshots",
-                       "/{project_id}/group_snapshots/{id}/action",
-                       controller=self.resources["group_snapshots"],
-                       action="action",
-                       conditions={"method": ["POST"]})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("group_snapshots",
+                           "%s/group_snapshots/{id}/action" % path_prefix,
+                           controller=self.resources["group_snapshots"],
+                           action="action",
+                           conditions={"method": ["POST"]})
         self.resources['snapshots'] = snapshots.create_resource(ext_mgr)
         mapper.resource("snapshot", "snapshots",
                         controller=self.resources['snapshots'],
@@ -134,11 +138,13 @@ class APIRouter(cinder.api.openstack.APIRouter):
                         parent_resource=dict(member_name='snapshot',
                                              collection_name='snapshots'))
 
-        mapper.connect("metadata",
-                       "/{project_id}/snapshots/{snapshot_id}/metadata",
-                       controller=snapshot_metadata_controller,
-                       action='update_all',
-                       conditions={"method": ['PUT']})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("metadata",
+                           "%s/snapshots/{snapshot_id}/metadata" % path_prefix,
+                           controller=snapshot_metadata_controller,
+                           action='update_all',
+                           conditions={"method": ['PUT']})
 
         self.resources['volume_metadata'] = volume_metadata.create_resource()
         volume_metadata_controller = self.resources['volume_metadata']
@@ -148,11 +154,13 @@ class APIRouter(cinder.api.openstack.APIRouter):
                         parent_resource=dict(member_name='volume',
                                              collection_name='volumes'))
 
-        mapper.connect("metadata",
-                       "/{project_id}/volumes/{volume_id}/metadata",
-                       controller=volume_metadata_controller,
-                       action='update_all',
-                       conditions={"method": ['PUT']})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("metadata",
+                           "%s/volumes/{volume_id}/metadata" % path_prefix,
+                           controller=volume_metadata_controller,
+                           action='update_all',
+                           conditions={"method": ['PUT']})
 
         self.resources['consistencygroups'] = (
             consistencygroups.create_resource())
