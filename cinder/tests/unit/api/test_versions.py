@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from http import HTTPStatus
+import re
 
 import ddt
 from oslo_config import cfg
@@ -20,6 +21,7 @@ from oslo_serialization import jsonutils
 from oslo_utils import encodeutils
 import webob
 
+from cinder.api import microversions
 from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
 from cinder.api.v3 import router
@@ -439,3 +441,18 @@ class VersionsControllerTestCase(test.TestCase):
         resp = encodeutils.safe_decode(response.body, incoming='utf-8')
         self.assertEqual("Pass", resp)
         self.assertEqual(HTTPStatus.OK, response.status_int)
+
+
+class MicroversionsTest(test.TestCase):
+    def test_latest_microversions_present(self):
+        # This test ensures that a developer adds a microversions.py
+        # entry for a new api_version_request._MAX_API_VERSION microversion.
+
+        a = vars(microversions)
+        versions_present = list(v for v in a if re.match(r'[A-Z]+[A-Z_]*', v))
+
+        max_mv = api_version_request._MAX_API_VERSION
+        count = len(list(v for v in versions_present if
+                    getattr(microversions, v) == max_mv))
+        self.assertEqual(
+            1, count, max_mv + ' should be present once in microversions.py')
