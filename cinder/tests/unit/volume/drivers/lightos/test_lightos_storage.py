@@ -58,6 +58,7 @@ DEVICE_SCAN_ATTEMPTS_DEFAULT = 5
 LIGHTOS_API_SERVICE_TIMEOUT = 30
 VOLUME_BACKEND_NAME = "lightos_backend"
 RESERVED_PERCENTAGE = 30
+DEFAULT_COMPRESSION = False
 
 
 class InitiatorConnectorFactoryMocker:
@@ -260,7 +261,8 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         configuration.lightos_jwt = None
         configuration.lightos_snapshotname_prefix = 'openstack_'
         configuration.lightos_intermediate_snapshot_name_prefix = 'for_clone_'
-        configuration.lightos_default_compression_enabled = False
+        configuration.lightos_default_compression_enabled = (
+            DEFAULT_COMPRESSION)
         configuration.lightos_default_num_replicas = 3
         configuration.num_volume_device_scan_tries = (
             DEVICE_SCAN_ATTEMPTS_DEFAULT)
@@ -467,6 +469,73 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         self.driver.extend_volume(volume, 6)
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
+
+    def test_get_volume_specs_compression_True(self):
+        self.driver.do_setup(None)
+
+        vol_type = test_utils.create_volume_type(
+            self.ctxt, self,
+            extra_specs={'compression': 'True'},
+            name='my_vol_typ1')
+
+        vol_type2 = test_utils.create_volume_type(
+            self.ctxt, self,
+            extra_specs={'compression': '<is> True'},
+            name='my_vol_type2')
+
+        vol_type3 = test_utils.create_volume_type(
+            self.ctxt, self,
+            name='my_vol_type3')
+
+        volume1 = test_utils.create_volume(self.ctxt, size=4,
+                                           volume_type_id=vol_type.id)
+        volume2 = test_utils.create_volume(self.ctxt, size=4,
+                                           volume_type_id=vol_type2.id)
+        volume3 = test_utils.create_volume(self.ctxt, size=4,
+                                           volume_type_id=vol_type3.id)
+        compression, _, _ = self.driver._get_volume_specs(volume1)
+        self.assertTrue(compression == "True")
+        compression, _, _ = self.driver._get_volume_specs(volume2)
+        self.assertTrue(compression == "True")
+        compression, _, _ = self.driver._get_volume_specs(volume3)
+        self.assertTrue(compression == "False")
+
+        db.volume_destroy(self.ctxt, volume1.id)
+        db.volume_destroy(self.ctxt, volume2.id)
+        db.volume_destroy(self.ctxt, volume3.id)
+
+    def test_get_volume_specs_compression_False(self):
+        self.driver.do_setup(None)
+        self.driver.configuration.lightos_default_compression_enabled = True
+        vol_type = test_utils.create_volume_type(
+            self.ctxt, self,
+            extra_specs={'compression': 'False'},
+            name='my_vol_typ1')
+
+        vol_type2 = test_utils.create_volume_type(
+            self.ctxt, self,
+            extra_specs={'compression': '<is> False'},
+            name='my_vol_type2')
+
+        vol_type3 = test_utils.create_volume_type(
+            self.ctxt, self,
+            name='my_vol_type3')
+        volume1 = test_utils.create_volume(self.ctxt, size=4,
+                                           volume_type_id=vol_type.id)
+        volume2 = test_utils.create_volume(self.ctxt, size=4,
+                                           volume_type_id=vol_type2.id)
+        volume3 = test_utils.create_volume(self.ctxt, size=4,
+                                           volume_type_id=vol_type3.id)
+        compression, _, _ = self.driver._get_volume_specs(volume1)
+        self.assertTrue(compression == "False")
+        compression, _, _ = self.driver._get_volume_specs(volume2)
+        self.assertTrue(compression == "False")
+        compression, _, _ = self.driver._get_volume_specs(volume3)
+        self.assertTrue(compression == "True")
+
+        db.volume_destroy(self.ctxt, volume1.id)
+        db.volume_destroy(self.ctxt, volume2.id)
+        db.volume_destroy(self.ctxt, volume3.id)
 
     def test_extend_volume_should_fail_if_volume_does_not_exist(self):
         self.driver.do_setup(None)
@@ -695,8 +764,8 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         assert volumes_data['thin_provisioning_support'] is True, \
             "Expected True, received %s" % \
             volumes_data['thin_provisioning_support']
-        assert volumes_data['compression'] is False, \
-            "Expected False, received %s" % volumes_data['compression']
+        assert volumes_data['compression'] == [True, False], \
+            "Expected [True, False], received %s" % volumes_data['compression']
         assert volumes_data['multiattach'] is True, \
             "Expected True, received %s" % volumes_data['multiattach']
         assert volumes_data['free_capacity_gb'] == 'infinite', \
