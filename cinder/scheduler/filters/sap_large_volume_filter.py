@@ -43,8 +43,8 @@ class SAPLargeVolumeFilter(filters.BaseBackendFilter):
         if requested_size == 0:
             return True
 
-        if requested_size > 2000:
-            LOG.info("Cannot allow volumes larger than 2000 GiB on vVol.")
+        if requested_size > 2048:
+            LOG.info("Cannot allow volumes larger than 2048 GiB on vVol.")
             return False
         else:
             return True
