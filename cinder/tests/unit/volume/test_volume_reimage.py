@@ -86,7 +86,7 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
         volume.status = status
         volume.save()
         self.assertEqual(volume.status, status)
-        # The available or error volume can be reimage directly
+        # The available or error volume can be reimaged directly
         self.volume_api.reimage(self.context, volume, self.image_meta['id'])
         mock_check.assert_called_once_with(self.image_meta, volume.size)
         mock_reimage.assert_called_once_with(self.context, volume,
@@ -97,7 +97,7 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
     def test_volume_reimage_api_with_reimage_reserved(self, mock_reimage,
                                                       mock_check):
         volume = tests_utils.create_volume(self.context)
-        # The reserved volume can not be reimage directly, and only can
+        # The reserved volume can not be reimaged directly, and only can
         # be reimaged with reimage_reserved flag
         volume.status = 'reserved'
         volume.save()
@@ -110,7 +110,7 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
 
     def test_volume_reimage_api_with_invaild_status(self):
         volume = tests_utils.create_volume(self.context)
-        # The reserved volume can not be reimage directly, and only can
+        # The reserved volume can not be reimaged directly, and only can
         # be reimaged with reimage_reserved flag
 
         volume.status = 'reserved'

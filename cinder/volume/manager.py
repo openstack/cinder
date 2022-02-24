@@ -5342,7 +5342,7 @@ class VolumeManager(manager.CleanableManager,
                                   for attachment in attachments]
                 nova_api.reimage_volume(context, instance_uuids, volume.id)
 
-            LOG.debug("Re-image %(image_id)s"
+            LOG.debug("Re-imaged %(image_id)s"
                       " to volume %(volume_id)s successfully.",
                       {'image_id': image_id, 'volume_id': volume.id})
         except Exception:
