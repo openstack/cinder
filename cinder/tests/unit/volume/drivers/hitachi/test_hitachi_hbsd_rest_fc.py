@@ -73,6 +73,14 @@ DEFAULT_CONNECTOR = {
     'multipath': False,
 }
 
+DEFAULT_CONNECTOR_AIX = {
+    'os_type': 'aix',
+    'host': 'host',
+    'ip': CONFIG_MAP['my_ip'],
+    'wwpns': [CONFIG_MAP['host_wwn']],
+    'multipath': False,
+}
+
 CTXT = cinder_context.get_admin_context()
 
 TEST_VOLUME = []
@@ -316,6 +324,12 @@ ERROR_RESULT = {
 def _brick_get_connector_properties(multipath=False, enforce_multipath=False):
     """Return a predefined connector object."""
     return DEFAULT_CONNECTOR
+
+
+def _brick_get_connector_properties_aix(
+        multipath=False, enforce_multipath=False):
+    """Return a predefined connector object."""
+    return DEFAULT_CONNECTOR_AIX
 
 
 def reduce_retrying_time(func):
@@ -575,6 +589,36 @@ class HBSDRESTFCDriverTest(test.TestCase):
             drv.common.storage_info['wwns'])
         self.assertEqual(1, brick_get_connector_properties.call_count)
         self.assertEqual(8, request.call_count)
+        # stop the Loopingcall within the do_setup treatment
+        self.driver.common.client.keep_session_loop.stop()
+        self.driver.common.client.keep_session_loop.wait()
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(
+        volume_utils, 'brick_get_connector_properties',
+        side_effect=_brick_get_connector_properties_aix)
+    def test_do_setup_create_hg_aix(
+            self, brick_get_connector_properties, request):
+        """Normal case: The host group not exists in AIX."""
+        drv = hbsd_fc.HBSDFCDriver(
+            configuration=self.configuration)
+        self._setup_config()
+        request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
+                               FakeResponse(200, GET_PORTS_RESULT),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        drv.do_setup(None)
+        self.assertEqual(
+            {CONFIG_MAP['port_id']: CONFIG_MAP['target_wwn']},
+            drv.common.storage_info['wwns'])
+        self.assertEqual(1, brick_get_connector_properties.call_count)
+        self.assertEqual(8, request.call_count)
+        kargs1 = request.call_args_list[6][1]
+        self.assertEqual('AIX', kargs1['json']['hostMode'])
         # stop the Loopingcall within the do_setup treatment
         self.driver.common.client.keep_session_loop.stop()
         self.driver.common.client.keep_session_loop.wait()

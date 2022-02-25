@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Hitachi driver:  Support AIX as host OS type.
+    When running ``cinder attachment-create`` command with the option
+    ``--ostype aix``, ``AIX`` is set as host OS type.
+
