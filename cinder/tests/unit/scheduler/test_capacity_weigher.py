@@ -114,7 +114,7 @@ class CapacityWeigherTestCase(test.TestCase):
         {'volume_type': {'extra_specs': {'provisioning:type': 'thin'}},
          'winner': 'host4'},
         {'volume_type': {'extra_specs': {'provisioning:type': 'thick'}},
-         'winner': 'host2'},
+         'winner': 'host4'},
         {'volume_type': {'extra_specs': {}},
          'winner': 'host4'},
         {'volume_type': {},

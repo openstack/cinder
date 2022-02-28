@@ -17,11 +17,10 @@
 #    under the License.
 
 
-import math
-
 from oslo_log import log as logging
 
 from cinder.scheduler import filters
+from cinder import utils
 
 
 LOG = logging.getLogger(__name__)
@@ -103,10 +102,6 @@ class CapacityFilter(filters.BaseBackendFilter):
                          "grouping_name": backend_state.backend_id})
             return False
 
-        # Calculate how much free space is left after taking into account
-        # the reserved space.
-        free = free_space - math.floor(total * reserved)
-
         # NOTE(xyang): If 'provisioning:type' is 'thick' in extra_specs,
         # we will not use max_over_subscription_ratio and
         # provisioned_capacity_gb to determine whether a volume can be
@@ -118,18 +113,45 @@ class CapacityFilter(filters.BaseBackendFilter):
         if provision_type == 'thick':
             thin = False
 
+        thin_support = backend_state.thin_provisioning_support
+        if thin_support:
+            max_over_subscription_ratio = (
+                backend_state.max_over_subscription_ratio
+            )
+        else:
+            max_over_subscription_ratio = 1
+
+        # NOTE(hemna): this takes into consideration all major factors
+        # including reserved space, free_space (reported by driver),
+        # and over subscription ratio.
+        factors = utils.calculate_capacity_factors(
+            total_space,
+            free_space,
+            backend_state.provisioned_capacity_gb,
+            thin_support,
+            max_over_subscription_ratio,
+            backend_state.reserved_percentage,
+            thin
+        )
+        virtual_free_space = factors["virtual_free_capacity"]
+        LOG.debug("Storage Capacity factors %s", factors)
+
         msg_args = {"grouping_name": backend_state.backend_id,
                     "grouping": grouping,
                     "requested": requested_size,
-                    "available": free}
+                    "available": virtual_free_space}
+
         # Only evaluate using max_over_subscription_ratio if
         # thin_provisioning_support is True. Check if the ratio of
         # provisioned capacity over total capacity has exceeded over
         # subscription ratio.
         if (thin and backend_state.thin_provisioning_support and
                 backend_state.max_over_subscription_ratio >= 1):
-            provisioned_ratio = ((backend_state.provisioned_capacity_gb +
-                                  requested_size) / total)
+            provisioned_ratio = (
+                (backend_state.provisioned_capacity_gb + requested_size) / (
+                    factors["total_available_capacity"]
+                )
+            )
             LOG.debug("Checking provisioning for request of %s GB. "
                       "Backend: %s", requested_size, backend_state)
             if provisioned_ratio > backend_state.max_over_subscription_ratio:
@@ -149,14 +171,12 @@ class CapacityFilter(filters.BaseBackendFilter):
             else:
                 # Thin provisioning is enabled and projected over-subscription
                 # ratio does not exceed max_over_subscription_ratio. The host
-                # passes if "adjusted" free virtual capacity is enough to
+                # passes if virtual free capacity is enough to
                 # accommodate the volume. Adjusted free virtual capacity is
                 # the currently available free capacity (taking into account
                 # of reserved space) which we can over-subscribe.
-                adjusted_free_virtual = (
-                    free * backend_state.max_over_subscription_ratio)
-                msg_args["available"] = adjusted_free_virtual
-                res = adjusted_free_virtual >= requested_size
+                msg_args["available"] = virtual_free_space
+                res = virtual_free_space >= requested_size
                 if not res:
                     LOG.warning("Insufficient free virtual space "
                                 "(%(available)sGB) to accommodate thin "
@@ -179,7 +199,7 @@ class CapacityFilter(filters.BaseBackendFilter):
                          "grouping_name": backend_state.backend_id})
             return False
 
-        if free < requested_size:
+        if virtual_free_space < requested_size:
             LOG.warning("Insufficient free space for volume creation "
                         "on %(grouping)s %(grouping_name)s (requested / "
                         "avail): %(requested)s/%(available)s",
