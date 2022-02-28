@@ -1,0 +1,8 @@
+---
+other:
+  - |
+    Unified how cinder calculates the virtual free storage space for a pool.
+    Previously Cinder had 2 different mechanisms for calculating the
+    virtual free storage.  Now both the Capacity Filter and the Capacity
+    Weigher use the same mechanism, which is based upon the defined terms in
+    https://specs.openstack.org/openstack/cinder-specs/specs/queens/provisioning-improvements.html
