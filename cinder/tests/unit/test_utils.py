@@ -1083,10 +1083,10 @@ class TestCalculateVirtualFree(test.TestCase):
          'is_thin_lun': False, 'expected': 27.01},
         {'total': 20.01, 'free': 18.01, 'provisioned': 2.0, 'max_ratio': 2.0,
          'thin_support': True, 'thick_support': False,
-         'is_thin_lun': True, 'expected': 37.02},
+         'is_thin_lun': True, 'expected': 36.02},
         {'total': 20.01, 'free': 18.01, 'provisioned': 2.0, 'max_ratio': 2.0,
          'thin_support': True, 'thick_support': True,
-         'is_thin_lun': True, 'expected': 37.02},
+         'is_thin_lun': True, 'expected': 36.02},
         {'total': 30.01, 'free': 28.01, 'provisioned': 2.0, 'max_ratio': 2.0,
          'thin_support': True, 'thick_support': True,
          'is_thin_lun': False, 'expected': 27.01},
@@ -1113,6 +1113,98 @@ class TestCalculateVirtualFree(test.TestCase):
             is_thin_lun)
 
         self.assertEqual(expected, free_capacity)
+
+    @ddt.data(
+        {'total': 30.01, 'free': 28.01, 'provisioned': 2.0, 'max_ratio': 1.0,
+         'thin_support': False, 'thick_support': True,
+         'is_thin_lun': False, 'reserved_percentage': 5,
+         'expected_total_capacity': 30.01,
+         'expected_reserved_capacity': 1,
+         'expected_free_capacity': 28.01,
+         'expected_total_available_capacity': 29.01,
+         'expected_virtual_free': 27.01,
+         'expected_free_percent': 93.11,
+         'expected_provisioned_type': 'thick',
+         'expected_provisioned_ratio': 0.07},
+        {'total': 20.01, 'free': 18.01, 'provisioned': 2.0, 'max_ratio': 2.0,
+         'thin_support': True, 'thick_support': False,
+         'is_thin_lun': True, 'reserved_percentage': 10,
+         'expected_total_capacity': 20.01,
+         'expected_reserved_capacity': 2,
+         'expected_free_capacity': 18.01,
+         'expected_total_available_capacity': 36.02,
+         'expected_virtual_free': 34.02,
+         'expected_free_percent': 94.45,
+         'expected_provisioned_type': 'thin',
+         'expected_provisioned_ratio': 0.06},
+        {'total': 20.01, 'free': 18.01, 'provisioned': 2.0, 'max_ratio': 2.0,
+         'thin_support': True, 'thick_support': True,
+         'is_thin_lun': True, 'reserved_percentage': 20,
+         'expected_total_capacity': 20.01,
+         'expected_reserved_capacity': 4,
+         'expected_free_capacity': 18.01,
+         'expected_total_available_capacity': 32.02,
+         'expected_virtual_free': 30.02,
+         'expected_free_percent': 93.75,
+         'expected_provisioned_type': 'thin',
+         'expected_provisioned_ratio': 0.06},
+        {'total': 30.01, 'free': 28.01, 'provisioned': 2.0, 'max_ratio': 2.0,
+         'thin_support': True, 'thick_support': True,
+         'is_thin_lun': False, 'reserved_percentage': 10,
+         'expected_total_capacity': 30.01,
+         'expected_reserved_capacity': 3,
+         'expected_free_capacity': 28.01,
+         'expected_total_available_capacity': 27.01,
+         'expected_virtual_free': 25.01,
+         'expected_free_percent': 92.6,
+         'expected_provisioned_type': 'thick',
+         'expected_provisioned_ratio': 0.07},
+    )
+    @ddt.unpack
+    def test_utils_calculate_capacity_factors(
+            self, total, free, provisioned, max_ratio, thin_support,
+            thick_support, is_thin_lun, reserved_percentage,
+            expected_total_capacity,
+            expected_reserved_capacity,
+            expected_free_capacity,
+            expected_total_available_capacity,
+            expected_virtual_free,
+            expected_free_percent,
+            expected_provisioned_type,
+            expected_provisioned_ratio):
+        host_stat = {'total_capacity_gb': total,
+                     'free_capacity_gb': free,
+                     'provisioned_capacity_gb': provisioned,
+                     'max_over_subscription_ratio': max_ratio,
+                     'thin_provisioning_support': thin_support,
+                     'thick_provisioning_support': thick_support,
+                     'reserved_percentage': reserved_percentage}
+
+        factors = utils.calculate_capacity_factors(
+            host_stat['total_capacity_gb'],
+            host_stat['free_capacity_gb'],
+            host_stat['provisioned_capacity_gb'],
+            host_stat['thin_provisioning_support'],
+            host_stat['max_over_subscription_ratio'],
+            host_stat['reserved_percentage'],
+            is_thin_lun)
+
+        self.assertEqual(expected_total_capacity,
+                         factors['total_capacity'])
+        self.assertEqual(expected_reserved_capacity,
+                         factors['reserved_capacity'])
+        self.assertEqual(expected_free_capacity,
+                         factors['free_capacity'])
+        self.assertEqual(expected_total_available_capacity,
+                         factors['total_available_capacity'])
+        self.assertEqual(expected_virtual_free,
+                         factors['virtual_free_capacity'])
+        self.assertEqual(expected_free_percent,
+                         factors['free_percent'])
+        self.assertEqual(expected_provisioned_type,
+                         factors['provisioned_type'])
+        self.assertEqual(expected_provisioned_ratio,
+                         factors['provisioned_ratio'])
 
 
 class Comparable(utils.ComparableMixin):
