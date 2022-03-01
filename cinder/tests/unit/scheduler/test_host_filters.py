@@ -1025,7 +1025,7 @@ class InstanceLocalityFilterTestCase(BackendFiltersTestCase):
             fakes.FakeNovaClient().list_extensions.show_all())
         filt_cls = self.class_map['InstanceLocalityFilter']()
         host = fakes.FakeBackendState('host1', {})
-        uuid = nova.novaclient().servers.create('host1')
+        uuid = nova.novaclient(context=self.context).servers.create('host1')
 
         filter_properties = {'context': self.context,
                              'scheduler_hints': {'local_to_instance': uuid},
@@ -1040,7 +1040,7 @@ class InstanceLocalityFilterTestCase(BackendFiltersTestCase):
             fakes.FakeNovaClient().list_extensions.show_all())
         filt_cls = self.class_map['InstanceLocalityFilter']()
         host = fakes.FakeBackendState('host1', {})
-        uuid = nova.novaclient().servers.create('host2')
+        uuid = nova.novaclient(context=self.context).servers.create('host2')
 
         filter_properties = {'context': self.context,
                              'scheduler_hints': {'local_to_instance': uuid},
