@@ -1647,11 +1647,14 @@ def volume_data_get_for_project(context, project_id, host=None):
                                         skip_internal=False)
 
 
-VOLUME_DEPENDENT_MODELS = frozenset([models.VolumeMetadata,
-                                     models.VolumeAdminMetadata,
-                                     models.Transfer,
-                                     models.VolumeGlanceMetadata,
-                                     models.VolumeAttachment])
+VOLUME_DEPENDENT_MODELS = frozenset([
+    models.VolumeMetadata,
+    models.VolumeAdminMetadata,
+    models.Snapshot,
+    models.Transfer,
+    models.VolumeGlanceMetadata,
+    models.VolumeAttachment,
+])
 
 
 @require_admin_context
