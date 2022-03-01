@@ -39,6 +39,7 @@ from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import cast_as_call
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import api as volume_api
@@ -216,6 +217,77 @@ class AdminActionsTest(BaseAdminTest):
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual(fields.VolumeAttachStatus.DETACHED,
                          volume['attach_status'])
+
+    def test_reset_detached_status_to_attached(self):
+        volume = db.volume_create(self.ctx,
+                                  {'status': 'available',
+                                   'attach_status':
+                                   fields.VolumeAttachStatus.DETACHED,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
+        resp = self._issue_volume_reset(self.ctx,
+                                        volume,
+                                        {'attach_status':
+                                         fields.VolumeAttachStatus.ATTACHED})
+        self.assertEqual(HTTPStatus.ACCEPTED, resp.status_int)
+        volume = db.volume_get(self.ctx, volume['id'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         volume['attach_status'])
+
+    def test_reset_attached_status_to_attached(self):
+        volume = db.volume_create(self.ctx,
+                                  {'status': 'available',
+                                   'attach_status':
+                                   fields.VolumeAttachStatus.ATTACHED,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
+        resp = self._issue_volume_reset(self.ctx,
+                                        volume,
+                                        {'attach_status':
+                                         fields.VolumeAttachStatus.ATTACHED})
+        self.assertEqual(HTTPStatus.ACCEPTED, resp.status_int)
+        volume = db.volume_get(self.ctx, volume['id'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         volume['attach_status'])
+
+    def test_reset_in_use_to_in_use_fail(self):
+        volume = db.volume_create(self.ctx,
+                                  {'status': 'in-use',
+                                   'attach_status':
+                                   fields.VolumeAttachStatus.ATTACHED,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
+        resp = self._issue_volume_reset(self.ctx,
+                                        volume,
+                                        {'status': 'in-use'})
+        self.assertEqual(HTTPStatus.BAD_REQUEST, resp.status_int)
+
+    def test_reset_available_to_in_use_on_nonattached_volume_fail(self):
+        volume = db.volume_create(self.ctx,
+                                  {'status': 'available',
+                                   'attach_status':
+                                   fields.VolumeAttachStatus.DETACHED,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
+        resp = self._issue_volume_reset(self.ctx,
+                                        volume,
+                                        {'status': 'in-use'})
+        self.assertEqual(HTTPStatus.BAD_REQUEST, resp.status_int)
+
+    @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
+    def test_reset_available_to_in_use_on_attached_volume(
+            self, get_attachment):
+        volume = db.volume_create(self.ctx,
+                                  {'status': 'available',
+                                   'attach_status':
+                                   fields.VolumeAttachStatus.ATTACHED,
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
+        resp = self._issue_volume_reset(self.ctx,
+                                        volume,
+                                        {'status': 'in-use'})
+        db_attachment = fake_volume.volume_attachment_db_obj()
+        get_attachment.return_value = [db_attachment]
+        self.assertEqual(HTTPStatus.ACCEPTED, resp.status_int)
+        volume = db.volume_get(self.ctx, volume['id'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         volume['attach_status'])
+        self.assertEqual('in-use', volume['status'])
 
     def test_reset_migration_invalid_status(self):
         volume = db.volume_create(self.ctx, {'migration_status': None,
