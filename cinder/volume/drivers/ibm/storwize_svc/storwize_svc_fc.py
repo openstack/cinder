@@ -96,9 +96,10 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         2.2.3 - Add replication group support
         2.2.4 - Add backup snapshots support
         2.2.5 - Add hyperswap support
+        2.2.6 - Add support for host attachment using portsets
     """
 
-    VERSION = "2.2.5"
+    VERSION = "2.2.6"
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_STORAGE_CI"
@@ -190,7 +191,10 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         # this connector info.
         host_name = None
         try:
-            host_name = backend_helper.create_host(connector, site=host_site)
+            opts = self._get_vdisk_params(volume.volume_type_id)
+            host_name = (
+                backend_helper.create_host(connector, site=host_site,
+                                           portset=opts['storwize_portset']))
         except exception.VolumeBackendAPIException as excp:
             if "CMMVC6035E" in excp.msg:
                 msg = (_('Host already exists for connector '
@@ -266,8 +270,10 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
                         conn_wwpns.extend(node['WWPN'])
                     else:
                         npiv_wwpns = backend_helper.get_npiv_wwpns(
+                            node_state['code_level'],
                             node_id=node['id'],
-                            host_io="yes")
+                            host_io="yes",
+                            portset=opts['storwize_portset'])
                         conn_wwpns.extend(npiv_wwpns)
 
             properties['target_wwn'] = conn_wwpns
@@ -423,8 +429,10 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             if node_state['code_level'] < (7, 7, 0, 0):
                 conn_wwpns.extend(node['WWPN'])
             else:
-                npivwwpns = backend_helper.get_npiv_wwpns(node_id=node['id'],
-                                                          host_io="yes")
+                npivwwpns = (
+                    backend_helper.get_npiv_wwpns(node_state['code_level'],
+                                                  node_id=node['id'],
+                                                  host_io="yes"))
                 conn_wwpns.extend(npivwwpns)
 
         i_t_map = self._make_initiator_target_map(connector['wwpns'],

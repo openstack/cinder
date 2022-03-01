@@ -94,9 +94,10 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         2.2.2 - Add replication group support
         2.2.3 - Add backup snapshots support
         2.2.4 - Add hyperswap support
+        2.2.5 - Add support for host attachment using portsets
     """
 
-    VERSION = "2.2.4"
+    VERSION = "2.2.5"
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_STORAGE_CI"
@@ -183,8 +184,11 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         # this connector info.
         host_name = None
         try:
-            host_name = backend_helper.create_host(connector, iscsi=True,
-                                                   site=host_site)
+            opts = self._get_vdisk_params(volume.volume_type_id)
+            host_name = (
+                backend_helper.create_host(connector, iscsi=True,
+                                           site=host_site,
+                                           portset=opts['storwize_portset']))
         except exception.VolumeBackendAPIException as excp:
             if "CMMVC6578E" in excp.msg:
                 msg = (_('Host already exists for connector '
@@ -213,13 +217,15 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
 
         try:
             properties = self._get_single_iscsi_data(volume, connector,
-                                                     lun_id, chap_secret)
+                                                     lun_id, chap_secret,
+                                                     opts['storwize_portset'])
             multipath = connector.get('multipath', False)
             if multipath:
-                properties = self._get_multi_iscsi_data(volume, connector,
-                                                        lun_id, properties,
-                                                        backend_helper,
-                                                        node_state)
+                properties = (
+                    self._get_multi_iscsi_data(volume, connector,
+                                               lun_id, properties,
+                                               backend_helper, node_state,
+                                               opts['storwize_portset']))
         except Exception as ex:
             with excutils.save_and_reraise_exception():
                 LOG.error('initialize_connection: Failed to export volume '
@@ -240,7 +246,8 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
 
         return {'driver_volume_type': 'iscsi', 'data': properties, }
 
-    def _get_single_iscsi_data(self, volume, connector, lun_id, chap_secret):
+    def _get_single_iscsi_data(self, volume, connector, lun_id,
+                               chap_secret, portset):
         LOG.debug('enter: _get_single_iscsi_data: volume %(vol)s with '
                   'connector %(conn)s lun_id %(lun_id)s',
                   {'vol': volume.id, 'conn': connector,
@@ -277,6 +284,11 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         # Get preferred node and other nodes in I/O group
         preferred_node_entry = None
         io_group_nodes = []
+        if node_state['code_level'] >= (8, 4, 2, 0):
+            backend_helper.add_iscsi_ip_addrs(node_state['storage_nodes'],
+                                              node_state['code_level'],
+                                              portset=portset)
+
         for node in node_state['storage_nodes'].values():
             if self.protocol not in node['enabled_protocols']:
                 continue
@@ -305,10 +317,14 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
             'target_lun': lun_id,
             'volume_id': volume.id}
 
-        if preferred_node_entry['ipv4']:
-            ipaddr = preferred_node_entry['ipv4'][0]
+        if node_state['code_level'] >= (8, 4, 2, 0):
+            if preferred_node_entry['IP_address']:
+                ipaddr = preferred_node_entry['IP_address'][0]
         else:
-            ipaddr = preferred_node_entry['ipv6'][0]
+            if preferred_node_entry['ipv4']:
+                ipaddr = preferred_node_entry['ipv4'][0]
+            else:
+                ipaddr = preferred_node_entry['ipv6'][0]
         properties['target_portal'] = '%s:%s' % (ipaddr, '3260')
         properties['target_iqn'] = preferred_node_entry['iscsi_name']
         if chap_secret:
@@ -327,14 +343,18 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         return properties
 
     def _get_multi_iscsi_data(self, volume, connector, lun_id, properties,
-                              backend_helper, node_state):
+                              backend_helper, node_state, portset):
         LOG.debug('enter: _get_multi_iscsi_data: volume %(vol)s with '
                   'connector %(conn)s lun_id %(lun_id)s',
                   {'vol': volume.id, 'conn': connector,
                    'lun_id': lun_id})
 
         try:
-            resp = backend_helper.ssh.lsportip()
+            if node_state['code_level'] >= (8, 4, 2, 0):
+                portset_name = portset if portset else 'portset0'
+                resp = backend_helper.ssh.lsip(portset=portset_name)
+            else:
+                resp = backend_helper.ssh.lsportip()
         except Exception as ex:
             msg = (_('_get_multi_iscsi_data: Failed to '
                      'get port ip because of exception: '
@@ -351,11 +371,14 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
                     continue
                 link_state = ip_data.get('link_state', None)
                 valid_port = ''
-                if ((ip_data['state'] == 'configured' and
-                        link_state == 'active') or
-                        ip_data['state'] == 'online'):
-                    valid_port = (ip_data['IP_address'] or
-                                  ip_data['IP_address_6'])
+                if node_state['code_level'] >= (8, 4, 2, 0):
+                    valid_port = ip_data['IP_address']
+                else:
+                    if ((ip_data['state'] == 'configured' and
+                            link_state == 'active') or
+                            ip_data['state'] == 'online'):
+                        valid_port = (ip_data['IP_address'] or
+                                      ip_data['IP_address_6'])
                 if valid_port:
                     properties['target_portals'].append(
                         '%s:%s' % (valid_port, '3260'))
