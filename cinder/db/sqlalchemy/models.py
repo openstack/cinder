@@ -838,7 +838,7 @@ class Reservation(BASE, CinderBase):
 
     delta = sa.Column(sa.Integer, nullable=False)
     # TODO(stephenfin): Add nullable=False
-    expire = sa.Column(sa.DateTime(timezone=False))
+    expire = sa.Column(sa.DateTime)
 
     usage = relationship(
         "QuotaUsage",
