@@ -913,8 +913,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         data = self.driver.initialize_connection(volume, connector)
         self.assertEqual('iscsi', data['driver_volume_type'])
         # verify find_volume has been called and that is has been called twice
-        mock_find_volume.called_once_with(fake.VOLUME_ID, provider_id)
-        mock_get_volume.called_once_with(provider_id)
+        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, provider_id,
+                                                 False)
+        mock_get_volume.assert_called_once_with(provider_id)
         props = self.ISCSI_PROPERTIES.copy()
         expected = {'data': props,
                     'driver_volume_type': 'iscsi'}
