@@ -30,16 +30,16 @@ from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
-from cinder.volume.drivers import nimble
+from cinder.volume.drivers.hpe import nimble
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
-NIMBLE_CLIENT = 'cinder.volume.drivers.nimble.NimbleRestAPIExecutor'
-NIMBLE_URLLIB2 = 'cinder.volume.drivers.nimble.requests'
-NIMBLE_RANDOM = 'cinder.volume.drivers.nimble.random'
-NIMBLE_ISCSI_DRIVER = 'cinder.volume.drivers.nimble.NimbleISCSIDriver'
-NIMBLE_FC_DRIVER = 'cinder.volume.drivers.nimble.NimbleFCDriver'
-DRIVER_VERSION = '4.1.0'
+NIMBLE_CLIENT = 'cinder.volume.drivers.hpe.nimble.NimbleRestAPIExecutor'
+NIMBLE_URLLIB2 = 'cinder.volume.drivers.hpe.nimble.requests'
+NIMBLE_RANDOM = 'cinder.volume.drivers.hpe.nimble.random'
+NIMBLE_ISCSI_DRIVER = 'cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver'
+NIMBLE_FC_DRIVER = 'cinder.volume.drivers.hpe.nimble.NimbleFCDriver'
+DRIVER_VERSION = '4.2.0'
 nimble.DEFAULT_SLEEP = 0
 
 FAKE_POSITIVE_LOGIN_RESPONSE_1 = '2c20aad78a220ed1dae21dcd6f9446f5'

@@ -48,7 +48,7 @@ from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 
-DRIVER_VERSION = "4.1.0"
+DRIVER_VERSION = "4.2.0"
 AES_256_XTS_CIPHER = 'aes_256_xts'
 DEFAULT_CIPHER = 'none'
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
@@ -136,11 +136,13 @@ class NimbleBaseVolumeDriver(san.SanDriver):
         4.1.0 - Added multiattach support
                 Added revert to snapshot support
                 Added consistency groups support
+        4.2.0 - The Nimble driver is now located in the
+                cinder.volume.drivers.hpe module.
     """
     VERSION = DRIVER_VERSION
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "Nimble_Storage_CI"
+    CI_WIKI_NAME = "HPE_Nimble_Storage_CI"
 
     def __init__(self, *args, **kwargs):
         super(NimbleBaseVolumeDriver, self).__init__(*args, **kwargs)
