@@ -1369,15 +1369,6 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         """Clean up after an interrupted image copy."""
         pass
 
-    def attach_volume(self, context, volume, instance_uuid, host_name,
-                      mountpoint):
-        """Callback for volume attached to instance or host."""
-        pass
-
-    def detach_volume(self, context, volume, attachment=None):
-        """Callback for volume detached."""
-        pass
-
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         pass

@@ -69,9 +69,7 @@ class AttachmentManagerTestCase(test.TestCase):
                   'attach_mode': 'rw'}
         attachment_ref = db.volume_attach(self.context, values)
         with mock.patch.object(
-                self.manager, '_notify_about_volume_usage'),\
-                mock.patch.object(
-                self.manager.driver, 'attach_volume') as mock_attach:
+                self.manager, '_notify_about_volume_usage'):
             expected = {
                 'encrypted': False,
                 'qos_specs': None,
@@ -87,11 +85,6 @@ class AttachmentManagerTestCase(test.TestCase):
                                  vref,
                                  connector,
                                  attachment_ref.id))
-            mock_attach.assert_called_once_with(self.context,
-                                                vref,
-                                                attachment_ref.instance_uuid,
-                                                connector['host'],
-                                                "na")
             expected = {
                 'encrypted': False,
                 'qos_specs': None,
@@ -196,8 +189,7 @@ class AttachmentManagerTestCase(test.TestCase):
         @mock.patch.object(self.context, 'elevated')
         @mock.patch.object(self.manager, '_connection_terminate')
         @mock.patch.object(self.manager.driver, 'remove_export')
-        @mock.patch.object(self.manager.driver, 'detach_volume')
-        def _test(mock_detach, mock_rm_export, mock_con_term, mock_elevated,
+        def _test(mock_rm_export, mock_con_term, mock_elevated,
                   mock_db_detached, mock_db_meta_delete, mock_get_attachment):
             mock_elevated.return_value = self.context
             mock_con_term.return_value = False
@@ -214,8 +206,6 @@ class AttachmentManagerTestCase(test.TestCase):
 
             self.manager.attachment_delete(self.context, attachment1.id, vref)
 
-            mock_detach.assert_called_once_with(self.context, vref,
-                                                attachment1)
             mock_db_detached.called_once_with(self.context, vref,
                                               attachment1.id)
             mock_db_meta_delete.called_once_with(self.context, vref.id,
@@ -227,7 +217,6 @@ class AttachmentManagerTestCase(test.TestCase):
             mock_con_term.return_value = True
             vref.volume_attachment.objects.append(attachment2)
 
-            mock_detach.reset_mock()
             mock_rm_export.reset_mock()
             mock_db_detached.reset_mock()
             mock_db_meta_delete.reset_mock()

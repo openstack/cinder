@@ -2291,62 +2291,10 @@ class SolidFireDriver(san.SanISCSIDriver):
         properties['data']['discard'] = True
         return properties
 
-    def attach_volume(self, context, volume,
-                      instance_uuid, host_name,
-                      mountpoint):
-
-        sfaccount = self._get_sfaccount(volume['project_id'])
-        params = {'accountID': sfaccount['accountID']}
-
-        # In a retype of an attached volume scenario, the volume id will be
-        # as a target on 'migration_status', otherwise it'd be None.
-        migration_status = volume.get('migration_status')
-        if migration_status and 'target' in migration_status:
-            __, vol_id = migration_status.split(':')
-        else:
-            vol_id = volume['id']
-        sf_vol = self._get_sf_volume(vol_id, params)
-        if sf_vol is None:
-            LOG.error("Volume ID %s was not found on "
-                      "the SolidFire Cluster while attempting "
-                      "attach_volume operation!", volume['id'])
-            raise exception.VolumeNotFound(volume_id=volume['id'])
-
-        attributes = sf_vol['attributes']
-        attributes['attach_time'] = volume.get('attach_time', None)
-        attributes['attached_to'] = instance_uuid
-        params = {
-            'volumeID': sf_vol['volumeID'],
-            'attributes': attributes
-        }
-
-        self._issue_api_request('ModifyVolume', params)
-
     def terminate_connection(self, volume, properties, force):
         return self._sf_terminate_connection(volume,
                                              properties,
                                              force)
-
-    def detach_volume(self, context, volume, attachment=None):
-        sfaccount = self._get_sfaccount(volume['project_id'])
-        params = {'accountID': sfaccount['accountID']}
-
-        sf_vol = self._get_sf_volume(volume['id'], params)
-        if sf_vol is None:
-            LOG.error("Volume ID %s was not found on "
-                      "the SolidFire Cluster while attempting "
-                      "detach_volume operation!", volume['id'])
-            raise exception.VolumeNotFound(volume_id=volume['id'])
-
-        attributes = sf_vol['attributes']
-        attributes['attach_time'] = None
-        attributes['attached_to'] = None
-        params = {
-            'volumeID': sf_vol['volumeID'],
-            'attributes': attributes
-        }
-
-        self._issue_api_request('ModifyVolume', params)
 
     def accept_transfer(self, context, volume,
                         new_user, new_project):
