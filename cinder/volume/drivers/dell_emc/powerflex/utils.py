@@ -14,17 +14,17 @@
 #    under the License.
 import base64
 import binascii
-from distutils import version
 import math
 
 from oslo_log import log as logging
 from oslo_utils import units
+from packaging import version
 
 LOG = logging.getLogger(__name__)
 
 
 def version_gte(ver1, ver2):
-    return version.LooseVersion(ver1) >= version.LooseVersion(ver2)
+    return version.parse(ver1) >= version.parse(ver2)
 
 
 def convert_kb_to_gib(size):

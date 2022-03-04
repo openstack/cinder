@@ -15,13 +15,13 @@
 #
 import collections
 import copy
-import distutils.version as dist_version  # pylint: disable=E0611
 import math
 import os
 import string
 
 import eventlet
 from oslo_log import log as logging
+import packaging.version as dist_version  # pylint: disable=E0611
 import six
 
 from cinder import coordination
@@ -226,8 +226,8 @@ class DS8KCommonHelper(object):
                          % self.INVALID_STORAGE_VERSION))
         rest_ver = self.backend['rest_version'][0:2]
         if ('87' == rest_ver and
-           dist_version.LooseVersion(self.backend['rest_version']) <
-           dist_version.LooseVersion(self.VALID_REST_VERSION_87_51_MIN)):
+           dist_version.parse(self.backend['rest_version']) <
+           dist_version.parse(self.VALID_REST_VERSION_87_51_MIN)):
             raise exception.VolumeDriverException(
                 message=(_("REST version %(invalid)s is lower than "
                            "%(valid)s, please upgrade it in DS8K.")
@@ -242,12 +242,12 @@ class DS8KCommonHelper(object):
         valid_rest_version = None
         rest_ver = self.backend['rest_version'][0:2]
         if ('87' == rest_ver and
-           dist_version.LooseVersion(self.backend['rest_version']) <
-           dist_version.LooseVersion(self.REST_VERSION_87_51_MIN_PPRC_CG)):
+           dist_version.parse(self.backend['rest_version']) <
+           dist_version.parse(self.REST_VERSION_87_51_MIN_PPRC_CG)):
             valid_rest_version = self.REST_VERSION_87_51_MIN_PPRC_CG
         elif ('88' == rest_ver and
-              dist_version.LooseVersion(self.backend['rest_version']) <
-              dist_version.LooseVersion(self.REST_VERSION_88_20_MIN_PPRC_CG)):
+              dist_version.parse(self.backend['rest_version']) <
+              dist_version.parse(self.REST_VERSION_88_20_MIN_PPRC_CG)):
             valid_rest_version = self.REST_VERSION_88_20_MIN_PPRC_CG
 
         if valid_rest_version:
@@ -1092,17 +1092,17 @@ class DS8KECKDHelper(DS8KCommonHelper):
                            "please upgrade the CCL.")
                          % self.INVALID_STORAGE_VERSION))
         # DS8K supports ECKD ESE volume from 8.1
-        if (dist_version.LooseVersion(self.backend['storage_version']) <
-           dist_version.LooseVersion(self.MIN_VALID_STORAGE_VERSION)):
+        if (dist_version.parse(self.backend['storage_version']) <
+           dist_version.parse(self.MIN_VALID_STORAGE_VERSION)):
             self._disable_thin_provision = True
 
         rest_ver = self.backend['rest_version'][0:2]
         if (('87' == rest_ver and
-           dist_version.LooseVersion(self.backend['rest_version']) <
-           dist_version.LooseVersion(self.VALID_REST_VERSION_87_51_MIN)) or
+           dist_version.parse(self.backend['rest_version']) <
+           dist_version.parse(self.VALID_REST_VERSION_87_51_MIN)) or
            ('88' == rest_ver and
-           dist_version.LooseVersion(self.backend['rest_version']) <
-           dist_version.LooseVersion(self.VALID_REST_VERSION_88_20_MIN))):
+           dist_version.parse(self.backend['rest_version']) <
+           dist_version.parse(self.VALID_REST_VERSION_88_20_MIN))):
             raise exception.VolumeDriverException(
                 message=(_("REST version %(invalid)s is lower than "
                            "%(valid)s, please upgrade it in DS8K.")
