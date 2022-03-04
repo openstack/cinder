@@ -2786,10 +2786,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         device_changes.extend(
             self.volumeops._create_device_change_for_vif_removal(instance))
 
+        # Remove another attribute by which the nova driver identifies VMs
+        extra_config = {'nvp.vm-uuid': ''}
+
         return self.volumeops.clone_backing(
             tmp_name, instance, None, volumeops.FULL_CLONE_TYPE, datastore,
             host=host, resource_pool=rp, folder=folder,
-            device_changes=device_changes)
+            device_changes=device_changes, extra_config=extra_config)
 
     def _extend_if_needed(self, volume, backing):
         volume_size = volume.size * units.Gi

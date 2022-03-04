@@ -2602,7 +2602,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.clone_backing.assert_called_once_with(
             tmp_name, instance, None, volumeops.FULL_CLONE_TYPE, datastore,
             host=host, resource_pool=rp, folder=folder,
-            device_changes=[dev_change_disk_remove])
+            device_changes=[dev_change_disk_remove],
+            extra_config={'nvp.vm-uuid': ''})
 
     @mock.patch.object(VMDK_DRIVER, '_get_disk_type')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
