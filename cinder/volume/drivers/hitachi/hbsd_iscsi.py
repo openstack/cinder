@@ -21,6 +21,7 @@ from oslo_utils import excutils
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hbsd_common as common
+from cinder.volume.drivers.hitachi import hbsd_rest as rest
 from cinder.volume.drivers.hitachi import hbsd_rest_iscsi as rest_iscsi
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume import volume_utils
@@ -88,6 +89,17 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
 
     def _init_common(self, conf, db):
         return rest_iscsi.HBSDRESTISCSI(conf, _DRIVER_INFO, db)
+
+    @staticmethod
+    def get_driver_options():
+        additional_opts = HBSDISCSIDriver._get_oslo_driver_opts(
+            *(common._INHERITED_VOLUME_OPTS +
+              rest._REQUIRED_REST_OPTS +
+              ['driver_ssl_cert_verify', 'driver_ssl_cert_path',
+               'san_api_port', ]))
+        return (common.COMMON_VOLUME_OPTS +
+                rest.REST_VOLUME_OPTS +
+                additional_opts)
 
     def check_for_setup_error(self):
         pass

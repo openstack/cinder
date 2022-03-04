@@ -37,6 +37,7 @@ from cinder.volume.drivers.hitachi import hbsd_common
 from cinder.volume.drivers.hitachi import hbsd_fc
 from cinder.volume.drivers.hitachi import hbsd_rest
 from cinder.volume.drivers.hitachi import hbsd_rest_api
+from cinder.volume.drivers.hitachi import hbsd_rest_fc
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
@@ -1106,3 +1107,12 @@ class HBSDRESTFCDriverTest(test.TestCase):
             [{'id': TEST_SNAPSHOT[0]['id'], 'status': 'deleted'}]
         )
         self.assertTupleEqual(actual, ret)
+
+    @mock.patch.object(hbsd_fc.HBSDFCDriver, "_get_oslo_driver_opts")
+    def test_get_driver_options(self, _get_oslo_driver_opts):
+        _get_oslo_driver_opts.return_value = []
+        ret = self.driver.get_driver_options()
+        actual = (hbsd_common.COMMON_VOLUME_OPTS +
+                  hbsd_rest.REST_VOLUME_OPTS +
+                  hbsd_rest_fc.FC_VOLUME_OPTS)
+        self.assertEqual(actual, ret)

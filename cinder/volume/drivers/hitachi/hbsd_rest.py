@@ -17,6 +17,7 @@
 from collections import defaultdict
 
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import excutils
@@ -89,9 +90,9 @@ REST_VOLUME_OPTS = [
     cfg.BoolOpt(
         'hitachi_rest_disable_io_wait',
         default=True,
-        help='It may take some time to detach volume after I/O. '
-             'This option will allow detaching volume to complete '
-             'immediately.'),
+        help='This option will allow detaching volume immediately. '
+             'If set False, storage may take few minutes to detach volume '
+             'after I/O.'),
     cfg.BoolOpt(
         'hitachi_rest_tcp_keepalive',
         default=True,
@@ -103,11 +104,13 @@ REST_VOLUME_OPTS = [
     cfg.IntOpt(
         'hitachi_lun_timeout',
         default=_LUN_TIMEOUT,
-        help='Maximum wait time in seconds for adding a LUN to complete.'),
+        help='Maximum wait time in seconds for adding a LUN mapping to '
+             'the server.'),
     cfg.IntOpt(
         'hitachi_lun_retry_interval',
         default=_LUN_RETRY_INTERVAL,
-        help='Retry interval in seconds for REST API adding a LUN.'),
+        help='Retry interval in seconds for REST API adding a LUN mapping to '
+             'the server.'),
     cfg.IntOpt(
         'hitachi_restore_timeout',
         default=_RESTORE_TIMEOUT,
@@ -121,12 +124,12 @@ REST_VOLUME_OPTS = [
     cfg.IntOpt(
         'hitachi_lock_timeout',
         default=rest_api._LOCK_TIMEOUT,
-        help='Maximum wait time in seconds for a storage unlocked.'),
+        help='Maximum wait time in seconds for storage to be logined or '
+             'unlocked.'),
     cfg.IntOpt(
         'hitachi_rest_timeout',
         default=rest_api._REST_TIMEOUT,
-        help='Maximum wait time in seconds for REST API execution to '
-             'complete.'),
+        help='Maximum wait time in seconds for each REST API request.'),
     cfg.IntOpt(
         'hitachi_extend_timeout',
         default=rest_api._EXTEND_TIMEOUT,
@@ -139,21 +142,22 @@ REST_VOLUME_OPTS = [
     cfg.IntOpt(
         'hitachi_rest_connect_timeout',
         default=rest_api._DEFAULT_CONNECT_TIMEOUT,
-        help='Maximum wait time in seconds for REST API connection to '
-             'complete.'),
+        help='Maximum wait time in seconds for connecting to '
+             'REST API session.'),
     cfg.IntOpt(
         'hitachi_rest_job_api_response_timeout',
         default=rest_api._JOB_API_RESPONSE_TIMEOUT,
-        help='Maximum wait time in seconds for a response from REST API.'),
+        help='Maximum wait time in seconds for a response against '
+             'async methods from REST API, for example PUT and DELETE.'),
     cfg.IntOpt(
         'hitachi_rest_get_api_response_timeout',
         default=rest_api._GET_API_RESPONSE_TIMEOUT,
-        help='Maximum wait time in seconds for a response against GET method '
-             'of REST API.'),
+        help='Maximum wait time in seconds for a response against '
+             'sync methods, for example GET'),
     cfg.IntOpt(
         'hitachi_rest_server_busy_timeout',
         default=rest_api._REST_SERVER_BUSY_TIMEOUT,
-        help='Maximum wait time in seconds when REST API returned busy.'),
+        help='Maximum wait time in seconds when REST API returns busy.'),
     cfg.IntOpt(
         'hitachi_rest_keep_session_loop_interval',
         default=rest_api._KEEP_SESSION_LOOP_INTERVAL,
@@ -176,8 +180,9 @@ REST_VOLUME_OPTS = [
         help='Maximum number of transmissions for TCP keepalive packet.'),
     cfg.ListOpt(
         'hitachi_host_mode_options',
+        item_type=types.Integer(),
         default=[],
-        help='host mode option for host group or iSCSI target'),
+        help='Host mode option for host group or iSCSI target.'),
 ]
 
 _REQUIRED_REST_OPTS = [
@@ -240,8 +245,6 @@ class HBSDREST(common.HBSDCommon):
 
         self.client = None
 
-        self.init_timer_values()
-
     def setup_client(self):
         """Initialize RestApiClient."""
         verify = self.conf.driver_ssl_cert_verify
@@ -251,6 +254,7 @@ class HBSDREST(common.HBSDCommon):
                 verify = verify_path
         self.verify = verify
         self.client = rest_api.RestApiClient(
+            self.conf,
             self.conf.san_ip,
             self.conf.san_api_port,
             self.conf.hitachi_storage_id,
@@ -320,7 +324,8 @@ class HBSDREST(common.HBSDCommon):
         """Wait until the S-VOL status changes to the specified status."""
         interval = kwargs.pop(
             'interval', self.conf.hitachi_copy_check_interval)
-        timeout = kwargs.pop('timeout', _STATE_TRANSITION_TIMEOUT)
+        timeout = kwargs.pop(
+            'timeout', self.conf.hitachi_state_transition_timeout)
 
         def _wait_for_copy_pair_status(
                 start_time, ldev, status, timeout):
@@ -445,7 +450,7 @@ class HBSDREST(common.HBSDCommon):
                     ldev_info['attributes']):
                 raise loopingcall.LoopingCallDone()
             if utils.timed_out(
-                    start_time, _STATE_TRANSITION_TIMEOUT):
+                    start_time, self.conf.hitachi_state_transition_timeout):
                 raise loopingcall.LoopingCallDone(False)
 
         loop = loopingcall.FixedIntervalLoopingCall(
@@ -513,8 +518,8 @@ class HBSDREST(common.HBSDCommon):
         assigned_lun, errobj = self.client.add_lun(
             port, gid, ldev, lun=lun,
             ignore_error=ignore_error,
-            interval=_LUN_RETRY_INTERVAL,
-            timeout=_LUN_TIMEOUT)
+            interval=self.conf.hitachi_lun_retry_interval,
+            timeout=self.conf.hitachi_lun_timeout)
         err_code = utils.safe_get_err_code(errobj)
         if lun is None:
             if err_code == _LU_PATH_DEFINED:
@@ -593,10 +598,10 @@ class HBSDREST(common.HBSDCommon):
 
     def unmap_ldev(self, targets, ldev):
         """Delete the LUN between the specified LDEV and port-gid."""
-        interval = _LUN_RETRY_INTERVAL
+        interval = self.conf.hitachi_lun_retry_interval
         ignore_return_code = [EX_ENOOBJ]
         ignore_message_id = [rest_api.MSGID_SPECIFIED_OBJECT_DOES_NOT_EXIST]
-        timeout = _STATE_TRANSITION_TIMEOUT
+        timeout = self.conf.hitachi_state_transition_timeout
         for target in targets['list']:
             port = target['portId']
             gid = target['hostGroupNumber']
@@ -858,7 +863,7 @@ class HBSDREST(common.HBSDCommon):
             return False
         if ldev_info['snapshotPoolId'] is not None:
             _, svol_info = self._get_copy_pair_info(ldev)
-            if svol_info and svol_info[0]['status'] == 'PSUP':
+            if svol_info and svol_info[0]['status'] in ('SMPP', 'PSUP'):
                 self._wait_copy_pair_deleting(ldev)
                 return False
             else:
@@ -874,7 +879,7 @@ class HBSDREST(common.HBSDCommon):
         self.client.restore_snapshot(pvol, mun, body)
 
         self._wait_copy_pair_status(
-            svol, PSUS, timeout=_RESTORE_TIMEOUT,
+            svol, PSUS, timeout=self.conf.hitachi_restore_timeout,
             interval=self.conf.hitachi_async_copy_check_interval)
 
     def has_snap_pair(self, pvol, svol):
@@ -1165,45 +1170,3 @@ class HBSDREST(common.HBSDCommon):
             return self._create_cgsnapshot(context, group_snapshot, snapshots)
         else:
             return self._create_non_cgsnapshot(group_snapshot, snapshots)
-
-    def init_timer_values(self):
-        global _LUN_TIMEOUT, _LUN_RETRY_INTERVAL
-        global _RESTORE_TIMEOUT, _STATE_TRANSITION_TIMEOUT
-        _LUN_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_lun_timeout')
-        _LUN_RETRY_INTERVAL = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_lun_retry_interval')
-        _RESTORE_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_restore_timeout')
-        _STATE_TRANSITION_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_state_transition_timeout')
-        rest_api._LOCK_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_lock_timeout')
-        rest_api._REST_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_rest_timeout')
-        rest_api._EXTEND_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_extend_timeout')
-        rest_api._EXEC_RETRY_INTERVAL = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_exec_retry_interval')
-        rest_api._DEFAULT_CONNECT_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_rest_connect_timeout')
-        rest_api._JOB_API_RESPONSE_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] +
-            '_rest_job_api_response_timeout')
-        rest_api._GET_API_RESPONSE_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] +
-            '_rest_get_api_response_timeout')
-        rest_api._REST_SERVER_BUSY_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_rest_server_busy_timeout')
-        rest_api._KEEP_SESSION_LOOP_INTERVAL = self.conf.safe_get(
-            self.driver_info['param_prefix'] +
-            '_rest_keep_session_loop_interval')
-        rest_api._ANOTHER_LDEV_MAPPED_RETRY_TIMEOUT = self.conf.safe_get(
-            self.driver_info['param_prefix'] +
-            '_rest_another_ldev_mapped_retry_timeout')
-        rest_api._TCP_KEEPIDLE = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_rest_tcp_keepidle')
-        rest_api._TCP_KEEPINTVL = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_rest_tcp_keepintvl')
-        rest_api._TCP_KEEPCNT = self.conf.safe_get(
-            self.driver_info['param_prefix'] + '_rest_tcp_keepcnt')

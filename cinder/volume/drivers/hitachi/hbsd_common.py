@@ -490,15 +490,15 @@ class HBSDCommon():
                 not self.conf.hitachi_compute_target_ports):
             msg = utils.output_log(
                 MSG.INVALID_PARAMETER,
-                param='hitachi_target_ports or '
-                'hitachi_compute_target_ports')
+                param=self.driver_info['param_prefix'] + '_target_ports or ' +
+                self.driver_info['param_prefix'] + '_compute_target_ports')
             self.raise_error(msg)
         if (self.conf.hitachi_group_delete and
                 not self.conf.hitachi_group_create):
             msg = utils.output_log(
                 MSG.INVALID_PARAMETER,
-                param='hitachi_group_delete or '
-                'hitachi_group_create')
+                param=self.driver_info['param_prefix'] + '_group_delete or '
+                + self.driver_info['param_prefix'] + '_group_create')
             self.raise_error(msg)
         for opt in self._required_common_opts:
             if not self.conf.safe_get(opt):

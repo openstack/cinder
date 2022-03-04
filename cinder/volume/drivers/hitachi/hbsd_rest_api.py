@@ -100,12 +100,18 @@ def _build_base_url(ip_addr, ip_port):
 
 class KeepAliveAdapter(HTTPAdapter):
 
-    options = HTTPConnection.default_socket_options + [
-        (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
-        (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, _TCP_KEEPIDLE),
-        (socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, _TCP_KEEPINTVL),
-        (socket.IPPROTO_TCP, socket.TCP_KEEPCNT, _TCP_KEEPCNT),
-    ]
+    def __init__(self, conf):
+        self.options = HTTPConnection.default_socket_options + [
+            (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
+            (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE,
+             conf.hitachi_rest_tcp_keepidle),
+            (socket.IPPROTO_TCP, socket.TCP_KEEPINTVL,
+             conf.hitachi_rest_tcp_keepintvl),
+            (socket.IPPROTO_TCP, socket.TCP_KEEPCNT,
+             conf.hitachi_rest_tcp_keepcnt),
+        ]
+
+        super(KeepAliveAdapter, self).__init__()
 
     def init_poolmanager(self, connections, maxsize, block=False):
         self.poolmanager = PoolManager(num_pools=connections,
@@ -218,10 +224,11 @@ class ResponseData(dict):
 
 class RestApiClient():
 
-    def __init__(self, ip_addr, ip_port, storage_device_id,
+    def __init__(self, conf, ip_addr, ip_port, storage_device_id,
                  user_id, user_pass, driver_prefix, tcp_keepalive=False,
-                 verify=False, connect_timeout=_DEFAULT_CONNECT_TIMEOUT):
+                 verify=False):
         """Initialize instance variables."""
+        self.conf = conf
         self.ip_addr = ip_addr
         self.ip_port = ip_port
         self.storage_id = storage_device_id
@@ -230,7 +237,7 @@ class RestApiClient():
         self.user_pass = user_pass
         self.tcp_keepalive = tcp_keepalive
         self.verify = verify
-        self.connect_timeout = connect_timeout
+        self.connect_timeout = self.conf.hitachi_rest_connect_timeout
         self.login_lock = threading.Lock()
         self.keep_session_loop = loopingcall.FixedIntervalLoopingCall(
             self._keep_session)
@@ -276,22 +283,24 @@ class RestApiClient():
         kwargs.setdefault('ignore_all_errors', False)
         kwargs.setdefault('timeout_message', None)
         kwargs.setdefault('no_log', False)
-        kwargs.setdefault('timeout', _REST_TIMEOUT)
+        kwargs.setdefault('timeout', self.conf.hitachi_rest_timeout)
 
         headers = dict(self.headers)
         if async_:
-            read_timeout = _JOB_API_RESPONSE_TIMEOUT
+            read_timeout = self.conf.hitachi_rest_job_api_response_timeout
             headers.update({
-                "Response-Max-Wait": str(_JOB_API_RESPONSE_TIMEOUT),
+                "Response-Max-Wait": str(
+                    self.conf.hitachi_rest_job_api_response_timeout),
                 "Response-Job-Status": "Completed;"})
         else:
-            read_timeout = _GET_API_RESPONSE_TIMEOUT
+            read_timeout = self.conf.hitachi_rest_get_api_response_timeout
 
         auth_data = kwargs.get('auth', self.get_my_session())
 
         timeout = (self.connect_timeout, read_timeout)
 
-        interval = kwargs.get('interval', _EXEC_RETRY_INTERVAL)
+        interval = kwargs.get(
+            'interval', self.conf.hitachi_exec_retry_interval)
         retry = True
         start_time = timeutils.utcnow()
         watch = timeutils.StopWatch()
@@ -301,7 +310,7 @@ class RestApiClient():
             try:
                 with requests.Session() as session:
                     if self.tcp_keepalive:
-                        session.mount(_HTTPS, KeepAliveAdapter())
+                        session.mount(_HTTPS, KeepAliveAdapter(self.conf))
                     rsp = session.request(method, url,
                                           params=params,
                                           json=body,
@@ -350,7 +359,8 @@ class RestApiClient():
         errobj = response['errobj']
         if response.is_locked():
             if (kwargs['no_retry'] or
-                    utils.timed_out(start_time, _LOCK_TIMEOUT)):
+                    utils.timed_out(
+                        start_time, self.conf.hitachi_lock_timeout)):
                 msg = utils.output_log(MSG.REST_API_FAILED,
                                        no_log=kwargs['no_log'],
                                        method=method, url=url,
@@ -387,10 +397,13 @@ class RestApiClient():
             retry = True
 
         if retry and response.is_rest_server_busy():
-            if utils.timed_out(start_time, _REST_SERVER_BUSY_TIMEOUT):
+            if utils.timed_out(
+                    start_time, self.conf.hitachi_rest_server_busy_timeout):
                 retry = False
         elif retry and response.get_err_code() in (ANOTHER_LDEV_MAPPED, ):
-            if utils.timed_out(start_time, _ANOTHER_LDEV_MAPPED_RETRY_TIMEOUT):
+            if utils.timed_out(
+                    start_time,
+                    self.conf.hitachi_rest_another_ldev_mapped_retry_timeout):
                 LOG.debug(
                     "Another LDEV is already mapped to the specified LUN.")
                 retry = False
@@ -471,7 +484,8 @@ class RestApiClient():
         }
         auth = (self.user_id, self.user_pass)
         rsp, err = self._request("POST", url, auth=auth, no_relogin=True,
-                                 do_raise=do_raise, timeout=_LOCK_TIMEOUT)
+                                 do_raise=do_raise,
+                                 timeout=self.conf.hitachi_lock_timeout)
         if not err:
             self.set_my_session(self.Session(rsp["sessionId"], rsp["token"]))
             return True
@@ -529,7 +543,8 @@ class RestApiClient():
 
     def enter_keep_session(self):
         """Begin the keeping of a session."""
-        self.keep_session_loop.start(_KEEP_SESSION_LOOP_INTERVAL)
+        self.keep_session_loop.start(
+            self.conf.hitachi_rest_keep_session_loop_interval)
         LOG.debug('enter_keep_session')
 
     def _get_object(self, url, params=None, **kwargs):
@@ -623,7 +638,7 @@ class RestApiClient():
             'id': ldev_id,
             'action': 'expand',
         }
-        self._invoke(url, body=body, timeout=_EXTEND_TIMEOUT)
+        self._invoke(url, body=body, timeout=self.conf.hitachi_extend_timeout)
 
     def get_ports(self, params=None):
         """Get a list of port information."""

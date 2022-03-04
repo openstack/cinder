@@ -912,3 +912,11 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
             [{'id': TEST_SNAPSHOT[0]['id'], 'status': 'deleted'}]
         )
         self.assertTupleEqual(actual, ret)
+
+    @mock.patch.object(hbsd_iscsi.HBSDISCSIDriver, "_get_oslo_driver_opts")
+    def test_get_driver_options(self, _get_oslo_driver_opts):
+        _get_oslo_driver_opts.return_value = []
+        ret = self.driver.get_driver_options()
+        actual = (hbsd_common.COMMON_VOLUME_OPTS +
+                  hbsd_rest.REST_VOLUME_OPTS)
+        self.assertEqual(actual, ret)
