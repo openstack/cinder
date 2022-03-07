@@ -144,9 +144,12 @@ class HBSDRESTFC(rest.HBSDREST):
                                    gid=gid)
             self.raise_error(msg)
 
-    def set_target_mode(self, port, gid):
+    def set_target_mode(self, port, gid, connector):
         """Configure the host group to meet the environment."""
-        body = {'hostMode': 'LINUX/IRIX'}
+        if connector.get('os_type', None) == 'aix':
+            body = {'hostMode': 'AIX'}
+        else:
+            body = {'hostMode': 'LINUX/IRIX'}
         if self.conf.hitachi_rest_disable_io_wait:
             body['hostModeOptions'] = [_FC_HMO_DISABLE_IO]
         if self.conf.hitachi_host_mode_options:

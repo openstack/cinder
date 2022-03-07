@@ -547,7 +547,7 @@ class HBSDCommon():
         """Create a host group or an iSCSI target on the specified port."""
         raise NotImplementedError()
 
-    def set_target_mode(self, port, gid):
+    def set_target_mode(self, port, gid, connector):
         """Configure the target to meet the environment."""
         raise NotImplementedError()
 
@@ -568,7 +568,7 @@ class HBSDCommon():
                          '%(target)s' %
                          {'port': port, 'gid': gid, 'target': target_name})
         try:
-            self.set_target_mode(port, gid)
+            self.set_target_mode(port, gid, connector)
             self.set_hba_ids(port, gid, hba_ids)
         except Exception:
             with excutils.save_and_reraise_exception():
