@@ -355,9 +355,11 @@ class VolumeTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.quota.QUOTAS.rollback', new=mock.Mock())
     @mock.patch('cinder.quota.QUOTAS.commit')
     @mock.patch('cinder.quota.QUOTAS.reserve', return_value=['RESERVATION'])
-    def test_create_delete_volume(self, use_quota, _mock_reserve, commit_mock,
+    def test_create_delete_volume(self, boolean, _mock_reserve, commit_mock,
                                   mock_notify, mock_clean):
         """Test volume can be created and deleted."""
+        mock_shares = self.mock_object(self.volume, '_driver_shares_targets',
+                                       return_value=boolean)
         volume = tests_utils.create_volume(
             self.context,
             availability_zone=CONF.storage_availability_zone,
@@ -368,6 +370,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         self.volume.create_volume(self.context, volume)
 
+        mock_shares.assert_called_once_with()
+        self.assertIs(boolean, volume.shared_targets)
         self.assert_notify_called(mock_notify,
                                   (['INFO', 'volume.create.start'],
                                    ['INFO', 'volume.create.end']),
@@ -376,7 +380,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                          self.volume.stats['pools'])
 
         # Confirm delete_volume handles use_quota field
-        volume.use_quota = use_quota
+        volume.use_quota = boolean
         volume.save()  # Need to save to DB because of the refresh call
         commit_mock.reset_mock()
         _mock_reserve.reset_mock()
@@ -386,7 +390,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                             volume_id)
         self.assertEqual(vol['status'], 'deleted')
 
-        if use_quota:
+        if boolean:
             expected_capacity = 0
             self.assert_notify_called(mock_notify,
                                       (['INFO', 'volume.delete.start'],

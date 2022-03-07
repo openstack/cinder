@@ -46,6 +46,8 @@ class GroupManagerTestCase(test.TestCase):
     def setUp(self):
         super(GroupManagerTestCase, self).setUp()
         self.volume = importutils.import_object(CONF.volume_manager)
+        self.mock_object(self.volume, '_driver_shares_targets',
+                         return_value=False)
         self.configuration = mock.Mock(conf.Configuration)
         self.context = context.get_admin_context()
         self.context.user_id = fake.USER_ID

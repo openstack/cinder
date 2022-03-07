@@ -402,8 +402,11 @@ class Volume(BASE, CinderBase):
         foreign_keys=service_uuid,
         primaryjoin='Volume.service_uuid == Service.uuid',
     )
+    # True => Do locking when iSCSI initiator doesn't support manual scan
+    # False => Never do locking
+    # None => Forced locking regardless of the iSCSI initiator
     # make an FK of service?
-    shared_targets = sa.Column(sa.Boolean, default=True)
+    shared_targets = sa.Column(sa.Boolean, nullable=True, default=True)
 
 
 class VolumeMetadata(BASE, CinderBase):

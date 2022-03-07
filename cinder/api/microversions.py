@@ -175,6 +175,8 @@ PROJECT_ID_OPTIONAL_IN_URL = '3.67'
 
 SUPPORT_REIMAGE_VOLUME = '3.68'
 
+SHARED_TARGETS_TRISTATE = '3.69'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

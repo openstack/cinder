@@ -844,12 +844,8 @@ class VolumeManager(manager.CleanableManager,
                 self._update_allocated_capacity(volume, decrement=True,
                                                 host=original_host)
 
-        # Shared targets is only relevant for iSCSI connections.
-        # We default to True to be on the safe side.
-        capabilities = self.driver.capabilities
-        volume.shared_targets = (
-            capabilities.get('storage_protocol') in constants.ISCSI_VARIANTS
-            and capabilities.get('shared_targets', True))
+        # Shared targets is only relevant for some connections.
+        volume.shared_targets = self._driver_shares_targets()
         # TODO(geguileo): service_uuid won't be enough on Active/Active
         # deployments. There can be 2 services handling volumes from the same
         # backend.
@@ -858,6 +854,50 @@ class VolumeManager(manager.CleanableManager,
 
         LOG.info("Created volume successfully.", resource=volume)
         return volume.id
+
+    def _driver_shares_targets(self):
+        """Report if driver shares targets and needs locking on connecing side.
+
+        This is currently only relevant for iSCSI and for NVMe-oF.
+
+        Relevant for iSCSI, because older iSCSI initiators didn't support
+        disabling automatic scans, allowing race conditions between os-brick
+        and cinder.
+
+        In the NVMe-oF case it's even worse, because not only scans are always
+        automatic, but also in most cases devices/namespaces cannot be removed
+        from the subsystem, and they are automatically removed when unmapped
+        via an asynchronous message from the storage system.
+
+        By exposing the shared_targets characteristic in the volume nova (and
+        other consumers) can use os-brick's specific context manager to prevent
+        these race conditions.
+
+        Can return 3 possible values::
+
+          True => iSCSI protocol and shared targets
+          False => iSCSI protocol and not shared targets
+          None => Force shared targets locking in os-brick ignoring
+                  ISCSI_SUPPORTS_MANUAL_SCAN.  Used by NVMe-oF.
+
+        Drivers can return in their capabilities shared_targets set to ``None``
+        to force locking on the host side regarless of the protocol
+        """
+        capabilities = self.driver.capabilities
+        # We default to True to be on the safe side.
+        shared = capabilities.get('shared_targets', True)
+
+        # If driver says no shared_targets, honor it
+        if shared is False:
+            return False
+
+        protocol = capabilities.get('storage_protocol')
+
+        if protocol in constants.NVMEOF_VARIANTS:
+            return None  # True must be changed to None for NVMe-oF drivers
+
+        # Only iSCSI drivers would need to do locking for shared targets
+        return protocol in constants.ISCSI_VARIANTS
 
     def _check_is_our_resource(self, resource) -> None:
         if resource.host:

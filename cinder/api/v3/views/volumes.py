@@ -57,8 +57,15 @@ class ViewBuilder(views_v2.ViewBuilder):
 
         if req_version.matches(
                 mv.VOLUME_SHARED_TARGETS_AND_SERVICE_FIELDS, None):
-            volume_ref['volume']['shared_targets'] = volume.get(
-                'shared_targets', None)
+
+            # For microversion 3.69 or higher it is acceptable to be null
+            # but for earlier versions we convert None to True
+            shared = volume.get('shared_targets', False)
+            if (not req_version.matches(mv.SHARED_TARGETS_TRISTATE, None)
+                    and shared is None):
+                shared = True
+
+            volume_ref['volume']['shared_targets'] = shared
             volume_ref['volume']['service_uuid'] = volume.get(
                 'service_uuid', None)
 

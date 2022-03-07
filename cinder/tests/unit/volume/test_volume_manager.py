@@ -16,6 +16,9 @@
 
 from unittest import mock
 
+import ddt
+
+from cinder.common import constants
 from cinder import exception
 from cinder.message import message_field
 from cinder.tests.unit import fake_constants as fake
@@ -24,6 +27,7 @@ from cinder.tests.unit import volume as base
 from cinder.volume import manager as vol_manager
 
 
+@ddt.ddt
 class VolumeManagerTestCase(base.BaseVolumeTestCase):
 
     @mock.patch('cinder.message.api.API.create')
@@ -287,3 +291,54 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
         manager._parse_connection_options(ctxt, vol, conn_info)
         self.assertIn('cacheable', conn_info['data'])
         self.assertIs(conn_info['data']['cacheable'], False)
+
+    @ddt.data(*(constants.ISCSI_VARIANTS + constants.NVMEOF_VARIANTS))
+    def test__driver_shares_targets_reported_shared(self, protocol):
+        """Shared targets must be reported for iSCSI and NVMe-oF."""
+        manager = vol_manager.VolumeManager()
+        fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {'shared_targets': True,
+                                    'storage_protocol': protocol}
+        manager.driver = fake_driver
+
+        res = manager._driver_shares_targets()
+        expected = True if protocol in constants.ISCSI_VARIANTS else None
+        self.assertIs(expected, res)
+
+    @ddt.data(*(constants.ISCSI_VARIANTS + constants.NVMEOF_VARIANTS))
+    def test__driver_shares_targets_reported_nonshared(self, protocol):
+        """Protocol is irrelevant for drivers that don't share targets."""
+        manager = vol_manager.VolumeManager()
+        fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {'shared_targets': False,
+                                    'storage_protocol': protocol}
+        manager.driver = fake_driver
+
+        res = manager._driver_shares_targets()
+        self.assertFalse(res)
+
+    @ddt.data(*(constants.ISCSI_VARIANTS + constants.NVMEOF_VARIANTS))
+    def test__driver_shares_targets_not_reported(self, protocol):
+        """When driver doesn't report, assume it's shared."""
+        manager = vol_manager.VolumeManager()
+        fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {'storage_protocol': protocol}
+        manager.driver = fake_driver
+
+        res = manager._driver_shares_targets()
+        expected = True if protocol in constants.ISCSI_VARIANTS else None
+        self.assertIs(expected, res)
+
+    @ddt.data({'storage_protocol': 'NFS'},
+              {'shared_targets': True, 'storage_protocol': 'NFS'},
+              {'storage_protocol': 'ceph'},
+              {'shared_targets': True, 'storage_protocol': 'ceph'})
+    def test__driver_shares_targets_other_protocols(self, capabilities):
+        """Sharing is irrelevant for other protocols."""
+        manager = vol_manager.VolumeManager()
+        fake_driver = mock.MagicMock()
+        fake_driver.capabilities = capabilities
+        manager.driver = fake_driver
+
+        res = manager._driver_shares_targets()
+        self.assertFalse(res)

@@ -135,6 +135,7 @@ class MigrationsWalk(
     # Migrations can take a long time, particularly on underpowered CI nodes.
     # Give them some breathing room.
     TIMEOUT_SCALING_FACTOR = 4
+    BOOL_TYPE = sqlalchemy.types.BOOLEAN
 
     def setUp(self):
         super().setUp()
@@ -197,6 +198,20 @@ class MigrationsWalk(
             self.config,
         ).get_current_head()
         self.assertEqual(head, migration.db_version())
+
+    def _pre_upgrade_c92a3e68beed(self, connection):
+        """Test shared_targets is nullable."""
+        table = db_utils.get_table(connection, 'volumes')
+        self._previous_type = type(table.c.shared_targets.type)
+
+    def _check_c92a3e68beed(self, connection):
+        """Test shared_targets is nullable."""
+        table = db_utils.get_table(connection, 'volumes')
+        self.assertIn('shared_targets', table.c)
+        # Type hasn't changed
+        self.assertIsInstance(table.c.shared_targets.type, self._previous_type)
+        # But it's nullable
+        self.assertTrue(table.c.shared_targets.nullable)
 
 
 class TestMigrationsWalkSQLite(
