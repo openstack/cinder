@@ -29,6 +29,7 @@ from sqlalchemy import Column, String, Text  # noqa: F401
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import func
 from sqlalchemy import schema
+from sqlalchemy.sql import expression
 from sqlalchemy.orm import backref, column_property, relationship, validates
 
 
@@ -140,7 +141,12 @@ class Cluster(BASE, CinderBase):
 
     replication_status = sa.Column(sa.String(36), default="not-capable")
     active_backend_id = sa.Column(sa.String(255))
-    frozen = sa.Column(sa.Boolean, nullable=False, default=False)
+    frozen = sa.Column(
+        sa.Boolean,
+        nullable=False,
+        default=False,
+        server_default=expression.false(),
+    )
 
     # Last heartbeat reported by any of the services of this cluster.  This is
     # not deferred since we always want to load this field.
@@ -321,7 +327,7 @@ class Volume(BASE, CinderBase):
     def name(self):
         return CONF.volume_name_template % self.name_id
 
-    ec2_id = sa.Column(sa.Integer)
+    ec2_id = sa.Column(sa.String(255))
     user_id = sa.Column(sa.String(255))
     project_id = sa.Column(sa.String(255))
 
@@ -342,8 +348,8 @@ class Volume(BASE, CinderBase):
     display_name = sa.Column(sa.String(255))
     display_description = sa.Column(sa.String(255))
 
-    provider_location = sa.Column(sa.String(255))
-    provider_auth = sa.Column(sa.String(255))
+    provider_location = sa.Column(sa.String(256))
+    provider_auth = sa.Column(sa.String(256))
     provider_geometry = sa.Column(sa.String(255))
     provider_id = sa.Column(sa.String(255))
 
@@ -467,7 +473,7 @@ class VolumeAttachment(BASE, CinderBase):
     attach_time = sa.Column(sa.DateTime)
     detach_time = sa.Column(sa.DateTime)
     attach_status = sa.Column(sa.String(255))
-    attach_mode = sa.Column(sa.String(255))
+    attach_mode = sa.Column(sa.String(36))
     connection_info = sa.Column(sa.Text)
     # Stores a serialized json dict of host connector information from brick.
     connector = sa.Column(sa.Text)
@@ -816,7 +822,7 @@ class QuotaUsage(BASE, CinderBase):
 
     project_id = sa.Column(sa.String(255), index=True)
     # TODO(stephenfin): Add index=True
-    resource = sa.Column(sa.String(255))
+    resource = sa.Column(sa.String(300))
 
     in_use = sa.Column(sa.Integer, nullable=False)
     reserved = sa.Column(sa.Integer, nullable=False)
@@ -923,6 +929,7 @@ class Snapshot(BASE, CinderBase):
     status = sa.Column(sa.String(255))
     progress = sa.Column(sa.String(255))
     volume_size = sa.Column(sa.Integer)
+    scheduled_at = sa.Column(sa.DateTime)
 
     display_name = sa.Column(sa.String(255))
     display_description = sa.Column(sa.String(255))
@@ -1139,9 +1146,9 @@ class Message(BASE, CinderBase):
     # Info/Error/Warning.
     message_level = sa.Column(sa.String(255), nullable=False)
     request_id = sa.Column(sa.String(255), nullable=True)
-    resource_type = sa.Column(sa.String(255))
+    resource_type = sa.Column(sa.String(36))
     # The UUID of the related resource.
-    resource_uuid = sa.Column(sa.String(36), nullable=True)
+    resource_uuid = sa.Column(sa.String(255), nullable=True)
     # Operation specific event ID.
     event_id = sa.Column(sa.String(255), nullable=False)
     # Message detail ID.
@@ -1206,7 +1213,12 @@ class Worker(BASE, CinderBase):
     )
 
     # To prevent claiming and updating races
-    race_preventer = sa.Column(sa.Integer, nullable=False, default=0)
+    race_preventer = sa.Column(
+        sa.Integer,
+        nullable=False,
+        default=0,
+        server_default=sa.text('0'),
+    )
 
     # This is a flag we don't need to store in the DB as it is only used when
     # we are doing the cleanup to let decorators know
