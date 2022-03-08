@@ -1029,6 +1029,10 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
         lvm_driver = lvm.LVMVolumeDriver(
             configuration=self.configuration, vg_obj=vg_obj)
 
+        mock_same = self.mock_object(
+            lvm_driver.target_driver, 'are_same_connector',
+            side_effect=lvm_driver.target_driver.are_same_connector)
+
         with mock.patch.object(lvm_driver.target_driver,
                                'terminate_connection') as mock_term_conn:
 
@@ -1037,14 +1041,31 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
             self.assertTrue(lvm_driver.terminate_connection(vol,
                                                             host1_connector))
             mock_term_conn.assert_not_called()
+            self.assertEqual(3, mock_same.call_count)
+            mock_same.assert_has_calls((
+                mock.call(host1_connector, host1_connector),
+                mock.call(host1_connector, host1_connector),
+                mock.call(host2_connector, host1_connector)))
+            mock_same.reset_mock()
 
             # Verify that terminate_connection is called against either host
             # when only one active attachment per host is present.
             vol.volume_attachment.objects.remove(host1_attachment1)
             self.assertTrue(lvm_driver.terminate_connection(vol,
                                                             host1_connector))
+            self.assertEqual(2, mock_same.call_count)
+            mock_same.assert_has_calls((
+                mock.call(host1_connector, host1_connector),
+                mock.call(host2_connector, host1_connector)))
+            mock_same.reset_mock()
+
             self.assertTrue(lvm_driver.terminate_connection(vol,
                                                             host2_connector))
+            self.assertEqual(2, mock_same.call_count)
+            mock_same.assert_has_calls((
+                mock.call(host1_connector, host2_connector),
+                mock.call(host2_connector, host2_connector)))
+            mock_same.reset_mock()
             mock_term_conn.assert_has_calls([mock.call(vol, host1_connector),
                                              mock.call(vol, host2_connector)])
 

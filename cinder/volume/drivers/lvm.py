@@ -858,11 +858,15 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # one attachment left for the host specified by the connector to
         # remove, otherwise the ACL will be removed prematurely while other
         # attachments on the same host are still accessing the volume.
+        def same_connector(attach):
+            return (attach.connector
+                    and self.target_driver.are_same_connector(attach.connector,
+                                                              connector))
+
         attachments = volume.volume_attachment
-        if volume.multiattach:
-            if sum(1 for a in attachments if a.connector and
-                    a.connector['initiator'] == connector['initiator']) > 1:
-                return True
+        if (volume.multiattach
+                and sum(1 for a in filter(same_connector, attachments)) > 1):
+            return True
 
         self.target_driver.terminate_connection(volume, connector, **kwargs)
         return len(attachments) > 1
