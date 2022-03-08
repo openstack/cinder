@@ -37,8 +37,7 @@ CONF = cfg.CONF
 BASE = declarative_base()
 
 
-class CinderBase(models.TimestampMixin,
-                 models.ModelBase):
+class CinderBase(models.TimestampMixin, models.ModelBase):
     """Base class for Cinder Models."""
 
     __table_args__ = {'mysql_engine': 'InnoDB'}
