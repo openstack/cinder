@@ -43,6 +43,10 @@ from cinder.volume import volume_types
 class CinderModelsMigrationsSync(test_migrations.ModelsMigrationsSync):
     """Test sqlalchemy-migrate migrations."""
 
+    # Migrations can take a long time, particularly on underpowered CI nodes.
+    # Give them some breathing room.
+    TIMEOUT_SCALING_FACTOR = 4
+
     def setUp(self):
         # Ensure BaseTestCase's ConfigureLogging fixture is disabled since
         # we're using our own (StandardLogging).
@@ -128,6 +132,10 @@ class TestModelsSyncPostgreSQL(
 class MigrationsWalk(
     test_fixtures.OpportunisticDBTestMixin, test_base.BaseTestCase,
 ):
+    # Migrations can take a long time, particularly on underpowered CI nodes.
+    # Give them some breathing room.
+    TIMEOUT_SCALING_FACTOR = 4
+
     def setUp(self):
         super().setUp()
         self.engine = enginefacade.writer.get_engine()
