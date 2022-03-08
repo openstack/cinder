@@ -1,0 +1,1 @@
+/cinder/latest/man/cinder-manage.html 301 /cinder/latest/cli/cinder-manage.html
