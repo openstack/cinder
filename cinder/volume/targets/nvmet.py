@@ -10,17 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import tempfile
-
-from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
-from oslo_serialization import jsonutils as json
-from oslo_utils import excutils
 from oslo_utils import uuidutils
 
 from cinder import exception
-from cinder.privsep import nvmcli
-import cinder.privsep.path
+from cinder.privsep.targets import nvmet
 from cinder import utils
 from cinder.volume.targets import nvmeof
 
@@ -38,81 +32,49 @@ class NVMETTargetDeleteError(exception.CinderException):
 
 class NVMET(nvmeof.NVMeOF):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._nvmet_root = nvmet.Root()
+
     @utils.synchronized('nvmetcli', external=True)
     def create_nvmeof_target(self,
                              volume_id,
-                             subsystem_name,
+                             subsystem_name,  # Ignoring this, using config
                              target_ip,
                              target_port,
                              transport_type,
                              nvmet_port_id,
                              ns_id,
                              volume_path):
-
         # Create NVME subsystem for previously created LV
-        nvmf_subsystems = self._get_available_nvmf_subsystems()
+        nqn = self._get_target_nqn(volume_id)
+        try:
+            self._ensure_subsystem_exists(nqn, ns_id, volume_path)
+            self._ensure_port_exports(nqn, target_ip, target_port,
+                                      transport_type, nvmet_port_id)
+        except Exception:
+            LOG.error('Failed to add subsystem: %s', nqn)
+            raise NVMETTargetAddError(subsystem=nqn)
 
-        # Check if subsystem already exists
-        search_for_subsystem = self._get_nvmf_subsystem(
-            nvmf_subsystems, volume_id)
-        if search_for_subsystem is None:
-            newly_added_subsystem = self._add_nvmf_subsystem(
-                nvmf_subsystems,
-                target_ip,
-                target_port,
-                nvmet_port_id,
-                subsystem_name,
-                ns_id, volume_id, volume_path, transport_type)
-            if newly_added_subsystem is None:
-                LOG.error('Failed to add subsystem: %s', subsystem_name)
-                raise NVMETTargetAddError(subsystem=subsystem_name)
-            LOG.info('Added subsystem: %s', newly_added_subsystem)
-            search_for_subsystem = newly_added_subsystem
-        else:
-            LOG.debug('Skip creating subsystem %s as '
-                      'it already exists.', search_for_subsystem)
+        LOG.info('Subsystem %s now exported on port %s', nqn, target_port)
         return {
             'location': self.get_nvmeof_location(
-                search_for_subsystem,
+                nqn,
                 target_ip,
                 target_port,
                 transport_type,
                 ns_id),
             'auth': ''}
 
-    def _restore(self, nvmf_subsystems):
-        # Dump updated JSON dict to append new subsystem
-        with tempfile.NamedTemporaryFile(mode='w') as tmp_fd:
-            tmp_fd.write(json.dumps(nvmf_subsystems))
-            tmp_fd.flush()
-            try:
-                out, err = nvmcli.restore(tmp_fd.name)
-            except putils.ProcessExecutionError:
-                with excutils.save_and_reraise_exception():
-                    LOG.exception('Error from nvmetcli restore')
+    def _ensure_subsystem_exists(self, nqn, nvmet_ns_id, volume_path):
+        # Assume if subsystem exists, it has the right configuration
+        try:
+            nvmet.Subsystem(nqn)
+            LOG.debug('Skip creating subsystem %s as it already exists.', nqn)
+            return
+        except nvmet.NotFound:
+            LOG.debug('Creating subsystem %s.', nqn)
 
-    def _add_nvmf_subsystem(self, nvmf_subsystems, target_ip, target_port,
-                            nvmet_port_id, nvmet_subsystem_name, nvmet_ns_id,
-                            volume_id, volume_path, transport_type):
-
-        subsystem_name = self._get_target_info(nvmet_subsystem_name, volume_id)
-        # Create JSON sections for the new subsystem to be created
-        # Port section
-        port_section = {
-            "addr": {
-                "adrfam": "ipv4",
-                "traddr": target_ip,
-                "treq": "not specified",
-                "trsvcid": target_port,
-                "trtype": transport_type,
-            },
-            "portid": nvmet_port_id,
-            "referrals": [],
-            "subsystems": [subsystem_name]
-        }
-        nvmf_subsystems['ports'].append(port_section)
-
-        # Subsystem section
         subsystem_section = {
             "allowed_hosts": [],
             "attr": {
@@ -128,92 +90,70 @@ class NVMET(nvmeof.NVMeOF):
                     "nsid": nvmet_ns_id
                 }
             ],
-            "nqn": subsystem_name}
-        nvmf_subsystems['subsystems'].append(subsystem_section)
+            "nqn": nqn}
 
-        LOG.info(
-            'Trying to load the following subsystems: %s', nvmf_subsystems)
+        nvmet.Subsystem.setup(subsystem_section)  # privsep
+        LOG.debug('Added subsystem: %s', nqn)
 
-        self._restore(nvmf_subsystems)
+    def _ensure_port_exports(self, nqn, addr, port, transport_type, port_id):
+        # Assume if port exists, it has the right configuration
+        try:
+            port = nvmet.Port(port_id)
+            LOG.debug('Skip creating port %s as it already exists.', port_id)
+        except nvmet.NotFound:
+            LOG.debug('Creating port %s.', port_id)
 
-        return subsystem_name
+            # Port section
+            port_section = {
+                "addr": {
+                    "adrfam": "ipv4",
+                    "traddr": addr,
+                    "treq": "not specified",
+                    "trsvcid": port,
+                    "trtype": transport_type,
+                },
+                "portid": port_id,
+                "referrals": [],
+                "subsystems": [nqn]
+            }
+            nvmet.Port.setup(self._nvmet_root, port_section)  # privsep
+            LOG.debug('Added port: %s', port_id)
+
+        else:
+            if nqn in port.subsystems:
+                LOG.debug('%s already exported on port %s', nqn, port_id)
+            else:
+                port.add_subsystem(nqn)  # privsep
+                LOG.debug('Exported %s on port %s', nqn, port_id)
 
     @utils.synchronized('nvmetcli', external=True)
     def delete_nvmeof_target(self, volume):
-        nvmf_subsystems = self._get_available_nvmf_subsystems()
-        subsystem_name = self._get_nvmf_subsystem(
-            nvmf_subsystems, volume['id'])
-        if subsystem_name:
-            removed_subsystem = self._delete_nvmf_subsystem(
-                nvmf_subsystems, subsystem_name)
-            if removed_subsystem is None:
-                LOG.error(
-                    'Failed to delete subsystem: %s', subsystem_name)
-                raise NVMETTargetDeleteError(subsystem=subsystem_name)
-            elif removed_subsystem == subsystem_name:
-                LOG.info(
-                    'Managed to delete subsystem: %s', subsystem_name)
-                return removed_subsystem
-        else:
-            LOG.info("Skipping remove_export. No NVMe subsystem "
-                     "for volume: %s", volume['id'])
+        subsystem_name = self._get_target_nqn(volume.id)
+        LOG.debug('Removing subsystem: %s', subsystem_name)
 
-    def _delete_nvmf_subsystem(self, nvmf_subsystems, subsystem_name):
-        LOG.debug(
-            'Removing this subsystem: %s', subsystem_name)
+        for port in self._nvmet_root.ports:
+            if subsystem_name in port.subsystems:
+                LOG.debug('Removing %s from port %s',
+                          subsystem_name, port.portid)
+                port.remove_subsystem(subsystem_name)
 
-        for port in nvmf_subsystems['ports']:
-            if subsystem_name in port['subsystems']:
-                port['subsystems'].remove(subsystem_name)
-                break
-        for subsys in nvmf_subsystems['subsystems']:
-            if subsys['nqn'] == subsystem_name:
-                nvmf_subsystems['subsystems'].remove(subsys)
-                break
-
-        LOG.debug(
-            'Newly loaded subsystems will be: %s', nvmf_subsystems)
-        self._restore(nvmf_subsystems)
-        return subsystem_name
-
-    def _get_nvmf_subsystem(self, nvmf_subsystems, volume_id):
-        subsystem_name = self._get_target_info(
-            self.nvmet_subsystem_name, volume_id)
-        for subsys in nvmf_subsystems['subsystems']:
-            if subsys['nqn'] == subsystem_name:
-                return subsystem_name
+        try:
+            subsys = nvmet.Subsystem(subsystem_name)
+            LOG.debug('Deleting %s', subsystem_name)
+            subsys.delete()  # privsep call
+            LOG.info('Subsystem %s removed', subsystem_name)
+        except nvmet.NotFound:
+            LOG.info('Skipping remove_export. No NVMe subsystem for volume: '
+                     '%s', volume.id)
+        except Exception:
+            LOG.error('Failed to delete subsystem: %s', subsystem_name)
+            raise NVMETTargetDeleteError(subsystem=subsystem_name)
+        LOG.info('Volume %s is no longer exported', volume.id)
 
     def _get_available_nvmf_subsystems(self):
-        __, tmp_file_path = tempfile.mkstemp(prefix='nvmet')
+        nvme_root = nvmet.Root()
+        subsystems = nvme_root.dump()
+        return subsystems
 
-        # nvmetcli doesn't support printing to stdout yet,
-        try:
-            out, err = nvmcli.save(tmp_file_path)
-        except putils.ProcessExecutionError:
-            with excutils.save_and_reraise_exception():
-                LOG.exception('Error from nvmetcli save')
-                self._delete_file(tmp_file_path)
-
-        # temp file must be readable by this process user
-        # in order to avoid executing cat as root
-        with utils.temporary_chown(tmp_file_path):
-            try:
-                out = cinder.privsep.path.readfile(tmp_file_path)
-            except putils.ProcessExecutionError:
-                with excutils.save_and_reraise_exception():
-                    LOG.exception('Failed to read: %s', tmp_file_path)
-                    self._delete_file(tmp_file_path)
-            nvmf_subsystems = json.loads(out)
-
-        self._delete_file(tmp_file_path)
-
-        return nvmf_subsystems
-
-    def _get_target_info(self, subsystem, volume_id):
-        return "nqn.%s-%s" % (subsystem, volume_id)
-
-    def _delete_file(self, file_path):
-        try:
-            cinder.privsep.path.removefile(file_path)
-        except putils.ProcessExecutionError:
-            LOG.exception('Failed to delete file: %s', file_path)
+    def _get_target_nqn(self, volume_id):
+        return "nqn.%s-%s" % (self.nvmet_subsystem_name, volume_id)

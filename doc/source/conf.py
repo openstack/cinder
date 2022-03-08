@@ -73,6 +73,9 @@ config_generator_config_file = (
     '../../tools/config/cinder-config-generator.conf')
 sample_config_basename = '_static/cinder'
 
+# These are driver specific libraries that are not always present
+autodoc_mock_imports = ['nvmet']
+
 policy_generator_config_file = (
     '../../tools/config/cinder-policy-generator.conf')
 sample_policy_basename = '_static/cinder'
