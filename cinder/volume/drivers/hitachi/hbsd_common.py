@@ -106,8 +106,17 @@ COMMON_VOLUME_OPTS = [
              'a copy pair deletion or data restoration.'),
 ]
 
+COMMON_PORT_OPTS = [
+    cfg.BoolOpt(
+        'hitachi_port_scheduler',
+        default=False,
+        help='Enable port scheduling of WWNs to the configured ports so that '
+             'WWNs are registered to ports in a round-robin fashion.'),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(COMMON_VOLUME_OPTS, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(COMMON_PORT_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 LOG = logging.getLogger(__name__)
 MSG = utils.HBSDMsg
@@ -154,6 +163,7 @@ class HBSDCommon():
             self.driver_info['param_prefix'] + '_storage_id',
             self.driver_info['param_prefix'] + '_pool',
         ]
+        self.port_index = {}
 
     def create_ldev(self, size):
         """Create an LDEV and return its LDEV number."""
@@ -468,6 +478,23 @@ class HBSDCommon():
             self.raise_error(msg)
         return values
 
+    def check_param_fc(self):
+        """Check FC-related parameter values and consistency among them."""
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_port_scheduler'):
+            self.check_opts(self.conf, COMMON_PORT_OPTS)
+            if (self.conf.hitachi_port_scheduler and
+                    not self.conf.hitachi_group_create):
+                msg = utils.output_log(
+                    MSG.INVALID_PARAMETER,
+                    param=self.driver_info['param_prefix'] + '_port_scheduler')
+                self.raise_error(msg)
+            if (self._lookup_service is None and
+                    self.conf.hitachi_port_scheduler):
+                msg = utils.output_log(MSG.ZONE_MANAGER_IS_NOT_AVAILABLE)
+                self.raise_error(msg)
+
     def check_param_iscsi(self):
         """Check iSCSI-related parameter values and consistency among them."""
         if self.conf.use_chap_auth:
@@ -505,6 +532,8 @@ class HBSDCommon():
             if not self.conf.safe_get(opt):
                 msg = utils.output_log(MSG.INVALID_PARAMETER, param=opt)
                 self.raise_error(msg)
+        if self.storage_info['protocol'] == 'FC':
+            self.check_param_fc()
         if self.storage_info['protocol'] == 'iSCSI':
             self.check_param_iscsi()
 
@@ -544,11 +573,33 @@ class HBSDCommon():
                                resource=self.driver_info['hba_id_type'])
         self.raise_error(msg)
 
+    def set_device_map(self, targets, hba_ids, volume):
+        return None, hba_ids
+
+    def get_port_scheduler_param(self):
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_port_scheduler'):
+            return self.conf.hitachi_port_scheduler
+        else:
+            return False
+
+    def create_target_by_port_scheduler(
+            self, devmap, targets, connector, volume):
+        raise NotImplementedError()
+
     def create_target_to_storage(self, port, connector, hba_ids):
         """Create a host group or an iSCSI target on the specified port."""
         raise NotImplementedError()
 
-    def set_target_mode(self, port, gid, connector):
+    def get_gid_from_targets(self, targets, port):
+        for target_port, target_gid in targets['list']:
+            if target_port == port:
+                return target_gid
+        msg = utils.output_log(MSG.NO_CONNECTED_TARGET)
+        self.raise_error(msg)
+
+    def set_target_mode(self, port, gid):
         """Configure the target to meet the environment."""
         raise NotImplementedError()
 
@@ -560,41 +611,75 @@ class HBSDCommon():
         """Delete the host group or the iSCSI target from the port."""
         raise NotImplementedError()
 
-    def _create_target(self, targets, port, connector, hba_ids):
+    def set_target_map_info(self, targets, hba_ids, port):
+        pass
+
+    def create_target(self, targets, port, connector, hba_ids):
         """Create a host group or an iSCSI target on the storage port."""
-        target_name, gid = self.create_target_to_storage(
-            port, connector, hba_ids)
-        utils.output_log(MSG.OBJECT_CREATED, object='a target',
-                         details='port: %(port)s, gid: %(gid)s, target_name: '
-                         '%(target)s' %
-                         {'port': port, 'gid': gid, 'target': target_name})
+        if port not in targets['info'] or not targets['info'][port]:
+            target_name, gid = self.create_target_to_storage(
+                port, connector, hba_ids)
+            utils.output_log(
+                MSG.OBJECT_CREATED,
+                object='a target',
+                details='port: %(port)s, gid: %(gid)s, target_name: '
+                        '%(target)s' %
+                        {'port': port, 'gid': gid, 'target': target_name})
+        else:
+            gid = self.get_gid_from_targets(targets, port)
         try:
-            self.set_target_mode(port, gid, connector)
+            if port not in targets['info'] or not targets['info'][port]:
+                self.set_target_mode(port, gid)
             self.set_hba_ids(port, gid, hba_ids)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.delete_target_from_storage(port, gid)
         targets['info'][port] = True
-        targets['list'].append((port, gid))
+        if (port, gid) not in targets['list']:
+            targets['list'].append((port, gid))
+        self.set_target_map_info(targets, hba_ids, port)
 
-    def create_mapping_targets(self, targets, connector):
+    def create_mapping_targets(self, targets, connector, volume=None):
         """Create server-storage connection for all specified storage ports."""
+        active_hba_ids = []
         hba_ids = self.get_hba_ids_from_connector(connector)
-        for port in targets['info'].keys():
-            if targets['info'][port]:
-                continue
 
-            try:
-                self._create_target(targets, port, connector, hba_ids)
-            except exception.VolumeDriverException:
-                utils.output_log(
-                    self.driver_info['msg_id']['target'], port=port)
+        devmap, active_hba_ids = self.set_device_map(targets, hba_ids, volume)
+
+        if self.get_port_scheduler_param():
+            self.create_target_by_port_scheduler(
+                devmap, targets, connector, volume)
+        else:
+            for port in targets['info'].keys():
+                if targets['info'][port]:
+                    continue
+
+                try:
+                    self.create_target(
+                        targets, port, connector, active_hba_ids)
+                except exception.VolumeDriverException:
+                    utils.output_log(
+                        self.driver_info['msg_id']['target'], port=port)
 
         # When other threads created a host group at same time, need to
         # re-find targets.
         if not targets['list']:
             self.find_targets_from_storage(
                 targets, connector, targets['info'].keys())
+
+    def get_port_index_to_be_used(self, ports, network_name):
+        backend_name = self.conf.safe_get('volume_backend_name')
+        code = (
+            str(self.conf.hitachi_storage_id) + backend_name + network_name)
+        if code in self.port_index.keys():
+            if self.port_index[code] >= len(ports) - 1:
+                self.port_index[code] = 0
+            else:
+                self.port_index[code] += 1
+        else:
+            self.port_index[code] = 0
+
+        return self.port_index[code]
 
     def init_cinder_hosts(self, **kwargs):
         """Initialize server-storage connection."""
@@ -725,7 +810,7 @@ class HBSDCommon():
         return {
             'driver_volume_type': self.driver_info['volume_type'],
             'data': self.get_properties(targets, target_lun, connector),
-        }
+        }, targets['target_map']
 
     def get_target_ports(self, connector):
         """Return a list of ports corresponding to the specified connector."""
@@ -818,6 +903,9 @@ class HBSDCommon():
 
         return filtered_tps
 
+    def clean_mapping_targets(self, targets):
+        raise NotImplementedError()
+
     def unmanage_snapshot(self, snapshot):
         """Output error message and raise NotImplementedError."""
         utils.output_log(
@@ -895,3 +983,7 @@ class HBSDCommon():
         """Raise a VolumeDriverException by driver busy message."""
         message = _(utils.BUSY_MESSAGE)
         raise exception.VolumeDriverException(message)
+
+    def is_controller(self, connector):
+        return True if (
+            'ip' in connector and connector['ip'] == CONF.my_ip) else False

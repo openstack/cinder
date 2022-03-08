@@ -70,6 +70,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         2.2.0 - Add maintenance parameters.
         2.2.1 - Make the parameters name variable for supporting OEM storages.
         2.2.2 - Add Target Port Assignment.
+        2.2.3 - Add port scheduler.
 
     """
 
