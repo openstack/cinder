@@ -1,1 +1,2 @@
 redirectmatch 301 ^/cinder/([^/]+)/man/cinder-manage.html$ /cinder/$1/cli/cinder-manage.html
+redirectmatch 301 ^/cinder/([^/]+)/upgrade.html$ /cinder/$1/admin/upgrades.html
