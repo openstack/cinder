@@ -4955,10 +4955,11 @@ class VolumeManager(manager.CleanableManager,
                       resource=vref)
             if has_shared_connection is not None and not has_shared_connection:
                 self.driver.remove_export(context.elevated(), vref)
-        except Exception:
+        except Exception as exc:
             # Failures on detach_volume and remove_export are not considered
             # failures in terms of detaching the volume.
-            pass
+            LOG.warning('Failed to detach volume on the backend, ignoring '
+                        'failure %s', exc)
 
     # Replication group API (Tiramisu)
     def enable_replication(self,
