@@ -181,7 +181,7 @@ The value of the option ``storage_protocol`` can be either ``fc`` or ``iscsi``,
 which is case insensitive.
 
 For more details on multiple back ends, see :doc:`Configure multiple-storage
-back ends </admin/blockstorage-multi-backend>`.
+back ends </admin/multi-backend>`.
 
 Required configurations
 -----------------------

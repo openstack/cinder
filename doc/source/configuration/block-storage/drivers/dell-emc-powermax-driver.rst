@@ -3243,15 +3243,15 @@ following the setup instructions above, are supported with a few exceptions:
 .. Document Hyperlinks
 .. _Dell EMC Support: https://www.dell.com/support
 .. _Openstack CLI: https://docs.openstack.org/cinder/latest/cli/cli-manage-volumes.html#volume-types
-.. _over-subscription documentation: https://docs.openstack.org/cinder/latest/admin/blockstorage-over-subscription.html
+.. _over-subscription documentation: https://docs.openstack.org/cinder/latest/admin/over-subscription.html
 .. _configuring migrations: https://docs.openstack.org/nova/latest/admin/configuring-migrations.html
 .. _live migration usage: https://docs.openstack.org/nova/latest/admin/live-migration-usage.html
 .. _Ubuntu NFS Documentation: https://help.ubuntu.com/lts/serverguide/network-file-system.html
-.. _multi-attach documentation: https://docs.openstack.org/cinder/latest/admin/blockstorage-volume-multiattach.html
+.. _multi-attach documentation: https://docs.openstack.org/cinder/latest/admin/volume-multiattach.html
 .. _Data at Rest Encryption: https://www.dellemc.com/resources/en-us/asset/white-papers/products/storage/h13936-dell-emc-powermax-vmax-all-flash-data-rest-encryption.pdf
 .. _official Barbican documentation: https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-encryption.html
 .. _SRDF Metro Overview & Best Practices: https://www.emc.com/collateral/technical-documentation/h14556-vmax3-srdf-metro-overview-and-best-practices-tech-note.pdf
-.. _block-storage groups: https://docs.openstack.org/cinder/latest/admin/blockstorage-groups.html
+.. _block-storage groups: https://docs.openstack.org/cinder/latest/admin/groups.html
 .. _volume backup: https://docs.openstack.org/cinder/latest/configuration/block-storage/backup-drivers.html
 .. _volume backup CLI: https://docs.openstack.org/python-openstackclient/latest/cli/command-objects/volume-backup.html
 .. _PyU4V: https://pyu4v.readthedocs.io/en/latest/

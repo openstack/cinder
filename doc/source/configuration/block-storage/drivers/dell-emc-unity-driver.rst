@@ -460,7 +460,7 @@ snapshots, the volume type extra specs would also have the following entry:
 
     {'consistent_group_snapshot_enabled': <is> True}
 
-Refer to :doc:`/admin/blockstorage-groups`
+Refer to :doc:`/admin/groups`
 for command lines detail.
 
 Volume replications
