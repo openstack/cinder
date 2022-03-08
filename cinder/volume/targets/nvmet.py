@@ -37,36 +37,33 @@ class NVMET(nvmeof.NVMeOF):
         self._nvmet_root = nvmet.Root()
 
     @utils.synchronized('nvmetcli', external=True)
-    def create_nvmeof_target(self,
-                             volume_id,
-                             subsystem_name,  # Ignoring this, using config
-                             target_ip,
-                             target_port,
-                             transport_type,
-                             nvmet_port_id,
-                             ns_id,
-                             volume_path):
+    def create_export(self, context, volume, volume_path):
         # Create NVME subsystem for previously created LV
-        nqn = self._get_target_nqn(volume_id)
+        nqn = self._get_target_nqn(volume.id)
         try:
-            self._ensure_subsystem_exists(nqn, ns_id, volume_path)
-            self._ensure_port_exports(nqn, target_ip, target_port,
-                                      transport_type, nvmet_port_id)
+            uuid = self._get_nvme_uuid(volume)
+
+            self._ensure_subsystem_exists(nqn, self.nvmet_ns_id, volume_path,
+                                          uuid)
+
+            self._ensure_port_exports(nqn, self.target_ip, self.target_port,
+                                      self.nvme_transport_type,
+                                      self.nvmet_port_id)
         except Exception:
             LOG.error('Failed to add subsystem: %s', nqn)
             raise NVMETTargetAddError(subsystem=nqn)
 
-        LOG.info('Subsystem %s now exported on port %s', nqn, target_port)
+        LOG.info('Subsystem %s now exported on port %s', nqn, self.target_port)
         return {
             'location': self.get_nvmeof_location(
                 nqn,
-                target_ip,
-                target_port,
-                transport_type,
-                ns_id),
+                self.target_ip,
+                self.target_port,
+                self.nvme_transport_type,
+                self.nvmet_ns_id),
             'auth': ''}
 
-    def _ensure_subsystem_exists(self, nqn, nvmet_ns_id, volume_path):
+    def _ensure_subsystem_exists(self, nqn, nvmet_ns_id, volume_path, uuid):
         # Assume if subsystem exists, it has the right configuration
         try:
             nvmet.Subsystem(nqn)
@@ -84,6 +81,7 @@ class NVMET(nvmeof.NVMeOF):
                 {
                     "device": {
                         "nguid": str(uuidutils.generate_uuid()),
+                        "uuid": uuid,
                         "path": volume_path,
                     },
                     "enable": 1,
@@ -94,6 +92,9 @@ class NVMET(nvmeof.NVMeOF):
 
         nvmet.Subsystem.setup(subsystem_section)  # privsep
         LOG.debug('Added subsystem: %s', nqn)
+
+    def _get_nvme_uuid(self, volume):
+        return volume.name_id
 
     def _ensure_port_exports(self, nqn, addr, port, transport_type, port_id):
         # Assume if port exists, it has the right configuration

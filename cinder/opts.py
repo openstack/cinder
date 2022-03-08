@@ -279,6 +279,7 @@ def list_opts():
                 [cinder_volume_api.az_cache_time_opt],
                 cinder_volume_driver.volume_opts,
                 cinder_volume_driver.iser_opts,
+                cinder_volume_driver.nvmeof_opts,
                 cinder_volume_driver.nvmet_opts,
                 cinder_volume_driver.scst_opts,
                 cinder_volume_driver.backup_opts,
@@ -324,6 +325,7 @@ def list_opts():
             itertools.chain(
                 cinder_volume_driver.volume_opts,
                 cinder_volume_driver.iser_opts,
+                cinder_volume_driver.nvmeof_opts,
                 cinder_volume_driver.nvmet_opts,
                 cinder_volume_driver.scst_opts,
                 cinder_volume_driver.image_opts,

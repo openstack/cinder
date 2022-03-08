@@ -504,6 +504,7 @@ class SpdkDriverTestCase(test.TestCase):
         self.configuration.target_ip_address = "192.168.0.1"
         self.configuration.target_port = 4420
         self.configuration.target_prefix = "nqn.2014-08.io.spdk"
+        self.configuration.nvmeof_conn_info_version = 1
         self.configuration.nvmet_port_id = "1"
         self.configuration.nvmet_ns_id = "fake_id"
         self.configuration.nvmet_subsystem_name = "2014-08.io.spdk"
