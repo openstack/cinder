@@ -27,14 +27,102 @@ from oslo_db.sqlalchemy import enginefacade
 from oslo_db.sqlalchemy import test_fixtures
 from oslo_db.sqlalchemy import test_migrations
 from oslo_db.sqlalchemy import utils as db_utils
+from oslo_log.fixture import logging_error as log_fixture
 from oslotest import base as test_base
 import sqlalchemy
 from sqlalchemy.engine import reflection
 
 import cinder.db.legacy_migrations
 from cinder.db import migration
+from cinder.db.sqlalchemy import models
+from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import volume_types
+
+
+class CinderModelsMigrationsSync(test_migrations.ModelsMigrationsSync):
+    """Test sqlalchemy-migrate migrations."""
+
+    def setUp(self):
+        # Ensure BaseTestCase's ConfigureLogging fixture is disabled since
+        # we're using our own (StandardLogging).
+        with fixtures.EnvironmentVariable('OS_LOG_CAPTURE', '0'):
+            super().setUp()
+
+        self.useFixture(log_fixture.get_logging_handle_error_fixture())
+        self.useFixture(cinder_fixtures.WarningsFixture())
+        self.useFixture(cinder_fixtures.StandardLogging())
+
+        self.engine = enginefacade.writer.get_engine()
+
+    def db_sync(self, engine):
+        migration.db_sync(engine=self.engine)
+
+    def get_engine(self):
+        return self.engine
+
+    def get_metadata(self):
+        return models.BASE.metadata
+
+    def include_object(self, object_, name, type_, reflected, compare_to):
+        if type_ == 'table':
+            # migrate_version is a sqlalchemy-migrate control table and
+            # isn't included in the model
+            if name == 'migrate_version':
+                return False
+
+        return True
+
+    def filter_metadata_diff(self, diff):
+        # Overriding the parent method to decide on certain attributes
+        # that maybe present in the DB but not in the models.py
+
+        def include_element(element):
+            """Determine whether diff element should be excluded."""
+            if element[0] == 'modify_nullable':
+                table_name, column = element[2], element[3]
+                return (table_name, column) not in {
+                    # NOTE(stephenfin): This field has nullable=True set, but
+                    # since it's also a primary key (primary_key=True) the
+                    # resulting schema will still end up being "NOT NULL". This
+                    # weird combination was deemed necessary because MySQL will
+                    # otherwise set this to "NOT NULL DEFAULT ''" which may be
+                    # harmless but is inconsistent with other models. See the
+                    # migration for more information.
+                    ('encryption', 'encryption_id'),
+                    # NOTE(stephenfin): The nullability of these fields is
+                    # dependent on the backend, for some reason
+                    ('encryption', 'provider'),
+                    ('encryption', 'control_location'),
+                }
+
+            return True
+
+        return [element for element in diff if include_element(element[0])]
+
+
+class TestModelsSyncSQLite(
+    CinderModelsMigrationsSync,
+    test_fixtures.OpportunisticDBTestMixin,
+    test_base.BaseTestCase,
+):
+    pass
+
+
+class TestModelsSyncMySQL(
+    CinderModelsMigrationsSync,
+    test_fixtures.OpportunisticDBTestMixin,
+    test_base.BaseTestCase,
+):
+    FIXTURE = test_fixtures.MySQLOpportunisticFixture
+
+
+class TestModelsSyncPostgreSQL(
+    CinderModelsMigrationsSync,
+    test_fixtures.OpportunisticDBTestMixin,
+    test_base.BaseTestCase,
+):
+    FIXTURE = test_fixtures.PostgresqlOpportunisticFixture
 
 
 class MigrationsWalk(
