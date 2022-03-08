@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Hitachi driver: Add target port assignment. Defining particular
+    ports in extra spec ``hbsd:target_ports`` determines which of
+    the ports specified by the ``hitachi_target_ports`` or the
+    ``hitachi_compute_target_ports`` parameters are used to create LUN
+    paths during volume attach operations for each volume type.
+

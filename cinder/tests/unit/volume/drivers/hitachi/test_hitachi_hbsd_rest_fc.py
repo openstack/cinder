@@ -88,6 +88,7 @@ for i in range(4):
     volume = {}
     volume['id'] = '00000000-0000-0000-0000-{0:012d}'.format(i)
     volume['name'] = 'test-volume{0:d}'.format(i)
+    volume['volume_type_id'] = '00000000-0000-0000-0000-{0:012d}'.format(i)
     if i == 3:
         volume['provider_location'] = None
     else:
@@ -98,6 +99,7 @@ for i in range(4):
     else:
         volume['status'] = 'available'
     volume = fake_volume.fake_volume_obj(CTXT, **volume)
+    volume.volume_type = fake_volume.fake_volume_type_obj(CTXT)
     TEST_VOLUME.append(volume)
 
 
@@ -785,9 +787,13 @@ class HBSDRESTFCDriverTest(test.TestCase):
 
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
-    def test_initialize_connection(self, request, add_fc_zone):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_initialize_connection(
+            self, get_volume_type_extra_specs, request, add_fc_zone):
         self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
+        extra_specs = {"hbsd:target_ports": "CL1-A"}
+        get_volume_type_extra_specs.return_value = extra_specs
         request.side_effect = [FakeResponse(200, GET_HOST_WWNS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         ret = self.driver.initialize_connection(
@@ -795,15 +801,20 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         self.assertEqual([CONFIG_MAP['target_wwn']], ret['data']['target_wwn'])
         self.assertEqual(1, ret['data']['target_lun'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(2, request.call_count)
         self.assertEqual(1, add_fc_zone.call_count)
 
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
-    def test_initialize_connection_already_mapped(self, request, add_fc_zone):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_initialize_connection_already_mapped(
+            self, get_volume_type_extra_specs, request, add_fc_zone):
         """Normal case: ldev have already mapped."""
         self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
+        extra_specs = {"hbsd:target_ports": "CL1-A"}
+        get_volume_type_extra_specs.return_value = extra_specs
         request.side_effect = [
             FakeResponse(200, GET_HOST_WWNS_RESULT),
             FakeResponse(202, COMPLETED_FAILED_RESULT_LU_DEFINED),
@@ -814,15 +825,20 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         self.assertEqual([CONFIG_MAP['target_wwn']], ret['data']['target_wwn'])
         self.assertEqual(1, ret['data']['target_lun'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(3, request.call_count)
         self.assertEqual(1, add_fc_zone.call_count)
 
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
-    def test_initialize_connection_shared_target(self, request, add_fc_zone):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_initialize_connection_shared_target(
+            self, get_volume_type_extra_specs, request, add_fc_zone):
         """Normal case: A target shared with other systems."""
         self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
+        extra_specs = {"hbsd:target_ports": "CL1-A"}
+        get_volume_type_extra_specs.return_value = extra_specs
         request.side_effect = [FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(200, GET_HOST_GROUPS_RESULT),
@@ -833,6 +849,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         self.assertEqual([CONFIG_MAP['target_wwn']], ret['data']['target_wwn'])
         self.assertEqual(1, ret['data']['target_lun'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(5, request.call_count)
         self.assertEqual(1, add_fc_zone.call_count)
 

@@ -25,10 +25,11 @@ from oslo_utils import units
 
 from cinder import exception
 
-VERSION = '2.2.1'
+VERSION = '2.2.2'
 CI_WIKI_NAME = 'Hitachi_VSP_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
+DRIVER_DIR_NAME = 'hbsd'
 DRIVER_PREFIX = 'HBSD'
 DRIVER_FILE_PREFIX = 'hbsd'
 TARGET_PREFIX = 'HBSD-'
@@ -170,6 +171,17 @@ class HBSDMsg(enum.Enum):
         'loglevel': base_logging.WARNING,
         'msg': 'Failed to detach the logical device. (LDEV: %(ldev)s, '
                'reason: %(reason)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    INVALID_EXTRA_SPEC_KEY_PORT = {
+        'msg_id': 330,
+        'loglevel': base_logging.WARNING,
+        'msg': 'The port name specified for the extra spec key '
+               '"%(target_ports_param)s" '
+               'of the volume type is not specified for the '
+               'target_ports or compute_target_ports '
+               'parameter in cinder.conf. (port: %(port)s, volume type: '
+               '%(volume_type)s)',
         'suffix': WARNING_SUFFIX,
     }
     INVALID_PORT = {
