@@ -268,6 +268,45 @@ class HuaweiFCDriver(common.HuaweiBaseDriver, driver.FibreChannelDriver):
         data['driver_version'] = self.VERSION
         return data
 
+    def _check_fc_links(self, wwns, online_wwns_in_host, online_free_wwns,
+                        host_id):
+        wwns_check = []
+        for wwn in wwns:
+            if wwn in online_wwns_in_host or wwn in online_free_wwns:
+                wwns_check.append(wwn)
+                continue
+            LOG.warning("Can't add FC initiator %(wwn)s to host "
+                        "%(host)s, please check if this initiator has"
+                        " been added to other host or isn't present "
+                        "on array.", {"wwn": wwn, "host": host_id})
+
+            if (self.configuration.min_fc_ini_online ==
+                    constants.DEFAULT_MINIMUM_FC_INITIATOR_ONLINE):
+                wwns_in_host = (
+                    self.client.get_host_fc_initiators(host_id))
+                iqns_in_host = (
+                    self.client.get_host_iscsi_initiators(host_id))
+                if not (wwns_in_host or iqns_in_host or
+                        self.client.is_host_associated_to_hostgroup(
+                            host_id)):
+                    self.client.remove_host(host_id)
+                msg = _("There is an FC initiator in an invalid "
+                        "state. If you want to continue to attach "
+                        "volume to host, configure MinFCIniOnline "
+                        "in the XML file.")
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        if len(wwns_check) < self.configuration.min_fc_ini_online:
+            msg = (_("The number of online FC initiator %(wwns)s less than"
+                     " the set number: %(set)s.") %
+                   {"wwns": wwns_check,
+                    "set": self.configuration.min_fc_ini_online})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        return wwns_check
+
     @coordination.synchronized('huawei-mapping-{connector[host]}')
     def initialize_connection(self, volume, connector):
         lun_id, lun_type = self.get_lun_id_and_type(volume)
@@ -305,21 +344,8 @@ class HuaweiFCDriver(common.HuaweiBaseDriver, driver.FibreChannelDriver):
             online_free_wwns = self.client.get_online_free_wwns()
             fc_initiators_on_array = self.client.get_fc_initiator_on_array()
             wwns = [i for i in wwns if i in fc_initiators_on_array]
-
-            for wwn in wwns:
-                if (wwn not in online_wwns_in_host
-                        and wwn not in online_free_wwns):
-                    wwns_in_host = (
-                        self.client.get_host_fc_initiators(host_id))
-                    iqns_in_host = (
-                        self.client.get_host_iscsi_initiators(host_id))
-                    if not (wwns_in_host or iqns_in_host or
-                       self.client.is_host_associated_to_hostgroup(host_id)):
-                        self.client.remove_host(host_id)
-
-                    msg = _('No FC initiator can be added to host.')
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
+            wwns = self._check_fc_links(
+                wwns, online_wwns_in_host, online_free_wwns, host_id)
 
             for wwn in wwns:
                 if wwn in online_free_wwns:
