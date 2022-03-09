@@ -560,9 +560,11 @@ class HBSDREST(common.HBSDCommon):
                                  port=port, id=gid, lun=lun)
         return lun
 
-    def attach_ldev(self, volume, ldev, connector, targets):
+    def attach_ldev(self, volume, ldev, connector, is_snapshot, targets):
         """Initialize connection between the server and the volume."""
         target_ports = self.get_target_ports(connector)
+        target_ports = self.filter_target_ports(target_ports, volume,
+                                                is_snapshot)
         if (self.find_targets_from_storage(
                 targets, connector, target_ports) and
                 self.conf.hitachi_group_create):

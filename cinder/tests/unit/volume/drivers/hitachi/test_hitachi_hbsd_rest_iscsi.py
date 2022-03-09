@@ -79,6 +79,7 @@ for i in range(4):
     volume = {}
     volume['id'] = '00000000-0000-0000-0000-{0:012d}'.format(i)
     volume['name'] = 'test-volume{0:d}'.format(i)
+    volume['volume_type_id'] = '00000000-0000-0000-0000-{0:012d}'.format(i)
     if i == 3:
         volume['provider_location'] = None
     else:
@@ -89,6 +90,7 @@ for i in range(4):
     else:
         volume['status'] = 'available'
     volume = fake_volume.fake_volume_obj(CTXT, **volume)
+    volume.volume_type = fake_volume.fake_volume_type_obj(CTXT)
     TEST_VOLUME.append(volume)
 
 
@@ -616,7 +618,11 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.assertEqual(5, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    def test_initialize_connection(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_initialize_connection(
+            self, get_volume_type_extra_specs, request):
+        extra_specs = {"hbsd:target_ports": "CL1-A"}
+        get_volume_type_extra_specs.return_value = extra_specs
         request.side_effect = [FakeResponse(200, GET_HOST_ISCSIS_RESULT),
                                FakeResponse(200, GET_HOST_GROUP_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -636,11 +642,16 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.assertEqual(
             CONFIG_MAP['auth_password'], ret['data']['auth_password'])
         self.assertEqual(1, ret['data']['target_lun'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(3, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    def test_initialize_connection_shared_target(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_initialize_connection_shared_target(
+            self, get_volume_type_extra_specs, request):
         """Normal case: A target shared with other systems."""
+        extra_specs = {"hbsd:target_ports": "CL1-A"}
+        get_volume_type_extra_specs.return_value = extra_specs
         request.side_effect = [FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(200, GET_HOST_GROUPS_RESULT),
                                FakeResponse(200, GET_HOST_ISCSIS_RESULT),
@@ -661,6 +672,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.assertEqual(
             CONFIG_MAP['auth_password'], ret['data']['auth_password'])
         self.assertEqual(1, ret['data']['target_lun'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(4, request.call_count)
 
     @mock.patch.object(requests.Session, "request")

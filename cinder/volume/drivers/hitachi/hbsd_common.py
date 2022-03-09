@@ -25,6 +25,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
+from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
 _STR_VOLUME = 'volume'
@@ -645,7 +646,7 @@ class HBSDCommon():
                          object='compute target port list',
                          value=self.storage_info['compute_ports'])
 
-    def attach_ldev(self, volume, ldev, connector, targets):
+    def attach_ldev(self, volume, ldev, connector, is_snapshot, targets):
         """Initialize connection between the server and the volume."""
         raise NotImplementedError()
 
@@ -703,7 +704,7 @@ class HBSDCommon():
     @coordination.synchronized(
         '{self.driver_info[driver_file_prefix]}-host-'
         '{self.conf.hitachi_storage_id}-{connector[host]}')
-    def initialize_connection(self, volume, connector):
+    def initialize_connection(self, volume, connector, is_snapshot=False):
         """Initialize connection between the server and the volume."""
         targets = {
             'info': {},
@@ -718,7 +719,8 @@ class HBSDCommon():
                                    volume_id=volume['id'])
             self.raise_error(msg)
 
-        target_lun = self.attach_ldev(volume, ldev, connector, targets)
+        target_lun = self.attach_ldev(
+            volume, ldev, connector, is_snapshot, targets)
 
         return {
             'driver_volume_type': self.driver_info['volume_type'],
@@ -780,6 +782,41 @@ class HBSDCommon():
                 return {'driver_volume_type': self.driver_info['volume_type'],
                         'data': {'target_wwn': target_wwn}}
         return inner(self, volume, connector)
+
+    def get_volume_extra_specs(self, volume):
+        if volume is None:
+            return {}
+        type_id = volume.get('volume_type_id')
+        if type_id is None:
+            return {}
+
+        return volume_types.get_volume_type_extra_specs(type_id)
+
+    def filter_target_ports(self, target_ports, volume, is_snapshot=False):
+        specs = self.get_volume_extra_specs(volume) if volume else None
+        if not specs:
+            return target_ports
+        if self.driver_info.get('driver_dir_name'):
+            tps_name = self.driver_info['driver_dir_name'] + ':target_ports'
+        else:
+            return target_ports
+
+        tps = specs.get(tps_name)
+        if tps is None:
+            return target_ports
+
+        tpsset = set([s.strip() for s in tps.split(',')])
+        filtered_tps = list(tpsset.intersection(target_ports))
+        if is_snapshot:
+            volume = volume['volume']
+        for port in tpsset:
+            if port not in target_ports:
+                utils.output_log(
+                    MSG.INVALID_EXTRA_SPEC_KEY_PORT,
+                    port=port, target_ports_param=tps_name,
+                    volume_type=volume['volume_type']['name'])
+
+        return filtered_tps
 
     def unmanage_snapshot(self, snapshot):
         """Output error message and raise NotImplementedError."""

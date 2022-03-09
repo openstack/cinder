@@ -42,6 +42,7 @@ _DRIVER_INFO = {
     'volume_type': 'fibre_channel',
     'param_prefix': utils.PARAM_PREFIX,
     'vendor_name': utils.VENDOR_NAME,
+    'driver_dir_name': utils.DRIVER_DIR_NAME,
     'driver_prefix': utils.DRIVER_PREFIX,
     'driver_file_prefix': utils.DRIVER_FILE_PREFIX,
     'target_prefix': utils.TARGET_PREFIX,
@@ -68,6 +69,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         2.1.0 - Add Cinder generic volume groups.
         2.2.0 - Add maintenance parameters.
         2.2.1 - Make the parameters name variable for supporting OEM storages.
+        2.2.2 - Add Target Port Assignment.
 
     """
 
@@ -223,7 +225,8 @@ class HBSDFCDriver(driver.FibreChannelDriver):
     @volume_utils.trace
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
         """Initialize connection between the server and the snapshot."""
-        return self.common.initialize_connection(snapshot, connector)
+        return self.common.initialize_connection(
+            snapshot, connector, is_snapshot=True)
 
     @volume_utils.trace
     def terminate_connection_snapshot(self, snapshot, connector, **kwargs):

@@ -242,10 +242,10 @@ class HBSDRESTFC(rest.HBSDREST):
                 not_found_count += 1
         return not_found_count
 
-    def initialize_connection(self, volume, connector):
+    def initialize_connection(self, volume, connector, is_snapshot=False):
         """Initialize connection between the server and the volume."""
         conn_info = super(HBSDRESTFC, self).initialize_connection(
-            volume, connector)
+            volume, connector, is_snapshot)
         if self.conf.hitachi_zoning_request:
             init_targ_map = utils.build_initiator_target_map(
                 connector, conn_info['data']['target_wwn'],
