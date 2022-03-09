@@ -23,6 +23,7 @@ from collections import abc
 import contextlib
 import datetime as dt
 import functools
+import inspect
 import itertools
 import re
 import sys
@@ -165,6 +166,7 @@ def require_admin_context(f):
         if not is_admin_context(args[0]):
             raise exception.AdminRequired()
         return f(*args, **kwargs)
+    wrapper.__signature__ = inspect.signature(f)
     return wrapper
 
 
@@ -183,6 +185,7 @@ def require_context(f):
         if not is_admin_context(args[0]) and not is_user_context(args[0]):
             raise exception.NotAuthorized()
         return f(*args, **kwargs)
+    wrapper.__signature__ = inspect.signature(f)
     return wrapper
 
 
