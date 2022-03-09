@@ -374,14 +374,17 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def _trash_purge(self):
         LOG.info("Purging trash for backend '%s'", self._backend_name)
+
+        def _err(vol_name: str, backend_name: str) -> None:
+            LOG.exception("Error deleting %s from trash backend '%s'",
+                          vol_name,
+                          backend_name)
+
         with RADOSClient(self) as client:
             for vol in self.RBDProxy().trash_list(client.ioctx):
                 try:
                     self.RBDProxy().trash_remove(client.ioctx, vol.get('id'))
-                    LOG.info("Deleted %s from trash for backend '%s'",
-                             vol.get('name'),
-                             self._backend_name)
-                except Exception as e:
+                except OSError as e:
                     # NOTE(arne_wiebalck): trash_remove raises EPERM in case
                     # the volume's deferral time has not expired yet, so we
                     # want to explicitly handle this "normal" situation.
@@ -389,16 +392,18 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                     # so that the periodic purge retries on the next iteration
                     # and leaves ERRORs in the logs in case the deletion fails
                     # repeatedly.
-                    # pylint: disable=E1101
-                    if (e is OSError) and (e.errno == errno.EPERM):
+                    if (e.errno == errno.EPERM):
                         LOG.debug("%s has not expired yet on backend '%s'",
                                   vol.get('name'),
                                   self._backend_name)
                     else:
-                        LOG.exception("Error deleting %s from trash "
-                                      "backend '%s'",
-                                      vol.get('name'),
-                                      self._backend_name)
+                        _err(vol.get('name'), self._backend_name)
+                except Exception:
+                    _err(vol.get('name'), self._backend_name)
+                else:
+                    LOG.info("Deleted %s from trash for backend '%s'",
+                             vol.get('name'),
+                             self._backend_name)
 
     def _start_periodic_tasks(self):
         if self.configuration.enable_deferred_deletion:
