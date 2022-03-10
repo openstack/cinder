@@ -2989,10 +2989,39 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 return self._migrate_attached_cross_vc(context, dest_host,
                                                        volume, backing)
             else:
-                raise NotImplementedError()
+                return self._migrate_attached_same_vc(context, dest_host,
+                                                      volume, backing)
         else:
             return self._migrate_unattached(context, dest_host, volume,
                                             backing)
+
+    def _migrate_attached_same_vc(self, context, dest_host, volume, backing):
+        get_vm_by_uuid = self.volumeops.get_backing_by_uuid
+        # reusing the get_backing_by_uuid to lookup the attacher vm
+        if volume['multiattach']:
+            raise NotImplementedError()
+        attachments = volume.volume_attachment
+        instance_uuid = attachments[0]['instance_uuid']
+        attachedvm = get_vm_by_uuid(instance_uuid)
+        ds_info = self._remote_api.select_ds_for_volume(context,
+                                                        cinder_host=dest_host,
+                                                        volume=volume)
+        rp_ref = vim_util.get_moref(ds_info['resource_pool'], 'ResourcePool')
+        ds_ref = vim_util.get_moref(ds_info['datastore'], 'Datastore')
+        self.volumeops.relocate_one_disk(attachedvm, ds_ref, rp_ref,
+                                         volume_id=volume.id,
+                                         profile_id=ds_info.get('profile_id'))
+        new_disk = self.volumeops.get_disk_by_uuid(attachedvm, volume.id)
+        new_vmdk = new_disk.backing.fileName
+        # VMware does not update shadowvm backing after svmotion,
+        # So we need to fall reconfigure_backing_vmdk_path to fix
+        self.volumeops.reconfigure_backing_vmdk_path(backing, new_vmdk)
+        self.volumeops.relocate_backing(backing, ds_ref, None, None)
+        # VMware is locking the vmdk, so there is no posibility
+        # to update the profile from the backing, but the relocate_backing
+        # can still move the "skeletion" part of the backing to the new DS
+
+        return (True, None)
 
     def _migrate_unattached(self, context, dest_host, volume, backing):
         ds_info = self._remote_api.select_ds_for_volume(context,

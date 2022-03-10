@@ -65,3 +65,8 @@ class TemplateNotFoundException(exceptions.VMwareDriverException):
 class SnapshotNotFoundException(exceptions.VMwareDriverException):
     """Thrown when the backend snapshot cannot be found."""
     msg_fmt = _("Snapshot: %(name)s not found.")
+
+
+class StorageMigrationFailed(exceptions.VMwareDriverException):
+    """Thrown when svmotion fails."""
+    msg_fmt = _("SvMotion failed.")

@@ -1017,6 +1017,41 @@ class VMwareVolumeOps(object):
 
         return disk_locator
 
+    def _get_rspec_for_one_disk(self, datastore,
+                                disk_move_type, disk_type=None,
+                                disk_devices=None, disk_to_move=None,
+                                profile_id=None):
+        """Return spec for relocating volume backing.
+
+        :param datastore: Reference to the datastore
+        :param disk_move_type: Disk move type option
+        :param disk_type: Destination disk type
+        :param disk_devices: Virtual devices corresponding to the disks
+        :param disk_to_move: Virtual disk, we want to move to a new ds
+        :param profile_id: ID of the profile to use (Cross vCenter Vmotion)
+        :return: Spec for relocation
+        """
+        cf = self._session.vim.client.factory
+        relocate_spec = cf.create('ns0:VirtualMachineRelocateSpec')
+        locator = []
+        for disk_device in disk_devices:
+            if disk_device.backing.uuid == disk_to_move.backing.uuid:
+                spec = self._create_relocate_spec_disk_locator(datastore,
+                                                               disk_type,
+                                                               disk_device,
+                                                               profile_id)
+            else:
+                original_ds = disk_device.backing.datastore
+                spec = self._create_relocate_spec_disk_locator(original_ds,
+                                                               disk_type,
+                                                               disk_device,
+                                                               None)
+            locator.append(spec)
+        relocate_spec.disk = locator
+        relocate_spec.diskMoveType = disk_move_type
+        LOG.debug("Spec for relocating the backing: %s.", relocate_spec)
+        return relocate_spec
+
     def _get_relocate_spec(self, datastore, resource_pool, host,
                            disk_move_type, disk_type=None, disk_device=None,
                            profile_id=None, service=None):
@@ -1068,6 +1103,55 @@ class VMwareVolumeOps(object):
         service_locator.credential = credential
 
         return service_locator
+
+    def relocate_one_disk(
+            self, ownervm, datastore, resource_pool, volume_id,
+            disk_type=None, profile_id=None):
+        """Relocates one disk of the consumer vm to the target datastore
+
+        :param ownervm: Reference to the attacher of the voume
+        :param datastore: Reference to the datastore where we move
+        :param resource_pool: Reference to the resource pool
+        :param volume_id: ID of the cinder volume
+        :param disk_type: destination disk type
+        :param profile_id: Id of the storage profile
+        """
+        rename_vm = self.rename_backing
+        # reusing existing vm rename function for the customer vm
+        disk_devices = self._get_disk_devices(ownervm)
+        disk_to_move = self.get_disk_by_uuid(ownervm, volume_id)
+        vmdk_path = disk_to_move.backing.fileName
+        disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
+        relocate_spec = self._get_rspec_for_one_disk(datastore,
+                                                     disk_move_type,
+                                                     disk_type,
+                                                     disk_devices,
+                                                     disk_to_move,
+                                                     profile_id=profile_id)
+        original_name = self._session.invoke_api(vim_util,
+                                                 'get_object_property',
+                                                 self._session.vim,
+                                                 ownervm, 'name')
+        rename_vm(ownervm, volume_id)
+        try:
+            task = self._session.invoke_api(self._session.vim,
+                                            'RelocateVM_Task',
+                                            ownervm, spec=relocate_spec)
+
+            LOG.debug("Initiated relocation of volume main vmdk: %s.",
+                      vmdk_path)
+            self._session.wait_for_task(task)
+            ds_val = vim_util.get_moref_value(datastore)
+            rp_val = vim_util.get_moref_value(resource_pool)
+            LOG.info("Successfully relocated volume main vmdk: %(path)s"
+                     " to datastore: %(ds)s and resource pool: %(rp)s.",
+                     {'path': vmdk_path,
+                      'ds': ds_val, 'rp': rp_val})
+        except Exception as e:
+            LOG.error("Relocation of main vmdk: %s failed.", vmdk_path)
+            raise vmdk_exceptions.StorageMigrationFailed(e)
+        finally:
+            rename_vm(ownervm, original_name)
 
     def relocate_backing(
             self, backing, datastore, resource_pool, host, disk_type=None,
@@ -1489,6 +1573,23 @@ class VMwareVolumeOps(object):
         spec = self._create_spec_for_device_remove(disk_device)
         reconfig_spec.deviceChange = [spec]
         self._reconfigure_backing(backing, reconfig_spec)
+
+    def reconfigure_backing_vmdk_path(self, backing, new_vmdk_path):
+        """Reconfigures backing VM with a new vmdk file pointer"""
+
+        cf = self._session.vim.client.factory
+        reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
+        disk_device = self._get_disk_device(backing)
+        disk_spec = cf.create('ns0:VirtualDeviceConfigSpec')
+        disk_spec.device = disk_device
+        disk_spec.device.backing.fileName = new_vmdk_path
+        disk_spec.operation = 'edit'
+        reconfig_spec.deviceChange = [disk_spec]
+        self._reconfigure_backing(backing, reconfig_spec)
+        LOG.debug("Backing VM: %(backing)s reconfigured with new vmdk_path: "
+                  "%(vmdk_path)s.",
+                  {'backing': backing,
+                   'vmdk_path': new_vmdk_path})
 
     def rename_backing(self, backing, new_name):
         """Rename backing VM.
@@ -1974,6 +2075,23 @@ class VMwareVolumeOps(object):
             if (backing.__class__.__name__ == "VirtualDiskFlatVer2BackingInfo"
                     and backing.fileName == vmdk_path):
                 return disk_device
+
+    def get_disk_by_uuid(self, vm, disk_uuid):
+        """Get the disk device of the VM which corresponds to the given uuid.
+
+        :param vm: VM reference
+        :param disk_uuid: Uniq uuid of the disk, normaly same as cinder uuid
+        :return: Matching disk device
+        """
+        disk_devices = self._get_disk_devices(vm)
+
+        for disk_device in disk_devices:
+            backing = disk_device.backing
+            if (backing.__class__.__name__ == "VirtualDiskFlatVer2BackingInfo"
+                    and backing.uuid == disk_uuid):
+                return disk_device
+        LOG.error("Virtual disk device: %s not found.", disk_uuid)
+        raise vmdk_exceptions.VirtualDiskNotFoundException()
 
     def mark_backing_as_template(self, backing):
         LOG.debug("Marking backing: %s as template.", backing)
