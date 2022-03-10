@@ -6,7 +6,7 @@ The volume management driver for Spectrum Virtualize family offers various
 block storage services. It provides OpenStack Compute instances with access
 to IBM Spectrum Virtualize family storage products. These products include the
 IBM SAN Volume Controller and IBM FlashSystem family members built with IBM
-Spectrum Virtualize (including FlashSystem 5xxx, 7200, 9100, 9200, 9200R).
+Spectrum Virtualize (including FlashSystem 5xxx, 7xxx, 9xxx).
 
 For specific product publications, see `IBM Documentation
 <www.ibm.com/docs/en>`_.
