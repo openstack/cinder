@@ -69,8 +69,9 @@ lightos_opts = [
                     ' volume.'),
     cfg.BoolOpt('lightos_default_compression_enabled',
                 default=False,
-                help='The default compression enabled setting'
-                     ' for new volumes.'),
+                help='Set to True to create  new volumes compressed assuming'
+                     ' no other compression setting is specified via the'
+                     ' volumes type.'),
     cfg.IntOpt('lightos_api_service_timeout',
                default=30,
                help='The default amount of time (in seconds) to wait for'
@@ -553,17 +554,28 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
         return state
 
+    def _parse_extra_spec(self, extra_spec_value, default_value):
+        extra_spec_value = str(extra_spec_value)
+        extra_spec_value = extra_spec_value.casefold()
+        if "true" in extra_spec_value:
+            return "True"
+        elif "false" in extra_spec_value:
+            return "False"
+        return default_value
+
     def _get_volume_specs(self, volume):
-        compression = 'True' if self.configuration. \
+        default_compression = 'True' if self.configuration. \
             lightos_default_compression_enabled else 'False'
         num_replicas = str(self.configuration.lightos_default_num_replicas)
 
         if not volume.volume_type:
-            return (compression, num_replicas, LIGHTOS_DEFAULT_PROJECT_NAME)
+            return (default_compression, num_replicas,
+                    LIGHTOS_DEFAULT_PROJECT_NAME)
 
         specs = getattr(volume.volume_type, 'extra_specs', {})
-        compression = 'True' if specs.get('compression', None) \
-            else compression
+        type_compression = specs.get('compression', default_compression)
+        compression = self._parse_extra_spec(type_compression,
+                                             default_compression)
         num_replicas = str(specs.get('lightos:num_replicas', num_replicas))
         project_name = specs.get(
             'lightos:project_name',
@@ -968,8 +980,6 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
         backend_name = self.configuration.safe_get('volume_backend_name')
         res_percentage = self.configuration.safe_get('reserved_percentage')
-        compression = self.configuration.safe_get(
-            'lightos_default_compression_enabled')
         storage_protocol = 'lightos'
         # as a tenant we dont have access to cluster stats
         # in the future we might expose this per project via get_project API
@@ -984,7 +994,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                 'QoS_support': False,
                 'online_extend_support': True,
                 'thin_provisioning_support': True,
-                'compression': compression,
+                'compression': [True, False],
                 'multiattach': True}
         # data['total_capacity_gb'] =
         # self.byte_to_gb(cluster_stats['effectivePhysicalStorage'])

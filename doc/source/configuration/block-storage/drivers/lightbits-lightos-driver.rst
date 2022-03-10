@@ -74,9 +74,12 @@ and
   ``~/lightos-default-admin-jwt``.
 - The default number of replicas for volumes is 3, and valid values
   for ``lightos_default_num_replicas`` are 1, 2, or 3.
-- The default compression setting is False (i.e., data is
-  uncompressed). The default compression setting can also be
-  True. This can also be changed on a per-volume basis.
+- The default compression setting is False (i.e., data is uncompressed).
+  The default compression setting can also be True to indicate that new
+  volumes should be created compressed, assuming no other compression
+  setting is specified via the volume type.
+  To control compression on a per-volume basis, create volume types for
+  compressed and uncompressed, and use them as appropriate.
 - The default time to wait for API service response is 30 seconds per
   API endpoint.
 
