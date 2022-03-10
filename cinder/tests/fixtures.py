@@ -174,7 +174,7 @@ class WarningsFixture(fixtures.Fixture):
         # TODO: Make this an error and filter out individual failures
         warnings.filterwarnings(
             'once',
-            module='nova',
+            module='cinder',
             category=sqla_exc.SADeprecationWarning,
         )
 
