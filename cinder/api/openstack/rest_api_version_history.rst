@@ -514,7 +514,7 @@ equivalent to ``https://$(controller)s/volume/v3/volumes``. When interacting
 with the cinder service as system or domain scoped users, a project_id should
 not be specified in the API path.
 
-3.68
-----
+3.68 (Maximum in Yoga)
+----------------------
 Support ability to re-image a volume with a specific image. Specify the
 ``os-reimage`` action in the request body.

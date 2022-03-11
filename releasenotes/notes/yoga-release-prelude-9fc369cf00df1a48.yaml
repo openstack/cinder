@@ -1,0 +1,23 @@
+---
+prelude: |
+    Welcome to the Yoga release of the OpenStack Block Storage service
+    (cinder).  With this release, the Block Storage API version 3 has
+    reached microversion **3.68**.  The cinder team would like to
+    bring the following points to your attention.  Details may be
+    found throughout this document.
+
+    * Microversion 3.67 is introduced as a marker to indicate that
+      any instance of the Block Storage API 3.67 or greater treats
+      a project_id in the URL as optional.  This change is backward
+      compatible: the API can handle legacy URLs containing a project_id
+      as well as URLs without a project_id.  This is the case regardless
+      of what microversion specified in a request.  See the "New
+      Features" section for details.
+
+    * Microversion 3.68 introduces a new volume action, ``os-reimage``,
+      that allows a user to replace the current content of a specified
+      volume with the data of a specified image supplied by the Image
+      service (glance).  See the "New Features" section for details.
+
+    * Some new backend storage drivers have been added, and many current
+      drivers have added features and fixed bugs.
