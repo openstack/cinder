@@ -751,7 +751,7 @@ def calculate_capacity_factors(total_capacity: float,
             max_over_subscription_ratio if provisioned_type == 'thin' else None
         ),
         "total_available_capacity": _limit(total_available_capacity),
-        "provisioned_capacity": provisioned_capacity,
+        "provisioned_capacity": _limit(provisioned_capacity),
         "calculated_free_capacity": _limit(calculated_free),
         "virtual_free_capacity": _limit(virtual_free),
         "free_percent": _limit(free_percent),
