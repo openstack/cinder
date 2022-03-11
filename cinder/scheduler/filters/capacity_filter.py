@@ -181,9 +181,9 @@ class CapacityFilter(filters.BaseBackendFilter):
                 if not res:
                     LOG.warning("Insufficient free virtual space "
                                 "(%(available)sGB) to accommodate thin "
-                                "provisioned %(requested)sGB volume on"
-                                " %(grouping)s %(grouping_name)s"
-                                " %(provisioning_type)s.",
+                                "provisioned %(requested)sGB volume on "
+                                "%(grouping)s %(grouping_name)s."
+                                " %(provisioning_type)s).",
                                 msg_args)
                 else:
                     LOG.debug("Space information for volume creation "
