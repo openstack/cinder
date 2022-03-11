@@ -139,8 +139,8 @@ class CapacityFilter(filters.BaseBackendFilter):
         msg_args = {"grouping_name": backend_state.backend_id,
                     "grouping": grouping,
                     "requested": requested_size,
-                    "available": virtual_free_space}
-
+                    "available": virtual_free_space,
+                    "provisioning_type": factors["provisioned_type"]}
         # Only evaluate using max_over_subscription_ratio if
         # thin_provisioning_support is True. Check if the ratio of
         # provisioned capacity over total capacity has exceeded over
@@ -160,13 +160,14 @@ class CapacityFilter(filters.BaseBackendFilter):
                     "oversub_ratio": backend_state.max_over_subscription_ratio,
                     "grouping": grouping,
                     "grouping_name": backend_state.backend_id,
+                    "provisioning_type": "thin",
                 }
                 LOG.warning(
                     "Insufficient free space for thin provisioning. "
                     "The ratio of provisioned capacity over total capacity "
                     "%(provisioned_ratio).2f has exceeded the maximum over "
                     "subscription ratio %(oversub_ratio).2f on %(grouping)s "
-                    "%(grouping_name)s.", msg_args)
+                    "%(grouping_name)s %(provisioning_type)s.", msg_args)
                 return False
             else:
                 # Thin provisioning is enabled and projected over-subscription
@@ -180,13 +181,16 @@ class CapacityFilter(filters.BaseBackendFilter):
                 if not res:
                     LOG.warning("Insufficient free virtual space "
                                 "(%(available)sGB) to accommodate thin "
-                                "provisioned %(requested)sGB volume on "
-                                "%(grouping)s %(grouping_name)s.", msg_args)
+                                "provisioned %(requested)sGB volume on"
+                                " %(grouping)s %(grouping_name)s"
+                                " %(provisioning_type)s.",
+                                msg_args)
                 else:
                     LOG.debug("Space information for volume creation "
                               "on %(grouping)s %(grouping_name)s "
                               "(requested / avail): "
-                              "%(requested)s/%(available)s", msg_args)
+                              "%(requested)s/%(available)s"
+                              " %(provisioning_type)s.", msg_args)
                 return res
         elif thin and backend_state.thin_provisioning_support:
             LOG.warning("Filtering out %(grouping)s %(grouping_name)s "
@@ -202,12 +206,13 @@ class CapacityFilter(filters.BaseBackendFilter):
         if virtual_free_space < requested_size:
             LOG.warning("Insufficient free space for volume creation "
                         "on %(grouping)s %(grouping_name)s (requested / "
-                        "avail): %(requested)s/%(available)s",
-                        msg_args)
+                        "avail): %(requested)s/%(available)s "
+                        "%(provisioning_type)s", msg_args)
             return False
 
-        LOG.debug("Space information for volume creation "
+        LOG.debug("[SAP] Space information for volume creation "
                   "on %(grouping)s %(grouping_name)s (requested / avail): "
-                  "%(requested)s/%(available)s", msg_args)
+                  "%(requested)s/%(available)s %(provisioning_type)s.",
+                  msg_args)
 
         return True
