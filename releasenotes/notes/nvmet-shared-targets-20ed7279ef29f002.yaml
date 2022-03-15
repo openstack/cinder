@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    nvmet target driver: Added support for shared subsystems/targets using the
+    ``lvm_share_target`` configuration option.  Defaults to non shared, e.g.,
+    each volume has its own subsystem/target.

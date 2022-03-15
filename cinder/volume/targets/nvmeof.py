@@ -10,8 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import abc
-
 from oslo_log import log as logging
 
 from cinder.common import constants
@@ -47,6 +45,9 @@ class NVMeOF(driver.Target):
         self.nvmet_port_id = self.configuration.nvmet_port_id
         self.nvmet_ns_id = self.configuration.nvmet_ns_id
         self.nvmet_subsystem_name = self.configuration.target_prefix
+        # Compatibility with non lvm drivers
+        self.share_targets = getattr(self.configuration,
+                                     'lvm_share_target', False)
         target_protocol = self.configuration.target_protocol
         if target_protocol in self.target_protocol_map:
             self.nvme_transport_type = self.target_protocol_map[
@@ -61,7 +62,7 @@ class NVMeOF(driver.Target):
 
         In NVMeOF driver, :driver_volume_type: is set to 'nvmeof',
         :data: is the driver data that has the value of
-        _get_connection_properties.
+        _get_connection_properties_from_vol.
 
         Example return value:
 
@@ -81,11 +82,35 @@ class NVMeOF(driver.Target):
         """
         return {
             'driver_volume_type': self.protocol,
-            'data': self._get_connection_properties(volume)
+            'data': self._get_connection_properties_from_vol(volume)
         }
 
-    def _get_connection_properties(self, volume):
+    def _get_connection_properties_from_vol(self, volume):
         """Gets NVMeOF connection configuration.
+
+        Returns the connection info based on the volume's provider_location and
+        the _get_nvme_uuid method for the volume.
+
+        For the specific data returned check the _get_connection_properties
+        method.
+
+        :return: dictionary with the connection properties using one of the 2
+                 existing formats depending on the nvmeof_new_conn_info
+                 configuration option.
+        """
+        location = volume['provider_location']
+        target_connection, nvme_transport_type, nqn, nvmet_ns_id = (
+            location.split(' '))
+        target_portal, target_port = target_connection.split(':')
+
+        uuid = self._get_nvme_uuid(volume)
+        return self._get_connection_properties(nqn, target_portal, target_port,
+                                               nvme_transport_type,
+                                               nvmet_ns_id, uuid)
+
+    def _get_connection_properties(self, nqn, portal, port, transport, ns_id,
+                                   uuid):
+        """Get connection properties dictionary.
 
         For nvmeof_conn_info_version set to 1 (default) the old format will
         be sent:
@@ -114,32 +139,31 @@ class NVMeOF(driver.Target):
                  existing formats depending on the nvmeof_conn_info_version
                  configuration option.
         """
-        location = volume['provider_location']
-        target_connection, nvme_transport_type, nqn, nvmet_ns_id = (
-            location.split(' '))
-        target_portal, target_port = target_connection.split(':')
-
         # NVMe-oF Connection Information Version 2
         if self.configuration.nvmeof_conn_info_version == 2:
-            uuid = self._get_nvme_uuid(volume)
-            if nvme_transport_type == 'rdma':
-                nvme_transport_type = 'RoCEv2'
+            if transport == 'rdma':
+                transport = 'RoCEv2'
+
+            if transport == 'rdma':
+                transport = 'RoCEv2'
 
             return {
                 'target_nqn': nqn,
                 'vol_uuid': uuid,
-                'portals': [(target_portal, target_port, nvme_transport_type)],
-                'ns_id': nvmet_ns_id,
+                'portals': [(portal, port, transport)],
+                'ns_id': ns_id,
             }
 
         # NVMe-oF Connection Information Version 1
-        return {
-            'target_portal': target_portal,
-            'target_port': target_port,
+        result = {
+            'target_portal': portal,
+            'target_port': port,
             'nqn': nqn,
-            'transport_type': nvme_transport_type,
-            'ns_id': nvmet_ns_id,
+            'transport_type': transport,
+            'ns_id': ns_id,
         }
+
+        return result
 
     def _get_nvme_uuid(self, volume):
         """Return the NVMe uuid of a given volume.
@@ -207,6 +231,6 @@ class NVMeOF(driver.Target):
         """Targets that don't override create_export must implement this."""
         pass
 
-    @abc.abstractmethod
     def delete_nvmeof_target(self, target_name):
+        """Targets that don't override remove_export must implement this."""
         pass

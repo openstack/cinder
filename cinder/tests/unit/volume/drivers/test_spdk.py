@@ -515,6 +515,7 @@ class SpdkDriverTestCase(test.TestCase):
         mock_safe_get = mock.Mock()
         mock_safe_get.return_value = 'spdk-nvmeof'
         self.configuration.safe_get = mock_safe_get
+        self.configuration.lvm_share_target = False
         self.jsonrpcclient = JSONRPCClient()
         self.driver = spdk_driver.SPDKDriver(configuration=
                                              self.configuration)
