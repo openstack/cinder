@@ -759,6 +759,8 @@ def calculate_capacity_factors(total_capacity: float,
         "provisioned_type": provisioned_type
     }
 
+    return factors
+
 
 def calculate_virtual_free_capacity(total_capacity,
                                     free_capacity,
