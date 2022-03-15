@@ -21,6 +21,7 @@ import os
 import tempfile
 import typing
 from typing import Any, Dict, List, Optional, Tuple, Union  # noqa: H301
+import urllib.parse
 
 from castellan import key_manager
 from eventlet import tpool
@@ -38,7 +39,6 @@ try:
 except ImportError:
     rados = None
     rbd = None
-from six.moves import urllib
 
 from cinder import context
 from cinder import exception
