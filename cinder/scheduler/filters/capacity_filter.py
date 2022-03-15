@@ -140,7 +140,7 @@ class CapacityFilter(filters.BaseBackendFilter):
                     "grouping": grouping,
                     "requested": requested_size,
                     "available": virtual_free_space,
-                    "provisioning_type": factors["provisioning_type"]}
+                    "provisioning_type": factors["provisioned_type"]}
         # Only evaluate using max_over_subscription_ratio if
         # thin_provisioning_support is True. Check if the ratio of
         # provisioned capacity over total capacity has exceeded over
@@ -181,9 +181,9 @@ class CapacityFilter(filters.BaseBackendFilter):
                 if not res:
                     LOG.warning("Insufficient free virtual space "
                                 "(%(available)sGB) to accommodate thin "
-                                "provisioned %(requested)sGB volume on "
-                                "%(grouping)s %(grouping_name)s."
-                                " %(provisioning_type)s).",
+                                "provisioned %(requested)sGB volume on"
+                                " %(grouping)s %(grouping_name)s"
+                                " %(provisioning_type)s.",
                                 msg_args)
                 else:
                     LOG.debug("Space information for volume creation "
@@ -210,7 +210,7 @@ class CapacityFilter(filters.BaseBackendFilter):
                         "%(provisioning_type)s", msg_args)
             return False
 
-        LOG.debug("Space information for volume creation "
+        LOG.debug("[SAP] Space information for volume creation "
                   "on %(grouping)s %(grouping_name)s (requested / avail): "
                   "%(requested)s/%(available)s %(provisioning_type)s.",
                   msg_args)
