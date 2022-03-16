@@ -407,18 +407,6 @@ class SolidFireDriver(san.SanISCSIDriver):
             msg = _('Attribute: %s not found.') % attr
             raise NotImplementedError(msg)
 
-    def _get_remote_info_by_id(self, backend_id):
-        remote_info = None
-        for rd in self.configuration.get('replication_device', []):
-            if rd.get('backend_id', None) == backend_id:
-                remote_endpoint = self._build_endpoint_info(**rd)
-                remote_info = self._get_cluster_info(remote_endpoint)
-                remote_info['endpoint'] = remote_endpoint
-                if not remote_info['endpoint']['svip']:
-                    remote_info['endpoint']['svip'] = (
-                        remote_info['svip'] + ':3260')
-        return remote_info
-
     def _create_remote_pairing(self, remote_device):
         try:
             pairing_info = self._issue_api_request('StartClusterPairing',
@@ -437,16 +425,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         LOG.debug('Initialized Cluster pair with ID: %s', pair_id)
 
         return pair_id
-
-    def _get_cluster_info(self, remote_endpoint):
-        try:
-            return self._issue_api_request(
-                'GetClusterInfo', {},
-                endpoint=remote_endpoint)['result']['clusterInfo']
-        except SolidFireAPIException:
-            msg = _("Replication device is unreachable!")
-            LOG.exception(msg)
-            raise
 
     def _check_replication_configs(self):
         repl_configs = self.configuration.replication_device
@@ -577,25 +555,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         cluster_ref['endpoint']['svip'] = svip
 
         return cluster_ref
-
-    def _set_active_cluster(self, endpoint=None):
-        if not endpoint:
-            self.active_cluster['endpoint'] = self._build_endpoint_info()
-        else:
-            self.active_cluster['endpoint'] = endpoint
-
-        for k, v in self._issue_api_request(
-                'GetClusterInfo',
-                {})['result']['clusterInfo'].items():
-            self.active_cluster[k] = v
-
-        # Add a couple extra things that are handy for us
-        self.active_cluster['clusterAPIVersion'] = (
-            self._issue_api_request('GetClusterVersionInfo',
-                                    {})['result']['clusterAPIVersion'])
-        if self.configuration.get('sf_svip', None):
-            self.active_cluster['svip'] = (
-                self.configuration.get('sf_svip'))
 
     def _create_provider_id_string(self,
                                    resource_id,
@@ -1260,17 +1219,6 @@ class SolidFireDriver(san.SanISCSIDriver):
             vols = [v for v in volumes]
 
         return vols
-
-    def _get_all_deleted_volumes(self, cinder_uuid=None):
-        params = {}
-        vols = self._issue_api_request('ListDeletedVolumes',
-                                       params)['result']['volumes']
-        if cinder_uuid:
-            deleted_vols = ([v for v in vols if
-                             cinder_uuid in v['name']])
-        else:
-            deleted_vols = [v for v in vols]
-        return deleted_vols
 
     def _get_account_create_availability(self, accounts, endpoint=None):
         # we'll check both the primary and the secondary

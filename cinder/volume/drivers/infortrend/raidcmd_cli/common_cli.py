@@ -1921,7 +1921,6 @@ class InfortrendCommon(object):
                 'channel_id': channel_id, 'controller': slot_name}
         LOG.error(msg)
         raise exception.VolumeDriverException(message=msg)
-        return
 
     def _get_wwpn_list(self):
         rc, wwn_list = self._execute('ShowWWN')

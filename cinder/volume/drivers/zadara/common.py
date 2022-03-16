@@ -406,18 +406,6 @@ class ZadaraVPSAConnection(object):
         data = self.send_cmd('get_volume', vpsa_vol=vpsa_vol)
         return data['volume']
 
-    def _get_volume_cg_name(self, name):
-        """Return name of the consistency group for the volume.
-
-        cg-name is a volume uniqe identifier (legacy attribute)
-        and not consistency group as it may imply.
-        """
-        volume = self._get_vpsa_volume(name)
-        if volume is not None:
-            return volume['cg_name']
-
-        return None
-
     def _get_all_vpsa_snapshots(self):
         """Returns snapshots from all vpsa volumes"""
         data = self.send_cmd('list_snapshots')

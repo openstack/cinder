@@ -125,8 +125,3 @@ def parse_nms_url(url):
 def get_migrate_snapshot_name(volume):
     """Return name for snapshot that will be used to migrate the volume."""
     return 'cinder-migrate-snapshot-%(id)s' % volume
-
-
-def ex2err(ex):
-    """Convert a Cinder Exception to a Nexenta Error."""
-    return ex.msg

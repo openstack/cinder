@@ -612,14 +612,6 @@ class DPLVolume(object):
                              [http_client.OK, http_client.ACCEPTED,
                               http_client.CREATED])
 
-    def get_vg_list(self, vgtype=None):
-        method = 'GET'
-        if vgtype:
-            url = '/%s/?volume_group_type=%s' % (DPL_OBJ_VOLUMEGROUP, vgtype)
-        else:
-            url = '/%s/' % (DPL_OBJ_VOLUMEGROUP)
-        return self._execute(method, url, None, [http_client.OK])
-
     def get_vg(self, groupID):
         method = 'GET'
         url = '/%s/%s/' % (DPL_OBJ_VOLUMEGROUP, groupID)

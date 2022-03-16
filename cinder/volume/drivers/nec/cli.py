@@ -473,58 +473,6 @@ class MStorageISMCLI(object):
         unpairProc = unpairWait(volume_properties, self)
         unpairProc.run()
 
-    def check_ld_existed_rplstatus(self, lds, ldname, snapshot, flag):
-
-        if ldname not in lds:
-            if flag == 'backup':
-                LOG.debug('Volume Id not found. '
-                          'LD name = %(name)s volume_id = %(id)s.',
-                          {'name': ldname, 'id': snapshot.volume_id})
-                raise exception.NotFound(_('Logical Disk does not exist.'))
-            elif flag == 'restore':
-                LOG.debug('Snapshot Id not found. '
-                          'LD name = %(name)s snapshot_id = %(id)s.',
-                          {'name': ldname, 'id': snapshot.id})
-                raise exception.NotFound(_('Logical Disk does not exist.'))
-            elif flag == 'delete':
-                LOG.debug('LD `%(name)s` already unbound? '
-                          'snapshot_id = %(id)s.',
-                          {'name': ldname, 'id': snapshot.id})
-                return None
-            else:
-                LOG.debug('check_ld_existed_rplstatus flag error flag = %s.',
-                          flag)
-                raise exception.NotFound(_('Logical Disk does not exist.'))
-
-        ld = lds[ldname]
-
-        if ld['RPL Attribute'] == 'IV':
-            pass
-        elif ld['RPL Attribute'] == 'MV':
-            query_status = self.query_MV_RV_status(ldname[3:], 'MV')
-            LOG.debug('query_status : %s.', query_status)
-            if(query_status == 'separated'):
-                # unpair.
-                rvname = self.query_MV_RV_name(ldname[3:], 'MV')
-                self.unpair(ldname[3:], rvname, 'force')
-            else:
-                msg = _('Specified Logical Disk %s has been copied.') % ldname
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-
-        elif ld['RPL Attribute'] == 'RV':
-            query_status = self.query_MV_RV_status(ldname[3:], 'RV')
-            if query_status == 'separated':
-                # unpair.
-                mvname = self.query_MV_RV_name(ldname[3:], 'RV')
-                self.unpair(mvname, ldname[3:], 'force')
-            else:
-                msg = _('Specified Logical Disk %s has been copied.') % ldname
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-
-        return ld
-
     def get_pair_lds(self, ldname, lds):
         query_status = self.query_MV_RV_name(ldname[3:], 'MV')
         query_status = query_status.split('\n')

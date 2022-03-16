@@ -2063,7 +2063,8 @@ class RemoteFSManageableVolumesMixin(object):
             # be troublesome for some distributed shares, which may have
             # hostnames resolving to multiple addresses.
             norm_share = os.path.normcase(os.path.normpath(mounted_share))
-            head, match, share_rel_path = vol_remote_path.partition(norm_share)
+            _head, match, share_rel_path = vol_remote_path.partition(
+                norm_share)
             if not (match and share_rel_path.startswith(os.path.sep)):
                 continue
 
@@ -2195,7 +2196,7 @@ class RemoteFSManageableVolumesMixin(object):
         manageable_volumes = []
         mount_path = self._get_mount_point_for_share(share)
 
-        for dir_path, dir_names, file_names in os.walk(mount_path):
+        for dir_path, _dir_names, file_names in os.walk(mount_path):
             for file_name in file_names:
                 file_name = os.path.normcase(file_name)
                 img_path = os.path.join(dir_path, file_name)

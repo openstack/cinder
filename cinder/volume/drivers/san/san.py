@@ -180,7 +180,3 @@ class SanDriver(driver.BaseVD):
 class SanISCSIDriver(SanDriver, driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
         super(SanISCSIDriver, self).__init__(*args, **kwargs)
-
-    def _build_iscsi_target_name(self, volume):
-        return "%s%s" % (self.configuration.target_prefix,
-                         volume['name'])

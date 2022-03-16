@@ -242,14 +242,6 @@ class STXClient(object):
     def logout(self):
         pass
 
-    def session_logout(self):
-        url = self._base_url + '/exit'
-        try:
-            requests.get(url, verify=self.ssl_verify, timeout=30)
-            return True
-        except Exception:
-            return False
-
     def is_titanium(self):
         """True for older array firmware."""
         return self._fw_type == 'T'
