@@ -147,7 +147,7 @@ party CI recheck command, for example ``run-DellEMC PowerStore CI``.
 These false negative have periods of time where they spike, for example when
 there are spurious failures, and a lot of rechecks are necessary until a valid
 result is posted by the CI job.  And it's in these periods of time where people
-acquire the tendency to blindly issue rechecks without locking at the errors
+acquire the tendency to blindly issue rechecks without looking at the errors
 reported by the jobs.
 
 When these blind checks happen on real patch failures or with external services
