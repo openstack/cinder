@@ -664,6 +664,16 @@ backup_id:
   required: false
   type: string
   min_version: 3.47
+backup_links_optional:
+  description: |
+    An array containing an object with the following fields:
+    ``"rel"`` with the value ``"next"`` and ``href``,
+    whose value is a link to the next page of backups.
+    Only appears when there are more backups than are
+    listed in the current response.
+  in: body
+  required: false
+  type: array
 backup_record:
   description: |
     An object recording volume backup metadata, including ``backup_service``

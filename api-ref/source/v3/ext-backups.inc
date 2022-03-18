@@ -99,6 +99,7 @@ Response Parameters
    - metadata: metadata_backup
    - user_id: user_id_backup
    - encryption_key_id: encryption_key_id
+   - backup_links: backup_links_optional
 
 Response Example
 ----------------
@@ -418,6 +419,7 @@ Response Parameters
    - links: links_backup
    - name: name_backup
    - count: count
+   - backup_links: backup_links_optional
 
 Response Example
 ----------------
