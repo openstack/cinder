@@ -85,8 +85,6 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.sf_account_prefix = 'cinder'
         self.configuration.reserved_percentage = 25
         self.configuration.target_helper = None
-        self.configuration.sf_template_account_name = 'openstack-vtemplate'
-        self.configuration.sf_allow_template_caching = False
         self.configuration.sf_svip = None
         self.configuration.sf_volume_prefix = 'UUID-'
         self.configuration.sf_enable_vag = False
