@@ -394,8 +394,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         self.driver = driver
         self.image_volume_cache = image_volume_cache
         self.message = message_api.API()
-        self.backup_api = backup_api.API()
-        self.backup_rpcapi = backup_rpcapi.BackupAPI()
 
     def _handle_bootable_volume_glance_meta(self, context, volume,
                                             **kwargs):
@@ -1136,7 +1134,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             volume.update(model_update)
             volume.save()
 
-            backup_host = self.backup_api.get_available_backup_service_host(
+            backupapi = backup_api.API()
+            backup_host = backupapi.get_available_backup_service_host(
                 backup.host, backup.availability_zone)
             updates = {'status': fields.BackupStatus.RESTORING,
                        'restore_volume_id': volume.id,
@@ -1144,8 +1143,9 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             backup.update(updates)
             backup.save()
 
-            self.backup_rpcapi.restore_backup(context, backup.host, backup,
-                                              volume.id)
+            backuprpcapi = backup_rpcapi.BackupAPI()
+            backuprpcapi.restore_backup(context, backup.host, backup,
+                                        volume.id)
             need_update_volume = False
 
         LOG.info("Created volume %(volume_id)s from backup %(backup_id)s "
