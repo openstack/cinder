@@ -393,7 +393,14 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         self.db = db
         self.driver = driver
         self.image_volume_cache = image_volume_cache
-        self.message = message_api.API()
+        self._message = None
+
+    @property
+    def message(self):
+        if self._message is None:
+            self._message = message_api.API()
+
+        return self._message
 
     def _handle_bootable_volume_glance_meta(self, context, volume,
                                             **kwargs):
