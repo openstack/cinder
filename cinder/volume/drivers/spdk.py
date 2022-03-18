@@ -401,7 +401,7 @@ class SPDKDriver(driver.VolumeDriver):
     def remove_export(self, context, volume):
         self.target_driver.remove_export(context, volume)
 
-    def initialize_connection(self, volume, connector):
+    def initialize_connection(self, volume, connector, **kwargs):
         return self.target_driver.initialize_connection(volume, connector)
 
     def validate_connector(self, connector):
