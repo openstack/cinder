@@ -31,6 +31,7 @@ from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hbsd_common
@@ -693,6 +694,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(7, request.call_count)
 
     @reduce_retrying_time
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=test_utils.ZeroIntervalLoopingCall)
     @mock.patch.object(requests.Session, "request")
     def test_delete_volume_busy_timeout(self, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
