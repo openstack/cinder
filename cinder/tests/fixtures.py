@@ -24,6 +24,7 @@ import fixtures
 from oslo_config import cfg
 from oslo_policy import policy as oslo_policy
 from oslo_privsep import daemon as privsep_daemon
+from sqlalchemy import exc as sqla_exc
 
 import cinder.policy
 
@@ -139,6 +140,43 @@ class WarningsFixture(fixtures.Fixture):
             message='Policy enforcement is depending on the value of is_admin.'
                     ' This key is deprecated. Please update your policy '
                     'file to use the standard policy values.')
+
+        # We can't do anything about this outside of cinder
+        warnings.filterwarnings(
+            'ignore',
+            message='distutils Version classes are deprecated. .*',
+            category=DeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            message='the imp module is deprecated in favour of importlib',
+            category=DeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            message='invalid escape sequence',
+            category=DeprecationWarning,
+        )
+        warnings.filterwarnings(
+            'error',
+            message='invalid escape sequence',
+            category=DeprecationWarning,
+            module='cinder',
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        # TODO: Make this an error and filter out individual failures
+        warnings.filterwarnings(
+            'once',
+            module='nova',
+            category=sqla_exc.SADeprecationWarning,
+        )
 
         self.addCleanup(self._reset_warning_filters)
 
