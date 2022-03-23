@@ -1,0 +1,13 @@
+---
+issues:
+  - |
+    **NVMe-oF issues**
+
+    Cinder and Nova use the os-brick library to facilitate connections
+    to volumes.  The ``nvmeof`` os-brick connector has been refactored
+    over the past few development cycles.  In between the time of the
+    Yoga os-brick release (os-brick 5.2.0) and this cinder release,
+    several bugs were discovered in this connector.  You can find these
+    in the bug tracker with this query:
+
+    https://bugs.launchpad.net/os-brick/+bugs?field.tag=nvme
