@@ -29,6 +29,8 @@ Getting Started
     :maxdepth: 2
 
     contributing
+    backporting
+    documentation
 
 Writing Release Notes
 ---------------------
