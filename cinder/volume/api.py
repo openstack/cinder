@@ -2002,8 +2002,7 @@ class API(base.Base):
                 raise
         is_encrypted = False
         if volume_type:
-            is_encrypted = volume_types.is_encrypted(context,
-                                                     volume_type['id'])
+            is_encrypted = self._is_encrypted(volume_type)
         if is_encrypted:
             msg = _("Managing to an encrypted volume type is not supported.")
             LOG.error(msg)
