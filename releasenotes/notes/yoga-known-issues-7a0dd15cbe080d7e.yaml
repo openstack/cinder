@@ -1,0 +1,47 @@
+---
+issues:
+  - |
+    Just before release, `Bug #1965847
+    <https://bugs.launchpad.net/cinder/+bug/1965847>`_ was reported.
+    When importing a backup record for a backup_id that currently
+    exists, the import fails as expected.  However, this operation
+    has the unfortunate side effect that the existing backup record
+    is deleted.  Initial analysis of the bug indicates a small,
+    isolated solution that should be backportable to stable branches.
+  - |
+    When the Ceph backup driver is used for the backup service,
+    restoring a backup to a volume created on a non-RBD backend fails.
+    The cinder team has developed a fix but decided to do more thorough
+    testing before including it in a release.  When ready, the solution
+    is expected to be backported to a future release in the Yoga series.
+    The issue is being tracked as `Bug #1895035
+    <https://bugs.launchpad.net/cinder/+bug/1895035>`_.
+  - |
+    Creating a volume of an encrypted volume type from an image in
+    the Image service (Glance) using the generic NFS driver results
+    in an unusable volume.  The cinder team is working on a solution
+    which is expected to be backported to a future release in the
+    Yoga series.  The issue is being tracked as `Bug #1888680
+    <https://bugs.launchpad.net/cinder/+bug/1888680>`_.
+  - |
+    **Cinder use of cgroups v1**
+
+    This note applies to deployments that are using the cinder
+    configuration option ``volume_copy_bps_limit`` in its non-default
+    value (the default is 0).
+
+    The cinder-volume service depends on `Linux Kernel Control Groups
+    (cgroups) version 1
+    <https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/cgroups.html>`_
+    to control i/o throttling during some volume-copy and image-convert
+    operations.  Some Linux distributions, however, have changed to using
+    `cgroup v2
+    <https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html>`_
+    by default and may have discontinued cgroups v1 support completely.
+    Consult your Linux distribution's documentation for details.
+
+    The cinder team is working on a throttling solution using cgroup
+    v2, but it was not ready at the time of this release.  The solution
+    is expected to be backported to a future release in the Yoga series.
+    This issue continues to be tracked as `Bug #1942203
+    <https://bugs.launchpad.net/cinder/+bug/1942203>`_.
