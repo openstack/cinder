@@ -15,16 +15,18 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 # Eric Lei <1165970798@qq.com>, 2016. #zanata
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
+# Research and Development Center UnitedStack <dev@unitedstack.com>, 2022. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2022-02-02 04:20+0000\n"
+"POT-Creation-Date: 2022-03-24 18:46+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-28 06:20+0000\n"
-"Last-Translator: Eric Lei <1165970798@qq.com>\n"
+"PO-Revision-Date: 2022-03-25 02:25+0000\n"
+"Last-Translator: Research and Development Center UnitedStack "
+"<dev@unitedstack.com>\n"
 "Language: zh_CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -399,6 +401,10 @@ msgstr "备份RBD操作失败"
 msgid "Backup already exists in database."
 msgstr "数据库中已存在备份。"
 
+#, python-format
+msgid "Backup driver reported an error: %(reason)s"
+msgstr "备份驱动程序已报告错误：%(reason)s"
+
 msgid "Backup operation of an encrypted volume failed."
 msgstr "已加密卷的备份操作失败。"
 
@@ -592,6 +598,10 @@ msgstr "无法将 LUN %s 导入至 Cinder。快照状态异常或运行状态并
 
 msgid "Can't parse backup record."
 msgstr "无法解析备份记录。"
+
+#, python-format
+msgid "Canceled backup %(back_id)s restore on volume %(vol_id)s"
+msgstr "已取消从卷 %(vol_id)s 恢复备份 %(back_id)s"
 
 #, python-format
 msgid ""
@@ -1701,9 +1711,6 @@ msgstr "找不到 QoSnode"
 
 msgid "Failed to find Storage Center"
 msgstr "找不到存储中心"
-
-msgid "Failed to find a vdisk copy in the expected pool."
-msgstr "在所需池中找不到 vdisk 副本。"
 
 msgid "Failed to find account for volume."
 msgstr "未能查找卷的帐户。"
@@ -3173,9 +3180,6 @@ msgstr "在 request_spec 中，未指定新的卷类型。"
 msgid "Nimble Cinder Driver exception"
 msgstr "Nimble Cinder 驱动程序异常"
 
-msgid "No FC initiator can be added to host."
-msgstr "无法将任何 FC 启动程序添加至主机。"
-
 msgid "No FC port connected to fabric."
 msgstr "没有任何 FC 端口连接至光纤网络。"
 
@@ -3227,9 +3231,6 @@ msgstr "找不到 IP 地址。"
 msgid "No mounted NFS shares found"
 msgstr "找不到任何已安装的 NFS 共享项"
 
-msgid "No mounted SMBFS shares found."
-msgstr "找不到任何已安装的 SMBFS 共享项。"
-
 msgid "No mounted Virtuozzo Storage shares found"
 msgstr "找不到任何已安装的 Virtuozzo 存储器共享项"
 
@@ -3266,6 +3267,10 @@ msgstr "找不到合适的发现 IP"
 #, python-format
 msgid "No support to restore backup version %s"
 msgstr "不支持复原备份版本 %s"
+
+#, python-format
+msgid "No valid backend was found. %(reason)s"
+msgstr "找不到有效后端，原因是 %(reason)s"
 
 #, python-format
 msgid "No vdisk with the UID specified by ref %s."
@@ -4031,10 +4036,6 @@ msgstr "数据库对象中没有元数据。"
 #, python-format
 msgid "There is no share which can host %(volume_size)sG"
 msgstr "不存在任何可主管 %(volume_size)sG 的共享项"
-
-#, python-format
-msgid "There is no share which can host %(volume_size)sG."
-msgstr "不存在任何可托管 %(volume_size)sG 的共享项。"
 
 msgid "There is no virtual disk device."
 msgstr "不存在任何虚拟盘设备。"

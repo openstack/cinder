@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2022-02-02 04:20+0000\n"
+"POT-Creation-Date: 2022-03-24 18:46+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1905,9 +1905,6 @@ msgstr "QoSNode が見つかりません。"
 msgid "Failed to find Storage Center"
 msgstr "ストレージセンターが見つかりませんでした"
 
-msgid "Failed to find a vdisk copy in the expected pool."
-msgstr "予期されるプールに vdisk コピーが見つかりませんでした。"
-
 msgid "Failed to find account for volume."
 msgstr "ボリュームのアカウントが見つかりませんでした。"
 
@@ -3602,9 +3599,6 @@ msgstr "新規のボリュームタイプが要求仕様に指定されていま
 msgid "Nimble Cinder Driver exception"
 msgstr "Nimble Cinder ドライバー例外"
 
-msgid "No FC initiator can be added to host."
-msgstr "ホストには FC イニシエーターを追加できません。"
-
 #, python-format
 msgid "No FC port can be used for LUN %s."
 msgstr "LUN %s に利用できる FC ポートがありません。"
@@ -3659,9 +3653,6 @@ msgstr "IP アドレスが見つかりません。"
 
 msgid "No mounted NFS shares found"
 msgstr "マウントされた NFS 共有が見つかりません"
-
-msgid "No mounted SMBFS shares found."
-msgstr "マウントされた SMBFS 共有が見つかりません。"
 
 msgid "No mounted Virtuozzo Storage shares found"
 msgstr "マウントされた Virtuozzo Storage 共有が見つかりません"
@@ -4637,10 +4628,6 @@ msgstr "DB オブジェクトの中にメタデータがありません。"
 #, python-format
 msgid "There is no share which can host %(volume_size)sG"
 msgstr "%(volume_size)sG をホストできる共有がありません"
-
-#, python-format
-msgid "There is no share which can host %(volume_size)sG."
-msgstr "%(volume_size)sG をホストできる共有がありません。"
 
 msgid "There is no virtual disk device."
 msgstr "仮想ディスクデバイスがありません。"

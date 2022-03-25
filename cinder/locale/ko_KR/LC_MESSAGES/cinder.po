@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-12-19 23:54+0000\n"
+"POT-Creation-Date: 2022-03-24 18:46+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1603,9 +1603,6 @@ msgstr "QoSnode을 찾는 데 실패"
 msgid "Failed to find Storage Center"
 msgstr "Storage Center 찾기 실패"
 
-msgid "Failed to find a vdisk copy in the expected pool."
-msgstr "예상 풀에서 vdisk 사본을 찾는 데 실패했습니다."
-
 msgid "Failed to find account for volume."
 msgstr "볼륨에 대한 계정을 찾지 못했습니다. "
 
@@ -3031,9 +3028,6 @@ msgstr "새 볼륨 유형이 request_spec에서 지정되지 않았습니다."
 msgid "Nimble Cinder Driver exception"
 msgstr "Nimble Cinder 드라이버 예외"
 
-msgid "No FC initiator can be added to host."
-msgstr "FC 개시자를 호스트에 추가할 수 없습니다."
-
 msgid "No FC port connected to fabric."
 msgstr "FC 포트가 패브릭에 연결되지 않았습니다."
 
@@ -3080,9 +3074,6 @@ msgstr "IP 주소를 찾을 수 없습니다. "
 
 msgid "No mounted NFS shares found"
 msgstr "마운트된 NFS 공유를 찾지 못함"
-
-msgid "No mounted SMBFS shares found."
-msgstr "마운트된 SMBFS 공유를 찾을 수 없습니다."
 
 msgid "No mounted Virtuozzo Storage shares found"
 msgstr "마운트된 Virtuozzo 스토리지 공유를 찾을 수 없습니다. "
@@ -3892,10 +3883,6 @@ msgstr "DB 오브젝트에 메타데이터가 없습니다. "
 #, python-format
 msgid "There is no share which can host %(volume_size)sG"
 msgstr "%(volume_size)sG를 보유할 수 있는 공유가 없음"
-
-#, python-format
-msgid "There is no share which can host %(volume_size)sG."
-msgstr "%(volume_size)sG를 호스트할 수 있는 공유가 없습니다."
 
 msgid "There is no virtual disk device."
 msgstr "가상 디스크 디바이스가 없습니다."

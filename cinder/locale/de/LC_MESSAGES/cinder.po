@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-09-20 18:50+0000\n"
+"POT-Creation-Date: 2022-03-24 18:46+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1678,10 +1678,6 @@ msgstr "QoSnode wurde nicht gefunden."
 msgid "Failed to find Storage Center"
 msgstr "Storage Center wurde nicht gefunden."
 
-msgid "Failed to find a vdisk copy in the expected pool."
-msgstr ""
-"Es wurde keine Kopie der virtuellen Platte im erwarteten Pool gefunden."
-
 msgid "Failed to find account for volume."
 msgstr "Konto für Datenträger wurde nicht gefunden."
 
@@ -3207,9 +3203,6 @@ msgstr "Der neue Datenträgertyp wurde nicht in request_spec angegeben."
 msgid "Nimble Cinder Driver exception"
 msgstr "Nimble-Cinder-Treiberausnahme"
 
-msgid "No FC initiator can be added to host."
-msgstr "Es kann kein FC-Initiator zum Host hinzugefügt werden. "
-
 msgid "No FC port connected to fabric."
 msgstr "Kein FC-Port mit Fabric verbunden."
 
@@ -3258,9 +3251,6 @@ msgstr "Keine IP-Adresse gefunden."
 
 msgid "No mounted NFS shares found"
 msgstr "Keine eingehängten gemeinsam genutzten NFS-Laufwerke gefunden."
-
-msgid "No mounted SMBFS shares found."
-msgstr "Keine eingehängten gemeinsam genutzten SMBFS-Laufwerke gefunden."
 
 msgid "No mounted Virtuozzo Storage shares found"
 msgstr "Keine eingehängten gemeinsam genutzten Virtuozzo-Laufwerke gefunden."
@@ -4101,12 +4091,6 @@ msgstr "Im DB-Objekt sind keine Metadaten vorhanden."
 
 #, python-format
 msgid "There is no share which can host %(volume_size)sG"
-msgstr ""
-"Es ist kein gemeinsam genutztes Laufwerk vorhanden, das %(volume_size)s G "
-"hosten kann."
-
-#, python-format
-msgid "There is no share which can host %(volume_size)sG."
 msgstr ""
 "Es ist kein gemeinsam genutztes Laufwerk vorhanden, das %(volume_size)s G "
 "hosten kann."
