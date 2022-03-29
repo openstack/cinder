@@ -138,3 +138,9 @@ class EvaluatorTestCase(test.TestCase):
         self.assertRaises(exception.EvaluatorParseException,
                           evaluator.evaluate,
                           "7 / 0")
+
+    def test_deep_function(self):
+        """Ensures that maximum recursion depth is not exceeded."""
+        self.assertGreater(evaluator.evaluate(
+            '(((1 + max(1 + (10 / 20), 2, 3)) / 100) + 1)'),
+            1)
