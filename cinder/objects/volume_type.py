@@ -184,7 +184,7 @@ class VolumeTypeList(base.ObjectListBase, base.CinderObject):
     @classmethod
     def get_all_by_group(cls, context, group_id):
         # Generic volume group
-        types = volume_types.get_all_types_by_group(
+        types = db.volume_type_get_all_by_group(
             context.elevated(), group_id)
         expected_attrs = VolumeType._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context),
