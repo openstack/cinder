@@ -7161,49 +7161,6 @@ def consistencygroup_destroy(context, consistencygroup_id):
     return updated_values
 
 
-@require_admin_context
-@main_context_manager.writer
-def cg_cgsnapshot_destroy_all_by_ids(
-    context, cg_ids, cgsnapshot_ids, volume_ids, snapshot_ids
-):
-    utcnow = timeutils.utcnow()
-    if snapshot_ids:
-        snaps = (
-            model_query(context, models.Snapshot, read_deleted="no")
-            .filter(models.Snapshot.id.in_(snapshot_ids))
-            .all()
-        )
-        for snap in snaps:
-            snap.update({'cgsnapshot_id': None, 'updated_at': utcnow})
-
-    if cgsnapshot_ids:
-        cg_snaps = (
-            model_query(context, models.CGSnapshot, read_deleted="no")
-            .filter(models.CGSnapshot.id.in_(cgsnapshot_ids))
-            .all()
-        )
-        for cg_snap in cg_snaps:
-            cg_snap.delete(context.session)
-
-    if volume_ids:
-        vols = (
-            model_query(context, models.Volume, read_deleted="no")
-            .filter(models.Volume.id.in_(volume_ids))
-            .all()
-        )
-        for vol in vols:
-            vol.update({'consistencygroup_id': None, 'updated_at': utcnow})
-
-    if cg_ids:
-        cgs = (
-            model_query(context, models.ConsistencyGroup, read_deleted="no")
-            .filter(models.ConsistencyGroup.id.in_(cg_ids))
-            .all()
-        )
-        for cg in cgs:
-            cg.delete(context.session)
-
-
 def cg_has_cgsnapshot_filter():
     """Return a filter that checks if a CG has CG Snapshots."""
     return sql.exists().where(
