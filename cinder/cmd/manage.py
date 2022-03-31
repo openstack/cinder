@@ -72,6 +72,7 @@ import tabulate
 # Need to register global_opts
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import config  # noqa
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder.db import migration as db_migration
@@ -175,9 +176,12 @@ class DbCommands(object):
              version: Optional[int] = None,
              bump_versions: bool = False) -> None:
         """Sync the database up to the most recent version."""
-        if version is not None and version > db.MAX_INT:
-            print(_('Version should be less than or equal to '
-                    '%(max_version)d.') % {'max_version': db.MAX_INT})
+        if version is not None and version > constants.DB_MAX_INT:
+            print(
+                'Version should be less than or equal to %(max_version)d.' % {
+                    'max_version': constants.DB_MAX_INT,
+                }
+            )
             sys.exit(1)
         try:
             db_migration.db_sync(version)

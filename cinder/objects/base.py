@@ -24,6 +24,7 @@ from oslo_versionedobjects import base
 from oslo_versionedobjects import fields
 
 from cinder import db
+from cinder.db import utils as db_utils
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -248,8 +249,8 @@ class CinderPersistentObject(object):
     """
     OPTIONAL_FIELDS = ()
 
-    Not = db.Not
-    Case = db.Case
+    Not = db_utils.Not
+    Case = db_utils.Case
 
     fields = {
         'created_at': fields.DateTimeField(nullable=True),

@@ -38,25 +38,31 @@ from oslo_db import api as oslo_db_api
 from oslo_db import options as db_options
 
 from cinder.api import common
-from cinder.common import constants
-from cinder.i18n import _
 
 db_opts = [
-    cfg.BoolOpt('enable_new_services',
-                default=True,
-                help='Services to be added to the available pool on create'),
-    cfg.StrOpt('volume_name_template',
-               default='volume-%s',
-               help='Template string to be used to generate volume names'),
-    cfg.StrOpt('snapshot_name_template',
-               default='snapshot-%s',
-               help='Template string to be used to generate snapshot names'),
+    cfg.BoolOpt(
+        'enable_new_services',
+        default=True,
+        help='Services to be added to the available pool on create',
+    ),
+    cfg.StrOpt(
+        'volume_name_template',
+        default='volume-%s',
+        help='Template string to be used to generate volume names',
+    ),
+    cfg.StrOpt(
+        'snapshot_name_template',
+        default='snapshot-%s',
+        help='Template string to be used to generate snapshot names',
+    ),
 ]
 
 backup_opts = [
-    cfg.StrOpt('backup_name_template',
-               default='backup-%s',
-               help='Template string to be used to generate backup names'),
+    cfg.StrOpt(
+        'backup_name_template',
+        default='backup-%s',
+        help='Template string to be used to generate backup names',
+    ),
 ]
 
 CONF = cfg.CONF
@@ -71,78 +77,12 @@ IMPL = oslo_db_api.DBAPI.from_config(conf=CONF,
                                      backend_mapping=_BACKEND_MAPPING,
                                      lazy=True)
 
-# The maximum value a signed INT type may have
-MAX_INT = constants.DB_MAX_INT
-
 
 ###################
 
 def dispose_engine():
     """Force the engine to establish new connections."""
-
-    # FIXME(jdg): When using sqlite if we do the dispose
-    # we seem to lose our DB here.  Adding this check
-    # means we don't do the dispose, but we keep our sqlite DB
-    # This likely isn't the best way to handle this
-
-    if 'sqlite' not in IMPL.get_engine().name:
-        return IMPL.dispose_engine()
-    else:
-        return
-
-
-###################
-
-
-class Condition(object):
-    """Class for normal condition values for conditional_update."""
-    def __init__(self, value, field=None):
-        self.value = value
-        # Field is optional and can be passed when getting the filter
-        self.field = field
-
-    def get_filter(self, model, field=None):
-        return IMPL.condition_db_filter(
-            model, self._get_field(field), self.value,
-        )
-
-    def _get_field(self, field=None):
-        # We must have a defined field on initialization or when called
-        field = field or self.field
-        if not field:
-            raise ValueError(_('Condition has no field.'))
-        return field
-
-
-class Not(Condition):
-    """Class for negated condition values for conditional_update.
-
-    By default NULL values will be treated like Python treats None instead of
-    how SQL treats it.
-
-    So for example when values are (1, 2) it will evaluate to True when we have
-    value 3 or NULL, instead of only with 3 like SQL does.
-    """
-    def __init__(self, value, field=None, auto_none=True):
-        super(Not, self).__init__(value, field)
-        self.auto_none = auto_none
-
-    def get_filter(self, model, field=None):
-        # If implementation has a specific method use it
-        if hasattr(IMPL, 'condition_not_db_filter'):
-            return IMPL.condition_not_db_filter(model, self._get_field(field),
-                                                self.value, self.auto_none)
-
-        # Otherwise non negated object must adming ~ operator for not
-        return ~super(Not, self).get_filter(model, field)
-
-
-class Case(object):
-    """Class for conditional value selection for conditional_update."""
-    def __init__(self, whens, value=None, else_=None):
-        self.whens = whens
-        self.value = value
-        self.else_ = else_
+    return IMPL.dispose_engine()
 
 
 ###################
@@ -204,7 +144,7 @@ def conditional_update(
         has_snapshot_filter = sql.exists().where(
             models.Snapshot.volume_id == models.Volume.id
         )
-        case_values = db.Case(
+        case_values = db_utils.Case(
             [(has_snapshot_filter, 'has-snapshot')],
             else_='no-snapshot'
         )
