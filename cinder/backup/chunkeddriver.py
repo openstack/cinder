@@ -736,8 +736,8 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
             try:
                 fileno = volume_file.fileno()
             except IOError:
-                LOG.info("volume_file does not support fileno() so skipping "
-                         "fsync()")
+                LOG.debug("volume_file does not support fileno() so skipping "
+                          "fsync()")
             else:
                 os.fsync(fileno)
 
