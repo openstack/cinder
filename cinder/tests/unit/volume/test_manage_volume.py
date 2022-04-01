@@ -58,7 +58,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
             self.manager, '_run_manage_existing_flow_engine',
             return_value=volume_object)
         mock_update_volume_stats = self.mock_object(
-            self.manager, '_update_stats_for_managed')
+            self.manager, '_update_allocated_capacity')
 
         result = self.manager.manage_existing(self.context, volume_object)
 
@@ -75,7 +75,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
             self.manager, '_run_manage_existing_flow_engine',
             return_value=volume_object)
         mock_update_volume_stats = self.mock_object(
-            self.manager, '_update_stats_for_managed')
+            self.manager, '_update_allocated_capacity')
 
         result = self.manager.manage_existing(
             self.context, volume_object)
@@ -134,7 +134,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
         volume_object = self._stub_volume_object_get(self,
                                                      host=FAKE_HOST +
                                                      '#volPool')
-        self.manager._update_stats_for_managed(volume_object)
+        self.manager._update_allocated_capacity(volume_object)
         backend_stats = self.manager.stats['pools'][FAKE_HOST_POOL]
         self.assertEqual(
             1, backend_stats['allocated_capacity_gb'])
@@ -146,7 +146,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
             self.manager.driver.configuration, 'safe_get',
             return_value=safe_get_backend)
 
-        self.manager._update_stats_for_managed(volume_obj)
+        self.manager._update_allocated_capacity(volume_obj)
 
         mock_safe_get.assert_called_once_with('volume_backend_name')
         backend_stats = self.manager.stats['pools'][safe_get_backend]
@@ -157,7 +157,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
         mock_safe_get = self.mock_object(
             self.manager.driver.configuration, 'safe_get', return_value=None)
 
-        self.manager._update_stats_for_managed(volume_obj)
+        self.manager._update_allocated_capacity(volume_obj)
 
         mock_safe_get.assert_called_once_with('volume_backend_name')
         pool_stats = self.manager.stats['pools']
@@ -168,7 +168,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
         self.manager.stats = {}
 
         self.assertRaises(
-            KeyError, self.manager._update_stats_for_managed,
+            KeyError, self.manager._update_allocated_capacity,
             self._stub_volume_object_get(self))
 
     @mock.patch('cinder.volume.drivers.lvm.LVMVolumeDriver.'
