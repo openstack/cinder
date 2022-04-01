@@ -78,8 +78,8 @@ individual members in your proposal email.
      - where
    * - cinder-stable-maint
      - +2 powers on backports to stable branches
-     - subset of cinder-core (subject to approval by stable-maint-core) plus
-       the stable-maint-core team
+     - subset of cinder-core (selected in consultation with stable-maint-core)
+       plus the stable-maint-core team
      - https://review.opendev.org/#/admin/groups/534,members
    * - devstack-plugin-ceph-core
      - +2 powers on the code repo for the Ceph devstack plugin
