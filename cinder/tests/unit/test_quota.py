@@ -1877,7 +1877,7 @@ class QuotaVolumeTypeReservationTestCase(test.TestCase):
         my_context = FakeContext('MyProject', None)
         volume = fake_volume.fake_volume_obj(my_context,
                                              name= 'my_vol_name',
-                                             id= 'my_vol_id',
+                                             id= fake.VOLUME_ID,
                                              size= 1,
                                              project_id= 'vol_project_id')
         quota_utils.get_volume_type_reservation(my_context,
@@ -1898,7 +1898,7 @@ class QuotaVolumeTypeReservationTestCase(test.TestCase):
         my_context = FakeContext('MyProject', None)
         volume = fake_volume.fake_volume_obj(my_context,
                                              name='my_vol_name',
-                                             id='my_vol_id',
+                                             id=fake.VOLUME_ID,
                                              size=1,
                                              project_id='vol_project_id')
         quota_utils.get_volume_type_reservation(my_context,

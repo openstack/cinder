@@ -460,7 +460,7 @@ class TestCommonAdapter(test_base.TestCase):
                                                mocked_input):
         volume = mocked_input['volume']
         volume.metadata = {'async_migrate': 'True'}
-        volume.snapshot_id = 'snap'
+        volume.snapshot_id = fake_constants.SNAPSHOT_ID
         vnx_common.force_delete_lun_in_sg = True
         vnx_common.delete_volume(volume)
         lun = vnx_common.client.vnx.get_lun()
