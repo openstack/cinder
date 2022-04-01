@@ -35,6 +35,14 @@ Review Checklist
 
 
   * Unit tests included for all but trivial code in driver
+
+    * Make sure there's an ``__init__.py`` file in the directory containing
+      the test files or they won't be discovered by stestr when running the
+      generic ``tox -e pyXX`` command to run unit tests.
+
+    * Use the results of the ``cinder-code-coverage`` job or run
+      ``tox -e cover`` locally to see a test coverage report.
+
   * All source code files contain Apache 2 copyright header
 
     * Stating copyright for vendor is optional
@@ -60,6 +68,21 @@ Review Checklist
   * Driver does not add unnecessary new config options
 
     * For example, adding vendor_username instead of using the common san_login
+
+  * Driver reports all options it uses in get_driver_options() method
+
+    * This is necessary for cinderlib/emberCSI use of the driver
+    * The response should include any common config options (see above)
+      in addition to driver-specific options
+    * See https://review.opendev.org/c/openstack/cinder/+/770807/ for
+      an example of how to do this
+
+  * If the driver is a subclass of an existing driver, verify that it
+    implements its own ``_update_volume_stats()`` function to override
+    any capabilities of the parent driver that the child driver may not
+    have.  For example, the parent driver may support multiattach, while
+    this may not be the case (or may not yet be verified) for the child
+    driver.
 
   * Driver specific exceptions inherit from ``VolumeDriverException`` or
     ``VolumeBackendAPIException``
@@ -117,7 +140,19 @@ Review Checklist
     * ``tox`` | ``tempest`` with ``--concurrency=<n>`` for specifying ``<n>``
       number of test runners
 
-  * CI must run Cinder services using Python 3.7.
+  * CI must run Cinder services using Python 3.  More specifically:
+
+    * At the Ussuri Virtual Mid-Cycle meeting (session 2, 16 March 2020),
+      the Cinder team agreed that new Third-Party CI systems should:
+
+      * ideally, test using *all* of the cycle Python runtimes
+      * otherwise, test using at least one of the cycle runtimes
+
+    * The current Python runtimes are determined by the OpenStack Technical
+      Committee. See `Tested Runtimes
+      <https://governance.openstack.org/tc/reference/project-testing-interface.html#tested-runtimes>`_
+      in the OpenStack governance documents.
+
   * CI does not report failures or exception due to the CI operation and not
     due to test failures due to code changes.
   * *optional, but highly recommended:* CI only runs on third party CI recheck
