@@ -179,7 +179,7 @@ class DbCommands(object):
                     '%(max_version)d.') % {'max_version': db.MAX_INT})
             sys.exit(1)
         try:
-            result = db_migration.db_sync(version)
+            db_migration.db_sync(version)
         except db_exc.DBMigrationError as ex:
             print("Error during database migration: %s" % ex)
             sys.exit(1)
@@ -198,8 +198,6 @@ class DbCommands(object):
         except Exception as ex:
             print(_('Error during service version bump: %s') % ex)
             sys.exit(2)
-
-        return result
 
     def version(self):
         """Print the current database version."""
