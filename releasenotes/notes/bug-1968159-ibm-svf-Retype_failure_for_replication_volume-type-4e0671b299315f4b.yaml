@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #1968159
+    <https://bugs.launchpad.net/cinder/+bug/1968159>`_:
+    Fix for retype failure for replicated volume-type.
+    Controlling chfcmap call for rc_controlled fcmap
+    for replication-type volumes during retype operation.
