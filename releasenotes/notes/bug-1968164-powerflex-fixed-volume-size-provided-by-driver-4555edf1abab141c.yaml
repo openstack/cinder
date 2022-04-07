@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    PowerFlex driver `Bug #1968164 <https://bugs.launchpad.net/cinder/+bug/1968164>`_:
+    Fixed the display of the incorrect volume size on volume or snapshot creation.
+    PowerFlex storage requires volumes sizes to be a multiple of 8 GiB. This size 
+    was being reported to the end user, potentially causing confusion by being 
+    different than what they requested.

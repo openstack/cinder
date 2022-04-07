@@ -628,18 +628,15 @@ class PowerFlexDriver(driver.VolumeDriver):
                                            volume.size,
                                            provisioning,
                                            compression)
-        real_size = int(flex_utils.round_to_num_gran(volume.size))
         model_updates = {
             "provider_id": provider_id,
-            "size": real_size,
             "replication_status": fields.ReplicationStatus.DISABLED,
         }
         LOG.info("Successfully created volume %(vol_id)s. "
-                 "Volume size: %(size)s. PowerFlex volume name: %(vol_name)s, "
+                 "PowerFlex volume name: %(vol_name)s, "
                  "id: %(provider_id)s.",
                  {
                      "vol_id": volume.id,
-                     "size": real_size,
                      "vol_name": flex_utils.id_to_base64(volume.id),
                      "provider_id": provider_id,
                  })
