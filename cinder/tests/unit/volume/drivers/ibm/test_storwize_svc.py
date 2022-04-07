@@ -1577,6 +1577,7 @@ port_speed!N/A
         source = ''
         target = ''
         copyrate = kwargs['copyrate'] if 'copyrate' in kwargs else '50'
+        cleanrate = kwargs['cleanrate'] if 'clean_rate' in kwargs else '50'
 
         if 'source' not in kwargs:
             return self._errors['CMMVC5707E']
@@ -1603,6 +1604,7 @@ port_speed!N/A
         fcmap_info['id'] = self._find_unused_id(self._fcmappings_list)
         fcmap_info['name'] = 'fcmap' + fcmap_info['id']
         fcmap_info['copyrate'] = copyrate
+        fcmap_info['cleanrate'] = cleanrate
         fcmap_info['progress'] = '0'
         fcmap_info['autodelete'] = True if 'autodelete' in kwargs else False
         fcmap_info['status'] = 'idle_or_copied'
@@ -1727,7 +1729,7 @@ port_speed!N/A
         except KeyError:
             return self._errors['CMMVC5753E']
 
-        for key in ['name', 'copyrate', 'autodelete']:
+        for key in ['name', 'copyrate', 'cleanrate', 'autodelete']:
             if key in kwargs:
                 fcmap[key] = kwargs[key]
         return ('', '')
@@ -5545,7 +5547,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         if self.USESIM:
             # validate copyrate was set on the flash copy
             for i, fcmap in self.sim._fcmappings_list.items():
-                if fcmap['target'] == vol1['name']:
+                if fcmap['target'] == vol2['name']:
                     self.assertEqual('49', fcmap['copyrate'])
         self._assert_vol_exists(vol2['name'], True)
 
@@ -5557,7 +5559,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         if self.USESIM:
             # Validate copyrate was set on the flash copy
             for i, fcmap in self.sim._fcmappings_list.items():
-                if fcmap['target'] == vol1['name']:
+                if fcmap['target'] == vol3['name']:
                     self.assertEqual('49', fcmap['copyrate'])
         self._assert_vol_exists(vol3['name'], True)
 
@@ -5568,7 +5570,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         if self.USESIM:
             # Validate copyrate was set on the flash copy
             for i, fcmap in self.sim._fcmappings_list.items():
-                if fcmap['target'] == vol1['name']:
+                if fcmap['target'] == vol4['name']:
                     self.assertEqual('50', fcmap['cleanrate'])
         self._assert_vol_exists(vol4['name'], True)
 
@@ -5607,13 +5609,13 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         if self.USESIM:
             # Validate copyrate was set on the flash copy
             for i, fcmap in self.sim._fcmappings_list.items():
-                if fcmap['target'] == vol1['name']:
+                if fcmap['target'] == volume2['name']:
                     self.assertEqual('49', fcmap['copyrate'])
         self.driver.retype(ctxt, volume, new_type, diff, host)
         if self.USESIM:
             # Validate copyrate was set on the flash copy
             for i, fcmap in self.sim._fcmappings_list.items():
-                if fcmap['target'] == vol1['name']:
+                if fcmap['source'] == volume['name']:
                     self.assertEqual('149', fcmap['copyrate'])
 
         # create cloned volume with new type diffrent iogrp
@@ -5661,16 +5663,23 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         volume2 = testutils.create_volume(
             self.ctxt,
             volume_type_id=self.vt['id'])
-        self.driver.retype(ctxt, volume, new_type, diff, host)
-        if self.USESIM:
-            self.sim.error_injection('lsfcmap', 'speed_up')
-        self.driver.create_cloned_volume(volume2, volume)
+
+        # Create the snapshot of the source volume
+        snap = self._generate_snap_info(volume.id)
+        self.driver.create_snapshot(snap)
         if self.USESIM:
             # Validate cleanrate was set on the flash copy
             for i, fcmap in self.sim._fcmappings_list.items():
-                if fcmap['target'] == volume['name']:
+                if fcmap['source'] == volume['name']:
+                    self.assertEqual('50', fcmap['cleanrate'])
+
+        # Try to retype the source volume
+        self.driver.retype(ctxt, volume, new_type, diff, host)
+        if self.USESIM:
+            # Validate cleanrate was set on the flash copy
+            for i, fcmap in self.sim._fcmappings_list.items():
+                if fcmap['source'] == volume['name']:
                     self.assertEqual('100', fcmap['cleanrate'])
-        self._assert_vol_exists(volume2['name'], True)
 
         # Delete the volumes
         self.driver.delete_volume(volume2)
