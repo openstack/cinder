@@ -72,6 +72,12 @@ from cinder.volume import api as cinder_volume_api
 from cinder.volume import driver as cinder_volume_driver
 from cinder.volume.drivers.ceph import rbd_iscsi as \
     cinder_volume_drivers_ceph_rbdiscsi
+from cinder.volume.drivers.datacore import driver as \
+    cinder_volume_drivers_datacore_driver
+from cinder.volume.drivers.datacore import fc as \
+    cinder_volume_drivers_datacore_fc
+from cinder.volume.drivers.datacore import iscsi as \
+    cinder_volume_drivers_datacore_iscsi
 from cinder.volume.drivers.datera import datera_iscsi as \
     cinder_volume_drivers_datera_dateraiscsi
 from cinder.volume.drivers.dell_emc.powerflex import driver as \
@@ -319,6 +325,9 @@ def list_opts():
                 cinder_volume_driver.image_opts,
                 cinder_volume_driver.fqdn_opts,
                 cinder_volume_drivers_ceph_rbdiscsi.RBD_ISCSI_OPTS,
+                cinder_volume_drivers_datacore_driver.datacore_opts,
+                cinder_volume_drivers_datacore_fc.datacore_fc_opts,
+                cinder_volume_drivers_datacore_iscsi.datacore_iscsi_opts,
                 cinder_volume_drivers_dell_emc_powerflex_driver.
                 powerflex_opts,
                 cinder_volume_drivers_dell_emc_powermax_common.powermax_opts,
