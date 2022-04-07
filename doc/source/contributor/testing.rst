@@ -19,6 +19,18 @@ modules involved. Mock should be used to remove any external dependencies.
 All significant code changes should have unit test coverage validating the code
 happy path and any failure paths.
 
+There's a tox environment defined that will run code coverage tests for you::
+
+  tox -e cover
+
+It will create an HTML code coverage report that you can use a web browser
+to read locally from the location ``./cover/index.html`` (relative to the
+location of your ``tox.ini`` file).  If you are reviewing someone else's
+patch in Gerrit, we have ``cinder-code-coverage`` job that generates a
+coverage report that you can read.  From the review page, follow:
+"Zuul Summary" tab -> "cinder-code-coverage" link -> "Logs" tab.  The
+"raw" link next to "cover" will take you to the index page of the report.
+
 Any proposed code change will be automatically rejected by the OpenDev
 Zuul project gating system [#f1]_ if the change causes unit test failures.
 
