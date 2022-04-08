@@ -266,7 +266,6 @@ def require_qos_specs_exists(f):
 
 
 def handle_db_data_error(f):
-
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         try:
@@ -1013,7 +1012,7 @@ def _cluster_query(
         query = query.params(expired=utils.service_expired_time())
 
     if get_services:
-        query = query.options(joinedload('services'))
+        query = query.options(joinedload(models.Cluster.services))
 
     if is_up is not None:
         date_limit = utils.service_expired_time()
@@ -1787,7 +1786,7 @@ def _get_reservation_resources(context, reservation_ids):
 
     reservations = (
         model_query(context, models.Reservation, read_deleted="no")
-        .options(load_only('resource'))
+        .options(load_only(models.Reservation.resource))
         .filter(models.Reservation.uuid.in_(reservation_ids))
         .all()
     )
@@ -2364,12 +2363,12 @@ def _volume_get_query(context, project_only=False, joined_load=True):
                 models.Volume,
                 project_only=project_only,
             )
-            .options(joinedload('volume_metadata'))
-            .options(joinedload('volume_admin_metadata'))
-            .options(joinedload('volume_type'))
-            .options(joinedload('volume_attachment'))
-            .options(joinedload('consistencygroup'))
-            .options(joinedload('group'))
+            .options(joinedload(models.Volume.volume_metadata))
+            .options(joinedload(models.Volume.volume_admin_metadata))
+            .options(joinedload(models.Volume.volume_type))
+            .options(joinedload(models.Volume.volume_attachment))
+            .options(joinedload(models.Volume.consistencygroup))
+            .options(joinedload(models.Volume.group))
         )
     else:
         return (
@@ -2378,11 +2377,11 @@ def _volume_get_query(context, project_only=False, joined_load=True):
                 models.Volume,
                 project_only=project_only,
             )
-            .options(joinedload('volume_metadata'))
-            .options(joinedload('volume_type'))
-            .options(joinedload('volume_attachment'))
-            .options(joinedload('consistencygroup'))
-            .options(joinedload('group'))
+            .options(joinedload(models.Volume.volume_metadata))
+            .options(joinedload(models.Volume.volume_type))
+            .options(joinedload(models.Volume.volume_attachment))
+            .options(joinedload(models.Volume.consistencygroup))
+            .options(joinedload(models.Volume.group))
         )
 
 
@@ -2394,7 +2393,12 @@ def _volume_get(context, volume_id, joined_load=True, for_update=False):
         joined_load=joined_load,
     )
     if joined_load:
-        result = result.options(joinedload('volume_type.extra_specs'))
+        # TODO: Is this correct?
+        result = result.options(
+            joinedload(models.Volume.volume_type).joinedload(
+                models.VolumeType.extra_specs
+            )
+        )
     if for_update:
         result = result.with_for_update()
     result = result.filter_by(id=volume_id).first()
@@ -2448,7 +2452,7 @@ def _attachment_get(
             context, models.VolumeAttachment, read_deleted=read_deleted
         )
         .filter_by(id=attachment_id)
-        .options(joinedload('volume'))
+        .options(joinedload(models.VolumeAttachment.volume))
         .first()
     )
 
@@ -2464,7 +2468,7 @@ def _attachment_get_query(context, project_only=False):
         context,
         models.VolumeAttachment,
         project_only=project_only,
-    ).options(joinedload('volume'))
+    ).options(joinedload(models.VolumeAttachment.volume))
 
 
 @apply_like_filters(model=models.VolumeAttachment)
@@ -2512,7 +2516,7 @@ def volume_attachment_get_all_by_volume_id(context, volume_id):
             models.VolumeAttachment.attach_status
             != fields.VolumeAttachStatus.DETACHED
         )
-        .options(joinedload('volume'))
+        .options(joinedload(models.VolumeAttachment.volume))
         .all()
     )
     return result
@@ -2528,7 +2532,7 @@ def volume_attachment_get_all_by_host(context, host):
             models.VolumeAttachment.attach_status
             != fields.VolumeAttachStatus.DETACHED
         )
-        .options(joinedload('volume'))
+        .options(joinedload(models.VolumeAttachment.volume))
         .all()
     )
     return result
@@ -2552,7 +2556,7 @@ def volume_attachment_get_all_by_instance_uuid(context, instance_uuid):
             models.VolumeAttachment.attach_status
             != fields.VolumeAttachStatus.DETACHED
         )
-        .options(joinedload('volume'))
+        .options(joinedload(models.VolumeAttachment.volume))
         .all()
     )
     return result
@@ -3741,8 +3745,8 @@ def snapshot_destroy(context, snapshot_id):
 def _snapshot_get(context, snapshot_id):
     result = (
         model_query(context, models.Snapshot, project_only=True)
-        .options(joinedload('volume'))
-        .options(joinedload('snapshot_metadata'))
+        .options(joinedload(models.Snapshot.volume))
+        .options(joinedload(models.Snapshot.snapshot_metadata))
         .filter_by(id=snapshot_id)
         .first()
     )
@@ -3819,7 +3823,7 @@ def _snaps_get_query(
 ):
     query = model_query(context, models.Snapshot, project_only=project_only)
     if joined_load:
-        query = query.options(joinedload('snapshot_metadata'))
+        query = query.options(joinedload(models.Snapshot.snapshot_metadata))
     return query
 
 
@@ -3897,7 +3901,7 @@ def snapshot_get_all_for_volume(context, volume_id):
             context, models.Snapshot, read_deleted='no', project_only=True
         )
         .filter_by(volume_id=volume_id)
-        .options(joinedload('snapshot_metadata'))
+        .options(joinedload(models.Snapshot.snapshot_metadata))
         .all()
     )
 
@@ -3910,7 +3914,7 @@ def snapshot_get_latest_for_volume(context, volume_id):
             context, models.Snapshot, read_deleted='no', project_only=True
         )
         .filter_by(volume_id=volume_id)
-        .options(joinedload('snapshot_metadata'))
+        .options(joinedload(models.Snapshot.snapshot_metadata))
         .order_by(desc(models.Snapshot.created_at))
         .first()
     )
@@ -3943,7 +3947,7 @@ def snapshot_get_all_by_host(context, host, filters=None):
         query = (
             query.join(models.Snapshot.volume)
             .filter(or_(*conditions))
-            .options(joinedload('snapshot_metadata'))
+            .options(joinedload(models.Snapshot.snapshot_metadata))
         )
         return query.all()
     elif not host:
@@ -3958,8 +3962,8 @@ def snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id):
             context, models.Snapshot, read_deleted='no', project_only=True
         )
         .filter_by(cgsnapshot_id=cgsnapshot_id)
-        .options(joinedload('volume'))
-        .options(joinedload('snapshot_metadata'))
+        .options(joinedload(models.Snapshot.volume))
+        .options(joinedload(models.Snapshot.snapshot_metadata))
         .all()
     )
 
@@ -3972,8 +3976,8 @@ def snapshot_get_all_for_group_snapshot(context, group_snapshot_id):
             context, models.Snapshot, read_deleted='no', project_only=True
         )
         .filter_by(group_snapshot_id=group_snapshot_id)
-        .options(joinedload('volume'))
-        .options(joinedload('snapshot_metadata'))
+        .options(joinedload(models.Snapshot.volume))
+        .options(joinedload(models.Snapshot.snapshot_metadata))
         .all()
     )
 
@@ -4036,7 +4040,7 @@ def snapshot_get_all_by_project(
     if not query:
         return []
 
-    query = query.options(joinedload('snapshot_metadata'))
+    query = query.options(joinedload(models.Snapshot.snapshot_metadata))
     return query.all()
 
 
@@ -4102,7 +4106,7 @@ def snapshot_get_all_active_by_window(
         )
     )
     query = query.options(joinedload(models.Snapshot.volume))
-    query = query.options(joinedload('snapshot_metadata'))
+    query = query.options(joinedload(models.Snapshot.snapshot_metadata))
     if end:
         query = query.filter(models.Snapshot.created_at < end)
     if project_id:
@@ -4377,10 +4381,10 @@ def _volume_type_get_query(context, read_deleted='no', expected_fields=None):
     expected_fields = expected_fields or []
     query = model_query(
         context, models.VolumeType, read_deleted=read_deleted
-    ).options(joinedload('extra_specs'))
+    ).options(joinedload(models.VolumeType.extra_specs))
 
     for expected in expected_fields:
-        query = query.options(joinedload(expected))
+        query = query.options(joinedload(getattr(models.VolumeType, expected)))
 
     if not context.is_admin:
         the_filter = [models.VolumeType.is_public == true()]
@@ -4395,10 +4399,10 @@ def _group_type_get_query(context, read_deleted='no', expected_fields=None):
     expected_fields = expected_fields or []
     query = model_query(
         context, models.GroupType, read_deleted=read_deleted
-    ).options(joinedload('group_specs'))
+    ).options(joinedload(models.GroupType.group_specs))
 
     if 'projects' in expected_fields:
-        query = query.options(joinedload('projects'))
+        query = query.options(joinedload(models.GroupType.projects))
 
     if not context.is_admin:
         the_filter = [models.GroupType.is_public == true()]
@@ -4828,7 +4832,7 @@ def _volume_type_ref_get(context, id, inactive=False):
     read_deleted = "yes" if inactive else "no"
     result = (
         model_query(context, models.VolumeType, read_deleted=read_deleted)
-        .options(joinedload('extra_specs'))
+        .options(joinedload(models.VolumeType.extra_specs))
         .filter_by(id=id)
         .first()
     )
@@ -4844,7 +4848,7 @@ def _group_type_ref_get(context, id, inactive=False):
     read_deleted = "yes" if inactive else "no"
     result = (
         model_query(context, models.GroupType, read_deleted=read_deleted)
-        .options(joinedload('group_specs'))
+        .options(joinedload(models.GroupType.group_specs))
         .filter_by(id=id)
         .first()
     )
@@ -4859,7 +4863,7 @@ def _group_type_ref_get(context, id, inactive=False):
 def _volume_type_get_by_name(context, name):
     result = (
         model_query(context, models.VolumeType)
-        .options(joinedload('extra_specs'))
+        .options(joinedload(models.VolumeType.extra_specs))
         .filter_by(name=name)
         .first()
     )
@@ -4874,7 +4878,7 @@ def _volume_type_get_by_name(context, name):
 def _group_type_get_by_name(context, name):
     result = (
         model_query(context, models.GroupType)
-        .options(joinedload('group_specs'))
+        .options(joinedload(models.GroupType.group_specs))
         .filter_by(name=name)
         .first()
     )
@@ -4943,8 +4947,8 @@ def volume_type_qos_associations_get(context, qos_specs_id, inactive=False):
     read_deleted = "yes" if inactive else "no"
     vts = (
         model_query(context, models.VolumeType, read_deleted=read_deleted)
-        .options(joinedload('extra_specs'))
-        .options(joinedload('projects'))
+        .options(joinedload(models.VolumeType.extra_specs))
+        .options(joinedload(models.VolumeType.projects))
         .filter_by(qos_specs_id=qos_specs_id)
         .all()
     )
@@ -5006,7 +5010,7 @@ def volume_type_qos_specs_get(context, type_id):
 
     row = (
         context.session.query(models.VolumeType)
-        .options(joinedload('qos_specs'))
+        .options(joinedload(models.VolumeType.qos_specs))
         .filter_by(id=type_id)
         .first()
     )
@@ -5151,15 +5155,15 @@ def volume_get_all_active_by_window(context, begin, end=None, project_id=None):
         query = query.filter_by(project_id=project_id)
 
     query = (
-        query.options(joinedload('volume_metadata'))
-        .options(joinedload('volume_type'))
-        .options(joinedload('volume_attachment'))
-        .options(joinedload('consistencygroup'))
-        .options(joinedload('group'))
+        query.options(joinedload(models.Volume.volume_metadata))
+        .options(joinedload(models.Volume.volume_type))
+        .options(joinedload(models.Volume.volume_attachment))
+        .options(joinedload(models.Volume.consistencygroup))
+        .options(joinedload(models.Volume.group))
     )
 
     if is_admin_context(context):
-        query = query.options(joinedload('volume_admin_metadata'))
+        query = query.options(joinedload(models.Volume.volume_admin_metadata))
 
     return query.all()
 
@@ -5215,8 +5219,8 @@ def volume_type_get_all_by_group(context, group_id):
     query = (
         model_query(context, models.VolumeType, read_deleted='no')
         .filter(models.VolumeType.id.in_(volume_type_ids))
-        .options(joinedload('extra_specs'))
-        .options(joinedload('projects'))
+        .options(joinedload(models.VolumeType.extra_specs))
+        .options(joinedload(models.VolumeType.projects))
         .all()
     )
     return query
@@ -5618,7 +5622,7 @@ def _qos_specs_get_all_by_name(context, name, inactive=False):
         )
         .filter_by(key='QoS_Specs_Name')
         .filter_by(value=name)
-        .options(joinedload('specs'))
+        .options(joinedload(models.QualityOfServiceSpecs.specs))
         .all()
     )
 
@@ -5638,7 +5642,7 @@ def _qos_specs_get_all_ref(context, qos_specs_id, inactive=False):
             read_deleted=read_deleted,
         )
         .filter_by(id=qos_specs_id)
-        .options(joinedload('specs'))
+        .options(joinedload(models.QualityOfServiceSpecs.specs))
         .all()
     )
 
@@ -5766,7 +5770,7 @@ def _qos_specs_get_query(context):
             models.QualityOfServiceSpecs,
             read_deleted='no',
         )
-        .options(joinedload('specs'))
+        .options(joinedload(models.QualityOfServiceSpecs.specs))
         .filter_by(key='QoS_Specs_Name')
     )
     return rows
@@ -6318,7 +6322,7 @@ def _backup_get(
             project_only=project_only,
             read_deleted=read_deleted,
         )
-        .options(joinedload('backup_metadata'))
+        .options(joinedload(models.Backup.backup_metadata))
         .filter_by(id=backup_id)
         .first()
     )
@@ -6360,7 +6364,7 @@ def _backup_get_all(
 def _backups_get_query(context, project_only=False, joined_load=True):
     query = model_query(context, models.Backup, project_only=project_only)
     if joined_load:
-        query = query.options(joinedload('backup_metadata'))
+        query = query.options(joinedload(models.Backup.backup_metadata))
     return query
 
 
@@ -6406,7 +6410,7 @@ def backup_get_all(
 def backup_get_all_by_host(context, host):
     return (
         model_query(context, models.Backup)
-        .options(joinedload('backup_metadata'))
+        .options(joinedload(models.Backup.backup_metadata))
         .filter_by(host=host)
         .all()
     )
@@ -6459,7 +6463,7 @@ def backup_get_all_active_by_window(context, begin, end=None, project_id=None):
     """Return backups that were active during window."""
 
     query = model_query(context, models.Backup, read_deleted="yes").options(
-        joinedload('backup_metadata')
+        joinedload(models.Backup.backup_metadata)
     )
     query = query.filter(
         or_(
@@ -8058,8 +8062,7 @@ def purge_deleted_rows(context, age_in_days):
                     and_(
                         models.QualityOfServiceSpecs.specs_id.isnot(None),
                         models.QualityOfServiceSpecs.deleted.is_(True),
-                        models.QualityOfServiceSpecs.deleted_at
-                        < deleted_age,
+                        models.QualityOfServiceSpecs.deleted_at < deleted_age,
                     )
                 ).delete()
             result = context.session.execute(
@@ -8671,7 +8674,7 @@ def use_quota_online_data_migration(
         use_quota=None
     )
     if resource_name == 'Volume':
-        query = query.options(joinedload('volume_admin_metadata'))
+        query = query.options(joinedload(models.Volume.volume_admin_metadata))
     total = query.count()
     resources = query.limit(max_count).with_for_update().all()
     for resource in resources:
