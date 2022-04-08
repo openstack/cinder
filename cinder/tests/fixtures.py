@@ -124,7 +124,7 @@ class WarningsFixture(fixtures.Fixture):
     """Filters out warnings during test runs."""
 
     def setUp(self):
-        super(WarningsFixture, self).setUp()
+        super().setUp()
 
         self._original_warning_filters = warnings.filters[:]
 
@@ -168,13 +168,88 @@ class WarningsFixture(fixtures.Fixture):
 
         warnings.filterwarnings(
             'ignore',
+            message='Policy ".*":".*" was deprecated in ',
+            module='oslo_policy',
+            category=UserWarning,
+        )
+
+        # Enable deprecation warnings for cinder itself to capture upcoming
+        # SQLAlchemy changes
+
+        warnings.filterwarnings(
+            'ignore',
             category=sqla_exc.SADeprecationWarning,
         )
 
-        # TODO: Make this an error and filter out individual failures
         warnings.filterwarnings(
-            'once',
+            'error',
             module='cinder',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        # ...but filter everything out until we get around to fixing them
+        # TODO: Fix all of these
+
+        warnings.filterwarnings(
+            'ignore',
+            module='cinder',
+            message=r'The "whens" argument to case\(\) is now passed using ',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='cinder',
+            message=r'The "whens" argument to case\(\), when referring to ',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='cinder',
+            message='Using strings to indicate column or relationship paths ',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='cinder',
+            message='Using strings to indicate relationship names in Query',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='cinder',
+            message='The current statement is being autocommitted using ',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='cinder',
+            message=r'The SelectBase.as_scalar\(\) method is deprecated ',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='cinder',
+            message=r'Passing a string to Connection.execute\(\) is ',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='cinder',
+            message='The Session.begin.subtransactions flag is deprecated ',
+            category=sqla_exc.SADeprecationWarning,
+        )
+
+        warnings.filterwarnings(
+            'ignore',
+            module='cinder',
+            message=r'The legacy calling style of select\(\) is deprecated ',
             category=sqla_exc.SADeprecationWarning,
         )
 
