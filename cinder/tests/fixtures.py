@@ -193,20 +193,6 @@ class WarningsFixture(fixtures.Fixture):
         warnings.filterwarnings(
             'ignore',
             module='cinder',
-            message=r'The "whens" argument to case\(\) is now passed using ',
-            category=sqla_exc.SADeprecationWarning,
-        )
-
-        warnings.filterwarnings(
-            'ignore',
-            module='cinder',
-            message=r'The "whens" argument to case\(\), when referring to ',
-            category=sqla_exc.SADeprecationWarning,
-        )
-
-        warnings.filterwarnings(
-            'ignore',
-            module='cinder',
             message='Using strings to indicate column or relationship paths ',
             category=sqla_exc.SADeprecationWarning,
         )
