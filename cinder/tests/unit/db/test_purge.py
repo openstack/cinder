@@ -261,7 +261,7 @@ class PurgeDeletedTest(test.TestCase):
     def test_purge_deleted_rows_in_zero_age_in(self):
         dialect = self.engine.url.get_dialect()
         if dialect == sqlite.dialect:
-            self.conn.execute("PRAGMA foreign_keys = ON")
+            self.conn.exec_driver_sql("PRAGMA foreign_keys = ON")
         # Purge at age_in_days=0, should delete one more row
         db.purge_deleted_rows(self.context, age_in_days=0)
 
@@ -290,7 +290,7 @@ class PurgeDeletedTest(test.TestCase):
     def test_purge_deleted_rows_old(self):
         dialect = self.engine.url.get_dialect()
         if dialect == sqlite.dialect:
-            self.conn.execute("PRAGMA foreign_keys = ON")
+            self.conn.exec_driver_sql("PRAGMA foreign_keys = ON")
         # Purge at 30 days old, should only delete 2 rows
         db.purge_deleted_rows(self.context, age_in_days=30)
 
@@ -319,7 +319,7 @@ class PurgeDeletedTest(test.TestCase):
     def test_purge_deleted_rows_older(self):
         dialect = self.engine.url.get_dialect()
         if dialect == sqlite.dialect:
-            self.conn.execute("PRAGMA foreign_keys = ON")
+            self.conn.exec_driver_sql("PRAGMA foreign_keys = ON")
         # Purge at 10 days old now, should delete 2 more rows
         db.purge_deleted_rows(self.context, age_in_days=10)
 
@@ -356,7 +356,7 @@ class PurgeDeletedTest(test.TestCase):
     def test_purge_deleted_rows_integrity_failure(self):
         dialect = self.engine.url.get_dialect()
         if dialect == sqlite.dialect:
-            self.conn.execute("PRAGMA foreign_keys = ON")
+            self.conn.exec_driver_sql("PRAGMA foreign_keys = ON")
 
         # add new entry in volume and volume_admin_metadata for
         # integrity check
