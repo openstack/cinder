@@ -200,13 +200,6 @@ class WarningsFixture(fixtures.Fixture):
         warnings.filterwarnings(
             'ignore',
             module='cinder',
-            message=r'The SelectBase.as_scalar\(\) method is deprecated ',
-            category=sqla_exc.SADeprecationWarning,
-        )
-
-        warnings.filterwarnings(
-            'ignore',
-            module='cinder',
             message='The Session.begin.subtransactions flag is deprecated ',
             category=sqla_exc.SADeprecationWarning,
         )
