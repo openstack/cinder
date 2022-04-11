@@ -218,13 +218,6 @@ class WarningsFixture(fixtures.Fixture):
             category=sqla_exc.SADeprecationWarning,
         )
 
-        warnings.filterwarnings(
-            'ignore',
-            module='cinder',
-            message=r'The legacy calling style of select\(\) is deprecated ',
-            category=sqla_exc.SADeprecationWarning,
-        )
-
         self.addCleanup(self._reset_warning_filters)
 
     def _reset_warning_filters(self):

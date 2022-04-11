@@ -150,7 +150,7 @@ class Cluster(BASE, CinderBase):
     # Last heartbeat reported by any of the services of this cluster.  This is
     # not deferred since we always want to load this field.
     last_heartbeat = column_property(
-        sa.select([func.max(Service.updated_at)])
+        sa.select(func.max(Service.updated_at))
         .where(sa.and_(Service.cluster_name == name, ~Service.deleted))
         .correlate_except(Service)
         .scalar_subquery(),
@@ -159,7 +159,7 @@ class Cluster(BASE, CinderBase):
 
     # Number of existing services for this cluster
     num_hosts = column_property(
-        sa.select([func.count(Service.id)])
+        sa.select(func.count(Service.id))
         .where(sa.and_(Service.cluster_name == name, ~Service.deleted))
         .correlate_except(Service)
         .scalar_subquery(),
@@ -169,7 +169,7 @@ class Cluster(BASE, CinderBase):
 
     # Number of services that are down for this cluster
     num_down_hosts = column_property(
-        sa.select([func.count(Service.id)])
+        sa.select(func.count(Service.id))
         .where(
             sa.and_(
                 Service.cluster_name == name,
