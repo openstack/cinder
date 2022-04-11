@@ -984,6 +984,29 @@ class TestGlanceImageService(test.TestCase):
         attribute as the client would return if they're not set in the
         database. Regression test for bug #1308058.
         """
+        def _extract_attributes(image):
+            IMAGE_ATTRIBUTES = ('size', 'disk_format', 'owner',
+                                'container_format', 'status', 'id',
+                                'name', 'created_at', 'updated_at',
+                                'deleted', 'deleted_at', 'checksum',
+                                'min_disk', 'min_ram', 'protected',
+                                'visibility',
+                                'cinder_encryption_key_id')
+
+            output = {}
+
+            for attr in IMAGE_ATTRIBUTES:
+                if attr == 'deleted_at' and not output['deleted']:
+                    output[attr] = None
+                elif attr == 'checksum' and output['status'] != 'active':
+                    output[attr] = None
+                else:
+                    output[attr] = getattr(image, attr, None)
+
+            output['properties'] = getattr(image, 'properties', {})
+
+            return output
+
         class MyFakeGlanceImage(glance_stubs.FakeImage):
             def __init__(self, metadata):
                 IMAGE_ATTRIBUTES = ['size', 'disk_format', 'owner',
@@ -1001,7 +1024,7 @@ class TestGlanceImageService(test.TestCase):
             'updated_at': self.NOW_DATETIME,
         }
         image = MyFakeGlanceImage(metadata)
-        actual = glance._extract_attributes(image)
+        actual = _extract_attributes(image)
         expected = {
             'id': 1,
             'name': None,

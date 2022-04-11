@@ -635,35 +635,6 @@ def _convert_to_string(metadata: dict) -> dict:
     return _convert(_json_dumps, metadata)
 
 
-def _extract_attributes(image):
-    # NOTE(hdd): If a key is not found, base.Resource.__getattr__() may perform
-    # a get(), resulting in a useless request back to glance. This list is
-    # therefore sorted, with dependent attributes as the end
-    # 'deleted_at' depends on 'deleted'
-    # 'checksum' depends on 'status' == 'active'
-    IMAGE_ATTRIBUTES = ('size', 'disk_format', 'owner',
-                        'container_format', 'status', 'id',
-                        'name', 'created_at', 'updated_at',
-                        'deleted', 'deleted_at', 'checksum',
-                        'min_disk', 'min_ram', 'protected',
-                        'visibility',
-                        'cinder_encryption_key_id')
-
-    output: Dict[str, Any] = {}
-
-    for attr in IMAGE_ATTRIBUTES:
-        if attr == 'deleted_at' and not output['deleted']:
-            output[attr] = None
-        elif attr == 'checksum' and output['status'] != 'active':
-            output[attr] = None
-        else:
-            output[attr] = getattr(image, attr, None)
-
-    output['properties'] = getattr(image, 'properties', {})
-
-    return output
-
-
 def _remove_read_only(image_meta: dict) -> dict:
     IMAGE_ATTRIBUTES = ['status', 'updated_at', 'created_at', 'deleted_at']
     output = copy.deepcopy(image_meta)
