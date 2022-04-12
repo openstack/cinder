@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1968170 <https://bugs.launchpad.net/cinder/+bug/1968170>`_: Fixed
+    the message created when nova fails to reimage the volume.

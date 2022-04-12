@@ -281,3 +281,59 @@ class NovaApiTestCase(test.TestCase):
              'server_uuid': 'server-id-2',
              'tag': 'volume_id'},
         ])
+
+    def test_reimage_volume(self):
+        server_ids = ['server-id-1', 'server-id-2']
+        with mock.patch.object(nova, 'novaclient') as mock_novaclient, \
+                mock.patch.object(self.novaclient.server_external_events,
+                                  'create') as mock_create_event:
+            mock_novaclient.return_value = self.novaclient
+            mock_create_event.return_value = []
+
+            result = self.api.reimage_volume(self.ctx, server_ids, 'volume_id')
+            self.assertTrue(result)
+
+        mock_novaclient.assert_called_once_with(self.ctx,
+                                                privileged_user=True,
+                                                api_version='2.91')
+        mock_create_event.assert_called_once_with([
+            {'name': 'volume-reimaged',
+             'server_uuid': 'server-id-1',
+             'tag': 'volume_id'},
+            {'name': 'volume-reimaged',
+             'server_uuid': 'server-id-2',
+             'tag': 'volume_id'},
+        ])
+
+    @ddt.data(nova_exceptions.NotFound,
+              Exception,
+              'illegal_list',
+              [{'code': None}])
+    @mock.patch('cinder.message.api.API.create')
+    def test_reimage_volume_failed(self, nova_result, mock_create):
+        server_ids = ['server-id-1', 'server-id-2']
+        with mock.patch.object(nova, 'novaclient') as mock_novaclient, \
+                mock.patch.object(self.novaclient.server_external_events,
+                                  'create') as mock_create_event:
+            mock_novaclient.return_value = self.novaclient
+            mock_create_event.side_effect = [nova_result]
+
+            result = self.api.reimage_volume(self.ctx, server_ids, 'volume_id')
+            self.assertFalse(result)
+
+        mock_novaclient.assert_called_once_with(self.ctx,
+                                                privileged_user=True,
+                                                api_version='2.91')
+        mock_create.assert_called_once_with(
+            self.ctx,
+            message_field.Action.REIMAGE_VOLUME,
+            resource_uuid='volume_id',
+            detail=message_field.Detail.REIMAGE_VOLUME_FAILED)
+        mock_create_event.assert_called_once_with([
+            {'name': 'volume-reimaged',
+             'server_uuid': 'server-id-1',
+             'tag': 'volume_id'},
+            {'name': 'volume-reimaged',
+             'server_uuid': 'server-id-2',
+             'tag': 'volume_id'},
+        ])

@@ -235,5 +235,5 @@ class API(base.Base):
                 context,
                 message_field.Action.REIMAGE_VOLUME,
                 resource_uuid=volume_id,
-                detail=message_field.Detail.NOTIFY_COMPUTE_SERVICE_FAILED)
+                detail=message_field.Detail.REIMAGE_VOLUME_FAILED)
         return result
