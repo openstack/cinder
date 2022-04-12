@@ -3459,7 +3459,6 @@ def _volume_x_metadata_get_item(context, volume_id, key, model, notfound_exec):
     return result
 
 
-# TODO: We dropped 'subtransactions=True' here. Is that an issue?
 def _volume_x_metadata_update(
     context, volume_id, metadata, delete, model, add=True, update=True
 ):
