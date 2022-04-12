@@ -1,0 +1,5 @@
+---
+deprecations:
+  - |
+    Deprecate NetApp NFS option `netapp_copyoffload_tool_path`. The tool is no longer
+    available for downloading.
