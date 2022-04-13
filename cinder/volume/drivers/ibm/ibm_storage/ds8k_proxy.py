@@ -1113,8 +1113,9 @@ class DS8KProxy(proxy.IBMStorageProxy):
             backend_helper = self._helper
         if isinstance(backend_helper, helper.DS8KECKDHelper):
             LOG.info('Detach the volume %s.', lun.ds_id)
-            return backend_helper.terminate_connection(lun.ds_id, connector,
-                                                       force, **kwargs)
+            return backend_helper.terminate_connection(volume, lun.ds_id,
+                                                       connector, force,
+                                                       **kwargs)
         else:
             vol_mapped, host_id, map_info = (
                 backend_helper.check_vol_mapped_to_host(connector, lun.ds_id))
@@ -1155,11 +1156,13 @@ class DS8KProxy(proxy.IBMStorageProxy):
                     else:
                         LOG.info('Detach the volume %s.', lun.replica_ds_id)
                         return backend_helper.terminate_connection(
-                            lun.replica_ds_id, host_id, connector, map_info)
+                            volume, lun.replica_ds_id, host_id, connector,
+                            map_info)
             elif host_id and vol_mapped:
                 LOG.info('Detaching volume %s.', lun.ds_id)
-                return backend_helper.terminate_connection(lun.ds_id, host_id,
-                                                           connector, map_info)
+                return backend_helper.terminate_connection(volume, lun.ds_id,
+                                                           host_id, connector,
+                                                           map_info)
 
     @proxy.logger
     def create_group(self, ctxt, group):

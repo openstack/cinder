@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM DS8000 Driver `Bug #1951046
+    <https://bugs.launchpad.net/cinder/+bug/1951046>`_:
+    Fixed detach issue for multi-attach volumes. Detach
+    the volume without deleting the host until attachment
+    count is zero.
