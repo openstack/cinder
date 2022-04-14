@@ -297,8 +297,9 @@ class API(base.Base):
                 latest_backup = max(
                     backups.objects,
                     key=lambda x: x['data_timestamp']
-                    if (not snapshot or (snapshot and x['data_timestamp']
-                                         < snapshot['created_at']))
+                    if (x['status'] == fields.BackupStatus.AVAILABLE and (
+                        not snapshot or (snapshot and x['data_timestamp']
+                                         < snapshot['created_at'])))
                     else datetime(1, 1, 1, 1, 1, 1, tzinfo=timezone('UTC')))
             else:
                 QUOTAS.rollback(context, reservations)
@@ -313,8 +314,7 @@ class API(base.Base):
             parent_id = latest_backup.id
             if latest_backup['status'] != fields.BackupStatus.AVAILABLE:
                 QUOTAS.rollback(context, reservations)
-                msg = _('The parent backup must be available for '
-                        'incremental backup.')
+                msg = _('No backups available to do an incremental backup.')
                 raise exception.InvalidBackup(reason=msg)
 
         data_timestamp = None
