@@ -23,6 +23,7 @@ from oslo_utils.secretutils import md5
 from oslo_utils import units
 import six
 
+from cinder.common import constants
 from cinder import context
 from cinder import coordination
 from cinder.i18n import _
@@ -88,7 +89,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
 
     vendor_name = 'Nexenta'
     product_name = 'NexentaStor5'
-    storage_protocol = 'NFS'
+    storage_protocol = constants.NFS
     driver_volume_type = 'nfs'
 
     def __init__(self, *args, **kwargs):

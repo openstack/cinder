@@ -40,6 +40,7 @@ except ImportError:
     rados = None
     rbd = None
 
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
@@ -243,7 +244,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     RBD_FEATURE_OBJECT_MAP = 8
     RBD_FEATURE_FAST_DIFF = 16
     RBD_FEATURE_JOURNALING = 64
-    STORAGE_PROTOCOL = 'ceph'
+    STORAGE_PROTOCOL = constants.CEPH
 
     def __init__(self,
                  active_backend_id: str = None,
@@ -2065,7 +2066,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                       'migration.')
             return refuse_to_migrate
 
-        if (host['capabilities']['storage_protocol'] != 'ceph'):
+        if (host['capabilities']['storage_protocol'] != self.STORAGE_PROTOCOL):
             LOG.debug('Source and destination drivers need to be RBD '
                       'to use backend assisted migration. Falling back to '
                       'generic migration.')

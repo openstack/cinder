@@ -22,6 +22,7 @@ from oslo_log import log as logging
 from oslo_utils import strutils
 import six
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -452,7 +453,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         """Retrieve stats info from volume group."""
         LOG.debug("Updating volume stats")
         data = self.common.update_volume_stats()
-        data['storage_protocol'] = 'iSCSI'
+        data['storage_protocol'] = constants.ISCSI
         data['driver_version'] = self.VERSION
         self._stats = data
 

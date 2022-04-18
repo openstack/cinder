@@ -15,6 +15,7 @@ import abc
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils
@@ -37,7 +38,7 @@ class ISCSITarget(driver.Target):
         super(ISCSITarget, self).__init__(*args, **kwargs)
         self.iscsi_target_prefix = self.configuration.safe_get('target_prefix')
         self.iscsi_protocol = self.configuration.safe_get('target_protocol')
-        self.protocol = 'iSCSI'
+        self.protocol = constants.ISCSI
         self.volumes_dir = self.configuration.safe_get('volumes_dir')
 
     def _get_iscsi_properties(self, volume, multipath=False):

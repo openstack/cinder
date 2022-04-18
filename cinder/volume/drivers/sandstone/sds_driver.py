@@ -18,6 +18,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -334,7 +335,7 @@ class SdsISCSIDriver(SdsBaseDriver, driver.ISCSIDriver):
         data = SdsBaseDriver.get_volume_stats(self, refresh)
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or self.__class__.__name__
-        data['storage_protocol'] = 'iSCSI'
+        data['storage_protocol'] = constants.ISCSI
         data['driver_version'] = self.VERSION
         data['vendor_name'] = 'SandStone USP'
         return data

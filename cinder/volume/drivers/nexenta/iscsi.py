@@ -16,6 +16,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 import six
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -664,7 +665,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             'compression': self.volume_compression,
             'description': self.volume_description,
             'driver_version': self.VERSION,
-            'storage_protocol': 'iSCSI',
+            'storage_protocol': constants.ISCSI,
             'total_capacity_gb': total_amount,
             'free_capacity_gb': free_amount,
             'reserved_percentage': self.configuration.reserved_percentage,

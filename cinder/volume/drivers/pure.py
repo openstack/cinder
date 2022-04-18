@@ -35,6 +35,7 @@ try:
 except ImportError:
     purestorage = None
 
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
@@ -2526,7 +2527,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
         super(PureISCSIDriver, self).__init__(execute=execute, *args, **kwargs)
-        self._storage_protocol = "iSCSI"
+        self._storage_protocol = constants.ISCSI
 
     def _get_host(self, array, connector, remote=False):
         """Return dict describing existing Purity host object or None."""
@@ -2748,7 +2749,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
         super(PureFCDriver, self).__init__(execute=execute, *args, **kwargs)
-        self._storage_protocol = "FC"
+        self._storage_protocol = constants.FC
         self._lookup_service = fczm_utils.create_lookup_service()
 
     def _get_host(self, array, connector, remote=False):

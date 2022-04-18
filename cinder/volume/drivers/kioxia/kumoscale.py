@@ -19,6 +19,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils.secretutils import md5
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -414,7 +415,7 @@ class KumoScaleBaseVolumeDriver(driver.BaseVD):
             volume_backend_name=self._backend_name,
             vendor_name='KIOXIA',
             driver_version=self.VERSION,
-            storage_protocol='NVMeOF',
+            storage_protocol=constants.NVMEOF_VARIANT_1,
         )
         data['total_capacity_gb'] = 'unknown'
         data['free_capacity_gb'] = 'unknown'

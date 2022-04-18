@@ -844,9 +844,10 @@ class VolumeManager(manager.CleanableManager,
 
         # Shared targets is only relevant for iSCSI connections.
         # We default to True to be on the safe side.
+        capabilities = self.driver.capabilities
         volume.shared_targets = (
-            self.driver.capabilities.get('storage_protocol') == 'iSCSI' and
-            self.driver.capabilities.get('shared_targets', True))
+            capabilities.get('storage_protocol') in constants.ISCSI_VARIANTS
+            and capabilities.get('shared_targets', True))
         # TODO(geguileo): service_uuid won't be enough on Active/Active
         # deployments. There can be 2 services handling volumes from the same
         # backend.
@@ -2761,8 +2762,8 @@ class VolumeManager(manager.CleanableManager,
 
             # Append cacheable flag for iSCSI/FC/NVMe-oF and only when
             # cacheable is not set in driver level
-            if volume_stats.get('storage_protocol') in [
-                    'iSCSI', 'FC', 'NVMe-oF']:
+            if (volume_stats.get('storage_protocol')
+                    in constants.CACHEABLE_PROTOCOLS):
                 if volume_stats.get('pools'):
                     for pool in volume_stats.get('pools'):
                         if pool.get('cacheable') is None:

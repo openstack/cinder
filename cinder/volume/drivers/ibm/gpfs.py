@@ -28,6 +28,7 @@ from oslo_utils import units
 import paramiko
 import six
 
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
@@ -856,7 +857,7 @@ class GPFSDriver(driver.CloneableImageVD,
         data["volume_backend_name"] = backend_name or 'GPFS'
         data["vendor_name"] = 'IBM'
         data["driver_version"] = self.VERSION
-        data["storage_protocol"] = 'file'
+        data["storage_protocol"] = constants.FILE
         free, capacity = self._get_available_capacity(self.configuration.
                                                       gpfs_mount_point_base)
         data['total_capacity_gb'] = math.ceil(capacity / units.Gi)
@@ -1561,7 +1562,7 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
         data['volume_backend_name'] = backend_name or 'GPFSNFS'
         data['vendor_name'] = 'IBM'
         data['driver_version'] = self.get_version()
-        data['storage_protocol'] = 'file'
+        data['storage_protocol'] = constants.FILE
 
         self._ensure_shares_mounted()
 

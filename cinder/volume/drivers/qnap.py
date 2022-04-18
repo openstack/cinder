@@ -35,6 +35,7 @@ import requests
 import six
 from six.moves import urllib
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -51,7 +52,7 @@ qnap_opts = [
     cfg.StrOpt('qnap_poolname',
                help='The pool name in the QNAP Storage'),
     cfg.StrOpt('qnap_storage_protocol',
-               default='iscsi',
+               default=constants.ISCSI,
                help='Communication protocol to access QNAP storage')
 ]
 

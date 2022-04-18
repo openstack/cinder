@@ -19,6 +19,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -159,7 +160,7 @@ class DSWAREDriver(driver.VolumeDriver):
                 "thin_provisioning_support": False,
                 "pools": [],
                 "vendor_name": "Huawei",
-                "storage_protocol": "SCSI",
+                "storage_protocol": constants.SCSI,
                 }
         all_pools = self.client.query_pool_info()
 

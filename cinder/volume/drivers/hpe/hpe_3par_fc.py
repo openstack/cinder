@@ -37,6 +37,7 @@ except ImportError:
 from oslo_log import log as logging
 from oslo_utils.excutils import save_and_reraise_exception
 
+from cinder.common import constants
 from cinder import coordination
 from cinder import interface
 from cinder.volume.drivers.hpe import hpe_3par_base as hpebasedriver
@@ -125,7 +126,7 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
     def __init__(self, *args, **kwargs):
         super(HPE3PARFCDriver, self).__init__(*args, **kwargs)
         self.lookup_service = fczm_utils.create_lookup_service()
-        self.protocol = 'FC'
+        self.protocol = constants.FC
 
     def _initialize_connection_common(self, volume, connector, common, host,
                                       target_wwns, init_targ_map, numPaths,

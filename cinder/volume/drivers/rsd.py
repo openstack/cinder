@@ -26,6 +26,7 @@ except ImportError:
     RSDLib = None
     sushy_exceptions = None
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -594,7 +595,7 @@ class RSDDriver(driver.VolumeDriver):
         self._stats['volume_backend_name'] = backend_name
         self._stats['vendor_name'] = 'Intel'
         self._stats['driver_version'] = self.VERSION
-        self._stats['storage_protocol'] = 'nvmeof'
+        self._stats['storage_protocol'] = constants.NVMEOF_VARIANT_2
         # SinglePool
         self._stats['pools'] = [spool]
 

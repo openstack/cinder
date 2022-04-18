@@ -30,6 +30,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 import six
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
@@ -327,7 +328,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         data['volume_backend_name'] = backend_name or self.driver_name
         data['vendor_name'] = 'NetApp'
         data['driver_version'] = self.VERSION
-        data['storage_protocol'] = 'nfs'
+        data['storage_protocol'] = constants.NFS_VARIANT
         data['pools'] = self._get_pool_stats(
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function())

@@ -17,6 +17,7 @@ import errno
 
 from oslo_log import log as logging
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -144,7 +145,7 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
             try:
                 data = super(DPLISCSIDriver, self).get_volume_stats(refresh)
                 if data:
-                    data['storage_protocol'] = 'iSCSI'
+                    data['storage_protocol'] = constants.ISCSI
                     backend_name = \
                         self.configuration.safe_get('volume_backend_name')
                     data['volume_backend_name'] = \

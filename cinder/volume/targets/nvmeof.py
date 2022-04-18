@@ -14,6 +14,7 @@ import abc
 
 from oslo_log import log as logging
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.volume.targets import driver
@@ -31,7 +32,7 @@ class NVMeOF(driver.Target):
 
     """Target object for block storage devices with RDMA transport."""
 
-    protocol = 'nvmeof'
+    protocol = constants.NVMEOF_VARIANT_2
     target_protocol_map = {
         'nvmet_rdma': 'rdma',
         'nvmet_tcp': 'tcp',

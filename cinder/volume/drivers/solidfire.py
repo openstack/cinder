@@ -31,6 +31,7 @@ from oslo_utils import units
 import requests
 import six
 
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
@@ -2163,7 +2164,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         data["volume_backend_name"] = backend_name or self.__class__.__name__
         data["vendor_name"] = 'SolidFire Inc'
         data["driver_version"] = self.VERSION
-        data["storage_protocol"] = 'iSCSI'
+        data["storage_protocol"] = constants.ISCSI
         data['consistencygroup_support'] = True
         data['consistent_group_snapshot_enabled'] = True
         data['replication_enabled'] = self.replication_enabled

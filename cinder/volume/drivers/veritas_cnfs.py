@@ -18,6 +18,7 @@ import os
 from oslo_log import log as logging
 from oslo_utils import excutils
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -52,7 +53,7 @@ class VeritasCNFSDriver(nfs.NfsDriver):
     VERSION = "1.0.3"
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Veritas_Access_CI"
-    DRIVER_VOLUME_TYPE = 'nfs'
+    DRIVER_VOLUME_TYPE = constants.NFS_VARIANT
 
     # TODO(jsbryant) Remove driver in the 'V' release if CI is not fixed.
     SUPPORTED = False

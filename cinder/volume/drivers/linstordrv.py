@@ -27,6 +27,7 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import units
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
@@ -1027,7 +1028,7 @@ class LinstorIscsiDriver(LinstorBaseDriver):
 
     def get_volume_stats(self, refresh=False):
         data = self._get_volume_stats()
-        data["storage_protocol"] = 'iSCSI'
+        data["storage_protocol"] = constants.ISCSI
         data["pools"][0]["location_info"] = (
             'LinstorIscsiDriver:' + data["pools"][0]["location_info"])
 
@@ -1097,7 +1098,7 @@ class LinstorDrbdDriver(LinstorBaseDriver):
 
     def get_volume_stats(self, refresh=False):
         data = self._get_volume_stats()
-        data["storage_protocol"] = 'DRBD'
+        data["storage_protocol"] = constants.DRBD
         data["pools"][0]["location_info"] = 'LinstorDrbdDriver:{}'.format(
             data["pools"][0]["location_info"])
 

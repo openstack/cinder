@@ -22,6 +22,7 @@ FibreChannel Cinder Volume driver for Fujitsu ETERNUS DX S3 series.
 from oslo_log import log as logging
 import six
 
+from cinder.common import constants
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.fujitsu.eternus_dx import eternus_dx_common
@@ -202,7 +203,7 @@ class FJDXFCDriver(driver.FibreChannelDriver):
             data, pool_name = self.common.update_volume_stats()
             backend_name = self.configuration.safe_get('volume_backend_name')
             data['volume_backend_name'] = backend_name or 'FJDXFCDriver'
-            data['storage_protocol'] = 'FC'
+            data['storage_protocol'] = constants.FC
             self._stats = data
 
         LOG.debug('get_volume_stats, '

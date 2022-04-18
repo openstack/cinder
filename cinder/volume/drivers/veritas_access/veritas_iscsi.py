@@ -31,6 +31,7 @@ import requests
 import requests.auth
 from six.moves import http_client
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -85,7 +86,6 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
     VERSION = "1.0"
     # ThirdPartySytems wiki page
     CI_WIKI_NAME = "Veritas_Access_CI"
-    DRIVER_VOLUME_TYPE = 'iSCSI'
     LUN_FOUND_INTERVAL = 30  # seconds
 
     # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
@@ -892,7 +892,7 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
         self._stats["vendor_name"] = 'Veritas'
         self._stats["reserved_percentage"] = res_percentage or 0
         self._stats["driver_version"] = self.VERSION
-        self._stats["storage_protocol"] = self.DRIVER_VOLUME_TYPE
+        self._stats["storage_protocol"] = constants.ISCSI
         self._stats['total_capacity_gb'] = total_capacity
         self._stats['free_capacity_gb'] = free_capacity
         self._stats['thin_provisioning_support'] = True

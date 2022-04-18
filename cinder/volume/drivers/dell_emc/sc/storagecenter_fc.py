@@ -17,6 +17,7 @@
 from oslo_log import log as logging
 from oslo_utils import excutils
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -77,7 +78,7 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
         super(SCFCDriver, self).__init__(*args, **kwargs)
         self.backend_name =\
             self.configuration.safe_get('volume_backend_name') or 'Dell-FC'
-        self.storage_protocol = 'FC'
+        self.storage_protocol = constants.FC
 
     def validate_connector(self, connector):
         """Fail if connector doesn't contain all the data needed by driver.

@@ -29,6 +29,7 @@ from oslo_log import log as logging
 from oslo_utils import units
 import requests
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -176,7 +177,6 @@ class AS13000Driver(san.SanISCSIDriver):
 
     VENDOR = 'INSPUR'
     VERSION = '1.0.0'
-    PROTOCOL = 'iSCSI'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = 'Inspur_CI'
@@ -474,7 +474,7 @@ class AS13000Driver(san.SanISCSIDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['vendor_name'] = self.VENDOR
         data['driver_version'] = self.VERSION
-        data['storage_protocol'] = self.PROTOCOL
+        data['storage_protocol'] = constants.ISCSI
         data['volume_backend_name'] = backend_name
         data['pools'] = self._get_pools_stats()
 

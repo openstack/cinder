@@ -15,6 +15,7 @@
 """Volume driver for Kaminario K2 all-flash arrays."""
 from oslo_log import log as logging
 
+from cinder.common import constants
 from cinder import coordination
 from cinder.i18n import _
 from cinder import interface
@@ -50,7 +51,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
     @volume_utils.trace
     def __init__(self, *args, **kwargs):
         super(KaminarioISCSIDriver, self).__init__(*args, **kwargs)
-        self._protocol = 'iSCSI'
+        self._protocol = constants.ISCSI
 
     @volume_utils.trace
     @coordination.synchronized('{self.k2_lock_name}')

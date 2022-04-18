@@ -28,6 +28,7 @@ from oslo_utils import units
 import requests
 import urllib3
 
+from cinder.common import constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -980,7 +981,6 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
         backend_name = self.configuration.safe_get('volume_backend_name')
         res_percentage = self.configuration.safe_get('reserved_percentage')
-        storage_protocol = 'lightos'
         # as a tenant we dont have access to cluster stats
         # in the future we might expose this per project via get_project API
         # currently we remove this stats call.
@@ -989,7 +989,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         data = {'vendor_name': 'LightOS Storage',
                 'volume_backend_name': backend_name or self.__class__.__name__,
                 'driver_version': self.VERSION,
-                'storage_protocol': storage_protocol,
+                'storage_protocol': constants.LIGHTOS,
                 'reserved_percentage': res_percentage,
                 'QoS_support': False,
                 'online_extend_support': True,

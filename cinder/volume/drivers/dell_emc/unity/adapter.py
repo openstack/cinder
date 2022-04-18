@@ -24,6 +24,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
@@ -44,8 +45,8 @@ else:
 
 LOG = logging.getLogger(__name__)
 
-PROTOCOL_FC = 'FC'
-PROTOCOL_ISCSI = 'iSCSI'
+PROTOCOL_FC = constants.FC
+PROTOCOL_ISCSI = constants.ISCSI
 
 
 class VolumeParams(object):

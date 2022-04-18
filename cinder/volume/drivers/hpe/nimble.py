@@ -34,6 +34,7 @@ from oslo_utils import units
 import requests
 import six
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -586,7 +587,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                 password=self.configuration.san_password,
                 ip=self.configuration.san_ip,
                 verify=self.verify)
-            if self._storage_protocol == "iSCSI":
+            if self._storage_protocol == constants.ISCSI:
                 group_info = self.APIExecutor.get_group_info()
                 self._enable_group_scoped_target(group_info)
         except Exception:
@@ -670,10 +671,10 @@ class NimbleBaseVolumeDriver(san.SanDriver):
         LOG.info('Creating initiator group %(grp)s '
                  'with initiator %(iname)s',
                  {'grp': igrp_name, 'iname': initiator_name})
-        if self._storage_protocol == "iSCSI":
+        if self._storage_protocol == constants.ISCSI:
             self.APIExecutor.create_initiator_group(igrp_name)
             self.APIExecutor.add_initiator_to_igroup(igrp_name, initiator_name)
-        elif self._storage_protocol == "FC":
+        elif self._storage_protocol == constants.FC:
             self.APIExecutor.create_initiator_group_fc(igrp_name)
             for wwpn in wwpns:
                 self.APIExecutor.add_initiator_to_igroup_fc(igrp_name, wwpn)
@@ -952,7 +953,7 @@ class NimbleISCSIDriver(NimbleBaseVolumeDriver, san.SanISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(NimbleISCSIDriver, self).__init__(*args, **kwargs)
-        self._storage_protocol = "iSCSI"
+        self._storage_protocol = constants.ISCSI
         self._group_target_name = None
 
     def _set_gst_for_group(self):
@@ -1126,7 +1127,7 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
 
     def __init__(self, *args, **kwargs):
         super(NimbleFCDriver, self).__init__(*args, **kwargs)
-        self._storage_protocol = "FC"
+        self._storage_protocol = constants.FC
         self._lookup_service = fczm_utils.create_lookup_service()
 
     def _get_provider_location(self, volume_name):
@@ -1545,7 +1546,7 @@ class NimbleRestAPIExecutor(object):
                  'perfpolicy_id': perf_policy_id,
                  'encryption_cipher': cipher}}
 
-        if protocol == "iSCSI":
+        if protocol == constants.ISCSI:
             data['data']['multi_initiator'] = multi_initiator
 
         if dedupe.lower() == 'true':
@@ -2012,7 +2013,7 @@ class NimbleRestAPIExecutor(object):
                          "encryption_cipher": cipher
                          }
                 }
-        if protocol == "iSCSI":
+        if protocol == constants.ISCSI:
             data['data']['multi_initiator'] = multi_initiator
 
         folder_id = None

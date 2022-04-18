@@ -17,6 +17,7 @@ import ast
 
 from oslo_log import log as logging
 
+from cinder.common import constants
 from cinder import exception
 from cinder import interface
 from cinder.volume import driver
@@ -538,7 +539,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
         """Retrieve stats info from volume group."""
         LOG.debug("Updating volume stats")
         data = self.common.update_volume_stats()
-        data['storage_protocol'] = 'FC'
+        data['storage_protocol'] = constants.FC
         data['driver_version'] = self.VERSION
         self._stats = data
 

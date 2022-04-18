@@ -28,6 +28,7 @@ from oslo_utils import importutils
 from oslo_utils import units
 import six
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
@@ -1026,7 +1027,7 @@ class DateraApi(object):
                     'volume_backend_name': self.backend_name,
                     'vendor_name': 'Datera',
                     'driver_version': self.VERSION,
-                    'storage_protocol': 'iSCSI',
+                    'storage_protocol': constants.ISCSI,
                     'total_capacity_gb': (
                         int(results.total_capacity) / units.Gi),
                     'free_capacity_gb': (

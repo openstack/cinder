@@ -19,6 +19,7 @@ acs5000 iSCSI driver
 
 from oslo_log import log as logging
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -41,7 +42,7 @@ class Acs5000ISCSIDriver(acs5000_common.Acs5000CommonDriver):
 
     VENDOR = 'TOYOU'
     VERSION = '1.0.0'
-    PROTOCOL = 'iSCSI'
+    PROTOCOL = constants.ISCSI
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = 'TOYOU_ACS5000_CI'

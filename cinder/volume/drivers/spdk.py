@@ -19,6 +19,7 @@ from oslo_utils import importutils
 from oslo_utils import units
 import requests
 
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
@@ -91,7 +92,7 @@ class SPDKDriver(driver.VolumeDriver):
         status = {'volume_backend_name': 'SPDK',
                   'vendor_name': 'Open Source',
                   'driver_version': self.VERSION,
-                  'storage_protocol': 'NVMe-oF'}
+                  'storage_protocol': constants.NVMEOF}
         pools_status = []
         self.lvs = []
 
@@ -109,7 +110,7 @@ class SPDKDriver(driver.VolumeDriver):
                 pool["volume_backend_name"] = 'SPDK'
                 pool["vendor_name"] = 'Open Source'
                 pool["driver_version"] = self.VERSION
-                pool["storage_protocol"] = 'NVMe-oF'
+                pool["storage_protocol"] = constants.NVMEOF
                 pool["total_capacity_gb"] = total_size
                 pool["free_capacity_gb"] = free_size
                 pool["pool_name"] = lvs['name']

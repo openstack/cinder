@@ -21,6 +21,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 
+from cinder.common import constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -1467,7 +1468,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         """
         if refresh:
             self._stats = self._update_volume_status()
-            self._stats['storage_protocol'] = 'iSCSI'
+            self._stats['storage_protocol'] = constants.ISCSI
         LOG.debug('data=%(data)s, config_group=%(group)s',
                   {'data': self._stats, 'group': self._config_group})
 
@@ -1481,7 +1482,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
         if refresh:
             self._stats = self._update_volume_status()
-            self._stats['storage_protocol'] = 'FC'
+            self._stats['storage_protocol'] = constants.FC
         LOG.debug('data=%(data)s, config_group=%(group)s',
                   {'data': self._stats, 'group': self._config_group})
 

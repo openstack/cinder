@@ -23,6 +23,7 @@ from oslo_utils import importutils
 from oslo_utils import units
 import six
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -305,7 +306,7 @@ class StorPoolDriver(driver.VolumeDriver):
                 'volume_backend_name') or 'storpool',
             'vendor_name': 'StorPool',
             'driver_version': self.VERSION,
-            'storage_protocol': 'storpool',
+            'storage_protocol': constants.STORPOOL,
 
             'sparse_copy_volume': True,
 

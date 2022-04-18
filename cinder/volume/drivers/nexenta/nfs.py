@@ -23,6 +23,7 @@ from oslo_utils.secretutils import md5
 from oslo_utils import units
 import six
 
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -823,7 +824,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'nms_url': nms_url,
             'ns_shares': self.shares_with_capacities,
             'driver_version': self.VERSION,
-            'storage_protocol': 'NFS',
+            'storage_protocol': constants.NFS,
             'total_capacity_gb': total_space,
             'free_capacity_gb': free_space,
             'reserved_percentage': self.configuration.reserved_percentage,

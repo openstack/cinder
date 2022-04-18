@@ -15,6 +15,7 @@
 #    under the License.
 #
 
+from cinder.common import constants
 import cinder.volume.driver
 import cinder.volume.drivers.san.san as san
 import cinder.volume.drivers.stx.common as common
@@ -146,7 +147,7 @@ class STXFCDriver(cinder.volume.driver.FibreChannelDriver):
 
     def get_volume_stats(self, refresh=False):
         stats = self.common.get_volume_stats(refresh)
-        stats['storage_protocol'] = 'FC'
+        stats['storage_protocol'] = constants.FC
         stats['driver_version'] = self.VERSION
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = (backend_name or

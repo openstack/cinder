@@ -18,6 +18,7 @@ import json
 from oslo_log import log as logging
 from oslo_utils import strutils
 
+from cinder.common import constants as cinder_constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -72,7 +73,7 @@ class HuaweiISCSIDriver(common.HuaweiBaseDriver, driver.ISCSIDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume status."""
         data = self._get_volume_stats(refresh=False)
-        data['storage_protocol'] = 'iSCSI'
+        data['storage_protocol'] = cinder_constants.ISCSI
         data['driver_version'] = self.VERSION
         return data
 
@@ -264,7 +265,7 @@ class HuaweiFCDriver(common.HuaweiBaseDriver, driver.FibreChannelDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume status."""
         data = self._get_volume_stats(refresh=False)
-        data['storage_protocol'] = 'FC'
+        data['storage_protocol'] = cinder_constants.FC
         data['driver_version'] = self.VERSION
         return data
 
