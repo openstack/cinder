@@ -1,0 +1,19 @@
+---
+upgrade:
+  - |
+    The ``storage_protocol`` treats all variants of the protocol name as the
+    same regarding matches, so for example using FC, fc, or fibre_channel will
+    be treated equally in the scheduler, be it when filtering using the volume
+    type's extra specs or when using filter and goodness functions.
+
+    The storage protocol reporting via the REST API will be now the same for
+    them all, using the preferred naming, FC, NVMe-oF, iSCSI, NFS...
+
+    If your deployment uses ``storage_protocol`` to differentiate between
+    backends that use the same protocol but report it using different variants,
+    be aware that they will no longer be differentiated.
+fixes:
+  - |
+    `Bug #1966103 <https://bugs.launchpad.net/cinder/+bug/1966103>`_: Fixed
+    inconsistent behavior of ``storage_protocol`` among different backends that
+    report variants of the protocol name, such as FC, fc, fibre_channel.

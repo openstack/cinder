@@ -27,13 +27,20 @@ class ViewBuilder(common.ViewBuilder):
 
     def summary(self, request, capabilities, id):
         """Summary view of a backend capabilities."""
+        # Internally storage_protocol can be a list with all the variants (eg.
+        # FC, fibre_channel), but we return a single value to users.  The first
+        # value is the preferred variant.
+        storage_protocol = capabilities.get('storage_protocol')
+        if isinstance(storage_protocol, list):
+            storage_protocol = storage_protocol[0]
+
         return {
             'namespace': 'OS::Storage::Capabilities::%s' % id,
             'vendor_name': capabilities.get('vendor_name'),
             'volume_backend_name': capabilities.get('volume_backend_name'),
             'pool_name': capabilities.get('pool_name'),
             'driver_version': capabilities.get('driver_version'),
-            'storage_protocol': capabilities.get('storage_protocol'),
+            'storage_protocol': storage_protocol,
             'display_name': capabilities.get('display_name'),
             'description': capabilities.get('description'),
             'visibility': capabilities.get('visibility'),

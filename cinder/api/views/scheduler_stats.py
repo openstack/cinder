@@ -35,10 +35,20 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, pool):
         """Detailed view of a single pool."""
+        # Internally storage_protocol can be a list with all the variants (eg.
+        # FC, fibre_channel), but we return a single value to users.  The first
+        # value is the preferred variant.
+        capabilities = pool.get('capabilities')
+        if capabilities:
+            protocol = capabilities.get('storage_protocol')
+            if isinstance(protocol, list):
+                capabilities = capabilities.copy()
+                capabilities['storage_protocol'] = protocol[0]
+
         return {
             'pool': {
                 'name': pool.get('name'),
-                'capabilities': pool.get('capabilities'),
+                'capabilities': capabilities,
             }
         }
 

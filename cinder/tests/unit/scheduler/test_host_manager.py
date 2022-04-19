@@ -1346,7 +1346,8 @@ class BackendStateTestCase(test.TestCase):
         fake_backend.update_from_volume_capability(capability)
 
         self.assertEqual('Local iSCSI', fake_backend.volume_backend_name)
-        self.assertEqual('iSCSI', fake_backend.storage_protocol)
+        # Storage protocol is changed to include its variants
+        self.assertEqual(['iSCSI', 'iscsi'], fake_backend.storage_protocol)
         self.assertEqual('OpenStack', fake_backend.vendor_name)
         self.assertEqual('1.0.1', fake_backend.driver_version)
 

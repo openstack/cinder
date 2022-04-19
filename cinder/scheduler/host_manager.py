@@ -294,8 +294,13 @@ class BackendState(object):
         if not pool_cap.get('volume_backend_name', None):
             pool_cap['volume_backend_name'] = self.volume_backend_name
 
-        if not pool_cap.get('storage_protocol', None):
-            pool_cap['storage_protocol'] = self.storage_protocol
+        protocol = pool_cap.get('storage_protocol', None)
+        if protocol:
+            # Protocols that have variants are replaced with ALL the variants
+            storage_protocol = self.get_storage_protocol_variants(protocol)
+        else:  # Backend protocol has already been transformed with variants
+            storage_protocol = self.storage_protocol
+        pool_cap['storage_protocol'] = storage_protocol
 
         if not pool_cap.get('vendor_name', None):
             pool_cap['vendor_name'] = self.vendor_name
@@ -320,7 +325,11 @@ class BackendState(object):
         self.volume_backend_name = capability.get('volume_backend_name', None)
         self.vendor_name = capability.get('vendor_name', None)
         self.driver_version = capability.get('driver_version', None)
-        self.storage_protocol = capability.get('storage_protocol', None)
+        self.driver_version = capability.get('driver_version', None)
+
+        # Protocols that have variants are replaced with ALL the variants
+        protocol = capability.get('storage_protocol', None)
+        self.storage_protocol = self.get_storage_protocol_variants(protocol)
         self.updated = capability['timestamp']
 
     def consume_from_volume(self,
@@ -369,6 +378,18 @@ class BackendState(object):
                  'thin_provisioning_support': self.thin_provisioning_support,
                  'thick': self.thick_provisioning_support,
                  'pools': self.pools, 'updated': self.updated})
+
+    @staticmethod
+    def get_storage_protocol_variants(storage_protocol):
+        if storage_protocol in constants.ISCSI_VARIANTS:
+            return constants.ISCSI_VARIANTS
+        if storage_protocol in constants.FC_VARIANTS:
+            return constants.FC_VARIANTS
+        if storage_protocol in constants.NFS_VARIANTS:
+            return constants.NFS_VARIANTS
+        if storage_protocol in constants.NVMEOF_VARIANTS:
+            return constants.NVMEOF_VARIANTS
+        return storage_protocol
 
 
 class PoolState(BackendState):

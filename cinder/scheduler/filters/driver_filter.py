@@ -34,11 +34,14 @@ class DriverFilter(filters.BaseBackendFilter):
         stats = self._generate_stats(backend_state, filter_properties)
 
         LOG.debug("Checking backend '%s'",
-                  stats['backend_stats']['backend_id'])
-        result = self._check_filter_function(stats)
+                  stats[0]['backend_stats']['backend_id'])
+        # Run the filter function for all possible storage_protocol values
+        # (e.g. FC, fibre_channel) and if any of them passes the filter, then
+        # the backend passes.
+        result = any(self._check_filter_function(stat) for stat in stats)
         LOG.debug("Result: %s", result)
         LOG.debug("Done checking backend '%s'",
-                  stats['backend_stats']['backend_id'])
+                  stats[0]['backend_stats']['backend_id'])
 
         return result
 
@@ -95,7 +98,12 @@ class DriverFilter(filters.BaseBackendFilter):
         return result
 
     def _generate_stats(self, backend_state, filter_properties):
-        """Generates statistics from backend and volume data."""
+        """Generates statistics from backend and volume data.
+
+        Returns a list where each entry corresponds to a different
+        storage_protocol value for those backends that use a storage protocol
+        that has variants, but only if the function actually uses the protocol.
+        """
 
         backend_stats = {
             'host': backend_state.host,
@@ -116,10 +124,12 @@ class DriverFilter(filters.BaseBackendFilter):
         backend_caps = backend_state.capabilities
 
         filter_function = None
+        uses_protocol = False
 
         if ('filter_function' in backend_caps and
                 backend_caps['filter_function'] is not None):
             filter_function = str(backend_caps['filter_function'])
+            uses_protocol = 'storage_protocol' in filter_function
 
         qos_specs = filter_properties.get('qos_specs', {})
 
@@ -139,4 +149,18 @@ class DriverFilter(filters.BaseBackendFilter):
             'filter_function': filter_function,
         }
 
-        return stats
+        # Only create individual entries for the different protocols variants
+        # if the function uses the protocol and there are variants.
+        if uses_protocol and isinstance(backend_state.storage_protocol, list):
+            result = []
+            for protocol in backend_state.storage_protocol:
+                new_stats = stats.copy()
+                new_stats['backend_stats'] = dict(new_stats['backend_stats'])
+                new_stats['backend_stats']['storage_protocol'] = protocol
+                new_stats['backend_caps'] = dict(new_stats['backend_caps'])
+                new_stats['backend_caps']['storage_protocol'] = protocol
+                result.append(new_stats)
+
+        else:
+            result = [stats]
+        return result

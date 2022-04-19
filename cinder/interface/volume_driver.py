@@ -78,7 +78,17 @@ class VolumeDriverCore(base.CinderInterface):
             it tends to follow typical major.minor.revision ideas.
         * storage_protocol
             The protocol used to connect to the storage, this should be a short
-            string such as: "iSCSI", "FC", "nfs", "ceph", etc.
+            string such as: "iSCSI", "FC", "NFS", "ceph", etc.
+            Available protocols are present in cinder.common.constants and they
+            must be used instead of string literals.
+            Variant values only exist for older drivers that were already
+            reporting those values.  New drivers must use non variant versions.
+            In some cases this may be the same value as the driver_volume_type
+            returned by the initialize_connection method, but they are not the
+            same thing, since this one is meant to be used by the scheduler,
+            while the latter is the os-brick connector identifier used in the
+            factory method.
+
         * total_capacity_gb
             The total capacity in gigabytes (GiB) of the storage backend being
             used to store Cinder volumes. Use keyword 'unknown' if the backend
