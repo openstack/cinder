@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize family driver
+    `Bug #1960314 <https://bugs.launchpad.net/cinder/+bug/1960314>`_:
+    Fixed resize issue for GMCV volumes which are a part of
+    a consistency group(CG).
