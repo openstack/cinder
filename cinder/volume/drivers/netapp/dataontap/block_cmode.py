@@ -616,25 +616,23 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
     def _move_lun(self, volume, src_ontap_volume, dest_ontap_volume,
                   dest_lun_name=None):
         """Moves LUN from an ONTAP volume to another."""
-        job_uuid = self.zapi_client.start_lun_move(
+        operation_info = self.zapi_client.start_lun_move(
             volume.name, dest_ontap_volume, src_ontap_volume=src_ontap_volume,
             dest_lun_name=dest_lun_name)
-        LOG.debug('Start moving LUN %s from %s to %s. '
-                  'Job UUID is %s.', volume.name, src_ontap_volume,
-                  dest_ontap_volume, job_uuid)
+        LOG.debug('Start moving LUN %s from %s to %s. ',
+                  volume.name, src_ontap_volume,
+                  dest_ontap_volume)
 
         def _wait_lun_move_complete():
-            move_status = self.zapi_client.get_lun_move_status(job_uuid)
-            LOG.debug('Waiting for LUN move job %s to complete. '
-                      'Current status is: %s.', job_uuid,
-                      move_status['job-status'])
+            move_status = self.zapi_client.get_lun_move_status(operation_info)
+            LOG.debug('Waiting for LUN move to complete. '
+                      'Current status is: %s.', move_status['job-status'])
 
             if not move_status:
-                status_error_msg = (_("Error moving LUN %s. The "
-                                      "corresponding Job UUID % doesn't "
-                                      "exist."))
+                status_error_msg = (_("Error moving LUN %s. The movement"
+                                      "status could not be retrieved."))
                 raise na_utils.NetAppDriverException(
-                    status_error_msg % (volume.id, job_uuid))
+                    status_error_msg % (volume.id))
             elif move_status['job-status'] == 'destroyed':
                 status_error_msg = (_('Error moving LUN %s. %s.'))
                 raise na_utils.NetAppDriverException(
@@ -676,29 +674,27 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
                   dest_ontap_volume, dest_vserver, dest_lun_name=None,
                   dest_backend_name=None, cancel_on_error=False):
         """Copies LUN from an ONTAP volume to another."""
-        job_uuid = self.zapi_client.start_lun_copy(
+        operation_info = self.zapi_client.start_lun_copy(
             volume.name, dest_ontap_volume, dest_vserver,
             src_ontap_volume=src_ontap_volume, src_vserver=src_vserver,
             dest_lun_name=dest_lun_name)
         LOG.debug('Start copying LUN %(vol)s from '
                   '%(src_vserver)s:%(src_ontap_vol)s to '
-                  '%(dest_vserver)s:%(dest_ontap_vol)s. Job UUID is %(job)s.',
+                  '%(dest_vserver)s:%(dest_ontap_vol)s.',
                   {'vol': volume.name, 'src_vserver': src_vserver,
                    'src_ontap_vol': src_ontap_volume,
                    'dest_vserver': dest_vserver,
-                   'dest_ontap_vol': dest_ontap_volume,
-                   'job': job_uuid})
+                   'dest_ontap_vol': dest_ontap_volume})
 
         def _wait_lun_copy_complete():
-            copy_status = self.zapi_client.get_lun_copy_status(job_uuid)
-            LOG.debug('Waiting for LUN copy job %s to complete. Current '
-                      'status is: %s.', job_uuid, copy_status['job-status'])
+            copy_status = self.zapi_client.get_lun_copy_status(operation_info)
+            LOG.debug('Waiting for LUN copy job to complete. Current '
+                      'status is: %s.', copy_status['job-status'])
             if not copy_status:
-                status_error_msg = (_("Error copying LUN %s. The "
-                                      "corresponding Job UUID % doesn't "
-                                      "exist."))
+                status_error_msg = (_("Error copying LUN %s. The copy"
+                                      "status could not be retrieved."))
                 raise na_utils.NetAppDriverException(
-                    status_error_msg % (volume.id, job_uuid))
+                    status_error_msg % (volume.id))
             elif copy_status['job-status'] == 'destroyed':
                 status_error_msg = (_('Error copying LUN %s. %s.'))
                 raise na_utils.NetAppDriverException(
@@ -717,7 +713,8 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         except Exception as e:
             with excutils.save_and_reraise_exception() as ctxt:
                 if cancel_on_error:
-                    self._cancel_lun_copy(job_uuid, volume, dest_ontap_volume,
+                    self._cancel_lun_copy(operation_info, volume,
+                                          dest_ontap_volume,
                                           dest_backend_name=dest_backend_name)
                 if isinstance(e, loopingcall.LoopingCallTimeOut):
                     ctxt.reraise = False

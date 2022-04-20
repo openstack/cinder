@@ -1734,7 +1734,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         result = self.client._get_first_lun_by_path(lun_path)
 
-        self.client._get_lun_by_path.assert_called_once_with(lun_path)
+        self.client._get_lun_by_path.assert_called_once_with(
+            lun_path, fields=None)
         if is_empty:
             self.assertTrue(result is None)
         else:
@@ -2391,6 +2392,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_send_request.assert_called_once_with(
             '/storage/luns', 'post', body=expected_body)
 
+    @ddt.data(True, False)
     def test_destroy_lun(self, force=True):
         path = f'/vol/{fake_client.VOLUME_NAME}/{fake_client.FILE_NAME}'
 
@@ -2402,7 +2404,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.mock_object(self.client, 'send_request')
 
-        self.client.destroy_lun(path)
+        self.client.destroy_lun(path, force)
 
         self.client.send_request.assert_called_once_with('/storage/luns/',
                                                          'delete', query=query)
@@ -3380,3 +3382,309 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call('/storage/volumes', 'patch', body=body, query=query)])
+
+    def test_get_cluster_name(self):
+        query = {'fields': 'name'}
+
+        self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.GET_CLUSTER_NAME_RESPONSE_REST)
+
+        result = self.client.get_cluster_name()
+
+        self.client.send_request.assert_called_once_with(
+            '/cluster', 'get', query=query, enable_tunneling=False)
+        self.assertEqual(
+            fake_client.GET_CLUSTER_NAME_RESPONSE_REST['name'], result)
+
+    @ddt.data(
+        (fake_client.VSERVER_NAME, fake_client.VSERVER_NAME_2),
+        (fake_client.VSERVER_NAME, None),
+        (None, fake_client.VSERVER_NAME_2),
+        (None, None))
+    @ddt.unpack
+    def test_get_vserver_peers(self, svm_name, peer_svm_name):
+        query = {
+            'fields': 'svm.name,state,peer.svm.name,peer.cluster.name,'
+                      'applications'
+        }
+        if peer_svm_name:
+            query['name'] = peer_svm_name
+        if svm_name:
+            query['svm.name'] = svm_name
+
+        vserver_info = fake_client.GET_VSERVER_PEERS_RECORDS_REST[0]
+
+        expected_result = [{
+            'vserver': vserver_info['svm']['name'],
+            'peer-vserver': vserver_info['peer']['svm']['name'],
+            'peer-state': vserver_info['state'],
+            'peer-cluster': vserver_info['peer']['cluster']['name'],
+            'applications': vserver_info['applications'],
+        }]
+
+        self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.GET_VSERVER_PEERS_RESPONSE_REST)
+
+        result = self.client.get_vserver_peers(
+            vserver_name=svm_name, peer_vserver_name=peer_svm_name)
+
+        self.client.send_request.assert_called_once_with(
+            '/svm/peers', 'get', query=query, enable_tunneling=False)
+        self.assertEqual(expected_result, result)
+
+    def test_get_vserver_peers_empty(self):
+        vserver_peers_response = copy.deepcopy(
+            fake_client.GET_VSERVER_PEERS_RESPONSE_REST)
+        vserver_peers_response['records'] = []
+        vserver_peers_response['num_records'] = 0
+        query = {
+            'fields': 'svm.name,state,peer.svm.name,peer.cluster.name,'
+                      'applications'
+        }
+        self.mock_object(
+            self.client, 'send_request', return_value=vserver_peers_response)
+
+        result = self.client.get_vserver_peers()
+
+        self.client.send_request.assert_called_once_with(
+            '/svm/peers', 'get', query=query, enable_tunneling=False)
+        self.assertEqual([], result)
+
+    @ddt.data(['snapmirror', 'lun_copy'], None)
+    def test_create_vserver_peer(self, applications):
+        body = {
+            'svm.name': fake_client.VSERVER_NAME,
+            'name': fake_client.VSERVER_NAME_2,
+            'applications': applications if applications else ['snapmirror']
+        }
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_vserver_peer(
+            fake_client.VSERVER_NAME, fake_client.VSERVER_NAME_2,
+            vserver_peer_application=applications)
+
+        self.client.send_request.assert_called_once_with(
+            '/svm/peers', 'post', body=body, enable_tunneling=False)
+
+    @ddt.data(
+        (fake.VOLUME_NAME, fake.LUN_NAME),
+        (None, fake.LUN_NAME),
+        (fake.VOLUME_NAME, None),
+        (None, None)
+    )
+    @ddt.unpack
+    def test_start_lun_move(self, src_vol, dest_lun):
+        src_lun = f'src-lun-{fake.LUN_NAME}'
+        dest_vol = f'dest-vol-{fake.VOLUME_NAME}'
+
+        src_path = f'/vol/{src_vol if src_vol else dest_vol}/{src_lun}'
+        dest_path = f'/vol/{dest_vol}/{dest_lun if dest_lun else src_lun}'
+        body = {'name': dest_path}
+
+        self.mock_object(self.client, '_lun_update_by_path')
+
+        result = self.client.start_lun_move(
+            src_lun, dest_vol, src_ontap_volume=src_vol,
+            dest_lun_name=dest_lun)
+
+        self.client._lun_update_by_path.assert_called_once_with(
+            src_path, body)
+        self.assertEqual(dest_path, result)
+
+    @ddt.data(fake_client.LUN_GET_MOVEMENT_REST, None)
+    def test_get_lun_move_status(self, lun_moved):
+        dest_path = f'/vol/{fake.VOLUME_NAME}/{fake.LUN_NAME}'
+        move_status = None
+        if lun_moved:
+            move_progress = lun_moved['movement']['progress']
+            move_status = {
+                'job-status': move_progress['state'],
+                'last-failure-reason': move_progress['failure']['message']
+            }
+
+        self.mock_object(self.client, '_get_first_lun_by_path',
+                         return_value=lun_moved)
+
+        result = self.client.get_lun_move_status(dest_path)
+
+        self.client._get_first_lun_by_path.assert_called_once_with(
+            dest_path, fields='movement.progress')
+        self.assertEqual(move_status, result)
+
+    @ddt.data(
+        (fake.VOLUME_NAME, fake.LUN_NAME),
+        (None, fake.LUN_NAME),
+        (fake.VOLUME_NAME, None),
+        (None, None)
+    )
+    @ddt.unpack
+    def test_start_lun_copy(self, src_vol, dest_lun):
+        src_lun = f'src-lun-{fake.LUN_NAME}'
+        dest_vol = f'dest-vol-{fake.VOLUME_NAME}'
+        dest_vserver = f'dest-vserver-{fake.VSERVER_NAME}'
+
+        src_path = f'/vol/{src_vol if src_vol else dest_vol}/{src_lun}'
+        dest_path = f'/vol/{dest_vol}/{dest_lun if dest_lun else src_lun}'
+        body = {
+            'name': dest_path,
+            'copy.source.name': src_path,
+            'svm.name': dest_vserver
+        }
+
+        self.mock_object(self.client, 'send_request')
+
+        result = self.client.start_lun_copy(
+            src_lun, dest_vol, dest_vserver,
+            src_ontap_volume=src_vol, src_vserver=fake_client.VSERVER_NAME,
+            dest_lun_name=dest_lun)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/luns', 'post', body=body, enable_tunneling=False)
+        self.assertEqual(dest_path, result)
+
+    @ddt.data(fake_client.LUN_GET_COPY_REST, None)
+    def test_get_lun_copy_status(self, lun_copied):
+        dest_path = f'/vol/{fake.VOLUME_NAME}/{fake.LUN_NAME}'
+        copy_status = None
+        if lun_copied:
+            copy_progress = lun_copied['copy']['source']['progress']
+            copy_status = {
+                'job-status': copy_progress['state'],
+                'last-failure-reason': copy_progress['failure']['message']
+            }
+
+        self.mock_object(self.client, '_get_first_lun_by_path',
+                         return_value=lun_copied)
+
+        result = self.client.get_lun_copy_status(dest_path)
+
+        self.client._get_first_lun_by_path.assert_called_once_with(
+            dest_path, fields='copy.source.progress')
+        self.assertEqual(copy_status, result)
+
+    def test_cancel_lun_copy(self):
+        dest_path = f'/vol/{fake_client.VOLUME_NAME}/{fake_client.FILE_NAME}'
+
+        query = {
+            'name': dest_path,
+            'svm.name': fake_client.VSERVER_NAME
+        }
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.cancel_lun_copy(dest_path)
+
+        self.client.send_request.assert_called_once_with('/storage/luns/',
+                                                         'delete', query=query)
+
+    def test_cancel_lun_copy_exception(self):
+        dest_path = f'/vol/{fake_client.VOLUME_NAME}/{fake_client.FILE_NAME}'
+        query = {
+            'name': dest_path,
+            'svm.name': fake_client.VSERVER_NAME
+        }
+
+        self.mock_object(self.client, 'send_request',
+                         side_effect=self._mock_api_error())
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client.cancel_lun_copy,
+            dest_path)
+        self.client.send_request.assert_called_once_with('/storage/luns/',
+                                                         'delete', query=query)
+
+    # TODO(rfluisa): Add ddt data with None values for optional parameters to
+    # improve coverage.
+    def test_start_file_copy(self):
+        volume = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        file_name = fake_client.FILE_NAME
+        dest_ontap_volume = fake_client.VOLUME_NAME
+        src_ontap_volume = dest_ontap_volume
+        dest_file_name = file_name
+        response = {'job': {'uuid': 'fake-uuid'}}
+
+        body = {
+            'files_to_copy': [
+                {
+                    'source': {
+                        'path': f'{src_ontap_volume}/{file_name}',
+                        'volume': {
+                            'uuid': volume['uuid']
+                        }
+                    },
+                    'destination': {
+                        'path': f'{dest_ontap_volume}/{dest_file_name}',
+                        'volume': {
+                            'uuid': volume['uuid']
+                        }
+                    }
+                }
+            ]
+        }
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         return_value=volume)
+        self.mock_object(self.client, 'send_request',
+                         return_value=response)
+
+        result = self.client.start_file_copy(
+            file_name, dest_ontap_volume, src_ontap_volume=src_ontap_volume,
+            dest_file_name=dest_file_name)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/file/copy', 'post', body=body, enable_tunneling=False)
+        self.assertEqual(response['job']['uuid'], result)
+
+    # TODO(rfluisa): Add ddt data with None values for possible api responses
+    # to improve coverage.
+    def test_get_file_copy_status(self):
+        job_uuid = fake_client.FAKE_UUID
+        query = {}
+        query['fields'] = '*'
+        response = {
+            'state': 'fake-state',
+            'error': {
+                'message': 'fake-error-message'
+            }
+        }
+        expected_result = {
+            'job-status': response['state'],
+            'last-failure-reason': response['error']['message']
+        }
+
+        self.mock_object(self.client, 'send_request', return_value=response)
+        result = self.client.get_file_copy_status(job_uuid)
+
+        self.client.send_request.assert_called_once_with(
+            f'/cluster/jobs/{job_uuid}', 'get', query=query,
+            enable_tunneling=False)
+        self.assertEqual(expected_result, result)
+
+    @ddt.data(('success', 'complete'), ('failure', 'destroyed'))
+    @ddt.unpack
+    def test_get_file_copy_status_translate_state(self, from_state, to_state):
+        job_uuid = fake_client.FAKE_UUID
+        query = {}
+        query['fields'] = '*'
+        response = {
+            'state': from_state,
+            'error': {
+                'message': 'fake-error-message'
+            }
+        }
+        expected_result = {
+            'job-status': to_state,
+            'last-failure-reason': response['error']['message']
+        }
+
+        self.mock_object(self.client, 'send_request', return_value=response)
+        result = self.client.get_file_copy_status(job_uuid)
+
+        self.client.send_request.assert_called_once_with(
+            f'/cluster/jobs/{job_uuid}', 'get', query=query,
+            enable_tunneling=False)
+        self.assertEqual(expected_result, result)
