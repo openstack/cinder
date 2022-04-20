@@ -2576,7 +2576,20 @@ class VolumeManager(manager.CleanableManager,
                         resource={'type': 'driver',
                                   'id': self.driver.__class__.__name__})
         else:
-            volume_stats = self.driver.get_volume_stats(refresh=True)
+            slowmsg = "The " + self.driver.__class__.__name__ + " volume " \
+                      "driver's get_volume_stats operation ran for " \
+                      "%(seconds).1f seconds.  This may indicate a " \
+                      "performance problem with the backend which can lead " \
+                      "to instability."
+
+            @timeutils.time_it(
+                LOG, log_level=logging.WARN, message=slowmsg,
+                min_duration=CONF.backend_stats_polling_interval / 2)
+            def get_stats():
+                return self.driver.get_volume_stats(refresh=True)
+
+            volume_stats = get_stats()
+
             if self.extra_capabilities:
                 volume_stats.update(self.extra_capabilities)
             if volume_stats:
