@@ -1,0 +1,17 @@
+---
+upgrade:
+  - |
+    Cinder now uses the RBD trash functionality to handle some volume deletions.
+    Therefore, deployments must either a) enable scheduled RBD trash purging on
+    the RBD backend or b) enable the Cinder RBD driver's enable_deferred_deletion
+    option to have Cinder purge the RBD trash.
+    This adds the new configuration option 'rbd_concurrent_flatten_operations',
+    which limits how many RBD flattens the driver will run simultaneously.
+    This can be used to prevent flatten operations from consuming too much I/O
+    capacity on the Ceph cluster.  It defaults to 3.
+fixes:
+  - |
+    `Bug #1969643 <https://bugs.launchpad.net/cinder/+bug/1969643>`_:
+    The RBD driver can now delete volumes with other volumes cloned from it
+    (or its snapshots) in cases where deletion would previously fail.  This
+    uses the RBD trash functionality.
