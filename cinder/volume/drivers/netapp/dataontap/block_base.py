@@ -104,7 +104,10 @@ class NetAppBlockStorageLibrary(object):
         self.lookup_service = fczm_utils.create_lookup_service()
         self.app_version = kwargs.get("app_version", "unknown")
         self.host = kwargs.get('host')
-        self.backend_name = self.host.split('@')[1]
+        if '@' in self.host:
+            self.backend_name = self.host.split('@')[1]
+        else:
+            self.backend_name = self.host
 
         self.configuration = kwargs['configuration']
         self.configuration.append_config_values(na_opts.netapp_connection_opts)
