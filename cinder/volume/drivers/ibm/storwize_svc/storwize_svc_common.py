@@ -2638,34 +2638,59 @@ class StorwizeHelpers(object):
         relationship = self.ssh.lsrcrelationship(vol_attrs['RC_name'])
         return relationship[0] if len(relationship) > 0 else None
 
-    def delete_rc_volume(self, volume_name, target_vol=False,
-                         force_unmap=True, retain_aux_volume=False):
-        vol_name = volume_name
-        if target_vol:
-            vol_name = storwize_const.REPLICA_AUX_VOL_PREFIX + volume_name
+    def is_replicated_volume_primary(self, volume, rel_info):
+        # Return true if either source_volume is the primary volume or
+        # onboarded auxiliary volume is primary [Reverse replication failover]
+        if ((rel_info["master_vdisk_name"] == volume.name and
+                rel_info["primary"] == "master") or
+            (rel_info["master_vdisk_name"] != volume.name and
+                rel_info["primary"] == "aux")):
+            return True
+        return False
 
+    def get_target_volume_information(self, source_volume):
+        source_volume_name = source_volume.name
+        rel_info = self.get_relationship_info(source_volume_name)
+        if rel_info:
+            if source_volume_name == rel_info["aux_vdisk_name"]:
+                target_volume = rel_info["master_vdisk_name"]
+            else:
+                target_volume = rel_info["aux_vdisk_name"]
+        else:
+            # Retrieving target volume based on Source volume name, if
+            # relationship not exists.
+            if source_volume_name[:4] == storwize_const.REPLICA_AUX_VOL_PREFIX:
+                target_volume = source_volume_name[4:]
+            else:
+                target_volume = (storwize_const.REPLICA_AUX_VOL_PREFIX +
+                                 source_volume_name)
+        return (target_volume, rel_info)
+
+    def delete_rc_volume(self, volume_name, rel_info=None,
+                         target_vol=False, force_unmap=True,
+                         retain_aux_volume=False):
         try:
-            rel_info = self.get_relationship_info(vol_name)
+            # If relationship exists, will delete the relationship.
             if rel_info:
-                self.delete_relationship(vol_name)
+                self.delete_relationship(volume_name)
             # Delete change volume
             self.delete_vdisk(
-                storwize_const.REPLICA_CHG_VOL_PREFIX + vol_name,
+                storwize_const.REPLICA_CHG_VOL_PREFIX + volume_name,
                 force_unmap=force_unmap,
                 force_delete=False)
-            # We want to retain/remove the aux volume after retyping of
+            # We want to retain/remove the secondary volume after retyping of
             # primary volume from mirror to non-mirror storage template
             # or on the delete of the primary volume based on user's
             # choice of config value for storwize_svc_retain_aux_volume.
             # The default value is False.
             if (not retain_aux_volume and target_vol) or not target_vol:
-                self.delete_vdisk(vol_name,
+                self.delete_vdisk(volume_name,
                                   force_unmap=force_unmap,
                                   force_delete=False)
         except Exception as e:
             msg = (_('Unable to delete the volume for '
                      'volume %(vol)s. Exception: %(err)s.'),
-                   {'vol': vol_name, 'err': e})
+                   {'vol': volume_name, 'err': e})
             LOG.exception(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -3755,23 +3780,30 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             return
 
         rep_type = self._get_volume_replicated_type(ctxt, volume)
-        if rep_type:
+        if rep_type or (
+                volume.replication_status not in ["not-capable", "disabled"]):
+            target_volume, rel_info = (
+                self._helpers.get_target_volume_information(volume))
             if self._aux_backend_helpers:
                 self._aux_backend_helpers.delete_rc_volume(
-                    volume['name'],
+                    target_volume,
+                    rel_info,
                     target_vol=True,
                     force_unmap=force_unmap,
                     retain_aux_volume=self.configuration.safe_get(
                         'storwize_svc_retain_aux_volume'))
+                # As the relationship got deleted, updated rel_info
+                # as None and sent to master_backend_helper
+                rel_info = None
             if not self._active_backend_id:
                 self._master_backend_helpers.delete_rc_volume(
-                    volume['name'], force_unmap=force_unmap)
+                    volume['name'], rel_info, force_unmap=force_unmap)
             else:
                 # If it's in fail over state, also try to delete the volume
                 # in master backend
                 try:
                     self._master_backend_helpers.delete_rc_volume(
-                        volume['name'], force_unmap=force_unmap)
+                        volume['name'], rel_info, force_unmap=force_unmap)
                 except Exception as ex:
                     LOG.error('Failed to get delete volume %(volume)s in '
                               'master backend. Exception: %(err)s.',
@@ -3959,7 +3991,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             force_unmap = True
         volume_name = self._get_target_vol(volume)
 
-        rel_info = self._helpers.get_relationship_info(volume_name)
+        tgt_vol, rel_info = self._helpers.get_target_volume_information(
+            volume)
 
         ret = self._helpers.ensure_vdisk_no_fc_mappings(volume_name,
                                                         allow_snaps=False,
@@ -4017,12 +4050,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         raise exception.VolumeDriverException(message=msg)
             else:
                 try:
-                    tgt_vol = (storwize_const.REPLICA_AUX_VOL_PREFIX +
-                               volume.name)
-                    if storwize_const.GMCV_MULTI != cyclingmode:
-                        target_helper.extend_vdisk(tgt_vol, extend_amt)
-                        master_helper.extend_vdisk(volume.name, extend_amt)
-                    else:
+                    if storwize_const.GMCV_MULTI == cyclingmode:
                         rccg_name = (
                             self._helpers.get_rccg_name_by_volume_name(
                                 volume.name))
@@ -4051,15 +4079,28 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         target_helper.delete_vdisk(tgt_change_vol,
                                                    force_unmap=force_unmap,
                                                    force_delete=True)
-
-                        # Extend primary volume and auxiliary volume
+                    # Extend primary volume and auxiliary volume
+                    flag = self._helpers.is_replicated_volume_primary(
+                        volume, rel_info)
+                    if flag:
+                        # source_volume is the primary volume or
+                        # onboarded auxiliary volume is primary
+                        # [Reverse replication failover]
                         target_helper.extend_vdisk(tgt_vol, extend_amt)
                         master_helper.extend_vdisk(volume.name, extend_amt)
+                    else:
+                        # Auxiliary volume is onboarded as source volume
+                        # [Reverse Replication] or
+                        # source volume with primary as aux [Failover]
+                        master_helper.extend_vdisk(volume.name, extend_amt)
+                        target_helper.extend_vdisk(tgt_vol, extend_amt)
 
+                    if storwize_const.GMCV_MULTI == cyclingmode:
                         # Convert global mirror volume to GMCV volume with
                         # the new volume-size
                         self._convert_global_mirror_volume_to_gmcv(
-                            volume, tgt_vol, new_size, rccg_name=rccg_name)
+                            volume, tgt_vol, new_size, rel_info,
+                            rccg_name=rccg_name)
                 except Exception as e:
                     msg = (_('Failed to extend a volume with remote copy '
                              '%(volume)s. Exception: '
@@ -4073,7 +4114,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         # Convert global mirror volume to GMCV volume with
                         # the current volume-size
                         self._convert_global_mirror_volume_to_gmcv(
-                            volume, tgt_vol, volume['size'],
+                            volume, tgt_vol, volume['size'], rel_info,
                             rccg_name=rccg_name)
 
                     LOG.error(msg)
@@ -4100,7 +4141,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     volume['id'], model_update['metadata'], False)
 
     def _convert_global_mirror_volume_to_gmcv(self, volume, target_vol, size,
-                                              rccg_name=None):
+                                              rel_info, rccg_name=None):
         master_helper = self._master_backend_helpers
         target_helper = self._aux_backend_helpers
         tgt_change_vol = (storwize_const.REPLICA_CHG_VOL_PREFIX + target_vol)
@@ -4135,26 +4176,33 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             # Update consistency group cyclingmode to 'multi'
             master_helper.stop_rccg(rccg_name)
             master_helper.change_consistgrp_cyclingmode(rccg_name, 'multi')
-            # Set source_change_volume and target_change_volume
-            master_helper.change_relationship_changevolume(volume.name,
-                                                           src_change_vol,
-                                                           True)
-            target_helper.change_relationship_changevolume(target_vol,
-                                                           tgt_change_vol,
-                                                           False)
-            # Start gmcv consistency group relationship
-            master_helper.start_rccg(rccg_name)
         else:
             # Update volume cyclingmode to 'multi'
             master_helper.stop_relationship(volume.name)
             master_helper.change_relationship_cyclingmode(volume.name, 'multi')
-            # Set source_change_volume and target_change_volume
+
+        # Set source_change_volume and target_change_volume
+        if rel_info["master_vdisk_name"] == volume.name:
             master_helper.change_relationship_changevolume(volume.name,
                                                            src_change_vol,
                                                            True)
             target_helper.change_relationship_changevolume(target_vol,
                                                            tgt_change_vol,
                                                            False)
+        else:
+            # Auxiliary volume is onboarded as source volume
+            # [Reverse Replication Scenario]
+            master_helper.change_relationship_changevolume(volume.name,
+                                                           src_change_vol,
+                                                           False)
+            target_helper.change_relationship_changevolume(target_vol,
+                                                           tgt_change_vol,
+                                                           True)
+
+        if rccg_name:
+            # Start gmcv consistency group relationshi
+            master_helper.start_rccg(rccg_name)
+        else:
             # Start gmcv volume relationship
             master_helper.start_relationship(volume.name)
 
@@ -5611,8 +5659,11 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             force_unmap = True
 
         if old_rep_type and not new_rep_type:
+            target_volume, rel_info = (
+                self._helpers.get_target_volume_information(volume))
             self._aux_backend_helpers.delete_rc_volume(
-                volume['name'],
+                target_volume,
+                rel_info,
                 target_vol=True,
                 force_unmap=force_unmap,
                 retain_aux_volume=self.configuration.safe_get(
@@ -6562,10 +6613,13 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         for volume in volumes:
             try:
+                target_volume, rel_info = (
+                    self._helpers.get_target_volume_information(volume))
+                self._aux_backend_helpers.delete_rc_volume(
+                    target_volume, rel_info, target_vol=True,
+                    force_unmap=force_unmap)
                 self._master_backend_helpers.delete_rc_volume(
                     volume.name, force_unmap=force_unmap)
-                self._aux_backend_helpers.delete_rc_volume(
-                    volume.name, target_vol=True, force_unmap=force_unmap)
                 volumes_model_update.append(
                     {'id': volume.id, 'status': 'deleted'})
             except exception.VolumeDriverException as err:
