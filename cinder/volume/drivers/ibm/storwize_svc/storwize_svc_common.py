@@ -2558,10 +2558,12 @@ class StorwizeHelpers(object):
         timer.stop()
         return ret
 
-    def start_relationship(self, volume_name, primary=None):
-        vol_attrs = self.get_vdisk_attributes(volume_name)
-        if vol_attrs['RC_name']:
-            self.ssh.startrcrelationship(vol_attrs['RC_name'], primary)
+    def start_relationship(self, volume_name, primary=None,
+                           rcrel=None):
+        if rcrel is None:
+            vol_attrs = self.get_vdisk_attributes(volume_name)
+            rcrel = vol_attrs['RC_name']
+        self.ssh.startrcrelationship(rcrel, primary)
 
     def stop_relationship(self, volume_name, access=False):
         vol_attrs = self.get_vdisk_attributes(volume_name)
@@ -2588,34 +2590,49 @@ class StorwizeHelpers(object):
             # We need setup master and aux change volumes for gmcv
             # before we can start remote relationship
             # aux change volume must be set on target site
+            rel_info = self.ssh.lsrcrelationship(rc_id)
+            rc_name = rel_info[0]['name']
             if cycle_period_seconds:
                 self.change_relationship_cycleperiod(master,
-                                                     cycle_period_seconds)
+                                                     cycle_period_seconds,
+                                                     rc_name)
             if masterchange:
                 self.change_relationship_changevolume(master,
-                                                      masterchange, True)
+                                                      masterchange, True,
+                                                      rc_name)
             else:
-                self.start_relationship(master)
+                self.start_relationship(master, rcrel=rc_name)
+        return rc_name
 
     def change_relationship_changevolume(self, volume_name,
-                                         change_volume, master):
-        vol_attrs = self.get_vdisk_attributes(volume_name)
-        if vol_attrs['RC_name'] and change_volume:
-            self.ssh.ch_rcrelationship_changevolume(vol_attrs['RC_name'],
-                                                    change_volume, master)
+                                         change_volume, master,
+                                         rcrel=None):
+        if rcrel is None:
+            vol_attrs = self.get_vdisk_attributes(volume_name)
+            rcrel = vol_attrs['RC_name']
+        if rcrel and change_volume:
+            self.ssh.ch_rcrelationship_changevolume(rcrel,
+                                                    change_volume,
+                                                    master)
 
     def change_relationship_cycleperiod(self, volume_name,
-                                        cycle_period_seconds):
-        vol_attrs = self.get_vdisk_attributes(volume_name)
-        if vol_attrs['RC_name'] and cycle_period_seconds:
-            self.ssh.ch_rcrelationship_cycleperiod(vol_attrs['RC_name'],
+                                        cycle_period_seconds,
+                                        rcrel=None):
+        if rcrel is None:
+            vol_attrs = self.get_vdisk_attributes(volume_name)
+            rcrel = vol_attrs['RC_name']
+        if rcrel and cycle_period_seconds:
+            self.ssh.ch_rcrelationship_cycleperiod(rcrel,
                                                    cycle_period_seconds)
 
     def change_relationship_cyclingmode(self, volume_name,
-                                        cyclingmode='none'):
-        vol_attrs = self.get_vdisk_attributes(volume_name)
-        if vol_attrs['RC_name'] and cyclingmode:
-            self.ssh.ch_rcrelationship_cyclingmode(vol_attrs['RC_name'],
+                                        cyclingmode='none',
+                                        rcrel=None):
+        if rcrel is None:
+            vol_attrs = self.get_vdisk_attributes(volume_name)
+            rcrel = vol_attrs['RC_name']
+        if rcrel and cyclingmode:
+            self.ssh.ch_rcrelationship_cyclingmode(rcrel,
                                                    cyclingmode)
 
     def change_consistgrp_cyclingmode(self, rccg_name,
