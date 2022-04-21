@@ -216,6 +216,38 @@ class API(base.Base):
             return False
         return specs.get('encryption', {}) is not {}
 
+    def _set_scheduler_hints_to_volume_metadata(self, scheduler_hints,
+                                                metadata):
+        if scheduler_hints:
+            if 'same_host' in scheduler_hints:
+                if isinstance(scheduler_hints['same_host'], str):
+                    hint = scheduler_hints['same_host']
+                else:
+                    hint = ','.join(scheduler_hints["same_host"])
+                metadata["scheduler_hint_same_host"] = hint
+            if "different_host" in scheduler_hints:
+                if isinstance(scheduler_hints['different_host'], str):
+                    hint = scheduler_hints["different_host"]
+                else:
+                    hint = ','.join(scheduler_hints["different_host"])
+                metadata["scheduler_hint_different_host"] = hint
+        return metadata
+
+    def _get_scheduler_hints_from_volume(self, volume):
+        filter_properties = {}
+        if "scheduler_hint_same_host" in volume.metadata:
+            LOG.debug("Found a scheduler_hint_same_host in volume %s",
+                      volume.metadata["scheduler_hint_same_host"])
+            hint = volume.metadata["scheduler_hint_same_host"]
+            filter_properties["same_host"] = hint.split(',')
+
+        if "scheduler_hint_different_host" in volume.metadata:
+            LOG.debug("Found a scheduler_hint_different_host in volume %s",
+                      volume.metadata["scheduler_hint_different_host"])
+            hint = volume.metadata["scheduler_hint_different_host"]
+            filter_properties["different_host"] = hint.split(',')
+        return filter_properties
+
     def create(self,
                context: context.RequestContext,
                size: Union[str, int],
@@ -320,6 +352,15 @@ class API(base.Base):
         availability_zones = set([az['name'] for az in raw_zones])
         if CONF.storage_availability_zone:
             availability_zones.add(CONF.storage_availability_zone)
+
+        # Force the scheduler hints into the volume metadata
+        if not metadata:
+            metadata = {}
+
+        metadata = self._set_scheduler_hints_to_volume_metadata(
+            scheduler_hints,
+            metadata
+        )
 
         utils.check_metadata_properties(metadata)
 
@@ -946,10 +987,14 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
+        # Check if there is an affinity/antiaffinity against the volume
+        filter_properties = self._get_scheduler_hints_from_volume(volume)
+
         LOG.debug("Invoking migrate_volume to host=%s", dest['host'])
         self.volume_rpcapi.migrate_volume(ctxt, volume, backend,
                                           force_host_copy=False,
-                                          wait_for_completion=False)
+                                          wait_for_completion=False,
+                                          filter_properties=filter_properties)
         volume.refresh()
 
     def initialize_connection(self,
@@ -1388,6 +1433,13 @@ class API(base.Base):
                     '%s status.') % volume['status']
             LOG.info(msg, resource=volume)
             raise exception.InvalidVolume(reason=msg)
+
+        if ('scheduler_hint_different_host' in metadata or
+                'scheduler_hint_same_host' in metadata):
+            raise exception.InvalidInput("Cannot add/edit volume metadata key "
+                                         "scheduler_hint_same_host or "
+                                         "scheduler_hint_different_host")
+
         return self.db.volume_metadata_update(context, volume['id'],
                                               metadata, delete, meta_type)
 
@@ -1830,6 +1882,9 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
+        # Check if there is an affinity/antiaffinity against the volume
+        filter_props = self._get_scheduler_hints_from_volume(volume)
+
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
         volume_type = {}
@@ -1843,7 +1898,8 @@ class API(base.Base):
                                              volume,
                                              cluster_name or host,
                                              force_copy,
-                                             request_spec)
+                                             request_spec,
+                                             filter_properties=filter_props)
         LOG.info("Migrate volume request issued successfully.",
                  resource=volume)
 
