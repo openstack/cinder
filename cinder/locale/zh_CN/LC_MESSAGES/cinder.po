@@ -20,11 +20,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2022-03-25 13:07+0000\n"
+"POT-Creation-Date: 2022-04-20 17:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2022-03-25 10:42+0000\n"
+"PO-Revision-Date: 2022-04-11 10:27+0000\n"
 "Last-Translator: Research and Development Center UnitedStack "
 "<dev@unitedstack.com>\n"
 "Language: zh_CN\n"
@@ -3012,6 +3012,10 @@ msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
 msgstr "已超过允许的最大备份数 (%(allowed)d)"
 
 #, python-format
+msgid "Maximum number of groups allowed (%(allowed)d) exceeded"
+msgstr "已超过允许的最大卷组数 (%(allowed)d)"
+
+#, python-format
 msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded"
 msgstr "已超过允许的最大快照数 (%(allowed)d)"
 
@@ -3019,7 +3023,8 @@ msgstr "已超过允许的最大快照数 (%(allowed)d)"
 msgid ""
 "Maximum number of volumes allowed (%(allowed)d) exceeded for quota "
 "'%(name)s'."
-msgstr "对于定额“%(name)s”，超过了允许的最大卷数 (%(allowed)d)。"
+msgstr ""
+"已超过允许的最大卷数 (%(allowed)d)，当前请求超过了 '%(name)s' 的配额限制。"
 
 #, python-format
 msgid "May specify only one of %s"
