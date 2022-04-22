@@ -349,6 +349,7 @@ class SpdkNvmfDriverTestCase(test.TestCase):
         super(SpdkNvmfDriverTestCase, self).setUp()
         self.configuration = mock.Mock(conf.Configuration)
         self.configuration.target_ip_address = '192.168.0.1'
+        self.configuration.target_secondary_ip_addresses = []
         self.configuration.target_port = '4420'
         self.configuration.target_prefix = ""
         self.configuration.nvmet_port_id = "1"

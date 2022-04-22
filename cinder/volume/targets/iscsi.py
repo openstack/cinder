@@ -167,8 +167,8 @@ class ISCSITarget(driver.Target):
 
     def _get_portals_config(self):
         # Prepare portals configuration
-        portals_ips = ([self.configuration.target_ip_address]
-                       + self.configuration.iscsi_secondary_ip_addresses or [])
+        portals_ips = ([self.configuration.target_ip_address] +
+                       self.configuration.target_secondary_ip_addresses or [])
 
         return {'portals_ips': portals_ips,
                 'portals_port': self.configuration.target_port}
@@ -201,7 +201,7 @@ class ISCSITarget(driver.Target):
         data = {}
         data['location'] = self._iscsi_location(
             self.configuration.target_ip_address, tid, iscsi_name, lun,
-            self.configuration.iscsi_secondary_ip_addresses)
+            self.configuration.target_secondary_ip_addresses)
         LOG.debug('Set provider_location to: %s', data['location'])
         data['auth'] = self._iscsi_authentication(
             'CHAP', *chap_auth)

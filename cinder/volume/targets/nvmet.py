@@ -61,7 +61,7 @@ class NVMET(nvmeof.NVMeOF):
         return {
             'driver_volume_type': self.protocol,
             'data': self._get_connection_properties(nqn,
-                                                    self.target_ip,
+                                                    self.target_ips,
                                                     self.target_port,
                                                     self.nvme_transport_type,
                                                     ns_id, uuid),
@@ -75,7 +75,7 @@ class NVMET(nvmeof.NVMeOF):
         else:
             nqn, ns_id = self._map_volume(volume, volume_path)
             location = self.get_nvmeof_location(nqn,
-                                                self.target_ip,
+                                                self.target_ips,
                                                 self.target_port,
                                                 self.nvme_transport_type,
                                                 ns_id)
@@ -92,7 +92,7 @@ class NVMET(nvmeof.NVMeOF):
 
             ns_id = self._ensure_subsystem_exists(nqn, volume_path, uuid)
 
-            self._ensure_port_exports(nqn, self.target_ip, self.target_port,
+            self._ensure_port_exports(nqn, self.target_ips, self.target_port,
                                       self.nvme_transport_type,
                                       self.nvmet_port_id)
         except Exception:
@@ -195,36 +195,39 @@ class NVMET(nvmeof.NVMeOF):
     def _get_nvme_uuid(self, volume):
         return volume.name_id
 
-    def _ensure_port_exports(self, nqn, addr, port, transport_type, port_id):
-        # Assume if port exists, it has the right configuration
-        try:
-            port = nvmet.Port(port_id)
-            LOG.debug('Skip creating port %s as it already exists.', port_id)
-        except nvmet.NotFound:
-            LOG.debug('Creating port %s.', port_id)
+    def _ensure_port_exports(self, nqn, addrs, port, transport_type, port_id):
+        for addr in addrs:
+            # Assume if port exists, it has the right configuration
+            try:
+                nvme_port = nvmet.Port(port_id)
+                LOG.debug('Skip creating port %s as it already exists.',
+                          port_id)
+            except nvmet.NotFound:
+                LOG.debug('Creating port %s.', port_id)
 
-            # Port section
-            port_section = {
-                "addr": {
-                    "adrfam": "ipv4",
-                    "traddr": addr,
-                    "treq": "not specified",
-                    "trsvcid": port,
-                    "trtype": transport_type,
-                },
-                "portid": port_id,
-                "referrals": [],
-                "subsystems": [nqn]
-            }
-            nvmet.Port.setup(self._nvmet_root, port_section)  # privsep
-            LOG.debug('Added port: %s', port_id)
+                # Port section
+                port_section = {
+                    "addr": {
+                        "adrfam": "ipv4",
+                        "traddr": addr,
+                        "treq": "not specified",
+                        "trsvcid": port,
+                        "trtype": transport_type,
+                    },
+                    "portid": port_id,
+                    "referrals": [],
+                    "subsystems": [nqn]
+                }
+                nvmet.Port.setup(self._nvmet_root, port_section)  # privsep
+                LOG.debug('Added port: %s', port_id)
 
-        else:
-            if nqn in port.subsystems:
-                LOG.debug('%s already exported on port %s', nqn, port_id)
             else:
-                port.add_subsystem(nqn)  # privsep
-                LOG.debug('Exported %s on port %s', nqn, port_id)
+                if nqn in nvme_port.subsystems:
+                    LOG.debug('%s already exported on port %s', nqn, port_id)
+                else:
+                    nvme_port.add_subsystem(nqn)  # privsep
+                    LOG.debug('Exported %s on port %s', nqn, port_id)
+            port_id += 1
 
     # #######  Connection termination methods ########
 

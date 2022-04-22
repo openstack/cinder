@@ -62,7 +62,7 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
                      "ngn.%s-%s" % (
                          self.nvmet_subsystem_name,
                          self.fake_volume_id),
-                     self.target_ip,
+                     [self.target_ip],
                      self.target_port,
                      self.nvme_transport_type,
                      self.nvmet_ns_id
@@ -92,7 +92,7 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
         mock_create_nvme_target.assert_called_once_with(
             self.fake_volume_id,
             self.configuration.target_prefix,
-            self.target_ip,
+            [self.target_ip],
             self.target_port,
             self.nvme_transport_type,
             self.nvmet_port_id,
@@ -117,7 +117,31 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
         mock_uuid.assert_called_once_with(self.testvol)
         mock_get_conn_props.assert_called_once_with(
             f'ngn.{self.nvmet_subsystem_name}-{self.fake_volume_id}',
-            self.target_ip,
+            [self.target_ip],
+            str(self.target_port),
+            self.nvme_transport_type,
+            str(self.nvmet_ns_id),
+            mock_uuid.return_value)
+
+    @mock.patch.object(nvmeof.NVMeOF, '_get_nvme_uuid')
+    @mock.patch.object(nvmeof.NVMeOF, '_get_connection_properties')
+    def test__get_connection_properties_multiple_addresses(
+            self, mock_get_conn_props, mock_uuid):
+        """Test connection properties from a volume with multiple ips."""
+        self.testvol['provider_location'] = self.target.get_nvmeof_location(
+            f"ngn.{self.nvmet_subsystem_name}-{self.fake_volume_id}",
+            [self.target_ip, '127.0.0.1'],
+            self.target_port,
+            self.nvme_transport_type,
+            self.nvmet_ns_id
+        )
+
+        res = self.target._get_connection_properties_from_vol(self.testvol)
+        self.assertEqual(mock_get_conn_props.return_value, res)
+        mock_uuid.assert_called_once_with(self.testvol)
+        mock_get_conn_props.assert_called_once_with(
+            f'ngn.{self.nvmet_subsystem_name}-{self.fake_volume_id}',
+            [self.target_ip, '127.0.0.1'],
             str(self.target_port),
             self.nvme_transport_type,
             str(self.nvmet_ns_id),
@@ -134,7 +158,7 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
             'ns_id': str(self.nvmet_ns_id)
         }
         res = self.target._get_connection_properties(nqn,
-                                                     self.target_ip,
+                                                     [self.target_ip],
                                                      str(self.target_port),
                                                      self.nvme_transport_type,
                                                      str(self.nvmet_ns_id),
@@ -158,7 +182,7 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
                          expected_transport)],
         }
         res = self.target._get_connection_properties(nqn,
-                                                     self.target_ip,
+                                                     [self.target_ip],
                                                      str(self.target_port),
                                                      transport,
                                                      str(self.nvmet_ns_id),
@@ -182,6 +206,22 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
                           root_helper=utils.get_root_helper(),
                           configuration=self.configuration)
 
+    def test_invalid_secondary_ips_old_conn_info_combination(self):
+        """Secondary IPS are only supported with new connection information."""
+        self.configuration.target_secondary_ip_addresses = ['127.0.0.1']
+        self.configuration.nvmeof_conn_info_version = 1
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          FakeNVMeOFDriver,
+                          root_helper=utils.get_root_helper(),
+                          configuration=self.configuration)
+
+    def test_valid_secondary_ips_old_conn_info_combination(self):
+        """Secondary IPS are supported with new connection information."""
+        self.configuration.target_secondary_ip_addresses = ['127.0.0.1']
+        self.configuration.nvmeof_conn_info_version = 2
+        FakeNVMeOFDriver(root_helper=utils.get_root_helper(),
+                         configuration=self.configuration)
+
     def test_are_same_connector(self):
         res = self.target.are_same_connector({'nqn': 'nvme'}, {'nqn': 'nvme'})
         self.assertTrue(res)
@@ -192,3 +232,20 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
     def test_are_same_connector_different(self, a_conn_props, b_conn_props):
         res = self.target.are_same_connector(a_conn_props, b_conn_props)
         self.assertFalse(bool(res))
+
+    def test_get_nvmeof_location(self):
+        """Serialize connection information into location."""
+        result = self.target.get_nvmeof_location(
+            'ngn.subsys_name-vol_id', ['127.0.0.1'], 4420, 'tcp', 10)
+
+        expected = '127.0.0.1:4420 tcp ngn.subsys_name-vol_id 10'
+        self.assertEqual(expected, result)
+
+    def test_get_nvmeof_location_multiple_ips(self):
+        """Serialize connection information with multiple ips into location."""
+        result = self.target.get_nvmeof_location(
+            'ngn.subsys_name-vol_id', ['127.0.0.1', '192.168.1.1'], 4420,
+            'tcp', 10)
+
+        expected = '127.0.0.1,192.168.1.1:4420 tcp ngn.subsys_name-vol_id 10'
+        self.assertEqual(expected, result)

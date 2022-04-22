@@ -57,7 +57,8 @@ volume_opts = [
                default='$my_ip',
                help='The IP address that the iSCSI/NVMEoF daemon is '
                     'listening on'),
-    cfg.ListOpt('iscsi_secondary_ip_addresses',
+    cfg.ListOpt('target_secondary_ip_addresses',
+                deprecated_name='iscsi_secondary_ip_addresses',
                 default=[],
                 help='The list of secondary IP addresses of the '
                      'iSCSI/NVMEoF daemon'),
@@ -276,7 +277,9 @@ nvmeof_opts = [
 nvmet_opts = [
     cfg.PortOpt('nvmet_port_id',
                 default=1,
-                help='The port that the NVMe target is listening on.'),
+                help='The id of the NVMe target port definition when not '
+                     'sharing targets.  The starting port id value when '
+                     'sharing, incremented for each secondary ip address.'),
     cfg.IntOpt('nvmet_ns_id',
                default=10,
                help='Namespace id for the subsystem for the LVM volume when '

@@ -40,7 +40,8 @@ class NVMeOF(driver.Target):
         """Reads NVMeOF configurations."""
 
         super(NVMeOF, self).__init__(*args, **kwargs)
-        self.target_ip = self.configuration.target_ip_address
+        self.target_ips = ([self.configuration.target_ip_address] +
+                           self.configuration.target_secondary_ip_addresses)
         self.target_port = self.configuration.target_port
         self.nvmet_port_id = self.configuration.nvmet_port_id
         self.nvmet_ns_id = self.configuration.nvmet_ns_id
@@ -56,6 +57,13 @@ class NVMeOF(driver.Target):
             raise UnsupportedNVMETProtocol(
                 protocol=target_protocol
             )
+
+        # Secondary ip addresses only work with new connection info
+        if (self.configuration.target_secondary_ip_addresses
+                and self.configuration.nvmeof_conn_info_version == 1):
+            raise exception.InvalidConfigurationValue(
+                'Secondary addresses need to use NVMe-oF connection properties'
+                ' format version 2 or greater (nvmeof_conn_info_version).')
 
     def initialize_connection(self, volume, connector):
         """Returns the connection info.
@@ -95,20 +103,22 @@ class NVMeOF(driver.Target):
         method.
 
         :return: dictionary with the connection properties using one of the 2
-                 existing formats depending on the nvmeof_new_conn_info
+                 existing formats depending on the nvmeof_conn_info_version
                  configuration option.
         """
         location = volume['provider_location']
         target_connection, nvme_transport_type, nqn, nvmet_ns_id = (
             location.split(' '))
-        target_portal, target_port = target_connection.split(':')
+        target_portals, target_port = target_connection.split(':')
+        target_portals = target_portals.split(',')
 
         uuid = self._get_nvme_uuid(volume)
-        return self._get_connection_properties(nqn, target_portal, target_port,
+        return self._get_connection_properties(nqn,
+                                               target_portals, target_port,
                                                nvme_transport_type,
                                                nvmet_ns_id, uuid)
 
-    def _get_connection_properties(self, nqn, portal, port, transport, ns_id,
+    def _get_connection_properties(self, nqn, portals, port, transport, ns_id,
                                    uuid):
         """Get connection properties dictionary.
 
@@ -150,13 +160,13 @@ class NVMeOF(driver.Target):
             return {
                 'target_nqn': nqn,
                 'vol_uuid': uuid,
-                'portals': [(portal, port, transport)],
+                'portals': [(portal, port, transport) for portal in portals],
                 'ns_id': ns_id,
             }
 
         # NVMe-oF Connection Information Version 1
         result = {
-            'target_portal': portal,
+            'target_portal': portals[0],
             'target_port': port,
             'nqn': nqn,
             'transport_type': transport,
@@ -173,12 +183,12 @@ class NVMeOF(driver.Target):
         """
         return None
 
-    def get_nvmeof_location(self, nqn, target_ip, target_port,
+    def get_nvmeof_location(self, nqn, target_ips, target_port,
                             nvme_transport_type, nvmet_ns_id):
         """Serializes driver data into single line string."""
 
         return "%(ip)s:%(port)s %(transport)s %(nqn)s %(ns_id)s" % (
-            {'ip': target_ip,
+            {'ip': ','.join(target_ips),
              'port': target_port,
              'transport': nvme_transport_type,
              'nqn': nqn,
@@ -198,7 +208,7 @@ class NVMeOF(driver.Target):
         return self.create_nvmeof_target(
             volume['id'],
             self.configuration.target_prefix,
-            self.target_ip,
+            self.target_ips,
             self.target_port,
             self.nvme_transport_type,
             self.nvmet_port_id,
@@ -222,7 +232,7 @@ class NVMeOF(driver.Target):
     def create_nvmeof_target(self,
                              volume_id,
                              subsystem_name,
-                             target_ip,
+                             target_ips,
                              target_port,
                              transport_type,
                              nvmet_port_id,

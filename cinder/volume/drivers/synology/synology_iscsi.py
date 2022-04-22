@@ -49,7 +49,7 @@ class SynoISCSIDriver(driver.ISCSIDriver):
         additional_opts = cls._get_oslo_driver_opts(
             'target_ip_address', 'target_protocol', 'target_port',
             'driver_use_ssl', 'use_chap_auth', 'chap_username',
-            'chap_password', 'iscsi_secondary_ip_addresses', 'target_prefix',
+            'chap_password', 'target_secondary_ip_addresses', 'target_prefix',
             'reserved_percentage', 'max_over_subscription_ratio')
         return common.cinder_opts + additional_opts
 
