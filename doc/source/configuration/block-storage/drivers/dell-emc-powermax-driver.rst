@@ -1,9 +1,9 @@
 ======================================
-Dell EMC PowerMax iSCSI and FC drivers
+Dell PowerMax iSCSI and FC drivers
 ======================================
 
-The Dell EMC PowerMax drivers, ``PowerMaxISCSIDriver`` and
-``PowerMaxFCDriver``, support the use of Dell EMC PowerMax and VMAX storage
+The Dell PowerMax drivers, ``PowerMaxISCSIDriver`` and
+``PowerMaxFCDriver``, support the use of Dell PowerMax and VMAX storage
 arrays with the Cinder Block Storage project. They both provide equivalent
 functions and differ only in support for their respective host attachment
 methods.
@@ -33,18 +33,18 @@ in the backend to perform PowerMax and VMAX storage operations.
 System requirements and licensing
 =================================
 
-The Dell EMC PowerMax Cinder driver supports the VMAX-Hybrid_ series,
+The Dell PowerMax Cinder driver supports the VMAX-Hybrid_ series,
 VMAX All-Flash series and the PowerMax arrays.
 
 The array operating system software, Solutions Enabler 9.2.2 series, and
-Unisphere for PowerMax 9.2.2 series are required to run Dell EMC PowerMax
+Unisphere for PowerMax 9.2.2 series are required to run Dell PowerMax
 Cinder driver for the Wallaby release. Please refer to support-matrix-table_
 for the support matrix of previous OpenStack versions.
 
-Download Solutions Enabler and Unisphere from the Dell EMC's support web site
-(login is required). See the `Dell EMC Solutions Enabler 9.2.2 Installation
-and Configuration Guide` and `Dell EMC Unisphere for PowerMax Installation
-Guide` at the `Dell EMC Support`_ site.
+Download Solutions Enabler and Unisphere from the Dell's support web site
+(login is required). See the `Dell Solutions Enabler 9.2.2 Installation
+and Configuration Guide` and `Dell Unisphere for PowerMax Installation
+Guide` at the `Dell Support`_ site.
 
 .. note::
 
@@ -103,7 +103,7 @@ There are two licenses for the PowerMax 2000 and 8000:
 - Essentials software package
 - Pro software package
 
-The Dell EMC PowerMax cinder driver requires the Pro software package.
+The Dell PowerMax cinder driver requires the Pro software package.
 
 All Flash
 ~~~~~~~~~
@@ -113,7 +113,7 @@ or the F package plus the SRDF a la carte add on is required.
 Hybrid
 ~~~~~~
 
-There are five Dell EMC Software Suites sold with the VMAX-Hybrid_ arrays:
+There are five Dell Software Suites sold with the VMAX-Hybrid_ arrays:
 
 - Base Suite
 - Advanced Suite
@@ -121,7 +121,7 @@ There are five Dell EMC Software Suites sold with the VMAX-Hybrid_ arrays:
 - Remote Replication Suite
 - Total Productivity Pack
 
-The Dell EMC PowerMax Cinder driver requires the Advanced Suite and the Local
+The Dell PowerMax Cinder driver requires the Advanced Suite and the Local
 Replication Suite or the Total Productivity Pack (it includes the Advanced
 Suite and the Local Replication Suite) for the VMAX Hybrid.
 
@@ -139,7 +139,7 @@ eLicensing support
 ------------------
 
 To activate your entitlements and obtain your PowerMax license files, visit the
-Service Center on `Dell EMC Support`_, as directed on your License
+Service Center on `Dell Support`_, as directed on your License
 Authorization Code (LAC) letter emailed to you.
 
 -  For help with missing or incorrect entitlements after activation
@@ -147,7 +147,7 @@ Authorization Code (LAC) letter emailed to you.
    licensed), contact your EMC account representative or authorized reseller.
 
 -  For help with any errors applying license files through Solutions Enabler,
-   contact the Dell EMC Customer Support Center.
+   contact the Dell Customer Support Center.
 
 -  If you are missing a LAC letter or require further instructions on
    activating your licenses through the Online Support site, contact EMC's
@@ -163,7 +163,7 @@ PowerMax for OpenStack Cinder customer support
 ----------------------------------------------
 
 If you require help or assistance with PowerMax and Cinder please open a
-Service Request (SR) through standard support channels at `Dell EMC Support`_.
+Service Request (SR) through standard support channels at `Dell Support`_.
 When opening a SR please include the following information:
 
 - Array Model & uCode level
@@ -308,7 +308,7 @@ FA port groups
 
 PowerMax array FA ports to be used in a new masking view are retrieved from the
 port group provided as the extra spec on the volume type, or chosen from the
-list provided in the Dell EMC configuration file.
+list provided in the Dell configuration file.
 
 Storage group names
 -------------------
@@ -372,31 +372,31 @@ PowerMax driver integration
 1. Prerequisites
 ----------------
 
-#. Download Solutions Enabler from `Dell EMC Support`_ and install it.
+#. Download Solutions Enabler from `Dell Support`_ and install it.
 
    You can install Solutions Enabler on a non-OpenStack host. Supported
    platforms include different flavors of Windows, Red Hat, and SUSE Linux.
    Solutions Enabler can be installed on a physical server, or as a Virtual
    Appliance (a VMware ESX server VM). Additionally, starting with HYPERMAX
    OS Q3 2015, you can manage VMAX3 arrays using the Embedded Management
-   (eManagement) container application. See the ``Dell EMC Solutions Enabler
-   9.2.1 Installation and Configuration Guide`` on `Dell EMC Support`_ for
+   (eManagement) container application. See the ``Dell Solutions Enabler
+   9.2.1 Installation and Configuration Guide`` on `Dell Support`_ for
    more details.
 
    .. note::
 
       You must discover storage arrays before you can use the PowerMax drivers.
-      Follow instructions in ``Dell EMC Solutions Enabler 9.2.1 Installation
-      and Configuration Guide`` on `Dell EMC Support`_ for more details.
+      Follow instructions in ``Dell Solutions Enabler 9.2.1 Installation
+      and Configuration Guide`` on `Dell Support`_ for more details.
 
-#. Download Unisphere from `Dell EMC Support`_ and install it.
+#. Download Unisphere from `Dell Support`_ and install it.
 
    Unisphere can be installed in local, remote, or embedded configurations
    - i.e., on the same server running Solutions Enabler; on a server
    connected to the Solutions Enabler server; or using the eManagement
    container application (containing Solutions Enabler and Unisphere for
-   PowerMax). See ``Dell EMC Solutions Enabler 9.2.1 Installation and
-   Configuration Guide`` at `Dell EMC Support`_.
+   PowerMax). See ``Dell Solutions Enabler 9.2.1 Installation and
+   Configuration Guide`` at `Dell Support`_.
 
 
 2. FC zoning with PowerMax
@@ -3280,7 +3280,7 @@ following the setup instructions above, are supported with a few exceptions:
 
 
 .. Document Hyperlinks
-.. _Dell EMC Support: https://www.dell.com/support
+.. _Dell Support: https://www.dell.com/support
 .. _Openstack CLI: https://docs.openstack.org/cinder/latest/cli/cli-manage-volumes.html#volume-types
 .. _over-subscription documentation: https://docs.openstack.org/cinder/latest/admin/over-subscription.html
 .. _configuring migrations: https://docs.openstack.org/nova/latest/admin/configuring-migrations.html

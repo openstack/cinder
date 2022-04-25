@@ -1,5 +1,5 @@
 ==========================
-Dell EMC PowerStore driver
+Dell PowerStore driver
 ==========================
 
 This section explains how to configure and connect the block

@@ -1,5 +1,5 @@
 ===================
-Dell EMC VNX driver
+Dell VNX driver
 ===================
 
 EMC VNX driver interacts with configured VNX array. It supports

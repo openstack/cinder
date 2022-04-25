@@ -1,9 +1,9 @@
 ==============================================================
-Dell EMC PowerVault ME4 Series Fibre Channel and iSCSI drivers
+Dell PowerVault ME4 Series Fibre Channel and iSCSI drivers
 ==============================================================
 
 The ``PVMEFCDriver`` and ``PVMEISCSIDriver`` Cinder drivers allow the
-Dell EMC PowerVault ME4 Series storage arrays to be used for Block
+Dell PowerVault ME4 Series storage arrays to be used for Block
 Storage in OpenStack deployments.
 
 System requirements

@@ -1,5 +1,5 @@
 =====================================
-Dell EMC XtremIO Block Storage driver
+Dell XtremIO Block Storage driver
 =====================================
 
 The high performance XtremIO All Flash Array (AFA) offers Block Storage
