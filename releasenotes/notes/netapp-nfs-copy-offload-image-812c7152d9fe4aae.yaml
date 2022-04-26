@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    NetApp NFS driver: add an alternative approach to perform the efficient clone
+    image when the Glance source store and Cinder destination pool are not in the
+    same FlexVol, but they are in the same Cluster. Previously, the driver required
+    the copy offload tool for doing it efficiently, which is no longer available.
+    Now, the operators can maintain their efficient clone image by relying on the
+    storage file copy operation.

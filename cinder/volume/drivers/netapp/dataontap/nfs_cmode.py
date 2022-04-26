@@ -620,7 +620,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         if not vserver:
             raise exception.NotFound(_("Unable to locate an SVM that is "
                                        "managing the IP address '%s'") % ip)
-        return ip
+        return ip, vserver
 
     def _copy_from_cache(self, volume, image_id, cache_result):
         """Try copying image file_name from cached file_name."""
@@ -641,6 +641,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                   self.configuration.netapp_copyoffload_tool_path):
                 LOG.debug("Trying copy from cache using copy offload.")
                 self._copy_from_remote_cache(volume, image_id, cache_copy)
+                copied = True
+            elif cache_copy:
+                LOG.debug("Trying copy from cache using file copy.")
+                self._copy_from_remote_cache(volume, image_id, cache_copy,
+                                             use_copyoffload_tool=False)
                 copied = True
         except Exception:
             LOG.exception('Error in workflow copy from cache.')
@@ -670,41 +675,55 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 cache_copy = res
         return cache_copy, found_local_copy
 
-    def _copy_from_remote_cache(self, volume, image_id, cache_copy):
+    def _copy_from_remote_cache(self, volume, image_id, cache_copy,
+                                use_copyoffload_tool=True):
         """Copies the remote cached image to the provided volume.
 
-        Executes the copy offload binary which copies the cached image to
-        the destination path of the provided volume. Also registers the new
-        copy of the image as a cached image.
+        Executes either the copy offload binary or the file copy operation,
+        copying the cached image to the destination path of the provided
+        volume. Also registers the new copy of the image as a cached image.
         """
 
         (nfs_share, file_name) = cache_copy
-        col_path = self.configuration.netapp_copyoffload_tool_path
-        src_ip, src_path = self._get_source_ip_and_path(nfs_share, file_name)
-        dest_ip, dest_path = self._get_destination_ip_and_path(volume)
+        (src_ip, src_vserver, src_share_path, src_path) = (
+            self._get_source_ip_and_path(nfs_share, file_name))
+        (dest_ip, dest_vserver, dest_path) = (
+            self._get_destination_ip_and_path(volume))
 
-        # Always run copy offload as regular user, it's sufficient
-        # and rootwrap doesn't allow copy offload to run as root anyways.
-        self._execute(col_path, src_ip, dest_ip, src_path, dest_path,
-                      run_as_root=False, check_exit_code=0)
+        # NOTE(felipe_rodrigues): the copy offload tool code will be removed in
+        # the Antelope release.
+        col_path = self.configuration.netapp_copyoffload_tool_path
+        if use_copyoffload_tool and col_path:
+            # Always run copy offload as regular user, it's sufficient
+            # and rootwrap doesn't allow copy offload to run as root anyways.
+            self._execute(col_path, src_ip, dest_ip, src_path, dest_path,
+                          run_as_root=False, check_exit_code=0)
+            LOG.debug("Copied image from cache to volume %s using "
+                      "copy offload.", volume['id'])
+        else:
+            dest_share_path = dest_path.rsplit("/", 1)[0]
+            self._copy_file(file_name, file_name, src_share_path, src_vserver,
+                            dest_share_path, dest_vserver,
+                            dest_backend_name=self.backend_name,
+                            dest_file_name=volume.name)
+            LOG.debug("Copied image from cache to volume %s using "
+                      "file copy operation.", volume['id'])
         self._register_image_in_cache(volume, image_id)
-        LOG.debug("Copied image from cache to volume %s using copy offload.",
-                  volume['id'])
 
     def _get_source_ip_and_path(self, nfs_share, file_name):
         host, share_path = na_utils.get_export_host_junction_path(nfs_share)
-        src_ip = self._get_ip_verify_on_cluster(host)
+        (src_ip, src_vserver) = self._get_ip_verify_on_cluster(host)
         src_path = os.path.join(share_path, file_name)
 
-        return src_ip, src_path
+        return src_ip, src_vserver, share_path, src_path
 
     def _get_destination_ip_and_path(self, volume):
         share = volume_utils.extract_host(volume['host'], level='pool')
         share_ip, share_path = na_utils.get_export_host_junction_path(share)
-        dest_ip = self._get_ip_verify_on_cluster(share_ip)
+        (dest_ip, vserver) = self._get_ip_verify_on_cluster(share_ip)
         dest_path = os.path.join(share_path, volume['name'])
 
-        return dest_ip, dest_path
+        return dest_ip, vserver, dest_path
 
     def _clone_file_dst_exists(self, share, src_name, dst_name,
                                dest_exists=False):
@@ -714,38 +733,39 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                                     dest_exists=dest_exists)
 
     def _copy_from_img_service(self, context, volume, image_service,
-                               image_id):
-        """Copies from the image service using copy offload."""
+                               image_id, use_copyoffload_tool=True):
+        """Copies from the image service using copy offload or file copy."""
 
-        LOG.debug("Trying copy from image service using copy offload.")
         image_loc = image_service.get_location(context, image_id)
         locations = self._construct_image_nfs_url(image_loc)
         src_ip = None
+        src_vserver = None
+        src_volume = None
         selected_loc = None
         cloned = False
 
         # this will match the first location that has a valid IP on cluster
         for location in locations:
-            conn, dr = self._check_get_nfs_path_segs(location)
+            conn, src_volume = self._check_get_nfs_path_segs(location)
             if conn:
                 try:
-                    src_ip = self._get_ip_verify_on_cluster(conn.split(':')[0])
+                    (src_ip, src_vserver) = (
+                        self._get_ip_verify_on_cluster(conn.split(':')[0]))
                     selected_loc = location
                     break
                 except exception.NotFound:
                     pass
-        if src_ip is None:
+        if src_ip is None or src_vserver is None:
             raise exception.NotFound(_("Source host details not found."))
         (__, ___, img_file) = selected_loc.rpartition('/')
-        src_path = os.path.join(dr, img_file)
 
-        dst_ip, vol_path = self._get_destination_ip_and_path(volume)
-        share_path = vol_path.rsplit("/", 1)[0]
-        dst_share = dst_ip + ':' + share_path
+        (dst_ip, dest_vserver, vol_path) = (
+            self._get_destination_ip_and_path(volume))
+        dest_share_path = vol_path.rsplit("/", 1)[0]
+        dst_share = dst_ip + ':' + dest_share_path
 
         # tmp file is required to deal with img formats
         tmp_img_file = six.text_type(uuid.uuid4())
-        col_path = self.configuration.netapp_copyoffload_tool_path
         img_info = image_service.show(context, image_id)
         self._check_share_can_hold_size(dst_share, img_info['size'])
         run_as_root = self._execute_as_root
@@ -754,14 +774,27 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         dst_img_local = os.path.join(dst_dir, tmp_img_file)
 
         try:
-            dst_img_serv_path = os.path.join(
-                share_path, tmp_img_file)
-            # Always run copy offload as regular user, it's sufficient
-            # and rootwrap doesn't allow copy offload to run as root
-            # anyways.
-            self._execute(col_path, src_ip, dst_ip, src_path,
-                          dst_img_serv_path, run_as_root=False,
-                          check_exit_code=0)
+            # NOTE(felipe_rodrigues): the copy offload tool code will be
+            # removed in the AA release.
+            col_path = self.configuration.netapp_copyoffload_tool_path
+            if col_path and use_copyoffload_tool:
+                LOG.debug("Trying copy from image service using copy offload.")
+                dst_img_serv_path = os.path.join(dest_share_path, tmp_img_file)
+                src_path = os.path.join(src_volume, img_file)
+                # Always run copy offload as regular user, it's sufficient
+                # and rootwrap doesn't allow copy offload to run as root
+                # anyways.
+                self._execute(col_path, src_ip, dst_ip, src_path,
+                              dst_img_serv_path, run_as_root=False,
+                              check_exit_code=0)
+            else:
+                LOG.debug("Trying copy from image service using file copy.")
+                src_volume = ''.join(src_volume.split("/", 1))
+                dest_share_path = ''.join(dest_share_path.split("/", 1))
+                self._copy_file(img_file, img_file, src_volume, src_vserver,
+                                dest_share_path, dest_vserver,
+                                dest_backend_name=self.backend_name,
+                                dest_file_name=tmp_img_file)
 
             self._discover_file_till_timeout(dst_img_local, timeout=120)
             LOG.debug('Copied image %(img)s to tmp file %(tmp)s.',
@@ -1072,7 +1105,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         """Check whether storage can perform clone file for FlexGroup"""
         return self.zapi_client.features.FLEXGROUP_CLONE_FILE
 
-    def _cancel_file_copy(self, job_uuid, volume, dest_pool,
+    def _cancel_file_copy(self, job_uuid, file_name, dest_pool,
                           dest_backend_name=None):
         """Cancel an on-going file copy operation."""
         try:
@@ -1082,7 +1115,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             self.zapi_client.destroy_file_copy(job_uuid)
         except na_utils.NetAppDriverException:
             dest_client = dot_utils.get_client_for_backend(dest_backend_name)
-            file_path = '%s/%s' % (dest_pool, volume.name)
+            file_path = '%s/%s' % (dest_pool, file_name)
             try:
                 dest_client.delete_file(file_path)
             except Exception:
@@ -1091,17 +1124,17 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                             'pool %s and delete it manually to avoid unused '
                             'resources.', file_path, dest_pool)
 
-    def _copy_file(self, volume, src_ontap_volume, src_vserver,
+    def _copy_file(self, file_name, volume_id, src_ontap_volume, src_vserver,
                    dest_ontap_volume, dest_vserver, dest_file_name=None,
                    dest_backend_name=None, cancel_on_error=False):
         """Copies file from an ONTAP volume to another."""
         job_uuid = self.zapi_client.start_file_copy(
-            volume.name, dest_ontap_volume, src_ontap_volume=src_ontap_volume,
+            file_name, dest_ontap_volume, src_ontap_volume=src_ontap_volume,
             dest_file_name=dest_file_name)
-        LOG.debug('Start copying file %(vol)s from '
+        LOG.debug('Start copying file %(file)s from '
                   '%(src_vserver)s:%(src_ontap_vol)s to '
                   '%(dest_vserver)s:%(dest_ontap_vol)s. Job UUID is %(job)s.',
-                  {'vol': volume.name, 'src_vserver': src_vserver,
+                  {'file': file_name, 'src_vserver': src_vserver,
                    'src_ontap_vol': src_ontap_volume,
                    'dest_vserver': dest_vserver,
                    'dest_ontap_vol': dest_ontap_volume,
@@ -1116,11 +1149,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                                       "corresponding Job UUID % doesn't "
                                       "exist."))
                 raise na_utils.NetAppDriverException(
-                    status_error_msg % (volume.id, job_uuid))
+                    status_error_msg % (file_name, job_uuid))
             elif copy_status['job-status'] == 'destroyed':
                 status_error_msg = (_('Error copying file %s. %s.'))
                 raise na_utils.NetAppDriverException(
-                    status_error_msg % (volume.id,
+                    status_error_msg % (file_name,
                                         copy_status['last-failure-reason']))
             elif copy_status['job-status'] == 'complete':
                 raise loopingcall.LoopingCallDone()
@@ -1137,7 +1170,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 if cancel_on_error:
                     try:
                         self._cancel_file_copy(
-                            job_uuid, volume, dest_ontap_volume,
+                            job_uuid, file_name, dest_ontap_volume,
                             dest_backend_name=dest_backend_name)
                     except na_utils.NetAppDriverException as ex:
                         LOG.error("Failed to cancel file copy operation. %s",
@@ -1146,7 +1179,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                     ctxt.reraise = False
                     msg = (_('Timeout waiting volume %s to complete '
                              'migration.'))
-                    raise na_utils.NetAppDriverTimeout(msg % volume.id)
+                    raise na_utils.NetAppDriverTimeout(msg % volume_id)
 
     def _finish_volume_migration(self, src_volume, dest_pool):
         """Finish volume migration to another ONTAP volume."""
@@ -1171,8 +1204,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                                  [vserver_peer_application])
         src_ontap_volume_name = src_pool.split(':/')[1]
         dest_ontap_volume_name = dest_pool.split(':/')[1]
-        self._copy_file(volume, src_ontap_volume_name, src_vserver,
-                        dest_ontap_volume_name, dest_vserver,
+        self._copy_file(volume.name, volume.id, src_ontap_volume_name,
+                        src_vserver, dest_ontap_volume_name, dest_vserver,
                         dest_backend_name=dest_backend_name,
                         cancel_on_error=True)
         updates = self._finish_volume_migration(volume, dest_pool)
@@ -1193,7 +1226,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                   'vserver': vserver})
         src_ontap_volume_name = src_pool.split(':/')[1]
         dest_ontap_volume_name = dest_pool.split(':/')[1]
-        self._copy_file(volume, src_ontap_volume_name, vserver,
+        self._copy_file(volume.name, volume.id, src_ontap_volume_name, vserver,
                         dest_ontap_volume_name, vserver,
                         dest_backend_name=dest_backend_name,
                         cancel_on_error=True)
