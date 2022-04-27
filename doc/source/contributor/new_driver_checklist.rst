@@ -102,6 +102,28 @@ Review Checklist
 
   * All exception messages that could be raised to users should be marked for
     translation with _()
+
+  * Cryptography
+
+    * Drivers must not use md5 for any security-related purpose.  (In fact,
+      drivers should avoid using it at all, because some security audits
+      only allow a "yes"/"no" checkbox for md5 use ... but that's up to the
+      vendor.)
+
+      * If md5 *is* being used for a non security-related purpose, the code
+        must use oslo.utils and not call hashlib directly to access md5.
+        Here's an example of how to do this:
+        https://review.opendev.org/c/openstack/os-brick/+/756151
+
+    * Any cryptography done by a driver should be implemented by using a
+      well-respected cryptographic library.  *Under no circumstances should
+      a driver implement its own cryptographic functions.*
+
+      If the library is already in OpenStack global requirements, then it
+      is well-respected; otherwise, you will find out if it's well-respected
+      when you apply for it to be added to global requirements (see next
+      item).
+
   * Any additional libraries needed for a driver must be added to the global
     requirements.
 
