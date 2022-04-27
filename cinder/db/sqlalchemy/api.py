@@ -248,14 +248,21 @@ def handle_db_data_error(f):
 def model_query(context, model, *args, **kwargs):
     """Query helper that accounts for context's `read_deleted` field.
 
-    :param context:      context to query under
-    :param model:        Model to query. Must be a subclass of ModelBase.
-    :param args:         Arguments to query. If None - model is used.
+    :param context: A request context to query under
+    :param model: Model to query. Must be a subclass of ModelBase.
+    :param args: Arguments to query. If None - model is used.
     :param read_deleted: if present, overrides context's read_deleted field.
     :param project_only: if present and context is user-type, then restrict
-                         query to match the context's project_id.
+        query to match the context's project_id.
     """
-    session = kwargs.get('session') or get_session()
+    session = kwargs.get('session')
+
+    if hasattr(context, 'session') and context.session:
+        session = context.session
+
+    if not session:
+        session = get_session()
+
     read_deleted = kwargs.get('read_deleted') or context.read_deleted
     project_only = kwargs.get('project_only')
 
@@ -270,15 +277,16 @@ def model_query(context, model, *args, **kwargs):
     elif read_deleted == 'int_no':
         query = query.filter_by(deleted=0)
     else:
-        raise Exception(
-            _("Unrecognized read_deleted value '%s'") % read_deleted)
+        msg = _("Unrecognized read_deleted value '%s'")
+        raise Exception(msg % read_deleted)
 
     if project_only and is_user_context(context):
         if model is models.VolumeAttachment:
             # NOTE(dulek): In case of VolumeAttachment, we need to join
             # `project_id` through `volume` relationship.
-            query = query.filter(models.Volume.project_id ==
-                                 context.project_id)
+            query = query.filter(
+                models.Volume.project_id == context.project_id
+            )
         else:
             query = query.filter_by(project_id=context.project_id)
 
@@ -674,33 +682,50 @@ def _clustered_bool_field_filter(query, field_name, filter_value):
     return query
 
 
-def _service_query(context, session=None, read_deleted='no', host=None,
-                   cluster_name=None, is_up=None, host_or_cluster=None,
-                   backend_match_level=None, disabled=None, frozen=None,
-                   **filters):
+def _service_query(
+    context,
+    read_deleted='no',
+    host=None,
+    cluster_name=None,
+    is_up=None,
+    host_or_cluster=None,
+    backend_match_level=None,
+    disabled=None,
+    frozen=None,
+    **filters,
+):
     filters = _clean_filters(filters)
     if filters and not is_valid_model_filters(models.Service, filters):
         return None
 
-    query = model_query(context, models.Service, session=session,
-                        read_deleted=read_deleted)
+    query = model_query(context, models.Service, read_deleted=read_deleted)
 
     # Host and cluster are particular cases of filters, because we must
     # retrieve not only exact matches (single backend configuration), but also
     # match those that have the backend defined (multi backend configuration).
     if host:
-        query = query.filter(_filter_host(models.Service.host, host,
-                                          backend_match_level))
+        query = query.filter(
+            _filter_host(models.Service.host, host, backend_match_level)
+        )
     if cluster_name:
-        query = query.filter(_filter_host(models.Service.cluster_name,
-                                          cluster_name, backend_match_level))
+        query = query.filter(
+            _filter_host(
+                models.Service.cluster_name, cluster_name, backend_match_level
+            )
+        )
     if host_or_cluster:
-        query = query.filter(or_(
-            _filter_host(models.Service.host, host_or_cluster,
-                         backend_match_level),
-            _filter_host(models.Service.cluster_name, host_or_cluster,
-                         backend_match_level),
-        ))
+        query = query.filter(
+            or_(
+                _filter_host(
+                    models.Service.host, host_or_cluster, backend_match_level
+                ),
+                _filter_host(
+                    models.Service.cluster_name,
+                    host_or_cluster,
+                    backend_match_level,
+                ),
+            )
+        )
 
     query = _clustered_bool_field_filter(query, 'disabled', disabled)
     query = _clustered_bool_field_filter(query, 'frozen', frozen)
@@ -713,13 +738,15 @@ def _service_query(context, session=None, read_deleted='no', host=None,
         svc = models.Service
         filter_ = or_(
             and_(svc.created_at.isnot(None), svc.created_at >= date_limit),
-            and_(svc.updated_at.isnot(None), svc.updated_at >= date_limit))
+            and_(svc.updated_at.isnot(None), svc.updated_at >= date_limit),
+        )
         query = query.filter(filter_ == is_up)
 
     return query
 
 
 @require_admin_context
+@main_context_manager.writer
 def service_destroy(context, service_id):
     query = _service_query(context, id=service_id)
     updated_values = models.Service.delete_values()
@@ -729,6 +756,7 @@ def service_destroy(context, service_id):
 
 
 @require_admin_context
+@main_context_manager.reader
 def service_get(context, service_id=None, backend_match_level=None, **filters):
     """Get a service that matches the criteria.
 
@@ -737,21 +765,26 @@ def service_get(context, service_id=None, backend_match_level=None, **filters):
     :param service_id: Id of the service.
     :param filters: Filters for the query in the form of key/value.
     :param backend_match_level: 'pool', 'backend', or 'host' for host and
-                                cluster filters (as defined in _filter_host
-                                method)
+        cluster filters (as defined in _filter_host method)
     :raise ServiceNotFound: If service doesn't exist.
     """
-    query = _service_query(context, backend_match_level=backend_match_level,
-                           id=service_id, **filters)
+    query = _service_query(
+        context,
+        backend_match_level=backend_match_level,
+        id=service_id,
+        **filters,
+    )
     service = None if not query else query.first()
     if not service:
         serv_id = service_id or filters.get('topic') or filters.get('binary')
-        raise exception.ServiceNotFound(service_id=serv_id,
-                                        host=filters.get('host'))
+        raise exception.ServiceNotFound(
+            service_id=serv_id, host=filters.get('host')
+        )
     return service
 
 
 @require_admin_context
+@main_context_manager.reader
 def service_get_all(context, backend_match_level=None, **filters):
     """Get all services that match the criteria.
 
@@ -759,15 +792,16 @@ def service_get_all(context, backend_match_level=None, **filters):
 
     :param filters: Filters for the query in the form of key/value.
     :param backend_match_level: 'pool', 'backend', or 'host' for host and
-                                cluster filters (as defined in _filter_host
-                                method)
+        cluster filters (as defined in _filter_host method)
     """
-    query = _service_query(context, backend_match_level=backend_match_level,
-                           **filters)
+    query = _service_query(
+        context, backend_match_level=backend_match_level, **filters
+    )
     return [] if not query else query.all()
 
 
 @require_admin_context
+@main_context_manager.reader
 def service_get_by_uuid(context, service_uuid):
     query = model_query(context, models.Service).filter_by(uuid=service_uuid)
     result = query.first()
@@ -778,20 +812,20 @@ def service_get_by_uuid(context, service_uuid):
 
 
 @require_admin_context
+@main_context_manager.writer
 def service_create(context, values):
     service_ref = models.Service()
     service_ref.update(values)
     if not CONF.enable_new_services:
         service_ref.disabled = True
 
-    session = get_session()
-    with session.begin():
-        service_ref.save(session)
-        return service_ref
+    service_ref.save(context.session)
+    return service_ref
 
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def service_update(context, service_id, values):
     query = _service_query(context, id=service_id)
 
