@@ -958,8 +958,9 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
     def test_get_class_quotas(self):
         self._mock_quota_class_get_all_by_name()
         self._mock_volume_type_get_all()
-        result = self.driver.get_class_quotas(None, quota.QUOTAS.resources,
-                                              'test_class')
+        ctxt = context.RequestContext('admin', 'admin', is_admin=True)
+        result = self.driver.get_class_quotas(
+            ctxt, quota.QUOTAS.resources, 'test_class')
 
         self.assertEqual(['quota_class_get_all_by_name'], self.calls)
         self.assertEqual(dict(volumes=10,
@@ -971,8 +972,9 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
 
     def test_get_class_quotas_no_defaults(self):
         self._mock_quota_class_get_all_by_name()
-        result = self.driver.get_class_quotas(None, quota.QUOTAS.resources,
-                                              'test_class', False)
+        ctxt = context.RequestContext('admin', 'admin', is_admin=True)
+        result = self.driver.get_class_quotas(
+            ctxt, quota.QUOTAS.resources, 'test_class', False)
 
         self.assertEqual(['quota_class_get_all_by_name'], self.calls)
         self.assertEqual(dict(volumes=10,
