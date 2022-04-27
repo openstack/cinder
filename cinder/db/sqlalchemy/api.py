@@ -845,6 +845,7 @@ def service_update(context, service_id, values):
 
 
 @require_admin_context
+@main_context_manager.reader
 def is_backend_frozen(context, host, cluster_name):
     """Check if a storage backend is frozen based on host and cluster_name."""
     if cluster_name:
@@ -854,7 +855,7 @@ def is_backend_frozen(context, host, cluster_name):
         model = models.Service
         conditions = [model.host == volume_utils.extract_host(host)]
     conditions.extend((~model.deleted, model.frozen))
-    query = get_session().query(sql.exists().where(and_(*conditions)))
+    query = context.session.query(sql.exists().where(and_(*conditions)))
     frozen = query.scalar()
     return frozen
 
@@ -862,21 +863,28 @@ def is_backend_frozen(context, host, cluster_name):
 ###################
 
 
-def _cluster_query(context, is_up=None, get_services=False,
-                   services_summary=False, read_deleted='no',
-                   name_match_level=None, name=None, session=None, **filters):
+def _cluster_query(
+    context,
+    is_up=None,
+    get_services=False,
+    services_summary=False,
+    read_deleted='no',
+    name_match_level=None,
+    name=None,
+    **filters,
+):
     filters = _clean_filters(filters)
     if filters and not is_valid_model_filters(models.Cluster, filters):
         return None
 
-    query = model_query(context, models.Cluster, session=session,
-                        read_deleted=read_deleted)
+    query = model_query(context, models.Cluster, read_deleted=read_deleted)
 
     # Cluster is a special case of filter, because we must match exact match
     # as well as hosts that specify the backend
     if name:
-        query = query.filter(_filter_host(models.Cluster.name, name,
-                                          name_match_level))
+        query = query.filter(
+            _filter_host(models.Cluster.name, name, name_match_level)
+        )
 
     if filters:
         query = query.filter_by(**filters)
@@ -894,17 +902,27 @@ def _cluster_query(context, is_up=None, get_services=False,
 
     if is_up is not None:
         date_limit = utils.service_expired_time()
-        filter_ = and_(models.Cluster.last_heartbeat.isnot(None),
-                       models.Cluster.last_heartbeat >= date_limit)
+        filter_ = and_(
+            models.Cluster.last_heartbeat.isnot(None),
+            models.Cluster.last_heartbeat >= date_limit,
+        )
         query = query.filter(filter_ == is_up)
 
     return query
 
 
 @require_admin_context
-def cluster_get(context, id=None, is_up=None, get_services=False,
-                services_summary=False, read_deleted='no',
-                name_match_level=None, **filters):
+@main_context_manager.reader
+def cluster_get(
+    context,
+    id=None,
+    is_up=None,
+    get_services=False,
+    services_summary=False,
+    read_deleted='no',
+    name_match_level=None,
+    **filters,
+):
     """Get a cluster that matches the criteria.
 
     :param id: Id of the cluster.
@@ -919,8 +937,16 @@ def cluster_get(context, id=None, is_up=None, get_services=False,
                              defined in _filter_host method)
     :raise ClusterNotFound: If cluster doesn't exist.
     """
-    query = _cluster_query(context, is_up, get_services, services_summary,
-                           read_deleted, name_match_level, id=id, **filters)
+    query = _cluster_query(
+        context,
+        is_up,
+        get_services,
+        services_summary,
+        read_deleted,
+        name_match_level,
+        id=id,
+        **filters,
+    )
     cluster = None if not query else query.first()
     if not cluster:
         cluster_id = id or str(filters)
@@ -929,27 +955,42 @@ def cluster_get(context, id=None, is_up=None, get_services=False,
 
 
 @require_admin_context
-def cluster_get_all(context, is_up=None, get_services=False,
-                    services_summary=False, read_deleted='no',
-                    name_match_level=None, **filters):
+@main_context_manager.reader
+def cluster_get_all(
+    context,
+    is_up=None,
+    get_services=False,
+    services_summary=False,
+    read_deleted='no',
+    name_match_level=None,
+    **filters,
+):
     """Get all clusters that match the criteria.
 
     :param is_up: Boolean value to filter based on the cluster's up status.
     :param get_services: If we want to load all services from this cluster.
     :param services_summary: If we want to load num_hosts and
-                             num_down_hosts fields.
+        num_down_hosts fields.
     :param read_deleted: Filtering based on delete status. Default value is
-                         "no".
+        "no".
     :param name_match_level: 'pool', 'backend', or 'host' for name filter (as
-                             defined in _filter_host method)
+        defined in _filter_host method)
     :param filters: Field based filters in the form of key/value.
     """
-    query = _cluster_query(context, is_up, get_services, services_summary,
-                           read_deleted, name_match_level, **filters)
+    query = _cluster_query(
+        context,
+        is_up,
+        get_services,
+        services_summary,
+        read_deleted,
+        name_match_level,
+        **filters,
+    )
     return [] if not query else query.all()
 
 
 @require_admin_context
+@main_context_manager.writer
 def cluster_create(context, values):
     """Create a cluster from the values dictionary."""
     cluster_ref = models.Cluster()
@@ -958,14 +999,12 @@ def cluster_create(context, values):
     if values.get('disabled') is None:
         cluster_ref.disabled = not CONF.enable_new_services
 
-    session = get_session()
     try:
-        with session.begin():
-            cluster_ref.save(session)
-            # We mark that newly created cluster has no hosts to prevent
-            # problems at the OVO level
-            cluster_ref.last_heartbeat = None
-            return cluster_ref
+        cluster_ref.save(context.session)
+        # We mark that newly created cluster has no hosts to prevent
+        # problems at the OVO level
+        cluster_ref.last_heartbeat = None
+        return cluster_ref
     # If we had a race condition (another non deleted cluster exists with the
     # same name) raise Duplicate exception.
     except db_exc.DBDuplicateEntry:
@@ -974,6 +1013,7 @@ def cluster_create(context, values):
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def cluster_update(context, id, values):
     """Set the given properties on an cluster and update it.
 
@@ -986,14 +1026,16 @@ def cluster_update(context, id, values):
 
 
 @require_admin_context
+@main_context_manager.writer
 def cluster_destroy(context, id):
     """Destroy the cluster or raise if it does not exist or has hosts."""
     query = _cluster_query(context, id=id)
     query = query.filter(models.Cluster.num_hosts == 0)
     # If the update doesn't succeed we don't know if it's because the
     # cluster doesn't exist or because it has hosts.
-    result = query.update(models.Cluster.delete_values(),
-                          synchronize_session=False)
+    result = query.update(
+        models.Cluster.delete_values(), synchronize_session=False
+    )
 
     if not result:
         # This will fail if the cluster doesn't exist raising the right
