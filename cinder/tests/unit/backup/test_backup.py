@@ -1988,10 +1988,13 @@ class BackupAPITestCase(BaseBackupTest):
 
     @mock.patch.object(api.API, '_get_available_backup_service_host',
                        return_value='fake_host')
+    @mock.patch.object(quota.QUOTAS, 'commit')
+    @mock.patch.object(quota.QUOTAS, 'rollback')
+    @mock.patch.object(quota.QUOTAS, 'reserve')
     @mock.patch.object(db, 'backup_create',
                        side_effect=db_exc.DBError())
     def test_create_when_failed_to_create_backup_object(
-            self, mock_create,
+            self, mock_create, mock_reserve, mock_rollback, mock_commit,
             mock_get_service):
 
         # Create volume in admin context
@@ -2001,6 +2004,9 @@ class BackupAPITestCase(BaseBackupTest):
         new_context = copy.copy(self.ctxt)
         new_context.user_id = fake.USER3_ID
         new_context.project_id = fake.USER3_ID
+
+        # name the reservation so we can check it later
+        mock_reserve.return_value = 'fake-reservation'
 
         # The opposite side of this test case is a "NotImplementedError:
         # Cannot load 'id' in the base class" being raised.
@@ -2015,14 +2021,26 @@ class BackupAPITestCase(BaseBackupTest):
                           volume_id=volume_id,
                           container='volumebackups')
 
+        # make sure quotas are behaving as expected when backup.create() fails
+        mock_reserve.assert_called_once()
+        mock_rollback.assert_called_with(new_context, 'fake-reservation')
+        mock_commit.assert_not_called()
+
     @mock.patch.object(api.API, '_get_available_backup_service_host',
                        return_value='fake_host')
+    @mock.patch.object(quota.QUOTAS, 'commit')
+    @mock.patch.object(quota.QUOTAS, 'rollback')
+    @mock.patch.object(quota.QUOTAS, 'reserve')
     @mock.patch.object(objects.Backup, '__init__',
                        side_effect=exception.InvalidInput(
                            reason='Failed to new'))
-    def test_create_when_failed_to_new_backup_object(self, mock_new,
-                                                     mock_get_service):
+    def test_create_when_failed_to_new_backup_object(
+            self, mock_new, mock_reserve, mock_rollback, mock_commit,
+            mock_get_service):
         volume_id = utils.create_volume(self.ctxt)['id']
+
+        # name the reservation so we can check it later
+        mock_reserve.return_value = 'fake-reservation'
 
         # The opposite side of this test case is that a "UnboundLocalError:
         # local variable 'backup' referenced before assignment" is raised.
@@ -2035,6 +2053,11 @@ class BackupAPITestCase(BaseBackupTest):
                           description="test backup description",
                           volume_id=volume_id,
                           container='volumebackups')
+
+        # make sure quotas are behaving as expected when objects.Backup() fails
+        mock_reserve.assert_called_once()
+        mock_rollback.assert_called_with(self.ctxt, 'fake-reservation')
+        mock_commit.assert_not_called()
 
     @mock.patch.object(api.API, '_get_available_backup_service_host',
                        return_value='fake_host')
