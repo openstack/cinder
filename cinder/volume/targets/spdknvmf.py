@@ -66,7 +66,7 @@ class SpdkNvmf(nvmeof.NVMeOF):
         # fail on second attempt which is expected behavior.
         try:
             params = {
-                'trtype': 'rdma',
+                'trtype': self.nvme_transport_type,
                 'max_queue_depth':
                 self.configuration.spdk_max_queue_depth
             }
