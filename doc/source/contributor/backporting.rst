@@ -73,3 +73,22 @@ In fact, maybe *too* easy.  Here are some guidelines:
 If you have questions about any of this, or if you have a bug to fix that
 is only present in one of the stable branches, ask for advice in
 ``#openstack-cinder`` on IRC.
+
+Backport CI Testing
+-------------------
+
+Like all code changes, backports should undergo continuous integration
+testing.  This is done automatically by Zuul for changes that affect the
+main cinder code.
+
+  When a vendor driver patch backport is proposed, we would like to
+  see a clear statement on the gerrit review that the patch has been
+  tested in an appropriate environment.
+
+This shouldn't be a big deal because presumably you've done local
+testing with your backend to ensure that the code works as expected in a
+stable branch; we're simply asking that this be documented on the backport.
+
+A good example of how to document this can be found on
+`https://review.opendev.org/c/openstack/cinder/+/821893/
+<https://review.opendev.org/c/openstack/cinder/+/821893/3#message-ade9aa6ad8bd99fefab908c777fe106e907c7636>`_.
