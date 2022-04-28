@@ -130,6 +130,10 @@ class Detail(object):
     REIMAGE_VOLUME_FAILED = (
         '028',
         _("Compute service failed to reimage volume."))
+    IMAGE_FORMAT_UNACCEPTABLE = (
+        '029',
+        _("The image disk format must be the same as the volume format for "
+          "the volume type you are requesting."))
 
     ALL = (UNKNOWN_ERROR,
            DRIVER_NOT_INITIALIZED,
@@ -159,6 +163,7 @@ class Detail(object):
            BACKUP_RESTORE_ERROR,
            VOLUME_INVALID_STATE,
            REIMAGE_VOLUME_FAILED,
+           IMAGE_FORMAT_UNACCEPTABLE,
            )
 
     # Exception and detail mappings

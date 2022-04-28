@@ -1069,6 +1069,11 @@ class ImageCompressionNotAllowed(CinderException):
                 "is compressed")
 
 
+class ImageConversionNotAllowed(CinderException):
+    message = _("Image Conversion disallowed for image %(image_id)s: "
+                "%(reason)s")
+
+
 class CinderAcceleratorError(CinderException):
     message = _("Cinder accelerator %(accelerator)s encountered an error "
                 "while compressing/decompressing image.\n"

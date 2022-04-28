@@ -1,0 +1,36 @@
+---
+features:
+  - |
+    Added a new configuration option ``image_conversion_disable`` to disallow
+    conversion between image disk format and volume format when doing
+    certain operations. This can prevent performance problems on a
+    cinder-volume node due to the large amount of system resources
+    consumed during image conversion. The default value is ``False``,
+    which corresponds to Cinder's current behavior to always attempt
+    image conversion.
+
+    This option affects three Block Storage API calls:
+
+    * Upload volume to image:
+      ``POST /v3/volumes/{volume_id}/action`` with the
+      ``os-volume_upload_image`` action.  This call will result in a
+      400 (Bad Request) response when an image ``disk_format``
+      that would require conversion is requested.
+    * Create a volume:
+      ``POST /v3/volumes`` with an ``imageRef`` attribute in the request
+      body.  This will result in a 202 (Accepted) response, but if the
+      image's ``disk_format`` would require conversion to be written to
+      the volume, the volume will go to ``error`` status.
+    * Reimage a volume:
+      ``POST /v3/volumes/{volume_id}/action`` with the ``os-reimage``
+      action.  This call will result in a 202 (Accepted) response, but
+      if the image's ``disk_format`` would require conversion to be written
+      to the volume, the volume will go to ``error`` status.
+
+    In the latter two cases, an end user can determine what happened
+    by using the `Messages API
+    <https://docs.openstack.org/api-ref/block-storage/v3/#messages-messages>`_,
+    which can be accessed using the `cinderclient
+    <https://docs.openstack.org/python-cinderclient/latest/cli/details.html#cinder-message-list>`_
+    or `openstackclient
+    <https://docs.openstack.org/python-openstackclient/latest/cli/decoder.html>`_.

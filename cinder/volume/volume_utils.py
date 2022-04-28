@@ -1204,7 +1204,9 @@ def copy_image_to_volume(driver,
                       "%(volume_id)s",
                       {'volume_id': volume.id, 'image_id': image_id})
         raise exception.ImageCopyFailure(reason=ex.stderr)
-    except (exception.ImageUnacceptable, exception.ImageTooBig):
+    except (exception.ImageUnacceptable,
+            exception.ImageTooBig,
+            exception.ImageConversionNotAllowed):
         with excutils.save_and_reraise_exception():
             LOG.exception("Failed to copy image %(image_id)s to volume: "
                           "%(volume_id)s",

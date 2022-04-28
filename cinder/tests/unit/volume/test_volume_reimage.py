@@ -17,6 +17,7 @@ import ddt
 from oslo_concurrency import processutils
 
 from cinder import exception
+from cinder.message import message_field
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import utils as tests_utils
@@ -64,6 +65,21 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
                 image_id=self.image_meta['id'], reason='')
             self.assertRaises(exception.ImageUnacceptable, self.volume.reimage,
                               self.context, volume, self.image_meta)
+
+            mock_cp_img.side_effect = exception.ImageConversionNotAllowed(
+                image_id=self.image_meta['id'], reason='')
+
+            with mock.patch.object(
+                self.volume.message_api, 'create'
+            ) as mock_msg_create:
+                self.assertRaises(
+                    exception.ImageConversionNotAllowed, self.volume.reimage,
+                    self.context, volume, self.image_meta)
+                mock_msg_create.assert_called_with(
+                    self.context,
+                    message_field.Action.REIMAGE_VOLUME,
+                    resource_uuid=volume.id,
+                    detail=message_field.Detail.IMAGE_FORMAT_UNACCEPTABLE)
 
             mock_cp_img.side_effect = exception.ImageTooBig(
                 image_id=self.image_meta['id'], reason='')

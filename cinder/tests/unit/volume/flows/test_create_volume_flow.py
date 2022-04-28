@@ -2330,6 +2330,63 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         self.assertFalse(self.mock_cache.ensure_space.called)
         self.assertFalse(self.mock_cache.create_cache_entry.called)
 
+    @mock.patch('cinder.image.image_utils.check_available_space')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.message.api.API.create')
+    @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
+    def test_create_from_image_cache_unacceptable_image_message(
+            self, mock_verify, mock_message_create, mock_qemu_info,
+            mock_check_space,
+            mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+        self.mock_driver.clone_image.return_value = (None, False)
+        self.mock_cache.get_entry.return_value = None
+        volume = fake_volume.fake_volume_obj(self.ctxt, size=1,
+                                             host='foo@bar#pool')
+        image_volume = fake_volume.fake_db_volume(size=2)
+        self.mock_db.volume_create.return_value = image_volume
+        image_id = fakes.IMAGE_ID
+        mock_create_from_img_dl.side_effect = (
+            exception.ImageConversionNotAllowed(image_id=image_id, reason=''))
+        self.flags(verify_glance_signatures='disabled')
+
+        image_location = 'someImageLocationStr'
+        image_meta = mock.MagicMock()
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        self.assertRaises(
+            exception.ImageConversionNotAllowed,
+            manager._create_from_image_cache_or_download,
+            self.ctxt,
+            volume,
+            image_location,
+            image_id,
+            image_meta,
+            self.mock_image_service
+        )
+
+        mock_message_create.assert_called_once_with(
+            self.ctxt, message_field.Action.COPY_IMAGE_TO_VOLUME,
+            resource_uuid=volume.id,
+            detail=message_field.Detail.IMAGE_FORMAT_UNACCEPTABLE)
+
+        # The volume size should NOT be changed when in this case
+        self.assertFalse(self.mock_db.volume_update.called)
+
+        # Make sure we didn't try and create a cache entry
+        self.assertFalse(self.mock_cache.ensure_space.called)
+        self.assertFalse(self.mock_cache.create_cache_entry.called)
+
     @ddt.data(None, {'volume_id': fakes.VOLUME_ID})
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
