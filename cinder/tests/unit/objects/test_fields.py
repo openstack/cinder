@@ -156,3 +156,32 @@ class TestVolumeAttachStatus(TestField):
 
     def test_stringify_invalid(self):
         self.assertRaises(ValueError, self.field.stringify, 'not_a_status')
+
+
+class TestVolumeMigrationStatus(TestField):
+    def setUp(self):
+        super(TestVolumeMigrationStatus, self).setUp()
+        self.field = fields.VolumeMigrationStatusField()
+        self.coerce_good_values = [
+            ('migrating',
+             fields.VolumeMigrationStatus.MIGRATING),
+            ('error',
+             fields.VolumeMigrationStatus.ERROR),
+            ('success',
+             fields.VolumeMigrationStatus.SUCCESS),
+            ('completing',
+             fields.VolumeMigrationStatus.COMPLETING),
+            ('starting',
+             fields.VolumeMigrationStatus.STARTING),
+            ('none',
+             fields.VolumeMigrationStatus.NONE),
+        ]
+        self.coerce_bad_values = ['available']
+        self.to_primitive_values = self.coerce_good_values
+        self.from_primitive_values = self.coerce_good_values
+
+    def test_stringify(self):
+        self.assertEqual("'migrating'", self.field.stringify('migrating'))
+
+    def test_stringify_invalid(self):
+        self.assertRaises(ValueError, self.field.stringify, 'not_a_status')
