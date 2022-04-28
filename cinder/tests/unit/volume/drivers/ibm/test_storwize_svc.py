@@ -12189,7 +12189,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             storwize_const.REPLICA_CHG_VOL_PREFIX + target_vol)
         size = 1
         self.driver._convert_global_mirror_volume_to_gmcv(gm_vol, target_vol,
-                                                          size)
+                                                          size, rcrel)
         rcrel = self.driver._helpers.get_relationship_info(gm_vol.name)
         self.assertEqual('multi', rcrel['cycling_mode'])
         self.assertEqual(master_change_vol_name,
@@ -12201,6 +12201,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         gm_vol, model_update = self._create_test_volume(self.gm_type)
         self._validate_replic_vol_creation(gm_vol)
+        rcrel = self.driver._helpers.get_relationship_info(gm_vol.name)
         with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
               'create_vdisk')) as create_vdisk:
             with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
@@ -12210,7 +12211,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                     storwize_const.REPLICA_AUX_VOL_PREFIX + gm_vol.name)
                 size = 1
                 self.driver._convert_global_mirror_volume_to_gmcv(
-                    gm_vol, target_vol, size)
+                    gm_vol, target_vol, size, rcrel)
                 create_vdisk.assert_called()
                 self.assertEqual(2, create_vdisk.call_count)
                 ch_relationship_cyclingmode.assert_called()
@@ -12238,7 +12239,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertEqual([{'id': gm_vol.id, 'group_id': group.id}],
                          add_volumes_update)
         self.assertEqual([], remove_volumes_update)
-        rccg_info = self.driver._helpers.get_rccg(rccg_name)
+        rccg_info = self.driver._helpers.get_rccg_info(gm_vol.name)
         self.assertEqual('none', rccg_info['cycling_mode'])
         rcrel = self.driver._helpers.get_relationship_info(gm_vol.name)
         self.assertEqual('', rcrel['master_change_vdisk_name'])
@@ -12252,7 +12253,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             storwize_const.REPLICA_CHG_VOL_PREFIX + target_vol)
         size = 1
         self.driver._convert_global_mirror_volume_to_gmcv(
-            gm_vol, target_vol, size, rccg_name=rccg_name)
+            gm_vol, target_vol, size, rcrel,
+            rccg_name=rccg_name)
         rccg_info = self.driver._helpers.get_rccg_info(gm_vol.name)
         self.assertEqual('multi', rccg_info['cycling_mode'])
         rcrel = self.driver._helpers.get_relationship_info(gm_vol.name)
@@ -12276,6 +12278,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
         self._validate_replic_vol_creation(gm_vol)
+        rcrel = self.driver._helpers.get_relationship_info(gm_vol.name)
         rccg_name = "fake_rccg_1"
         with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
               'create_vdisk')) as create_vdisk:
@@ -12283,7 +12286,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                 storwize_const.REPLICA_AUX_VOL_PREFIX + gm_vol.name)
             size = 1
             self.driver._convert_global_mirror_volume_to_gmcv(
-                gm_vol, target_vol, size, rccg_name=rccg_name)
+                gm_vol, target_vol, size, rcrel,
+                rccg_name=rccg_name)
             create_vdisk.assert_called()
             self.assertEqual(2, create_vdisk.call_count)
             stop_rccg.assert_called_once_with(rccg_name)
@@ -12525,9 +12529,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                        'delete_vdisk')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'delete_relationship')
-    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                       'get_relationship_info')
-    def test_delete_target_volume(self, get_relationship_info,
+    def test_delete_source_volume(self,
                                   delete_relationship,
                                   delete_vdisk):
         # Set replication target.
@@ -12536,14 +12538,43 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
         fake_name = 'volume-%s' % fake.VOLUME_ID
-        get_relationship_info.return_value = {'aux_vdisk_name':
-                                              fake_name}
         self.driver._helpers.delete_rc_volume(fake_name)
-        get_relationship_info.assert_called_once_with(fake_name)
-        delete_relationship.assert_called_once_with(fake_name)
+        self.assertFalse(delete_relationship.called)
         master_change_fake_name = (
             storwize_const.REPLICA_CHG_VOL_PREFIX + fake_name)
         calls = [mock.call(master_change_fake_name, force_delete=False,
+                           force_unmap=True),
+                 mock.call(fake_name, force_delete=False, force_unmap=True)]
+        delete_vdisk.assert_has_calls(calls, any_order=True)
+        self.assertEqual(2, delete_vdisk.call_count)
+
+        rel_info = {'aux_vdisk_name': fake_name,
+                    'master_vdisk_name': 'volume-%s' % fake.VOLUME_ID}
+        self.driver._helpers.delete_rc_volume(fake_name, rel_info)
+        delete_relationship.assert_called_once_with(fake_name)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_vdisk')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_relationship')
+    def test_delete_target_volume(self,
+                                  delete_relationship,
+                                  delete_vdisk):
+        # Set replication target.
+
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        fake_name = 'aux_volume-%s' % fake.VOLUME_ID
+        rel_info = {'aux_vdisk_name': fake_name,
+                    'master_vdisk_name': 'volume-%s' % fake.VOLUME_ID}
+        self.driver._aux_backend_helpers.delete_rc_volume(fake_name,
+                                                          rel_info,
+                                                          target_vol=True)
+        delete_relationship.assert_called_with(fake_name)
+        target_change_fake_name = (
+            storwize_const.REPLICA_CHG_VOL_PREFIX + fake_name)
+        calls = [mock.call(target_change_fake_name, force_delete=False,
                            force_unmap=True),
                  mock.call(fake_name, force_delete=False, force_unmap=True)]
         delete_vdisk.assert_has_calls(calls, any_order=True)
@@ -12553,19 +12584,16 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                        'delete_vdisk')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'delete_relationship')
-    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                       'get_relationship_info')
-    def test_delete_target_volume_no_relationship(self, get_relationship_info,
+    def test_delete_target_volume_no_relationship(self,
                                                   delete_relationship,
                                                   delete_vdisk):
         # Set replication target.
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
-        fake_name = 'volume-%s' % fake.VOLUME_ID
-        get_relationship_info.return_value = None
-        self.driver._helpers.delete_rc_volume(fake_name)
-        get_relationship_info.assert_called_once_with(fake_name)
+        fake_name = 'aux_volume-%s' % fake.VOLUME_ID
+        self.driver._aux_backend_helpers.delete_rc_volume(
+            fake_name, target_vol=True, rel_info=None)
         self.assertFalse(delete_relationship.called)
         self.assertTrue(delete_vdisk.called)
 
@@ -12573,21 +12601,55 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                        'delete_vdisk')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'delete_relationship')
-    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                       'get_relationship_info')
-    def test_delete_target_volume_fail(self, get_relationship_info,
+    def test_delete_target_volume_fail(self,
                                        delete_relationship,
                                        delete_vdisk):
         fake_id = fake.VOLUME_ID
-        fake_name = 'volume-%s' % fake_id
-        get_relationship_info.return_value = {'aux_vdisk_name':
-                                              fake_name}
+        fake_name = 'aux_volume-%s' % fake_id
+        rel_info = {'aux_vdisk_name': fake_name,
+                    'master_vdisk_name': 'volume-%s' % fake_id}
         delete_vdisk.side_effect = Exception
         self.assertRaises(exception.VolumeDriverException,
-                          self.driver._helpers.delete_rc_volume,
-                          fake_name)
-        get_relationship_info.assert_called_once_with(fake_name)
+                          self.driver._aux_backend_helpers.delete_rc_volume,
+                          fake_name, rel_info, target_vol=True)
         delete_relationship.assert_called_once_with(fake_name)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_relationship_info')
+    def test_get_target_volume_information(self, get_relationship_info):
+        volume, model_update = self._create_test_volume(self.mm_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        fake_aux_volume_name = storwize_const.REPLICA_AUX_VOL_PREFIX + \
+            volume.name
+        rel_info = {'aux_vdisk_name': fake_aux_volume_name,
+                    'master_vdisk_name': volume.name}
+        get_relationship_info.return_value = rel_info
+        target_volume, rel_info = (
+            self.driver._helpers.get_target_volume_information(volume))
+        self.assertEqual(target_volume, fake_aux_volume_name)
+        self.assertIsNotNone(rel_info)
+        get_relationship_info.assert_called_with(volume.name)
+
+        get_relationship_info.return_value = None
+        target_volume, rel_info = (
+            self.driver._helpers.get_target_volume_information(volume))
+        self.assertEqual(target_volume, fake_aux_volume_name)
+        self.assertIsNone(rel_info)
+        get_relationship_info.assert_called_with(volume.name)
+
+    def test_is_replicated_volume_primary(self):
+        volume, model_update = self._create_test_volume(self.gm_type)
+        rel_info = self.driver._helpers.get_relationship_info(volume.name)
+        flag = self.driver._helpers.is_replicated_volume_primary(volume,
+                                                                 rel_info)
+        self.assertEqual(flag, True)
+
+        # GM volume with auxillary as Primary
+        rel_info["primary"] = "aux"
+        flag = self.driver._helpers.is_replicated_volume_primary(volume,
+                                                                 rel_info)
+        self.assertEqual(flag, False)
 
     @ddt.data((True, True, 1), (False, True, 2),
               (True, False, 2), (False, False, 2))
@@ -12595,36 +12657,30 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                        'delete_vdisk')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'delete_relationship')
-    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                       'get_relationship_info')
     @ddt.unpack
-    def test_retain_target_volume(self, target_volume, retain_aux_vol,
-                                  call_count, get_relationship_info,
-                                  delete_relationship, delete_vdisk):
+    def test_retain_target_volume(self, target_vol, retain_aux_vol,
+                                  call_count, delete_relationship,
+                                  delete_vdisk):
         # Set replication target.
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
-        fake_name = 'volume-%s' % fake.VOLUME_ID
-        get_relationship_info.return_value = {'aux_vdisk_name':
-                                              fake_name}
-        self.driver._helpers.delete_rc_volume(fake_name,
-                                              target_vol=target_volume,
-                                              retain_aux_volume=retain_aux_vol)
+        fake_name = 'aux_volume-%s' % fake.VOLUME_ID
+        rel_info = {'aux_vdisk_name': fake_name,
+                    'master_vdisk_name': 'volume-%s' % fake.VOLUME_ID}
+        self.driver._aux_backend_helpers.delete_rc_volume(
+            fake_name, rel_info, target_vol=target_vol,
+            retain_aux_volume=retain_aux_vol)
 
         vol_name = fake_name
         change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX + vol_name)
-        if target_volume:
-            vol_name = (storwize_const.REPLICA_AUX_VOL_PREFIX + fake_name)
-            change_vol_name = (
-                storwize_const.REPLICA_CHG_VOL_PREFIX + vol_name)
 
-        get_relationship_info.assert_called_once_with(vol_name)
-        delete_relationship.assert_called_once_with(vol_name)
+        if rel_info:
+            delete_relationship.assert_called_once_with(vol_name)
 
         calls = [mock.call(change_vol_name, force_delete=False,
                            force_unmap=True)]
-        if (target_volume and not retain_aux_vol) or not target_volume:
+        if (target_vol and not retain_aux_vol) or not target_vol:
             calls.extend([mock.call(vol_name, force_delete=False,
                                     force_unmap=True)])
         delete_vdisk.assert_has_calls(calls, any_order=True)

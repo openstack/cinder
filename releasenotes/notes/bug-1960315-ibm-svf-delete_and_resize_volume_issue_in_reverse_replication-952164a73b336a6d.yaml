@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize family driver
+    `Bug #1960315 <https://bugs.launchpad.net/cinder/+bug/1960315>`_:
+    Fixed delete and resize volume issues in during reverse replication
+    and added support to extend the volume for failover scenarios.
