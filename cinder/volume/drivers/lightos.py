@@ -19,6 +19,7 @@ import json
 import random
 import time
 from typing import Dict
+from urllib.parse import urlparse
 
 
 from oslo_config import cfg
@@ -293,6 +294,11 @@ class LightOSConnection(object):
         raise exception.VolumeDriverException(
             message="Could not get a response from any API server")
 
+    def _format_endpoint(self, ip, port):
+        ip_requires_bracketing = ':' in ip or '%' in ip
+        template = "[%s]:%s" if ip_requires_bracketing else "%s:%s"
+        return template % (ip, port)
+
     def __send_cmd(self, cmd, host, port, timeout, **kwargs):
         """Send command to LightOS REST API server.
 
@@ -306,7 +312,7 @@ class LightOSConnection(object):
             {'cmd': cmd, 'method': method, 'url': url, 'body': body,
              'ssl_verify': ssl_verify})
 
-        api_url = "https://%s:%s%s" % (host, port, url)
+        api_url = "https://%s%s" % (self._format_endpoint(host, port), url)
 
         try:
             with requests.Session() as session:
@@ -1013,11 +1019,11 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         lightos_targets = {}
         for target in self.cluster.targets.values():
             properties = dict()
-            data_address, _ = target['nvmeEndpoint'].split(':')
-            properties['target_portal'] = data_address
+            ep = urlparse('//' + target['nvmeEndpoint'])
+            properties['target_portal'] = ep.hostname
             properties['target_port'] = 8009  # spec specified discovery port
             properties['transport_type'] = 'tcp'
-            lightos_targets[data_address] = properties
+            lightos_targets[ep.hostname] = properties
 
         server_properties = {}
         server_properties['lightos_nodes'] = lightos_targets
