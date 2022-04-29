@@ -49,6 +49,7 @@ class Action(object):
     BACKUP_CREATE = ('013', _('create backup'))
     BACKUP_DELETE = ('014', _('delete backup'))
     BACKUP_RESTORE = ('015', _('restore backup'))
+    REIMAGE_VOLUME = ('016', _('reimage volume'))
 
     ALL = (SCHEDULE_ALLOCATE_VOLUME,
            ATTACH_VOLUME,
@@ -65,6 +66,7 @@ class Action(object):
            BACKUP_CREATE,
            BACKUP_DELETE,
            BACKUP_RESTORE,
+           REIMAGE_VOLUME,
            )
 
 
@@ -125,6 +127,9 @@ class Detail(object):
     BACKUP_RESTORE_ERROR = (
         '026', _("Backup driver failed to restore backup."))
     VOLUME_INVALID_STATE = ('027', _("Volume status is invalid."))
+    REIMAGE_VOLUME_FAILED = (
+        '028',
+        _("Compute service failed to reimage volume."))
 
     ALL = (UNKNOWN_ERROR,
            DRIVER_NOT_INITIALIZED,
@@ -153,6 +158,7 @@ class Detail(object):
            BACKUP_DELETE_DRIVER_ERROR,
            BACKUP_RESTORE_ERROR,
            VOLUME_INVALID_STATE,
+           REIMAGE_VOLUME_FAILED,
            )
 
     # Exception and detail mappings
