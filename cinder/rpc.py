@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import annotations
+
 __all__ = [
     'init',
     'cleanup',
@@ -26,7 +28,7 @@ __all__ = [
 ]
 
 import functools
-from typing import Tuple, Union  # noqa: H301
+from typing import Union
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -230,7 +232,7 @@ class RPCAPI(object):
         return versions[-1]
 
     def _get_cctxt(self,
-                   version: Union[str, Tuple[str, ...]] = None,
+                   version: Union[str, tuple[str, ...]] = None,
                    **kwargs):
         """Prepare client context
 

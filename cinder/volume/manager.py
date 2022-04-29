@@ -35,10 +35,12 @@ intact.
 
 """
 
+from __future__ import annotations  # Remove when only supporting Python 3.9+
+
 import functools
 import time
 import typing
-from typing import Any, Dict, List, Optional, Set, Tuple, Union  # noqa: H301
+from typing import Any, Optional, Union  # noqa: H301
 
 from castellan import key_manager
 from oslo_config import cfg
@@ -539,7 +541,7 @@ class VolumeManager(manager.CleanableManager,
         num_vols: int = 0
         num_snaps: int = 0
         max_objs_num: int = 0
-        req_range: Union[List[int], range] = [0]
+        req_range: Union[list[int], range] = [0]
         req_limit = CONF.init_host_max_objects_retrieval or 0
         use_batch_objects_retrieval: bool = req_limit > 0
 
@@ -1601,7 +1603,7 @@ class VolumeManager(manager.CleanableManager,
         reservations = QUOTAS.reserve(ctx, **reserve_opts)
         # NOTE(yikun): Skip 'snapshot_id', 'source_volid' keys to avoid
         # creating tmp img vol from wrong snapshot or wrong source vol.
-        skip: Set[str] = {'snapshot_id', 'source_volid'}
+        skip: set[str] = {'snapshot_id', 'source_volid'}
         skip.update(self._VOLUME_CLONE_SKIP_PROPERTIES)
         try:
             new_vol_values = {k: volume[k] for k in set(volume.keys()) - skip}
@@ -3199,7 +3201,7 @@ class VolumeManager(manager.CleanableManager,
 
         return vol_ref
 
-    def _get_cluster_or_host_filters(self) -> Dict[str, Any]:
+    def _get_cluster_or_host_filters(self) -> dict[str, Any]:
         if self.cluster:
             filters = {'cluster_name': self.cluster}
         else:
@@ -3500,12 +3502,12 @@ class VolumeManager(manager.CleanableManager,
             self,
             context: context.RequestContext,
             group: objects.Group,
-            volumes: List[objects.Volume],
+            volumes: list[objects.Volume],
             group_snapshot: Optional[objects.GroupSnapshot] = None,
-            snapshots: Optional[List[objects.Snapshot]] = None,
+            snapshots: Optional[list[objects.Snapshot]] = None,
             source_group: Optional[objects.Group] = None,
-            source_vols: Optional[List[objects.Volume]] = None) \
-            -> Tuple[Dict[str, str], List[Dict[str, str]]]:
+            source_vols: Optional[list[objects.Volume]] = None) \
+            -> tuple[dict[str, str], list[dict[str, str]]]:
         """Creates a group from source.
 
         :param context: the context of the caller.
@@ -3518,7 +3520,7 @@ class VolumeManager(manager.CleanableManager,
         :returns: model_update, volumes_model_update
         """
         model_update = {'status': 'available'}
-        volumes_model_update: List[dict] = []
+        volumes_model_update: list[dict] = []
         for vol in volumes:
             if snapshots:
                 for snapshot in snapshots:
@@ -3819,7 +3821,7 @@ class VolumeManager(manager.CleanableManager,
     def _convert_group_to_cg(
             self,
             group: objects.Group,
-            volumes: objects.VolumeList) -> Tuple[objects.Group,
+            volumes: objects.VolumeList) -> tuple[objects.Group,
                                                   objects.VolumeList]:
         if not group:
             return None, None
@@ -3832,7 +3834,7 @@ class VolumeManager(manager.CleanableManager,
         return cg, volumes
 
     def _remove_consistencygroup_id_from_volumes(
-            self, volumes: Optional[List[objects.Volume]]) -> None:
+            self, volumes: Optional[list[objects.Volume]]) -> None:
         if not volumes:
             return
         for vol in volumes:
@@ -3843,7 +3845,7 @@ class VolumeManager(manager.CleanableManager,
             self,
             group_snapshot: objects.GroupSnapshot,
             snapshots: objects.SnapshotList,
-            ctxt) -> Tuple[objects.CGSnapshot,
+            ctxt) -> tuple[objects.CGSnapshot,
                            objects.SnapshotList]:
         if not group_snapshot:
             return None, None
@@ -3881,7 +3883,7 @@ class VolumeManager(manager.CleanableManager,
     def _delete_group_generic(self,
                               context: context.RequestContext,
                               group: objects.Group,
-                              volumes) -> Tuple:
+                              volumes) -> tuple:
         """Deletes a group and volumes in the group."""
         model_update = {'status': group.status}
         volume_model_updates = []
@@ -3903,7 +3905,7 @@ class VolumeManager(manager.CleanableManager,
     def _update_group_generic(
             self, context: context.RequestContext, group,
             add_volumes=None,
-            remove_volumes=None) -> Tuple[None, None, None]:
+            remove_volumes=None) -> tuple[None, None, None]:
         """Updates a group."""
         # NOTE(xyang): The volume manager adds/removes the volume to/from the
         # group in the database. This default implementation does not do
@@ -3916,7 +3918,7 @@ class VolumeManager(manager.CleanableManager,
             group,
             volumes: Optional[str],
             add: bool = True) -> list:
-        valid_status: Tuple[str, ...]
+        valid_status: tuple[str, ...]
         if add:
             valid_status = VALID_ADD_VOL_TO_GROUP_STATUS
         else:
@@ -4182,7 +4184,7 @@ class VolumeManager(manager.CleanableManager,
             self,
             context: context.RequestContext,
             group_snapshot: objects.GroupSnapshot,
-            snapshots: list) -> Tuple[dict, List[dict]]:
+            snapshots: list) -> tuple[dict, list[dict]]:
         """Creates a group_snapshot."""
         model_update = {'status': 'available'}
         snapshot_model_updates = []
@@ -4208,7 +4210,7 @@ class VolumeManager(manager.CleanableManager,
             self,
             context: context.RequestContext,
             group_snapshot: objects.GroupSnapshot,
-            snapshots: list) -> Tuple[dict, List[dict]]:
+            snapshots: list) -> tuple[dict, list[dict]]:
         """Deletes a group_snapshot."""
         model_update = {'status': group_snapshot.status}
         snapshot_model_updates = []
@@ -4772,7 +4774,7 @@ class VolumeManager(manager.CleanableManager,
                            ctxt: context.RequestContext,
                            volume: objects.Volume,
                            attachment: objects.VolumeAttachment,
-                           connector: dict) -> Dict[str, Any]:
+                           connector: dict) -> dict[str, Any]:
         try:
             self.driver.validate_connector(connector)
         except exception.InvalidConnectorException as err:
@@ -4830,7 +4832,7 @@ class VolumeManager(manager.CleanableManager,
                           context: context.RequestContext,
                           vref: objects.Volume,
                           connector: dict,
-                          attachment_id: str) -> Dict[str, Any]:
+                          attachment_id: str) -> dict[str, Any]:
         """Update/Finalize an attachment.
 
         This call updates a valid attachment record to associate with a volume
@@ -5236,7 +5238,7 @@ class VolumeManager(manager.CleanableManager,
 
     def list_replication_targets(self,
                                  ctxt: context.RequestContext,
-                                 group: objects.Group) -> Dict[str, list]:
+                                 group: objects.Group) -> dict[str, list]:
         """Provide a means to obtain replication targets for a group.
 
         This method is used to find the replication_device config

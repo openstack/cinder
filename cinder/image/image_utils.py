@@ -23,6 +23,7 @@ Some slight modifications, but at some point
 we should look at maybe pushing this up to Oslo
 """
 
+from __future__ import annotations  # Remove when only supporting python 3.9+
 
 import contextlib
 import errno
@@ -31,8 +32,7 @@ import math
 import os
 import re
 import tempfile
-from typing import (ContextManager, Dict, Generator,  # noqa: H301
-                    List, Optional, Tuple)
+from typing import ContextManager, Generator, Optional  # noqa: H301
 
 import cryptography
 from cursive import exception as cursive_exception
@@ -152,7 +152,7 @@ def qemu_img_info(path: str,
     return info
 
 
-def get_qemu_img_version() -> Optional[List[int]]:
+def get_qemu_img_version() -> Optional[list[int]]:
     """The qemu-img version will be cached until the process is restarted."""
 
     global QEMU_IMG_VERSION
@@ -187,8 +187,7 @@ def _get_qemu_convert_luks_cmd(src: str,
                                cipher_spec: Optional[dict] = None,
                                passphrase_file: Optional[str] = None,
                                src_passphrase_file: Optional[str] = None) \
-        -> List[str]:
-
+        -> list[str]:
     cmd = ['qemu-img', 'convert']
 
     if prefix:
@@ -223,8 +222,7 @@ def _get_qemu_convert_cmd(src: str,
                           passphrase_file: Optional[str] = None,
                           compress: bool = False,
                           src_passphrase_file: Optional[str] = None) \
-        -> List[str]:
-
+        -> list[str]:
     if src_passphrase_file is not None:
         if passphrase_file is None:
             message = _("Can't create unencrypted volume %(format)s "
@@ -290,7 +288,7 @@ def _get_qemu_convert_cmd(src: str,
     return cmd
 
 
-def _get_version_from_string(version_string: str) -> List[int]:
+def _get_version_from_string(version_string: str) -> list[int]:
     return [int(x) for x in version_string.split('.')]
 
 
@@ -451,7 +449,7 @@ def resize_image(source: str,
                  run_as_root: bool = False,
                  file_format: Optional[str] = None) -> None:
     """Changes the virtual size of the image."""
-    cmd: Tuple[str, ...]
+    cmd: tuple[str, ...]
     if file_format:
         cmd = ('qemu-img', 'resize', '-f', file_format, source, '%sG' % size)
     else:
@@ -922,7 +920,7 @@ def extract_targz(archive_name: str, target: str) -> None:
     utils.execute('tar', '-xzf', archive_name, '-C', target)
 
 
-def fix_vhd_chain(vhd_chain: List[str]) -> None:
+def fix_vhd_chain(vhd_chain: list[str]) -> None:
     for child, parent in zip(vhd_chain[:-1], vhd_chain[1:]):
         set_vhd_parent(child, parent)
 
@@ -991,7 +989,7 @@ def temporary_dir() -> ContextManager[str]:
     return utils.tempdir(dir=CONF.image_conversion_dir)
 
 
-def coalesce_chain(vhd_chain: List[str]) -> str:
+def coalesce_chain(vhd_chain: list[str]) -> str:
     for child, parent in zip(vhd_chain[:-1], vhd_chain[1:]):
         with temporary_dir() as directory_for_journal:
             size = get_vhd_size(child)
@@ -1003,7 +1001,7 @@ def coalesce_chain(vhd_chain: List[str]) -> str:
     return vhd_chain[-1]
 
 
-def discover_vhd_chain(directory: str) -> List[str]:
+def discover_vhd_chain(directory: str) -> list[str]:
     counter = 0
     chain = []
 
@@ -1028,7 +1026,7 @@ def replace_xenserver_image_with_coalesced_vhd(image_file: str) -> None:
         os.rename(coalesced, image_file)
 
 
-def decode_cipher(cipher_spec: str, key_size: int) -> Dict[str, str]:
+def decode_cipher(cipher_spec: str, key_size: int) -> dict[str, str]:
     """Decode a dm-crypt style cipher specification string
 
        The assumed format being cipher-chainmode-ivmode, similar to that
@@ -1060,7 +1058,7 @@ class TemporaryImages(object):
     """
 
     def __init__(self, image_service: glance.GlanceImageService):
-        self.temporary_images: Dict[str, dict] = {}
+        self.temporary_images: dict[str, dict] = {}
         self.image_service = image_service
         image_service.temp_images = self
 

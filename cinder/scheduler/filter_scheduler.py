@@ -20,7 +20,9 @@ You can customize this scheduler by specifying your own volume Filters and
 Weighing Functions.
 """
 
-from typing import List, Optional  # noqa: H301
+from __future__ import annotations
+
+from typing import Optional
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -375,9 +377,9 @@ class FilterScheduler(driver.Scheduler):
 
     def _get_weighted_candidates_generic_group(
             self, context: context.RequestContext,
-            group_spec: dict, request_spec_list: List[dict],
+            group_spec: dict, request_spec_list: list[dict],
             group_filter_properties: Optional[dict] = None,
-            filter_properties_list: Optional[List[dict]] = None) -> list:
+            filter_properties_list: Optional[list[dict]] = None) -> list:
         """Finds backends that supports the group.
 
         Returns a list of backends that meet the required specs,
@@ -486,7 +488,7 @@ class FilterScheduler(driver.Scheduler):
     def _get_weighted_candidates_by_group_type(
             self, context: context.RequestContext, group_spec: dict,
             group_filter_properties: Optional[dict] = None) \
-            -> List[WeighedHost]:
+            -> list[WeighedHost]:
         """Finds backends that supports the group type.
 
         Returns a list of backends that meet the required specs,
@@ -598,7 +600,7 @@ class FilterScheduler(driver.Scheduler):
         return self._choose_top_backend_generic_group(weighed_backends)
 
     def _choose_top_backend(self,
-                            weighed_backends: List[WeighedHost],
+                            weighed_backends: list[WeighedHost],
                             request_spec: dict):
         top_backend = weighed_backends[0]
         backend_state = top_backend.obj
@@ -609,7 +611,7 @@ class FilterScheduler(driver.Scheduler):
 
     def _choose_top_backend_generic_group(
             self,
-            weighed_backends: List[WeighedHost]) -> WeighedHost:
+            weighed_backends: list[WeighedHost]) -> WeighedHost:
         top_backend = weighed_backends[0]
         backend_state = top_backend.obj
         LOG.debug("Choosing %s", backend_state.backend_id)

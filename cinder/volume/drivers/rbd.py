@@ -13,6 +13,8 @@
 #    under the License.
 """RADOS Block Device Driver"""
 
+from __future__ import annotations
+
 import binascii
 import errno
 import json
@@ -20,7 +22,7 @@ import math
 import os
 import tempfile
 import typing
-from typing import Any, Dict, List, Optional, Tuple, Union  # noqa: H301
+from typing import Any, Optional, Union  # noqa: H301
 import urllib.parse
 
 from castellan import key_manager
@@ -163,7 +165,7 @@ class RBDVolumeProxy(object):
                  pool: Optional[str] = None,
                  snapshot: Optional[str] = None,
                  read_only: bool = False,
-                 remote: Optional[Dict[str, str]] = None,
+                 remote: Optional[dict[str, str]] = None,
                  timeout: Optional[int] = None,
                  client: 'rados.Rados' = None,
                  ioctx: 'rados.Ioctx' = None):
@@ -254,7 +256,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                  **kwargs) -> None:
         super(RBDDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(RBD_OPTS)
-        self._stats: Dict[str, Union[str, bool]] = {}
+        self._stats: dict[str, Union[str, bool]] = {}
         # allow overrides for testing
         self.rados = kwargs.get('rados', rados)
         self.rbd = kwargs.get('rbd', rbd)
@@ -270,10 +272,10 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         self._backend_name = (self.configuration.volume_backend_name or
                               self.__class__.__name__)
         self._active_backend_id: Optional[str] = active_backend_id
-        self._active_config: Dict[str, str] = {}
+        self._active_config: dict[str, str] = {}
         self._is_replication_enabled = False
         self._replication_targets: list = []
-        self._target_names: List[str] = []
+        self._target_names: list[str] = []
         self._clone_v2_api_checked: bool = False
 
         if self.rbd is not None:
@@ -341,7 +343,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                 ' performance, fewer deletion issues')
 
     def _get_target_config(self,
-                           target_id: Optional[str]) -> Dict[str,
+                           target_id: Optional[str]) -> dict[str,
                                                              str]:
         """Get a replication target from known replication targets."""
         for target in self._replication_targets:
@@ -371,7 +373,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             self._target_names.append('default')
 
     def _parse_replication_configs(self,
-                                   replication_devices: List[dict]) -> None:
+                                   replication_devices: list[dict]) -> None:
         for replication_device in replication_devices:
             if 'backend_id' not in replication_device:
                 msg = _('Missing backend_id in replication_device '
@@ -396,8 +398,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def _get_config_tuple(
             self,
-            remote: Optional[Dict[str, str]] = None) \
-            -> Tuple[Optional[str], Optional[str],
+            remote: Optional[dict[str, str]] = None) \
+            -> tuple[Optional[str], Optional[str],
                      Optional[str], Optional[str]]:
         if not remote:
             remote = self._active_config
@@ -486,7 +488,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     def RBDProxy(self) -> tpool.Proxy:
         return tpool.Proxy(self.rbd.RBD())
 
-    def _ceph_args(self) -> List[str]:
+    def _ceph_args(self) -> list[str]:
         args = []
 
         name, conf, user, secret_uuid = self._get_config_tuple()
@@ -504,13 +506,13 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                           pool: Optional[str] = None,
                           remote: Optional[dict] = None,
                           timeout: Optional[int] = None) -> \
-            Tuple['rados.Rados', 'rados.Ioctx']:
+            tuple['rados.Rados', 'rados.Ioctx']:
         @utils.retry(exception.VolumeBackendAPIException,
                      self.configuration.rados_connection_interval,
                      self.configuration.rados_connection_retries)
         def _do_conn(pool: Optional[str],
                      remote: Optional[dict],
-                     timeout: Optional[int]) -> Tuple['rados.Rados',
+                     timeout: Optional[int]) -> tuple['rados.Rados',
                                                       'rados.Ioctx']:
             name, conf, user, secret_uuid = self._get_config_tuple(remote)
 
@@ -557,7 +559,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         client.shutdown()
 
     @staticmethod
-    def _get_backup_snaps(rbd_image) -> List:
+    def _get_backup_snaps(rbd_image) -> list:
         """Get list of any backup snapshots that exist on this volume.
 
         There should only ever be one but accept all since they need to be
@@ -570,7 +572,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         from cinder.backup.drivers import ceph
         return ceph.CephBackupDriver.get_backup_snaps(rbd_image)
 
-    def _get_mon_addrs(self) -> Tuple[List[str], List[str]]:
+    def _get_mon_addrs(self) -> tuple[list[str], list[str]]:
         args = ['ceph', 'mon', 'dump', '--format=json']
         args.extend(self._ceph_args())
         out, _ = self._execute(*args)
@@ -578,7 +580,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         if lines[0].startswith('dumped monmap epoch'):
             lines = lines[1:]
         monmap = json.loads('\n'.join(lines))
-        addrs: List[str] = [mon['addr'] for mon in monmap['mons']]
+        addrs: list[str] = [mon['addr'] for mon in monmap['mons']]
         hosts = []
         ports = []
         for addr in addrs:
@@ -614,8 +616,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         total_provisioned = math.ceil(float(total_provisioned) / units.Gi)
         return total_provisioned
 
-    def _get_pool_stats(self) -> Union[Tuple[str, str],
-                                       Tuple[float, float]]:
+    def _get_pool_stats(self) -> Union[tuple[str, str],
+                                       tuple[float, float]]:
         """Gets pool free and total capacity in GiB.
 
         Calculate free and total capacity of the pool based on the pool's
@@ -753,7 +755,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     def create_cloned_volume(
             self,
             volume: Volume,
-            src_vref: Volume) -> Optional[Dict[str, Optional[str]]]:
+            src_vref: Volume) -> Optional[dict[str, Optional[str]]]:
         """Create a cloned volume from another volume.
 
         Since we are cloning from a volume and not a snapshot, we must first
@@ -860,7 +862,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         LOG.debug("clone created successfully")
         return volume_update
 
-    def _enable_replication(self, volume: Volume) -> Dict[str, str]:
+    def _enable_replication(self, volume: Volume) -> dict[str, str]:
         """Enable replication for a volume.
 
         Returns required volume update.
@@ -884,7 +886,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         return {'replication_status': fields.ReplicationStatus.ENABLED,
                 'replication_driver_data': driver_data}
 
-    def _enable_multiattach(self, volume: Volume) -> Dict[str, str]:
+    def _enable_multiattach(self, volume: Volume) -> dict[str, str]:
         vol_name = utils.convert_str(volume.name)
         with RBDVolumeProxy(self, vol_name) as image:
             image_features = image.features()
@@ -894,7 +896,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         return {'provider_location':
                 self._dumps({'saved_features': image_features})}
 
-    def _disable_multiattach(self, volume: Volume) -> Dict[str, None]:
+    def _disable_multiattach(self, volume: Volume) -> dict[str, None]:
         vol_name = utils.convert_str(volume.name)
         with RBDVolumeProxy(self, vol_name) as image:
             try:
@@ -932,7 +934,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     def _setup_volume(
             self,
             volume: Volume,
-            volume_type: Optional[VolumeType] = None) -> Dict[str,
+            volume_type: Optional[VolumeType] = None) -> dict[str,
                                                               Optional[str]]:
 
         if volume_type:
@@ -1030,7 +1032,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             cmd.extend(self._ceph_args())
             self._execute(*cmd)
 
-    def create_volume(self, volume: Volume) -> Dict[str, Any]:
+    def create_volume(self, volume: Volume) -> dict[str, Any]:
         """Creates a logical volume."""
 
         if volume.encryption_key_id:
@@ -1092,7 +1094,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                volume: Volume,
                src_pool: str,
                src_image: str,
-               src_snap: str) -> Dict[str, Optional[str]]:
+               src_snap: str) -> dict[str, Optional[str]]:
         LOG.debug('cloning %(pool)s/%(img)s@%(snap)s to %(dst)s',
                   dict(pool=src_pool, img=src_image, snap=src_snap,
                        dst=volume.name))
@@ -1178,8 +1180,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             self,
             volume: 'rbd.Image',
             volume_name: str,
-            snap: Optional[str] = None) -> Union[Tuple[str, str, str],
-                                                 Tuple[None, None, None]]:
+            snap: Optional[str] = None) -> Union[tuple[str, str, str],
+                                                 tuple[None, None, None]]:
         """If volume is a clone, return its parent info.
 
         Returns a tuple of (pool, parent, snap). A snapshot may optionally be
@@ -1207,7 +1209,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def _get_children_info(self,
                            volume: 'rbd.Image',
-                           snap: Optional[str]) -> List[tuple]:
+                           snap: Optional[str]) -> list[tuple]:
         """List children for the given snapshot of a volume(image).
 
         Returns a list of (pool, image).
@@ -1429,7 +1431,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         with RBDVolumeProxy(self, volume.name) as image:
             image.rollback_to_snap(snapshot.name)
 
-    def _disable_replication(self, volume: Volume) -> Dict[str, Optional[str]]:
+    def _disable_replication(self, volume: Volume) -> dict[str, Optional[str]]:
         """Disable replication on the given volume."""
         vol_name = utils.convert_str(volume.name)
         with RBDVolumeProxy(self, vol_name) as image:
@@ -1450,18 +1452,18 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                context: context.RequestContext,
                volume: Volume,
                new_type: VolumeType,
-               diff: Union[Dict[str, Dict[str, str]], Dict[str, Dict], None],
-               host: Optional[Dict[str, str]]) -> Tuple[bool, dict]:
+               diff: Union[dict[str, dict[str, str]], dict[str, dict], None],
+               host: Optional[dict[str, str]]) -> tuple[bool, dict]:
         """Retype from one volume type to another on the same backend."""
         return True, self._setup_volume(volume, new_type)
 
     @staticmethod
-    def _dumps(obj: Dict[str, Union[bool, int]]) -> str:
+    def _dumps(obj: dict[str, Union[bool, int]]) -> str:
         return json.dumps(obj, separators=(',', ':'), sort_keys=True)
 
     def _exec_on_volume(self,
                         volume_name: str,
-                        remote: Dict[str, str],
+                        remote: dict[str, str],
                         operation: str,
                         *args: Any,
                         **kwargs: Any):
@@ -1477,9 +1479,9 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def _failover_volume(self,
                          volume: Volume,
-                         remote: Dict[str, str],
+                         remote: dict[str, str],
                          is_demoted: bool,
-                         replication_status: str) -> Dict[str, Any]:
+                         replication_status: str) -> dict[str, Any]:
         """Process failover for a volume.
 
         There are 2 different cases that will return different update values
@@ -1519,8 +1521,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         return error_result
 
     def _demote_volumes(self,
-                        volumes: List[Volume],
-                        until_failure: bool = True) -> List[bool]:
+                        volumes: list[Volume],
+                        until_failure: bool = True) -> list[bool]:
         """Try to demote volumes on the current primary cluster."""
         result = []
         try_demoting = True
@@ -1542,7 +1544,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def _get_failover_target_config(
             self,
-            secondary_id: Optional[str] = None) -> Tuple[str, dict]:
+            secondary_id: Optional[str] = None) -> tuple[str, dict]:
         if not secondary_id:
             # In auto mode exclude failback and active
             candidates = set(self._target_names).difference(
@@ -1557,7 +1559,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                  context: context.RequestContext,
                  volumes: list,
                  secondary_id: Optional[str] = None,
-                 groups=None) -> Tuple[str, list, list]:
+                 groups=None) -> tuple[str, list, list]:
         """Failover replicated volumes."""
         LOG.info('RBD driver failover started.')
         if not self._is_replication_enabled:
@@ -1595,11 +1597,11 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def failover_host(self,
                       context: context.RequestContext,
-                      volumes: List[Volume],
+                      volumes: list[Volume],
                       secondary_id: Optional[str] = None,
-                      groups: Optional[List] = None) -> Tuple[str,
-                                                              List[Volume],
-                                                              List]:
+                      groups: Optional[list] = None) -> tuple[str,
+                                                              list[Volume],
+                                                              list]:
         """Failover to replication target.
 
         This function combines calls to failover() and failover_completed() to
@@ -1631,7 +1633,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def initialize_connection(self,
                               volume: Volume,
-                              connector: dict) -> Dict[str, Any]:
+                              connector: dict) -> dict[str, Any]:
         hosts, ports = self._get_mon_addrs()
         name, conf, user, secret_uuid = self._get_config_tuple()
         data = {
@@ -1662,7 +1664,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         pass
 
     @staticmethod
-    def _parse_location(location: str) -> List[str]:
+    def _parse_location(location: str) -> list[str]:
         prefix = 'rbd://'
         if not location.startswith(prefix):
             reason = _('Not stored in rbd')
@@ -1729,7 +1731,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                     volume: Volume,
                     image_location: Optional[list],
                     image_meta: dict,
-                    image_service) -> Tuple[dict, bool]:
+                    image_service) -> tuple[dict, bool]:
         if image_location:
             # Note: image_location[0] is glance image direct_url.
             # image_location[1] contains the list of all locations (including
@@ -1885,7 +1887,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                   {'old_size': old_size, 'new_size': new_size})
 
     def manage_existing(self,
-                        volume: Volume, existing_ref: Dict[str, str]) -> None:
+                        volume: Volume, existing_ref: dict[str, str]) -> None:
         """Manages an existing image.
 
         Renames the image name to match the expected name for the volume.
@@ -1906,7 +1908,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def manage_existing_get_size(self,
                                  volume: Volume,
-                                 existing_ref: Dict[str, str]) -> int:
+                                 existing_ref: dict[str, str]) -> int:
         """Return size of an existing image for manage_existing.
 
         :param volume:
@@ -1963,12 +1965,12 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         return json.loads(out)
 
     def get_manageable_volumes(self,
-                               cinder_volumes: List[Dict[str, str]],
+                               cinder_volumes: list[dict[str, str]],
                                marker: Optional[Any],
                                limit: int,
                                offset: int,
-                               sort_keys: List[str],
-                               sort_dirs: List[str]) -> List[Dict[str, Any]]:
+                               sort_keys: list[str],
+                               sort_dirs: list[str]) -> list[dict[str, Any]]:
         manageable_volumes = []
         cinder_ids = [resource['id'] for resource in cinder_volumes]
 
@@ -2016,11 +2018,11 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         pass
 
     def update_migrated_volume(self,
-                               ctxt: Dict,
+                               ctxt: dict,
                                volume: Volume,
                                new_volume: Volume,
                                original_volume_status: str) -> \
-            Union[Dict[str, None], Dict[str, Optional[str]]]:
+            Union[dict[str, None], dict[str, Optional[str]]]:
         """Return model update from RBD for migrated volume.
 
         This method should rename the back-end volume name(id) on the
@@ -2064,7 +2066,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     def migrate_volume(self,
                        context: context.RequestContext,
                        volume: Volume,
-                       host: Dict[str, Dict[str, str]]) -> Tuple[bool, None]:
+                       host: dict[str, dict[str, str]]) -> tuple[bool, None]:
 
         refuse_to_migrate = (False, None)
 
@@ -2146,7 +2148,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def manage_existing_snapshot_get_size(self,
                                           snapshot: Snapshot,
-                                          existing_ref: Dict[str, Any]) -> int:
+                                          existing_ref: dict[str, Any]) -> int:
         """Return size of an existing image for manage_existing.
 
         :param snapshot:
@@ -2197,7 +2199,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def manage_existing_snapshot(self,
                                  snapshot: Snapshot,
-                                 existing_ref: Dict[str, Any]) -> None:
+                                 existing_ref: dict[str, Any]) -> None:
         """Manages an existing snapshot.
 
         Renames the snapshot name to match the expected name for the snapshot.
@@ -2220,12 +2222,12 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 volume.protect_snap(snapshot.name)
 
     def get_manageable_snapshots(self,
-                                 cinder_snapshots: List[Dict[str, str]],
+                                 cinder_snapshots: list[dict[str, str]],
                                  marker: Optional[Any],
                                  limit: int,
                                  offset: int,
-                                 sort_keys: List[str],
-                                 sort_dirs: List[str]) -> List[Dict[str, Any]]:
+                                 sort_keys: list[str],
+                                 sort_dirs: list[str]) -> list[dict[str, Any]]:
         """List manageable snapshots on RBD backend."""
         manageable_snapshots = []
         cinder_snapshot_ids = [resource['id'] for resource in cinder_snapshots]
@@ -2286,7 +2288,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def get_backup_device(self,
                           context: context.RequestContext,
-                          backup: Backup) -> Tuple[Volume, bool]:
+                          backup: Backup) -> tuple[Volume, bool]:
         """Get a backup device from an existing volume.
 
         To support incremental backups on Ceph to Ceph we don't clone

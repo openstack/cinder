@@ -10,7 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from typing import Any, Dict, List, Optional, Tuple, Type, Union  # noqa: H301
+
+from __future__ import annotations  # Remove when only supporting python 3.9+
+
+from typing import Any, Optional, Type, Union  # noqa: H301
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -82,10 +85,10 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
     @staticmethod
     def _extract_resource(resource: Optional[dict],
-                          allowed_vals: Tuple[Tuple[str, ...]],
+                          allowed_vals: tuple[tuple[str, ...]],
                           exc: Type[exception.CinderException],
                           resource_name: str,
-                          props: Tuple[str] = ('status',)) -> Optional[str]:
+                          props: tuple[str] = ('status',)) -> Optional[str]:
         """Extracts the resource id from the provided resource.
 
         This method validates the input resource dict and checks that the
@@ -233,7 +236,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
     def _get_image_metadata(self,
                             context: context.RequestContext,
                             image_id: Optional[str],
-                            size: int) -> Optional[Dict[str, Any]]:
+                            size: int) -> Optional[dict[str, Any]]:
         """Checks image existence and validates the image metadata.
 
         Returns: image metadata or None
@@ -257,7 +260,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             snapshot,
             source_volume,
             group: Optional[dict],
-            volume_type: Optional[Dict[str, Any]] = None) -> Tuple[List[str],
+            volume_type: Optional[dict[str, Any]] = None) -> tuple[list[str],
                                                                    bool]:
         """Extracts and returns a validated availability zone list.
 
@@ -358,7 +361,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             volume_type_id: str,
             snapshot: Optional[objects.Snapshot],
             source_volume: Optional[objects.Volume],
-            image_metadata: Optional[Dict[str, Any]]) -> Optional[str]:
+            image_metadata: Optional[dict[str, Any]]) -> Optional[str]:
         if volume_types.is_encrypted(context, volume_type_id):
             encryption_key_id = None
 
@@ -442,7 +445,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 group,
                 group_snapshot,
                 backup: Optional[dict],
-                multiattach: bool = False) -> Dict[str, Any]:
+                multiattach: bool = False) -> dict[str, Any]:
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -502,7 +505,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         if multiattach:
             context.authorize(policy.MULTIATTACH_POLICY)
 
-        specs: Optional[Dict] = {}
+        specs: Optional[dict] = {}
         if volume_type_id:
             qos_specs = volume_types.get_volume_type_qos_specs(volume_type_id)
             if qos_specs['qos_specs']:
@@ -560,7 +563,7 @@ class EntryCreateTask(flow_utils.CinderTask):
     def execute(self,
                 context: context.RequestContext,
                 optional_args: dict,
-                **kwargs) -> Dict[str, Any]:
+                **kwargs) -> dict[str, Any]:
         """Creates a database entry for the given inputs and returns details.
 
         Accesses the database and creates a new entry for the to be created
@@ -809,8 +812,8 @@ class VolumeCastTask(flow_utils.CinderTask):
 
     def _cast_create_volume(self,
                             context: context.RequestContext,
-                            request_spec: Dict[str, Any],
-                            filter_properties: Dict) -> None:
+                            request_spec: dict[str, Any],
+                            filter_properties: dict) -> None:
         source_volid = request_spec['source_volid']
         volume = request_spec['volume']
         snapshot_id = request_spec['snapshot_id']

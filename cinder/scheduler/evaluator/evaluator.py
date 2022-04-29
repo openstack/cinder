@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import annotations  # Remove when only supporting python 3.9+
+
 import operator
 import re
-from typing import Callable, Dict  # noqa: H301
+from typing import Callable
 
 import pyparsing
 
@@ -168,7 +170,7 @@ class EvalTernaryOp(object):
 
 
 class EvalFunction(object):
-    functions: Dict[str, Callable] = {
+    functions: dict[str, Callable] = {
         "abs": abs,
         "max": max,
         "min": min,
