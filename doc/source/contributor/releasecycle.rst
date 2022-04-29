@@ -41,12 +41,19 @@ Before PTG (after closing previous release)
 
 #. Review the :ref:`cinder-groups`.
 
-Between Summit and Milestone-1
-==============================
+Between PTG and Milestone-1
+===========================
 
 #. Review output from the PTG and set Review-Priority on any high
    priority items identified from those discussions. Send out recap to
    the mailing list.
+
+#. Review information about standing Cinder meetings posted at
+   https://meetings.opendev.org/ in case any changes were discussed
+   at the PTG.  You make changes by proposing a patch to
+   https://opendev.org/opendev/irc-meetings
+
+   Example patch: https://review.opendev.org/c/opendev/irc-meetings/+/695339
 
 #. Focus on spec reviews to get them approved and updated early in
    the cycle to allow enough time for implementation.
