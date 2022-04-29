@@ -41,10 +41,14 @@ class GoodnessWeigher(weights.BaseHostWeigher):
     def _weigh_object(self, host_state, weight_properties):
         """Determine host's goodness rating based on a goodness_function."""
         stats = self._generate_stats(host_state, weight_properties)
-        LOG.debug("Checking host '%s'", stats['host_stats']['host'])
-        result = self._check_goodness_function(stats)
+        LOG.debug("Checking host '%s'", stats[0]['host_stats']['host'])
+        # Run the goodness function for all possible storage_protocol values
+        # (e.g. FC, fibre_channel) and use the maximum value, as the function
+        # may look for an exact match on a protocol and the backend may be
+        # returning a variant.
+        result = max(self._check_goodness_function(stat) for stat in stats)
         LOG.debug("Goodness weight for %(host)s: %(res)s",
-                  {'res': result, 'host': stats['host_stats']['host']})
+                  {'res': result, 'host': stats[0]['host_stats']['host']})
 
         return result
 
@@ -101,8 +105,12 @@ class GoodnessWeigher(weights.BaseHostWeigher):
         return result
 
     def _generate_stats(self, host_state, weight_properties):
-        """Generates statistics from host and volume data."""
+        """Generates statistics from host and volume data.
 
+        Returns a list where each entry corresponds to a different
+        storage_protocol value for those backends that use a storage protocol
+        that has variants, but only if the function actually uses the protocol.
+        """
         host_stats = {
             'host': host_state.host,
             'volume_backend_name': host_state.volume_backend_name,
@@ -120,10 +128,12 @@ class GoodnessWeigher(weights.BaseHostWeigher):
         host_caps = host_state.capabilities
 
         goodness_function = None
+        uses_protocol = False
 
         if ('goodness_function' in host_caps and
                 host_caps['goodness_function'] is not None):
             goodness_function = str(host_caps['goodness_function'])
+            uses_protocol = 'storage_protocol' in goodness_function
 
         qos_specs = weight_properties.get('qos_specs', {}) or {}
 
@@ -143,4 +153,19 @@ class GoodnessWeigher(weights.BaseHostWeigher):
             'goodness_function': goodness_function,
         }
 
-        return stats
+        # Only create individual entries for the different protocols variants
+        # if the function uses the protocol and there are variants.
+        if uses_protocol and isinstance(host_state.storage_protocol, list):
+            result = []
+            for protocol in host_state.storage_protocol:
+                new_stats = stats.copy()
+                new_stats['host_stats'] = dict(new_stats['host_stats'])
+                new_stats['host_stats']['storage_protocol'] = protocol
+                new_stats['host_caps'] = dict(new_stats['host_caps'])
+                new_stats['host_caps']['storage_protocol'] = protocol
+                result.append(new_stats)
+
+        else:
+            result = [stats]
+
+        return result

@@ -113,6 +113,24 @@ extending. If it doesn't, it should report 'online_extend_support=False'.
 Otherwise the scheduler will attempt to perform the operation, and may leave
 the volume in 'error_extending' state.
 
+Value of ``storage_protocol`` is a single string representing the transport
+protocol used by the storage.  Existing protocols are present in
+``cinder.common.constants`` and should be used by drivers instead of string
+literals.
+
+Variant values only exist for older drivers that were already reporting those
+values.  New drivers must use non variant versions.
+
+The ``storage_protocol`` can be used by operators using the
+``cinder get-pools --detail`` command, by volume types in their extra specs,
+and by the filter and goodness functions.
+
+We must not mistake the value of the ``storage_protocol`` with the identifier
+of the os-brick connector, which is returned by the ``initialize_connection``
+driver method in the ``driver_volume_type`` dictionary key.  In some cases they
+may have the same value, but they are different things.
+
+
 Feature Enforcement
 -------------------
 
