@@ -1,18 +1,18 @@
 =================================
-Dell EMC PowerFlex Storage driver
+Dell PowerFlex Storage driver
 =================================
 
 Overview
 --------
 
-Dell EMC PowerFlex (formerly named Dell EMC ScaleIO/VxFlex OS) is a
+Dell PowerFlex (formerly named Dell ScaleIO/VxFlex OS) is a
 software-only solution that uses existing servers local
 disks and LAN to create a virtual SAN that has all of the benefits of
 external storage, but at a fraction of the cost and complexity. Using the
 driver, Block Storage hosts can connect to a PowerFlex Storage
 cluster.
 
-The Dell EMC PowerFlex Cinder driver is designed and tested to work with
+The Dell PowerFlex Cinder driver is designed and tested to work with
 both PowerFlex and with ScaleIO. The
 :ref:`configuration options <cg_configuration_options_dellemc>`
 are identical for both PowerFlex and ScaleIO.
@@ -31,7 +31,7 @@ To find the PowerFlex documentation:
 Supported PowerFlex or VxFlex OS Versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Dell EMC PowerFlex Block Storage driver has been tested against the
+The Dell PowerFlex Block Storage driver has been tested against the
 following versions of VxFlex OS and PowerFlex and found to be
 compatible:
 
@@ -141,7 +141,7 @@ PowerFlex user credentials
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Block Storage requires a PowerFlex user with administrative
-privileges. Dell EMC recommends creating a dedicated OpenStack user
+privileges. Dell recommends creating a dedicated OpenStack user
 account that has an administrative user role.
 
 Refer to the PowerFlex User Guide for details on user account management.

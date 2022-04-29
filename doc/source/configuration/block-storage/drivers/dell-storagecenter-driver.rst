@@ -1,12 +1,12 @@
 ==================================================
-Dell EMC SC Series Fibre Channel and iSCSI drivers
+Dell SC Series Fibre Channel and iSCSI drivers
 ==================================================
 
-The Dell EMC Storage Center volume driver interacts with configured Storage
+The Dell Storage Center volume driver interacts with configured Storage
 Center arrays.
 
-The Dell EMC Storage Center driver manages a Storage Center array via the
-Dell EMC Storage Manager (DSM) Data Collector or by directly connecting to
+The Dell Storage Center driver manages a Storage Center array via the
+Dell Storage Manager (DSM) Data Collector or by directly connecting to
 the Storage Center at the cost of replication and Live Volume functionality.
 Also note that the directly connecting to the Storage Center is only
 supported with Storage Center OS 7.1.1 or later. Any version of Storage
@@ -20,12 +20,12 @@ Prerequisites:
 
 - Storage Center OS version 7.1.1 or later and OpenStack Ocata or later
   must be used if connecting directly to the Storage Center.
-- Dell EMC Storage Manager 2015 R1 or later if connecting through DSM.
+- Dell Storage Manager 2015 R1 or later if connecting through DSM.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
 
-The Dell EMC Storage Center volume driver provides the following Cinder
+The Dell Storage Center volume driver provides the following Cinder
 volume operations:
 
 -  Create, delete, attach (map), and detach (unmap) volumes.
@@ -45,7 +45,7 @@ volume operations:
 Extra spec options
 ~~~~~~~~~~~~~~~~~~
 
-Volume type extra specs can be used to enable a variety of Dell EMC Storage
+Volume type extra specs can be used to enable a variety of Dell Storage
 Center options. Selecting Storage Profiles, Replay Profiles, enabling
 replication, replication options including Live Volume and Active Replay
 replication. (Replication options are available when connected via DSM.)
@@ -329,11 +329,11 @@ Server type configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This option allows one to set a default Server OS type to use when creating
-a server definition on the Dell EMC Storage Center.
+a server definition on the Dell Storage Center.
 
-When attaching a volume to a node the Dell EMC Storage Center driver creates a
+When attaching a volume to a node the Dell Storage Center driver creates a
 server definition on the storage array. This definition includes a Server OS
-type. The type used by the Dell EMC Storage Center cinder driver is
+type. The type used by the Dell Storage Center cinder driver is
 "Red Hat Linux 6.x". This is a modern operating system definition that supports
 all the features of an OpenStack node.
 
@@ -400,10 +400,10 @@ domains at 172.20.25.15 and 172.20.26.15.
 
 
 
-Setting Dell EMC SC REST API timeouts
+Setting Dell SC REST API timeouts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The user can specify timeouts for Dell EMC SC REST API calls.
+The user can specify timeouts for Dell SC REST API calls.
 
 To set the timeout for ASYNC REST API calls in seconds.
 
@@ -419,13 +419,13 @@ To set the timeout for SYNC REST API calls in seconds.
     [dell]
     dell_api_sync_rest_timeout=30
 
-Generally these should not be set without guidance from Dell EMC support.
+Generally these should not be set without guidance from Dell support.
 
 Driver options
 ~~~~~~~~~~~~~~
 
 The following table contains the configuration options specific to the
-Dell EMC Storage Center volume driver.
+Dell Storage Center volume driver.
 
 .. config-table::
    :config-target: SC Series

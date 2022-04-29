@@ -1,10 +1,10 @@
 =====================
-Dell EMC Unity driver
+Dell Unity driver
 =====================
 
 Unity driver has been integrated in the OpenStack Block Storage project since
 the Ocata release. The driver is built on the top of Block Storage framework
-and a Dell EMC distributed Python package
+and a Dell distributed Python package
 `storops <https://pypi.org/project/storops>`_.
 
 Prerequisites

@@ -66,21 +66,21 @@ Kaminario iSCSI driver:
   - Where: `initialize_connection` and `terminate_connection` methods.
   - File: `cinder/volume/drivers/kaminario/kaminario_iscsi.py`
 
-Dell EMC Unity:
+Dell Unity:
   - Lock scope: Global.
   - Critical section: Create or get a host on the backend.
   - Lock name: `{self.host}-{name}`
   - Where: `create_host` method.
   - File: `cinder/volume/drivers/dell_emc/unity/client.py`
 
-Dell EMC Unity:
+Dell Unity:
   - Lock scope: Global.
   - Critical section: Create host and attach.
   - Lock name: `{client.host}-{host_name}`
   - Where: `_create_host_and_attach` method.
   - File: `cinder/volume/drivers/dell_emc/unity/adapter.py`
 
-Dell EMC Unity:
+Dell Unity:
   - Lock scope: Global.
   - Critical section: Create host and attach as part of the
     `initialize_connection` process, and also detach and delete host as part of
