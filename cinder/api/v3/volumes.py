@@ -46,7 +46,7 @@ class VolumeController(volumes_v2.VolumeController):
 
     _view_builder_class = volume_views_v3.ViewBuilder
 
-    def __init__(self, ext_mgr):
+    def __init__(self, ext_mgr=None):
         self.group_api = group_api.API()
         self.backup_api = backup_api.API()
         super(VolumeController, self).__init__(ext_mgr)
