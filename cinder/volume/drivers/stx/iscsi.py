@@ -17,6 +17,7 @@
 
 from oslo_log import log as logging
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 import cinder.volume.driver
@@ -161,7 +162,7 @@ class STXISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
     def get_volume_stats(self, refresh=False):
         stats = self.common.get_volume_stats(refresh)
-        stats['storage_protocol'] = 'iSCSI'
+        stats['storage_protocol'] = constants.ISCSI
         stats['driver_version'] = self.VERSION
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = (backend_name or

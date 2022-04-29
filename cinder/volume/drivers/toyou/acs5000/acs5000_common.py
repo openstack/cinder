@@ -30,6 +30,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 import paramiko
 
+from cinder.common import constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -355,7 +356,7 @@ class Acs5000CommonDriver(san.SanDriver,
         self._state.update(self._cmd.get_system())
 
         self._state['controller'] = self._cmd.ls_controller()
-        if self.protocol == 'FC':
+        if self.protocol == constants.FC:
             ports = self._cmd.ls_fc()
         else:
             ports = self._cmd.ls_iscsi()

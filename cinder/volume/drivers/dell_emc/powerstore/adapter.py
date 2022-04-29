@@ -18,6 +18,7 @@
 from oslo_log import log as logging
 from oslo_utils import strutils
 
+from cinder.common import constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -31,8 +32,8 @@ from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)
-PROTOCOL_FC = "FC"
-PROTOCOL_ISCSI = "iSCSI"
+PROTOCOL_FC = constants.FC
+PROTOCOL_ISCSI = constants.ISCSI
 CHAP_MODE_SINGLE = "Single"
 
 

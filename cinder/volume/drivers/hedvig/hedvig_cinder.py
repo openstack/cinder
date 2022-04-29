@@ -24,6 +24,7 @@ from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import units
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -97,7 +98,7 @@ class HedvigISCSIDriver(driver.ISCSIDriver, san.SanDriver):
             stats["volume_backend_name"] = "hedvig"
             stats["vendor_name"] = "Hedvig Inc"
             stats["driver_version"] = self.VERSION
-            stats["storage_protocol"] = "iSCSI"
+            stats["storage_protocol"] = constants.ISCSI
             stats["total_capacity_gb"] = total_capacity
             stats["free_capacity_gb"] = free_capacity
             stats["QoS_support"] = True

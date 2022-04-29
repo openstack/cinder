@@ -22,6 +22,7 @@ from oslo_log import log as logging
 from oslo_utils import units
 import six
 
+from cinder.common import constants
 from cinder import context
 from cinder import coordination
 from cinder.i18n import _
@@ -77,7 +78,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
 
     vendor_name = 'Nexenta'
     product_name = 'NexentaStor5'
-    storage_protocol = 'iSCSI'
+    storage_protocol = constants.ISCSI
     driver_volume_type = 'iscsi'
 
     def __init__(self, *args, **kwargs):

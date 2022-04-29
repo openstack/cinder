@@ -29,6 +29,7 @@ from oslo_utils import fileutils
 from oslo_utils import units
 from oslo_utils import uuidutils
 
+from cinder.common import constants
 from cinder import exception
 from cinder.image import image_utils
 from cinder import interface
@@ -334,7 +335,7 @@ class WindowsISCSIDriver(driver.ISCSIDriver):
         data["volume_backend_name"] = backend_name or self.__class__.__name__
         data["vendor_name"] = 'Microsoft'
         data["driver_version"] = self.VERSION
-        data["storage_protocol"] = 'iSCSI'
+        data["storage_protocol"] = constants.ISCSI
         data['total_capacity_gb'] = total_gb
         data['free_capacity_gb'] = free_gb
         data['reserved_percentage'] = self.configuration.reserved_percentage

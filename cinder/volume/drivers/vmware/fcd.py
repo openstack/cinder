@@ -27,6 +27,7 @@ from oslo_vmware import image_transfer
 from oslo_vmware.objects import datastore
 from oslo_vmware import vim_util
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -55,7 +56,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
     # minimum supported vCenter version
     MIN_SUPPORTED_VC_VERSION = '6.5'
 
-    STORAGE_TYPE = 'vstorageobject'
+    STORAGE_TYPE = constants.VSTORAGE
 
     def do_setup(self, context):
         """Any initialization the volume driver needs to do while starting.

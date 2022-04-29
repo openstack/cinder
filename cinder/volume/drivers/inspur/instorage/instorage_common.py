@@ -32,6 +32,7 @@ from oslo_utils import units
 import paramiko
 import six
 
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
@@ -212,11 +213,11 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         for k, node in self._state['storage_nodes'].items():
             if ((len(node['ipv4']) or len(node['ipv6'])) and
                     len(node['iscsi_name'])):
-                node['enabled_protocols'].append('iSCSI')
-                self._state['enabled_protocols'].add('iSCSI')
+                node['enabled_protocols'].append(constants.ISCSI)
+                self._state['enabled_protocols'].add(constants.ISCSI)
             if len(node['WWPN']):
-                node['enabled_protocols'].append('FC')
-                self._state['enabled_protocols'].add('FC')
+                node['enabled_protocols'].append(constants.FC)
+                self._state['enabled_protocols'].add(constants.FC)
             if not len(node['enabled_protocols']):
                 to_delete.append(k)
         for delkey in to_delete:

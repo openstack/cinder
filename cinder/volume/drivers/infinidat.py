@@ -24,6 +24,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 
+from cinder.common import constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -164,12 +165,12 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         self._backend_name = backend_name or self.__class__.__name__
         self._volume_stats = None
         if self.configuration.infinidat_storage_protocol.lower() == 'iscsi':
-            self._protocol = 'iSCSI'
+            self._protocol = constants.ISCSI
             if len(self.configuration.infinidat_iscsi_netspaces) == 0:
                 msg = _('No iSCSI network spaces configured')
                 raise exception.VolumeDriverException(message=msg)
         else:
-            self._protocol = 'FC'
+            self._protocol = constants.FC
         if (self.configuration.infinidat_use_compression and
            not self._system.compat.has_compression()):
             # InfiniBox systems support compression only from v3.0 and up
@@ -182,7 +183,8 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         LOG.debug('setup complete')
 
     def validate_connector(self, connector):
-        required = 'initiator' if self._protocol == 'iSCSI' else 'wwpns'
+        required = ('initiator' if self._protocol == constants.ISCSI
+                    else 'wwpns')
         if required not in connector:
             LOG.error('The volume driver requires %(data)s '
                       'in the connector.', {'data': required})
@@ -419,7 +421,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         if connector is None:
             # If no connector was provided it is a force-detach - remove all
             # host connections for the volume
-            if self._protocol == 'FC':
+            if self._protocol == constants.FC:
                 port_cls = wwn.WWN
             else:
                 port_cls = iqn.IQN
@@ -429,7 +431,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                 host_ports = [port for port in host_ports
                               if isinstance(port, port_cls)]
                 ports.extend(host_ports)
-        elif self._protocol == 'FC':
+        elif self._protocol == constants.FC:
             ports = [wwn.WWN(wwpn) for wwpn in connector['wwpns']]
         else:
             ports = [iqn.IQN(connector['initiator'])]
@@ -439,7 +441,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     @coordination.synchronized('infinidat-{self.management_address}-lock')
     def initialize_connection(self, volume, connector):
         """Map an InfiniBox volume to the host"""
-        if self._protocol == 'FC':
+        if self._protocol == constants.FC:
             return self._initialize_connection_fc(volume, connector)
         else:
             return self._initialize_connection_iscsi(volume, connector)
@@ -449,7 +451,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Unmap an InfiniBox volume from the host"""
         infinidat_volume = self._get_infinidat_volume(volume)
-        if self._protocol == 'FC':
+        if self._protocol == constants.FC:
             volume_type = 'fibre_channel'
         else:
             volume_type = 'iscsi'
@@ -469,7 +471,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             # check if the host now doesn't have mappings
             if host is not None and len(host.get_luns()) == 0:
                 host.safe_delete()
-                if self._protocol == 'FC' and connector is not None:
+                if self._protocol == constants.FC and connector is not None:
                     # Create initiator-target mapping to delete host entry
                     # this is only relevant for regular (specific host) detach
                     target_wwpns = list(self._get_online_fc_ports())
@@ -480,7 +482,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                                        initiator_target_map=target_map)
         conn_info = dict(driver_volume_type=volume_type,
                          data=result_data)
-        if self._protocol == 'FC':
+        if self._protocol == constants.FC:
             fczm_utils.remove_fc_zone(conn_info)
         return conn_info
 

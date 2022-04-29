@@ -37,6 +37,7 @@ from oslo_vmware import image_transfer
 from oslo_vmware import pbm
 from oslo_vmware import vim_util
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
@@ -369,7 +370,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         data = {'volume_backend_name': backend_name,
                 'vendor_name': 'VMware',
                 'driver_version': self.VERSION,
-                'storage_protocol': 'vmdk',
+                'storage_protocol': constants.VMDK,
                 'reserved_percentage': self.configuration.reserved_percentage,
                 'shared_targets': False}
         ds_summaries = self._get_datastore_summaries()

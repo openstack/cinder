@@ -29,6 +29,7 @@ from oslo_utils import units
 import six
 from six.moves import http_client
 
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
@@ -956,7 +957,7 @@ class PowerFlexDriver(driver.VolumeDriver):
         stats["volume_backend_name"] = backend_name or "powerflex"
         stats["vendor_name"] = "Dell EMC"
         stats["driver_version"] = self.VERSION
-        stats["storage_protocol"] = "scaleio"
+        stats["storage_protocol"] = constants.SCALEIO
         stats["reserved_percentage"] = 0
         stats["QoS_support"] = True
         stats["consistent_group_snapshot_enabled"] = True

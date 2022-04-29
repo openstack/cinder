@@ -20,6 +20,7 @@
 from oslo_log import log as logging
 import six
 
+from cinder.common import constants
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.fujitsu.eternus_dx import eternus_dx_common
@@ -192,7 +193,7 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
             data, pool_name = self.common.update_volume_stats()
             backend_name = self.configuration.safe_get('volume_backend_name')
             data['volume_backend_name'] = backend_name or 'FJDXISCSIDriver'
-            data['storage_protocol'] = 'iSCSI'
+            data['storage_protocol'] = constants.ISCSI
             self._stats = data
 
         LOG.debug('get_volume_stats, '

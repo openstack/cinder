@@ -17,6 +17,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import netutils
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -72,7 +73,7 @@ class RBDISCSIDriver(rbd.RBDDriver):
 
     SUPPORTS_ACTIVE_ACTIVE = True
 
-    STORAGE_PROTOCOL = 'iSCSI'
+    STORAGE_PROTOCOL = constants.ISCSI
     CHAP_LENGTH = 16
 
     # The target IQN to use for creating all exports

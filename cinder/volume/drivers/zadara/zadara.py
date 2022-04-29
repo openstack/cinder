@@ -22,6 +22,7 @@ from oslo_log import log as logging
 from oslo_utils import strutils
 import six
 
+from cinder.common import constants
 from cinder import exception as cinder_exception
 from cinder.i18n import _
 from cinder import interface
@@ -709,9 +710,9 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         """Retrieve stats info from volume group."""
         LOG.debug("Updating volume stats")
         backend_name = self.configuration.safe_get('volume_backend_name')
-        storage_protocol = ('iSER' if
+        storage_protocol = (constants.ISER if
                             (self.configuration.safe_get('zadara_use_iser'))
-                            else 'iSCSI')
+                            else constants.ISCSI)
         pool_name = self.configuration.zadara_vpsa_poolname
         (total, free, provisioned) = self.vpsa._get_pool_capacity(pool_name)
         data = dict(

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1969366 <https://bugs.launchpad.net/cinder/+bug/1969366>`_: Fixed
+    reporting of cacheable capability by drivers.

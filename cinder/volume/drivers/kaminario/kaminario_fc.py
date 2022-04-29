@@ -15,6 +15,7 @@
 """Volume driver for Kaminario K2 all-flash arrays."""
 from oslo_log import log as logging
 
+from cinder.common import constants
 from cinder import coordination
 from cinder.i18n import _
 from cinder.objects import fields
@@ -45,7 +46,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
     @volume_utils.trace
     def __init__(self, *args, **kwargs):
         super(KaminarioFCDriver, self).__init__(*args, **kwargs)
-        self._protocol = 'FC'
+        self._protocol = constants.FC
         self.lookup_service = fczm_utils.create_lookup_service()
 
     @volume_utils.trace

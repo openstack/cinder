@@ -20,6 +20,7 @@ import string
 from oslo_log import log as logging
 from oslo_utils import units as o_units
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -743,7 +744,7 @@ class JovianISCSIDriver(driver.ISCSIDriver):
         self._stats = {
             'vendor_name': 'Open-E',
             'driver_version': self.VERSION,
-            'storage_protocol': 'iSCSI',
+            'storage_protocol': constants.ISCSI,
             'total_capacity_gb': total_capacity,
             'free_capacity_gb': free_capacity,
             'reserved_percentage': int(reserved_percentage),

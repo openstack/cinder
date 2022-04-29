@@ -49,6 +49,7 @@ import requests
 import six
 from six.moves import http_client
 
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
@@ -1101,7 +1102,7 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(XtremIOISCSIDriver, self).__init__(*args, **kwargs)
-        self.protocol = 'iSCSI'
+        self.protocol = constants.ISCSI
 
     def _add_auth(self, data, login_chap, discovery_chap):
         login_passwd, discovery_passwd = None, None
@@ -1240,7 +1241,7 @@ class XtremIOFCDriver(XtremIOVolumeDriver,
 
     def __init__(self, *args, **kwargs):
         super(XtremIOFCDriver, self).__init__(*args, **kwargs)
-        self.protocol = 'FC'
+        self.protocol = constants.FC
         self._targets = None
 
     def get_targets(self):

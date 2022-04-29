@@ -27,6 +27,7 @@ from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 
+from cinder.common import constants
 from cinder import context
 from cinder.coordination import synchronized
 from cinder import exception
@@ -1023,7 +1024,7 @@ class MacroSANISCSIDriver(MacroSANBaseDriver, driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
         super(MacroSANISCSIDriver, self).__init__(*args, **kwargs)
-        self.storage_protocol = 'iSCSI'
+        self.storage_protocol = constants.ISCSI
 
     def _do_setup(self):
         ports = self.client.get_iscsi_ports()
@@ -1224,7 +1225,7 @@ class MacroSANFCDriver(MacroSANBaseDriver, driver.FibreChannelDriver):
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
         super(MacroSANFCDriver, self).__init__(*args, **kwargs)
-        self.storage_protocol = 'FC'
+        self.storage_protocol = constants.FC
         self.fcsan_lookup_service = None
         self.use_sp_port_nr = self.configuration.macrosan_fc_use_sp_port_nr
         self.keep_mapped_ports = \

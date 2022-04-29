@@ -38,6 +38,7 @@ except ImportError:
 from oslo_log import log as logging
 from oslo_utils.excutils import save_and_reraise_exception
 
+from cinder.common import constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -138,7 +139,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
-        self.protocol = 'iSCSI'
+        self.protocol = constants.ISCSI
 
     def _do_setup(self, common):
         client_obj = common.client

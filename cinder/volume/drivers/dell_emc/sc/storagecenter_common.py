@@ -19,6 +19,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 import six
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
@@ -112,7 +113,7 @@ class SCCommonDriver(driver.ManageableVD,
         LOG.info('Loading %(name)s: Failover state is %(state)r',
                  {'name': self.backend_name,
                   'state': self.failed_over})
-        self.storage_protocol = 'iSCSI'
+        self.storage_protocol = constants.ISCSI
         self.failback_timeout = 60
 
     @staticmethod

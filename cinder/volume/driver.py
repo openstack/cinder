@@ -25,6 +25,7 @@ from oslo_config import types
 from oslo_log import log as logging
 from oslo_utils import excutils
 
+from cinder.common import constants
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -221,8 +222,8 @@ volume_opts = [
                      'directly, it will only notify that it can be used.'),
     cfg.StrOpt('storage_protocol',
                ignore_case=True,
-               default='iscsi',
-               choices=['iscsi', 'fc'],
+               default=constants.ISCSI,
+               choices=[constants.ISCSI, constants.FC],
                help='Protocol for transferring data between host and '
                     'storage back-end.'),
     cfg.BoolOpt('enable_unsupported_driver',
@@ -2805,7 +2806,7 @@ class ISCSIDriver(VolumeDriver):
         data["volume_backend_name"] = backend_name or 'Generic_iSCSI'
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'iSCSI'
+        data["storage_protocol"] = constants.ISCSI
         data["pools"] = []
         data["replication_enabled"] = False
 
@@ -2874,7 +2875,7 @@ class ISERDriver(ISCSIDriver):
         data["volume_backend_name"] = backend_name or 'Generic_iSER'
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'iSER'
+        data["storage_protocol"] = constants.ISER
         data["pools"] = []
 
         self._update_pools_and_stats(data)
@@ -2950,7 +2951,7 @@ class FibreChannelDriver(VolumeDriver):
         data["volume_backend_name"] = backend_name or 'Generic_FC'
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'FC'
+        data["storage_protocol"] = constants.FC
         data["pools"] = []
 
         self._update_pools_and_stats(data)

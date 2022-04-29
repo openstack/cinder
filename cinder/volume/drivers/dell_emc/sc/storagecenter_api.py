@@ -24,6 +24,7 @@ import requests
 import six
 from six.moves import http_client
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils
@@ -373,7 +374,7 @@ class SCApiHelper(object):
                                               connection.excluded_domain_ips))
         # Our primary SSN doesn't change
         connection.primaryssn = self.primaryssn
-        if self.storage_protocol == 'FC':
+        if self.storage_protocol == constants.FC:
             connection.protocol = 'FibreChannel'
         # Set appropriate ssn and failover state.
         if self.active_backend_id:

@@ -29,3 +29,33 @@ LOG_BINARIES = (SCHEDULER_BINARY, VOLUME_BINARY, BACKUP_BINARY, API_BINARY)
 
 # The encryption key ID used by the legacy fixed-key ConfKeyMgr
 FIXED_KEY_ID = '00000000-0000-0000-0000-000000000000'
+
+# Storage protocol constants
+CEPH = 'ceph'
+DRBD = 'DRBD'
+FC = 'FC'
+FC_VARIANT_1 = 'fibre_channel'
+FC_VARIANT_2 = 'fc'
+FILE = 'file'
+ISCSI = 'iSCSI'
+ISCSI_VARIANT = 'iscsi'
+ISER = 'iSER'
+LIGHTOS = 'lightos'
+NFS = 'NFS'
+NFS_VARIANT = 'nfs'
+NVMEOF = 'NVMe-oF'
+NVMEOF_VARIANT_1 = 'NVMeOF'
+NVMEOF_VARIANT_2 = 'nvmeof'
+SCALEIO = 'scaleio'
+SCSI = 'SCSI'
+STORPOOL = 'storpool'
+VMDK = 'vmdk'
+VSTORAGE = 'vstorageobject'
+
+# These must be strings, because there are places that check specific type
+ISCSI_VARIANTS = [ISCSI, ISCSI_VARIANT]
+FC_VARIANTS = [FC, FC_VARIANT_1, FC_VARIANT_2]
+NFS_VARIANTS = [NFS, NFS_VARIANT]
+NVMEOF_VARIANTS = [NVMEOF, NVMEOF_VARIANT_1, NVMEOF_VARIANT_2]
+
+CACHEABLE_PROTOCOLS = FC_VARIANTS + ISCSI_VARIANTS + NVMEOF_VARIANTS

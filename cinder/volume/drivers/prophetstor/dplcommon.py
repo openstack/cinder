@@ -34,6 +34,7 @@ import requests
 import six
 from six.moves import http_client
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -1455,7 +1456,7 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
             if ret == 0:
                 data['vendor_name'] = output['metadata']['vendor']
                 data['driver_version'] = output['metadata']['version']
-                data['storage_protocol'] = 'iSCSI'
+                data['storage_protocol'] = constants.ISCSI
                 data['location_info'] = location_info
                 data['consistencygroup_support'] = True
                 data['consistent_group_snapshot_enabled'] = True

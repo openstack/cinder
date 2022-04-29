@@ -39,6 +39,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import strutils
 
+from cinder.common import constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -104,7 +105,7 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCISCSIDriver, self).__init__(*args, **kwargs)
-        self.protocol = 'iSCSI'
+        self.protocol = constants.ISCSI
         self.configuration.append_config_values(
             storwize_svc_iscsi_opts)
 
