@@ -1,5 +1,5 @@
 {
-    "cluster": "test",
+    "cluster_name": "test",
     "disabled": true,
     "host": "host1@lvmdriver",
     "service_id": 1,
