@@ -33,8 +33,11 @@ the migration of 'in-use' volumes is driver dependent. It depends on
 different drivers involved in the operation. It may fail depending on
 the source or destination driver of the volume.
 
-For example, from RBD to LVM, the migration of 'in-use' volume will
-succeed, but from LVM to RBD, it will fail.
+For example, for older releases (before Ussuri), the migration of
+'in-use' volume from RBD to LVM will succeed, but from LVM to RBD,
+it will fail. Currently, migration of 'in-use' volumes will not succeed
+for any backend when they are attached to an instance in any of these
+states: SHUTOFF, SUSPENDED, or SOFT-DELETED.
 
 There are two major scenarios, which volume migration supports
 in Cinder:
