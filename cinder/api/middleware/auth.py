@@ -61,7 +61,7 @@ def pipeline_factory(loader, global_conf, **local_conf):
 
 def _set_request_context(req, **kwargs):
     """Sets request context based on parameters and request."""
-    remote_address = getattr(req, 'remote_address', '127.0.0.1')
+    remote_address = getattr(req, 'remote_addr', '127.0.0.1')
 
     service_catalog = None
     if req.headers.get('X_SERVICE_CATALOG') is not None:
