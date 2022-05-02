@@ -41,7 +41,10 @@ posixbackup_service_opts = [
                default=BACKUP_FILE_SIZE,
                help='The maximum size in bytes of the files used to hold '
                     'backups. If the volume being backed up exceeds this '
-                    'size, then it will be backed up into multiple files.'
+                    'size, then it will be backed up into multiple files. '
+                    'backup_file_size also determines the buffer size '
+                    'used to build backup files, so should be scaled '
+                    'according to available RAM and number of workers. '
                     'backup_file_size must be a multiple of '
                     'backup_sha_block_size_bytes.'),
     cfg.IntOpt('backup_sha_block_size_bytes',

@@ -141,7 +141,9 @@ deduplication or compression on the backup data.
 The option ``backup_file_size`` must be a multiple of
 ``backup_sha_block_size_bytes``. It is effectively the maximum file size to be
 used, given your environment, to hold backup data. Volumes larger than this
-will be stored in multiple files in the backup repository. The
+will be stored in multiple files in the backup repository. ``backup_file_size``
+also determines the buffer size used to produce backup files; on smaller hosts
+it may need to be scaled down to avoid OOM issues. The
 ``backup_sha_block_size_bytes`` option determines the size of blocks from the
 cinder volume being backed up on which digital signatures are calculated in
 order to enable incremental backup capability.
