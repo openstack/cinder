@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #1961548
+    <https://bugs.launchpad.net/cinder/+bug/1961548>`_:
+    Optimize lsvdisk and lssystem calls to reduce the
+    computational time for creating GMCV volumes.

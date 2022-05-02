@@ -167,81 +167,93 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
                     new_type['id'], volume_type=new_type)
             src_attr = self.driver._helpers.get_vdisk_attributes(
                 vref['name'])
-            # Create source change volume if it doesn't exist
-            src_change_attr = self.driver._helpers.get_vdisk_attributes(
-                source_change_vol_name)
-            if not src_change_attr:
-                src_change_opts = self.driver._get_vdisk_params(
-                    vref['volume_type_id'])
-                src_change_opts['iogrp'] = src_attr['IO_group_id']
-                # Change volumes would usually be thin-provisioned
-                src_change_opts['autoexpand'] = True
-                src_change_pool = src_attr['mdisk_grp_name']
-                if new_type:
-                    src_child_pool = (
-                        new_type_opts['storwize_svc_src_child_pool'])
-                else:
-                    src_child_pool = (
-                        src_change_opts['storwize_svc_src_child_pool'])
-                if src_child_pool:
-                    src_change_pool = src_child_pool
+            # Source change volume creation
+            src_change_opts = self.driver._get_vdisk_params(
+                vref['volume_type_id'])
+            src_change_opts['iogrp'] = src_attr['IO_group_id']
+            # Change volumes would usually be thin-provisioned
+            src_change_opts['autoexpand'] = True
+            src_change_pool = src_attr['mdisk_grp_name']
+            if new_type:
+                src_child_pool = (
+                    new_type_opts['storwize_svc_src_child_pool'])
+            else:
+                src_child_pool = (
+                    src_change_opts['storwize_svc_src_child_pool'])
+            if src_child_pool:
+                src_change_pool = src_child_pool
+            try:
                 self.driver._helpers.create_vdisk(source_change_vol_name,
                                                   six.text_type(vref['size']),
                                                   'gb',
                                                   src_change_pool,
                                                   src_change_opts)
-            # Create target volume if it doesn't exist
-            target_attr = self.target_helpers.get_vdisk_attributes(
-                target_vol_name)
-            if not target_attr:
-                target_opts = self.driver._get_vdisk_params(
-                    vref['volume_type_id'])
-                target_pool = self.target.get('pool_name')
-                target_opts['iogrp'] = src_attr['IO_group_id']
+            except exception.VolumeBackendAPIException as excp:
+                if "CMMVC6035E" in excp.msg:
+                    msg = ('Source change volume: %s already exists'
+                           % source_change_vol_name)
+                    LOG.info(msg)
+
+            # Target volume creation
+            target_opts = self.driver._get_vdisk_params(
+                vref['volume_type_id'])
+            target_pool = self.target.get('pool_name')
+            target_opts['iogrp'] = src_attr['IO_group_id']
+            try:
                 self.target_helpers.create_vdisk(target_vol_name,
                                                  six.text_type(vref['size']),
                                                  'gb',
                                                  target_pool,
                                                  target_opts)
+            except exception.VolumeBackendAPIException as excp:
+                if "CMMVC6035E" in excp.msg:
+                    msg = ('Target Volume: %s already exists'
+                           % target_vol_name)
+                    LOG.info(msg)
 
-            # Create target change volume if it doesn't exist
-            target_change_attr = self.target_helpers.get_vdisk_attributes(
-                target_change_vol_name)
-            if not target_change_attr:
-                target_change_opts = self.driver._get_vdisk_params(
-                    vref['volume_type_id'])
-                target_change_pool = self.target.get('pool_name')
-                if new_type:
-                    target_child_pool = (
-                        new_type_opts['storwize_svc_target_child_pool'])
-                else:
-                    target_child_pool = (
-                        target_change_opts['storwize_svc_target_child_pool'])
-                if target_child_pool:
-                    target_change_pool = target_child_pool
-                target_change_opts['iogrp'] = src_attr['IO_group_id']
-                # Change Volumes would usually be thin-provisioned
-                target_change_opts['autoexpand'] = True
+            # Target change volume creation
+            target_change_opts = self.driver._get_vdisk_params(
+                vref['volume_type_id'])
+            target_change_pool = self.target.get('pool_name')
+            if new_type:
+                target_child_pool = (
+                    new_type_opts['storwize_svc_target_child_pool'])
+            else:
+                target_child_pool = (
+                    target_change_opts['storwize_svc_target_child_pool'])
+            if target_child_pool:
+                target_change_pool = target_child_pool
+            target_change_opts['iogrp'] = src_attr['IO_group_id']
+            # Change Volumes would usually be thin-provisioned
+            target_change_opts['autoexpand'] = True
+            try:
                 self.target_helpers.create_vdisk(target_change_vol_name,
                                                  six.text_type(vref['size']),
                                                  'gb',
                                                  target_change_pool,
                                                  target_change_opts)
+            except exception.VolumeBackendAPIException as excp:
+                if "CMMVC6035E" in excp.msg:
+                    msg = ('Target Change Volume: %s already exists'
+                           % target_change_vol_name)
+                    LOG.info(msg)
 
-            system_info = self.target_helpers.get_system_info()
+            target_system_id = self.driver._aux_state['system_id']
             # Get cycle_period_seconds
             src_change_opts = self.driver._get_vdisk_params(
                 vref['volume_type_id'])
             cycle_period_seconds = src_change_opts.get('cycle_period_seconds')
-            self.driver._helpers.create_relationship(
-                vref['name'], target_vol_name, system_info.get('system_id'),
+            rc_name = self.driver._helpers.create_relationship(
+                vref['name'], target_vol_name, target_system_id,
                 self.asyncmirror, True, source_change_vol_name,
                 cycle_period_seconds)
             # Set target change volume
             self.target_helpers.change_relationship_changevolume(
-                target_vol_name, target_change_vol_name, False)
+                target_vol_name, target_change_vol_name, False,
+                rc_name)
             # Start gmcv relationship
-            self.driver._helpers.start_relationship(vref['name'])
+            self.driver._helpers.start_relationship(vref['name'],
+                                                    rcrel=rc_name)
         except Exception as e:
             msg = (_("Unable to set up gmcv mode replication for %(vol)s. "
                      "Exception: %(err)s.") % {'vol': vref['id'],

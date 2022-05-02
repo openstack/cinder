@@ -2226,7 +2226,8 @@ port_speed!N/A
         if 'obj' in kwargs:
             name = kwargs['obj']
             for k, v in self._rcrelationship_list.items():
-                if six.text_type(v['name']) == name:
+                if ((str(v['name']) == name) or
+                        (str(v['id']) == name)):
                     self._rc_state_transition('wait', v)
 
                     if self._next_cmd_error['lsrcrelationship'] == 'speed_up':
@@ -10626,7 +10627,7 @@ class StorwizeHelpersTestCase(test.TestCase):
         get_vdisk_attributes.assert_called_with(opts['name'])
         if not opts['RC_name']:
             stoprcrelationship.assert_not_called()
-            startrcrelationship.assert_not_called()
+            startrcrelationship.assert_called()
         else:
             stoprcrelationship.assert_called_once_with(opts['RC_name'],
                                                        access=access)
@@ -12440,7 +12441,6 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
-
         # Create replication volume.
         backend_volume, model_update = self._create_test_volume(self.mm_type)
         volume, model_update = self._create_test_volume(self.mm_type)
@@ -12989,11 +12989,13 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                            start_relationship):
         replica_obj = self.driver._get_replica_obj(storwize_const.METRO)
         mm_vol, model_update = self._create_test_volume(self.mm_type)
+        mm_vol_attrs = self.driver._helpers.get_vdisk_attributes(mm_vol.name)
         target_vol = storwize_const.REPLICA_AUX_VOL_PREFIX + mm_vol.name
         context = mock.Mock
         replica_obj.failover_volume_host(context, mm_vol)
         stop_relationship.assert_called_once_with(target_vol, access=True)
-        calls = [mock.call(mm_vol.name), mock.call(target_vol, 'aux')]
+        calls = [mock.call(mm_vol.name, rcrel=mm_vol_attrs['RC_name']),
+                 mock.call(target_vol, 'aux')]
         start_relationship.assert_has_calls(calls, any_order=True)
         self.assertEqual(2, start_relationship.call_count)
 
