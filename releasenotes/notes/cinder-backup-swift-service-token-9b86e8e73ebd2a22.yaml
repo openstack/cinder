@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    The Swift backup driver now supports sending a X-Service-Token header with
+    a service token when the new ``backup_swift_service_auth`` config option is
+    enabled. Please note that you still need to configure the ``[service_user]``
+    group and also set ``send_service_user_token`` to enable the behavior and not
+    only the Swift backup driver option. Note ``send_service_user_token`` enables
+    it globally and will also affect communication with Nova and Glance.

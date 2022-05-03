@@ -37,7 +37,7 @@ class FakeSwiftConnection(object):
     def __init__(self, *args, **kwargs):
         pass
 
-    def head_container(self, container):
+    def head_container(self, container, headers=None):
         if container in ['missing_container',
                          'missing_container_socket_error_on_put']:
             raise swift.ClientException('fake exception',
@@ -53,17 +53,17 @@ class FakeSwiftConnection(object):
         if container == 'missing_container_socket_error_on_put':
             raise socket.error(111, 'ECONNREFUSED')
 
-    def get_container(self, container, **kwargs):
+    def get_container(self, container, headers=None, **kwargs):
         fake_header = None
         fake_body = [{'name': 'backup_001'},
                      {'name': 'backup_002'},
                      {'name': 'backup_003'}]
         return fake_header, fake_body
 
-    def head_object(self, container, name):
+    def head_object(self, container, name, headers=None):
         return {'etag': 'fake-md5-sum'}
 
-    def get_object(self, container, name):
+    def get_object(self, container, name, headers=None):
         if container == 'socket_error_on_get':
             raise socket.error(111, 'ECONNREFUSED')
         if 'metadata' in name:
@@ -102,7 +102,7 @@ class FakeSwiftConnection(object):
             raise socket.error(111, 'ECONNREFUSED')
         return 'fake-md5-sum'
 
-    def delete_object(self, container, name):
+    def delete_object(self, container, name, headers=None):
         if container == 'socket_error_on_delete':
             raise socket.error(111, 'ECONNREFUSED')
         pass

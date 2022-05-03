@@ -57,6 +57,8 @@ from cinder.backup import chunkeddriver
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder import service_auth
+from cinder.utils import retry
 
 LOG = logging.getLogger(__name__)
 
@@ -141,6 +143,11 @@ swiftbackup_service_opts = [
                 default=False,
                 help='Bypass verification of server certificate when '
                      'making SSL connection to Swift.'),
+    cfg.BoolOpt('backup_swift_service_auth',
+                default=False,
+                help='Send a X-Service-Token header with service auth '
+                     'credentials. If enabled you also must set the '
+                     'service_user group and enable send_service_user_token.'),
 ]
 
 CONF = cfg.CONF
@@ -173,6 +180,21 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
     @staticmethod
     def get_driver_options():
         return swiftbackup_service_opts
+
+    @retry(Exception, retries=CONF.backup_swift_retry_attempts,
+           backoff_rate=CONF.backup_swift_retry_backoff)
+    def _headers(self, headers=None):
+        """Add service token to headers if its enabled"""
+        if not CONF.backup_swift_service_auth:
+            return headers
+
+        result = headers or {}
+
+        sa_plugin = service_auth.get_service_auth_plugin()
+        if sa_plugin is not None:
+            result['X-Service-Token'] = sa_plugin.get_token()
+
+        return result
 
     def initialize(self):
         self.swift_attempts = CONF.backup_swift_retry_attempts
@@ -274,11 +296,12 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                          cacert=CONF.backup_swift_ca_cert_file)
 
     class SwiftObjectWriter(object):
-        def __init__(self, container, object_name, conn):
+        def __init__(self, container, object_name, conn, headers_func=None):
             self.container = container
             self.object_name = object_name
             self.conn = conn
             self.data = bytearray()
+            self.headers_func = headers_func
 
         def __enter__(self):
             return self
@@ -292,9 +315,11 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         def close(self):
             reader = io.BytesIO(self.data)
             try:
+                headers = self.headers_func() if self.headers_func else None
                 etag = self.conn.put_object(self.container, self.object_name,
                                             reader,
-                                            content_length=len(self.data))
+                                            content_length=len(self.data),
+                                            headers=headers)
             except socket.error as err:
                 raise exception.SwiftConnectionFailed(reason=err)
             md5 = secretutils.md5(self.data, usedforsecurity=False).hexdigest()
@@ -306,10 +331,11 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
             return md5
 
     class SwiftObjectReader(object):
-        def __init__(self, container, object_name, conn):
+        def __init__(self, container, object_name, conn, headers_func=None):
             self.container = container
             self.object_name = object_name
             self.conn = conn
+            self.headers_func = headers_func
 
         def __enter__(self):
             return self
@@ -319,8 +345,10 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
 
         def read(self):
             try:
+                headers = self.headers_func() if self.headers_func else None
                 (_resp, body) = self.conn.get_object(self.container,
-                                                     self.object_name)
+                                                     self.object_name,
+                                                     headers=headers)
             except socket.error as err:
                 raise exception.SwiftConnectionFailed(reason=err)
             return body
@@ -335,14 +363,15 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         existing container.
         """
         try:
-            self.conn.head_container(container)
+            self.conn.head_container(container, headers=self._headers())
         except swift_exc.ClientException as e:
             if e.http_status == 404:
                 try:
                     storage_policy = CONF.backup_swift_create_storage_policy
                     headers = ({'X-Storage-Policy': storage_policy}
                                if storage_policy else None)
-                    self.conn.put_container(container, headers=headers)
+                    self.conn.put_container(container,
+                                            headers=self._headers(headers))
                 except socket.error as err:
                     raise exception.SwiftConnectionFailed(reason=err)
                 return
@@ -355,9 +384,11 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
     def get_container_entries(self, container, prefix):
         """Get container entry names"""
         try:
+            headers = self._headers()
             swift_objects = self.conn.get_container(container,
                                                     prefix=prefix,
-                                                    full_listing=True)[1]
+                                                    full_listing=True,
+                                                    headers=headers)[1]
         except socket.error as err:
             raise exception.SwiftConnectionFailed(reason=err)
         swift_object_names = [swift_obj['name'] for swift_obj in swift_objects]
@@ -369,7 +400,8 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         Returns a writer object that stores a chunk of volume data in a
         Swift object store.
         """
-        return self.SwiftObjectWriter(container, object_name, self.conn)
+        return self.SwiftObjectWriter(container, object_name, self.conn,
+                                      self._headers)
 
     def get_object_reader(self, container, object_name, extra_metadata=None):
         """Return reader object.
@@ -377,12 +409,14 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         Returns a reader object that retrieves a chunk of backed-up volume data
         from a Swift object store.
         """
-        return self.SwiftObjectReader(container, object_name, self.conn)
+        return self.SwiftObjectReader(container, object_name, self.conn,
+                                      self._headers)
 
     def delete_object(self, container, object_name):
         """Deletes a backup object from a Swift object store."""
         try:
-            self.conn.delete_object(container, object_name)
+            self.conn.delete_object(container, object_name,
+                                    headers=self._headers())
         except socket.error as err:
             raise exception.SwiftConnectionFailed(reason=err)
 

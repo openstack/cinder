@@ -37,6 +37,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder import service_auth
 from cinder.tests.unit.backup import fake_swift_client
 from cinder.tests.unit.backup import fake_swift_client2
 from cinder.tests.unit import fake_constants as fake
@@ -298,6 +299,35 @@ class BackupSwiftTestCase(test.TestCase):
                                                 retries=ANY,
                                                 starting_backoff=ANY,
                                                 cacert=ANY)
+
+    def _test_backup_swift_service_auth_headers_no_impact(self):
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertIsNone(service._headers())
+        current = {'some': 'header'}
+        self.assertEqual(service._headers(current), current)
+
+    def test_backup_swift_service_auth_headers_disabled(self):
+        self._test_backup_swift_service_auth_headers_no_impact()
+
+    def test_backup_swift_service_auth_headers_partial_enabled(self):
+        self.override_config('send_service_user_token', True,
+                             group='service_user')
+        self._test_backup_swift_service_auth_headers_no_impact()
+
+    @mock.patch.object(service_auth, 'get_service_auth_plugin')
+    def test_backup_swift_service_auth_headers_enabled(self, mock_plugin):
+        class FakeServiceAuthPlugin:
+            def get_token(self):
+                return "fake"
+        self.override_config('send_service_user_token', True,
+                             group='service_user')
+        self.override_config('backup_swift_service_auth', True)
+        mock_plugin.return_value = FakeServiceAuthPlugin()
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        expected = {'X-Service-Token': 'fake'}
+        self.assertEqual(service._headers(), expected)
+        expected = {'X-Service-Token': 'fake', 'some': 'header'}
+        self.assertEqual(service._headers({'some': 'header'}), expected)
 
     @mock.patch.object(fake_swift_client.FakeSwiftConnection, 'put_container')
     def test_default_backup_swift_create_storage_policy(self, mock_put):
