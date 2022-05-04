@@ -1,0 +1,5 @@
+features: 
+  - |
+    Seagate driver: Added support for ``get_driver_options`` api call 
+  - |
+    Lenovo driver: Return additional configuration options from ``get_driver_options`` call

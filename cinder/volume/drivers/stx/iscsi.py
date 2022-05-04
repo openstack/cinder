@@ -230,3 +230,7 @@ class STXISCSIDriver(cinder.volume.driver.ISCSIDriver):
         return self.common.get_manageable_snapshots(cinder_snapshots,
                                                     marker, limit, offset,
                                                     sort_keys, sort_dirs)
+
+    @staticmethod
+    def get_driver_options():
+        return (common.STXCommon.get_driver_options() + common.iscsi_opts)

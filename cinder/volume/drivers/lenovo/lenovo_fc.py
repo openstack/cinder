@@ -46,7 +46,7 @@ class LenovoFCDriver(fc.STXFCDriver):
 
     @staticmethod
     def get_driver_options():
-        return lenovo_common.common_opts
+        return lenovo_common.LenovoCommon.get_driver_options()
 
     def _init_common(self):
         return lenovo_common.LenovoCommon(self.configuration)
