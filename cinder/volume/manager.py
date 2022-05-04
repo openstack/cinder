@@ -2609,6 +2609,7 @@ class VolumeManager(manager.CleanableManager,
 
         model_update = None
         moved = False
+        rpcapi = volume_rpcapi.VolumeAPI()
 
         status_update = None
         if volume.status in ('retyping', 'maintenance'):
@@ -2642,7 +2643,7 @@ class VolumeManager(manager.CleanableManager,
                     volume.save()
                     self._update_allocated_capacity(volume, decrement=True,
                                                     host=original_host)
-                    self._update_allocated_capacity(volume)
+                    rpcapi.update_migrated_volume_capacity(ctxt, volume)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': 'error'}
@@ -2656,7 +2657,7 @@ class VolumeManager(manager.CleanableManager,
                 self._migrate_volume_generic(ctxt, volume, host, new_type_id)
                 self._update_allocated_capacity(volume, decrement=True,
                                                 host=original_host)
-                self._update_allocated_capacity(volume)
+                rpcapi.update_migrated_volume_capacity(ctxt, volume)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': 'error'}
@@ -4306,6 +4307,11 @@ class VolumeManager(manager.CleanableManager,
         self._notify_about_group_snapshot_usage(context, group_snapshot,
                                                 "delete.end",
                                                 snapshots)
+
+    @utils.trace
+    def update_migrated_volume_capacity(self, ctxt, volume):
+        """Update allocated_capacity_gb for the new migrated volume host."""
+        self._update_allocated_capacity(volume)
 
     def update_migrated_volume(self, ctxt, volume, new_volume, volume_status):
         """Finalize migration process on backend device."""
