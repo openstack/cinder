@@ -11,6 +11,7 @@ cinder/image/image_utils.py
 cinder/exception.py
 cinder/manager.py
 cinder/objects/backup.py
+cinder/policy.py
 cinder/scheduler/base_handler.py
 cinder/scheduler/base_weight.py
 cinder/scheduler/evaluator/evaluator.py
