@@ -3286,7 +3286,6 @@ class VolumeManager(manager.CleanableManager,
         # Make sure the host in the DB matches our own when clustered
         self._set_resource_host(group)
 
-        status = fields.GroupStatus.AVAILABLE
         model_update = None
 
         self._notify_about_group_usage(context, group, "create.start")
@@ -3325,7 +3324,7 @@ class VolumeManager(manager.CleanableManager,
                 LOG.error("Group %s: create failed",
                           group.name)
 
-        group.status = status
+        group.status = fields.GroupStatus.AVAILABLE
         group.created_at = timeutils.utcnow()
         group.save()
         LOG.info("Group %s: created successfully", group.name)
