@@ -2649,6 +2649,7 @@ class VolumeManager(manager.CleanableManager,
 
         model_update = None
         moved = False
+        rpcapi = volume_rpcapi.VolumeAPI()
 
         status_update = None
         if volume.status in ('retyping', 'maintenance'):
@@ -2659,6 +2660,15 @@ class VolumeManager(manager.CleanableManager,
         if not force_host_copy and new_type_id is None:
             try:
                 LOG.debug("Issue driver.migrate_volume.", resource=volume)
+                # Update the remote host's allocated_capacity_gb first
+                # Because the migration can take a while, and the scheduler
+                # needs to account for the space consumed.
+                LOG.debug("Update remote allocated_capacity_gb for "
+                          "host %(host)s",
+                          {'host': host['host']},
+                          resource=volume)
+                rpcapi.update_migrated_volume_capacity(ctxt, volume,
+                                                       host=host['host'])
                 moved, model_update = self.driver.migrate_volume(ctxt,
                                                                  volume,
                                                                  host)
@@ -2680,8 +2690,14 @@ class VolumeManager(manager.CleanableManager,
                     volume.save()
                     self._update_allocated_capacity(volume, decrement=True,
                                                     host=original_host)
-                    self._update_allocated_capacity(volume)
             except Exception:
+                LOG.debug("Decrement remote allocated_capacity_gb for "
+                          "host %(host)s",
+                          {'host': host['host']},
+                          resource=volume)
+                rpcapi.update_migrated_volume_capacity(ctxt, volume,
+                                                       host=host['host'],
+                                                       decrement=True)
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': 'error'}
                     if status_update:
@@ -2691,11 +2707,23 @@ class VolumeManager(manager.CleanableManager,
         if not moved:
             try:
                 original_host = volume.host
+                LOG.debug("Update remote allocated_capacity_gb for "
+                          "host %(host)s",
+                          {'host': volume.host},
+                          resource=volume)
+                rpcapi.update_migrated_volume_capacity(ctxt, volume,
+                                                       host=host['host'])
                 self._migrate_volume_generic(ctxt, volume, host, new_type_id)
                 self._update_allocated_capacity(volume, decrement=True,
                                                 host=original_host)
-                self._update_allocated_capacity(volume)
             except Exception:
+                LOG.debug("Decrement remote allocated_capacity_gb for "
+                          "host %(host)s",
+                          {'host': host['host']},
+                          resource=volume)
+                rpcapi.update_migrated_volume_capacity(ctxt, volume,
+                                                       host=host['host'],
+                                                       decrement=True)
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': 'error'}
                     if status_update:
@@ -4406,6 +4434,12 @@ class VolumeManager(manager.CleanableManager,
         self._notify_about_group_snapshot_usage(context, group_snapshot,
                                                 "delete.end",
                                                 snapshots)
+
+    @volume_utils.trace
+    def update_migrated_volume_capacity(self, ctxt, volume, host,
+                                        decrement=False):
+        """Update allocated_capacity_gb for the migrated volume host."""
+        self._update_allocated_capacity(volume, host=host, decrement=decrement)
 
     def update_migrated_volume(self,
                                ctxt: context.RequestContext,

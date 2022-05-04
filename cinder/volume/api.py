@@ -896,7 +896,7 @@ class API(base.Base):
 
         try:
             dest = self.scheduler_rpcapi.find_backend_for_connector(
-                ctxt, connector, request_spec,
+                ctxt, connector, request_spec, volume.size,
                 filter_properties=filter_properties)
         except exception.NoValidBackend:
             LOG.error("The connector was rejected by the backend. Could not "
