@@ -3688,3 +3688,22 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             f'/cluster/jobs/{job_uuid}', 'get', query=query,
             enable_tunneling=False)
         self.assertEqual(expected_result, result)
+
+    def test_rename_file(self):
+        volume = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        orig_file_name = f'/vol/{fake_client.VOLUME_NAMES[0]}/cinder-vol'
+        new_file_name = f'/vol/{fake_client.VOLUME_NAMES[0]}/new-cinder-vol'
+        body = {'path': new_file_name.split('/')[3]}
+
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_get_volume_by_args',
+                         return_value=volume)
+
+        self.client.rename_file(orig_file_name, new_file_name)
+
+        orig_file_name = orig_file_name.split('/')[3]
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{volume["uuid"]}/files/{orig_file_name}',
+            'patch', body=body)
+        self.client._get_volume_by_args.assert_called_once_with(
+            vol_name=fake_client.VOLUME_NAMES[0])
