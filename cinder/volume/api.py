@@ -508,7 +508,8 @@ class API(base.Base):
             status = utils.build_or_str(expected.get('status'),
                                         _('status must be %s and'))
             msg = _('Volume %s must not be migrating, attached, belong to a '
-                    'group, have snapshots or be disassociated from '
+                    'group, have snapshots, awaiting a transfer, '
+                    'or be disassociated from '
                     'snapshots after volume transfer.') % status
             LOG.info(msg)
             raise exception.InvalidVolume(reason=msg)
