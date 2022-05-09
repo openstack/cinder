@@ -1503,188 +1503,185 @@ def quota_reserve(
     project_id=None,
 ):
     elevated = context.elevated()
-    try:
-        if project_id is None:
-            project_id = context.project_id
 
-        # Loop until we can lock all the resource rows we'll be modifying
-        while True:
-            # Get the current usages and lock existing rows
-            usages = _get_quota_usages(
-                context, project_id, resources=deltas.keys()
+    if project_id is None:
+        project_id = context.project_id
+
+    # Loop until we can lock all the resource rows we'll be modifying
+    while True:
+        # Get the current usages and lock existing rows
+        usages = _get_quota_usages(
+            context, project_id, resources=deltas.keys()
+        )
+        missing = [res for res in deltas if res not in usages]
+        # If we have successfully locked all the rows we can continue.
+        # SELECT ... FOR UPDATE used in _get_quota usages cannot lock
+        # non-existing rows, so there can be races with other requests
+        # trying to create those rows.
+        if not missing:
+            break
+
+        # Create missing rows calculating current values instead of
+        # assuming there are no used resources as admins may have been
+        # using this mechanism to force quota usage refresh.
+        for resource in missing:
+            updates = _get_sync_updates(
+                elevated,
+                project_id,
+                resources,
+                resource,
             )
-            missing = [res for res in deltas if res not in usages]
-            # If we have successfully locked all the rows we can continue.
-            # SELECT ... FOR UPDATE used in _get_quota usages cannot lock
-            # non-existing rows, so there can be races with other requests
-            # trying to create those rows.
-            if not missing:
-                break
+            _quota_usage_create(
+                elevated,
+                project_id,
+                resource,
+                updates[resource],
+                0,
+                until_refresh or None,
+            )
 
-            # Create missing rows calculating current values instead of
-            # assuming there are no used resources as admins may have been
-            # using this mechanism to force quota usage refresh.
-            for resource in missing:
-                updates = _get_sync_updates(
-                    elevated,
-                    project_id,
-                    resources,
-                    resource,
-                )
-                _quota_usage_create(
-                    elevated,
-                    project_id,
-                    resource,
-                    updates[resource],
-                    0,
-                    until_refresh or None,
-                )
+        # NOTE: When doing the commit there can be a race condition with
+        # other service instances or thread  that are also creating the
+        # same rows and in that case this will raise either a Deadlock
+        # exception (when multiple transactions were creating the same rows
+        # and the DB failed to acquire the row lock on the non-first
+        # transaction) or a DBDuplicateEntry exception if some other
+        # transaction created the row between us doing the
+        # _get_quota_usages and here.  In both cases this transaction will
+        # be rolled back and the wrap_db_retry decorator will retry.
 
-            # NOTE: When doing the commit there can be a race condition with
-            # other service instances or thread  that are also creating the
-            # same rows and in that case this will raise either a Deadlock
-            # exception (when multiple transactions were creating the same rows
-            # and the DB failed to acquire the row lock on the non-first
-            # transaction) or a DBDuplicateEntry exception if some other
-            # transaction created the row between us doing the
-            # _get_quota_usages and here.  In both cases this transaction will
-            # be rolled back and the wrap_db_retry decorator will retry.
+        # Commit new rows to the DB.
+        context.session.commit()
 
-            # Commit new rows to the DB.
-            context.session.commit()
+        # Start a new session before trying to lock all the rows again.  By
+        # trying to get all the locks in a loop we can protect us against
+        # admins directly deleting DB rows.
+        context.session.begin()
 
-            # Start a new session before trying to lock all the rows again.  By
-            # trying to get all the locks in a loop we can protect us against
-            # admins directly deleting DB rows.
-            context.session.begin()
-
-        # Handle usage refresh
-        for resource in deltas.keys():
-            # Do we need to refresh the usage?
-            refresh = False
-            if usages[resource].in_use < 0:
-                # If we created the entry right now we want to refresh.
-                # Negative in_use count indicates a desync, so try to
-                # heal from that...
+    # Handle usage refresh
+    for resource in deltas.keys():
+        # Do we need to refresh the usage?
+        refresh = False
+        if usages[resource].in_use < 0:
+            # If we created the entry right now we want to refresh.
+            # Negative in_use count indicates a desync, so try to
+            # heal from that...
+            refresh = True
+        elif usages[resource].until_refresh is not None:
+            usages[resource].until_refresh -= 1
+            if usages[resource].until_refresh <= 0:
                 refresh = True
-            elif usages[resource].until_refresh is not None:
-                usages[resource].until_refresh -= 1
-                if usages[resource].until_refresh <= 0:
-                    refresh = True
-            elif (
-                max_age
-                and usages[resource].updated_at is not None
-                and (
-                    (
-                        timeutils.utcnow() - usages[resource].updated_at
-                    ).total_seconds()
-                    >= max_age
-                )
+        elif (
+            max_age
+            and usages[resource].updated_at is not None
+            and (
+                (
+                    timeutils.utcnow() - usages[resource].updated_at
+                ).total_seconds()
+                >= max_age
+            )
+        ):
+            refresh = True
+
+        # OK, refresh the usage
+        if refresh:
+            updates = _get_sync_updates(
+                elevated,
+                project_id,
+                resources,
+                resource,
+            )
+            # Updates will always contain a single resource usage matching
+            # the resource variable.
+            usages[resource].in_use = updates[resource]
+            usages[resource].until_refresh = until_refresh or None
+
+        # There are 3 cases where we want to update "until_refresh" in the
+        # DB: when we enabled it, when we disabled it, and when we changed
+        # to a value lower than the current remaining value.
+        else:
+            res_until = usages[resource].until_refresh
+            if (res_until is None and until_refresh) or (
+                (res_until or 0) > (until_refresh or 0)
             ):
-                refresh = True
-
-            # OK, refresh the usage
-            if refresh:
-                updates = _get_sync_updates(
-                    elevated,
-                    project_id,
-                    resources,
-                    resource,
-                )
-                # Updates will always contain a single resource usage matching
-                # the resource variable.
-                usages[resource].in_use = updates[resource]
                 usages[resource].until_refresh = until_refresh or None
 
-            # There are 3 cases where we want to update "until_refresh" in the
-            # DB: when we enabled it, when we disabled it, and when we changed
-            # to a value lower than the current remaining value.
-            else:
-                res_until = usages[resource].until_refresh
-                if (res_until is None and until_refresh) or (
-                    (res_until or 0) > (until_refresh or 0)
-                ):
-                    usages[resource].until_refresh = until_refresh or None
+    # Check for deltas that would go negative
+    unders = [
+        r
+        for r, delta in deltas.items()
+        if delta < 0 and delta + usages[r].in_use < 0
+    ]
 
-        # Check for deltas that would go negative
-        unders = [
-            r
-            for r, delta in deltas.items()
-            if delta < 0 and delta + usages[r].in_use < 0
-        ]
+    # TODO(mc_nair): Should ignore/zero alloc if using non-nested driver
 
-        # TODO(mc_nair): Should ignore/zero alloc if using non-nested driver
+    # Now, let's check the quotas
+    # NOTE(Vek): We're only concerned about positive increments.
+    #            If a project has gone over quota, we want them to
+    #            be able to reduce their usage without any
+    #            problems.
+    overs = [
+        r
+        for r, delta in deltas.items()
+        if quotas[r] >= 0
+        and delta >= 0
+        and quotas[r] < delta + usages[r].total
+    ]
 
-        # Now, let's check the quotas
-        # NOTE(Vek): We're only concerned about positive increments.
-        #            If a project has gone over quota, we want them to
-        #            be able to reduce their usage without any
-        #            problems.
-        overs = [
-            r
-            for r, delta in deltas.items()
-            if quotas[r] >= 0
-            and delta >= 0
-            and quotas[r] < delta + usages[r].total
-        ]
+    # NOTE(Vek): The quota check needs to be in the transaction,
+    #            but the transaction doesn't fail just because
+    #            we're over quota, so the OverQuota raise is
+    #            outside the transaction.  If we did the raise
+    #            here, our usage updates would be discarded, but
+    #            they're not invalidated by being over-quota.
 
-        # NOTE(Vek): The quota check needs to be in the transaction,
-        #            but the transaction doesn't fail just because
-        #            we're over quota, so the OverQuota raise is
-        #            outside the transaction.  If we did the raise
-        #            here, our usage updates would be discarded, but
-        #            they're not invalidated by being over-quota.
-
-        # Create the reservations
-        if not overs:
-            reservations = []
-            for resource, delta in deltas.items():
-                usage = usages[resource]
-                reservation = _reservation_create(
-                    elevated,
-                    str(uuid.uuid4()),
-                    usage,
-                    project_id,
-                    resource,
-                    delta,
-                    expire,
-                )
-
-                reservations.append(reservation.uuid)
-
-                # Also update the reserved quantity
-                # NOTE(Vek): Again, we are only concerned here about
-                #            positive increments.  Here, though, we're
-                #            worried about the following scenario:
-                #
-                #            1) User initiates resize down.
-                #            2) User allocates a new instance.
-                #            3) Resize down fails or is reverted.
-                #            4) User is now over quota.
-                #
-                #            To prevent this, we only update the
-                #            reserved value if the delta is positive.
-                if delta > 0:
-                    usages[resource].reserved += delta
-
-        if unders:
-            LOG.warning(
-                "Reservation would make usage less than 0 for the "
-                "following resources, so on commit they will be "
-                "limited to prevent going below 0: %s",
-                unders,
+    # Create the reservations
+    if not overs:
+        reservations = []
+        for resource, delta in deltas.items():
+            usage = usages[resource]
+            reservation = _reservation_create(
+                elevated,
+                str(uuid.uuid4()),
+                usage,
+                project_id,
+                resource,
+                delta,
+                expire,
             )
-        if overs:
-            usages = {
-                k: dict(in_use=v.in_use, reserved=v.reserved)
-                for k, v in usages.items()
-            }
-            raise exception.OverQuota(
-                overs=sorted(overs), quotas=quotas, usages=usages
-            )
-    except Exception:
-        context.session.rollback()
-        raise
+
+            reservations.append(reservation.uuid)
+
+            # Also update the reserved quantity
+            # NOTE(Vek): Again, we are only concerned here about
+            #            positive increments.  Here, though, we're
+            #            worried about the following scenario:
+            #
+            #            1) User initiates resize down.
+            #            2) User allocates a new instance.
+            #            3) Resize down fails or is reverted.
+            #            4) User is now over quota.
+            #
+            #            To prevent this, we only update the
+            #            reserved value if the delta is positive.
+            if delta > 0:
+                usages[resource].reserved += delta
+
+    if unders:
+        LOG.warning(
+            "Reservation would make usage less than 0 for the "
+            "following resources, so on commit they will be "
+            "limited to prevent going below 0: %s",
+            unders,
+        )
+    if overs:
+        usages = {
+            k: dict(in_use=v.in_use, reserved=v.reserved)
+            for k, v in usages.items()
+        }
+        raise exception.OverQuota(
+            overs=sorted(overs), quotas=quotas, usages=usages
+        )
 
     return reservations
 
