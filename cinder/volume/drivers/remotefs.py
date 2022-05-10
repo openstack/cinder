@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import annotations
+
 import binascii
 import collections
 import errno
@@ -28,7 +30,7 @@ import string
 import tempfile
 import time
 import typing
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 from castellan import key_manager
 from os_brick.remotefs import remotefs as remotefs_brick
@@ -172,7 +174,7 @@ class RemoteFSDriver(driver.BaseVD):
     def __init__(self, *args, **kwargs):
         super(RemoteFSDriver, self).__init__(*args, **kwargs)
         self.shares = {}
-        self._mounted_shares: List[str] = []
+        self._mounted_shares: list[str] = []
         self._execute_as_root = True
         self._is_voldb_empty_at_startup = kwargs.pop('is_vol_db_empty', None)
         self._supports_encryption = False
@@ -243,7 +245,7 @@ class RemoteFSDriver(driver.BaseVD):
             provisioned_size += int(out.split()[0])
         return round(provisioned_size / units.Gi, 2)
 
-    def _get_mount_point_base(self) -> Optional[str]:
+    def _get_mount_point_base(self) -> Optional[str | os.PathLike]:
         """Returns the mount point base for the remote fs.
 
            This method facilitates returning mount point base
@@ -339,7 +341,7 @@ class RemoteFSDriver(driver.BaseVD):
 
     def _ensure_shares_mounted(self) -> None:
         """Look for remote shares in the flags and mount them locally."""
-        mounted_shares: List[str] = []
+        mounted_shares: list[str] = []
 
         self._load_shares_config(getattr(self.configuration,
                                          self.driver_prefix +
@@ -568,7 +570,7 @@ class RemoteFSDriver(driver.BaseVD):
                                    volume,
                                    run_as_root=self._execute_as_root)
 
-    def _read_config_file(self, config_file: str) -> List[str]:
+    def _read_config_file(self, config_file: str) -> list[str]:
         # Returns list of lines in file
         with open(config_file) as f:
             return f.readlines()
@@ -775,7 +777,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
          _local_volume_dir(self, volume)
     """
 
-    _VALID_IMAGE_EXTENSIONS: List[str] = []
+    _VALID_IMAGE_EXTENSIONS: list[str] = []
     # The following flag may be overridden by the concrete drivers in order
     # to avoid using temporary volume snapshots when creating volume clones,
     # when possible.
@@ -1008,7 +1010,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
     def _get_backing_chain_for_path(self,
                                     volume: objects.Volume,
-                                    path: str) -> List[dict]:
+                                    path: str) -> list[dict]:
         """Returns list of dicts containing backing-chain information.
 
         Includes 'filename', and 'backing-filename' for each
@@ -1060,7 +1062,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         """
         return self._remotefsclient.get_mount_point(share)
 
-    def _get_available_capacity(self, share: str) -> Tuple[int, int]:
+    def _get_available_capacity(self, share: str) -> tuple[int, int]:
         """Calculate available space on the share.
 
         :param share: example 172.18.194.100:/var/fs
@@ -1078,7 +1080,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         return available, size
 
     def _get_capacity_info(self,
-                           remotefs_share: str) -> Tuple[int, int, int]:
+                           remotefs_share: str) -> tuple[float, float, float]:
         available, size = self._get_available_capacity(remotefs_share)
         return size, available, size - available
 
@@ -1684,7 +1686,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                        new_snap_path]
             self._execute(*command, run_as_root=self._execute_as_root)
 
-    def _get_snapshots_from_snap_info(self, snap_info: dict) -> List[str]:
+    def _get_snapshots_from_snap_info(self, snap_info: dict) -> list[str]:
         """Get list of snapshot IDs from snap_info dictionary.
 
         Returns snapshot IDs from the snap_info dictionary, excluding the
@@ -1695,7 +1697,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         """
         return [k for k in snap_info.keys() if k != 'active']
 
-    def _get_volume_snapshots(self, volume: objects.Volume) -> List[str]:
+    def _get_volume_snapshots(self, volume: objects.Volume) -> list[str]:
         """Get list of existing snapshots for a volume.
 
         Reads the volume's snapshot info file and returns the list of

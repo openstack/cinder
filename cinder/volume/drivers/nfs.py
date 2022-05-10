@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import annotations
+
 import binascii
 import errno
 import math
@@ -21,6 +23,7 @@ import os
 import tempfile
 import time
 import typing
+from typing import Any, Optional  # noqa: H301
 
 from castellan import key_manager
 from os_brick.remotefs import remotefs as remotefs_brick
@@ -28,6 +31,9 @@ from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
+
+if typing.TYPE_CHECKING:
+    from oslo_utils import imageutils
 
 from cinder import context
 from cinder import coordination
@@ -131,10 +137,12 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         self._supports_encryption = True
 
     @staticmethod
-    def get_driver_options():
+    def get_driver_options() -> list:
         return nfs_opts + remotefs.nas_opts
 
-    def initialize_connection(self, volume, connector):
+    def initialize_connection(self,
+                              volume: objects.Volume,
+                              connector: dict) -> dict:
 
         LOG.debug('Initializing connection to volume %(vol)s. '
                   'Connector: %(con)s', {'vol': volume.id, 'con': connector})
@@ -189,7 +197,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         LOG.debug('NfsDriver: conn_info: %s', conn_info)
         return conn_info
 
-    def do_setup(self, context):
+    def do_setup(self, context: context.RequestContext) -> None:
         """Any initialization the volume driver does while starting."""
         super(NfsDriver, self).do_setup(context)
 
@@ -237,7 +245,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         self.set_nas_security_options(self._is_voldb_empty_at_startup)
         self._check_snapshot_support(setup_checking=True)
 
-    def _ensure_share_mounted(self, nfs_share):
+    def _ensure_share_mounted(self, nfs_share: str) -> None:
         mnt_flags = []
         if self.shares.get(nfs_share) is not None:
             mnt_flags = self.shares[nfs_share].split()
@@ -258,7 +266,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
                           {'attempt': attempt, 'exc': e})
                 time.sleep(1)
 
-    def _find_share(self, volume):
+    def _find_share(self, volume: objects.Volume) -> str:
         """Choose NFS share among available ones for given volume size.
 
         For instances with more than one share that meets the criteria, the
@@ -271,7 +279,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
             raise exception.NfsNoSharesMounted()
 
         target_share = None
-        target_share_reserved = 0
+        target_share_reserved = 0.0
 
         for nfs_share in self._mounted_shares:
             total_size, total_available, total_allocated = (
@@ -300,8 +308,11 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
 
         return target_share
 
-    def _is_share_eligible(self, nfs_share, volume_size_in_gib,
-                           share_info=None):
+    def _is_share_eligible(
+            self,
+            nfs_share: str,
+            volume_size_in_gib: int,
+            share_info: Optional[dict[str, Any]] = None) -> bool:
         """Verifies NFS share is eligible to host volume with given size.
 
         First validation step: ratio of actual space (used_space / total_space)
@@ -367,11 +378,11 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
             return False
         return True
 
-    def _get_mount_point_for_share(self, nfs_share):
+    def _get_mount_point_for_share(self, nfs_share: str) -> str:
         """Needed by parent class."""
         return self._remotefsclient.get_mount_point(nfs_share)
 
-    def _get_capacity_info(self, nfs_share):
+    def _get_capacity_info(self, nfs_share: str) -> tuple[float, float, float]:
         """Calculate available space on the NFS share.
 
         :param nfs_share: example 172.18.194.100:/var/nfs
@@ -393,7 +404,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
     def _get_mount_point_base(self):
         return self.base
 
-    def extend_volume(self, volume, new_size):
+    def extend_volume(self, volume: 'objects.Volume', new_size: int) -> None:
         """Extend an existing volume to the new size."""
         if self._is_volume_attached(volume):
             # NOTE(kaisers): no attached extensions until #1870367 is fixed
@@ -427,13 +438,16 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
             raise exception.ExtendVolumeError(
                 reason='Resizing image file failed.')
 
-    def _is_file_size_equal(self, path, volume_name, size):
+    def _is_file_size_equal(self,
+                            path: str,
+                            volume_name: str,
+                            size: int) -> bool:
         """Checks if file size at path is equal to size."""
         data = self._qemu_img_info(path, volume_name)
         virt_size = int(data.virtual_size / units.Gi)
         return virt_size == size
 
-    def set_nas_security_options(self, is_new_cinder_install):
+    def set_nas_security_options(self, is_new_cinder_install: bool) -> None:
         """Determine the setting to use for Secure NAS options.
 
         Value of each NAS Security option is checked and updated. If the
@@ -494,8 +508,11 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
                         "for information on a secure NAS configuration.",
                         doc_html)
 
-    def update_migrated_volume(self, ctxt, volume, new_volume,
-                               original_volume_status):
+    def update_migrated_volume(self,
+                               ctxt: context.RequestContext,
+                               volume,
+                               new_volume,
+                               original_volume_status) -> dict[str, Any]:
         """Return the keys and values updated from NFS for migrated volume.
 
         This method should rename the back-end volume name(id) on the
@@ -540,7 +557,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         return {'_name_id': name_id,
                 'provider_location': new_volume.provider_location}
 
-    def _update_volume_stats(self):
+    def _update_volume_stats(self) -> None:
         """Retrieve stats info from volume group."""
 
         super(NfsDriver, self)._update_volume_stats()
@@ -567,13 +584,13 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         self._stats = data
 
     @coordination.synchronized('{self.driver_prefix}-{volume.id}')
-    def create_volume(self, volume):
+    def create_volume(self, volume: 'objects.Volume') -> dict:
         """Apply locking to the create volume operation."""
 
         return super(NfsDriver, self).create_volume(volume)
 
     @coordination.synchronized('{self.driver_prefix}-{volume.id}')
-    def delete_volume(self, volume):
+    def delete_volume(self, volume: 'objects.Volume') -> None:
         """Deletes a logical volume."""
 
         LOG.debug('Deleting volume %(vol)s, provider_location: %(loc)s',
@@ -596,7 +613,11 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
 
         self._delete(base_volume_path)
 
-    def _qemu_img_info(self, path, volume_name, img_format=None):
+    def _qemu_img_info(self,
+                       path: str,
+                       volume_name: str,
+                       img_format: Optional[str] = None) -> \
+            'imageutils.QemuImgInfo':
         return super(NfsDriver, self)._qemu_img_info_base(
             path,
             volume_name,
@@ -605,7 +626,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
             run_as_root=True,
             img_format=img_format)
 
-    def _check_snapshot_support(self, setup_checking=False):
+    def _check_snapshot_support(self, setup_checking: bool = False) -> None:
         """Ensure snapshot support is enabled in config."""
 
         if (not self.configuration.nfs_snapshot_support and
