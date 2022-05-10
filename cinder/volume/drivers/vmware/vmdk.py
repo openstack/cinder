@@ -204,7 +204,15 @@ vmdk_opts = [
                 'This allows the cinder scheduler to pick which datastore '
                 'a volume lives on.  This also enables managing capacity '
                 'for each datastore by cinder.  '
-                )
+                ),
+    cfg.StrOpt('allow_pulling_images_from_url',
+               default=True,
+               help='Allow VMware to pull images directly from Swift. '
+               'By enabling this, images that are stored in Swift will be '
+               'downloaded by VMWare from the `direct_url`, instead of the '
+               'cinder-volume container having to proxy the image between '
+               'glance and VMware.'
+               ),
 ]
 
 CONF = cfg.CONF
@@ -1693,8 +1701,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             timeout = self.configuration.vmware_image_transfer_timeout_secs
             host_ip = self.configuration.vmware_host_ip
             port = self.configuration.vmware_host_port
+            allow_url = self.configuration.allow_pulling_images_from_url
             LOG.debug("Fetching glance image: %(id)s to server: %(host)s.",
                       {'id': image_id, 'host': host_ip})
+            if allow_url:
+                LOG.debug("Downloading images directly from URL was enabled "
+                          "by `allow_pulling_images_from_url`")
             backing = image_transfer.download_stream_optimized_image(
                 context,
                 timeout,
@@ -1707,7 +1719,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 vm_folder=folder,
                 vm_import_spec=vm_import_spec,
                 image_size=image_size,
-                http_method='POST')
+                http_method='POST',
+                allow_pull_from_url=allow_url)
             self.volumeops.update_backing_disk_uuid(backing, volume['id'])
         except (exceptions.VimException,
                 exceptions.VMwareDriverException):
