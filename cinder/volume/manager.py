@@ -1068,7 +1068,8 @@ class VolumeManager(manager.CleanableManager,
                                          'from snapshot %s' % snapshot.id}
             ctxt = context.get_internal_tenant_context() or ctxt
             temp_vol = self.driver._create_temp_volume_from_snapshot(
-                ctxt, volume, snapshot, volume_options=v_options)
+                ctxt, volume, snapshot, volume_options=v_options,
+                status=fields.VolumeStatus.IN_USE)
             self._copy_volume_data(ctxt, temp_vol, volume)
             self.driver_delete_volume(temp_vol)
             temp_vol.destroy()
@@ -1080,7 +1081,7 @@ class VolumeManager(manager.CleanableManager,
                     " %(volume)s.",
                     {'snapshot': snapshot.id,
                      'volume': volume.id})
-                if temp_vol and temp_vol.status == 'available':
+                if temp_vol and temp_vol.status == fields.VolumeStatus.IN_USE:
                     self.driver_delete_volume(temp_vol)
                     temp_vol.destroy()
 
