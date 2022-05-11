@@ -1661,6 +1661,11 @@ class Client(client_base.Client):
 
     def is_qos_min_supported(self, is_nfs, node_name):
         """Check if the node supports QoS minimum."""
+        if node_name is None:
+            # whether no access to node name (SVM account or error), the QoS
+            # min support is dropped.
+            return False
+
         qos_min_name = na_utils.qos_min_feature_name(is_nfs, node_name)
         return getattr(self.features, qos_min_name, False).__bool__()
 
