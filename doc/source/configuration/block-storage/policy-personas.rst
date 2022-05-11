@@ -11,6 +11,21 @@ This document describes Cinder's part in an effort across OpenStack
 services to provide a consistent and useful default RBAC configuration.
 (This effort is referred to as "secure RBAC" for short.)
 
+.. note::
+   The secure RBAC effort not only spans OpenStack services, it is also
+   taking place over several OpenStack development cycles.  Thus it's
+   important to make sure that you are looking at the version of this
+   document that is applicable to the OpenStack release you have deployed.
+
+   This document applies to the **Xena** release.
+
+   Additionally, keep in mind that different projects are implementing
+   secure RBAC on different schedules.  This document applies *only* to
+   Cinder.  To get an idea of the full scope of this effort, consult the
+   `Consistent and Secure Default RBAC
+   <https://governance.openstack.org/tc/goals/selected/consistent-and-secure-rbac.html>`_
+   community goal document.
+
 Vocabulary Note
 ---------------
 
