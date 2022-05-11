@@ -54,8 +54,6 @@ class VeritasCNFSDriverTestCase(test.TestCase):
         self.configuration.nfs_mount_point_base = self.TEST_MNT_BASE
         self.configuration.nfs_mount_options = (self.
                                                 TEST_NFS_MOUNT_OPTIONS_PASS_V3)
-        self.configuration.nfs_oversub_ratio = 1.0
-        self.configuration.nfs_used_ratio = 0.95
         self.configuration.reserved_percentage = 0
         self.configuration.max_over_subscription_ratio = 20.0
         self.configuration.nas_secure_file_permissions = 'false'
