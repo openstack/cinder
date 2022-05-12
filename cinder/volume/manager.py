@@ -2643,6 +2643,10 @@ class VolumeManager(manager.CleanableManager,
                     volume.save()
                     self._update_allocated_capacity(volume, decrement=True,
                                                     host=original_host)
+                    LOG.debug("Update remote allocated_capacity_gb for "
+                              "host %(host)s",
+                              {'host': volume.host},
+                              resource=volume)
                     rpcapi.update_migrated_volume_capacity(ctxt, volume)
             except Exception:
                 with excutils.save_and_reraise_exception():
@@ -2657,6 +2661,10 @@ class VolumeManager(manager.CleanableManager,
                 self._migrate_volume_generic(ctxt, volume, host, new_type_id)
                 self._update_allocated_capacity(volume, decrement=True,
                                                 host=original_host)
+                LOG.debug("Update remote allocated_capacity_gb for "
+                          "host %(host)s",
+                          {'host': volume.host},
+                          resource=volume)
                 rpcapi.update_migrated_volume_capacity(ctxt, volume)
             except Exception:
                 with excutils.save_and_reraise_exception():
@@ -3658,11 +3666,39 @@ class VolumeManager(manager.CleanableManager,
             vol_size = -size if decrement else size
         else:
             vol_size = -vol['size'] if decrement else vol['size']
+
         try:
-            self.stats['pools'][pool]['allocated_capacity_gb'] += vol_size
+            curr_size = self.stats['pools'][pool]['allocated_capacity_gb']
         except KeyError:
             self.stats['pools'][pool] = dict(
-                allocated_capacity_gb=max(vol_size, 0))
+                allocated_capacity_gb=0)
+            curr_size = 0
+
+        msg = "Decrementing " if decrement else "Incrementing "
+        msg += ("allocated_capacity_gb host %(host)s (%(curr_size)s) by "
+                "%(vol_size)s ")
+        LOG.debug(
+            msg,
+            {'host': host,
+             'curr_size': self.stats['pools'][pool]['allocated_capacity_gb'],
+             'vol_size': vol_size}, resource=vol)
+
+        self.stats['pools'][pool]['allocated_capacity_gb'] += vol_size
+
+        pool_info = self.stats['pools'][pool]
+        if pool_info['allocated_capacity_gb'] < 0:
+            # Remove this once we find out why
+            new_size = pool_info['allocated_capacity_gb']
+            LOG.warning("allocated_capacity_gb now=%(new_size)s"
+                        " prev=%(prev_size)s "
+                        "for pool %(pool)s is negative,"
+                        "after being altered by %(vol_size)s size. Reset to 0",
+                        {'new_size': new_size,
+                         'prev_size': curr_size,
+                         'pool': pool,
+                         'vol_size': vol_size},
+                        resource=vol)
+            self.stats['pools'][pool]['allocated_capacity_gb'] = 0
 
     def delete_group(self, context, group: objects.Group) -> None:
         """Deletes group and the volumes in the group."""
