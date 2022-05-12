@@ -473,6 +473,14 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         This method should rename the back-end volume name(id) on the
         destination host back to its original name(id) on the source host.
 
+        Due to this renaming, inheriting drivers may need to also re-associate
+        other entities (such as backend QoS) with the new name.  Alternatively
+        they could overwrite this method and raise NotImplemented.
+
+        In any case, driver's code should always use the volume OVO's 'name_id'
+        field instead of 'id' to get the volume's real UUID, as the renaming
+        could fail.
+
         :param ctxt: The context used to run the method update_migrated_volume
         :param volume: The original volume that was migrated to this backend
         :param new_volume: The migration volume object that was created on
