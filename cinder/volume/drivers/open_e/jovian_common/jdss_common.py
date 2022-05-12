@@ -30,7 +30,7 @@ def is_snapshot(name):
 
 
 def idname(name):
-    """Convert id into snapshot name"""
+    """Convert id into name"""
 
     if name.startswith(('s_', 'v_', 't_')):
         return name[2:]
