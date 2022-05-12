@@ -3760,11 +3760,39 @@ class VolumeManager(manager.CleanableManager,
             vol_size = -size if decrement else size
         else:
             vol_size = -vol['size'] if decrement else vol['size']
+
         try:
-            self.stats['pools'][pool]['allocated_capacity_gb'] += vol_size
+            curr_size = self.stats['pools'][pool]['allocated_capacity_gb']
         except KeyError:
             self.stats['pools'][pool] = dict(
-                allocated_capacity_gb=max(vol_size, 0))
+                allocated_capacity_gb=0)
+            curr_size = 0
+
+        msg = "Decrementing " if decrement else "Incrementing "
+        msg += ("allocated_capacity_gb host %(host)s (%(curr_size)s) by "
+                "%(vol_size)s ")
+        LOG.debug(
+            msg,
+            {'host': host,
+             'curr_size': self.stats['pools'][pool]['allocated_capacity_gb'],
+             'vol_size': vol_size}, resource=vol)
+
+        self.stats['pools'][pool]['allocated_capacity_gb'] += vol_size
+
+        pool_info = self.stats['pools'][pool]
+        if pool_info['allocated_capacity_gb'] < 0:
+            # Remove this once we find out why
+            new_size = pool_info['allocated_capacity_gb']
+            LOG.warning("allocated_capacity_gb now=%(new_size)s"
+                        " prev=%(prev_size)s "
+                        "for pool %(pool)s is negative,"
+                        "after being altered by %(vol_size)s size. Reset to 0",
+                        {'new_size': new_size,
+                         'prev_size': curr_size,
+                         'pool': pool,
+                         'vol_size': vol_size},
+                        resource=vol)
+            self.stats['pools'][pool]['allocated_capacity_gb'] = 0
 
     def delete_group(self,
                      context: context.RequestContext,
