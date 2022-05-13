@@ -12,12 +12,12 @@
 
 """Driver for RackScale Design."""
 
-from distutils import version
 import json
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
+from packaging import version
 try:
     from rsd_lib import RSDLib
     from sushy import exceptions as sushy_exceptions
@@ -81,15 +81,15 @@ class RSDClient(object):
             raise exception.VolumeBackendAPIException(
                 data=_("initialize: Cannot connect to RSD PODM."))
 
-        rsd_api_version = version.LooseVersion(rsdlib._rsd_api_version)
-        if rsd_api_version < version.LooseVersion("2.4.0"):
+        rsd_api_version = version.parse(rsdlib._rsd_api_version)
+        if rsd_api_version < version.parse("2.4.0"):
             raise exception.VolumeBackendAPIException(
                 data=(_("initialize: Unsupported rsd_api version: "
                         "%(current)s < %(expected)s.")
                       % {'current': rsdlib._rsd_api_version,
                          'expected': "2.4.0"}))
 
-        if rsdlib._redfish_version < version.LooseVersion("1.1.0"):
+        if version.parse(rsdlib._redfish_version) < version.parse("1.1.0"):
             raise exception.VolumeBackendAPIException(
                 data=(_("initialize: Unsupported rsd_lib version: "
                         "%(current)s < %(expected)s.")

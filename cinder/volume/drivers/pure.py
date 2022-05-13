@@ -17,7 +17,6 @@
 This driver requires Purity version 4.0.0 or later.
 """
 
-from distutils import version
 import functools
 import ipaddress
 import math
@@ -30,6 +29,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
+from packaging import version
 try:
     from purestorage import purestorage
 except ImportError:
@@ -356,7 +356,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         )
 
         array_info = self._array.get()
-        if version.LooseVersion(array_info["version"]) < version.LooseVersion(
+        if version.parse(array_info["version"]) < version.parse(
             '5.3.0'
         ):
             msg = _("FlashArray Purity version less than 5.3.0 unsupported."

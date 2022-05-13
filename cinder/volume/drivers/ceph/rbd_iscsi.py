@@ -11,11 +11,10 @@
 #    under the License.
 """RADOS Block Device iSCSI Driver"""
 
-from distutils import version
-
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import netutils
+from packaging import version
 
 from cinder.common import constants
 from cinder import exception
@@ -94,8 +93,8 @@ class RBDISCSIDriver(rbd.RBDDriver):
 
     def _create_client(self):
         client_version = rbd_iscsi_client.version
-        if (version.StrictVersion(client_version) <
-                version.StrictVersion(MIN_CLIENT_VERSION)):
+        if (version.parse(client_version) <
+                version.parse(MIN_CLIENT_VERSION)):
             ex_msg = (_('Invalid rbd_iscsi_client version found (%(found)s). '
                         'Version %(min)s or greater required. Run "pip'
                         ' install --upgrade rbd-iscsi-client" to upgrade'

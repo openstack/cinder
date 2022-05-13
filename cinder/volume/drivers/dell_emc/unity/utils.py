@@ -14,13 +14,13 @@
 # under the License.
 
 import contextlib
-from distutils import version
 import fnmatch
 import functools
 import json
 
 from oslo_log import log as logging
 from oslo_utils import units
+from packaging import version
 import six
 
 from cinder import coordination
@@ -359,7 +359,7 @@ def match_any(full, patterns):
 
 
 def is_before_4_1(ver):
-    return version.LooseVersion(ver) < version.LooseVersion('4.1')
+    return version.parse(ver) < version.parse('4.1')
 
 
 def lock_if(condition, lock_name):
