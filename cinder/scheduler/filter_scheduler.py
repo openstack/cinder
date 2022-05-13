@@ -485,7 +485,8 @@ class FilterScheduler(driver.Scheduler):
 
     def _get_weighted_candidates_by_group_type(
             self, context: context.RequestContext, group_spec: dict,
-            group_filter_properties: dict = None) -> List[WeighedHost]:
+            group_filter_properties: Optional[dict] = None) \
+            -> List[WeighedHost]:
         """Finds backends that supports the group type.
 
         Returns a list of backends that meet the required specs,

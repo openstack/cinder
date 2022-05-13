@@ -146,8 +146,8 @@ class VolumeAPI(rpc.RPCAPI):
     BINARY = constants.VOLUME_BINARY
 
     def _get_cctxt(self,
-                   host: str = None,
-                   version: Union[str, Tuple[str, ...]] = None,
+                   host: Optional[str] = None,
+                   version: Optional[Union[str, Tuple[str, ...]]] = None,
                    **kwargs) -> rpc.RPCAPI:
         if host:
             server = volume_utils.extract_host(host)

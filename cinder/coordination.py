@@ -21,7 +21,7 @@ import inspect
 import os
 import re
 import sys
-from typing import Callable
+from typing import Callable, Optional  # noqa: H301
 import uuid
 
 import decorator
@@ -56,7 +56,7 @@ class Coordinator(object):
         meaningful prefix.
     """
 
-    def __init__(self, agent_id: str = None, prefix: str = ''):
+    def __init__(self, agent_id: Optional[str] = None, prefix: str = ''):
         self.coordinator = None
         self.agent_id = agent_id or str(uuid.uuid4())
         self.started = False

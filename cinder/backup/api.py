@@ -119,12 +119,12 @@ class API(base.Base):
 
     def get_all(self,
                 context: context.RequestContext,
-                search_opts: dict = None,
-                marker: str = None,
-                limit: int = None,
-                offset: int = None,
-                sort_keys: List[str] = None,
-                sort_dirs: List[str] = None) -> 'objects.BackupList':
+                search_opts: Optional[dict] = None,
+                marker: Optional[str] = None,
+                limit: Optional[int] = None,
+                offset: Optional[int] = None,
+                sort_keys: Optional[List[str]] = None,
+                sort_dirs: Optional[List[str]] = None) -> 'objects.BackupList':
         context.authorize(policy.GET_ALL_POLICY)
 
         search_opts = search_opts or {}
@@ -223,10 +223,10 @@ class API(base.Base):
                volume_id: str,
                container: str,
                incremental: bool = False,
-               availability_zone: str = None,
+               availability_zone: Optional[str] = None,
                force: bool = False,
                snapshot_id: Optional[str] = None,
-               metadata: dict = None) -> 'objects.Backup':
+               metadata: Optional[dict] = None) -> 'objects.Backup':
         """Make the RPC call to create a volume backup."""
         volume = self.volume_api.get(context, volume_id)
         context.authorize(policy.CREATE_POLICY, target_obj=volume)
@@ -365,8 +365,8 @@ class API(base.Base):
     def restore(self,
                 context: context.RequestContext,
                 backup_id: str,
-                volume_id: str = None,
-                name: str = None) -> dict:
+                volume_id: Optional[str] = None,
+                name: Optional[str] = None) -> dict:
         """Make the RPC call to restore a volume backup."""
         backup = self.get(context, backup_id)
         context.authorize(policy.RESTORE_POLICY, target_obj=backup)

@@ -22,7 +22,7 @@ SHOULD include dedicated exception logging.
 
 """
 
-from typing import Union
+from typing import Optional, Union  # noqa: H301
 
 from oslo_log import log as logging
 from oslo_versionedobjects import exception as obj_exc
@@ -72,7 +72,7 @@ class CinderException(Exception):
     headers: dict = {}
     safe = False
 
-    def __init__(self, message: Union[str, tuple] = None, **kwargs):
+    def __init__(self, message: Optional[Union[str, tuple]] = None, **kwargs):
         self.kwargs = kwargs
         self.kwargs['message'] = message
 

@@ -164,8 +164,8 @@ def _usage_from_backup(backup: 'objects.Backup', **kw) -> dict:
 def notify_about_volume_usage(context: context.RequestContext,
                               volume: 'objects.Volume',
                               event_suffix: str,
-                              extra_usage_info: dict = None,
-                              host: str = None) -> None:
+                              extra_usage_info: Optional[dict] = None,
+                              host: Optional[str] = None) -> None:
     if not host:
         host = CONF.host
 
@@ -182,8 +182,8 @@ def notify_about_volume_usage(context: context.RequestContext,
 def notify_about_backup_usage(context: context.RequestContext,
                               backup: 'objects.Backup',
                               event_suffix: str,
-                              extra_usage_info: dict = None,
-                              host: str = None) -> None:
+                              extra_usage_info: Optional[dict] = None,
+                              host: Optional[str] = None) -> None:
     if not host:
         host = CONF.host
 
@@ -227,8 +227,8 @@ def _usage_from_snapshot(snapshot: 'objects.Snapshot',
 def notify_about_snapshot_usage(context: context.RequestContext,
                                 snapshot: 'objects.Snapshot',
                                 event_suffix: str,
-                                extra_usage_info: dict = None,
-                                host: str = None) -> None:
+                                extra_usage_info: Optional[dict] = None,
+                                host: Optional[str] = None) -> None:
     if not host:
         host = CONF.host
 
@@ -263,8 +263,8 @@ def _usage_from_capacity(capacity: Dict[str, Any],
 def notify_about_capacity_usage(context: context.RequestContext,
                                 capacity: dict,
                                 suffix: str,
-                                extra_usage_info: dict = None,
-                                host: str = None) -> None:
+                                extra_usage_info: Optional[dict] = None,
+                                host: Optional[str] = None) -> None:
     if not host:
         host = CONF.host
 
@@ -292,11 +292,12 @@ def _usage_from_consistencygroup(group_ref: 'objects.Group', **kw) -> dict:
 
 
 @utils.if_notifications_enabled
-def notify_about_consistencygroup_usage(context: context.RequestContext,
-                                        group: 'objects.Group',
-                                        event_suffix: str,
-                                        extra_usage_info: dict = None,
-                                        host: str = None) -> None:
+def notify_about_consistencygroup_usage(
+        context: context.RequestContext,
+        group: 'objects.Group',
+        event_suffix: str,
+        extra_usage_info: Optional[dict] = None,
+        host: Optional[str] = None) -> None:
     if not host:
         host = CONF.host
 
@@ -330,8 +331,8 @@ def _usage_from_group(group_ref: 'objects.Group', **kw) -> dict:
 def notify_about_group_usage(context: context.RequestContext,
                              group: 'objects.Group',
                              event_suffix: str,
-                             extra_usage_info: dict = None,
-                             host: str = None) -> None:
+                             extra_usage_info: Optional[dict] = None,
+                             host: Optional[str] = None) -> None:
     if not host:
         host = CONF.host
 
@@ -381,8 +382,8 @@ def _usage_from_group_snapshot(group_snapshot: 'objects.GroupSnapshot',
 def notify_about_cgsnapshot_usage(context: context.RequestContext,
                                   cgsnapshot: 'objects.CGSnapshot',
                                   event_suffix: str,
-                                  extra_usage_info: dict = None,
-                                  host: str = None) -> None:
+                                  extra_usage_info: Optional[dict] = None,
+                                  host: Optional[str] = None) -> None:
     if not host:
         host = CONF.host
 
@@ -403,7 +404,7 @@ def notify_about_group_snapshot_usage(context: context.RequestContext,
                                       group_snapshot: 'objects.GroupSnapshot',
                                       event_suffix: str,
                                       extra_usage_info=None,
-                                      host: str = None) -> None:
+                                      host: Optional[str] = None) -> None:
     if not host:
         host = CONF.host
 
@@ -633,9 +634,9 @@ def copy_volume(src: Union[str, BinaryIO],
 
 def clear_volume(volume_size: int,
                  volume_path: str,
-                 volume_clear: str = None,
-                 volume_clear_size: int = None,
-                 volume_clear_ionice: str = None,
+                 volume_clear: Optional[str] = None,
+                 volume_clear_size: Optional[int] = None,
+                 volume_clear_ionice: Optional[str] = None,
                  throttle=None) -> None:
     """Unprovision old volumes to prevent data leaking between users."""
     if volume_clear is None:
