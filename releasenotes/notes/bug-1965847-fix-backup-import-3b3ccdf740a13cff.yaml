@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1965847 <https://bugs.launchpad.net/cinder/+bug/1965847>`_: Fixed
+    issue where importing a backup record for a backup_id that currently
+    existed had the unfortunate side effect of deleting the existing backup
+    record.
