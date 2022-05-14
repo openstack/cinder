@@ -27,6 +27,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume import configuration
+from cinder.volume import driver
 import cinder.volume.drivers.stx.client as client
 import cinder.volume.drivers.stx.exception as stx_exception
 from cinder.volume import volume_utils
@@ -618,3 +619,10 @@ class STXCommon(object):
         return self._get_manageable_vols(cinder_snapshots, 'snapshot',
                                          marker, limit,
                                          offset, sort_keys, sort_dirs)
+
+    @staticmethod
+    def get_driver_options():
+        additional_opts = driver.BaseVD._get_oslo_driver_opts(
+            'san_ip', 'san_login', 'san_password', 'driver_use_ssl',
+            'driver_ssl_cert_verify', 'driver_ssl_cert_path')
+        return common_opts + additional_opts

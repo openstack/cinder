@@ -48,7 +48,8 @@ class LenovoISCSIDriver(iscsi.STXISCSIDriver):
 
     @staticmethod
     def get_driver_options():
-        return lenovo_common.common_opts + lenovo_common.iscsi_opts
+        return (lenovo_common.LenovoCommon.get_driver_options() +
+                lenovo_common.iscsi_opts)
 
     def _init_common(self):
         return lenovo_common.LenovoCommon(self.configuration)
