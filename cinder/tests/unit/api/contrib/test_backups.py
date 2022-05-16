@@ -63,11 +63,6 @@ class BackupsAPITestCase(test.TestCase):
         self.patch('cinder.objects.service.Service._get_minimum_version',
                    return_value=None)
 
-    @staticmethod
-    def _get_backup_attrib(backup_id, attrib_name):
-        return db.backup_get(context.get_admin_context(),
-                             backup_id)[attrib_name]
-
     @ddt.data(False, True)
     def test_show_backup(self, backup_from_snapshot):
         volume = utils.create_volume(self.context, size=5, status='creating')
@@ -2242,8 +2237,10 @@ class BackupsAPITestCase(test.TestCase):
                          res_dict['badRequest']['message'])
 
         # Bug #1965847: already existing backup should not be deleted
-        self.assertNotEqual(fields.BackupStatus.DELETED,
-                            self._get_backup_attrib(backup.id, 'status'))
+        backup_status = db.backup_get(context.get_admin_context(),
+                                      backup.id)['status']
+        self.assertNotEqual(fields.BackupStatus.DELETED, backup_status)
+        # ... and quotas should not be touched
         mock_reserve.assert_not_called()
         mock_rollback.assert_not_called()
         mock_commit.assert_not_called()
