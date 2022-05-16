@@ -327,24 +327,28 @@ class API(base.Base):
                                   {'status': 'backing-up',
                                    'previous_status': previous_status})
 
-        backup = None
+        kwargs = {
+            'user_id': context.user_id,
+            'project_id': context.project_id,
+            'display_name': name,
+            'display_description': description,
+            'volume_id': volume_id,
+            'status': fields.BackupStatus.CREATING,
+            'container': container,
+            'parent_id': parent_id,
+            'size': volume['size'],
+            'snapshot_id': snapshot_id,
+            'data_timestamp': data_timestamp,
+            'parent': parent,
+            'metadata': metadata or {}
+        }
         try:
-            kwargs = {
-                'user_id': context.user_id,
-                'project_id': context.project_id,
-                'display_name': name,
-                'display_description': description,
-                'volume_id': volume_id,
-                'status': fields.BackupStatus.CREATING,
-                'container': container,
-                'parent_id': parent_id,
-                'size': volume['size'],
-                'snapshot_id': snapshot_id,
-                'data_timestamp': data_timestamp,
-                'parent': parent,
-                'metadata': metadata or {}
-            }
             backup = objects.Backup(context=context, **kwargs)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                QUOTAS.rollback(context, reservations)
+
+        try:
             backup.create()
             if not snapshot_id:
                 backup.data_timestamp = backup.created_at
@@ -353,7 +357,7 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    if backup and 'id' in backup:
+                    if 'id' in backup:
                         backup.destroy()
                 finally:
                     QUOTAS.rollback(context, reservations)
