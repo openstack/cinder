@@ -1172,7 +1172,7 @@ def copy_image_to_volume(driver,
                          context: context.RequestContext,
                          volume: 'objects.Volume',
                          image_meta: dict,
-                         image_location: str,
+                         image_location: Union[str, Tuple[Optional[str], Any]],
                          image_service) -> None:
     """Downloads Glance image to the specified volume."""
     image_id = image_meta['id']
