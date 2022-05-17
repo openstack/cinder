@@ -549,14 +549,15 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         return _do_conn(pool, remote, timeout)
 
-    def _disconnect_from_rados(self,
-                               client: 'rados.Rados',
+    @staticmethod
+    def _disconnect_from_rados(client: 'rados.Rados',
                                ioctx: 'rados.Ioctx') -> None:
         # closing an ioctx cannot raise an exception
         ioctx.close()
         client.shutdown()
 
-    def _get_backup_snaps(self, rbd_image) -> List:
+    @staticmethod
+    def _get_backup_snaps(rbd_image) -> List:
         """Get list of any backup snapshots that exist on this volume.
 
         There should only ever be one but accept all since they need to be
@@ -1454,7 +1455,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         """Retype from one volume type to another on the same backend."""
         return True, self._setup_volume(volume, new_type)
 
-    def _dumps(self, obj: Dict[str, Union[bool, int]]) -> str:
+    @staticmethod
+    def _dumps(obj: Dict[str, Union[bool, int]]) -> str:
         return json.dumps(obj, separators=(',', ':'), sort_keys=True)
 
     def _exec_on_volume(self,
@@ -1659,7 +1661,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                              **kwargs) -> None:
         pass
 
-    def _parse_location(self, location: str) -> List[str]:
+    @staticmethod
+    def _parse_location(location: str) -> List[str]:
         prefix = 'rbd://'
         if not location.startswith(prefix):
             reason = _('Not stored in rbd')
