@@ -40,7 +40,7 @@ LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
+class NexentaNfsDriver(nfs.NfsDriver):
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
