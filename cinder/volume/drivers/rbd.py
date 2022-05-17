@@ -328,16 +328,17 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             self._clone_v2_api_checked = True
             with RBDVolumeProxy(self, volume_name, read_only=True) as volume:
                 try:
-                    if (volume.volume.op_features() &
-                            self.rbd.RBD_OPERATION_FEATURE_CLONE_PARENT):
-                        LOG.info('Using v2 Clone API')
-                        return
-                except AttributeError:
-                    pass
-                LOG.warning('Not using v2 clone API, please upgrade to'
-                            ' mimic+ and set the OSD minimum client'
-                            ' compat version to mimic for better'
-                            ' performance, fewer deletion issues')
+                    enabled = (volume.volume.op_features() &
+                               self.rbd.RBD_OPERATION_FEATURE_CLONE_PARENT)
+                except Exception:
+                    enabled = False
+                if enabled:
+                    LOG.info('Using v2 Clone API')
+                else:
+                    LOG.warning('Not using v2 clone API, please upgrade to'
+                                ' mimic+ and set the OSD minimum client'
+                                ' compat version to mimic for better'
+                                ' performance, fewer deletion issues')
 
     def _get_target_config(self,
                            target_id: Optional[str]) -> Dict[str,
