@@ -7,6 +7,11 @@ cinder/backup/drivers/ceph.py
 cinder/common/constants.py
 cinder/context.py
 cinder/coordination.py
+cinder/cmd/api.py
+cinder/cmd/backup.py
+cinder/cmd/scheduler.py
+cinder/cmd/status.py
+cinder/cmd/volume.py
 cinder/i18n.py
 cinder/image/cache.py
 cinder/image/glance.py

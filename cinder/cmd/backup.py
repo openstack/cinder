@@ -32,7 +32,10 @@ eventlet.monkey_patch()
 # https://github.com/eventlet/eventlet/issues/592
 import __original_module_threading as orig_threading  # pylint: disable=E0401
 import threading # noqa
-orig_threading.current_thread.__globals__['_active'] = threading._active
+orig_threading.current_thread.__globals__['_active'] = \
+    threading._active  # type: ignore
+import typing
+from typing import Union
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -40,6 +43,8 @@ from oslo_log import log as logging
 from oslo_privsep import priv_context
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
+if typing.TYPE_CHECKING:
+    import oslo_service
 
 # Need to register global_opts
 from cinder.common import config  # noqa
@@ -77,7 +82,10 @@ LOG = None
 _EXTRA_DEFAULT_LOG_LEVELS = ['swiftclient=WARN', 'botocore=WARN']
 
 
-def _launch_backup_process(launcher, num_process, _semaphore):
+def _launch_backup_process(launcher: 'oslo_service.ProcessLauncher',
+                           num_process: int,
+                           _semaphore: Union[eventlet.semaphore.Semaphore,
+                                             utils.Semaphore]) -> None:
     try:
         server = service.Service.create(binary='cinder-backup',
                                         coordination=True,
@@ -85,6 +93,7 @@ def _launch_backup_process(launcher, num_process, _semaphore):
                                         process_number=num_process + 1,
                                         semaphore=_semaphore)
     except Exception:
+        assert LOG is not None
         LOG.exception('Backup service %s failed to start.', CONF.host)
         sys.exit(1)
     else:
@@ -95,7 +104,7 @@ def _launch_backup_process(launcher, num_process, _semaphore):
         launcher.launch_service(server)
 
 
-def main():
+def main() -> None:
     objects.register_all()
     gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project='cinder',
