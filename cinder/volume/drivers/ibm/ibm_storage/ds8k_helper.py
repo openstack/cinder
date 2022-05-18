@@ -678,7 +678,8 @@ class DS8KCommonHelper(object):
         }
 
     @coordination.synchronized('ibm-ds8k-{connector[host]}')
-    def terminate_connection(self, vol_id, host_id, connector, map_info):
+    def terminate_connection(self, volume, vol_id, host_id, connector,
+                             map_info):
         host = self._get_host(connector)
         host_ports = map_info['host_ports']
         lun_ids = map_info['lun_ids']
@@ -690,6 +691,27 @@ class DS8KCommonHelper(object):
                   {"host": host_ports,
                    "defined": host_id,
                    "delete": delete_ports})
+        host_name = host.name
+        if (host.name[:7] == "OShost:"):
+            host_name = host.name[7:]
+        attachment_count = 0
+        if hasattr(volume, 'multiattach') and volume.multiattach:
+            try:
+                attachment_list = volume.volume_attachment
+                for attachment in attachment_list:
+                    if (attachment.attach_status == "attached" and
+                       attachment.attached_host == host_name):
+                        attachment_count += 1
+            except AttributeError:
+                pass
+        if attachment_count > 1:
+            LOG.info("Volume %(volume)s is attached to multiple "
+                     "instances on host %(host)s, hence "
+                     "skipping delete host.",
+                     {'volume': volume.name,
+                      'host': host.name})
+            return
+
         for lun_id in lun_ids:
             self._delete_mappings(host_id, lun_id)
         if not lun_ids:
@@ -1263,7 +1285,8 @@ class DS8KECKDHelper(DS8KCommonHelper):
             }
         }
 
-    def terminate_connection(self, vol_id, connector, force, **kwargs):
+    def terminate_connection(self, volume, vol_id, connector, force,
+                             **kwargs):
         return None
 
 
