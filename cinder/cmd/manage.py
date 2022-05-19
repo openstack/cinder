@@ -50,6 +50,8 @@
 
 """CLI interface for cinder management."""
 
+from __future__ import annotations
+
 import collections
 import collections.abc as collections_abc
 import errno
@@ -60,6 +62,8 @@ import os
 import re
 import sys
 import time
+import typing
+from typing import Any, Callable, Optional, Tuple, Union  # noqa: H301
 
 from oslo_config import cfg
 from oslo_db import exception as db_exc
@@ -101,6 +105,7 @@ OVO_VERSION = ovo_base.OBJ_VERSIONS.get_current()
 
 
 # Decorators for actions
+@typing.no_type_check
 def args(*args, **kwargs):
     args = list(args)
     if not args[0].startswith('-') and '-' in args[0]:
@@ -118,7 +123,7 @@ class HostCommands(object):
 
     @args('zone', nargs='?', default=None,
           help='Availability Zone (default: %(default)s)')
-    def list(self, zone=None):
+    def list(self, zone: Optional[str] = None) -> None:
         """Show a list of all physical hosts.
 
         Can be filtered by zone.
@@ -129,7 +134,7 @@ class HostCommands(object):
         services = objects.ServiceList.get_all(ctxt)
         if zone:
             services = [s for s in services if s.availability_zone == zone]
-        hosts = []
+        hosts: list[dict[str, Any]] = []
         for srv in services:
             if not [h for h in hosts if h['host'] == srv['host']]:
                 hosts.append(srv)
@@ -152,7 +157,8 @@ class DbCommands(object):
     # preceed any element of the "online_migrations" tuple, like this:
     #    # Added in Queens remove in Rocky
     #    db.service_uuids_online_data_migration,
-    online_migrations = (
+    online_migrations: Tuple[Callable[[context.RequestContext, int],
+                                      Tuple[int, int]], ...] = (
         # TODO: (Z Release) Remove next line and this comment
         # TODO: (Y Release) Uncomment next line and remove this comment
         # db.remove_temporary_admin_metadata_data_migration,
@@ -172,7 +178,9 @@ class DbCommands(object):
           help='Update RPC and Objects versions when doing offline upgrades, '
                'with this we no longer need to restart the services twice '
                'after the upgrade to prevent ServiceTooOld exceptions.')
-    def sync(self, version=None, bump_versions=False):
+    def sync(self,
+             version: Optional[int] = None,
+             bump_versions: bool = False) -> None:
         """Sync the database up to the most recent version."""
         if version is not None and version > db.MAX_INT:
             print(_('Version should be less than or equal to '
@@ -199,13 +207,13 @@ class DbCommands(object):
             print(_('Error during service version bump: %s') % ex)
             sys.exit(2)
 
-    def version(self):
+    def version(self) -> None:
         """Print the current database version."""
         print(db_migration.db_version())
 
     @args('age_in_days', type=int,
           help='Purge deleted rows older than age in days')
-    def purge(self, age_in_days):
+    def purge(self, age_in_days: int) -> None:
         """Purge deleted rows older than a given age from cinder tables."""
         age_in_days = int(age_in_days)
         if age_in_days < 0:
@@ -223,7 +231,9 @@ class DbCommands(object):
                     "logs for more details."))
             sys.exit(1)
 
-    def _run_migration(self, ctxt, max_count):
+    def _run_migration(self,
+                       ctxt: context.RequestContext,
+                       max_count: int) -> Tuple[dict, bool]:
         ran = 0
         exceptions = False
         migrations = {}
@@ -254,7 +264,7 @@ class DbCommands(object):
 
     @args('--max_count', metavar='<number>', dest='max_count', type=int,
           help='Maximum number of objects to consider.')
-    def online_data_migrations(self, max_count=None):
+    def online_data_migrations(self, max_count: Optional[int] = None) -> None:
         """Perform online data migrations for the release in batches."""
         ctxt = context.get_admin_context()
         if max_count is not None:
@@ -269,7 +279,7 @@ class DbCommands(object):
 
         ran = None
         exceptions = False
-        migration_info = {}
+        migration_info: dict[str, Any] = {}
         while ran is None or ran != 0:
             migrations, exceptions = self._run_migration(ctxt, max_count)
             ran = 0
@@ -311,8 +321,10 @@ class DbCommands(object):
           help='Change the active backend ID (default: %(default)s).')
     @args('--backend-host', required=True,
           help='The backend host name.')
-    def reset_active_backend(self, enable_replication, active_backend_id,
-                             backend_host):
+    def reset_active_backend(self,
+                             enable_replication: bool,
+                             active_backend_id: Optional[str],
+                             backend_host: str) -> None:
         """Reset the active backend for a host."""
 
         ctxt = context.get_admin_context()
@@ -336,7 +348,7 @@ class QuotaCommands(object):
     @args('--project-id', default=None,
           help=('The ID of the project where we want to sync the quotas '
                 '(defaults to all projects).'))
-    def check(self, project_id):
+    def check(self, project_id: Optional[str]) -> None:
         """Check if quotas and reservations are correct
 
         This action checks quotas and reservations, for a specific project or
@@ -356,7 +368,7 @@ class QuotaCommands(object):
     @args('--project-id', default=None,
           help=('The ID of the project where we want to sync the quotas '
                 '(defaults to all projects).'))
-    def sync(self, project_id):
+    def sync(self, project_id: Optional[str]) -> None:
         """Fix quotas and reservations
 
         This action refreshes existing quota usage and reservation count for a
@@ -373,7 +385,9 @@ class QuotaCommands(object):
         self._check_sync(project_id, do_fix=True)
 
     @db_api.main_context_manager.reader
-    def _get_quota_projects(self, context, project_id):
+    def _get_quota_projects(self,
+                            context: context.RequestContext,
+                            project_id: Optional[str]) -> list[str]:
         """Get project ids that have quota_usage entries."""
         if project_id:
             model = models.QuotaUsage
@@ -402,7 +416,10 @@ class QuotaCommands(object):
         project_ids = [row.project_id for row in projects]
         return project_ids
 
-    def _get_usages(self, context, resources, project_id):
+    def _get_usages(self,
+                    ctxt: context.RequestContext,
+                    resources,
+                    project_id: str) -> list:
         """Get data necessary to check out of sync quota usage.
 
         Returns a list QuotaUsage instances for the specific project
@@ -414,7 +431,10 @@ class QuotaCommands(object):
         ).filter_by(project_id=project_id).with_for_update().all()
         return usages
 
-    def _get_reservations(self, context, project_id, usage_id):
+    def _get_reservations(self,
+                          ctxt: context.RequestContext,
+                          project_id: str,
+                          usage_id: str) -> list:
         """Get reservations for a given project and usage id."""
         reservations = (
             db_api.model_query(
@@ -428,7 +448,10 @@ class QuotaCommands(object):
         )
         return reservations
 
-    def _check_duplicates(self, context, usages, do_fix):
+    def _check_duplicates(self,
+                          context: context.RequestContext,
+                          usages,
+                          do_fix: bool) -> tuple[list, bool]:
         """Look for duplicated quota used entries (bug#1484343)
 
         If we have duplicates and we are fixing them, then we reassign the
@@ -470,7 +493,7 @@ class QuotaCommands(object):
             result.append(keep_usage)
         return result, duplicates_found
 
-    def _check_sync(self, project_id, do_fix):
+    def _check_sync(self, project_id: Optional[str], do_fix: bool) -> bool:
         """Check the quotas and reservations optionally fixing them."""
 
         ctxt = context.get_admin_context()
@@ -496,7 +519,11 @@ class QuotaCommands(object):
         return discrepancy
 
     @db_api.main_context_manager.reader
-    def _check_project_sync(self, context, project, do_fix, resources):
+    def _check_project_sync(self,
+                            context: context.RequestContext,
+                            project: str,
+                            do_fix: bool,
+                            resources) -> bool:
         print('Processing quota usage for project %s' % project)
 
         discrepancy = False
@@ -579,7 +606,7 @@ class VolumeCommands(object):
 
     @args('volume_id',
           help='Volume ID to be deleted')
-    def delete(self, volume_id):
+    def delete(self, volume_id: str) -> None:
         """Delete a volume, bypassing the check that it must be available."""
         ctxt = context.get_admin_context()
         volume = objects.Volume.get_by_id(ctxt, volume_id)
@@ -604,7 +631,7 @@ class VolumeCommands(object):
                                                'the format host@backend#pool')
     @args('--newhost', required=True, help='New volume host name in the '
                                            'format host@backend#pool')
-    def update_host(self, currenthost, newhost):
+    def update_host(self, currenthost: str, newhost: str) -> None:
         """Modify the host name associated with a volume.
 
         Particularly to recover from cases where one has moved
@@ -627,7 +654,7 @@ class ConfigCommands(object):
 
     @args('param', nargs='?', default=None,
           help='Configuration parameter to display (default: %(default)s)')
-    def list(self, param=None):
+    def list(self, param: Optional[str] = None) -> None:
         """List parameters configured for cinder.
 
         Lists all parameters configured for cinder unless an optional argument
@@ -646,7 +673,7 @@ class ConfigCommands(object):
 class BackupCommands(object):
     """Methods for managing backups."""
 
-    def list(self):
+    def list(self) -> None:
         """List all backups.
 
         List all backups (including ones in progress) and the host
@@ -683,7 +710,7 @@ class BackupCommands(object):
 
     @args('--currenthost', required=True, help='Existing backup host name')
     @args('--newhost', required=True, help='New backup host name')
-    def update_backup_host(self, currenthost, newhost):
+    def update_backup_host(self, currenthost: str, newhost: str) -> None:
         """Modify the host name associated with a backup.
 
         Particularly to recover from cases where one has moved
@@ -738,7 +765,7 @@ class ServiceCommands(BaseCommand):
           help='Service to delete from the host.')
     @args('host_name', type=str,
           help='Host from which to remove the service.')
-    def remove(self, binary, host_name):
+    def remove(self, binary: str, host_name: str) -> Optional[int]:
         """Completely removes a service."""
         ctxt = context.get_admin_context()
         try:
@@ -753,10 +780,12 @@ class ServiceCommands(BaseCommand):
         print(_("Service %(service)s on host %(host)s removed.") %
               {'service': binary, 'host': host_name})
 
+        return None
+
 
 class ClusterCommands(BaseCommand):
     """Methods for managing clusters."""
-    def list(self):
+    def list(self) -> None:
         """Show a list of all cinder services."""
         ctxt = context.get_admin_context()
         clusters = objects.ClusterList.get_all(ctxt, services_summary=True)
@@ -783,7 +812,10 @@ class ClusterCommands(BaseCommand):
     @args('binary', type=str,
           help='Service to delete from the cluster.')
     @args('cluster-name', type=str, help='Cluster to delete.')
-    def remove(self, recursive, binary, cluster_name):
+    def remove(self,
+               recursive: bool,
+               binary: str,
+               cluster_name: str) -> Optional[int]:
         """Completely removes a cluster."""
         ctxt = context.get_admin_context()
         try:
@@ -812,13 +844,18 @@ class ClusterCommands(BaseCommand):
                      'removed.') % {'msg': msg, 'num': len(cluster.services)})
         print(msg)
 
+        return None
+
     @args('--full-rename', dest='partial',
           action='store_false', default=True,
           help='Do full cluster rename instead of just replacing provided '
                'current cluster name and preserving backend and/or pool info.')
     @args('current', help='Current cluster name.')
     @args('new', help='New cluster name.')
-    def rename(self, partial, current, new):
+    def rename(self,
+               partial: bool,
+               current: Optional[str],
+               new: Optional[str]) -> Optional[int]:
         """Rename cluster name for Volumes and Consistency Groups.
 
         Useful when you want to rename a cluster, particularly when the
@@ -851,13 +888,15 @@ class ClusterCommands(BaseCommand):
             print(msg % {'current': current})
             return 2
 
+        return None
+
 
 class ConsistencyGroupCommands(object):
     """Methods for managing consistency groups."""
 
     @args('--currenthost', required=True, help='Existing CG host name')
     @args('--newhost', required=True, help='New CG host name')
-    def update_cg_host(self, currenthost, newhost):
+    def update_cg_host(self, currenthost: str, newhost: str) -> None:
         """Modify the host name associated with a Consistency Group.
 
         Particularly to recover from cases where one has moved
@@ -878,7 +917,9 @@ class UtilCommands(object):
     """Generic utils."""
 
     @staticmethod
-    def _get_resources_locks():
+    def _get_resources_locks() -> Tuple[collections.defaultdict,
+                                        collections.defaultdict,
+                                        collections.defaultdict]:
         """Get all vol/snap/backup file lock paths."""
         backup_locks_prefix = 'cinder-cleanup_incomplete_backups_'
         oslo_dir = os.path.abspath(cfg.CONF.oslo_concurrency.lock_path)
@@ -890,8 +931,8 @@ class UtilCommands(object):
             if tooz_dir != oslo_dir:
                 filenames += glob.glob(os.path.join(tooz_dir, 'cinder-*'))
 
-        volumes = collections.defaultdict(list)
-        snapshots = collections.defaultdict(list)
+        volumes: collections.defaultdict = collections.defaultdict(list)
+        snapshots: collections.defaultdict = collections.defaultdict(list)
         backups = collections.defaultdict(list)
         matcher = re.compile('.*?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-'
                              '[0-9a-f]{4}-[0-9a-f]{12}).*?', re.IGNORECASE)
@@ -908,7 +949,7 @@ class UtilCommands(object):
 
         return volumes, snapshots, backups
 
-    def _exclude_running_backups(self, backups):
+    def _exclude_running_backups(self, backups: dict) -> None:
         """Remove backup entries from the dict for running backup services."""
         for backup_pgrp in list(backups.keys()):
             # The PGRP is the same as the PID of the parent process, so we know
@@ -928,7 +969,7 @@ class UtilCommands(object):
     @args('--services-offline', dest='online',
           action='store_false', default=True,
           help='All locks can be deleted as Cinder services are not running.')
-    def clean_locks(self, online):
+    def clean_locks(self, online: bool) -> None:
         """Clean file locks for vols, snaps, and backups on the current host.
 
         Should be run on any host where we are running a Cinder service (API,
@@ -955,6 +996,8 @@ class UtilCommands(object):
         self.ctxt = context.get_admin_context()
         # Find volume and snapshots ids, and backups PGRP based on the existing
         # file locks
+        volumes: Union[collections.defaultdict, dict]
+        snapshots: Union[collections.defaultdict, dict]
         volumes, snapshots, backups = self._get_resources_locks()
 
         # If services are online we cannot delete locks for existing resources
@@ -999,7 +1042,7 @@ CATEGORIES = {
 }
 
 
-def methods_of(obj):
+def methods_of(obj) -> list:
     """Return non-private methods from an object.
 
     Get all callable methods of an object that don't start with underscore
@@ -1007,13 +1050,14 @@ def methods_of(obj):
     """
     result = []
     for i in dir(obj):
-        if isinstance(getattr(obj, i),
-                      collections_abc.Callable) and not i.startswith('_'):
+        if (isinstance(getattr(obj, i),
+                       collections_abc.Callable) and  # type: ignore
+                not i.startswith('_')):
             result.append((i, getattr(obj, i)))
     return result
 
 
-def missing_action(help_func):
+def missing_action(help_func: Callable) -> Callable:
     def wrapped():
         help_func()
         exit(2)
@@ -1033,7 +1077,7 @@ def add_command_parsers(subparsers):
         for (action, action_fn) in methods_of(command_object):
             parser = category_subparsers.add_parser(action)
 
-            action_kwargs = []
+            action_kwargs: list = []
             for args, kwargs in getattr(action_fn, 'args', []):
                 parser.add_argument(*args, **kwargs)
 

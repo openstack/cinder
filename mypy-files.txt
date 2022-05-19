@@ -9,6 +9,7 @@ cinder/context.py
 cinder/coordination.py
 cinder/cmd/api.py
 cinder/cmd/backup.py
+cinder/cmd/manage.py
 cinder/cmd/scheduler.py
 cinder/cmd/status.py
 cinder/cmd/volume.py
