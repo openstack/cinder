@@ -25,6 +25,8 @@
    should be placed in volume_utils instead.
 """
 
+from __future__ import annotations  # Remove when only supporting python 3.9+
+
 from collections import OrderedDict
 import contextlib
 import datetime
@@ -42,8 +44,8 @@ import stat
 import sys
 import tempfile
 import typing
-from typing import Callable, Dict, Iterable, Iterator, List  # noqa: H301
-from typing import Optional, Tuple, Type, Union  # noqa: H301
+from typing import Callable, Iterable, Iterator  # noqa: H301
+from typing import Optional, Type, Union  # noqa: H301
 
 import eventlet
 from eventlet import tpool
@@ -165,15 +167,15 @@ def check_exclusive_options(
         raise exception.InvalidInput(reason=msg)
 
 
-def execute(*cmd: str, **kwargs: Union[bool, str]) -> Tuple[str, str]:
+def execute(*cmd: str, **kwargs: Union[bool, str]) -> tuple[str, str]:
     """Convenience wrapper around oslo's execute() method."""
     if 'run_as_root' in kwargs and 'root_helper' not in kwargs:
         kwargs['root_helper'] = get_root_helper()
     return processutils.execute(*cmd, **kwargs)
 
 
-def check_ssh_injection(cmd_list: List[str]) -> None:
-    ssh_injection_pattern: Tuple[str, ...] = ('`', '$', '|', '||', ';', '&',
+def check_ssh_injection(cmd_list: list[str]) -> None:
+    ssh_injection_pattern: tuple[str, ...] = ('`', '$', '|', '||', ';', '&',
                                               '&&', '>', '>>', '<')
 
     # Check whether injection attacks exist
@@ -208,7 +210,7 @@ def check_ssh_injection(cmd_list: List[str]) -> None:
 
 
 def check_metadata_properties(
-        metadata: Optional[Dict[str, str]]) -> None:
+        metadata: Optional[dict[str, str]]) -> None:
     """Checks that the volume metadata properties are valid."""
 
     if not metadata:
@@ -235,7 +237,7 @@ def check_metadata_properties(
 
 
 def last_completed_audit_period(unit: Optional[str] = None) -> \
-        Tuple[Union[datetime.datetime, datetime.timedelta],
+        tuple[Union[datetime.datetime, datetime.timedelta],
               Union[datetime.datetime, datetime.timedelta]]:
     """This method gives you the most recently *completed* audit period.
 
@@ -496,7 +498,7 @@ def get_file_size(path: str) -> int:
 
 def _get_disk_of_partition(
         devpath: str,
-        st: Optional[os.stat_result] = None) -> Tuple[str, os.stat_result]:
+        st: Optional[os.stat_result] = None) -> tuple[str, os.stat_result]:
     """Gets a disk device path and status from partition path.
 
     Returns a disk device path from a partition device path, and stat for
@@ -633,9 +635,9 @@ class retry_if_exit_code(tenacity.retry_if_exception):
 
 def retry(retry_param: Union[None,
                              Type[Exception],
-                             Tuple[Type[Exception], ...],
+                             tuple[Type[Exception], ...],
                              int,
-                             Tuple[int, ...]],
+                             tuple[int, ...]],
           interval: float = 1,
           retries: int = 3,
           backoff_rate: float = 2,

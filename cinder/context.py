@@ -17,8 +17,10 @@
 
 """RequestContext: context for requests that persist through all of cinder."""
 
+from __future__ import annotations
+
 import copy
-from typing import Any, Dict, Optional  # noqa: H301
+from typing import Any, Optional  # noqa: H301
 
 from keystoneauth1.access import service_catalog as ksa_service_catalog
 from keystoneauth1 import plugin
@@ -162,7 +164,7 @@ class RequestContext(context.RequestContext):
     read_deleted = property(_get_read_deleted, _set_read_deleted,
                             _del_read_deleted)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         result = super(RequestContext, self).to_dict()
         result['user_id'] = self.user_id
         result['project_id'] = self.project_id

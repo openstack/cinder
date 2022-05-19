@@ -12,7 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from typing import Optional, Tuple, Union  # noqa: H301
+from __future__ import annotations
+
+from typing import Optional, Union  # noqa: H301
 
 from cinder.common import constants
 from cinder import context
@@ -147,7 +149,7 @@ class VolumeAPI(rpc.RPCAPI):
 
     def _get_cctxt(self,
                    host: Optional[str] = None,
-                   version: Optional[Union[str, Tuple[str, ...]]] = None,
+                   version: Optional[Union[str, tuple[str, ...]]] = None,
                    **kwargs) -> rpc.RPCAPI:
         if host:
             server = volume_utils.extract_host(host)

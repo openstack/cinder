@@ -17,8 +17,10 @@
 Pluggable Weighing support
 """
 
+from __future__ import annotations
+
 import abc
-from typing import Iterable, List, Optional  # noqa: H301
+from typing import Iterable, Optional  # noqa: H301
 
 from oslo_log import log as logging
 
@@ -28,7 +30,7 @@ from cinder.scheduler import base_handler
 LOG = logging.getLogger(__name__)
 
 
-def normalize(weight_list: List[float],
+def normalize(weight_list: list[float],
               minval: Optional[float] = None,
               maxval: Optional[float] = None) -> Iterable[float]:
     """Normalize the values in a list between 0 and 1.0.
@@ -95,8 +97,8 @@ class BaseWeigher(object, metaclass=abc.ABCMeta):
         """Override in a subclass to specify a weight for a specific object."""
 
     def weigh_objects(self,
-                      weighed_obj_list: List[WeighedObject],
-                      weight_properties: dict) -> List[float]:
+                      weighed_obj_list: list[WeighedObject],
+                      weight_properties: dict) -> list[float]:
         """Weigh multiple objects.
 
         Override in a subclass if you need access to all objects in order
@@ -130,8 +132,8 @@ class BaseWeightHandler(base_handler.BaseHandler):
 
     def get_weighed_objects(self,
                             weigher_classes: list,
-                            obj_list: List[WeighedObject],
-                            weighing_properties: dict) -> List[WeighedObject]:
+                            obj_list: list[WeighedObject],
+                            weighing_properties: dict) -> list[WeighedObject]:
         """Return a sorted (descending), normalized list of WeighedObjects."""
 
         if not obj_list:

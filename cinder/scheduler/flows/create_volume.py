@@ -10,7 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from typing import Any, Dict, Optional  # noqa: H301
+from __future__ import annotations  # Remove when only supporting python 3.9+
+
+from typing import Any, Optional  # noqa: H301
 
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -49,7 +51,7 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
                                volume: objects.Volume,
                                snapshot_id: Optional[str],
                                image_id: Optional[str],
-                               backup_id: Optional[str]) -> Dict[str, Any]:
+                               backup_id: Optional[str]) -> dict[str, Any]:
         # Create the full request spec using the volume object.
         #
         # NOTE(dulek): At this point, a volume can be deleted before it gets
@@ -77,7 +79,7 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
                 volume: objects.Volume,
                 snapshot_id: Optional[str],
                 image_id: Optional[str],
-                backup_id: Optional[str]) -> Dict[str, Any]:
+                backup_id: Optional[str]) -> dict[str, Any]:
         # For RPC version < 1.2 backward compatibility
         if request_spec is None:
             request_spec = self._populate_request_spec(volume,

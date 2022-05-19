@@ -15,11 +15,12 @@
 
 """Manage backends in the current zone."""
 
+from __future__ import annotations
+
 from collections import abc
 import random
 import typing
-from typing import (Any, Dict, Iterable, List,  # noqa: H301
-                    Optional, Type, Union)
+from typing import (Any, Iterable, Optional, Type, Union)  # noqa: H301
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -163,7 +164,7 @@ class BackendState(object):
         self.service = ReadOnlyDict(service)
 
     def update_from_volume_capability(self,
-                                      capability: Dict[str, Any],
+                                      capability: dict[str, Any],
                                       service=None) -> None:
         """Update information about a host from its volume_node info.
 
@@ -289,7 +290,7 @@ class BackendState(object):
                                                 'host': self.host})
             del self.pools[pool]
 
-    def _append_backend_info(self, pool_cap: Dict[str, Any]) -> None:
+    def _append_backend_info(self, pool_cap: dict[str, Any]) -> None:
         # Fill backend level info to pool if needed.
         if not pool_cap.get('volume_backend_name', None):
             pool_cap['volume_backend_name'] = self.volume_backend_name
@@ -407,7 +408,7 @@ class PoolState(BackendState):
         self.pools: dict = {}
 
     def update_from_volume_capability(self,
-                                      capability: Dict[str, Any],
+                                      capability: dict[str, Any],
                                       service=None) -> None:
         """Update information about a pool from its volume_node info."""
         LOG.debug("Updating capabilities for %s: %s", self.host, capability)
@@ -470,7 +471,7 @@ class HostManager(object):
 
     def __init__(self):
         self.service_states = {}  # { <host|cluster>: {<service>: {cap k : v}}}
-        self.backend_state_map: Dict[str, BackendState] = {}
+        self.backend_state_map: dict[str, BackendState] = {}
         self.backup_service_states = {}
         self.filter_handler = filters.BackendFilterHandler('cinder.scheduler.'
                                                            'filters')
@@ -513,7 +514,7 @@ class HostManager(object):
 
     def _choose_backend_weighers(
             self,
-            weight_cls_names: Optional[List[str]]) -> list:
+            weight_cls_names: Optional[list[str]]) -> list:
         """Return a list of available weigher names.
 
         This function checks input weigher names against a predefined set
@@ -795,7 +796,7 @@ class HostManager(object):
 
     def get_pools(self,
                   context: cinder_context.RequestContext,
-                  filters: Optional[dict] = None) -> List[dict]:
+                  filters: Optional[dict] = None) -> list[dict]:
         """Returns a dict of all pools on all hosts HostManager knows about."""
 
         self._update_backend_state_map(context)
@@ -858,7 +859,7 @@ class HostManager(object):
                    capa_new: dict,
                    updated_pools: Iterable[dict],
                    host: str,
-                   timestamp) -> List[dict]:
+                   timestamp) -> list[dict]:
         pools = capa_new.get('pools')
         usage = []
         if pools and isinstance(pools, list):
@@ -888,7 +889,7 @@ class HostManager(object):
 
     def _get_pool_usage(self,
                         pool: dict,
-                        host: str, timestamp) -> Dict[str, Any]:
+                        host: str, timestamp) -> dict[str, Any]:
         total = pool["total_capacity_gb"]
         free = pool["free_capacity_gb"]
 
@@ -967,7 +968,7 @@ class HostManager(object):
 
     def _notify_capacity_usage(self,
                                context: cinder_context.RequestContext,
-                               usage: List[dict]) -> None:
+                               usage: list[dict]) -> None:
         if usage:
             for u in usage:
                 volume_utils.notify_about_capacity_usage(

@@ -16,11 +16,12 @@
 
 """Handles all requests relating to volumes."""
 
+from __future__ import annotations
+
 import ast
 import collections
 import datetime
-from typing import (Any, DefaultDict, Dict, Iterable, List,   # noqa: H301
-                    Optional, Tuple, Union)
+from typing import (Any, DefaultDict, Iterable, Optional, Union)  # noqa: H301
 
 from castellan import key_manager
 from oslo_config import cfg
@@ -139,7 +140,7 @@ class API(base.Base):
             services = objects.ServiceList.get_all_by_topic(ctxt, topic)
             az_data = [(s.availability_zone, s.disabled)
                        for s in services]
-            disabled_map: Dict[str, bool] = {}
+            disabled_map: dict[str, bool] = {}
             for (az_name, disabled) in az_data:
                 tracked_disabled = disabled_map.get(az_name, True)
                 disabled_map[az_name] = tracked_disabled and disabled
@@ -725,8 +726,8 @@ class API(base.Base):
             search_opts: Optional[dict] = None,
             marker: Optional[str] = None,
             limit: Optional[int] = None,
-            sort_keys: Optional[List[str]] = None,
-            sort_dirs: Optional[List[str]] = None,
+            sort_keys: Optional[list[str]] = None,
+            sort_dirs: Optional[list[str]] = None,
             offset: Optional[int] = None) -> objects.SnapshotList:
         context.authorize(snapshot_policy.GET_ALL_POLICY)
 
@@ -971,7 +972,7 @@ class API(base.Base):
 
         utils.check_metadata_properties(metadata)
 
-        valid_status: Tuple[str, ...]
+        valid_status: tuple[str, ...]
         valid_status = ('available',)
         if force or allow_in_use:
             valid_status = ('available', 'in-use')
@@ -1118,7 +1119,7 @@ class API(base.Base):
             context: context.RequestContext,
             volume_list: objects.VolumeList) -> list:
         reserve_opts_list = []
-        total_reserve_opts: Dict[str, int] = {}
+        total_reserve_opts: dict[str, int] = {}
         try:
             for volume in volume_list:
                 if CONF.no_snapshot_gb_quota:
@@ -1155,7 +1156,7 @@ class API(base.Base):
             name: str,
             description: str,
             cgsnapshot_id: str,
-            group_snapshot_id: Optional[str] = None) -> Dict[str, Any]:
+            group_snapshot_id: Optional[str] = None) -> dict[str, Any]:
         options = {'volume_id': volume['id'],
                    'cgsnapshot_id': cgsnapshot_id,
                    'group_snapshot_id': group_snapshot_id,
@@ -1176,7 +1177,7 @@ class API(base.Base):
             volume: objects.Volume,
             name: str,
             description: str,
-            metadata: Optional[Dict[str, Any]] = None,
+            metadata: Optional[dict[str, Any]] = None,
             cgsnapshot_id: Optional[str] = None,
             group_snapshot_id: Optional[str] = None,
             allow_in_use: bool = False) -> objects.Snapshot:
@@ -1193,7 +1194,7 @@ class API(base.Base):
             volume: objects.Volume,
             name: str,
             description: str,
-            metadata: Optional[Dict[str, Any]] = None) -> objects.Snapshot:
+            metadata: Optional[dict[str, Any]] = None) -> objects.Snapshot:
         result = self._create_snapshot(context, volume, name, description,
                                        True, metadata)
         LOG.info("Snapshot force create request issued successfully.",
@@ -1211,7 +1212,7 @@ class API(base.Base):
             snapshot.assert_not_frozen()
 
         # Build required conditions for conditional update
-        expected: Dict[str, Any] = {'cgsnapshot_id': None,
+        expected: dict[str, Any] = {'cgsnapshot_id': None,
                                     'group_snapshot_id': None}
         # If not force deleting we have status conditions
         if not force:
@@ -1237,7 +1238,7 @@ class API(base.Base):
     def update_snapshot(self,
                         context: context.RequestContext,
                         snapshot: objects.Snapshot,
-                        fields: Dict[str, Any]) -> None:
+                        fields: dict[str, Any]) -> None:
         context.authorize(snapshot_policy.UPDATE_POLICY,
                           target_obj=snapshot)
         snapshot.update(fields)
@@ -1256,7 +1257,7 @@ class API(base.Base):
     def create_volume_metadata(self,
                                context: context.RequestContext,
                                volume: objects.Volume,
-                               metadata: Dict[str, Any]) -> dict:
+                               metadata: dict[str, Any]) -> dict:
         """Creates volume metadata."""
         context.authorize(vol_meta_policy.CREATE_POLICY, target_obj=volume)
         db_meta = self._update_volume_metadata(context, volume, metadata)
@@ -1284,7 +1285,7 @@ class API(base.Base):
     def _update_volume_metadata(self,
                                 context: context.RequestContext,
                                 volume: objects.Volume,
-                                metadata: Dict[str, Any],
+                                metadata: dict[str, Any],
                                 delete: bool = False,
                                 meta_type=common.METADATA_TYPES.user) -> dict:
         if volume['status'] in ('maintenance', 'uploading'):
@@ -1298,7 +1299,7 @@ class API(base.Base):
     def update_volume_metadata(self,
                                context: context.RequestContext,
                                volume: objects.Volume,
-                               metadata: Dict[str, Any],
+                               metadata: dict[str, Any],
                                delete: bool = False,
                                meta_type=common.METADATA_TYPES.user) -> dict:
         """Updates volume metadata.
@@ -1320,7 +1321,7 @@ class API(base.Base):
     def update_volume_admin_metadata(self,
                                      context: context.RequestContext,
                                      volume: objects.Volume,
-                                     metadata: Dict[str, Any],
+                                     metadata: dict[str, Any],
                                      delete: Optional[bool] = False,
                                      add: Optional[bool] = True,
                                      update: Optional[bool] = True) -> dict:
@@ -1369,7 +1370,7 @@ class API(base.Base):
     def update_snapshot_metadata(self,
                                  context: context.RequestContext,
                                  snapshot: objects.Snapshot,
-                                 metadata: Dict[str, Any],
+                                 metadata: dict[str, Any],
                                  delete: bool = False) -> dict:
         """Updates or creates snapshot metadata.
 
@@ -1410,7 +1411,7 @@ class API(base.Base):
 
     def get_volume_image_metadata(self,
                                   context: context.RequestContext,
-                                  volume: objects.Volume) -> Dict[str, str]:
+                                  volume: objects.Volume) -> dict[str, str]:
         context.authorize(vol_meta_policy.GET_POLICY, target_obj=volume)
         db_data = self.db.volume_glance_metadata_get(context, volume['id'])
         LOG.info("Get volume image-metadata completed successfully.",
@@ -1420,7 +1421,7 @@ class API(base.Base):
     def get_list_volumes_image_metadata(
             self,
             context: context.RequestContext,
-            volume_id_list: List[str]) -> DefaultDict[str, str]:
+            volume_id_list: list[str]) -> DefaultDict[str, str]:
         db_data = self.db.volume_glance_metadata_list_get(context,
                                                           volume_id_list)
         results: collections.defaultdict = collections.defaultdict(dict)
@@ -1458,8 +1459,8 @@ class API(base.Base):
     def copy_volume_to_image(self,
                              context: context.RequestContext,
                              volume: objects.Volume,
-                             metadata: Dict[str, str],
-                             force: bool) -> Dict[str, Optional[str]]:
+                             metadata: dict[str, str],
+                             force: bool) -> dict[str, Optional[str]]:
         """Create a new image from the specified volume."""
         if not CONF.enable_force_upload and force:
             LOG.info("Force upload to image is disabled, "
@@ -2069,8 +2070,8 @@ class API(base.Base):
                                marker: Optional[str] = None,
                                limit: Optional[int] = None,
                                offset: Optional[int] = None,
-                               sort_keys: Optional[List[str]] = None,
-                               sort_dirs: Optional[List[str]] = None):
+                               sort_keys: Optional[list[str]] = None,
+                               sort_dirs: Optional[list[str]] = None):
         svc = self._get_service_by_host_cluster(context, host, cluster_name)
         return self.volume_rpcapi.get_manageable_volumes(context, svc,
                                                          marker, limit,
@@ -2110,8 +2111,8 @@ class API(base.Base):
             marker: Optional[str] = None,
             limit: Optional[int] = None,
             offset: Optional[int] = None,
-            sort_keys: Optional[List[str]] = None,
-            sort_dirs: Optional[List[str]] = None) -> List[dict]:
+            sort_keys: Optional[list[str]] = None,
+            sort_dirs: Optional[list[str]] = None) -> list[dict]:
         svc = self._get_service_by_host_cluster(context, host, cluster_name,
                                                 'snapshot')
         return self.volume_rpcapi.get_manageable_snapshots(context, svc,

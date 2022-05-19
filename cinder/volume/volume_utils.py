@@ -14,6 +14,8 @@
 
 """Volume-related Utilities and helpers."""
 
+from __future__ import annotations  # Remove when only supporting python 3.9+
+
 import abc
 import ast
 import functools
@@ -31,8 +33,8 @@ import tempfile
 import time
 import types
 import typing
-from typing import Any, BinaryIO, Callable, Dict, IO  # noqa: H301
-from typing import List, Optional, Tuple, Union  # noqa: H301
+from typing import Any, BinaryIO, Callable, IO  # noqa: H301
+from typing import Optional, Union  # noqa: H301
 import uuid
 
 from castellan.common.credentials import keystone_password
@@ -242,8 +244,8 @@ def notify_about_snapshot_usage(context: context.RequestContext,
                                             usage_info)
 
 
-def _usage_from_capacity(capacity: Dict[str, Any],
-                         **extra_usage_info) -> Dict[str, Any]:
+def _usage_from_capacity(capacity: dict[str, Any],
+                         **extra_usage_info) -> dict[str, Any]:
 
     capacity_info = {
         'name_to_id': capacity['name_to_id'],
@@ -686,7 +688,7 @@ def get_all_volume_groups(vg_name=None) -> list:
 
 def extract_availability_zones_from_volume_type(
         volume_type: Union['objects.VolumeType', dict]) \
-        -> Optional[List[str]]:
+        -> Optional[list[str]]:
     if not volume_type:
         return None
     extra_specs = volume_type.get('extra_specs', {})
@@ -705,7 +707,7 @@ DEFAULT_PASSWORD_SYMBOLS = ('23456789',  # Removed: 0,1
 
 def generate_password(
         length: int = 16,
-        symbolgroups: Tuple[str, ...] = DEFAULT_PASSWORD_SYMBOLS) -> str:
+        symbolgroups: tuple[str, ...] = DEFAULT_PASSWORD_SYMBOLS) -> str:
     """Generate a random password from the supplied symbol groups.
 
     At least one symbol from each group will be included. Unpredictable
@@ -744,7 +746,7 @@ def generate_password(
 
 def generate_username(
         length: int = 20,
-        symbolgroups: Tuple[str, ...] = DEFAULT_PASSWORD_SYMBOLS) -> str:
+        symbolgroups: tuple[str, ...] = DEFAULT_PASSWORD_SYMBOLS) -> str:
     # Use the same implementation as the password generation.
     return generate_password(length, symbolgroups)
 
@@ -864,12 +866,12 @@ def extract_id_from_snapshot_name(snap_name: str) -> Optional[str]:
     return match.group('uuid') if match else None
 
 
-def paginate_entries_list(entries: List[Dict],
+def paginate_entries_list(entries: list[dict],
                           marker: Optional[Union[dict, str]],
                           limit: int,
                           offset: Optional[int],
-                          sort_keys: List[str],
-                          sort_dirs: List[str]) -> list:
+                          sort_keys: list[str],
+                          sort_dirs: list[str]) -> list:
     """Paginate a list of entries.
 
     :param entries: list of dictionaries
@@ -1096,7 +1098,7 @@ def get_max_over_subscription_ratio(
     return mosr
 
 
-def check_image_metadata(image_meta: Dict[str, Union[str, int]],
+def check_image_metadata(image_meta: dict[str, Union[str, int]],
                          vol_size: int) -> None:
     """Validates the image metadata."""
     # Check whether image is active
@@ -1136,7 +1138,7 @@ def enable_bootable_flag(volume: 'objects.Volume') -> None:
 
 
 def get_volume_image_metadata(image_id: str,
-                              image_meta: Dict[str, Any]) -> dict:
+                              image_meta: dict[str, Any]) -> dict:
 
     # Save some base attributes into the volume metadata
     base_metadata = {
@@ -1172,7 +1174,7 @@ def copy_image_to_volume(driver,
                          context: context.RequestContext,
                          volume: 'objects.Volume',
                          image_meta: dict,
-                         image_location: Union[str, Tuple[Optional[str], Any]],
+                         image_location: Union[str, tuple[Optional[str], Any]],
                          image_service) -> None:
     """Downloads Glance image to the specified volume."""
     image_id = image_meta['id']

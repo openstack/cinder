@@ -16,6 +16,8 @@
 
 """Implementation of an image service that uses Glance as the backend"""
 
+from __future__ import annotations  # Remove when only supporting python 3.9+
+
 import copy
 import itertools
 import random
@@ -23,8 +25,7 @@ import shutil
 import sys
 import textwrap
 import time
-from typing import (Any, Callable, Dict, Iterable, List,  # noqa: H301
-                    NoReturn, Optional, Tuple)            # noqa: H301
+from typing import (Any, Callable, Iterable, NoReturn, Optional)  # noqa: H301
 import urllib
 import urllib.parse
 
@@ -93,7 +94,7 @@ _SESSION = None
 LOG = logging.getLogger(__name__)
 
 
-def _parse_image_ref(image_href: str) -> Tuple[str, str, bool]:
+def _parse_image_ref(image_href: str) -> tuple[str, str, bool]:
     """Parse an image href into composite parts.
 
     :param image_href: href of an image
@@ -283,7 +284,7 @@ class GlanceImageService(object):
 
     def detail(self,
                context: context.RequestContext,
-               **kwargs: str) -> List[dict]:
+               **kwargs: str) -> list[dict]:
         """Calls out to Glance for a list of detailed image information."""
         params = self._extract_query_params(kwargs)
         try:
@@ -298,7 +299,7 @@ class GlanceImageService(object):
 
         return _images
 
-    def _extract_query_params(self, params: dict) -> Dict[str, Any]:
+    def _extract_query_params(self, params: dict) -> dict[str, Any]:
         _params = {}
         accepted_params = ('filters', 'marker', 'limit',
                            'sort_key', 'sort_dir')
@@ -310,7 +311,7 @@ class GlanceImageService(object):
 
     def list_members(self,
                      context: context.RequestContext,
-                     image_id: str) -> List[dict]:
+                     image_id: str) -> list[dict]:
         """Returns a list of dicts with image member data."""
         try:
             return self._client.call(context,
@@ -330,7 +331,7 @@ class GlanceImageService(object):
 
     def show(self,
              context: context.RequestContext,
-             image_id: str) -> Dict[str, Any]:
+             image_id: str) -> dict[str, Any]:
         """Returns a dict with image data for the given opaque image id."""
         try:
             image = self._client.call(context, 'get', image_id)
@@ -345,7 +346,7 @@ class GlanceImageService(object):
 
     def get_location(self,
                      context: context.RequestContext,
-                     image_id: str) -> Tuple[Optional[str], Any]:
+                     image_id: str) -> tuple[Optional[str], Any]:
         """Get backend storage location url.
 
         Returns a tuple containing the direct url and locations representing
@@ -421,8 +422,8 @@ class GlanceImageService(object):
 
     def create(self,
                context: context.RequestContext,
-               image_meta: Dict[str, Any],
-               data=None) -> Dict[str, Any]:
+               image_meta: dict[str, Any],
+               data=None) -> dict[str, Any]:
         """Store the image data and return the new image object."""
         sent_service_image_meta = self._translate_to_glance(image_meta)
 
@@ -497,7 +498,7 @@ class GlanceImageService(object):
 
     def _translate_from_glance(self,
                                context: context.RequestContext,
-                               image: Dict[str, Any]) -> dict:
+                               image: dict[str, Any]) -> dict:
         """Get image metadata from glance image.
 
         Extract metadata from image and convert it's properties
@@ -536,7 +537,7 @@ class GlanceImageService(object):
         return image_meta
 
     @staticmethod
-    def _translate_to_glance(image_meta: Dict[str, Any]) -> Dict[str, Any]:
+    def _translate_to_glance(image_meta: dict[str, Any]) -> dict[str, Any]:
         image_meta = _convert_to_string(image_meta)
         image_meta = _remove_read_only(image_meta)
 
@@ -684,7 +685,7 @@ def _translate_plain_exception(exc_value: BaseException) -> BaseException:
 
 
 def get_remote_image_service(context: context.RequestContext,
-                             image_href) -> Tuple[GlanceImageService, str]:
+                             image_href) -> tuple[GlanceImageService, str]:
     """Create an image_service and parse the id from the given image_href.
 
     The image_href param can be an href of the form

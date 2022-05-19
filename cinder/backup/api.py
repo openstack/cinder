@@ -17,9 +17,11 @@
 
 """Handles all requests relating to the volume backups service."""
 
+from __future__ import annotations
+
 from datetime import datetime
 import random
-from typing import List, Optional  # noqa: H301
+from typing import Optional
 
 from eventlet import greenthread
 from oslo_config import cfg
@@ -123,8 +125,8 @@ class API(base.Base):
                 marker: Optional[str] = None,
                 limit: Optional[int] = None,
                 offset: Optional[int] = None,
-                sort_keys: Optional[List[str]] = None,
-                sort_dirs: Optional[List[str]] = None) -> 'objects.BackupList':
+                sort_keys: Optional[list[str]] = None,
+                sort_dirs: Optional[list[str]] = None) -> 'objects.BackupList':
         context.authorize(policy.GET_ALL_POLICY)
 
         search_opts = search_opts or {}
@@ -200,7 +202,7 @@ class API(base.Base):
             raise exception.ServiceNotFound(service_id='cinder-backup')
         return backup_host
 
-    def _list_backup_services(self) -> List['objects.Service']:
+    def _list_backup_services(self) -> list['objects.Service']:
         """List all enabled backup services.
 
         :returns: list -- hosts for services that are enabled for backup.

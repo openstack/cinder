@@ -10,10 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import annotations
+
 import binascii
 import traceback
 import typing
-from typing import Any, Dict, List, Optional, Tuple  # noqa: H301
+from typing import Any, Optional  # noqa: H301
 
 from castellan import key_manager
 import os_brick.initiator.connectors
@@ -676,7 +678,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                    volume_metadata)
 
     @staticmethod
-    def _extract_cinder_ids(urls: List[str]) -> List[str]:
+    def _extract_cinder_ids(urls: list[str]) -> list[str]:
         """Process a list of location URIs from glance
 
         :param urls: list of glance location URIs
@@ -707,7 +709,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                             context: cinder_context.RequestContext,
                             volume: objects.Volume,
                             image_location,
-                            image_meta: Dict[str, Any]) -> Tuple[None, bool]:
+                            image_meta: dict[str, Any]) -> tuple[None, bool]:
         """Create a volume efficiently from an existing image.
 
         Returns a dict of volume properties eg. provider_location,
@@ -768,7 +770,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                     context: cinder_context.RequestContext,
                                     volume: objects.Volume,
                                     image_location,
-                                    image_meta: Dict[str, Any],
+                                    image_meta: dict[str, Any],
                                     image_service) -> dict:
         # TODO(harlowja): what needs to be rolled back in the clone if this
         # volume create fails?? Likely this should be a subflow or broken
@@ -804,7 +806,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             internal_context: cinder_context.RequestContext,
             volume: objects.Volume,
             image_id: str,
-            image_meta: Dict[str, Any]) -> Tuple[None, bool]:
+            image_meta: dict[str, Any]) -> tuple[None, bool]:
         """Attempt to create the volume using the image cache.
 
         Best case this will simply clone the existing volume in the cache.
@@ -853,8 +855,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                    volume: objects.Volume,
                                    image_location: str,
                                    image_id: str,
-                                   image_meta: Dict[str, Any],
-                                   image_service) -> Tuple[Optional[dict],
+                                   image_meta: dict[str, Any],
+                                   image_service) -> tuple[Optional[dict],
                                                            bool]:
         assert self.image_volume_cache is not None
         internal_context = cinder_context.get_internal_tenant_context()
@@ -895,7 +897,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             volume: objects.Volume,
             image_location,
             image_id: str,
-            image_meta: Dict[str, Any],
+            image_meta: dict[str, Any],
             image_service,
             update_cache: bool = False) -> Optional[dict]:
         # NOTE(e0ne): check for free space in image_conversion_dir before
@@ -1045,7 +1047,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                            volume: objects.Volume,
                            image_location,
                            image_id: str,
-                           image_meta: Dict[str, Any],
+                           image_meta: dict[str, Any],
                            image_service,
                            **kwargs: Any) -> Optional[dict]:
         LOG.debug("Cloning %(volume_id)s from image %(image_id)s "
@@ -1120,7 +1122,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                             context: cinder_context.RequestContext,
                             volume: objects.Volume,
                             backup_id: str,
-                            **kwargs) -> Tuple[Dict, bool]:
+                            **kwargs) -> tuple[dict, bool]:
         LOG.info("Creating volume %(volume_id)s from backup %(backup_id)s.",
                  {'volume_id': volume.id,
                   'backup_id': backup_id})
