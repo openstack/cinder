@@ -19,6 +19,7 @@ import platform
 import socket
 from unittest import mock
 
+import ddt
 from oslo_utils import units
 
 from cinder import exception
@@ -78,25 +79,15 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
     def setUp(self):
         super(InfiniboxDriverTestCaseBase, self).setUp()
 
-        # create mock configuration
-        self.configuration = mock.Mock(spec=configuration.Configuration)
-        self.configuration.infinidat_storage_protocol = TEST_FC_PROTOCOL
-        self.configuration.san_ip = 'mockbox'
-        self.configuration.infinidat_pool_name = 'mockpool'
-        self.configuration.san_thin_provision = True
-        self.configuration.san_login = 'user'
-        self.configuration.san_password = 'pass'
-        self.configuration.volume_backend_name = 'mock'
-        self.configuration.volume_dd_blocksize = '1M'
-        self.configuration.use_multipath_for_image_xfer = False
-        self.configuration.enforce_multipath_for_image_xfer = False
-        self.configuration.num_volume_device_scan_tries = 1
-        self.configuration.san_is_local = False
-        self.configuration.chap_username = None
-        self.configuration.chap_password = None
-        self.configuration.infinidat_use_compression = None
-        self.configuration.max_over_subscription_ratio = 10.0
-
+        self.configuration = configuration.Configuration(None)
+        self.configuration.append_config_values(infinidat.infinidat_opts)
+        self.override_config('san_ip', 'infinibox',
+                             configuration.SHARED_CONF_GROUP)
+        self.override_config('san_login', 'user',
+                             configuration.SHARED_CONF_GROUP)
+        self.override_config('san_password', 'password',
+                             configuration.SHARED_CONF_GROUP)
+        self.override_config('infinidat_pool_name', 'pool')
         self.driver = infinidat.InfiniboxVolumeDriver(
             configuration=self.configuration)
         self._system = self._infinibox_mock()
@@ -157,6 +148,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         raise FakeInfinisdkException()
 
 
+@ddt.ddt
 class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     def _generate_mock_object_metadata(self, cinder_object):
         return {"system": "openstack",
@@ -194,6 +186,16 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self._system.api.set_source_identifier.assert_called_once_with(
             infinidat._INFINIDAT_CINDER_IDENTIFIER)
         self._system.login.assert_called_once()
+
+    @mock.patch('cinder.volume.drivers.infinidat.infinisdk.InfiniBox')
+    @ddt.data(True, False)
+    def test_ssl_options(self, use_ssl, infinibox):
+        auth = (self.configuration.san_login,
+                self.configuration.san_password)
+        self.override_config('driver_use_ssl', use_ssl)
+        self.driver.do_setup(None)
+        infinibox.assert_called_once_with(self.configuration.san_ip,
+                                          auth=auth, use_ssl=use_ssl)
 
     def test_initialize_connection(self):
         self._system.hosts.safe_get.return_value = None
@@ -277,9 +279,10 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           self.driver.get_volume_stats)
 
     def test_get_volume_stats_max_over_subscription_ratio(self):
+        self.override_config('san_thin_provision', True)
+        self.override_config('max_over_subscription_ratio', 10.0)
         result = self.driver.get_volume_stats()
-        # check the defaults defined in setUp
-        self.assertEqual(10.0, result['max_over_subscription_ratio'])
+        self.assertEqual('10.0', result['max_over_subscription_ratio'])
         self.assertTrue(result['thin_provisioning_support'])
         self.assertFalse(result['thick_provisioning_support'])
 
@@ -304,7 +307,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_volume_compression_enabled(self, *mocks):
-        self.configuration.infinidat_use_compression = True
+        self.override_config('infinidat_use_compression', True)
         self.driver.create_volume(test_volume)
         self.assertTrue(
             self._system.volumes.create.call_args[1]["compression_enabled"]
@@ -312,7 +315,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_volume_compression_not_enabled(self, *mocks):
-        self.configuration.infinidat_use_compression = False
+        self.override_config('infinidat_use_compression', False)
         self.driver.create_volume(test_volume)
         self.assertFalse(
             self._system.volumes.create.call_args[1]["compression_enabled"]
@@ -615,13 +618,15 @@ class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
 class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
     def setUp(self):
         super(InfiniboxDriverTestCaseISCSI, self).setUp()
-        self.configuration.infinidat_storage_protocol = TEST_ISCSI_PROTOCOL
-        self.configuration.infinidat_iscsi_netspaces = [TEST_ISCSI_NAMESPACE1]
-        self.configuration.use_chap_auth = False
+        self.override_config('infinidat_storage_protocol',
+                             TEST_ISCSI_PROTOCOL)
+        self.override_config('infinidat_iscsi_netspaces',
+                             [TEST_ISCSI_NAMESPACE1])
+        self.override_config('use_chap_auth', False)
         self.driver.do_setup(None)
 
     def test_setup_without_netspaces_configured(self):
-        self.configuration.infinidat_iscsi_netspaces = []
+        self.override_config('infinidat_iscsi_netspaces', [])
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.do_setup, None)
 
@@ -660,7 +665,7 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
                           test_volume, test_connector)
 
     def test_initialize_connection_with_chap(self):
-        self.configuration.use_chap_auth = True
+        self.override_config('use_chap_auth', True)
         result = self.driver.initialize_connection(test_volume, test_connector)
         self.assertEqual(1, result['data']['target_lun'])
         self.assertEqual('CHAP', result['data']['auth_method'])
@@ -668,8 +673,8 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
         self.assertIn('auth_password', result['data'])
 
     def test_initialize_connection_multiple_netspaces(self):
-        self.configuration.infinidat_iscsi_netspaces = [
-            TEST_ISCSI_NAMESPACE1, TEST_ISCSI_NAMESPACE2]
+        self.override_config('infinidat_iscsi_netspaces',
+                             [TEST_ISCSI_NAMESPACE1, TEST_ISCSI_NAMESPACE2])
         self._system.network_spaces.safe_get.side_effect = [
             self._mock_name_space1, self._mock_name_space2]
         result = self.driver.initialize_connection(test_volume, test_connector)
@@ -697,8 +702,8 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
         self.assertEqual(expected, result)
 
     def test_initialize_connection_multiple_netspaces_multipath(self):
-        self.configuration.infinidat_iscsi_netspaces = [
-            TEST_ISCSI_NAMESPACE1, TEST_ISCSI_NAMESPACE2]
+        self.override_config('infinidat_iscsi_netspaces',
+                             [TEST_ISCSI_NAMESPACE1, TEST_ISCSI_NAMESPACE2])
         self._system.network_spaces.safe_get.side_effect = [
             self._mock_name_space1, self._mock_name_space2]
         self._mock_name_space1.get_ips.return_value = [

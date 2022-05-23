@@ -66,6 +66,20 @@ Configure the driver back-end section with the parameters below.
 
      san_ip = InfiniBox management IP
 
+* Verify that the InfiniBox array can be managed via an HTTPS connection.
+  And the ``driver_use_ssl`` parameter should be set to ``true`` to enable
+  use of the HTTPS protocol. HTTP can also be used if ``driver_use_ssl``
+  is set to (or defaults to) ``false``. To suppress requests library SSL
+  certificate warnings, set the ``suppress_requests_ssl_warnings`` parameter
+  to ``true``.
+
+  .. code-block:: ini
+
+     driver_use_ssl = true/false
+     suppress_requests_ssl_warnings = true/false
+
+  These parameters defaults to ``false``.
+
 * Configure user credentials.
 
   The driver requires an InfiniBox user with administrative privileges.
@@ -175,6 +189,8 @@ Configuration example
    [infinidat-pool-a]
    volume_driver = cinder.volume.drivers.infinidat.InfiniboxVolumeDriver
    volume_backend_name = infinidat-pool-a
+   driver_use_ssl = true
+   suppress_requests_ssl_warnings = true
    san_ip = 10.1.2.3
    san_login = openstackuser
    san_password = openstackpass

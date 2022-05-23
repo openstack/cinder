@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Infinidat Driver `bug #1981982
+    <https://bugs.launchpad.net/cinder/+bug/1981982>`_:
+    Fixed Infinidat driver to use TLS/SSL communication between the Cinder
+    volume service and the storage backend. Admin can set `True` or `False`
+    for the `driver_use_ssl` and `suppress_requests_ssl_warnings` options in
+    the driver section of cinder.conf to enable or disable these features.
