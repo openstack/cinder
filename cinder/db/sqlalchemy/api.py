@@ -3648,41 +3648,46 @@ def volume_admin_metadata_update(
 
 @require_context
 @handle_db_data_error
+@main_context_manager.writer
 def snapshot_create(context, values):
-    values['snapshot_metadata'] = _metadata_refs(values.get('metadata'),
-                                                 models.SnapshotMetadata)
+    values['snapshot_metadata'] = _metadata_refs(
+        values.get('metadata'), models.SnapshotMetadata
+    )
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
 
-    session = get_session()
-    with session.begin():
-        snapshot_ref = models.Snapshot()
-        snapshot_ref.update(values)
-        session.add(snapshot_ref)
+    snapshot_ref = models.Snapshot()
+    snapshot_ref.update(values)
+    context.session.add(snapshot_ref)
 
-        return _snapshot_get(context, values['id'], session=session)
+    return _snapshot_get(context, values['id'])
 
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def snapshot_destroy(context, snapshot_id):
     utcnow = timeutils.utcnow()
-    session = get_session()
-    with session.begin():
-        query = model_query(context, models.Snapshot, session=session).\
-            filter_by(id=snapshot_id)
-        entity = query.column_descriptions[0]['entity']
-        updated_values = {'status': 'deleted',
-                          'deleted': True,
-                          'deleted_at': utcnow,
-                          'updated_at': entity.updated_at}
-        query.update(updated_values)
-        query = model_query(context, models.SnapshotMetadata,
-                            session=session).filter_by(snapshot_id=snapshot_id)
-        entity = query.column_descriptions[0]['entity']
-        query.update({'deleted': True,
-                      'deleted_at': utcnow,
-                      'updated_at': entity.updated_at})
+    query = model_query(context, models.Snapshot).filter_by(id=snapshot_id)
+    entity = query.column_descriptions[0]['entity']
+    updated_values = {
+        'status': 'deleted',
+        'deleted': True,
+        'deleted_at': utcnow,
+        'updated_at': entity.updated_at,
+    }
+    query.update(updated_values)
+    query = model_query(context, models.SnapshotMetadata).filter_by(
+        snapshot_id=snapshot_id
+    )
+    entity = query.column_descriptions[0]['entity']
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': utcnow,
+            'updated_at': entity.updated_at,
+        }
+    )
     del updated_values['updated_at']
     return updated_values
 
@@ -3690,12 +3695,18 @@ def snapshot_destroy(context, snapshot_id):
 # TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _snapshot_get(context, snapshot_id, session=None):
-    result = model_query(context, models.Snapshot, session=session,
-                         project_only=True).\
-        options(joinedload('volume')).\
-        options(joinedload('snapshot_metadata')).\
-        filter_by(id=snapshot_id).\
-        first()
+    result = (
+        model_query(
+            context,
+            models.Snapshot,
+            session=session,
+            project_only=True,
+        )
+        .options(joinedload('volume'))
+        .options(joinedload('snapshot_metadata'))
+        .filter_by(id=snapshot_id)
+        .first()
+    )
 
     if not result:
         raise exception.SnapshotNotFound(snapshot_id=snapshot_id)
@@ -3704,13 +3715,22 @@ def _snapshot_get(context, snapshot_id, session=None):
 
 
 @require_context
+@main_context_manager.reader
 def snapshot_get(context, snapshot_id):
     return _snapshot_get(context, snapshot_id)
 
 
 @require_admin_context
-def snapshot_get_all(context, filters=None, marker=None, limit=None,
-                     sort_keys=None, sort_dirs=None, offset=None):
+@main_context_manager.reader
+def snapshot_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    sort_keys=None,
+    sort_dirs=None,
+    offset=None,
+):
     """Retrieves all snapshots.
 
     If no sorting parameters are specified then returned snapshots are sorted
@@ -3719,26 +3739,34 @@ def snapshot_get_all(context, filters=None, marker=None, limit=None,
 
     :param context: context to query under
     :param filters: dictionary of filters; will do exact matching on values.
-                    Special keys host and cluster_name refer to the volume.
+        Special keys host and cluster_name refer to the volume.
     :param marker: the last item of the previous page, used to determine the
-                   next page of results to return
+        next page of results to return
     :param limit: maximum number of items to return
     :param sort_keys: list of attributes by which results should be sorted,
-                      paired with corresponding item in sort_dirs
+        paired with corresponding item in sort_dirs
     :param sort_dirs: list of directions in which results should be sorted,
-                      paired with corresponding item in sort_keys
+        paired with corresponding item in sort_keys
     :returns: list of matching snapshots
     """
     if filters and not is_valid_model_filters(
-            models.Snapshot, filters,
-            exclude_list=('host', 'cluster_name', 'availability_zone')):
+        models.Snapshot,
+        filters,
+        exclude_list=('host', 'cluster_name', 'availability_zone'),
+    ):
         return []
 
-    session = get_session()
-    with session.begin():
-        query = _generate_paginate_query(context, session, marker, limit,
-                                         sort_keys, sort_dirs, filters,
-                                         offset, models.Snapshot)
+    query = _generate_paginate_query(
+        context,
+        None,
+        marker,
+        limit,
+        sort_keys,
+        sort_dirs,
+        filters,
+        offset,
+        models.Snapshot,
+    )
 
     # No snapshots would match, return empty list
     if not query:
@@ -3748,10 +3776,18 @@ def snapshot_get_all(context, filters=None, marker=None, limit=None,
 
 # TODO: Remove 'session' argument when all of the '_get_query' helpers are
 # converted
-def _snaps_get_query(context, session=None, project_only=False,
-                     joined_load=True):
-    query = model_query(context, models.Snapshot, session=session,
-                        project_only=project_only)
+def _snaps_get_query(
+    context,
+    session=None,
+    project_only=False,
+    joined_load=True,
+):
+    query = model_query(
+        context,
+        models.Snapshot,
+        session=session,
+        project_only=project_only,
+    )
     if joined_load:
         query = query.options(joinedload('snapshot_metadata'))
     return query
@@ -3785,7 +3821,8 @@ def _process_snaps_filters(query, filters):
                 if isinstance(prop, RelationshipProperty):
                     LOG.debug(
                         "'%s' key is not valid, it maps to a relationship.",
-                        key)
+                        key,
+                    )
                     return None
             except AttributeError:
                 LOG.debug("'%s' filter key is not valid.", key)
@@ -3823,34 +3860,44 @@ def _process_snaps_filters(query, filters):
 
 
 @require_context
+@main_context_manager.reader
 def snapshot_get_all_for_volume(context, volume_id):
-    return model_query(context, models.Snapshot, read_deleted='no',
-                       project_only=True).\
-        filter_by(volume_id=volume_id).\
-        options(joinedload('snapshot_metadata')).\
-        all()
+    return (
+        model_query(
+            context, models.Snapshot, read_deleted='no', project_only=True
+        )
+        .filter_by(volume_id=volume_id)
+        .options(joinedload('snapshot_metadata'))
+        .all()
+    )
 
 
 @require_context
+@main_context_manager.reader
 def snapshot_get_latest_for_volume(context, volume_id):
-    result = model_query(context, models.Snapshot, read_deleted='no',
-                         project_only=True).\
-        filter_by(volume_id=volume_id).\
-        options(joinedload('snapshot_metadata')).\
-        order_by(desc(models.Snapshot.created_at)).\
-        first()
+    result = (
+        model_query(
+            context, models.Snapshot, read_deleted='no', project_only=True
+        )
+        .filter_by(volume_id=volume_id)
+        .options(joinedload('snapshot_metadata'))
+        .order_by(desc(models.Snapshot.created_at))
+        .first()
+    )
     if not result:
         raise exception.VolumeSnapshotNotFound(volume_id=volume_id)
     return result
 
 
 @require_context
+@main_context_manager.reader
 def snapshot_get_all_by_host(context, host, filters=None):
     if filters and not is_valid_model_filters(models.Snapshot, filters):
         return []
 
-    query = model_query(context, models.Snapshot, read_deleted='no',
-                        project_only=True)
+    query = model_query(
+        context, models.Snapshot, read_deleted='no', project_only=True
+    )
     if filters:
         query = query.filter_by(**filters)
 
@@ -3861,43 +3908,59 @@ def snapshot_get_all_by_host(context, host, filters=None):
     #     Host
     #     Host#Pool
     if host and isinstance(host, str):
-        session = get_session()
-        with session.begin():
-            host_attr = getattr(models.Volume, 'host')
-            conditions = [host_attr == host,
-                          host_attr.op('LIKE')(host + '#%')]
-            query = query.join(models.Snapshot.volume).filter(
-                or_(*conditions)).options(joinedload('snapshot_metadata'))
-            return query.all()
+        host_attr = getattr(models.Volume, 'host')
+        conditions = [host_attr == host, host_attr.op('LIKE')(host + '#%')]
+        query = (
+            query.join(models.Snapshot.volume)
+            .filter(or_(*conditions))
+            .options(joinedload('snapshot_metadata'))
+        )
+        return query.all()
     elif not host:
         return []
 
 
 @require_context
+@main_context_manager.reader
 def snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id):
-    return model_query(context, models.Snapshot, read_deleted='no',
-                       project_only=True).\
-        filter_by(cgsnapshot_id=cgsnapshot_id).\
-        options(joinedload('volume')).\
-        options(joinedload('snapshot_metadata')).\
-        all()
+    return (
+        model_query(
+            context, models.Snapshot, read_deleted='no', project_only=True
+        )
+        .filter_by(cgsnapshot_id=cgsnapshot_id)
+        .options(joinedload('volume'))
+        .options(joinedload('snapshot_metadata'))
+        .all()
+    )
 
 
 @require_context
+@main_context_manager.reader
 def snapshot_get_all_for_group_snapshot(context, group_snapshot_id):
-    return model_query(context, models.Snapshot, read_deleted='no',
-                       project_only=True).\
-        filter_by(group_snapshot_id=group_snapshot_id).\
-        options(joinedload('volume')).\
-        options(joinedload('snapshot_metadata')).\
-        all()
+    return (
+        model_query(
+            context, models.Snapshot, read_deleted='no', project_only=True
+        )
+        .filter_by(group_snapshot_id=group_snapshot_id)
+        .options(joinedload('volume'))
+        .options(joinedload('snapshot_metadata'))
+        .all()
+    )
 
 
 @require_context
-def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
-                                limit=None, sort_keys=None, sort_dirs=None,
-                                offset=None):
-    """"Retrieves all snapshots in a project.
+@main_context_manager.reader
+def snapshot_get_all_by_project(
+    context,
+    project_id,
+    filters=None,
+    marker=None,
+    limit=None,
+    sort_keys=None,
+    sort_dirs=None,
+    offset=None,
+):
+    """Retrieves all snapshots in a project.
 
     If no sorting parameters are specified then returned snapshots are sorted
     first by the 'created_at' key and then by the 'id' key in descending
@@ -3907,17 +3970,19 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
     :param project_id: project for all snapshots being retrieved
     :param filters: dictionary of filters; will do exact matching on values
     :param marker: the last item of the previous page, used to determine the
-                   next page of results to return
+        next page of results to return
     :param limit: maximum number of items to return
     :param sort_keys: list of attributes by which results should be sorted,
-                      paired with corresponding item in sort_dirs
+        paired with corresponding item in sort_dirs
     :param sort_dirs: list of directions in which results should be sorted,
-                      paired with corresponding item in sort_keys
+        paired with corresponding item in sort_keys
     :returns: list of matching snapshots
     """
     if filters and not is_valid_model_filters(
-            models.Snapshot, filters,
-            exclude_list=('host', 'cluster_name', 'availability_zone')):
+        models.Snapshot,
+        filters,
+        exclude_list=('host', 'cluster_name', 'availability_zone'),
+    ):
         return []
 
     authorize_project_context(context, project_id)
@@ -3926,11 +3991,17 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
     filters = filters.copy() if filters else {}
     filters['project_id'] = project_id
 
-    session = get_session()
-    with session.begin():
-        query = _generate_paginate_query(context, session, marker, limit,
-                                         sort_keys, sort_dirs, filters,
-                                         offset, models.Snapshot)
+    query = _generate_paginate_query(
+        context,
+        None,
+        marker,
+        limit,
+        sort_keys,
+        sort_dirs,
+        filters,
+        offset,
+        models.Snapshot,
+    )
 
     # No snapshots would match, return empty list
     if not query:
@@ -3942,15 +4013,22 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
 
 # TODO: Remove 'session' parameter once all callers are updated
 @require_context
-def _snapshot_data_get_for_project(context, project_id, volume_type_id=None,
-                                   session=None, host=None,
-                                   skip_internal=True):
+def _snapshot_data_get_for_project(
+    context,
+    project_id,
+    volume_type_id=None,
+    session=None,
+    host=None,
+    skip_internal=True,
+):
     authorize_project_context(context, project_id)
-    query = model_query(context,
-                        func.count(models.Snapshot.id),
-                        func.sum(models.Snapshot.volume_size),
-                        read_deleted="no",
-                        session=session)
+    query = model_query(
+        context,
+        func.count(models.Snapshot.id),
+        func.sum(models.Snapshot.volume_size),
+        read_deleted="no",
+        session=session,
+    )
     if skip_internal:
         # TODO: (Y release) replace next line with:
         #        query = query.filter(models.Snapshot.use_quota)
@@ -3960,7 +4038,8 @@ def _snapshot_data_get_for_project(context, project_id, volume_type_id=None,
         query = query.join('volume')
         if volume_type_id:
             query = query.filter(
-                models.Volume.volume_type_id == volume_type_id)
+                models.Volume.volume_type_id == volume_type_id
+            )
         if host:
             query = query.filter(_filter_host(models.Volume.host, host))
     result = query.filter(models.Snapshot.project_id == project_id).first()
@@ -3970,23 +4049,32 @@ def _snapshot_data_get_for_project(context, project_id, volume_type_id=None,
 
 
 @require_context
-def snapshot_data_get_for_project(context, project_id,
-                                  volume_type_id=None, host=None):
+@main_context_manager.reader
+def snapshot_data_get_for_project(
+    context, project_id, volume_type_id=None, host=None
+):
     # This method doesn't support filtering temporary resources (use_quota
     # field) and defaults to returning all snapshots because all callers (quota
     # sync methods and os-host API extension) require all the snapshots.
-    return _snapshot_data_get_for_project(context, project_id, volume_type_id,
-                                          host=host, skip_internal=False)
+    return _snapshot_data_get_for_project(
+        context, project_id, volume_type_id, host=host, skip_internal=False
+    )
 
 
 @require_context
-def snapshot_get_all_active_by_window(context, begin, end=None,
-                                      project_id=None):
+@main_context_manager.reader
+def snapshot_get_all_active_by_window(
+    context, begin, end=None, project_id=None
+):
     """Return snapshots that were active during window."""
 
     query = model_query(context, models.Snapshot, read_deleted="yes")
-    query = query.filter(or_(models.Snapshot.deleted_at == None,  # noqa
-                             models.Snapshot.deleted_at > begin))
+    query = query.filter(
+        or_(
+            models.Snapshot.deleted_at == None,  # noqa
+            models.Snapshot.deleted_at > begin,
+        )
+    )
     query = query.options(joinedload(models.Snapshot.volume))
     query = query.options(joinedload('snapshot_metadata'))
     if end:
@@ -3999,6 +4087,7 @@ def snapshot_get_all_active_by_window(context, begin, end=None,
 
 @handle_db_data_error
 @require_context
+@main_context_manager.writer
 def snapshot_update(context, snapshot_id, values):
     query = model_query(context, models.Snapshot, project_only=True)
     result = query.filter_by(id=snapshot_id).update(values)
@@ -4007,6 +4096,7 @@ def snapshot_update(context, snapshot_id, values):
 
 
 @require_context
+@main_context_manager.reader
 def get_snapshot_summary(context, project_only, filters=None):
     """Retrieves all snapshots summary.
 
@@ -4022,9 +4112,12 @@ def get_snapshot_summary(context, project_only, filters=None):
     if not (project_only or is_admin_context(context)):
         raise exception.AdminRequired()
 
-    query = model_query(context, func.count(models.Snapshot.id),
-                        func.sum(models.Snapshot.volume_size),
-                        read_deleted="no")
+    query = model_query(
+        context,
+        func.count(models.Snapshot.id),
+        func.sum(models.Snapshot.volume_size),
+        read_deleted="no",
+    )
 
     if project_only:
         query = query.filter_by(project_id=context.project_id)
