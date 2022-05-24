@@ -207,12 +207,17 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             self.library.vserver, volume_list, [])
 
     def test_find_mapped_lun_igroup(self):
-        igroups = [fake.IGROUP1]
+        igroups = [fake.IGROUP1, fake.CUSTOM_IGROUP]
         self.zapi_client.get_igroup_by_initiators.return_value = igroups
 
-        lun_maps = [{'initiator-group': fake.IGROUP1_NAME,
-                     'lun-id': '1',
-                     'vserver': fake.VSERVER_NAME}]
+        lun_maps = [
+            {'initiator-group': fake.IGROUP1_NAME,
+             'lun-id': '1',
+             'vserver': fake.VSERVER_NAME},
+            {'initiator-group': fake.CUSTOM_IGROUP['initiator-group-name'],
+             'lun-id': '2',
+             'vserver': fake.VSERVER_NAME}
+        ]
         self.zapi_client.get_lun_map.return_value = lun_maps
 
         (igroup, lun_id) = self.library._find_mapped_lun_igroup(
@@ -253,12 +258,11 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertIsNone(lun_id)
 
     def test_find_mapped_lun_igroup_no_igroup_prefix(self):
-        igroups = [{'initiator-group-os-type': 'linux',
-                    'initiator-group-type': 'fcp',
-                    'initiator-group-name': 'igroup2'}]
+        igroups = [fake.CUSTOM_IGROUP]
+        expected_igroup = fake.CUSTOM_IGROUP['initiator-group-name']
         self.zapi_client.get_igroup_by_initiators.return_value = igroups
 
-        lun_maps = [{'initiator-group': 'igroup2',
+        lun_maps = [{'initiator-group': expected_igroup,
                      'lun-id': '1',
                      'vserver': fake.VSERVER_NAME}]
         self.zapi_client.get_lun_map.return_value = lun_maps
@@ -266,8 +270,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         (igroup, lun_id) = self.library._find_mapped_lun_igroup(
             fake.LUN_PATH, fake.FC_FORMATTED_INITIATORS)
 
-        self.assertIsNone(igroup)
-        self.assertIsNone(lun_id)
+        self.assertEqual(expected_igroup, igroup)
+        self.assertEqual('1', lun_id)
 
     def test_clone_lun_zero_block_count(self):
         """Test for when clone lun is not passed a block count."""

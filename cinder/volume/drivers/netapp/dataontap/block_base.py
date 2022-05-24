@@ -479,16 +479,17 @@ class NetAppBlockStorageLibrary(object):
         Creates igroup if not already present with given host os type,
         igroup type and adds initiators.
         """
+        # Backend supports different igroups with the same initiators, so
+        # instead of reusing non OpenStack igroups, we make sure we only use
+        # our own, thus being compatible with custom igroups.
         igroups = self.zapi_client.get_igroup_by_initiators(initiator_list)
-        igroup_name = None
-
-        if igroups:
-            igroup = igroups[0]
+        for igroup in igroups:
             igroup_name = igroup['initiator-group-name']
-            host_os_type = igroup['initiator-group-os-type']
-            initiator_group_type = igroup['initiator-group-type']
-
-        if not igroup_name:
+            if igroup_name.startswith(na_utils.OPENSTACK_PREFIX):
+                host_os_type = igroup['initiator-group-os-type']
+                initiator_group_type = igroup['initiator-group-type']
+                break
+        else:
             igroup_name = self._create_igroup_add_initiators(
                 initiator_group_type, host_os_type, initiator_list)
         return igroup_name, host_os_type, initiator_group_type

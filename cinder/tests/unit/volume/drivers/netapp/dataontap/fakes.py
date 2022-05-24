@@ -213,6 +213,12 @@ IGROUP1 = {
     'initiator-group-name': IGROUP1_NAME,
 }
 
+CUSTOM_IGROUP = {
+    'initiator-group-os-type': 'linux',
+    'initiator-group-type': 'fcp',
+    'initiator-group-name': 'node1',
+}
+
 ISCSI_VOLUME = {
     'name': 'fake_volume',
     'id': 'fake_id',

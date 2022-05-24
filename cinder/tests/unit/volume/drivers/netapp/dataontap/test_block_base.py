@@ -400,10 +400,13 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(
             0, self.library._create_igroup_add_initiators.call_count)
 
+    @ddt.data([], [fake.CUSTOM_IGROUP])
     @mock.patch.object(uuid, 'uuid4', mock.Mock(return_value=fake.UUID1))
-    def test_get_or_create_igroup_none_preexisting(self):
-        """This method also tests _create_igroup_add_initiators."""
-        self.zapi_client.get_igroup_by_initiators.return_value = []
+    def test_get_or_create_igroup_none_preexisting(self, igroups):
+        """Test _create_igroup_add_initiators with not OS igroups."""
+        # We only care about the OpenStack igroups, so we must have the same
+        # result if there are no igroups and if the igroup is a custom one.
+        self.zapi_client.get_igroup_by_initiators.return_value = igroups
 
         igroup_name, os, ig_type = self.library._get_or_create_igroup(
             fake.FC_FORMATTED_INITIATORS, 'fcp', 'linux')

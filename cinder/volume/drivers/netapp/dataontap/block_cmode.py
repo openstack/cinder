@@ -195,17 +195,20 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
 
     def _find_mapped_lun_igroup(self, path, initiator_list):
         """Find an igroup for a LUN mapped to the given initiator(s)."""
-        initiator_igroups = self.zapi_client.get_igroup_by_initiators(
-            initiator_list)
-        lun_maps = self.zapi_client.get_lun_map(path)
-        if initiator_igroups and lun_maps:
-            for igroup in initiator_igroups:
-                igroup_name = igroup['initiator-group-name']
-                if igroup_name.startswith(na_utils.OPENSTACK_PREFIX):
-                    for lun_map in lun_maps:
-                        if lun_map['initiator-group'] == igroup_name:
-                            return igroup_name, lun_map['lun-id']
-        return None, None
+        igroups = [igroup['initiator-group-name'] for igroup in
+                   self.zapi_client.get_igroup_by_initiators(initiator_list)]
+        # Map igroup-name to lun-id, but only for the requested initiators.
+        lun_map = {v['initiator-group']: v['lun-id']
+                   for v in self.zapi_client.get_lun_map(path)
+                   if v['initiator-group'] in igroups}
+
+        igroup_name = lun_id = None
+        # Give preference to OpenStack igroups, just use the last one if not
+        # present to allow unmapping old mappings that used a custom igroup.
+        for igroup_name, lun_id in lun_map.items():
+            if igroup_name.startswith(na_utils.OPENSTACK_PREFIX):
+                break
+        return igroup_name, lun_id
 
     def _clone_lun(self, name, new_name, space_reserved=None,
                    qos_policy_group_name=None, src_block=0, dest_block=0,
