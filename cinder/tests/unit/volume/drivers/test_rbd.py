@@ -787,7 +787,7 @@ class RBDTestCase(test.TestCase):
                               'deferred_deletion_purge_interval': 1})
         drv._start_periodic_tasks()
 
-        time.sleep(1)
+        time.sleep(1.2)
         self.assertTrue(drv.rbd.RBD.return_value.trash_list.called)
         self.assertFalse(drv.rbd.RBD.return_value.trash_remove.called)
 
