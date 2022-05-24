@@ -1272,6 +1272,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                    'param': create_params})
         backing = self._create_backing(volume, create_params=create_params)
 
+        attached = False
         try:
             # Find the backing's datacenter, host, datastore and folder.
             (ds_name, folder_path) = self._get_ds_name_folder_path(backing)
@@ -1279,7 +1280,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             dc_ref = self.volumeops.get_dc(host)
 
             vmdk_path = None
-            attached = False
 
             # Create flat extent virtual disk from the image.
             if image_disk_type == ImageDiskType.SPARSE:
