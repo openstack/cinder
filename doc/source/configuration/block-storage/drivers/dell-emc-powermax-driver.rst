@@ -3279,6 +3279,14 @@ following the setup instructions above, are supported with a few exceptions:
    supported from Pike onwards.
 
 
+Known issues
+============
+
+These known issues exist in the current release of OpenStack:
+
+- `Launchpad #1951977`_ Cannot create backups for metro volumes with
+  multipath enabled.
+
 .. Document Hyperlinks
 .. _Dell Support: https://www.dell.com/support
 .. _Openstack CLI: https://docs.openstack.org/cinder/latest/cli/cli-manage-volumes.html#volume-types
@@ -3295,3 +3303,4 @@ following the setup instructions above, are supported with a few exceptions:
 .. _volume backup CLI: https://docs.openstack.org/python-openstackclient/latest/cli/command-objects/volume-backup.html
 .. _PyU4V: https://pyu4v.readthedocs.io/en/latest/
 .. _Create volume types: `6. Create volume types`_
+.. _Launchpad #1951977: https://bugs.launchpad.net/cinder/+bug/1951977
