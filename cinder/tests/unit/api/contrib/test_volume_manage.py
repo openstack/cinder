@@ -65,9 +65,24 @@ def service_get(context, service_id, backend_match_level=None, host=None,
 
 # Some of the tests check that volume types are correctly validated during a
 # volume manage operation.  This data structure represents an existing volume
-# type.
-fake_vt = {'id': fake.VOLUME_TYPE_ID,
-           'name': 'good_fakevt'}
+# type.  NOTE: cinder.db.sqlalchemy.volume_type_get() returns a dict describing
+# a specific volume type; this dict always contains an 'extra_specs' key.
+fake_vt = {
+    'id': fake.VOLUME_TYPE_ID,
+    'name': 'good_fakevt',
+    'extra_specs': {},
+}
+
+fake_encrypted_vt = {
+    'id': fake.VOLUME_TYPE2_ID,
+    'name': 'fake_encrypted_vt',
+    'extra_specs': {},
+    'encryption': {
+        'cipher': 'fake_cipher',
+        'control_location': 'front-end',
+        'key_size': 256,
+        'provider': 'fake_provider'},
+}
 
 
 def vt_get_volume_type_by_name(context, name):
@@ -79,6 +94,8 @@ def vt_get_volume_type_by_name(context, name):
     """
     if name == fake_vt['name']:
         return fake_vt
+    if name == fake_encrypted_vt['name']:
+        return fake_encrypted_vt
     raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
 
 
@@ -91,7 +108,35 @@ def vt_get_volume_type(context, vt_id):
     """
     if vt_id == fake_vt['id']:
         return fake_vt
+    if vt_id == fake_encrypted_vt['id']:
+        return fake_encrypted_vt
     raise exception.VolumeTypeNotFound(volume_type_id=vt_id)
+
+
+def vt_get_default_volume_type(context):
+    """Replacement for cinder.volume.volume_types.get_default_volume_type.
+
+    If you want to use a specific fake volume type defined above, set
+    the flag for default_volume_type to the name of that fake type.
+
+    If you want to raise VolumeTypeDefaultMisconfiguredError, then set
+    the flag for default_volume_type to None.
+
+    Otherwise, for *any* non-None value of default_volume_type, this
+    will return our generic fake volume type.  (NOTE: by default,
+    CONF.default_volume_type is '__DEFAULT__'.)
+
+    """
+    default_vt_name = CONF.default_volume_type
+    if not default_vt_name:
+        raise exception.VolumeTypeDefaultMisconfiguredError(
+            volume_type_name='from vt_get_default_volume_type')
+    try:
+        default_vt = vt_get_volume_type_by_name(context, default_vt_name)
+    except exception.VolumeTypeNotFoundByName:
+        default_vt = fake_vt
+
+    return default_vt
 
 
 def api_manage(*args, **kwargs):
@@ -145,6 +190,8 @@ def api_get_manageable_volumes(*args, **kwargs):
 
 @ddt.ddt
 @mock.patch('cinder.db.sqlalchemy.api.service_get', service_get)
+@mock.patch('cinder.volume.volume_types.get_default_volume_type',
+            vt_get_default_volume_type)
 @mock.patch('cinder.volume.volume_types.get_volume_type_by_name',
             vt_get_volume_type_by_name)
 @mock.patch('cinder.volume.volume_types.get_volume_type',
@@ -477,3 +524,121 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(1, mock_api_manage.call_count)
         self.assertEqual('creating',
                          jsonutils.loads(res.body)['volume']['status'])
+
+    def test_negative_manage_to_encrypted_type(self):
+        """Not allowed to manage a volume to an encrypted volume type."""
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                      is_admin=True)
+        body = {'volume': {'host': 'host_ok',
+                           'ref': 'fake_ref',
+                           'volume_type': fake_encrypted_vt['name']}}
+        req = webob.Request.blank('/v3/%s/os-volume-manage' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(fake_auth_context=ctxt))
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+
+    def test_negative_manage_to_encrypted_default_type(self):
+        """Fail if no vol type in request and default vol type is encrypted."""
+
+        self.flags(default_volume_type=fake_encrypted_vt['name'])
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                      is_admin=True)
+        body = {'volume': {'host': 'host_ok',
+                           'ref': 'fake_ref'}}
+        req = webob.Request.blank('/v3/%s/os-volume-manage' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(fake_auth_context=ctxt))
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+
+    def test_negative_no_volume_type(self):
+        """Fail when no volume type is available for the managed volume."""
+        self.flags(default_volume_type=None)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                      is_admin=True)
+        body = {'volume': {'host': 'host_ok',
+                           'ref': 'fake_ref'}}
+        req = webob.Request.blank('/v3/%s/os-volume-manage' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(fake_auth_context=ctxt))
+        self.assertEqual(HTTPStatus.INTERNAL_SERVER_ERROR, res.status_int)
+
+    @mock.patch('cinder.group.API')
+    @mock.patch('cinder.flow_utils')
+    @mock.patch('cinder.volume.flows.api.manage_existing.get_flow')
+    @mock.patch('cinder.volume.api.API._get_service_by_host_cluster')
+    def test_manage_when_default_type_is_encrypted(self,
+                                                   mock_get_cluster,
+                                                   mock_get_flow,
+                                                   mock_flow_utils,
+                                                   mock_group_api):
+        """Default type doesn't matter if non-encrypted type is in request."""
+
+        # make an encrypted type the default volume type
+        self.flags(default_volume_type=fake_encrypted_vt['name'])
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                      is_admin=True)
+
+        # pass a non-encrypted volume type in the request
+        requested_vt = fake_vt
+        body = {'volume': {'host': 'host_ok',
+                           'ref': 'fake_ref',
+                           'volume_type': requested_vt['name']}}
+        req = webob.Request.blank('/v3/%s/os-volume-manage' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(fake_auth_context=ctxt))
+
+        # request should be accepted
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
+
+        # make sure the volume type passed through is the specified one
+        args, _ = mock_get_flow.call_args
+        called_with = args[2]
+        self.assertEqual(requested_vt['name'],
+                         called_with['volume_type']['name'])
+        self.assertEqual(requested_vt['id'],
+                         called_with['volume_type']['id'])
+
+    @mock.patch('cinder.group.API')
+    @mock.patch('cinder.flow_utils')
+    @mock.patch('cinder.volume.flows.api.manage_existing.get_flow')
+    @mock.patch('cinder.volume.api.API._get_service_by_host_cluster')
+    def test_manage_with_default_type(self,
+                                      mock_get_cluster,
+                                      mock_get_flow,
+                                      mock_flow_utils,
+                                      mock_group_api):
+        """A non-encrypted default volume type should cause no problems."""
+
+        # make an non-encrypted type the default volume type
+        default_vt = fake_vt
+        self.flags(default_volume_type=default_vt['name'])
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                      is_admin=True)
+
+        # don't pass a volume type in the request
+        body = {'volume': {'host': 'host_ok',
+                           'ref': 'fake_ref'}}
+        req = webob.Request.blank('/v3/%s/os-volume-manage' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(fake_auth_context=ctxt))
+
+        # request should be accepted
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
+
+        # make sure the volume type passed through is the default
+        args, _ = mock_get_flow.call_args
+        called_with = args[2]
+        self.assertEqual(default_vt['name'],
+                         called_with['volume_type']['name'])
+        self.assertEqual(default_vt['id'],
+                         called_with['volume_type']['id'])

@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 from oslo_utils import uuidutils
 
 from cinder.tests.functional.api import client
@@ -141,6 +143,22 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
         # Create volume and verify it errors out with 500 status
         self.assertRaises(client.OpenStackApiException500,
                           self.api.post_volume, {'volume': {'size': 1}})
+
+    @mock.patch('cinder.api.common.get_cluster_host',
+                return_value=(None, None))
+    def test_manage_volume_default_type_set_none(self, fake_get_host):
+        """Verify missing default volume type errors out when managing."""
+
+        # configure None default type
+        self.flags(default_volume_type=None)
+
+        # manage something in the backend and verify you get a 500
+        self.assertRaises(client.OpenStackApiException500,
+                          self.api.post_manage_volume)
+
+        # make sure that we actually made it into the method we
+        # want to test and the 500 wasn't from something else
+        fake_get_host.assert_called_once()
 
     def test_create_volume_specified_type(self):
         """Verify volume_type is not default."""
