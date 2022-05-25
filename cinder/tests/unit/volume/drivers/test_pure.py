@@ -2940,7 +2940,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         array2_v1_3.get_volume.return_value = REPLICATED_VOLUME_SNAPS
 
         context = mock.MagicMock()
-        new_active_id, volume_updates, __ = self.driver.failover_host(
+        new_active_id, volume_updates, __ = self.driver.failover(
             context,
             REPLICATED_VOLUME_OBJS,
             None,
@@ -3018,7 +3018,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             {"name": sync_replicated_vol_name}
         ]
 
-        new_active_id, volume_updates, __ = self.driver.failover_host(
+        new_active_id, volume_updates, __ = self.driver.failover(
             context,
             [
                 not_replicated_vol,
@@ -3082,7 +3082,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
              mock_get_array,
              array2_v1_3.get_volume,
              self.async_array2.copy_volume],
-            self.driver.failover_host,
+            self.driver.failover,
             mock.Mock(), REPLICATED_VOLUME_OBJS, None
         )
 
