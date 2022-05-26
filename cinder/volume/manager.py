@@ -198,6 +198,7 @@ MAPPING = {
 def clean_volume_locks(func):
     @functools.wraps(func)
     def wrapper(self, context, volume, *args, **kwargs):
+        skip_clean = False
         try:
             skip_clean = func(self, context, volume, *args, **kwargs)
         except Exception:
@@ -215,6 +216,7 @@ def clean_volume_locks(func):
 def clean_snapshot_locks(func):
     @functools.wraps(func)
     def wrapper(self, context, snapshot, *args, **kwargs):
+        skip_clean = False
         try:
             skip_clean = func(self, context, snapshot, *args, **kwargs)
         except Exception:
