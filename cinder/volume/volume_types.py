@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Iterable, Optional, Union   # noqa: H301
 
 from oslo_config import cfg
 from oslo_db import exception as db_exc
@@ -48,12 +48,12 @@ MIN_SIZE_KEY = "provisioning:min_vol_size"
 MAX_SIZE_KEY = "provisioning:max_vol_size"
 
 
-def create(context,
-           name,
-           extra_specs=None,
-           is_public=True,
-           projects=None,
-           description=None):
+def create(context: context.RequestContext,
+           name: str,
+           extra_specs: Optional[dict[str, Any]] = None,
+           is_public: bool = True,
+           projects: Optional[list[str]] = None,
+           description: Optional[str] = None):
     """Creates volume types."""
     extra_specs = extra_specs or {}
     projects = projects or []
@@ -72,7 +72,11 @@ def create(context,
     return type_ref
 
 
-def update(context, id, name, description, is_public=None):
+def update(context: context.RequestContext,
+           id: Optional[str],
+           name: Optional[str],
+           description: Optional[str],
+           is_public: Optional[bool] = None) -> None:
     """Update volume type by id."""
     if id is None:
         msg = _("id cannot be None")
@@ -105,7 +109,7 @@ def update(context, id, name, description, is_public=None):
         raise exception.VolumeTypeUpdateFailed(id=id)
 
 
-def destroy(context, id):
+def destroy(context: context.RequestContext, id: str) -> dict[str, Any]:
     """Marks volume types as deleted.
 
     There must exist at least one volume type (i.e. the default type) in
@@ -145,9 +149,15 @@ def destroy(context, id):
     return db.volume_type_destroy(elevated, id)
 
 
-def get_all_types(context, inactive=0, filters=None, marker=None,
-                  limit=None, sort_keys=None, sort_dirs=None,
-                  offset=None, list_result=False):
+def get_all_types(context: context.RequestContext,
+                  inactive: int = 0,
+                  filters: Optional[dict] = None,
+                  marker: Optional[dict[str, Any]] = None,
+                  limit: Optional[int] = None,
+                  sort_keys: Optional[list[str]] = None,
+                  sort_dirs: Optional[list[str]] = None,
+                  offset: Optional[int] = None,
+                  list_result: bool = False) -> Union[dict[str, Any], list]:
     """Get all non-deleted volume_types.
 
     Pass true as argument if you want deleted volume types returned also.
@@ -161,7 +171,10 @@ def get_all_types(context, inactive=0, filters=None, marker=None,
     return vol_types
 
 
-def get_volume_type(ctxt, id, expected_fields=None):
+def get_volume_type(
+        ctxt: Optional[context.RequestContext],
+        id: Optional[str],
+        expected_fields: Optional[Iterable[str]] = None) -> dict[str, Any]:
     """Retrieves single volume type by id."""
     if id is None:
         msg = _("id cannot be None")
@@ -173,7 +186,8 @@ def get_volume_type(ctxt, id, expected_fields=None):
     return db.volume_type_get(ctxt, id, expected_fields=expected_fields)
 
 
-def get_by_name_or_id(context, identity):
+def get_by_name_or_id(context: context.RequestContext,
+                      identity: str) -> dict[str, Any]:
     """Retrieves volume type by id or name"""
     if uuidutils.is_uuid_like(identity):
         # both name and id can be in uuid format
@@ -189,7 +203,8 @@ def get_by_name_or_id(context, identity):
     return get_volume_type_by_name(context, identity)
 
 
-def get_volume_type_by_name(context, name):
+def get_volume_type_by_name(context: context.RequestContext,
+                            name: Optional[str]) -> dict[str, Any]:
     """Retrieves single volume type by name."""
     if name is None:
         msg = _("name cannot be None")
@@ -198,7 +213,8 @@ def get_volume_type_by_name(context, name):
     return db.volume_type_get_by_name(context, name)
 
 
-def get_default_volume_type(contxt=None):
+def get_default_volume_type(
+        contxt: Optional[context.RequestContext] = None) -> dict[str, Any]:
     """Get the default volume type.
 
     :raises VolumeTypeDefaultMisconfiguredError: when the configured default
@@ -226,7 +242,9 @@ def get_default_volume_type(contxt=None):
     return vol_type
 
 
-def get_volume_type_extra_specs(volume_type_id, key=False):
+def get_volume_type_extra_specs(
+        volume_type_id: str,
+        key: Union[str, bool] = False) -> Union[dict, bool]:
     volume_type = get_volume_type(context.get_admin_context(),
                                   volume_type_id)
     extra_specs = volume_type['extra_specs']
@@ -239,18 +257,19 @@ def get_volume_type_extra_specs(volume_type_id, key=False):
         return extra_specs
 
 
-def is_public_volume_type(context, volume_type_id):
+def is_public_volume_type(context: context.RequestContext,
+                          volume_type_id: str) -> bool:
     """Return is_public boolean value of volume type"""
     volume_type = db.volume_type_get(context, volume_type_id)
     return volume_type['is_public']
 
 
 @utils.if_notifications_enabled
-def notify_about_volume_type_access_usage(context,
-                                          volume_type_id,
-                                          project_id,
-                                          event_suffix,
-                                          host=None):
+def notify_about_volume_type_access_usage(context: context.RequestContext,
+                                          volume_type_id: str,
+                                          project_id: str,
+                                          event_suffix: str,
+                                          host: Optional[str] = None) -> None:
     """Notify about successful usage type-access-(add/remove) command.
 
     :param context: security context
@@ -271,7 +290,9 @@ def notify_about_volume_type_access_usage(context,
                   notifier_info)
 
 
-def add_volume_type_access(context, volume_type_id, project_id):
+def add_volume_type_access(context: context.RequestContext,
+                           volume_type_id: Optional[str],
+                           project_id: str) -> None:
     """Add access to volume type for project_id."""
     if volume_type_id is None:
         msg = _("volume_type_id cannot be None")
@@ -290,7 +311,9 @@ def add_volume_type_access(context, volume_type_id, project_id):
                                           'access.add')
 
 
-def remove_volume_type_access(context, volume_type_id, project_id):
+def remove_volume_type_access(context: context.RequestContext,
+                              volume_type_id: Optional[str],
+                              project_id: str) -> None:
     """Remove access to volume type for project_id."""
     if volume_type_id is None:
         msg = _("volume_type_id cannot be None")
@@ -314,7 +337,9 @@ def is_encrypted(context: context.RequestContext,
     return get_volume_type_encryption(context, volume_type_id) is not None
 
 
-def get_volume_type_encryption(context, volume_type_id):
+def get_volume_type_encryption(
+        context: context.RequestContext,
+        volume_type_id: Optional[str]) -> Optional[dict]:
     if volume_type_id is None:
         return None
 
@@ -322,7 +347,7 @@ def get_volume_type_encryption(context, volume_type_id):
     return encryption
 
 
-def get_volume_type_qos_specs(volume_type_id):
+def get_volume_type_qos_specs(volume_type_id: str) -> dict[str, Any]:
     """Get all qos specs for given volume type."""
     ctxt = context.get_admin_context()
     res = db.volume_type_qos_specs_get(ctxt,
@@ -331,8 +356,8 @@ def get_volume_type_qos_specs(volume_type_id):
 
 
 def volume_types_diff(context: context.RequestContext,
-                      vol_type_id1,
-                      vol_type_id2) -> tuple[dict, bool]:
+                      vol_type_id1: str,
+                      vol_type_id2: str) -> tuple[dict[str, Any], bool]:
     """Returns a 'diff' of two volume types and whether they are equal.
 
     Returns a tuple of (diff, equal), where 'equal' is a boolean indicating
@@ -359,13 +384,13 @@ def volume_types_diff(context: context.RequestContext,
                            {...}}
         }
     """
-    def _fix_qos_specs(qos_specs):
+    def _fix_qos_specs(qos_specs: Optional[dict]) -> None:
         if qos_specs:
             for key in QOS_IGNORED_FIELDS:
                 qos_specs.pop(key, None)
             qos_specs.update(qos_specs.pop('specs', {}))
 
-    def _fix_encryption_specs(encryption):
+    def _fix_encryption_specs(encryption: Optional[dict]) -> Optional[dict]:
         if encryption:
             encryption = dict(encryption)
             for param in ENCRYPTION_IGNORED_FIELDS:
@@ -373,7 +398,7 @@ def volume_types_diff(context: context.RequestContext,
         return encryption
 
     def _dict_diff(dict1: Optional[dict],
-                   dict2: Optional[dict]) -> tuple[dict, bool]:
+                   dict2: Optional[dict]) -> tuple[dict[str, Any], bool]:
         res = {}
         equal = True
         if dict1 is None:
@@ -426,9 +451,11 @@ def volume_types_diff(context: context.RequestContext,
     return (diff, all_equal)
 
 
-def volume_types_encryption_changed(context, vol_type_id1, vol_type_id2):
+def volume_types_encryption_changed(
+        context: context.RequestContext,
+        vol_type_id1: str, vol_type_id2: str) -> bool:
     """Return whether encryptions of two volume types are same."""
-    def _get_encryption(enc):
+    def _get_encryption(enc: dict) -> dict:
         enc = dict(enc)
         for param in ENCRYPTION_IGNORED_FIELDS:
             enc.pop(param, None)
@@ -442,7 +469,9 @@ def volume_types_encryption_changed(context, vol_type_id1, vol_type_id2):
     return enc1_filtered != enc2_filtered
 
 
-def provision_filter_on_size(context, volume_type, size):
+def provision_filter_on_size(context: context.RequestContext,
+                             volume_type: Optional[dict[str, Any]],
+                             size: Union[str, int]) -> None:
     """This function filters volume provisioning requests on size limits.
 
     If a volume type has provisioning size min/max set, this filter

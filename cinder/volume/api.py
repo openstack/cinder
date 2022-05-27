@@ -216,7 +216,7 @@ class API(base.Base):
 
     def create(self,
                context: context.RequestContext,
-               size: Optional[Union[str, int]],
+               size: Union[str, int],
                name: Optional[str],
                description: Optional[str],
                snapshot: Optional[objects.Snapshot] = None,
