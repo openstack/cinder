@@ -17,6 +17,7 @@ from __future__ import annotations  # Remove when only supporting python 3.9+
 
 import operator
 import re
+import sys
 from typing import Callable
 
 import pyparsing
@@ -291,10 +292,18 @@ def evaluate(expression, **kwargs):
     global _vars
     _vars = kwargs
 
+    # Some reasonable formulas break with the default recursion limit of
+    # 1000.  Raise it here and reset it afterward.
+    orig_recursion_limit = sys.getrecursionlimit()
+    if orig_recursion_limit < 3000:
+        sys.setrecursionlimit(3000)
+
     try:
         result = _parser.parseString(expression, parseAll=True)[0]
     except pyparsing.ParseException as e:
         raise exception.EvaluatorParseException(
             _("ParseException: %s") % e)
+    finally:
+        sys.setrecursionlimit(orig_recursion_limit)
 
     return result.eval()
