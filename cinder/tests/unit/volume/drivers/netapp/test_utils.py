@@ -836,6 +836,11 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         else:
             self.assertEqual('QOS_MIN_BLOCK_' + name, feature_name)
 
+        self.assertEqual('QOS_MIN_NFS_',
+                         na_utils.qos_min_feature_name(True, None))
+        self.assertEqual('QOS_MIN_BLOCK_',
+                         na_utils.qos_min_feature_name(False, None))
+
 
 class OpenStackInfoTestCase(test.TestCase):
 
