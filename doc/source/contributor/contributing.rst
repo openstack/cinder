@@ -164,6 +164,33 @@ https://review.opendev.org/#/admin/groups/83,members
 You can also find the members of the cinder-core team at the Cinder weekly
 meetings.
 
+Project Team Lead
+~~~~~~~~~~~~~~~~~
+
+For each development cycle, Cinder project Active Technical Contributors (ATCs)
+elect a Project Team Lead who is responsible for running the weekly meetings,
+midcycles, and Cinder sessions at the Project Team Gathering for that cycle
+(and who is also ultimately responsible for everything else the project does).
+
+* You automatically become an ATC by making a commit to one of the cinder
+  deliverables.  Other people who haven't made a commit, but have contributed
+  to the project in other ways (for example, making good bug reports) may be
+  recognized as "extra-ATCs" and obtain voting privileges.  If you are such
+  a person, contact the current PTL before the "Extra-ATC freeze" indicated
+  on the current development cycle schedule (which you can find from the
+  `OpenStack Releases homepage
+  <https://releases.openstack.org/index.html>`_ .
+
+The current Cinder project Project Team Lead (PTL) is listed in the
+`Cinder project reference
+<https://governance.openstack.org/tc/reference/projects/cinder.html>`_
+maintained by the OpenStack Technical Committee.
+
+All common PTL duties are enumerated in the `PTL guide
+<https://docs.openstack.org/project-team-guide/ptl.html>`_.
+
+Additional responsibilities for the Cinder PTL can be found by reading through
+the :ref:`managing-development` section of the Cinder documentation.
 
 New Feature Planning
 ~~~~~~~~~~~~~~~~~~~~
@@ -315,12 +342,3 @@ from https://releases.openstack.org/
 
 You can see who's been doing what with Cinder recently in Stackalytics:
 https://www.stackalytics.io/report/activity?module=cinder-group
-
-Project Team Lead Duties
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-All common PTL duties are enumerated in the `PTL guide
-<https://docs.openstack.org/project-team-guide/ptl.html>`_.
-
-Additional responsibilities for the Cinder PTL can be found by reading through
-the :ref:`managing-development` section of the Cinder documentation.
