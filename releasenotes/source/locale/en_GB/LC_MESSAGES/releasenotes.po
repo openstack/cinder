@@ -3,15 +3,16 @@
 # Andi Chandler <andi@gowling.com>, 2019. #zanata
 # Andi Chandler <andi@gowling.com>, 2020. #zanata
 # Andi Chandler <andi@gowling.com>, 2021. #zanata
+# Andi Chandler <andi@gowling.com>, 2022. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: Cinder Release Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-09-20 18:48+0000\n"
+"POT-Creation-Date: 2022-05-27 18:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2021-09-18 07:44+0000\n"
+"PO-Revision-Date: 2022-05-25 08:41+0000\n"
 "Last-Translator: Andi Chandler <andi@gowling.com>\n"
 "Language-Team: English (United Kingdom)\n"
 "Language: en_GB\n"
@@ -63,8 +64,20 @@ msgstr ""
 msgid "**Anomalies with encrypted volumes**"
 msgstr "**Anomalies with encrypted volumes**"
 
+msgid "**Cinder use of cgroups v1**"
+msgstr "**Cinder use of cgroups v1**"
+
+msgid "**NFS-based backend drivers and qcow2 version 2 images**"
+msgstr "**NFS-based backend drivers and qcow2 version 2 images**"
+
+msgid "**NVMe-oF issues**"
+msgstr "**NVMe-oF issues**"
+
 msgid "**Policy configuration changes**"
 msgstr "**Policy configuration changes**"
+
+msgid "**RBD driver: Enable Ceph V2 Clone API and Ceph Trash auto purge**"
+msgstr "**RBD driver: Enable Ceph V2 Clone API and Ceph Trash auto purge**"
 
 msgid "**Supported Ceph versions**"
 msgstr "**Supported Ceph versions**"
@@ -237,6 +250,12 @@ msgstr "15.4.1"
 msgid "15.5.0"
 msgstr "15.5.0"
 
+msgid "15.6.0"
+msgstr "15.6.0"
+
+msgid "15.6.0-13"
+msgstr "15.6.0-13"
+
 msgid "16.0.0"
 msgstr "16.0.0"
 
@@ -252,6 +271,18 @@ msgstr "16.2.1"
 msgid "16.3.0"
 msgstr "16.3.0"
 
+msgid "16.4.0"
+msgstr "16.4.0"
+
+msgid "16.4.1"
+msgstr "16.4.1"
+
+msgid "16.4.2"
+msgstr "16.4.2"
+
+msgid "16.4.2-4"
+msgstr "16.4.2-4"
+
 msgid "17.0.0"
 msgstr "17.0.0"
 
@@ -260,6 +291,57 @@ msgstr "17.0.1"
 
 msgid "17.1.0"
 msgstr "17.1.0"
+
+msgid "17.2.0"
+msgstr "17.2.0"
+
+msgid "17.3.0"
+msgstr "17.3.0"
+
+msgid "17.4.0"
+msgstr "17.4.0"
+
+msgid "18.0.0"
+msgstr "18.0.0"
+
+msgid "18.1.0"
+msgstr "18.1.0"
+
+msgid "18.2.0"
+msgstr "18.2.0"
+
+msgid "19.0.0"
+msgstr "19.0.0"
+
+msgid "19.1.0"
+msgstr "19.1.0"
+
+msgid ""
+"2. The FlexGroup pool has a different view of aggregate capabilites, "
+"changing them by a list of elements, instead of a single element. They are "
+"``netapp_aggregate``, ``netapp_raid_type``, ``netapp_disk_type`` and "
+"``netapp_hybrid_aggregate``. The ``netapp_aggregate_used_percent`` "
+"capability is an average of used percent of all FlexGroup's aggregates."
+msgstr ""
+"2. The FlexGroup pool has a different view of aggregate capabilities, "
+"changing them by a list of elements, instead of a single element. They are "
+"``netapp_aggregate``, ``netapp_raid_type``, ``netapp_disk_type`` and "
+"``netapp_hybrid_aggregate``. The ``netapp_aggregate_used_percent`` "
+"capability is an average of the used percentage of all FlexGroup's "
+"aggregates."
+
+msgid "20.0.0"
+msgstr "20.0.0"
+
+msgid "20.0.0.0rc1"
+msgstr "20.0.0.0rc1"
+
+msgid ""
+"3. The ``utilization`` capability is not calculated to FlexGroup pools, it "
+"is always set to default of 50."
+msgstr ""
+"3. The ``utilization`` capability is not calculated to FlexGroup pools, it "
+"is always set to the default of 50."
 
 msgid ""
 "3PAR driver creates FC VLUN of match-set type instead of host sees. With "
@@ -270,6 +352,40 @@ msgstr ""
 "match-set, the host will see the virtual volume on specified NSP (Node-Slot-"
 "Port). This change in vlun type fixes bug 1577993."
 
+msgid ""
+"4. The driver cannot support consistency group with volumes that are over "
+"FlexGroup pools."
+msgstr ""
+"4. The driver cannot support consistency groups with volumes that are over "
+"FlexGroup pools."
+
+msgid ""
+"5. The driver cannot support multi-attach with volumes that are over "
+"FlexGroup pools."
+msgstr ""
+"5. The driver cannot support multi-attach with volumes that are over "
+"FlexGroup pools."
+
+msgid ""
+"6. For volumes over the FlexGroup pool, the operations of clone volume, "
+"create snapshot and create volume from an image are implemented as the NFS "
+"generic driver. Hence, it does not rely on the ONTAP storage to perform "
+"those operations."
+msgstr ""
+"6. For volumes over the FlexGroup pool, the operations of clone volume, "
+"create snapshot and create volume from an image are implemented as the NFS "
+"generic driver. Hence, it does not rely on the ONTAP storage to perform "
+"those operations."
+
+msgid ""
+"7. A driver with FlexGroup pools has snapshot support disabled by default. "
+"To enable, you must set ``nfs_snapshot_support`` to true in the backend's "
+"configuration section of the cinder configuration file."
+msgstr ""
+"7. A driver with FlexGroup pools has snapshot support disabled by default. "
+"To enable, you must set ``nfs_snapshot_support`` to true in the backend's "
+"configuration section of the cinder configuration file."
+
 msgid "7.0.1"
 msgstr "7.0.1"
 
@@ -278,6 +394,13 @@ msgstr "7.0.2"
 
 msgid "7.0.3"
 msgstr "7.0.3"
+
+msgid ""
+"8. The driver image cache is not applied for volumes over FlexGroup pools. "
+"It can use the core image cache for avoiding downloading twice, though."
+msgstr ""
+"8. The driver image cache is not applied for volumes over FlexGroup pools. "
+"It can use the core image cache for avoiding downloading twice, though."
 
 msgid "8.0.0"
 msgstr "8.0.0"
@@ -290,6 +413,13 @@ msgstr "8.1.1"
 
 msgid "8.1.1-11"
 msgstr "8.1.1-11"
+
+msgid ""
+"9. Given that the FlexGroup pool may be on several cluster nodes, the QoS "
+"minimum support is only enabled if all nodes support it."
+msgstr ""
+"9. Given that the FlexGroup pool may be on several cluster nodes, the QoS "
+"minimum support is only enabled if all nodes support it."
 
 msgid "9.0.0"
 msgstr "9.0.0"
@@ -9922,6 +10052,9 @@ msgstr ""
 "setting vendor property 'vz:volume_format' in volume type metadata. Allowed "
 "values are 'ploop', 'qcow2' and 'raw'."
 
+msgid "Wallaby Series Release Notes"
+msgstr "Wallaby Series Release Notes"
+
 msgid ""
 "We can now limit the number of concurrent backup/restore operations that a "
 "Cinder backup service can perform using the ``backup_max_operations`` "
@@ -10210,6 +10343,12 @@ msgstr ""
 
 msgid "X-IO"
 msgstr "X-IO"
+
+msgid "Xena Series Release Notes"
+msgstr "Xena Series Release Notes"
+
+msgid "Yoga Series Release Notes"
+msgstr "Yoga Series Release Notes"
 
 msgid "You upgraded to Train from Stein"
 msgstr "You upgraded to Train from Stein"
@@ -11145,6 +11284,33 @@ msgstr "``disco_client``"
 msgid "``disco_src_api_port``"
 msgstr "``disco_src_api_port``"
 
+msgid "``group:group_types:create``"
+msgstr "``group:group_types:create``"
+
+msgid "``group:group_types:delete``"
+msgstr "``group:group_types:delete``"
+
+msgid "``group:group_types:update``"
+msgstr "``group:group_types:update``"
+
+msgid "``group:group_types_manage``"
+msgstr "``group:group_types_manage``"
+
+msgid "``group:group_types_manage`` is replaced by:"
+msgstr "``group:group_types_manage`` is replaced by:"
+
+msgid "``group:group_types_specs:get_all``"
+msgstr "``group:group_types_specs:get_all``"
+
+msgid "``group:group_types_specs:get``"
+msgstr "``group:group_types_specs:get``"
+
+msgid "``group:group_types_specs``"
+msgstr "``group:group_types_specs``"
+
+msgid "``group:group_types_specs`` is replaced by:"
+msgstr "``group:group_types_specs`` is replaced by:"
+
 msgid ""
 "``iscsi_ip_address``, ``iscsi_port``, ``target_helper``, "
 "``iscsi_target_prefix`` and ``iscsi_protocol`` config options are deprecated "
@@ -11188,11 +11354,82 @@ msgstr "``retry_interval``"
 msgid "``retry_interval`` to ``disco_retry_interval``"
 msgstr "``retry_interval`` to ``disco_retry_interval``"
 
+msgid "``rule:admin_or_owner``"
+msgstr "``rule:admin_or_owner``"
+
+msgid "``rule:system_or_domain_or_project_admin``"
+msgstr "``rule:system_or_domain_or_project_admin``"
+
+msgid "``rule:volume_extension:volume_type_encryption``"
+msgstr "``rule:volume_extension:volume_type_encryption``"
+
 msgid "``scheduler_driver_init_wait_time``"
 msgstr "``scheduler_driver_init_wait_time``"
 
 msgid "``snapshot_check_timeout`` to ``disco_snapshot_check_timeout``"
 msgstr "``snapshot_check_timeout`` to ``disco_snapshot_check_timeout``"
+
+msgid ""
+"``volume:reimage_reserved`` - users who satisfy this policy may re-image a "
+"volume in status ``reserved``"
+msgstr ""
+"``volume:reimage_reserved`` - users who satisfy this policy may re-image a "
+"volume in status ``reserved``"
+
+msgid ""
+"``volume:reimage`` - users who satisfy this policy may re-image a volume in "
+"status ``available`` or ``error``"
+msgstr ""
+"``volume:reimage`` - users who satisfy this policy may re-image a volume in "
+"status ``available`` or ``error``"
+
+msgid "``volume_extension:quota_classes:get``"
+msgstr "``volume_extension:quota_classes:get``"
+
+msgid "``volume_extension:quota_classes:update``"
+msgstr "``volume_extension:quota_classes:update``"
+
+msgid "``volume_extension:quota_classes``"
+msgstr "``volume_extension:quota_classes``"
+
+msgid "``volume_extension:quota_classes`` is replaced by:"
+msgstr "``volume_extension:quota_classes`` is replaced by:"
+
+msgid "``volume_extension:type_create``"
+msgstr "``volume_extension:type_create``"
+
+msgid "``volume_extension:type_delete``"
+msgstr "``volume_extension:type_delete``"
+
+msgid "``volume_extension:type_update``"
+msgstr "``volume_extension:type_update``"
+
+msgid "``volume_extension:types_extra_specs:read_sensitive``"
+msgstr "``volume_extension:types_extra_specs:read_sensitive``"
+
+msgid "``volume_extension:types_manage``"
+msgstr "``volume_extension:types_manage``"
+
+msgid "``volume_extension:types_manage`` is replaced by:"
+msgstr "``volume_extension:types_manage`` is replaced by:"
+
+msgid "``volume_extension:volume_image_metadata:remove``"
+msgstr "``volume_extension:volume_image_metadata:remove``"
+
+msgid "``volume_extension:volume_image_metadata:set``"
+msgstr "``volume_extension:volume_image_metadata:set``"
+
+msgid "``volume_extension:volume_image_metadata:show``"
+msgstr "``volume_extension:volume_image_metadata:show``"
+
+msgid "``volume_extension:volume_image_metadata``"
+msgstr "``volume_extension:volume_image_metadata``"
+
+msgid "``volume_extension:volume_image_metadata`` is replaced by:"
+msgstr "``volume_extension:volume_image_metadata`` is replaced by:"
+
+msgid "``volume_extension:volume_type_access:get_all_for_type``"
+msgstr "``volume_extension:volume_type_access:get_all_for_type``"
 
 msgid "``volume_extension:volume_type_encryption:create``"
 msgstr "``volume_extension:volume_type_encryption:create``"
@@ -11276,6 +11513,9 @@ msgstr ""
 
 msgid "http://cinderstats.ivehearditbothways.com/cireport.txt"
 msgstr "http://cinderstats.ivehearditbothways.com/cireport.txt"
+
+msgid "https://bugs.launchpad.net/os-brick/+bugs?field.tag=nvme"
+msgstr "https://bugs.launchpad.net/os-brick/+bugs?field.tag=nvme"
 
 msgid ""
 "if a ``snapshot_id`` is supplied in the request, the volume type is inferred "
