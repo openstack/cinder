@@ -72,7 +72,7 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         super(VolumeEncryptionMetadataTest, self).setUp()
         self.controller = (volume_encryption_metadata.
                            VolumeEncryptionMetadataController())
-        self.mock_object(db.sqlalchemy.api, 'volume_type_encryption_get',
+        self.mock_object(db.sqlalchemy.api, '_volume_type_encryption_get',
                          return_volume_type_encryption_metadata)
 
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
@@ -188,7 +188,7 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual(fake.ENCRYPTION_KEY_ID, res.body.decode())
 
     def test_show_volume_not_encrypted_type(self):
-        self.mock_object(db.sqlalchemy.api, 'volume_type_encryption_get',
+        self.mock_object(db.sqlalchemy.api, '_volume_type_encryption_get',
                          return_value=None)
 
         volume_id = self._create_volume(self.ctxt, encryption_key_id=None)
@@ -202,7 +202,7 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual(0, len(res.body))
 
     def test_index_volume_not_encrypted_type(self):
-        self.mock_object(db.sqlalchemy.api, 'volume_type_encryption_get',
+        self.mock_object(db.sqlalchemy.api, '_volume_type_encryption_get',
                          return_value=None)
 
         volume_id = self._create_volume(self.ctxt, encryption_key_id=None)
