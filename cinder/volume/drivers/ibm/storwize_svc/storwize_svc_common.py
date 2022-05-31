@@ -2565,10 +2565,11 @@ class StorwizeHelpers(object):
             rcrel = vol_attrs['RC_name']
         self.ssh.startrcrelationship(rcrel, primary)
 
-    def stop_relationship(self, volume_name, access=False):
-        vol_attrs = self.get_vdisk_attributes(volume_name)
-        if vol_attrs['RC_name']:
-            self.ssh.stoprcrelationship(vol_attrs['RC_name'], access=access)
+    def stop_relationship(self, volume_name, access=False, rcrel=None):
+        if rcrel is None:
+            vol_attrs = self.get_vdisk_attributes(volume_name)
+            rcrel = vol_attrs['RC_name']
+        self.ssh.stoprcrelationship(rcrel, access=access)
 
     def create_relationship(self, master, aux, system, asyncmirror,
                             cyclingmode=False, masterchange=None,
@@ -2640,10 +2641,11 @@ class StorwizeHelpers(object):
         self.ssh.ch_rcconsistgrp_cyclingmode(rccg_name,
                                              cyclingmode)
 
-    def delete_relationship(self, volume_name):
-        vol_attrs = self.get_vdisk_attributes(volume_name)
-        if vol_attrs['RC_name']:
-            self.ssh.rmrcrelationship(vol_attrs['RC_name'], True)
+    def delete_relationship(self, volume_name, rcrel=None):
+        if rcrel is None:
+            vol_attrs = self.get_vdisk_attributes(volume_name)
+            rcrel = vol_attrs['RC_name']
+        self.ssh.rmrcrelationship(rcrel, True)
 
     def get_relationship_info(self, volume_name):
         vol_attrs = self.get_vdisk_attributes(volume_name)
@@ -2689,7 +2691,8 @@ class StorwizeHelpers(object):
         try:
             # If relationship exists, will delete the relationship.
             if rel_info:
-                self.delete_relationship(volume_name)
+                self.delete_relationship(volume_name,
+                                         rcrel=rel_info['name'])
             # Delete change volume
             self.delete_vdisk(
                 storwize_const.REPLICA_CHG_VOL_PREFIX + volume_name,
@@ -4030,6 +4033,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         'not recommended.')
             rep_type = rel_info['copy_type']
             cyclingmode = rel_info['cycling_mode']
+            rc_name = rel_info['name']
             master_helper = self._master_backend_helpers
             target_helper = self._aux_backend_helpers
             if rep_type == 'activeactive':
@@ -4078,10 +4082,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                 rccg_name)
                             master_helper.start_rccg(rccg_name)
                         else:
-                            master_helper.stop_relationship(volume.name)
+                            master_helper.stop_relationship(volume.name,
+                                                            rcrel=rc_name)
                             master_helper.change_relationship_cyclingmode(
-                                volume.name)
-                            master_helper.start_relationship(volume.name)
+                                volume.name, rcrel=rc_name)
+                            master_helper.start_relationship(volume.name,
+                                                             rcrel=rc_name)
 
                         tgt_change_vol = (
                             storwize_const.REPLICA_CHG_VOL_PREFIX + tgt_vol)
@@ -4163,7 +4169,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         target_helper = self._aux_backend_helpers
         tgt_change_vol = (storwize_const.REPLICA_CHG_VOL_PREFIX + target_vol)
         src_change_vol = (storwize_const.REPLICA_CHG_VOL_PREFIX + volume.name)
-
+        rc_name = rel_info['name']
         # Create source change volume if it doesn't exist
         src_attr = master_helper.get_vdisk_attributes(volume.name)
         src_change_attr = master_helper.get_vdisk_attributes(src_change_vol)
@@ -4195,33 +4201,34 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             master_helper.change_consistgrp_cyclingmode(rccg_name, 'multi')
         else:
             # Update volume cyclingmode to 'multi'
-            master_helper.stop_relationship(volume.name)
-            master_helper.change_relationship_cyclingmode(volume.name, 'multi')
+            master_helper.stop_relationship(volume.name, rcrel=rc_name)
+            master_helper.change_relationship_cyclingmode(volume.name, 'multi',
+                                                          rc_name)
 
         # Set source_change_volume and target_change_volume
         if rel_info["master_vdisk_name"] == volume.name:
             master_helper.change_relationship_changevolume(volume.name,
                                                            src_change_vol,
-                                                           True)
+                                                           True, rc_name)
             target_helper.change_relationship_changevolume(target_vol,
                                                            tgt_change_vol,
-                                                           False)
+                                                           False, rc_name)
         else:
             # Auxiliary volume is onboarded as source volume
             # [Reverse Replication Scenario]
             master_helper.change_relationship_changevolume(volume.name,
                                                            src_change_vol,
-                                                           False)
+                                                           False, rc_name)
             target_helper.change_relationship_changevolume(target_vol,
                                                            tgt_change_vol,
-                                                           True)
+                                                           True, rc_name)
 
         if rccg_name:
             # Start gmcv consistency group relationshi
             master_helper.start_rccg(rccg_name)
         else:
             # Start gmcv volume relationship
-            master_helper.start_relationship(volume.name)
+            master_helper.start_relationship(volume.name, rcrel=rc_name)
 
     def _qos_model_update(self, model_update, volume):
         """add volume wwn and IOThrottle_rate to the metadata of the volume"""
@@ -4570,10 +4577,14 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         [storwize_const.REP_CONSIS_SYNC,
                          storwize_const.REP_CONSIS_COPYING]):
                     if rep_info['primary'] == 'master':
-                        self._helpers.start_relationship(tgt_volume)
+                        self._helpers.start_relationship(tgt_volume,
+                                                         rcrel=
+                                                         rep_info['name'])
                     else:
                         self._helpers.start_relationship(tgt_volume,
-                                                         primary='aux')
+                                                         primary='aux',
+                                                         rcrel=
+                                                         rep_info['name'])
             except Exception as ex:
                 LOG.warning('Fail to copy data from aux to master. master:'
                             ' %(master)s and aux %(aux)s. Please '
@@ -6686,7 +6697,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     model_update['status'] = fields.GroupStatus.ERROR
                 else:
                     if rccg and rccg.get('cycling_mode', None) == 'multi':
-                        self._helpers.stop_relationship(vol_name)
+                        self._helpers.stop_relationship(vol_name,
+                                                        rcrel=rcrel['name'])
                         rcrel = self._helpers.get_relationship_info(vol_name)
                         if (rccg['state'] != 'empty' and
                            rccg['state'] != 'consistent_stopped' or
@@ -6727,7 +6739,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                    rccg['cycle_period_seconds']})
                         # This rcrel updation failed ,it has to be started
                         # explicitly.
-                        self._helpers.start_relationship(vol_name)
+                        self._helpers.start_relationship(vol_name,
+                                                         rcrel=rcrel['name'])
                         model_update['status'] = fields.GroupStatus.ERROR
                     else:
                         self._helpers.chrcrelationship(rcrel['name'],

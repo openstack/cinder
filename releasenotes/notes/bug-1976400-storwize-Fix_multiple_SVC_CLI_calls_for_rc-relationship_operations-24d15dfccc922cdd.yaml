@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #1976400
+    <https://bugs.launchpad.net/cinder/+bug/1976400>`_:
+    Optimize svcinfo CLI calls to reduce the
+    computational time for rc-relationship related
+    operations.
