@@ -6315,18 +6315,36 @@ def _backup_data_get_for_project(context, project_id, volume_type_id=None):
 
 
 @require_context
+@main_context_manager.reader
 def backup_get(context, backup_id, read_deleted=None, project_only=True):
-    return _backup_get(context, backup_id,
-                       read_deleted=read_deleted,
-                       project_only=project_only)
+    return _backup_get(
+        context,
+        backup_id,
+        read_deleted=read_deleted,
+        project_only=project_only,
+    )
 
 
-def _backup_get(context, backup_id, session=None, read_deleted=None,
-                project_only=True):
-    result = model_query(
-        context, models.Backup, session=session, project_only=project_only,
-        read_deleted=read_deleted).options(
-        joinedload('backup_metadata')).filter_by(id=backup_id).first()
+# TODO: Remove 'session' argument when all of the '_get' helpers are converted
+def _backup_get(
+    context,
+    backup_id,
+    session=None,
+    read_deleted=None,
+    project_only=True,
+):
+    result = (
+        model_query(
+            context,
+            models.Backup,
+            session=session,
+            project_only=project_only,
+            read_deleted=read_deleted,
+        )
+        .options(joinedload('backup_metadata'))
+        .filter_by(id=backup_id)
+        .first()
+    )
 
     if not result:
         raise exception.BackupNotFound(backup_id=backup_id)
@@ -6334,29 +6352,43 @@ def _backup_get(context, backup_id, session=None, read_deleted=None,
     return result
 
 
-def _backup_get_all(context, filters=None, marker=None, limit=None,
-                    offset=None, sort_keys=None, sort_dirs=None):
+def _backup_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
     if filters and not is_valid_model_filters(models.Backup, filters):
         return []
 
-    session = get_session()
-    with session.begin():
-        # Generate the paginate query
-        query = _generate_paginate_query(context, session, marker,
-                                         limit, sort_keys, sort_dirs, filters,
-                                         offset, models.Backup)
-        if query is None:
-            return []
-        return query.all()
+    # Generate the paginate query
+    query = _generate_paginate_query(
+        context,
+        None,
+        marker,
+        limit,
+        sort_keys,
+        sort_dirs,
+        filters,
+        offset,
+        models.Backup,
+    )
+    if query is None:
+        return []
+    return query.all()
 
 
 # TODO: Remove 'session' argument when all of the '_get_query' helpers are
 # converted
-def _backups_get_query(context, session=None, project_only=False,
-                       joined_load=True):
+def _backups_get_query(
+    context, session=None, project_only=False, joined_load=True
+):
     query = model_query(
-        context, models.Backup, session=session,
-        project_only=project_only)
+        context, models.Backup, session=session, project_only=project_only
+    )
     if joined_load:
         query = query.options(joinedload('backup_metadata'))
     return query
@@ -6384,23 +6416,44 @@ def _process_backups_filters(query, filters):
 
 
 @require_admin_context
-def backup_get_all(context, filters=None, marker=None, limit=None,
-                   offset=None, sort_keys=None, sort_dirs=None):
-    return _backup_get_all(context, filters, marker, limit, offset, sort_keys,
-                           sort_dirs)
+@main_context_manager.reader
+def backup_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
+    return _backup_get_all(
+        context, filters, marker, limit, offset, sort_keys, sort_dirs
+    )
 
 
 @require_admin_context
+@main_context_manager.reader
 def backup_get_all_by_host(context, host):
-    return model_query(
-        context, models.Backup).options(
-        joinedload('backup_metadata')).filter_by(host=host).all()
+    return (
+        model_query(context, models.Backup)
+        .options(joinedload('backup_metadata'))
+        .filter_by(host=host)
+        .all()
+    )
 
 
 @require_context
-def backup_get_all_by_project(context, project_id, filters=None, marker=None,
-                              limit=None, offset=None, sort_keys=None,
-                              sort_dirs=None):
+@main_context_manager.reader
+def backup_get_all_by_project(
+    context,
+    project_id,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
 
     authorize_project_context(context, project_id)
     if not filters:
@@ -6410,11 +6463,13 @@ def backup_get_all_by_project(context, project_id, filters=None, marker=None,
 
     filters['project_id'] = project_id
 
-    return _backup_get_all(context, filters, marker, limit, offset, sort_keys,
-                           sort_dirs)
+    return _backup_get_all(
+        context, filters, marker, limit, offset, sort_keys, sort_dirs
+    )
 
 
 @require_context
+@main_context_manager.reader
 def backup_get_all_by_volume(context, volume_id, vol_project_id, filters=None):
 
     authorize_project_context(context, vol_project_id)
@@ -6429,13 +6484,19 @@ def backup_get_all_by_volume(context, volume_id, vol_project_id, filters=None):
 
 
 @require_context
+@main_context_manager.reader
 def backup_get_all_active_by_window(context, begin, end=None, project_id=None):
     """Return backups that were active during window."""
 
     query = model_query(context, models.Backup, read_deleted="yes").options(
-        joinedload('backup_metadata'))
-    query = query.filter(or_(models.Backup.deleted_at == None,  # noqa
-                             models.Backup.deleted_at > begin))
+        joinedload('backup_metadata')
+    )
+    query = query.filter(
+        or_(
+            models.Backup.deleted_at == None,  # noqa
+            models.Backup.deleted_at > begin,
+        )
+    )
     if end:
         query = query.filter(models.Backup.created_at < end)
     if project_id:
@@ -6446,23 +6507,24 @@ def backup_get_all_active_by_window(context, begin, end=None, project_id=None):
 
 @handle_db_data_error
 @require_context
+@main_context_manager.writer
 def backup_create(context, values):
-    values['backup_metadata'] = _metadata_refs(values.get('metadata'),
-                                               models.BackupMetadata)
+    values['backup_metadata'] = _metadata_refs(
+        values.get('metadata'), models.BackupMetadata
+    )
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
 
-    session = get_session()
-    with session.begin():
-        backup_ref = models.Backup()
-        backup_ref.update(values)
-        session.add(backup_ref)
+    backup_ref = models.Backup()
+    backup_ref.update(values)
+    context.session.add(backup_ref)
 
-    return _backup_get(context, values['id'], session=session)
+    return _backup_get(context, values['id'])
 
 
 @handle_db_data_error
 @require_context
+@main_context_manager.writer
 def backup_update(context, backup_id, values):
     if 'fail_reason' in values:
         values = values.copy()
@@ -6474,38 +6536,44 @@ def backup_update(context, backup_id, values):
 
 
 @require_admin_context
+@main_context_manager.writer
 def backup_destroy(context, backup_id):
     utcnow = timeutils.utcnow()
-    updated_values = {'status': fields.BackupStatus.DELETED,
-                      'deleted': True,
-                      'deleted_at': utcnow}
-    session = get_session()
-    with session.begin():
-        query = model_query(context, models.Backup, session=session).\
-            filter_by(id=backup_id)
-        entity = query.column_descriptions[0]['entity']
-        updated_values['updated_at'] = entity.updated_at
-        query.update(updated_values)
+    updated_values = {
+        'status': fields.BackupStatus.DELETED,
+        'deleted': True,
+        'deleted_at': utcnow,
+    }
+    query = model_query(context, models.Backup).filter_by(id=backup_id)
+    entity = query.column_descriptions[0]['entity']
+    updated_values['updated_at'] = entity.updated_at
+    query.update(updated_values)
 
-        query = model_query(context, models.BackupMetadata, session=session).\
-            filter_by(backup_id=backup_id)
-        entity = query.column_descriptions[0]['entity']
-        query.update({'deleted': True,
-                      'deleted_at': utcnow,
-                      'updated_at': entity.updated_at})
-        del updated_values['updated_at']
+    query = model_query(
+        context,
+        models.BackupMetadata,
+    ).filter_by(backup_id=backup_id)
+    entity = query.column_descriptions[0]['entity']
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': utcnow,
+            'updated_at': entity.updated_at,
+        }
+    )
+    del updated_values['updated_at']
     return updated_values
 
 
-@require_context
-@require_backup_exists
-def backup_metadata_get(context, backup_id):
-    return _backup_metadata_get(context, backup_id)
+def _backup_metadata_get_query(context, backup_id):
+    return model_query(
+        context, models.BackupMetadata, read_deleted="no"
+    ).filter_by(backup_id=backup_id)
 
 
 @require_context
-def _backup_metadata_get(context, backup_id, session=None):
-    rows = _backup_metadata_get_query(context, backup_id, session).all()
+def _backup_metadata_get(context, backup_id):
+    rows = _backup_metadata_get_query(context, backup_id).all()
     result = {}
     for row in rows:
         result[row['key']] = row['value']
@@ -6513,20 +6581,25 @@ def _backup_metadata_get(context, backup_id, session=None):
     return result
 
 
-def _backup_metadata_get_query(context, backup_id, session=None):
-    return model_query(
-        context, models.BackupMetadata,
-        session=session, read_deleted="no").filter_by(backup_id=backup_id)
+@require_context
+@require_backup_exists
+@main_context_manager.reader
+def backup_metadata_get(context, backup_id):
+    return _backup_metadata_get(context, backup_id)
 
 
 @require_context
-def _backup_metadata_get_item(context, backup_id, key, session=None):
-    result = _backup_metadata_get_query(
-        context, backup_id, session=session).filter_by(key=key).first()
+def _backup_metadata_get_item(context, backup_id, key):
+    result = (
+        _backup_metadata_get_query(context, backup_id)
+        .filter_by(key=key)
+        .first()
+    )
 
     if not result:
-        raise exception.BackupMetadataNotFound(metadata_key=key,
-                                               backup_id=backup_id)
+        raise exception.BackupMetadataNotFound(
+            metadata_key=key, backup_id=backup_id
+        )
     return result
 
 
@@ -6534,42 +6607,41 @@ def _backup_metadata_get_item(context, backup_id, key, session=None):
 @require_backup_exists
 @handle_db_data_error
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def backup_metadata_update(context, backup_id, metadata, delete):
-    session = get_session()
-    with session.begin():
-        # Set existing metadata to deleted if delete argument is True
-        if delete:
-            original_metadata = _backup_metadata_get(context, backup_id,
-                                                     session)
-            for meta_key, meta_value in original_metadata.items():
-                if meta_key not in metadata:
-                    meta_ref = _backup_metadata_get_item(context,
-                                                         backup_id,
-                                                         meta_key, session)
-                    meta_ref.update({'deleted': True,
-                                     'deleted_at': timeutils.utcnow()})
-                    meta_ref.save(session=session)
+    # Set existing metadata to deleted if delete argument is True
+    if delete:
+        original_metadata = _backup_metadata_get(context, backup_id)
+        for meta_key, meta_value in original_metadata.items():
+            if meta_key not in metadata:
+                meta_ref = _backup_metadata_get_item(
+                    context, backup_id, meta_key
+                )
+                meta_ref.update(
+                    {'deleted': True, 'deleted_at': timeutils.utcnow()}
+                )
+                meta_ref.save(context.session)
 
-        meta_ref = None
+    meta_ref = None
 
-        # Now update all existing items with new values, or create new meta
-        # objects
-        for meta_key, meta_value in metadata.items():
+    # Now update all existing items with new values, or create new meta
+    # objects
+    for meta_key, meta_value in metadata.items():
 
-            # update the value whether it exists or not
-            item = {"value": meta_value}
+        # update the value whether it exists or not
+        item = {"value": meta_value}
 
-            try:
-                meta_ref = _backup_metadata_get_item(context, backup_id,
-                                                     meta_key, session)
-            except exception.BackupMetadataNotFound:
-                meta_ref = models.BackupMetadata()
-                item.update({"key": meta_key, "backup_id": backup_id})
+        try:
+            meta_ref = _backup_metadata_get_item(context, backup_id, meta_key)
+        except exception.BackupMetadataNotFound:
+            meta_ref = models.BackupMetadata()
+            item.update({"key": meta_key, "backup_id": backup_id})
 
-            meta_ref.update(item)
-            meta_ref.save(session=session)
+        meta_ref.update(item)
+        meta_ref.save(context.session)
 
     return backup_metadata_get(context, backup_id)
+
 
 ###############################
 
