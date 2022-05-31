@@ -5387,15 +5387,17 @@ def group_type_access_remove(context, type_id, project_id):
 
 
 def _volume_type_extra_specs_query(context, volume_type_id, session=None):
-    return model_query(context, models.VolumeTypeExtraSpecs, session=session,
-                       read_deleted="no").\
-        filter_by(volume_type_id=volume_type_id)
+    return model_query(
+        context,
+        models.VolumeTypeExtraSpecs,
+        read_deleted="no",
+    ).filter_by(volume_type_id=volume_type_id)
 
 
 @require_context
+@main_context_manager.reader
 def volume_type_extra_specs_get(context, volume_type_id):
-    rows = _volume_type_extra_specs_query(context, volume_type_id).\
-        all()
+    rows = _volume_type_extra_specs_query(context, volume_type_id).all()
 
     result = {}
     for row in rows:
@@ -5405,69 +5407,83 @@ def volume_type_extra_specs_get(context, volume_type_id):
 
 
 @require_context
+@main_context_manager.writer
 def volume_type_extra_specs_delete(context, volume_type_id, key):
-    session = get_session()
-    with session.begin():
-        _volume_type_extra_specs_get_item(context, volume_type_id, key,
-                                          session)
-        query = _volume_type_extra_specs_query(context, volume_type_id,
-                                               session).filter_by(key=key)
-        entity = query.column_descriptions[0]['entity']
-        query.update({'deleted': True,
-                      'deleted_at': timeutils.utcnow(),
-                      'updated_at': entity.updated_at})
+    _volume_type_extra_specs_get_item(context, volume_type_id, key)
+    query = _volume_type_extra_specs_query(
+        context,
+        volume_type_id,
+    ).filter_by(key=key)
+    entity = query.column_descriptions[0]['entity']
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': entity.updated_at,
+        },
+    )
 
 
 @require_context
-def _volume_type_extra_specs_get_item(context, volume_type_id, key,
-                                      session=None):
-    result = _volume_type_extra_specs_query(
-        context, volume_type_id, session=session).\
-        filter_by(key=key).\
-        first()
+def _volume_type_extra_specs_get_item(context, volume_type_id, key):
+    result = (
+        _volume_type_extra_specs_query(context, volume_type_id)
+        .filter_by(key=key)
+        .first()
+    )
 
     if not result:
         raise exception.VolumeTypeExtraSpecsNotFound(
             extra_specs_key=key,
-            volume_type_id=volume_type_id)
+            volume_type_id=volume_type_id,
+        )
 
     return result
 
 
 @handle_db_data_error
 @require_context
-def volume_type_extra_specs_update_or_create(context, volume_type_id,
-                                             specs):
-    session = get_session()
-    with session.begin():
-        spec_ref = None
-        for key, value in specs.items():
-            try:
-                spec_ref = _volume_type_extra_specs_get_item(
-                    context, volume_type_id, key, session)
-            except exception.VolumeTypeExtraSpecsNotFound:
-                spec_ref = models.VolumeTypeExtraSpecs()
-            spec_ref.update({"key": key, "value": value,
-                             "volume_type_id": volume_type_id,
-                             "deleted": False})
-            spec_ref.save(session=session)
+@main_context_manager.writer
+def volume_type_extra_specs_update_or_create(context, volume_type_id, specs):
+    spec_ref = None
+    for key, value in specs.items():
+        try:
+            spec_ref = _volume_type_extra_specs_get_item(
+                context,
+                volume_type_id,
+                key,
+            )
+        except exception.VolumeTypeExtraSpecsNotFound:
+            spec_ref = models.VolumeTypeExtraSpecs()
 
-        return specs
+        spec_ref.update(
+            {
+                "key": key,
+                "value": value,
+                "volume_type_id": volume_type_id,
+                "deleted": False,
+            },
+        )
+        spec_ref.save(context.session)
+
+    return specs
 
 
 ####################
 
 
 def _group_type_specs_query(context, group_type_id, session=None):
-    return model_query(context, models.GroupTypeSpecs, session=session,
-                       read_deleted="no").\
-        filter_by(group_type_id=group_type_id)
+    return model_query(
+        context,
+        models.GroupTypeSpecs,
+        read_deleted="no",
+    ).filter_by(group_type_id=group_type_id)
 
 
 @require_context
+@main_context_manager.reader
 def group_type_specs_get(context, group_type_id):
-    rows = _group_type_specs_query(context, group_type_id).\
-        all()
+    rows = _group_type_specs_query(context, group_type_id).all()
 
     result = {}
     for row in rows:
@@ -5477,54 +5493,58 @@ def group_type_specs_get(context, group_type_id):
 
 
 @require_context
+@main_context_manager.writer
 def group_type_specs_delete(context, group_type_id, key):
-    session = get_session()
-    with session.begin():
-        _group_type_specs_get_item(context, group_type_id, key,
-                                   session)
-        query = _group_type_specs_query(context, group_type_id, session).\
-            filter_by(key=key)
-        entity = query.column_descriptions[0]['entity']
-        query.update({'deleted': True,
-                      'deleted_at': timeutils.utcnow(),
-                      'updated_at': entity.updated_at})
+    _group_type_specs_get_item(context, group_type_id, key)
+    query = _group_type_specs_query(context, group_type_id).filter_by(key=key)
+    entity = query.column_descriptions[0]['entity']
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': entity.updated_at,
+        },
+    )
 
 
 @require_context
-def _group_type_specs_get_item(context, group_type_id, key,
-                               session=None):
-    result = _group_type_specs_query(
-        context, group_type_id, session=session).\
-        filter_by(key=key).\
-        first()
+def _group_type_specs_get_item(context, group_type_id, key):
+    result = (
+        _group_type_specs_query(context, group_type_id)
+        .filter_by(key=key)
+        .first()
+    )
 
     if not result:
         raise exception.GroupTypeSpecsNotFound(
             group_specs_key=key,
-            group_type_id=group_type_id)
+            group_type_id=group_type_id,
+        )
 
     return result
 
 
 @handle_db_data_error
 @require_context
-def group_type_specs_update_or_create(context, group_type_id,
-                                      specs):
-    session = get_session()
-    with session.begin():
-        spec_ref = None
-        for key, value in specs.items():
-            try:
-                spec_ref = _group_type_specs_get_item(
-                    context, group_type_id, key, session)
-            except exception.GroupTypeSpecsNotFound:
-                spec_ref = models.GroupTypeSpecs()
-            spec_ref.update({"key": key, "value": value,
-                             "group_type_id": group_type_id,
-                             "deleted": False})
-            spec_ref.save(session=session)
+@main_context_manager.writer
+def group_type_specs_update_or_create(context, group_type_id, specs):
+    spec_ref = None
+    for key, value in specs.items():
+        try:
+            spec_ref = _group_type_specs_get_item(context, group_type_id, key)
+        except exception.GroupTypeSpecsNotFound:
+            spec_ref = models.GroupTypeSpecs()
+        spec_ref.update(
+            {
+                "key": key,
+                "value": value,
+                "group_type_id": group_type_id,
+                "deleted": False,
+            },
+        )
+        spec_ref.save(context.session)
 
-        return specs
+    return specs
 
 
 ####################
