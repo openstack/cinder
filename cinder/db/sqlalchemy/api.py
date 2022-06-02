@@ -7907,156 +7907,219 @@ def cgsnapshot_creating_from_src():
 # TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _group_snapshot_get(context, group_snapshot_id, session=None):
-    result = model_query(context, models.GroupSnapshot, session=session,
-                         project_only=True).\
-        filter_by(id=group_snapshot_id).\
-        first()
-
+    result = (
+        model_query(
+            context,
+            models.GroupSnapshot,
+            session=session,
+            project_only=True,
+        )
+        .filter_by(id=group_snapshot_id)
+        .first()
+    )
     if not result:
         raise exception.GroupSnapshotNotFound(
-            group_snapshot_id=group_snapshot_id)
+            group_snapshot_id=group_snapshot_id
+        )
 
     return result
 
 
 @require_context
+@main_context_manager.reader
 def group_snapshot_get(context, group_snapshot_id):
     return _group_snapshot_get(context, group_snapshot_id)
 
 
-def _group_snapshot_get_all(context, filters=None, marker=None, limit=None,
-                            offset=None, sort_keys=None, sort_dirs=None):
-    if filters and not is_valid_model_filters(models.GroupSnapshot,
-                                              filters):
+def _group_snapshot_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
+    if filters and not is_valid_model_filters(
+        models.GroupSnapshot,
+        filters,
+    ):
         return []
 
-    session = get_session()
-    with session.begin():
-        # Generate the paginate query
-        query = _generate_paginate_query(context, session, marker,
-                                         limit, sort_keys, sort_dirs, filters,
-                                         offset, models.GroupSnapshot)
+    # Generate the paginate query
+    query = _generate_paginate_query(
+        context,
+        None,
+        marker,
+        limit,
+        sort_keys,
+        sort_dirs,
+        filters,
+        offset,
+        models.GroupSnapshot,
+    )
 
-        return query.all() if query else []
-
-
-@require_admin_context
-def group_snapshot_get_all(context, filters=None, marker=None, limit=None,
-                           offset=None, sort_keys=None, sort_dirs=None):
-
-    return _group_snapshot_get_all(context, filters, marker, limit, offset,
-                                   sort_keys, sort_dirs)
+    return query.all() if query else []
 
 
 @require_admin_context
-def group_snapshot_get_all_by_group(context, group_id, filters=None,
-                                    marker=None, limit=None, offset=None,
-                                    sort_keys=None, sort_dirs=None):
+@main_context_manager.reader
+def group_snapshot_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
+    return _group_snapshot_get_all(
+        context,
+        filters,
+        marker,
+        limit,
+        offset,
+        sort_keys,
+        sort_dirs,
+    )
+
+
+@require_admin_context
+@main_context_manager.reader
+def group_snapshot_get_all_by_group(
+    context,
+    group_id,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
     if filters is None:
         filters = {}
     if group_id:
         filters['group_id'] = group_id
-    return _group_snapshot_get_all(context, filters, marker, limit, offset,
-                                   sort_keys, sort_dirs)
+    return _group_snapshot_get_all(
+        context, filters, marker, limit, offset, sort_keys, sort_dirs
+    )
 
 
 @require_context
-def group_snapshot_get_all_by_project(context, project_id, filters=None,
-                                      marker=None, limit=None, offset=None,
-                                      sort_keys=None, sort_dirs=None):
+@main_context_manager.reader
+def group_snapshot_get_all_by_project(
+    context,
+    project_id,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
     authorize_project_context(context, project_id)
     if filters is None:
         filters = {}
     if project_id:
         filters['project_id'] = project_id
-    return _group_snapshot_get_all(context, filters, marker, limit, offset,
-                                   sort_keys, sort_dirs)
+    return _group_snapshot_get_all(
+        context, filters, marker, limit, offset, sort_keys, sort_dirs
+    )
 
 
 @handle_db_data_error
 @require_context
+@main_context_manager.writer
 def group_snapshot_create(context, values):
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
 
     group_id = values.get('group_id')
-    session = get_session()
     model = models.GroupSnapshot
-    with session.begin():
-        if group_id:
-            # There has to exist at least 1 volume in the group and the group
-            # cannot be updating the composing volumes or being created.
-            conditions = [
-                sql.exists().where(and_(
-                    ~models.Volume.deleted,
-                    models.Volume.group_id == group_id)),
-                ~models.Group.deleted,
-                models.Group.id == group_id,
-                ~models.Group.status.in_(('creating', 'updating'))]
+    if group_id:
+        # There has to exist at least 1 volume in the group and the group
+        # cannot be updating the composing volumes or being created.
+        conditions = [
+            sql.exists().where(
+                and_(
+                    ~models.Volume.deleted, models.Volume.group_id == group_id
+                )
+            ),
+            ~models.Group.deleted,
+            models.Group.id == group_id,
+            ~models.Group.status.in_(('creating', 'updating')),
+        ]
 
-            # NOTE(geguileo): We build a "fake" from_select clause instead of
-            # using transaction isolation on the session because we would need
-            # SERIALIZABLE level and that would have a considerable performance
-            # penalty.
-            binds = (bindparam(k, v) for k, v in values.items())
-            sel = session.query(*binds).filter(*conditions)
-            insert_stmt = model.__table__.insert().from_select(values.keys(),
-                                                               sel)
-            result = session.execute(insert_stmt)
-            # If we couldn't insert the row because of the conditions raise
-            # the right exception
-            if not result.rowcount:
-                msg = _("Source group cannot be empty or in 'creating' or "
-                        "'updating' state. No group snapshot will be created.")
-                raise exception.InvalidGroup(reason=msg)
-        else:
-            group_snapshot = model()
-            group_snapshot.update(values)
-            session.add(group_snapshot)
-        return _group_snapshot_get(context, values['id'], session=session)
+        # NOTE(geguileo): We build a "fake" from_select clause instead of
+        # using transaction isolation on the session because we would need
+        # SERIALIZABLE level and that would have a considerable performance
+        # penalty.
+        binds = (bindparam(k, v) for k, v in values.items())
+        sel = context.session.query(*binds).filter(*conditions)
+        insert_stmt = model.__table__.insert().from_select(values.keys(), sel)
+        result = context.session.execute(insert_stmt)
+        # If we couldn't insert the row because of the conditions raise
+        # the right exception
+        if not result.rowcount:
+            msg = _(
+                "Source group cannot be empty or in 'creating' or "
+                "'updating' state. No group snapshot will be created."
+            )
+            raise exception.InvalidGroup(reason=msg)
+    else:
+        group_snapshot = model()
+        group_snapshot.update(values)
+        context.session.add(group_snapshot)
+    return _group_snapshot_get(context, values['id'])
 
 
 @require_context
 @handle_db_data_error
+@main_context_manager.writer
 def group_snapshot_update(context, group_snapshot_id, values):
-    session = get_session()
-    with session.begin():
-        result = model_query(context, models.GroupSnapshot,
-                             project_only=True).\
-            filter_by(id=group_snapshot_id).\
-            first()
+    result = (
+        model_query(context, models.GroupSnapshot, project_only=True)
+        .filter_by(id=group_snapshot_id)
+        .first()
+    )
 
-        if not result:
-            raise exception.GroupSnapshotNotFound(
-                _("No group snapshot with id %s") % group_snapshot_id)
+    if not result:
+        raise exception.GroupSnapshotNotFound(
+            _("No group snapshot with id %s") % group_snapshot_id
+        )
 
-        result.update(values)
-        result.save(session=session)
+    result.update(values)
+    result.save(context.session)
     return result
 
 
 @require_admin_context
+@main_context_manager.writer
 def group_snapshot_destroy(context, group_snapshot_id):
-    session = get_session()
-    with session.begin():
-        query = model_query(context, models.GroupSnapshot, session=session).\
-            filter_by(id=group_snapshot_id)
-        entity = query.column_descriptions[0]['entity']
-        updated_values = {'status': 'deleted',
-                          'deleted': True,
-                          'deleted_at': timeutils.utcnow(),
-                          'updated_at': entity.updated_at}
-        query.update(updated_values)
-        del updated_values['updated_at']
+    query = model_query(context, models.GroupSnapshot).filter_by(
+        id=group_snapshot_id
+    )
+    entity = query.column_descriptions[0]['entity']
+    updated_values = {
+        'status': 'deleted',
+        'deleted': True,
+        'deleted_at': timeutils.utcnow(),
+        'updated_at': entity.updated_at,
+    }
+    query.update(updated_values)
+    del updated_values['updated_at']
     return updated_values
 
 
 def group_snapshot_creating_from_src():
     """Get a filter to check if a grp snapshot is being created from a grp."""
-    return sql.exists().where(and_(
-        models.GroupSnapshot.group_id == models.Group.id,
-        ~models.GroupSnapshot.deleted,
-        models.GroupSnapshot.status == 'creating'))
+    return sql.exists().where(
+        and_(
+            models.GroupSnapshot.group_id == models.Group.id,
+            ~models.GroupSnapshot.deleted,
+            models.GroupSnapshot.status == 'creating',
+        )
+    )
 
 
 ###############################
