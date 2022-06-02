@@ -499,6 +499,23 @@ class API(base.Base):
             msg = _('Provided backup record is missing size attribute')
             raise exception.InvalidInput(reason=msg)
 
+        # Try to get the backup with that ID in all projects even among
+        # deleted entries (we reuse soft-deleted backups).
+        try:
+            backup = objects.BackupImport.get_by_id(
+                context.elevated(read_deleted='yes'),
+                backup_record['id'],
+                project_only=False)
+
+            # If record exists and it's not deleted we cannot proceed
+            # with the import
+            if backup.status != fields.BackupStatus.DELETED:
+                msg = _('Backup already exists in database.')
+                raise exception.InvalidBackup(reason=msg)
+        except exception.BackupNotFound:
+            pass
+
+        # Check that we're under limit by reserving quota
         try:
             reserve_opts = {'backups': 1,
                             'backup_gigabytes': backup_record['size']}
@@ -520,30 +537,16 @@ class API(base.Base):
         }
 
         try:
-            try:
-                # Try to get the backup with that ID in all projects even among
-                # deleted entries.
-                backup = objects.BackupImport.get_by_id(
-                    context.elevated(read_deleted='yes'),
-                    backup_record['id'],
-                    project_only=False)
-
-                # If record exists and it's not deleted we cannot proceed
-                # with the import
-                if backup.status != fields.BackupStatus.DELETED:
-                    msg = _('Backup already exists in database.')
-                    raise exception.InvalidBackup(reason=msg)
-
-                # Otherwise we'll "revive" delete backup record
+            if backup:
+                # "revive" the soft-deleted backup record retrieved earlier
                 backup.update(kwargs)
                 backup.save()
-                QUOTAS.commit(context, reservations)
-            except exception.BackupNotFound:
-                # If record doesn't exist create it with the specific ID
+            else:
+                # create a new backup with the specified ID
                 backup = objects.BackupImport(context=context,
                                               id=backup_record['id'], **kwargs)
                 backup.create()
-                QUOTAS.commit(context, reservations)
+            QUOTAS.commit(context, reservations)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
