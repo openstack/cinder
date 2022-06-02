@@ -6967,19 +6967,27 @@ def _consistencygroup_data_get_for_project(context, project_id):
 # TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _consistencygroup_get(context, consistencygroup_id, session=None):
-    result = model_query(context, models.ConsistencyGroup, session=session,
-                         project_only=True).\
-        filter_by(id=consistencygroup_id).\
-        first()
+    result = (
+        model_query(
+            context,
+            models.ConsistencyGroup,
+            session=session,
+            project_only=True,
+        )
+        .filter_by(id=consistencygroup_id)
+        .first()
+    )
 
     if not result:
         raise exception.ConsistencyGroupNotFound(
-            consistencygroup_id=consistencygroup_id)
+            consistencygroup_id=consistencygroup_id
+        )
 
     return result
 
 
 @require_context
+@main_context_manager.reader
 def consistencygroup_get(context, consistencygroup_id):
     return _consistencygroup_get(context, consistencygroup_id)
 
@@ -6987,8 +6995,12 @@ def consistencygroup_get(context, consistencygroup_id):
 # TODO: Remove 'session' argument when all of the '_get_query' helpers are
 # converted
 def _consistencygroups_get_query(context, session=None, project_only=False):
-    return model_query(context, models.ConsistencyGroup, session=session,
-                       project_only=project_only)
+    return model_query(
+        context,
+        models.ConsistencyGroup,
+        session=session,
+        project_only=project_only,
+    )
 
 
 def _process_consistencygroups_filters(query, filters):
@@ -7000,26 +7012,48 @@ def _process_consistencygroups_filters(query, filters):
     return query
 
 
-def _consistencygroup_get_all(context, filters=None, marker=None, limit=None,
-                              offset=None, sort_keys=None, sort_dirs=None):
-    if filters and not is_valid_model_filters(models.ConsistencyGroup,
-                                              filters):
+def _consistencygroup_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
+    if filters and not is_valid_model_filters(
+        models.ConsistencyGroup, filters
+    ):
         return []
 
-    session = get_session()
-    with session.begin():
-        # Generate the paginate query
-        query = _generate_paginate_query(context, session, marker,
-                                         limit, sort_keys, sort_dirs, filters,
-                                         offset, models.ConsistencyGroup)
-        if query is None:
-            return []
-        return query.all()
+    # Generate the paginate query
+    query = _generate_paginate_query(
+        context,
+        None,
+        marker,
+        limit,
+        sort_keys,
+        sort_dirs,
+        filters,
+        offset,
+        models.ConsistencyGroup,
+    )
+    if query is None:
+        return []
+    return query.all()
 
 
 @require_admin_context
-def consistencygroup_get_all(context, filters=None, marker=None, limit=None,
-                             offset=None, sort_keys=None, sort_dirs=None):
+@main_context_manager.reader
+def consistencygroup_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
     """Retrieves all consistency groups.
 
     If no sort parameters are specified then the returned cgs are sorted
@@ -7037,14 +7071,23 @@ def consistencygroup_get_all(context, filters=None, marker=None, limit=None,
     :param filters: Filters for the query in the form of key/value.
     :returns: list of matching consistency groups
     """
-    return _consistencygroup_get_all(context, filters, marker, limit, offset,
-                                     sort_keys, sort_dirs)
+    return _consistencygroup_get_all(
+        context, filters, marker, limit, offset, sort_keys, sort_dirs
+    )
 
 
 @require_context
-def consistencygroup_get_all_by_project(context, project_id, filters=None,
-                                        marker=None, limit=None, offset=None,
-                                        sort_keys=None, sort_dirs=None):
+@main_context_manager.reader
+def consistencygroup_get_all_by_project(
+    context,
+    project_id,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
     """Retrieves all consistency groups in a project.
 
     If no sort parameters are specified then the returned cgs are sorted
@@ -7069,12 +7112,14 @@ def consistencygroup_get_all_by_project(context, project_id, filters=None,
         filters = filters.copy()
 
     filters['project_id'] = project_id
-    return _consistencygroup_get_all(context, filters, marker, limit, offset,
-                                     sort_keys, sort_dirs)
+    return _consistencygroup_get_all(
+        context, filters, marker, limit, offset, sort_keys, sort_dirs
+    )
 
 
 @handle_db_data_error
 @require_context
+@main_context_manager.writer
 def consistencygroup_create(context, values, cg_snap_id=None, cg_id=None):
     cg_model = models.ConsistencyGroup
 
@@ -7082,118 +7127,129 @@ def consistencygroup_create(context, values, cg_snap_id=None, cg_id=None):
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
 
-    session = get_session()
-    with session.begin():
-        if cg_snap_id:
-            conditions = [cg_model.id == models.CGSnapshot.consistencygroup_id,
-                          models.CGSnapshot.id == cg_snap_id]
-        elif cg_id:
-            conditions = [cg_model.id == cg_id]
-        else:
-            conditions = None
+    if cg_snap_id:
+        conditions = [
+            cg_model.id == models.CGSnapshot.consistencygroup_id,
+            models.CGSnapshot.id == cg_snap_id,
+        ]
+    elif cg_id:
+        conditions = [cg_model.id == cg_id]
+    else:
+        conditions = None
 
-        if conditions:
-            # We don't want duplicated field values
-            names = ['volume_type_id', 'availability_zone', 'host',
-                     'cluster_name']
-            for name in names:
-                values.pop(name, None)
+    if conditions:
+        # We don't want duplicated field values
+        names = ['volume_type_id', 'availability_zone', 'host', 'cluster_name']
+        for name in names:
+            values.pop(name, None)
 
-            fields = [getattr(cg_model, name) for name in names]
-            fields.extend(bindparam(k, v) for k, v in values.items())
-            sel = session.query(*fields).filter(*conditions)
-            names.extend(values.keys())
-            insert_stmt = cg_model.__table__.insert().from_select(names, sel)
-            result = session.execute(insert_stmt)
-            # If we couldn't insert the row because of the conditions raise
-            # the right exception
-            if not result.rowcount:
-                if cg_id:
-                    raise exception.ConsistencyGroupNotFound(
-                        consistencygroup_id=cg_id)
-                raise exception.CgSnapshotNotFound(cgsnapshot_id=cg_snap_id)
-        else:
-            consistencygroup = cg_model()
-            consistencygroup.update(values)
-            session.add(consistencygroup)
+        fields = [getattr(cg_model, name) for name in names]
+        fields.extend(bindparam(k, v) for k, v in values.items())
+        sel = context.session.query(*fields).filter(*conditions)
+        names.extend(values.keys())
+        insert_stmt = cg_model.__table__.insert().from_select(names, sel)
+        result = context.session.execute(insert_stmt)
+        # If we couldn't insert the row because of the conditions raise
+        # the right exception
+        if not result.rowcount:
+            if cg_id:
+                raise exception.ConsistencyGroupNotFound(
+                    consistencygroup_id=cg_id
+                )
+            raise exception.CgSnapshotNotFound(cgsnapshot_id=cg_snap_id)
+    else:
+        consistencygroup = cg_model()
+        consistencygroup.update(values)
+        context.session.add(consistencygroup)
 
-    return _consistencygroup_get(context, values['id'], session=session)
+    return _consistencygroup_get(context, values['id'])
 
 
 @handle_db_data_error
 @require_context
+@main_context_manager.writer
 def consistencygroup_update(context, consistencygroup_id, values):
     query = model_query(context, models.ConsistencyGroup, project_only=True)
     result = query.filter_by(id=consistencygroup_id).update(values)
     if not result:
         raise exception.ConsistencyGroupNotFound(
-            consistencygroup_id=consistencygroup_id)
+            consistencygroup_id=consistencygroup_id
+        )
 
 
 @require_admin_context
+@main_context_manager.writer
 def consistencygroup_destroy(context, consistencygroup_id):
     utcnow = timeutils.utcnow()
-    session = get_session()
-    with session.begin():
-        query = model_query(context, models.ConsistencyGroup,
-                            session=session).filter_by(id=consistencygroup_id)
-        entity = query.column_descriptions[0]['entity']
-        updated_values = {'status': fields.ConsistencyGroupStatus.DELETED,
-                          'deleted': True,
-                          'deleted_at': utcnow,
-                          'updated_at': entity.updated_at}
-        query.update(updated_values)
+    query = model_query(
+        context,
+        models.ConsistencyGroup,
+    ).filter_by(id=consistencygroup_id)
+    entity = query.column_descriptions[0]['entity']
+    updated_values = {
+        'status': fields.ConsistencyGroupStatus.DELETED,
+        'deleted': True,
+        'deleted_at': utcnow,
+        'updated_at': entity.updated_at,
+    }
+    query.update(updated_values)
 
     del updated_values['updated_at']
     return updated_values
 
 
 @require_admin_context
-def cg_cgsnapshot_destroy_all_by_ids(context, cg_ids, cgsnapshot_ids,
-                                     volume_ids, snapshot_ids, session):
+@main_context_manager.writer
+def cg_cgsnapshot_destroy_all_by_ids(
+    context, cg_ids, cgsnapshot_ids, volume_ids, snapshot_ids
+):
     utcnow = timeutils.utcnow()
     if snapshot_ids:
-        snaps = (model_query(context, models.Snapshot,
-                             session=session, read_deleted="no").
-                 filter(models.Snapshot.id.in_(snapshot_ids)).
-                 all())
+        snaps = (
+            model_query(context, models.Snapshot, read_deleted="no")
+            .filter(models.Snapshot.id.in_(snapshot_ids))
+            .all()
+        )
         for snap in snaps:
-            snap.update({'cgsnapshot_id': None,
-                         'updated_at': utcnow})
+            snap.update({'cgsnapshot_id': None, 'updated_at': utcnow})
 
     if cgsnapshot_ids:
-        cg_snaps = (model_query(context, models.CGSnapshot,
-                                session=session, read_deleted="no").
-                    filter(models.CGSnapshot.id.in_(cgsnapshot_ids)).
-                    all())
-
+        cg_snaps = (
+            model_query(context, models.CGSnapshot, read_deleted="no")
+            .filter(models.CGSnapshot.id.in_(cgsnapshot_ids))
+            .all()
+        )
         for cg_snap in cg_snaps:
-            cg_snap.delete(session=session)
+            cg_snap.delete(context.session)
 
     if volume_ids:
-        vols = (model_query(context, models.Volume,
-                            session=session, read_deleted="no").
-                filter(models.Volume.id.in_(volume_ids)).
-                all())
+        vols = (
+            model_query(context, models.Volume, read_deleted="no")
+            .filter(models.Volume.id.in_(volume_ids))
+            .all()
+        )
         for vol in vols:
-            vol.update({'consistencygroup_id': None,
-                        'updated_at': utcnow})
+            vol.update({'consistencygroup_id': None, 'updated_at': utcnow})
 
     if cg_ids:
-        cgs = (model_query(context, models.ConsistencyGroup,
-                           session=session, read_deleted="no").
-               filter(models.ConsistencyGroup.id.in_(cg_ids)).
-               all())
-
+        cgs = (
+            model_query(context, models.ConsistencyGroup, read_deleted="no")
+            .filter(models.ConsistencyGroup.id.in_(cg_ids))
+            .all()
+        )
         for cg in cgs:
-            cg.delete(session=session)
+            cg.delete(context.session)
 
 
 def cg_has_cgsnapshot_filter():
     """Return a filter that checks if a CG has CG Snapshots."""
-    return sql.exists().where(and_(
-        models.CGSnapshot.consistencygroup_id == models.ConsistencyGroup.id,
-        ~models.CGSnapshot.deleted))
+    return sql.exists().where(
+        and_(
+            models.CGSnapshot.consistencygroup_id
+            == models.ConsistencyGroup.id,
+            ~models.CGSnapshot.deleted,
+        )
+    )
 
 
 def cg_has_volumes_filter(attached_or_with_snapshots=False):
@@ -7203,15 +7259,24 @@ def cg_has_volumes_filter(attached_or_with_snapshots=False):
     attached volumes or those with snapshots will be considered.
     """
     query = sql.exists().where(
-        and_(models.Volume.consistencygroup_id == models.ConsistencyGroup.id,
-             ~models.Volume.deleted))
+        and_(
+            models.Volume.consistencygroup_id == models.ConsistencyGroup.id,
+            ~models.Volume.deleted,
+        )
+    )
 
     if attached_or_with_snapshots:
-        query = query.where(or_(
-            models.Volume.attach_status == 'attached',
-            sql.exists().where(
-                and_(models.Volume.id == models.Snapshot.volume_id,
-                     ~models.Snapshot.deleted))))
+        query = query.where(
+            or_(
+                models.Volume.attach_status == 'attached',
+                sql.exists().where(
+                    and_(
+                        models.Volume.id == models.Snapshot.volume_id,
+                        ~models.Snapshot.deleted,
+                    )
+                ),
+            )
+        )
     return query
 
 
@@ -7231,35 +7296,45 @@ def cg_creating_from_src(cg_id=None, cgsnapshot_id=None):
     # NOTE(geguileo): As explained in devref api_conditional_updates we use a
     # subquery to trick MySQL into using the same table in the update and the
     # where clause.
-    subq = sql.select([models.ConsistencyGroup]).where(
-        and_(~models.ConsistencyGroup.deleted,
-             models.ConsistencyGroup.status == 'creating')).alias('cg2')
+    subq = (
+        sql.select([models.ConsistencyGroup])
+        .where(
+            and_(
+                ~models.ConsistencyGroup.deleted,
+                models.ConsistencyGroup.status == 'creating',
+            )
+        )
+        .alias('cg2')
+    )
 
     if cg_id:
         match_id = subq.c.source_cgid == cg_id
     elif cgsnapshot_id:
         match_id = subq.c.cgsnapshot_id == cgsnapshot_id
     else:
-        msg = _('cg_creating_from_src must be called with cg_id or '
-                'cgsnapshot_id parameter.')
+        msg = _(
+            'cg_creating_from_src must be called with cg_id or '
+            'cgsnapshot_id parameter.'
+        )
         raise exception.ProgrammingError(reason=msg)
 
     return sql.exists([subq]).where(match_id)
 
 
 @require_admin_context
-def consistencygroup_include_in_cluster(context, cluster,
-                                        partial_rename=True, **filters):
+@main_context_manager.writer
+def consistencygroup_include_in_cluster(
+    context, cluster, partial_rename=True, **filters
+):
     """Include all consistency groups matching the filters into a cluster."""
-    return _include_in_cluster(context, cluster, models.ConsistencyGroup,
-                               partial_rename, filters)
+    return _include_in_cluster(
+        context,
+        cluster,
+        models.ConsistencyGroup,
+        partial_rename,
+        filters,
+    )
 
-
-@require_admin_context
-def group_include_in_cluster(context, cluster, partial_rename=True, **filters):
-    """Include all generic groups matching the filters into a cluster."""
-    return _include_in_cluster(context, cluster, models.Group, partial_rename,
-                               filters)
 
 ###############################
 
@@ -7578,6 +7653,13 @@ def group_creating_from_src(group_id=None, group_snapshot_id=None):
         raise exception.ProgrammingError(reason=msg)
 
     return sql.exists([subq]).where(match_id)
+
+
+@require_admin_context
+def group_include_in_cluster(context, cluster, partial_rename=True, **filters):
+    """Include all generic groups matching the filters into a cluster."""
+    return _include_in_cluster(context, cluster, models.Group, partial_rename,
+                               filters)
 
 
 ###############################
