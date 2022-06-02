@@ -8125,6 +8125,7 @@ def group_snapshot_creating_from_src():
 ###############################
 
 
+# TODO: Convert this
 @require_admin_context
 def purge_deleted_rows(context, age_in_days):
     """Purge deleted rows older than age from cinder tables."""
@@ -8234,11 +8235,13 @@ def _translate_message(message):
 
 # TODO: Remove 'session' argument when all of the '_get' helpers are converted
 def _message_get(context, message_id, session=None):
-    query = model_query(context,
-                        models.Message,
-                        read_deleted="no",
-                        project_only="yes",
-                        session=session)
+    query = model_query(
+        context,
+        models.Message,
+        read_deleted="no",
+        project_only="yes",
+        session=session,
+    )
     result = query.filter_by(id=message_id).first()
     if not result:
         raise exception.MessageNotFound(message_id=message_id)
@@ -8246,14 +8249,23 @@ def _message_get(context, message_id, session=None):
 
 
 @require_context
-def message_get(context, message_id, session=None):
-    result = _message_get(context, message_id, session)
+@main_context_manager.reader
+def message_get(context, message_id):
+    result = _message_get(context, message_id)
     return _translate_message(result)
 
 
 @require_context
-def message_get_all(context, filters=None, marker=None, limit=None,
-                    offset=None, sort_keys=None, sort_dirs=None):
+@main_context_manager.reader
+def message_get_all(
+    context,
+    filters=None,
+    marker=None,
+    limit=None,
+    offset=None,
+    sort_keys=None,
+    sort_dirs=None,
+):
     """Retrieves all messages.
 
     If no sort parameters are specified then the returned messages are
@@ -8262,31 +8274,35 @@ def message_get_all(context, filters=None, marker=None, limit=None,
 
     :param context: context to query under
     :param marker: the last item of the previous page, used to determine the
-                   next page of results to return
+        next page of results to return
     :param limit: maximum number of items to return
     :param sort_keys: list of attributes by which results should be sorted,
-                      paired with corresponding item in sort_dirs
+        paired with corresponding item in sort_dirs
     :param sort_dirs: list of directions in which results should be sorted,
-                      paired with corresponding item in sort_keys
+        paired with corresponding item in sort_keys
     :param filters: dictionary of filters; values that are in lists, tuples,
-                    or sets cause an 'IN' operation, while exact matching
-                    is used for other values, see
-                    _process_messages_filters function for more
-                    information
+        or sets cause an 'IN' operation, while exact matching is used for other
+        values, see _process_messages_filters function for more information
     :returns: list of matching messages
     """
     messages = models.Message
 
-    session = get_session()
-    with session.begin():
-        # Generate the paginate query
-        query = _generate_paginate_query(context, session, marker,
-                                         limit, sort_keys, sort_dirs, filters,
-                                         offset, messages)
-        if query is None:
-            return []
-        results = query.all()
-        return _translate_messages(results)
+    # Generate the paginate query
+    query = _generate_paginate_query(
+        context,
+        None,
+        marker,
+        limit,
+        sort_keys,
+        sort_dirs,
+        filters,
+        offset,
+        messages,
+    )
+    if query is None:
+        return []
+    results = query.all()
+    return _translate_messages(results)
 
 
 @apply_like_filters(model=models.Message)
@@ -8302,47 +8318,52 @@ def _process_messages_filters(query, filters):
 # TODO: Remove 'session' argument when all of the '_get_query' helpers are
 # converted
 def _messages_get_query(context, session=None, project_only=False):
-    return model_query(context, models.Message, session=session,
-                       project_only=project_only)
+    return model_query(
+        context, models.Message, session=session, project_only=project_only
+    )
 
 
 @require_context
+@main_context_manager.writer
 def message_create(context, values):
     message_ref = models.Message()
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
     message_ref.update(values)
 
-    session = get_session()
-    with session.begin():
-        session.add(message_ref)
+    context.session.add(message_ref)
 
 
 @require_admin_context
+@main_context_manager.writer
 def message_destroy(context, message):
-    session = get_session()
     now = timeutils.utcnow()
-    with session.begin():
-        query = model_query(context, models.Message, session=session).\
-            filter_by(id=message.get('id'))
-        entity = query.column_descriptions[0]['entity']
-        updated_values = {'deleted': True,
-                          'deleted_at': now,
-                          'updated_at': entity.updated_at}
-        query.update(updated_values)
+    query = model_query(
+        context,
+        models.Message,
+    ).filter_by(id=message.get('id'))
+    entity = query.column_descriptions[0]['entity']
+    updated_values = {
+        'deleted': True,
+        'deleted_at': now,
+        'updated_at': entity.updated_at,
+    }
+    query.update(updated_values)
     del updated_values['updated_at']
     return updated_values
 
 
 @require_admin_context
+@main_context_manager.writer
 def cleanup_expired_messages(context):
-    session = get_session()
     now = timeutils.utcnow()
-    with session.begin():
-        # NOTE(tommylikehu): Directly delete the expired
-        # messages here.
-        return session.query(models.Message).filter(
-            models.Message.expires_at < now).delete()
+    # NOTE(tommylikehu): Directly delete the expired
+    # messages here.
+    return (
+        context.session.query(models.Message)
+        .filter(models.Message.expires_at < now)
+        .delete()
+    )
 
 
 ###############################
