@@ -6649,14 +6649,18 @@ def backup_metadata_update(context, backup_id, metadata, delete):
 # TODO: Remove 'session' argument when all of the '_get' helpers are converted
 @require_context
 def _transfer_get(context, transfer_id, session=None):
-    query = model_query(context, models.Transfer,
-                        session=session).\
-        filter_by(id=transfer_id)
+    query = model_query(
+        context,
+        models.Transfer,
+        session=session,
+    ).filter_by(id=transfer_id)
 
     if not is_admin_context(context):
         volume = models.Volume
-        query = query.filter(models.Transfer.volume_id == volume.id,
-                             volume.project_id == context.project_id)
+        query = query.filter(
+            models.Transfer.volume_id == volume.id,
+            volume.project_id == context.project_id,
+        )
 
     result = query.first()
 
@@ -6667,6 +6671,7 @@ def _transfer_get(context, transfer_id, session=None):
 
 
 @require_context
+@main_context_manager.reader
 def transfer_get(context, transfer_id):
     return _transfer_get(context, transfer_id)
 
@@ -6679,198 +6684,268 @@ def _process_transfer_filters(query, filters):
             return
         if project_id:
             volume = models.Volume
-            query = query.filter(volume.id ==
-                                 models.Transfer.volume_id,
-                                 volume.project_id == project_id)
+            query = query.filter(
+                volume.id == models.Transfer.volume_id,
+                volume.project_id == project_id,
+            )
 
         query = query.filter_by(**filters)
     return query
 
 
 def _translate_transfers(transfers):
-    fields = ('id', 'volume_id', 'display_name', 'created_at', 'deleted',
-              'no_snapshots', 'source_project_id', 'destination_project_id',
-              'accepted')
+    fields = (
+        'id',
+        'volume_id',
+        'display_name',
+        'created_at',
+        'deleted',
+        'no_snapshots',
+        'source_project_id',
+        'destination_project_id',
+        'accepted',
+    )
     return [{k: transfer[k] for k in fields} for transfer in transfers]
 
 
-def _transfer_get_all(context, marker=None, limit=None, sort_keys=None,
-                      sort_dirs=None, filters=None, offset=None):
-    session = get_session()
-    with session.begin():
-        # Generate the query
-        query = _generate_paginate_query(context, session, marker, limit,
-                                         sort_keys, sort_dirs, filters, offset,
-                                         models.Transfer)
-        if query is None:
-            return []
-        return _translate_transfers(query.all())
+def _transfer_get_all(
+    context,
+    marker=None,
+    limit=None,
+    sort_keys=None,
+    sort_dirs=None,
+    filters=None,
+    offset=None,
+):
+    # Generate the query
+    query = _generate_paginate_query(
+        context,
+        None,
+        marker,
+        limit,
+        sort_keys,
+        sort_dirs,
+        filters,
+        offset,
+        models.Transfer,
+    )
+    if query is None:
+        return []
+    return _translate_transfers(query.all())
 
 
 @require_admin_context
-def transfer_get_all(context, marker=None, limit=None, sort_keys=None,
-                     sort_dirs=None, filters=None, offset=None):
-    return _transfer_get_all(context, marker=marker, limit=limit,
-                             sort_keys=sort_keys, sort_dirs=sort_dirs,
-                             filters=filters, offset=offset)
+def transfer_get_all(
+    context,
+    marker=None,
+    limit=None,
+    sort_keys=None,
+    sort_dirs=None,
+    filters=None,
+    offset=None,
+):
+    return _transfer_get_all(
+        context,
+        marker=marker,
+        limit=limit,
+        sort_keys=sort_keys,
+        sort_dirs=sort_dirs,
+        filters=filters,
+        offset=offset,
+    )
 
 
 # TODO: Remove 'session' argument when all of the '_get_query' helpers are
 # converted
 def _transfer_get_query(context, session=None, project_only=False):
-    return model_query(context, models.Transfer, session=session,
-                       project_only=project_only)
+    return model_query(
+        context, models.Transfer, session=session, project_only=project_only
+    )
 
 
 @require_context
-def transfer_get_all_by_project(context, project_id, marker=None,
-                                limit=None, sort_keys=None,
-                                sort_dirs=None, filters=None, offset=None):
+@main_context_manager.reader
+def transfer_get_all_by_project(
+    context,
+    project_id,
+    marker=None,
+    limit=None,
+    sort_keys=None,
+    sort_dirs=None,
+    filters=None,
+    offset=None,
+):
     authorize_project_context(context, project_id)
     filters = filters.copy() if filters else {}
     filters['project_id'] = project_id
-    return _transfer_get_all(context, marker=marker, limit=limit,
-                             sort_keys=sort_keys, sort_dirs=sort_dirs,
-                             filters=filters, offset=offset)
+    return _transfer_get_all(
+        context,
+        marker=marker,
+        limit=limit,
+        sort_keys=sort_keys,
+        sort_dirs=sort_dirs,
+        filters=filters,
+        offset=offset,
+    )
 
 
 @require_context
 @handle_db_data_error
+@main_context_manager.writer
 def transfer_create(context, values):
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
     transfer_id = values['id']
     volume_id = values['volume_id']
-    session = get_session()
-    with session.begin():
-        expected = {'id': volume_id,
-                    'status': 'available'}
-        update = {'status': 'awaiting-transfer'}
-        if not conditional_update(context, models.Volume, update, expected):
-            msg = (_('Transfer %(transfer_id)s: Volume id %(volume_id)s '
-                     'expected in available state.')
-                   % {'transfer_id': transfer_id, 'volume_id': volume_id})
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
+    expected = {'id': volume_id, 'status': 'available'}
+    update = {'status': 'awaiting-transfer'}
+    if not conditional_update(context, models.Volume, update, expected):
+        msg = _(
+            'Transfer %(transfer_id)s: Volume id %(volume_id)s '
+            'expected in available state.'
+        ) % {'transfer_id': transfer_id, 'volume_id': volume_id}
+        LOG.error(msg)
+        raise exception.InvalidVolume(reason=msg)
 
-        transfer = models.Transfer()
-        transfer.update(values)
-        session.add(transfer)
-        return transfer
+    transfer = models.Transfer()
+    transfer.update(values)
+    context.session.add(transfer)
+    return transfer
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def transfer_destroy(context, transfer_id):
     utcnow = timeutils.utcnow()
-    session = get_session()
-    with session.begin():
-        volume_id = _transfer_get(context, transfer_id, session)['volume_id']
-        expected = {'id': volume_id,
-                    'status': 'awaiting-transfer'}
-        update = {'status': 'available'}
-        if not conditional_update(context, models.Volume, update, expected):
-            # If the volume state is not 'awaiting-transfer' don't change it,
-            # but we can still mark the transfer record as deleted.
-            msg = (_('Transfer %(transfer_id)s: Volume expected in '
-                     'awaiting-transfer state.')
-                   % {'transfer_id': transfer_id})
-            LOG.error(msg)
-
-        query = model_query(context, models.Transfer, session=session).\
-            filter_by(id=transfer_id)
-
-        entity = query.column_descriptions[0]['entity']
-        updated_values = {'deleted': True,
-                          'deleted_at': utcnow,
-                          'updated_at': entity.updated_at}
-
-        query.update(updated_values)
-        del updated_values['updated_at']
-        return updated_values
-
-
-def _roll_back_transferred_volume_and_snapshots(context, volume_id,
-                                                old_user_id, old_project_id,
-                                                transffered_snapshots):
-    expected = {'id': volume_id, 'status': 'available'}
-    update = {'status': 'awaiting-transfer',
-              'user_id': old_user_id,
-              'project_id': old_project_id,
-              'updated_at': timeutils.utcnow()}
+    volume_id = _transfer_get(context, transfer_id)['volume_id']
+    expected = {'id': volume_id, 'status': 'awaiting-transfer'}
+    update = {'status': 'available'}
     if not conditional_update(context, models.Volume, update, expected):
-        LOG.warning('Volume: %(volume_id)s is not in the expected available '
-                    'status. Rolling it back.', {'volume_id': volume_id})
+        # If the volume state is not 'awaiting-transfer' don't change it,
+        # but we can still mark the transfer record as deleted.
+        msg = _(
+            'Transfer %(transfer_id)s: Volume expected in '
+            'awaiting-transfer state.'
+        ) % {'transfer_id': transfer_id}
+        LOG.error(msg)
+
+    query = model_query(context, models.Transfer).filter_by(id=transfer_id)
+
+    entity = query.column_descriptions[0]['entity']
+    updated_values = {
+        'deleted': True,
+        'deleted_at': utcnow,
+        'updated_at': entity.updated_at,
+    }
+
+    query.update(updated_values)
+    del updated_values['updated_at']
+    return updated_values
+
+
+def _roll_back_transferred_volume_and_snapshots(
+    context, volume_id, old_user_id, old_project_id, transffered_snapshots
+):
+    expected = {'id': volume_id, 'status': 'available'}
+    update = {
+        'status': 'awaiting-transfer',
+        'user_id': old_user_id,
+        'project_id': old_project_id,
+        'updated_at': timeutils.utcnow(),
+    }
+    if not conditional_update(context, models.Volume, update, expected):
+        LOG.warning(
+            'Volume: %(volume_id)s is not in the expected available '
+            'status. Rolling it back.',
+            {'volume_id': volume_id},
+        )
         return
 
     for snapshot_id in transffered_snapshots:
-        LOG.info('Beginning to roll back transferred snapshots: %s',
-                 snapshot_id)
-        expected = {'id': snapshot_id,
-                    'status': 'available'}
-        update = {'user_id': old_user_id,
-                  'project_id': old_project_id,
-                  'updated_at': timeutils.utcnow()}
+        LOG.info(
+            'Beginning to roll back transferred snapshots: %s', snapshot_id
+        )
+        expected = {'id': snapshot_id, 'status': 'available'}
+        update = {
+            'user_id': old_user_id,
+            'project_id': old_project_id,
+            'updated_at': timeutils.utcnow(),
+        }
         if not conditional_update(context, models.Snapshot, update, expected):
-            LOG.warning('Snapshot: %(snapshot_id)s is not in the expected '
-                        'available state. Rolling it back.',
-                        {'snapshot_id': snapshot_id})
+            LOG.warning(
+                'Snapshot: %(snapshot_id)s is not in the expected '
+                'available state. Rolling it back.',
+                {'snapshot_id': snapshot_id},
+            )
             return
 
 
 @require_context
-def transfer_accept(context, transfer_id, user_id, project_id,
-                    no_snapshots=False):
-    session = get_session()
-    with session.begin():
-        volume_id = _transfer_get(context, transfer_id, session)['volume_id']
-        expected = {'id': volume_id,
-                    'status': 'awaiting-transfer'}
-        update = {'status': 'available',
-                  'user_id': user_id,
-                  'project_id': project_id,
-                  'updated_at': timeutils.utcnow()}
-        if not conditional_update(context, models.Volume, update, expected):
-            msg = (_('Transfer %(transfer_id)s: Volume id %(volume_id)s '
-                     'expected in awaiting-transfer state.')
-                   % {'transfer_id': transfer_id, 'volume_id': volume_id})
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
+@main_context_manager.writer
+def transfer_accept(
+    context, transfer_id, user_id, project_id, no_snapshots=False
+):
+    volume_id = _transfer_get(context, transfer_id)['volume_id']
+    expected = {'id': volume_id, 'status': 'awaiting-transfer'}
+    update = {
+        'status': 'available',
+        'user_id': user_id,
+        'project_id': project_id,
+        'updated_at': timeutils.utcnow(),
+    }
+    if not conditional_update(context, models.Volume, update, expected):
+        msg = _(
+            'Transfer %(transfer_id)s: Volume id %(volume_id)s '
+            'expected in awaiting-transfer state.'
+        ) % {'transfer_id': transfer_id, 'volume_id': volume_id}
+        LOG.error(msg)
+        raise exception.InvalidVolume(reason=msg)
 
-        # Update snapshots for transfer snapshots with volume.
-        if not no_snapshots:
-            snapshots = snapshot_get_all_for_volume(context, volume_id)
-            transferred_snapshots = []
-            for snapshot in snapshots:
-                LOG.info('Begin to transfer snapshot: %s', snapshot['id'])
-                old_user_id = snapshot['user_id']
-                old_project_id = snapshot['project_id']
-                expected = {'id': snapshot['id'],
-                            'status': 'available'}
-                update = {'user_id': user_id,
-                          'project_id': project_id,
-                          'updated_at': timeutils.utcnow()}
-                if not conditional_update(context, models.Snapshot, update,
-                                          expected):
-                    msg = (_('Transfer %(transfer_id)s: Snapshot '
-                             '%(snapshot_id)s is not in the expected '
-                             'available state.')
-                           % {'transfer_id': transfer_id,
-                              'snapshot_id': snapshot['id']})
-                    LOG.error(msg)
-                    _roll_back_transferred_volume_and_snapshots(
-                        context, volume_id, old_user_id, old_project_id,
-                        transferred_snapshots)
-                    raise exception.InvalidSnapshot(reason=msg)
-                transferred_snapshots.append(snapshot['id'])
+    # Update snapshots for transfer snapshots with volume.
+    if not no_snapshots:
+        snapshots = snapshot_get_all_for_volume(context, volume_id)
+        transferred_snapshots = []
+        for snapshot in snapshots:
+            LOG.info('Begin to transfer snapshot: %s', snapshot['id'])
+            old_user_id = snapshot['user_id']
+            old_project_id = snapshot['project_id']
+            expected = {'id': snapshot['id'], 'status': 'available'}
+            update = {
+                'user_id': user_id,
+                'project_id': project_id,
+                'updated_at': timeutils.utcnow(),
+            }
+            if not conditional_update(
+                context, models.Snapshot, update, expected
+            ):
+                msg = _(
+                    'Transfer %(transfer_id)s: Snapshot '
+                    '%(snapshot_id)s is not in the expected '
+                    'available state.'
+                ) % {'transfer_id': transfer_id, 'snapshot_id': snapshot['id']}
+                LOG.error(msg)
+                _roll_back_transferred_volume_and_snapshots(
+                    context,
+                    volume_id,
+                    old_user_id,
+                    old_project_id,
+                    transferred_snapshots,
+                )
+                raise exception.InvalidSnapshot(reason=msg)
+            transferred_snapshots.append(snapshot['id'])
 
-        query = session.query(models.Transfer).filter_by(id=transfer_id)
-        entity = query.column_descriptions[0]['entity']
-        query.update({'deleted': True,
-                      'deleted_at': timeutils.utcnow(),
-                      'updated_at': entity.updated_at,
-                      'destination_project_id': project_id,
-                      'accepted': True})
+    query = context.session.query(models.Transfer).filter_by(id=transfer_id)
+    entity = query.column_descriptions[0]['entity']
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': entity.updated_at,
+            'destination_project_id': project_id,
+            'accepted': True,
+        }
+    )
 
 
 ###############################
