@@ -108,6 +108,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             exception.VolumeNotFound,
             exception.SnapshotNotFound,
             exception.VolumeTypeNotFound,
+            exception.ImageConversionNotAllowed,
             exception.ImageUnacceptable,
             exception.ImageTooBig,
             exception.InvalidSignatureImage,
@@ -1016,6 +1017,14 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                             detail=
                             message_field.Detail.SIGNATURE_VERIFICATION_FAILED,
                             exception=err)
+                except exception.ImageConversionNotAllowed:
+                    with excutils.save_and_reraise_exception():
+                        self.message.create(
+                            context,
+                            message_field.Action.COPY_IMAGE_TO_VOLUME,
+                            resource_uuid=volume.id,
+                            detail=
+                            message_field.Detail.IMAGE_FORMAT_UNACCEPTABLE)
 
             if should_create_cache_entry:
                 # Update the newly created volume db entry before we clone it

@@ -887,6 +887,29 @@ class VolumeImageActionsTest(test.TestCase):
 
     @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
     @mock.patch.object(volume_api.API, "copy_volume_to_image")
+    def test_copy_volume_to_image_when_image_conversion_not_allowed(
+            self,
+            mock_copy_vol_to_img):
+        """Make sure exception is converted properly."""
+
+        mock_copy_vol_to_img.side_effect = exception.ImageConversionNotAllowed
+        id = fake.VOLUME_ID
+        img = {"container_format": 'ova',
+               "disk_format": 'vhdx',
+               "image_name": 'image_name',
+               "force": True}
+        body = {"os-volume_upload_image": img}
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
+                                      (fake.PROJECT_ID, id))
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._volume_upload_image,
+                          req,
+                          id,
+                          body=body)
+
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
+    @mock.patch.object(volume_api.API, "copy_volume_to_image")
     def test_check_image_metadata_copy_encrypted_volume_to_image(
             self, mock_copy_vol):
         """Make sure the encryption image properties exit the controller."""

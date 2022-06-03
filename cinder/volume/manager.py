@@ -5344,7 +5344,7 @@ class VolumeManager(manager.CleanableManager,
             LOG.debug("Re-imaged %(image_id)s"
                       " to volume %(volume_id)s successfully.",
                       {'image_id': image_id, 'volume_id': volume.id})
-        except Exception:
+        except Exception as err:
             with excutils.save_and_reraise_exception():
                 LOG.error('Failed to re-image volume %(volume_id)s with '
                           'image %(image_id)s.',
@@ -5352,3 +5352,10 @@ class VolumeManager(manager.CleanableManager,
                 volume.previous_status = volume.status
                 volume.status = 'error'
                 volume.save()
+                if isinstance(err, exception.ImageConversionNotAllowed):
+                    self.message_api.create(
+                        context,
+                        message_field.Action.REIMAGE_VOLUME,
+                        resource_uuid=volume.id,
+                        detail=
+                        message_field.Detail.IMAGE_FORMAT_UNACCEPTABLE)

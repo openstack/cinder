@@ -104,6 +104,28 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
         volume = db.volume_get(self.context, self.volume_id)
         self.assertEqual('available', volume['status'])
 
+    def test_copy_volume_to_image_with_conversion_disabled(self):
+        self.flags(image_conversion_disable=True)
+
+        self.volume_attrs['instance_uuid'] = None
+        volume_type_id = db.volume_type_create(
+            self.context, {'name': 'test', 'extra_specs': {
+                'image_service:store_id': 'fake_store'
+            }}).get('id')
+        self.volume_attrs['volume_type_id'] = volume_type_id
+        db.volume_create(self.context, self.volume_attrs)
+        image_meta = {
+            'id': self.image_id,
+            'container_format': 'ova',
+            'disk_format': 'vhdx'
+        }
+
+        self.assertRaises(exception.ImageConversionNotAllowed,
+                          self.volume.copy_volume_to_image,
+                          self.context,
+                          self.volume_id,
+                          image_meta)
+
     def test_copy_volume_to_image_over_image_quota(self):
         # creating volume testdata
         self.volume_attrs['instance_uuid'] = None

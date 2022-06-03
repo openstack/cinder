@@ -1085,6 +1085,7 @@ class FakeImageService(object):
                 'status': 'active'}
 
 
+@ddt.ddt(testNameFormat=ddt.TestNameFormat.INDEX_ONLY)
 class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.convert_image')
@@ -1186,6 +1187,32 @@ class TestFetchToVolumeFormat(test.TestCase):
                                              src_format='raw')
         mock_check_size.assert_called_once_with(data.virtual_size,
                                                 size, image_id)
+
+    @ddt.data(('raw', 'qcow2', False),
+              ('raw', 'raw', False),
+              ('raw', 'raw', True))
+    def test_check_image_conversion(self, conversion_opts):
+        image_disk_format, volume_format, image_conversion_disable = \
+            conversion_opts
+        self.flags(image_conversion_disable=image_conversion_disable)
+        self.assertIsNone(image_utils.check_image_conversion_disable(
+            image_disk_format, volume_format, fake.IMAGE_ID))
+
+    @ddt.data((True, 'volume can only be uploaded in the format'),
+              (False, 'must use an image with the disk_format property'))
+    def test_check_image_conversion_disable(self, info):
+        # NOTE: the error message is different depending on direction,
+        # where True means upload
+        direction, message_fragment = info
+        self.flags(image_conversion_disable=True)
+        exc = self.assertRaises(exception.ImageConversionNotAllowed,
+                                image_utils.check_image_conversion_disable,
+                                'foo', 'bar', fake.IMAGE_ID,
+                                upload=direction)
+        if direction:
+            self.assertIn(message_fragment, str(exc))
+        else:
+            self.assertIn(message_fragment, str(exc))
 
     @mock.patch('cinder.image.image_utils.check_virtual_size')
     @mock.patch('cinder.image.image_utils.check_available_space')
@@ -1439,51 +1466,6 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertFalse(mock_copy.called)
         self.assertFalse(mock_convert.called)
 
-    @mock.patch('cinder.image.image_utils.convert_image')
-    @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
-    @mock.patch(
-        'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
-    @mock.patch('cinder.image.image_utils.is_xenserver_format',
-                return_value=False)
-    @mock.patch('cinder.image.image_utils.fetch')
-    @mock.patch('cinder.image.image_utils.qemu_img_info',
-                side_effect=processutils.ProcessExecutionError)
-    @mock.patch('cinder.image.image_utils.temporary_file')
-    def test_no_qemu_img_no_metadata(self, mock_temp, mock_info,
-                                     mock_fetch, mock_is_xen, mock_repl_xen,
-                                     mock_copy, mock_convert):
-        ctxt = mock.sentinel.context
-        image_service = mock.Mock(temp_images=None)
-        image_id = mock.sentinel.image_id
-        dest = mock.sentinel.dest
-        volume_format = mock.sentinel.volume_format
-        blocksize = mock.sentinel.blocksize
-        ctxt.user_id = user_id = mock.sentinel.user_id
-        project_id = mock.sentinel.project_id
-        size = 4321
-        run_as_root = mock.sentinel.run_as_root
-
-        tmp = mock_temp.return_value.__enter__.return_value
-        image_service.show.return_value = None
-
-        self.assertRaises(
-            exception.ImageUnacceptable,
-            image_utils.fetch_to_volume_format,
-            ctxt, image_service, image_id, dest, volume_format, blocksize,
-            user_id=user_id, project_id=project_id, size=size,
-            run_as_root=run_as_root)
-
-        image_service.show.assert_called_once_with(ctxt, image_id)
-        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
-                                          image_id)
-        mock_info.assert_called_once_with(tmp,
-                                          force_share=False,
-                                          run_as_root=run_as_root)
-        self.assertFalse(mock_fetch.called)
-        self.assertFalse(mock_repl_xen.called)
-        self.assertFalse(mock_copy.called)
-        self.assertFalse(mock_convert.called)
-
     @mock.patch('cinder.image.image_utils.check_virtual_size')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
@@ -1513,6 +1495,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         data.backing_file = None
         data.virtual_size = int(1234.5 * units.Gi)
         tmp = mock_temp.return_value.__enter__.return_value
+        image_service.show.return_value = {'disk_format': 'raw'}
 
         mock_check_size.side_effect = exception.ImageUnacceptable(
             image_id='fake_image_id', reason='test')
@@ -1564,6 +1547,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         data.backing_file = None
         data.virtual_size = 1234
         tmp = mock_temp.return_value.__enter__.return_value
+        image_service.show.return_value = {'disk_format': 'raw'}
 
         self.assertRaises(
             exception.ImageUnacceptable,
@@ -1606,6 +1590,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         project_id = mock.sentinel.project_id
         size = 4321
         run_as_root = mock.sentinel.run_as_root
+        image_service.show.return_value = {'disk_format': 'raw'}
 
         data = mock_info.return_value
         data.file_format = volume_format

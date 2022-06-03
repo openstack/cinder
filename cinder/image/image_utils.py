@@ -73,6 +73,13 @@ image_opts = [
     cfg.IntOpt('image_conversion_address_space_limit',
                default=1,
                help='Address space limit in gigabytes to convert the image'),
+    cfg.BoolOpt('image_conversion_disable',
+                default=False,
+                help='Disallow image conversion when creating a volume from '
+                'an image and when uploading a volume as an image. Image '
+                'conversion consumes a large amount of system resources and '
+                'can cause performance problems on the cinder-volume node. '
+                'When set True, this option disables image conversion.'),
 ]
 
 CONF = cfg.CONF
@@ -685,6 +692,28 @@ def fetch_to_raw(context: context.RequestContext,
                            size=size, run_as_root=run_as_root)
 
 
+def check_image_conversion_disable(disk_format, volume_format, image_id,
+                                   upload=False):
+    if CONF.image_conversion_disable and disk_format != volume_format:
+        if upload:
+            msg = _("Image conversion is disabled. The image disk_format "
+                    "you have requested is '%(disk_format)s', but your "
+                    "volume can only be uploaded in the format "
+                    "'%(volume_format)s'.")
+        else:
+            msg = _("Image conversion is disabled. The volume type you have "
+                    "requested requires that the image it is being created "
+                    "from be in '%(volume_format)s' format, but the image "
+                    "you are using has the disk_format property "
+                    "'%(disk_format)s'. You must use an image with the "
+                    "disk_format property '%(volume_format)s' to create a "
+                    "volume of this type.")
+        raise exception.ImageConversionNotAllowed(
+            reason=msg % {'disk_format': disk_format,
+                          'volume_format': volume_format},
+            image_id=image_id)
+
+
 def fetch_to_volume_format(context: context.RequestContext,
                            image_service: glance.GlanceImageService,
                            image_id: str,
@@ -698,6 +727,9 @@ def fetch_to_volume_format(context: context.RequestContext,
                            run_as_root: bool = True) -> None:
     qemu_img = True
     image_meta = image_service.show(context, image_id)
+
+    check_image_conversion_disable(
+        image_meta['disk_format'], volume_format, image_id, upload=False)
 
     allow_image_compression = CONF.allow_compression_on_image_upload
     if image_meta and (image_meta.get('container_format') == 'compressed'):
@@ -810,6 +842,10 @@ def upload_volume(context: context.RequestContext,
     # NOTE: You probably want to use volume_utils.upload_volume(),
     # not this function.
     image_id = image_meta['id']
+
+    check_image_conversion_disable(
+        image_meta['disk_format'], volume_format, image_id, upload=True)
+
     if image_meta.get('container_format') != 'compressed':
         if (image_meta['disk_format'] == volume_format):
             LOG.debug("%s was %s, no need to convert to %s",
