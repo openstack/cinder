@@ -179,6 +179,8 @@ class PowerMaxReplicationTest(test.TestCase):
                     'metro_hostlunid': 3}
         self.assertEqual(ref_dict, info_dict)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_ip_interface_physical_port',
+                       return_value="FA-1D:1")
     @mock.patch.object(rest.PowerMaxRest, 'get_iscsi_ip_address_and_iqn',
                        return_value=([tpd.PowerMaxData.ip],
                                      tpd.PowerMaxData.initiator))
@@ -187,7 +189,7 @@ class PowerMaxReplicationTest(test.TestCase):
     @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',
                        return_value=True)
     def test_initialize_connection_vol_metro_iscsi(self, mock_md, mock_es,
-                                                   mock_ip):
+                                                   mock_ip, mock_dp):
         metro_connector = deepcopy(self.data.connector)
         metro_connector['multipath'] = True
         phys_port = '%(dir)s:%(port)s' % {

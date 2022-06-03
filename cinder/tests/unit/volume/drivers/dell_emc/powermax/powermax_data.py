@@ -79,7 +79,8 @@ class PowerMaxData(object):
     rdf_group_no_2 = '71'
     rdf_group_no_3 = '72'
     rdf_group_no_4 = '73'
-    u4v_version = '92'
+    u4p_version = '92'
+    u4p_100_endpoint = '100'
     storagegroup_name_source = 'Grp_source_sg'
     storagegroup_name_target = 'Grp_target_sg'
     group_snapshot_name = 'Grp_snapshot'
@@ -944,6 +945,9 @@ class PowerMaxData(object):
     powermax_model_details = {'symmetrixId': array,
                               'model': 'PowerMax_2000',
                               'ucode': '5978.1091.1092'}
+    powermax_model_100 = {'symmetrixId': array,
+                          'model': 'PowerMax_2500',
+                          'microcode': '6079.65.0'}
     vmax_slo_details = {'sloId': ['Diamond', 'Optimized']}
     vmax_model_details = {'model': 'VMAX450F'}
 
@@ -1348,6 +1352,7 @@ class PowerMaxData(object):
     platform = 'Linux-4.4.0-104-generic-x86_64-with-Ubuntu-16.04-xenial'
     unisphere_version = u'V9.2.0.0'
     unisphere_version_90 = "V9.0.0.1"
+    unisphere_version_100 = "V10.0.0.0"
     openstack_release = '12.0.0.0b3.dev401'
     openstack_version = '12.0.0'
     python_version = '2.7.12'

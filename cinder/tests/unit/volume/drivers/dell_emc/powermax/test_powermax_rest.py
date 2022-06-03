@@ -48,7 +48,8 @@ class PowerMaxRestTest(test.TestCase):
         self.driver = driver
         self.common = self.driver.common
         self.rest = self.common.rest
-        self.mock_object(self.rest, 'is_snap_id', True)
+        self.rest.is_snap_id = True
+        self.rest.u4p_version = rest.U4P_100_VERSION
         self.utils = self.common.utils
 
     def test_rest_request_no_response(self):
@@ -256,7 +257,7 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_get_uni_version_success(self):
         ret_val = (200, tpd.PowerMaxData.version_details)
-        current_major_version = tpd.PowerMaxData.u4v_version
+        current_major_version = tpd.PowerMaxData.u4p_version
         with mock.patch.object(self.rest, 'request', return_value=ret_val):
             version, major_version = self.rest.get_uni_version()
             self.assertIsNotNone(version)
@@ -417,7 +418,7 @@ class PowerMaxRestTest(test.TestCase):
                                  },
                                  "volume_size": 1,
                                  "capacityUnit": "GB"}]}}}})
-        version = self.data.u4v_version
+        endpoint_version = self.data.u4p_100_endpoint
         with mock.patch.object(self.rest, 'modify_resource',
                                return_value=(200,
                                              return_message)) as mock_modify:
@@ -425,7 +426,7 @@ class PowerMaxRestTest(test.TestCase):
                 array, storagegroup, payload)
             mock_modify.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'storagegroup',
-                payload, version, resource_name=storagegroup)
+                payload, endpoint_version, resource_name=storagegroup)
             self.assertEqual(1, mock_modify.call_count)
             self.assertEqual(200, status_code)
             self.assertEqual(return_message, message)
@@ -1902,6 +1903,14 @@ class PowerMaxRestTest(test.TestCase):
         ucode = self.rest.get_array_ucode_version(array)
         self.assertEqual(self.data.powermax_model_details['ucode'], ucode)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_detail',
+                       return_value=tpd.PowerMaxData.powermax_model_100)
+    def test_get_array_microcode(self, mck_ucode):
+        array = self.data.array
+        microcode = self.rest.get_array_ucode_version(array)
+        self.assertEqual(self.data.powermax_model_100.get(
+            'microcode'), microcode)
+
     def test_validate_unisphere_version_suceess(self):
         version = tpd.PowerMaxData.unisphere_version
         returned_version = {'version': version}
@@ -1931,7 +1940,7 @@ class PowerMaxRestTest(test.TestCase):
             valid_version = self.rest.validate_unisphere_version()
             self.assertFalse(valid_version)
         request_count = mock_req.call_count
-        self.assertEqual(2, request_count)
+        self.assertEqual(1, request_count)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_resource',
                        return_value=tpd.PowerMaxData.sg_rdf_group_details)
@@ -2390,7 +2399,7 @@ class PowerMaxRestTest(test.TestCase):
                           array_id, sg_name, rdf_group_no, rep_extra_specs)
 
     def test_validate_unisphere_version_unofficial_success(self):
-        version = 'T9.2.0.1054'
+        version = 'x10.0.0.425'
         returned_version = {'version': version}
         with mock.patch.object(self.rest, "request",
                                return_value=(200,
@@ -2402,6 +2411,7 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_validate_unisphere_version_unofficial_failure(self):
         version = 'T9.0.0.1054'
+        self.rest.u4p_version = 'T9.0.0.1054'
         returned_version = {'version': version}
         with mock.patch.object(self.rest, "request",
                                return_value=(200,
@@ -2410,7 +2420,7 @@ class PowerMaxRestTest(test.TestCase):
             self.assertFalse(valid_version)
 
     def test_validate_unisphere_version_unofficial_greater_than(self):
-        version = 'T9.2.0.1054'
+        version = 'x10.0.0.425'
         returned_version = {'version': version}
         with mock.patch.object(self.rest, "request",
                                return_value=(200,
@@ -2449,7 +2459,7 @@ class PowerMaxRestTest(test.TestCase):
             resource_name='test-sg')
         expected_uri = (
             '/%(ver)s/sloprovisioning/symmetrix/%(arr)s/storagegroup/test-sg' %
-            {'ver': rest.U4V_VERSION, 'arr': self.data.array})
+            {'ver': rest.U4P_100_VERSION, 'arr': self.data.array})
         self.assertEqual(target_uri, expected_uri)
 
     def test_build_uri_kwargs_private_no_version(self):
@@ -2460,7 +2470,7 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_build_uri_kwargs_public_version(self):
         target_uri = self.rest._build_uri_kwargs(category='test')
-        expected_uri = '/%(ver)s/test' % {'ver': rest.U4V_VERSION}
+        expected_uri = '/%(ver)s/test' % {'ver': rest.U4P_100_VERSION}
         self.assertEqual(target_uri, expected_uri)
 
     def test_build_uri_kwargs_full_uri(self):
@@ -2472,7 +2482,7 @@ class PowerMaxRestTest(test.TestCase):
             object_type='obj', object_type_id='id4')
         expected_uri = (
             '/%(ver)s/test-cat/res-level/id1/res-type/id2/res/id3/obj/id4' % {
-                'ver': rest.U4V_VERSION})
+                'ver': rest.U4P_100_VERSION})
         self.assertEqual(target_uri, expected_uri)
 
     @mock.patch.object(
@@ -2544,69 +2554,3 @@ class PowerMaxRestTest(test.TestCase):
                 self.data.array, self.data.device_id,
                 self.data.test_snapshot_snap_name)
             self.assertEqual('0', snap_id)
-
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_storage_group_list')
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_storage_group_rep',
-        side_effect=[{'rdf': False}, None])
-    def test_get_or_rename_storage_group_rep(
-            self, mock_sg_rep, mock_sg_list):
-        # Success - no need for rename
-        rep_info = self.rest.get_or_rename_storage_group_rep(
-            self.data.array, self.data.storagegroup_name_f,
-            self.data.extra_specs)
-        mock_sg_list.assert_not_called()
-        self.assertIsNotNone(rep_info)
-
-        # Fail - cannot find sg but no filter set
-        rep_info = self.rest.get_or_rename_storage_group_rep(
-            self.data.array, self.data.storagegroup_name_f,
-            self.data.extra_specs)
-        mock_sg_list.assert_not_called()
-        self.assertIsNone(rep_info)
-
-    @mock.patch.object(
-        rest.PowerMaxRest, '_rename_storage_group')
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_storage_group_list',
-        return_value=({'storageGroupId': ['user-name+uuid']}))
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_storage_group_rep',
-        side_effect=[None, ({'rdf': False}), ({'rdf': False})])
-    def test_get_or_rename_storage_group_rep_exists(
-            self, mock_sg_rep, mock_sg_list, mock_rename):
-        sg_filter = '<like>uuid'
-        rep_info = self.rest.get_or_rename_storage_group_rep(
-            self.data.array, self.data.storagegroup_name_f,
-            self.data.extra_specs, sg_filter=sg_filter)
-        mock_sg_list.assert_called_once_with(
-            self.data.array,
-            params={'storageGroupId': sg_filter})
-        group_list_return = {'storageGroupId': ['user-name+uuid']}
-        mock_rename.assert_called_once_with(
-            self.data.array,
-            group_list_return['storageGroupId'][0],
-            self.data.storagegroup_name_f,
-            self.data.extra_specs)
-        self.assertIsNotNone(rep_info)
-
-    @mock.patch.object(
-        rest.PowerMaxRest, '_rename_storage_group')
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_storage_group_list',
-        return_value=({'storageGroupId': ['user-name+uuid']}))
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_storage_group_rep',
-        side_effect=[None, None])
-    def test_get_or_rename_storage_group_rep_does_not_exist(
-            self, mock_sg_rep, mock_sg_list, mock_rename):
-        sg_filter = '<like>uuid'
-        rep_info = self.rest.get_or_rename_storage_group_rep(
-            self.data.array, self.data.storagegroup_name_f,
-            self.data.extra_specs, sg_filter=sg_filter)
-        mock_sg_list.assert_called_once_with(
-            self.data.array,
-            params={'storageGroupId': sg_filter})
-        mock_rename.assert_not_called()
-        self.assertIsNone(rep_info)

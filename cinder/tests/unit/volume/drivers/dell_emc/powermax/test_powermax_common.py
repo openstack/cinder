@@ -1746,7 +1746,7 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(common.PowerMaxCommon,
                        '_get_target_wwns_from_masking_view')
     @mock.patch.object(utils.PowerMaxUtils, 'get_host_name_label',
-                       return_value = 'my_short_h94485')
+                       return_value='my_short_h94485')
     @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
                        return_value=False)
     def test_get_target_wwns_host_override(
@@ -1802,6 +1802,7 @@ class PowerMaxCommonTest(test.TestCase):
                 array, portgroup_name, initiator_group_name)
 
     def test_get_iscsi_ip_iqn_port(self):
+        self.common.rest.u4p_version = self.data.u4p_100_endpoint
         phys_port = '%(dir)s:%(port)s' % {'dir': self.data.iscsi_dir,
                                           'port': self.data.iscsi_port}
         ref_ip_iqn = [{'iqn': self.data.initiator,
@@ -1817,6 +1818,7 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertEqual(ref_ip_iqn, ip_iqn_list)
 
     def test_find_ip_and_iqns(self):
+        self.common.rest.u4p_version = self.data.u4p_100_endpoint
         ref_ip_iqn = [{'iqn': self.data.initiator,
                        'ip': self.data.ip,
                        'physical_port': self.data.iscsi_dir_port}]

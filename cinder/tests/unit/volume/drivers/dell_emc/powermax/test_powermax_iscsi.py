@@ -99,6 +99,7 @@ class PowerMaxISCSITest(test.TestCase):
                                     'iqn': self.data.initiator,
                                     'physical_port': phys_port}],
                     'is_multipath': False}
+        self.common.rest.u4p_version = self.data.u4p_version
         with mock.patch.object(self.driver, 'get_iscsi_dict') as mock_get:
             with mock.patch.object(
                 self.common, 'get_port_group_from_masking_view',
@@ -109,6 +110,7 @@ class PowerMaxISCSITest(test.TestCase):
                     ref_dict, self.data.test_volume)
 
     def test_get_iscsi_dict_success(self):
+        self.common.rest.u4p_version = self.data.u4p_version
         ip_and_iqn = self.common._find_ip_and_iqns(
             self.data.array, self.data.port_group_name_i)
         host_lun_id = self.data.iscsi_device_info['hostlunid']
@@ -131,6 +133,7 @@ class PowerMaxISCSITest(test.TestCase):
                           device_info, self.data.test_volume)
 
     def test_get_iscsi_dict_metro(self):
+        self.common.rest.u4p_version = self.data.u4p_version
         ip_and_iqn = self.common._find_ip_and_iqns(
             self.data.array, self.data.port_group_name_i)
         host_lun_id = self.data.iscsi_device_info_metro['hostlunid']
@@ -148,6 +151,7 @@ class PowerMaxISCSITest(test.TestCase):
 
     def test_vmax_get_iscsi_properties_one_target_no_auth(self):
         vol = deepcopy(self.data.test_volume)
+        self.common.rest.u4p_version = self.data.u4p_version
         ip_and_iqn = self.common._find_ip_and_iqns(
             self.data.array, self.data.port_group_name_i)
         host_lun_id = self.data.iscsi_device_info['hostlunid']

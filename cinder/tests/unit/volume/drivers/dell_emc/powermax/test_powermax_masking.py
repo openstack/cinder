@@ -862,20 +862,18 @@ class PowerMaxMaskingTest(test.TestCase):
                        '_delete_cascaded_storage_groups')
     @mock.patch.object(rest.PowerMaxRest, 'get_num_vols_in_sg',
                        side_effect=[1, 3])
-    @mock.patch.object(rest.PowerMaxRest, 'delete_storage_group')
     @mock.patch.object(masking.PowerMaxMasking, 'get_parent_sg_from_child',
                        side_effect=[None, 'parent_sg_name', 'parent_sg_name'])
     def test_last_vol_no_masking_views(
-            self, mock_get_parent, mock_delete, mock_num_vols,
+            self, mock_get_parent, mock_num_vols,
             mock_delete_casc, mock_remove):
         for x in range(0, 3):
             self.mask._last_vol_no_masking_views(
                 self.data.array, self.data.storagegroup_name_i,
                 self.device_id, self.volume_name, self.extra_specs,
                 False)
-        self.assertEqual(1, mock_delete.call_count)
         self.assertEqual(1, mock_delete_casc.call_count)
-        self.assertEqual(1, mock_remove.call_count)
+        self.assertEqual(2, mock_remove.call_count)
 
     @mock.patch.object(masking.PowerMaxMasking,
                        '_remove_last_vol_and_delete_sg')

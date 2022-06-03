@@ -218,7 +218,6 @@ class PowerMaxCommon(object):
         self._get_u4p_failover_info()
         self._gather_info()
         self._get_performance_config()
-        self.rest.validate_unisphere_version()
 
     def _gather_info(self):
         """Gather the relevant information for update_volume_stats."""
@@ -230,10 +229,13 @@ class PowerMaxCommon(object):
                       "configuration and note that the xml file is no "
                       "longer supported.")
         self.rest.set_rest_credentials(array_info)
+        self.rest.validate_unisphere_version()
+
         if array_info:
             serial_number = array_info['SerialNumber']
             self.array_model, self.next_gen = (
                 self.rest.get_array_model_info(serial_number))
+            self.rest.set_residuals(serial_number)
             self.ucode_level = self.rest.get_array_ucode_version(serial_number)
             if self.replication_enabled:
                 if serial_number in self.replication_targets:
@@ -857,9 +859,9 @@ class PowerMaxCommon(object):
             mv_list, sg_list = (
                 self._get_mvs_and_sgs_from_volume(
                     extra_specs[utils.ARRAY],
-                    device_info['device_id']))
+                    device_info.get('device_id')))
         self.volume_metadata.capture_detach_info(
-            volume, extra_specs, device_info['device_id'], mv_list,
+            volume, extra_specs, device_info.get('device_id'), mv_list,
             sg_list)
 
     def _unmap_lun_promotion(self, volume, connector):
@@ -1270,12 +1272,12 @@ class PowerMaxCommon(object):
             if rep_enabled:
                 __, r2_array = self.get_rdf_details(array, rep_config)
                 r2_ucode = self.rest.get_array_ucode_version(r2_array)
-                if int(r1_ucode[2]) > utils.UCODE_5978_ELMSR:
+                if self.utils.ode_capable(r1_ucode):
                     r1_ode_metro = True
                     r2_ucode = r2_ucode.split('.')
                     if self.rest.is_next_gen_array(r2_array):
                         r2_ode = True
-                        if int(r2_ucode[2]) > utils.UCODE_5978_ELMSR:
+                        if self.utils.ode_capable(r2_ucode):
                             r2_ode_metro = True
 
         return r1_ode, r1_ode_metro, r2_ode, r2_ode_metro
@@ -3006,6 +3008,15 @@ class PowerMaxCommon(object):
             array, device_id)
 
         if snapvx_src or snapvx_tgt:
+            LOG.debug("Device %(dev)s is involved into a SnapVX session",
+                      {'dev': device_id})
+            if snapvx_src:
+                LOG.debug("Device %(dev)s is the SnapVX source volume",
+                          {'dev': device_id})
+            else:
+                LOG.debug("Device %(dev)s is the SnapVX target volume",
+                          {'dev': device_id})
+
             @coordination.synchronized("emc-source-{src_device_id}")
             def do_unlink_and_delete_snap(src_device_id):
                 src_sessions, tgt_session = self.rest.find_snap_vx_sessions(

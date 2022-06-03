@@ -1584,8 +1584,10 @@ class PowerMaxMasking(object):
                 self.add_volume_to_default_storage_group(
                     serial_number, device_id, volume_name,
                     extra_specs, src_sg=storagegroup_name)
-            # Delete the storage group.
-            self.rest.delete_storage_group(serial_number, storagegroup_name)
+            # Remove last volume and delete the storage group.
+            self._remove_last_vol_and_delete_sg(
+                serial_number, device_id, volume_name,
+                storagegroup_name, extra_specs)
             status = True
         else:
             num_vols_parent = self.rest.get_num_vols_in_sg(
@@ -1716,11 +1718,21 @@ class PowerMaxMasking(object):
                 serial_number, device_id, "",
                 extra_specs, src_sg=child_sg_name)
         if child_sg_name != parent_sg_name:
+            self.rest.remove_child_sg_from_parent_sg(
+                serial_number, child_sg_name, parent_sg_name,
+                extra_specs)
             self.rest.delete_storage_group(serial_number, parent_sg_name)
             LOG.debug("Storage Group %(storagegroup_name)s "
                       "successfully deleted.",
                       {'storagegroup_name': parent_sg_name})
-        self.rest.delete_storage_group(serial_number, child_sg_name)
+        # Remove last volume and delete the storage group.
+        if self.rest.is_volume_in_storagegroup(
+                serial_number, device_id, child_sg_name):
+            self._remove_last_vol_and_delete_sg(
+                serial_number, device_id, 'last_vol',
+                child_sg_name, extra_specs)
+        else:
+            self.rest.delete_storage_group(serial_number, child_sg_name)
 
         LOG.debug("Storage Group %(storagegroup_name)s successfully deleted.",
                   {'storagegroup_name': child_sg_name})
