@@ -310,7 +310,6 @@ class TestConvertImage(test.TestCase):
         mock_exec.assert_called_once_with(*exec_args,
                                           run_as_root=True)
 
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -330,11 +329,10 @@ class TestConvertImage(test.TestCase):
                                          mock_isblk,
                                          mock_exec,
                                          mock_info,
-                                         mock_odirect,
-                                         mock_conf):
+                                         mock_odirect):
         source = mock.sentinel.source
-        mock_conf.image_conversion_dir = 'fakedir'
-        dest = [mock_conf.image_conversion_dir]
+        self.flags(image_conversion_dir='fakedir')
+        dest = ['fakedir']
         out_format = mock.sentinel.out_format
         mock_info.side_effect = ValueError
         mock_exec.side_effect = processutils.ProcessExecutionError(
@@ -673,38 +671,32 @@ class TestVerifyImage(test.TestCase):
 
 
 class TestTemporaryDir(test.TestCase):
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('oslo_utils.fileutils.ensure_tree')
     @mock.patch('cinder.image.image_utils.utils.tempdir')
-    def test_conv_dir_exists(self, mock_tempdir, mock_make,
-                             mock_conf):
-        mock_conf.image_conversion_dir = mock.sentinel.conv_dir
+    def test_conv_dir_exists(self, mock_tempdir, mock_make):
+        self.flags(image_conversion_dir='fake_conv_dir')
 
         output = image_utils.temporary_dir()
 
         self.assertTrue(mock_make.called)
-        mock_tempdir.assert_called_once_with(dir=mock.sentinel.conv_dir)
+        mock_tempdir.assert_called_once_with(dir='fake_conv_dir')
         self.assertEqual(output, mock_tempdir.return_value)
 
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('oslo_utils.fileutils.ensure_tree')
     @mock.patch('cinder.image.image_utils.utils.tempdir')
-    def test_create_conv_dir(self, mock_tempdir, mock_make,
-                             mock_conf):
-        mock_conf.image_conversion_dir = mock.sentinel.conv_dir
+    def test_create_conv_dir(self, mock_tempdir, mock_make):
+        self.flags(image_conversion_dir='fake_conv_dir')
 
         output = image_utils.temporary_dir()
 
-        mock_make.assert_called_once_with(mock.sentinel.conv_dir)
-        mock_tempdir.assert_called_once_with(dir=mock.sentinel.conv_dir)
+        mock_make.assert_called_once_with('fake_conv_dir')
+        mock_tempdir.assert_called_once_with(dir='fake_conv_dir')
         self.assertEqual(output, mock_tempdir.return_value)
 
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('oslo_utils.fileutils.ensure_tree')
     @mock.patch('cinder.image.image_utils.utils.tempdir')
-    def test_no_conv_dir(self, mock_tempdir, mock_make,
-                         mock_conf):
-        mock_conf.image_conversion_dir = None
+    def test_no_conv_dir(self, mock_tempdir, mock_make):
+        self.flags(image_conversion_dir=None)
 
         output = image_utils.temporary_dir()
 
@@ -720,14 +712,13 @@ class TestUploadVolume(test.TestCase):
               ('ploop', 'parallels', True),
               ('ploop', 'parallels', False))
     @mock.patch('eventlet.tpool.Proxy')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_diff_format(self, image_format, mock_os, mock_temp, mock_convert,
-                         mock_info, mock_open, mock_conf, mock_proxy):
+                         mock_info, mock_open, mock_proxy):
         input_format, output_format, do_compress = image_format
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
@@ -761,14 +752,13 @@ class TestUploadVolume(test.TestCase):
 
     @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_same_format(self, mock_os, mock_temp, mock_convert, mock_info,
-                         mock_open, mock_conf, mock_chown, mock_proxy):
+                         mock_open, mock_chown, mock_proxy):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_meta = {'id': 'test_id',
@@ -797,14 +787,13 @@ class TestUploadVolume(test.TestCase):
                 return_value = True)
     @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_same_format_compressed(self, mock_os, mock_temp, mock_convert,
-                                    mock_info, mock_open, mock_conf,
+                                    mock_info, mock_open,
                                     mock_chown, mock_proxy,
                                     mock_engine_ready, mock_get_engine):
         class fakeEngine(object):
@@ -820,7 +809,7 @@ class TestUploadVolume(test.TestCase):
         image_meta = {'id': 'test_id',
                       'disk_format': 'raw',
                       'container_format': 'compressed'}
-        mock_conf.allow_compression_on_image_upload = True
+        self.flags(allow_compression_on_image_upload=True)
         volume_path = mock.sentinel.volume_path
         mock_os.name = 'posix'
         data = mock_info.return_value
@@ -851,14 +840,13 @@ class TestUploadVolume(test.TestCase):
 
     @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_same_format_on_nt(self, mock_os, mock_temp, mock_convert,
-                               mock_info, mock_open, mock_conf, mock_chown,
+                               mock_info, mock_open, mock_chown,
                                mock_proxy):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
@@ -887,7 +875,6 @@ class TestUploadVolume(test.TestCase):
                 return_value = True)
     @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
@@ -895,7 +882,7 @@ class TestUploadVolume(test.TestCase):
     @mock.patch('cinder.image.image_utils.os')
     def test_same_format_on_nt_compressed(self, mock_os, mock_temp,
                                           mock_convert, mock_info,
-                                          mock_open, mock_conf,
+                                          mock_open,
                                           mock_chown, mock_proxy,
                                           mock_engine_ready, mock_get_engine):
         class fakeEngine(object):
@@ -911,7 +898,7 @@ class TestUploadVolume(test.TestCase):
         image_meta = {'id': 'test_id',
                       'disk_format': 'raw',
                       'container_format': 'compressed'}
-        mock_conf.allow_compression_on_image_upload = True
+        self.flags(allow_compression_on_image_upload=True)
         volume_path = mock.sentinel.volume_path
         mock_os.name = 'posix'
         data = mock_info.return_value
@@ -940,13 +927,11 @@ class TestUploadVolume(test.TestCase):
             store_id=None, base_image_ref=None)
         mock_engine.compress_img.assert_called()
 
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
-    def test_convert_error(self, mock_os, mock_temp, mock_convert, mock_info,
-                           mock_conf):
+    def test_convert_error(self, mock_os, mock_temp, mock_convert, mock_info):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_meta = {'id': 'test_id',
@@ -973,14 +958,13 @@ class TestUploadVolume(test.TestCase):
 
     @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_base_image_ref(self, mock_os, mock_temp, mock_convert, mock_info,
-                            mock_open, mock_conf, mock_chown, mock_proxy):
+                            mock_open, mock_chown, mock_proxy):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_meta = {'id': 'test_id',
@@ -1112,8 +1096,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_defaults(self, mock_conf, mock_temp, mock_info, mock_fetch,
+    def test_defaults(self, mock_temp, mock_info, mock_fetch,
                       mock_is_xen, mock_repl_xen, mock_copy, mock_convert,
                       mock_check_space):
         ctxt = mock.sentinel.context
@@ -1161,8 +1144,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_kwargs(self, mock_conf, mock_temp, mock_info, mock_fetch,
+    def test_kwargs(self, mock_temp, mock_info, mock_fetch,
                     mock_is_xen, mock_repl_xen, mock_copy, mock_convert,
                     mock_check_space, mock_check_size):
         ctxt = mock.sentinel.context
@@ -1216,8 +1198,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_convert_from_vhd(self, mock_conf, mock_temp, mock_info,
+    def test_convert_from_vhd(self, mock_temp, mock_info,
                               mock_fetch, mock_is_xen, mock_repl_xen,
                               mock_copy, mock_convert, mock_check_space,
                               mock_check_size):
@@ -1269,8 +1250,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_convert_from_iso(self, mock_conf, mock_temp, mock_info,
+    def test_convert_from_iso(self, mock_temp, mock_info,
                               mock_fetch, mock_is_xen, mock_copy,
                               mock_convert, mock_check_space,
                               mock_check_size):
@@ -1323,8 +1303,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_temporary_images(self, mock_conf, mock_temp, mock_info,
+    def test_temporary_images(self, mock_temp, mock_info,
                               mock_fetch, mock_repl_xen,
                               mock_copy, mock_convert):
         ctxt = mock.sentinel.context
@@ -1377,8 +1356,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info',
                 side_effect=processutils.ProcessExecutionError)
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_no_qemu_img_and_is_raw(self, mock_conf, mock_temp, mock_info,
+    def test_no_qemu_img_and_is_raw(self, mock_temp, mock_info,
                                     mock_fetch, mock_is_xen, mock_repl_xen,
                                     mock_copy, mock_convert):
         ctxt = mock.sentinel.context
@@ -1426,8 +1404,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info',
                 side_effect=processutils.ProcessExecutionError)
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_no_qemu_img_not_raw(self, mock_conf, mock_temp, mock_info,
+    def test_no_qemu_img_not_raw(self, mock_temp, mock_info,
                                  mock_fetch, mock_is_xen, mock_repl_xen,
                                  mock_copy, mock_convert):
         ctxt = mock.sentinel.context
@@ -1472,8 +1449,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info',
                 side_effect=processutils.ProcessExecutionError)
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_no_qemu_img_no_metadata(self, mock_conf, mock_temp, mock_info,
+    def test_no_qemu_img_no_metadata(self, mock_temp, mock_info,
                                      mock_fetch, mock_is_xen, mock_repl_xen,
                                      mock_copy, mock_convert):
         ctxt = mock.sentinel.context
@@ -1518,8 +1494,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_size_error(self, mock_conf, mock_temp, mock_info, mock_fetch,
+    def test_size_error(self, mock_temp, mock_info, mock_fetch,
                         mock_is_xen, mock_repl_xen, mock_copy, mock_convert,
                         mock_check_size):
         ctxt = mock.sentinel.context
@@ -1570,8 +1545,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_qemu_img_parse_error(self, mock_conf, mock_temp, mock_info,
+    def test_qemu_img_parse_error(self, mock_temp, mock_info,
                                   mock_fetch, mock_is_xen, mock_repl_xen,
                                   mock_copy, mock_convert):
         ctxt = mock.sentinel.context
@@ -1619,8 +1593,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_backing_file_error(self, mock_conf, mock_temp, mock_info,
+    def test_backing_file_error(self, mock_temp, mock_info,
                                 mock_fetch, mock_is_xen, mock_repl_xen,
                                 mock_copy, mock_convert):
         ctxt = mock.sentinel.context
@@ -1670,8 +1643,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_xenserver_to_vhd(self, mock_conf, mock_temp, mock_info,
+    def test_xenserver_to_vhd(self, mock_temp, mock_info,
                               mock_fetch, mock_is_xen, mock_repl_xen,
                               mock_copy, mock_convert, mock_check_space,
                               mock_check_size):
@@ -1716,8 +1688,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info',
                 side_effect=processutils.ProcessExecutionError)
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_no_qemu_img_fetch_verify_image(self, mock_conf,
+    def test_no_qemu_img_fetch_verify_image(self,
                                             mock_temp, mock_info,
                                             mock_fetch):
         ctxt = mock.sentinel.context
@@ -1742,8 +1713,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info',
                 side_effect=processutils.ProcessExecutionError)
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_get_qemu_data_returns_none(self, mock_conf, mock_temp, mock_info):
+    def test_get_qemu_data_returns_none(self, mock_temp, mock_info):
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         run_as_root = mock.sentinel.run_as_root
@@ -1759,8 +1729,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info',
                 side_effect=processutils.ProcessExecutionError)
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_get_qemu_data_with_image_meta_exception(self, mock_conf,
+    def test_get_qemu_data_with_image_meta_exception(self,
                                                      mock_temp, mock_info):
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
@@ -1775,8 +1744,7 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info',
                 side_effect=processutils.ProcessExecutionError)
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_get_qemu_data_without_image_meta_except(self, mock_conf,
+    def test_get_qemu_data_without_image_meta_except(self,
                                                      mock_temp, mock_info):
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
@@ -1804,8 +1772,9 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
-    @mock.patch('cinder.image.image_utils.CONF')
-    def test_defaults_compressed(self, mock_conf, mock_temp, mock_info,
+    # FIXME: what 'defaults' are we talking about here?  By default
+    # compression is not enabled!
+    def test_defaults_compressed(self, mock_temp, mock_info,
                                  mock_fetch, mock_is_xen, mock_repl_xen,
                                  mock_copy, mock_convert, mock_check_space,
                                  mock_engine_ready, mock_get_engine,
@@ -1827,6 +1796,8 @@ class TestFetchToVolumeFormat(test.TestCase):
                         'disk_format': self.disk_format,
                         'container_format': 'compressed',
                         'status': 'active'}
+
+        self.flags(allow_compression_on_image_upload=True)
 
         ctxt = mock.sentinel.context
         ctxt.user_id = mock.sentinel.user_id
@@ -2024,12 +1995,11 @@ class TestVhdUtils(test.TestCase):
 
 class TestCreateTemporaryFile(test.TestCase):
     @mock.patch('cinder.image.image_utils.os.close')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.os.makedirs')
     @mock.patch('cinder.image.image_utils.tempfile.mkstemp')
     def test_create_temporary_file_no_dir(self, mock_mkstemp, mock_dirs,
-                                          mock_conf, mock_close):
-        mock_conf.image_conversion_dir = None
+                                          mock_close):
+        self.flags(image_conversion_dir=None)
         fd = mock.sentinel.file_descriptor
         path = mock.sentinel.absolute_pathname
         mock_mkstemp.return_value = (fd, path)
@@ -2041,13 +2011,12 @@ class TestCreateTemporaryFile(test.TestCase):
         mock_close.assert_called_once_with(fd)
 
     @mock.patch('cinder.image.image_utils.os.close')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.os.makedirs')
     @mock.patch('cinder.image.image_utils.tempfile.mkstemp')
     def test_create_temporary_file_with_dir(self, mock_mkstemp, mock_dirs,
-                                            mock_conf, mock_close):
-        conv_dir = mock.sentinel.image_conversion_dir
-        mock_conf.image_conversion_dir = conv_dir
+                                            mock_close):
+        conv_dir = 'fake_conv_dir'
+        self.flags(image_conversion_dir=conv_dir)
         fd = mock.sentinel.file_descriptor
         path = mock.sentinel.absolute_pathname
         mock_mkstemp.return_value = (fd, path)
@@ -2060,13 +2029,12 @@ class TestCreateTemporaryFile(test.TestCase):
         mock_close.assert_called_once_with(fd)
 
     @mock.patch('cinder.image.image_utils.os.close')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.fileutils.ensure_tree')
     @mock.patch('cinder.image.image_utils.tempfile.mkstemp')
     def test_create_temporary_file_and_dir(self, mock_mkstemp, mock_dirs,
-                                           mock_conf, mock_close):
-        conv_dir = mock.sentinel.image_conversion_dir
-        mock_conf.image_conversion_dir = conv_dir
+                                           mock_close):
+        conv_dir = 'fake_conv_dir'
+        self.flags(image_conversion_dir=conv_dir)
         fd = mock.sentinel.file_descriptor
         path = mock.sentinel.absolute_pathname
         mock_mkstemp.return_value = (fd, path)
@@ -2080,14 +2048,13 @@ class TestCreateTemporaryFile(test.TestCase):
 
     @mock.patch('cinder.image.image_utils.os.remove')
     @mock.patch('cinder.image.image_utils.os.path.join')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.os.listdir')
     @mock.patch('cinder.image.image_utils.os.path.exists', return_value=True)
-    def test_cleanup_temporary_file(self, mock_path, mock_listdir, mock_conf,
+    def test_cleanup_temporary_file(self, mock_path, mock_listdir,
                                     mock_join, mock_remove):
         mock_listdir.return_value = ['tmphost@backend1', 'tmphost@backend2']
-        conv_dir = mock.sentinel.image_conversion_dir
-        mock_conf.image_conversion_dir = conv_dir
+        conv_dir = 'fake_conv_dir'
+        self.flags(image_conversion_dir=conv_dir)
         mock_join.return_value = '/test/tmp/tmphost@backend1'
         image_utils.cleanup_temporary_file('host@backend1')
         mock_listdir.assert_called_once_with(conv_dir)
@@ -2095,29 +2062,26 @@ class TestCreateTemporaryFile(test.TestCase):
 
     @mock.patch('cinder.image.image_utils.os.remove')
     @mock.patch('cinder.image.image_utils.os.listdir')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.os.path.exists', return_value=False)
     def test_cleanup_temporary_file_with_not_exist_path(self, mock_path,
-                                                        mock_conf,
                                                         mock_listdir,
                                                         mock_remove):
-        conv_dir = mock.sentinel.image_conversion_dir
-        mock_conf.image_conversion_dir = conv_dir
+        conv_dir = 'fake_conv_dir'
+        self.flags(image_conversion_dir=conv_dir)
         image_utils.cleanup_temporary_file('host@backend1')
         self.assertFalse(mock_listdir.called)
         self.assertFalse(mock_remove.called)
 
     @mock.patch('cinder.image.image_utils.os.remove')
     @mock.patch('cinder.image.image_utils.os.path.join')
-    @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.image.image_utils.os.listdir')
     @mock.patch('cinder.image.image_utils.os.path.exists', return_value=True)
     def test_cleanup_temporary_file_with_exception(self, mock_path,
-                                                   mock_listdir, mock_conf,
+                                                   mock_listdir,
                                                    mock_join, mock_remove):
         mock_listdir.return_value = ['tmphost@backend1', 'tmphost@backend2']
-        conv_dir = mock.sentinel.image_conversion_dir
-        mock_conf.image_conversion_dir = conv_dir
+        conv_dir = 'fake_conv_dir'
+        self.flags(image_conversion_dir=conv_dir)
         mock_join.return_value = '/test/tmp/tmphost@backend1'
         mock_remove.side_effect = OSError
         image_utils.cleanup_temporary_file('host@backend1')
