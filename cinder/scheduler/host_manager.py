@@ -326,7 +326,6 @@ class BackendState(object):
         self.volume_backend_name = capability.get('volume_backend_name', None)
         self.vendor_name = capability.get('vendor_name', None)
         self.driver_version = capability.get('driver_version', None)
-        self.driver_version = capability.get('driver_version', None)
 
         # Protocols that have variants are replaced with ALL the variants
         protocol = capability.get('storage_protocol', None)
