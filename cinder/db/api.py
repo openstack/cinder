@@ -1784,9 +1784,6 @@ def driver_initiator_data_insert_by_key(context, initiator,
     """Updates DriverInitiatorData entry.
 
     Sets the value for the specified key within the namespace.
-
-    If the entry already exists return False, if it inserted successfully
-    return True.
     """
     return IMPL.driver_initiator_data_insert_by_key(context,
                                                     initiator,
