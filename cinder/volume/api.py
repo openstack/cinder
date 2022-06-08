@@ -988,14 +988,10 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        # Check if there is an affinity/antiaffinity against the volume
-        filter_properties = self._get_scheduler_hints_from_volume(volume)
-
         LOG.debug("Invoking migrate_volume to host=%s", dest['host'])
         self.volume_rpcapi.migrate_volume(ctxt, volume, backend,
                                           force_host_copy=False,
-                                          wait_for_completion=False,
-                                          filter_properties=filter_properties)
+                                          wait_for_completion=False)
         volume.refresh()
 
     def initialize_connection(self,
