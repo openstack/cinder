@@ -268,7 +268,9 @@ class SchedulerAPI(rpc.RPCAPI):
         msg_args = {'backup': backup}
         return cctxt.cast(ctxt, 'create_backup', **msg_args)
 
-    def find_backend_for_connector(self, context, connector, request_spec):
+    def find_backend_for_connector(self, context, connector, request_spec,
+                                   filter_properties=None):
         cctxt = self._get_cctxt()
         return cctxt.call(context, 'find_backend_for_connector',
-                          connector=connector, request_spec=request_spec)
+                          connector=connector, request_spec=request_spec,
+                          filter_properties=filter_properties)

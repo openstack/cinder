@@ -845,9 +845,14 @@ class API(base.Base):
             'volume_properties': volume,
             'volume_type': volume_type,
             'volume_id': volume.id}
+
+        # Check if there is an affinity/antiaffinity against the volume
+        filter_properties = self._get_scheduler_hints_from_volume(volume)
+
         try:
             dest = self.scheduler_rpcapi.find_backend_for_connector(
-                ctxt, connector, request_spec)
+                ctxt, connector, request_spec,
+                filter_properties=filter_properties)
         except exception.NoValidBackend:
             LOG.error("The connector was rejected by the backend. Could not "
                       "find another backend compatible with the connector %s.",
@@ -896,14 +901,10 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        # Check if there is an affinity/antiaffinity against the volume
-        filter_properties = self._get_scheduler_hints_from_volume(volume)
-
         LOG.debug("Invoking migrate_volume to host=%s", dest['host'])
         self.volume_rpcapi.migrate_volume(ctxt, volume, backend,
                                           force_host_copy=False,
-                                          wait_for_completion=False,
-                                          filter_properties=filter_properties)
+                                          wait_for_completion=False)
         volume.refresh()
 
     def initialize_connection(self, context, volume, connector):

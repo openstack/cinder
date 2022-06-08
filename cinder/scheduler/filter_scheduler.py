@@ -111,13 +111,15 @@ class FilterScheduler(driver.Scheduler):
                                          filter_properties,
                                          allow_reschedule=True)
 
-    def find_backend_for_connector(self, context, connector, request_spec):
+    def find_backend_for_connector(self, context, connector, request_spec,
+                                   filter_properties=None):
         key = 'connection_capabilities'
         if key not in connector:
             raise exception.InvalidConnectionCapabilities(
                 reason=_("The connector doesn't contain a %s field.") % key)
 
-        weighed_backends = self._get_weighted_candidates(context, request_spec)
+        weighed_backends = self._get_weighted_candidates(context, request_spec,
+                                                         filter_properties)
         if not weighed_backends:
             raise exception.NoValidBackend(reason=_("No weighed backends "
                                                     "available"))
