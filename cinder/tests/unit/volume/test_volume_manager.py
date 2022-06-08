@@ -342,3 +342,163 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
 
         res = manager._driver_shares_targets()
         self.assertFalse(res)
+
+    @mock.patch('cinder.message.api.API.create')
+    @mock.patch('cinder.volume.volume_utils.require_driver_initialized')
+    @mock.patch('cinder.volume.manager.VolumeManager._clone_image_volume')
+    @mock.patch('cinder.db.volume_metadata_update')
+    def test_clone_image_no_volume(self,
+                                   fake_update,
+                                   fake_clone,
+                                   fake_msg_create,
+                                   fake_init):
+        """Make sure nothing happens if no volume was created."""
+        manager = vol_manager.VolumeManager()
+
+        ctx = mock.sentinel.context
+        volume = fake_volume.fake_volume_obj(ctx)
+        image_service = mock.MagicMock(spec=[])
+
+        fake_clone.return_value = None
+
+        image_meta = {'disk_format': 'raw', 'container_format': 'ova'}
+        manager._clone_image_volume_and_add_location(ctx, volume,
+                                                     image_service, image_meta)
+        fake_clone.assert_not_called()
+        fake_update.assert_not_called()
+
+        image_meta = {'disk_format': 'qcow2', 'container_format': 'bare'}
+        manager._clone_image_volume_and_add_location(ctx, volume,
+                                                     image_service, image_meta)
+        fake_clone.assert_not_called()
+        fake_update.assert_not_called()
+
+        image_meta = {'disk_format': 'raw', 'container_format': 'bare'}
+        manager._clone_image_volume_and_add_location(ctx, volume,
+                                                     image_service, image_meta)
+        fake_clone.assert_called_once_with(ctx, volume, image_meta)
+        fake_update.assert_not_called()
+
+    @mock.patch('cinder.message.api.API.create')
+    @mock.patch('cinder.objects.VolumeType.get_by_id')
+    @mock.patch('cinder.volume.volume_utils.require_driver_initialized')
+    @mock.patch('cinder.volume.manager.VolumeManager._clone_image_volume')
+    @mock.patch('cinder.db.volume_metadata_update')
+    def test_clone_image_no_store_id(self,
+                                     fake_update,
+                                     fake_clone,
+                                     fake_msg_create,
+                                     fake_volume_type_get,
+                                     fake_init):
+        """Send a cinder://<volume-id> URL if no store ID in extra specs."""
+        manager = vol_manager.VolumeManager()
+
+        project_id = fake.PROJECT_ID
+
+        ctx = mock.MagicMock()
+        ctx.elevated.return_value = ctx
+        ctx.project_id = project_id
+
+        vol_type = fake_volume.fake_volume_type_obj(
+            ctx,
+            id=fake.VOLUME_TYPE_ID,
+            name=fake.VOLUME_TYPE_NAME,
+            extra_specs={'volume_type_backend': 'unknown'})
+        fake_volume_type_get.return_value = vol_type
+
+        volume = fake_volume.fake_volume_obj(ctx,
+                                             id=fake.VOLUME_ID,
+                                             volume_type_id=vol_type.id)
+
+        image_volume_id = fake.VOLUME2_ID
+        image_volume = fake_volume.fake_volume_obj(ctx, id=image_volume_id)
+        url = 'cinder://%(vol)s' % {'vol': image_volume_id}
+
+        image_service = mock.MagicMock(spec=['add_location'])
+        image_meta_id = fake.IMAGE_ID
+        image_meta = {
+            'id': image_meta_id,
+            'disk_format': 'raw',
+            'container_format': 'bare',
+        }
+        image_volume_meta = {
+            'image_owner': project_id,
+            'glance_image_id': image_meta_id,
+        }
+
+        fake_clone.return_value = image_volume
+
+        manager._clone_image_volume_and_add_location(ctx, volume,
+                                                     image_service, image_meta)
+        fake_clone.assert_called_once_with(ctx, volume, image_meta)
+        fake_update.assert_called_with(ctx, image_volume_id,
+                                       image_volume_meta, False)
+        image_service.add_location.assert_called_once_with(ctx, image_meta_id,
+                                                           url, {})
+
+    @mock.patch('cinder.message.api.API.create')
+    @mock.patch('cinder.objects.VolumeType.get_by_id')
+    @mock.patch('cinder.volume.volume_utils.require_driver_initialized')
+    @mock.patch('cinder.volume.manager.VolumeManager._clone_image_volume')
+    @mock.patch('cinder.db.volume_metadata_update')
+    def test_clone_image_with_store_id(self,
+                                       fake_update,
+                                       fake_clone,
+                                       fake_msg_create,
+                                       fake_volume_type_get,
+                                       fake_init):
+        """Send a cinder://<store-id>/<volume-id> URL."""
+        manager = vol_manager.VolumeManager()
+
+        project_id = fake.PROJECT_ID
+
+        ctx = mock.MagicMock()
+        ctx.elevated.return_value = ctx
+        ctx.project_id = project_id
+
+        store_id = 'muninn'
+        vol_type = fake_volume.fake_volume_type_obj(
+            ctx,
+            id=fake.VOLUME_TYPE_ID,
+            name=fake.VOLUME_TYPE_NAME,
+            extra_specs={
+                'volume_type_backend': 'unknown',
+                'image_service:store_id': store_id,
+            })
+        fake_volume_type_get.return_value = vol_type
+
+        volume = fake_volume.fake_volume_obj(ctx,
+                                             id=fake.VOLUME_ID,
+                                             volume_type_id=vol_type.id)
+
+        image_volume_id = '42'
+        image_volume = mock.MagicMock(spec=['id'])
+        image_volume.id = image_volume_id
+        url = 'cinder://%(store)s/%(vol)s' % {
+            'store': store_id,
+            'vol': image_volume_id,
+        }
+
+        image_service = mock.MagicMock(spec=['add_location'])
+        image_meta_id = fake.IMAGE_ID
+        image_meta = {
+            'id': image_meta_id,
+            'disk_format': 'raw',
+            'container_format': 'bare',
+        }
+        image_volume_meta = {
+            'image_owner': project_id,
+            'glance_image_id': image_meta_id,
+        }
+
+        fake_clone.return_value = image_volume
+
+        manager._clone_image_volume_and_add_location(ctx, volume,
+                                                     image_service, image_meta)
+        fake_clone.assert_called_once_with(ctx, volume, image_meta)
+        fake_update.assert_called_with(ctx, image_volume_id,
+                                       image_volume_meta, False)
+        image_service.add_location.assert_called_once_with(ctx,
+                                                           image_meta_id,
+                                                           url,
+                                                           {'store': store_id})
