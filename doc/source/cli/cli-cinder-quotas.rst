@@ -159,11 +159,28 @@ Edit and update Block Storage service quotas
 Administrative users can edit and update Block Storage
 service quotas.
 
-#. To update a default value for a new project,
-   update the property in the :guilabel:`cinder.quota`
-   section of the ``/etc/cinder/cinder.conf`` file.
+#. To update the default quota values for the initial deployment,
+   update the values of the :guilabel:`quota_*` config options in the
+   ``/etc/cinder/cinder.conf`` file.
    For more information, see the :doc:`Block Storage service
    configuration </configuration/index>`.
+
+   .. note::
+      The values of the :guilabel:`quota_*` config options are only used at
+      the initial database sync in the initial deployment. If you want to
+      change a default value for a new project, see the following.
+
+   To update a default value for a new project, set
+   ``use_default_quota_class = True`` (which is the default setting) in the
+   :guilabel:`DEFAULT` section of the ``/etc/cinder/cinder.conf`` file, and
+   run the command as the following.
+
+   .. code-block:: console
+
+      $ openstack quota set --class default --QUOTA_NAME QUOTA_VALUE
+
+   Replace ``QUOTA_NAME`` with the quota that is to be updated,
+   ``QUOTA_VALUE`` with the required new value.
 
 #. To update Block Storage service quotas for an existing project
 
