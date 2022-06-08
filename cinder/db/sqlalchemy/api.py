@@ -482,8 +482,10 @@ def condition_db_filter(model, field, value):
     """
     orm_field = getattr(model, field)
     # For values that must match and are iterables we use IN
-    if (isinstance(value, abc.Iterable) and
-            not isinstance(value, str)):
+    if (
+        isinstance(value, abc.Iterable) and
+        not isinstance(value, str)
+    ):
         # We cannot use in_ when one of the values is None
         if None not in value:
             return orm_field.in_(value)
@@ -507,11 +509,14 @@ def condition_not_db_filter(model, field, value, auto_none=True):
     """
     result = ~condition_db_filter(model, field, value)
 
-    if (auto_none
-            and ((isinstance(value, abc.Iterable) and
-                  not isinstance(value, str)
-                  and None not in value)
-                 or (value is not None))):
+    if auto_none and (
+        (
+            isinstance(value, abc.Iterable)
+            and not isinstance(value, str)
+            and None not in value
+        )
+        or (value is not None)
+    ):
         orm_field = getattr(model, field)
         result = or_(result, orm_field.is_(None))
 
@@ -8178,17 +8183,25 @@ def purge_deleted_rows(context, age_in_days):
 
 
 @require_admin_context
-def reset_active_backend(context, enable_replication, active_backend_id,
-                         backend_host):
+@main_context_manager.writer
+def reset_active_backend(
+    context,
+    enable_replication,
+    active_backend_id,
+    backend_host,
+):
 
-    service = objects.Service.get_by_host_and_topic(context,
-                                                    backend_host,
-                                                    'cinder-volume',
-                                                    disabled=True)
+    service = objects.Service.get_by_host_and_topic(
+        context,
+        backend_host,
+        'cinder-volume',
+        disabled=True,
+    )
     if not service.frozen:
         raise exception.ServiceUnavailable(
             'Service for host %(host)s must first be frozen.' %
-            {'host': backend_host})
+            {'host': backend_host},
+        )
 
     actions = {
         'disabled': False,
@@ -8717,28 +8730,32 @@ def snapshot_use_quota_online_data_migration(context, max_count):
     # temporary snapshots, not even volumes with display_name:
     # - '[revert] volume %s backup snapshot' % resource.volume_id
     # - 'backup-snap-%s' % resource.volume_id
-    return use_quota_online_data_migration(context, max_count, 'Snapshot',
-                                           lambda snapshot: True)
+    return use_quota_online_data_migration(
+        context,
+        max_count,
+        'Snapshot',
+        lambda snapshot: True,
+    )
 
 
 # TODO: (Y Release) remove method and this comment
-@enginefacade.writer
-def use_quota_online_data_migration(context, max_count,
-                                    resource_name, calculate_use_quota):
+def use_quota_online_data_migration(
+    context,
+    max_count,
+    resource_name,
+    calculate_use_quota,
+):
     updated = 0
-    session = get_session()
-    with session.begin():
-        query = model_query(context,
-                            getattr(models, resource_name),
-                            session=session).filter_by(
-                                use_quota=None)
-        if resource_name == 'Volume':
-            query = query.options(joinedload('volume_admin_metadata'))
-        total = query.count()
-        resources = query.limit(max_count).with_for_update().all()
-        for resource in resources:
-            resource.use_quota = calculate_use_quota(resource)
-            updated += 1
+    query = model_query(
+        context, getattr(models, resource_name)
+    ).filter_by(use_quota=None)
+    if resource_name == 'Volume':
+        query = query.options(joinedload('volume_admin_metadata'))
+    total = query.count()
+    resources = query.limit(max_count).with_for_update().all()
+    for resource in resources:
+        resource.use_quota = calculate_use_quota(resource)
+        updated += 1
 
     return total, updated
 
@@ -8747,13 +8764,11 @@ def use_quota_online_data_migration(context, max_count,
 # TODO: (Y Release) uncomment method
 # @enginefacade.writer
 # def remove_temporary_admin_metadata_data_migration(context, max_count):
-#     session = get_session()
-#     with session.begin():
-#         query = model_query(context,
-#                             models.VolumeAdminMetadata,
-#                             session=session).filter_by(key='temporary')
-#         total = query.count()
-#         updated = query.limit(max_count).update(
-#             models.VolumeAdminMetadata.delete_values)
+#     query = model_query(
+#         context, models.VolumeAdminMetadata,
+#     ).filter_by(key='temporary')
+#     total = query.count()
+#     updated = query.limit(max_count).update(
+#         models.VolumeAdminMetadata.delete_values)
 #
 #     return total, updated

@@ -3909,9 +3909,7 @@ class OnlineMigrationTestCase(BaseTest):
     # TODO: (Y Release) remove method and this comment
     @mock.patch.object(sqlalchemy_api, 'models')
     @mock.patch.object(sqlalchemy_api, 'model_query')
-    @mock.patch.object(sqlalchemy_api, 'get_session')
-    def test_use_quota_online_data_migration(self, session_mock, query_mock,
-                                             models_mock):
+    def test_use_quota_online_data_migration(self, query_mock, models_mock):
         calculate_method = mock.Mock()
         resource1 = mock.Mock()
         resource2 = mock.Mock()
@@ -3923,16 +3921,8 @@ class OnlineMigrationTestCase(BaseTest):
             self.ctxt, mock.sentinel.max_count, 'resource_name',
             calculate_method)
 
-        session_mock.assert_called_once_with()
-        session = session_mock.return_value
-        session.begin.assert_called_once_with()
-        session.begin.return_value.__enter__.assert_called_once_with()
-        session.begin.return_value.__exit__.assert_called_once_with(
-            None, None, None)
-
         query_mock.assert_called_once_with(self.ctxt,
-                                           models_mock.resource_name,
-                                           session=session)
+                                           models_mock.resource_name)
         query_mock.return_value.filter_by.assert_called_once_with(
             use_quota=None)
         query.count.assert_called_once_with()
