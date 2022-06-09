@@ -8130,53 +8130,65 @@ def group_snapshot_creating_from_src():
 ###############################
 
 
-# TODO: Convert this
 @require_admin_context
+@main_context_manager.writer
 def purge_deleted_rows(context, age_in_days):
     """Purge deleted rows older than age from cinder tables."""
     try:
         age_in_days = int(age_in_days)
     except ValueError:
-        msg = _('Invalid value for age, %(age)s') % {'age': age_in_days}
-        LOG.exception(msg)
-        raise exception.InvalidParameterValue(msg)
+        msg = _('Invalid value for age, %(age)s')
+        LOG.exception(msg, {'age': age_in_days})
+        raise exception.InvalidParameterValue(msg % {'age': age_in_days})
 
     engine = get_engine()
-    session = get_session()
     metadata = MetaData()
     metadata.reflect(engine)
 
     for table in reversed(metadata.sorted_tables):
         if 'deleted' not in table.columns.keys():
             continue
-        LOG.info('Purging deleted rows older than age=%(age)d days '
-                 'from table=%(table)s', {'age': age_in_days,
-                                          'table': table})
+
+        LOG.info(
+            'Purging deleted rows older than age=%(age)d days '
+            'from table=%(table)s',
+            {'age': age_in_days, 'table': table},
+        )
+
         deleted_age = timeutils.utcnow() - dt.timedelta(days=age_in_days)
         try:
-            with session.begin():
-                # Delete child records first from quality_of_service_specs
-                # table to avoid FK constraints
-                if str(table) == "quality_of_service_specs":
-                    session.query(models.QualityOfServiceSpecs).filter(
-                        and_(models.QualityOfServiceSpecs.specs_id.isnot(
-                            None), models.QualityOfServiceSpecs.
-                            deleted.is_(True), models.QualityOfServiceSpecs.
-                            deleted_at < deleted_age)).delete()
-                result = session.execute(
-                    table.delete().
-                    where(and_(table.columns.deleted.is_(True),
-                               table.c.deleted_at < deleted_age)))
+            # Delete child records first from quality_of_service_specs
+            # table to avoid FK constraints
+            if str(table) == 'quality_of_service_specs':
+                context.session.query(models.QualityOfServiceSpecs).filter(
+                    and_(
+                        models.QualityOfServiceSpecs.specs_id.isnot(None),
+                        models.QualityOfServiceSpecs.deleted.is_(True),
+                        models.QualityOfServiceSpecs.deleted_at
+                        < deleted_age,
+                    )
+                ).delete()
+            result = context.session.execute(
+                table.delete().where(
+                    and_(
+                        table.columns.deleted.is_(True),
+                        table.c.deleted_at < deleted_age,
+                    )
+                )
+            )
         except db_exc.DBReferenceError as ex:
-            LOG.error('DBError detected when purging from '
-                      '%(tablename)s: %(error)s.',
-                      {'tablename': table, 'error': ex})
+            LOG.error(
+                'DBError detected when purging from %(tablename)s: %(error)s.',
+                {'tablename': table, 'error': ex},
+            )
             raise
 
         rows_purged = result.rowcount
         if rows_purged != 0:
-            LOG.info("Deleted %(row)d rows from table=%(table)s",
-                     {'row': rows_purged, 'table': table})
+            LOG.info(
+                'Deleted %(row)d rows from table=%(table)s',
+                {'row': rows_purged, 'table': table},
+            )
 
 
 ###############################
