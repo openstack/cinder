@@ -121,8 +121,10 @@ class VolumeTypeTestCase(test.TestCase):
                          'drive type was not deleted')
         # Assert that associated volume type access is deleted successfully
         # on destroying the volume type
-        vol_type_access = db_api._volume_type_access_query(
-            self.ctxt).filter_by(volume_type_id=type_ref['id']).all()
+        with db_api.main_context_manager.reader.using(self.ctxt):
+            vol_type_access = db_api._volume_type_access_query(
+                self.ctxt
+            ).filter_by(volume_type_id=type_ref['id']).all()
         self.assertEqual([], vol_type_access)
 
     @mock.patch('cinder.quota.VolumeTypeQuotaEngine.'

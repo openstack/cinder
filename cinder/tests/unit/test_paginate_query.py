@@ -23,7 +23,8 @@ class TestPaginateQuery(test.TestCase):
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                            auth_token=True,
                                            is_admin=True)
-        self.query = db_api._volume_get_query(self.ctxt)
+        with db_api.main_context_manager.reader.using(self.ctxt):
+            self.query = db_api._volume_get_query(self.ctxt)
         self.model = models.Volume
 
     def test_paginate_query_marker_null(self):
