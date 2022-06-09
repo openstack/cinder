@@ -372,54 +372,63 @@ class QuotaCommands(object):
         """
         self._check_sync(project_id, do_fix=True)
 
-    def _get_quota_projects(self, ctxt, project_id):
+    @db_api.main_context_manager.reader
+    def _get_quota_projects(self, context, project_id):
         """Get project ids that have quota_usage entries."""
         if project_id:
             model = models.QuotaUsage
-            session = db_api.get_session()
             # If the project does not exist
-            if not session.query(db_api.sql.exists().where(
-                    db_api.and_(model.project_id == project_id,
-                                ~model.deleted))).scalar():
-                print('Project id %s has no quota usage. Nothing to do.' %
-                      project_id)
+            if not context.session.query(
+                db_api.sql.exists()
+                .where(
+                    db_api.and_(
+                        model.project_id == project_id,
+                        ~model.deleted,
+                    ),
+                )
+            ).scalar():
+                print(
+                    'Project id %s has no quota usage. Nothing to do.' %
+                    project_id,
+                )
                 return []
             return [project_id]
 
-        projects = db_api.model_query(context,
-                                      models.QuotaUsage,
-                                      read_deleted="no").\
-            with_entities('project_id').\
-            distinct().\
-            all()
+        projects = db_api.model_query(
+            context,
+            models.QuotaUsage,
+            read_deleted="no"
+        ).with_entities('project_id').distinct().all()
         project_ids = [row.project_id for row in projects]
         return project_ids
 
-    def _get_usages(self, ctxt, session, resources, project_id):
+    def _get_usages(self, context, resources, project_id):
         """Get data necessary to check out of sync quota usage.
 
         Returns a list QuotaUsage instances for the specific project
         """
-        usages = db_api.model_query(ctxt,
-                                    db_api.models.QuotaUsage,
-                                    read_deleted="no",
-                                    session=session).\
-            filter_by(project_id=project_id).\
-            with_for_update().\
-            all()
+        usages = db_api.model_query(
+            context,
+            db_api.models.QuotaUsage,
+            read_deleted="no",
+        ).filter_by(project_id=project_id).with_for_update().all()
         return usages
 
-    def _get_reservations(self, ctxt, session, project_id, usage_id):
+    def _get_reservations(self, context, project_id, usage_id):
         """Get reservations for a given project and usage id."""
-        reservations = db_api.model_query(ctxt, models.Reservation,
-                                          read_deleted="no",
-                                          session=session).\
-            filter_by(project_id=project_id, usage_id=usage_id).\
-            with_for_update().\
-            all()
+        reservations = (
+            db_api.model_query(
+                context,
+                models.Reservation,
+                read_deleted="no",
+            )
+            .filter_by(project_id=project_id, usage_id=usage_id)
+            .with_for_update()
+            .all()
+        )
         return reservations
 
-    def _check_duplicates(self, ctxt, session, usages, do_fix):
+    def _check_duplicates(self, context, usages, do_fix):
         """Look for duplicated quota used entries (bug#1484343)
 
         If we have duplicates and we are fixing them, then we reassign the
@@ -443,15 +452,17 @@ class QuotaCommands(object):
                     # Each of the duplicates can have reservations
                     reassigned = 0
                     for usage in resource_usages[1:]:
-                        reservations = self._get_reservations(ctxt, session,
-                                                              usage.project_id,
-                                                              usage.id)
+                        reservations = self._get_reservations(
+                            context,
+                            usage.project_id,
+                            usage.id,
+                        )
                         reassigned += len(reservations)
                         for reservation in reservations:
                             reservation.usage_id = keep_usage.id
                         keep_usage.in_use += usage.in_use
                         keep_usage.reserved += usage.reserved
-                        usage.delete(session=session)
+                        usage.delete(context.session)
                     print('duplicates removed & %s reservations reassigned' %
                           reassigned)
                 else:
@@ -471,57 +482,81 @@ class QuotaCommands(object):
         # projects removed will just turn nothing on the quota usage.
         projects = self._get_quota_projects(ctxt, project_id)
 
-        session = db_api.get_session()
-
-        action_msg = ' - fixed' if do_fix else ''
-
         discrepancy = False
 
         # NOTE: It's important to always get the quota first and then the
         # reservations to prevent deadlocks with quota commit and rollback from
         # running Cinder services.
         for project in projects:
-            with session.begin():
-                print('Processing quota usage for project %s' % project)
-                # We only want to sync existing quota usage rows
-                usages = self._get_usages(ctxt, session, resources, project)
+            discrepancy &= self._check_project_sync(
+                ctxt,
+                project,
+                do_fix,
+                resources,
+            )
 
-                # Check for duplicated entries (bug#1484343)
-                usages, duplicates_found = self._check_duplicates(ctxt,
-                                                                  session,
-                                                                  usages,
-                                                                  do_fix)
-                if duplicates_found:
-                    discrepancy = True
-
-                # Check quota and reservations
-                for usage in usages:
-                    resource_name = usage.resource
-                    # Get the correct value for this quota usage resource
-                    updates = db_api._get_sync_updates(ctxt, project, session,
-                                                       resources,
-                                                       resource_name)
-                    in_use = updates[resource_name]
-                    if in_use != usage.in_use:
-                        print('\t%s: invalid usage saved=%s actual=%s%s' %
-                              (resource_name, usage.in_use, in_use,
-                               action_msg))
-                        discrepancy = True
-                        if do_fix:
-                            usage.in_use = in_use
-
-                    reservations = self._get_reservations(ctxt, session,
-                                                          project, usage.id)
-                    num_reservations = sum(r.delta for r in reservations
-                                           if r.delta > 0)
-                    if num_reservations != usage.reserved:
-                        print('\t%s: invalid reserved saved=%s actual=%s%s' %
-                              (resource_name, usage.reserved,
-                               num_reservations, action_msg))
-                        discrepancy = True
-                        if do_fix:
-                            usage.reserved = num_reservations
         print('Action successfully completed')
+        return discrepancy
+
+    @db_api.main_context_manager.reader
+    def _check_project_sync(self, context, project, do_fix, resources):
+        print('Processing quota usage for project %s' % project)
+
+        discrepancy = False
+        action_msg = ' - fixed' if do_fix else ''
+
+        # We only want to sync existing quota usage rows
+        usages = self._get_usages(context, resources, project)
+
+        # Check for duplicated entries (bug#1484343)
+        usages, duplicates_found = self._check_duplicates(
+            context, usages, do_fix,
+        )
+        if duplicates_found:
+            discrepancy = True
+
+        # Check quota and reservations
+        for usage in usages:
+            resource_name = usage.resource
+            # Get the correct value for this quota usage resource
+            updates = db_api._get_sync_updates(
+                context,
+                project,
+                resources,
+                resource_name,
+            )
+            in_use = updates[resource_name]
+            if in_use != usage.in_use:
+                print(
+                    '\t%s: invalid usage saved=%s actual=%s%s' %
+                    (resource_name, usage.in_use, in_use, action_msg)
+                )
+                discrepancy = True
+                if do_fix:
+                    usage.in_use = in_use
+
+            reservations = self._get_reservations(
+                context,
+                project,
+                usage.id,
+            )
+            num_reservations = sum(
+                r.delta for r in reservations if r.delta > 0
+            )
+            if num_reservations != usage.reserved:
+                print(
+                    '\t%s: invalid reserved saved=%s actual=%s%s' %
+                    (
+                        resource_name,
+                        usage.reserved,
+                        num_reservations,
+                        action_msg,
+                    )
+                )
+                discrepancy = True
+                if do_fix:
+                    usage.reserved = num_reservations
+
         return discrepancy
 
 

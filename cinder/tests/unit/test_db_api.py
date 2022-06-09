@@ -100,21 +100,30 @@ class DBCommonFilterTestCase(BaseTest):
 
     @mock.patch('sqlalchemy.orm.query.Query.filter')
     def test__process_model_like_filter(self, mock_filter):
-        filters = {'display_name': 'fake_name',
-                   'display_description': 'fake_description',
-                   'host': 123,
-                   'status': []}
-        session = sqlalchemy_api.get_session()
-        query = session.query(models.Volume)
+        filters = {
+            'display_name': 'fake_name',
+            'display_description': 'fake_description',
+            'host': 123,
+            'status': [],
+        }
+
+        with sqlalchemy_api.main_context_manager.writer.using(self.ctxt):
+            query = self.ctxt.session.query(models.Volume)
+
         mock_filter.return_value = query
+
         with mock.patch.object(operators.Operators, 'op') as mock_op:
             def fake_operator(value):
                 return value
             mock_op.return_value = fake_operator
-            sqlalchemy_api._process_model_like_filter(models.Volume,
-                                                      query, filters)
-            calls = [call('%fake_description%'),
-                     call('%fake_name%'), call('%123%')]
+            sqlalchemy_api._process_model_like_filter(
+                models.Volume, query, filters,
+            )
+            calls = [
+                call('%fake_description%'),
+                call('%fake_name%'),
+                call('%123%'),
+            ]
             mock_filter.assert_has_calls(calls, any_order=True)
 
     @ddt.data({'handler': [db.volume_create, db.volume_get_all],
@@ -2395,11 +2404,9 @@ class DBAPIVolumeTypeTestCase(BaseTest):
         # NOTE(dulek): Bug 1496747 uncovered problems when deleting accesses
         # with id column higher than 128. This is regression test for that
         # case.
-
-        session = sqlalchemy_api.get_session()
-        vta.id = 150
-        vta.save(session=session)
-        session.close()
+        with sqlalchemy_api.main_context_manager.writer.using(self.ctxt):
+            vta.id = 150
+            vta.save(self.ctxt.session)
 
         db.volume_type_access_remove(self.ctxt, vt['id'], 'fake_project')
         vtas = db.volume_type_access_get_all(self.ctxt, vt['id'])
@@ -2602,11 +2609,10 @@ class DBAPIReservationTestCase(BaseTest):
         reservations = _quota_reserve(self.ctxt, project, volumes=2)
 
         # Force a smaller reserved value in quota_usages table
-        session = sqlalchemy_api.get_session()
-        with session.begin():
-            vol_usage = db.quota_usage_get(self.ctxt, project, 'volumes')
+        vol_usage = db.quota_usage_get(self.ctxt, project, 'volumes')
+        with sqlalchemy_api.main_context_manager.writer.using(self.ctxt):
             vol_usage.reserved -= 1
-            vol_usage.save(session=session)
+            vol_usage.save(self.ctxt.session)
 
         # When committing 2 volumes from reserved to used reserved should not
         # go from 1 to -1 but from 1 to 0, but in-use should still increase by
@@ -2623,11 +2629,10 @@ class DBAPIReservationTestCase(BaseTest):
         reservations = _quota_reserve(self.ctxt, project, volumes=-2)
 
         # Force a smaller in_use than the one the reservation will decrease
-        session = sqlalchemy_api.get_session()
-        with session.begin():
-            vol_usage = db.quota_usage_get(self.ctxt, 'project1', 'volumes')
+        vol_usage = db.quota_usage_get(self.ctxt, 'project1', 'volumes')
+        with sqlalchemy_api.main_context_manager.writer.using(self.ctxt):
             vol_usage.in_use = 1
-            vol_usage.save(session=session)
+            vol_usage.save(self.ctxt.session)
 
         # When committing -2 volumes from reserved to in-use they should not
         # make in-use go from 1 to -1, but from 1 to 0
@@ -2663,11 +2668,10 @@ class DBAPIReservationTestCase(BaseTest):
         reservations = _quota_reserve(self.ctxt, project, volumes=2)
 
         # Force a smaller reserved value in quota_usages table
-        session = sqlalchemy_api.get_session()
-        with session.begin():
-            vol_usage = db.quota_usage_get(self.ctxt, project, 'volumes')
+        vol_usage = db.quota_usage_get(self.ctxt, project, 'volumes')
+        with sqlalchemy_api.main_context_manager.writer.using(self.ctxt):
             vol_usage.reserved -= 1
-            vol_usage.save(session=session)
+            vol_usage.save(self.ctxt.session)
 
         # When rolling back 2 volumes from reserved when there's only 1 in the
         # quota usage's reserved field, reserved should not go from 1 to -1
@@ -2698,11 +2702,10 @@ class DBAPIReservationTestCase(BaseTest):
         _quota_reserve(self.ctxt, project, volumes=2)
 
         # Force a smaller reserved value in quota_usages table
-        session = sqlalchemy_api.get_session()
-        with session.begin():
-            vol_usage = db.quota_usage_get(self.ctxt, project, 'volumes')
+        vol_usage = db.quota_usage_get(self.ctxt, project, 'volumes')
+        with sqlalchemy_api.main_context_manager.writer.using(self.ctxt):
             vol_usage.reserved -= 1
-            vol_usage.save(session=session)
+            vol_usage.save(self.ctxt.session)
 
         # When expiring 2 volumes from reserved when there's only 1 in the
         # quota usage's reserved field, reserved should not go from 1 to -1
@@ -3537,12 +3540,7 @@ class DBAPIGenericTestCase(BaseTest):
         # one is not being used) to confirm that the DB exists subquery is
         # properly formulated and doesn't result in multiple rows, as such
         # case would raise an exception when converting the result to an
-        # scalar.  This would happen if for example the query wasn't generated
-        # directly using get_session but using model_query like this:
-        #  query = model_query(context, model,
-        #                      sql.exists().where(and_(*conditions)))
-        # Instead of what we do:
-        #  query = get_session().query(sql.exists().where(and_(*conditions)))
+        # scalar.
         db.volume_create(self.ctxt, {'id': fake.VOLUME_ID,
                                      'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_create(self.ctxt, {'id': fake.VOLUME2_ID,
@@ -3647,8 +3645,7 @@ class EngineFacadeTestCase(BaseTest):
         self.project_id = fake.PROJECT_ID
         self.context = context.RequestContext(self.user_id, self.project_id)
 
-    @mock.patch.object(sqlalchemy_api, 'get_session')
-    def test_use_single_context_session_writer(self, mock_get_session):
+    def test_use_single_context_session_writer(self):
         # Checks that session in context would not be overwritten by
         # annotation @sqlalchemy_api.main_context_manager.writer if annotation
         # is used twice.
@@ -3667,8 +3664,7 @@ class EngineFacadeTestCase(BaseTest):
         parent_session, child_session = fake_parent_method(self.context)
         self.assertEqual(parent_session, child_session)
 
-    @mock.patch.object(sqlalchemy_api, 'get_session')
-    def test_use_single_context_session_reader(self, mock_get_session):
+    def test_use_single_context_session_reader(self):
         # Checks that session in context would not be overwritten by
         # annotation @sqlalchemy_api.main_context_manager.reader if annotation
         # is used twice.
