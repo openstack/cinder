@@ -207,10 +207,16 @@ class API(base.Base):
                                                 metadata):
         if scheduler_hints:
             if 'same_host' in scheduler_hints:
-                hint = ','.join(scheduler_hints["same_host"])
+                if isinstance(scheduler_hints['same_host'], str):
+                    hint = scheduler_hints['same_host']
+                else:
+                    hint = ','.join(scheduler_hints["same_host"])
                 metadata["scheduler_hint_same_host"] = hint
             if "different_host" in scheduler_hints:
-                hint = ','.join(scheduler_hints["different_host"])
+                if isinstance(scheduler_hints['different_host'], str):
+                    hint = scheduler_hints["different_host"]
+                else:
+                    hint = ','.join(scheduler_hints["different_host"])
                 metadata["scheduler_hint_different_host"] = hint
         return metadata
 
