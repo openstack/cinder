@@ -562,8 +562,9 @@ class DS8KCommonHelper(object):
             invalid_states += ('suspended',)
         elif state == 'suspended':
             invalid_states += ('valid',)
+
+        finished = False
         try:
-            finished = False
             while True:
                 eventlet.sleep(2)
                 pairs = self.get_pprc_pairs(min_vol_id, max_vol_id)
