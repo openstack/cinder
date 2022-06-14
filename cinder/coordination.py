@@ -110,16 +110,21 @@ class Coordinator(object):
     def remove_lock(self, glob_name):
         # Most locks clean up on release, but not the file lock, so we manually
         # clean them.
+
+        def _err(file_name: str, exc: Exception) -> None:
+            LOG.warning('Failed to cleanup lock %(name)s: %(exc)s',
+                        {'name': file_name, 'exc': exc})
+
         if self._file_path:
             files = glob.glob(self._file_path + glob_name)
             for file_name in files:
                 try:
                     os.remove(file_name)
+                except OSError as exc:
+                    if (exc.errno != errno.ENOENT):
+                        _err(file_name, exc)
                 except Exception as exc:
-                    if not (isinstance(exc, OSError) and
-                            exc.errno == errno.ENOENT):
-                        LOG.warning('Failed to cleanup lock %(name)s: %(exc)s',
-                                    {'name': file_name, 'exc': exc})
+                    _err(file_name, exc)
 
 
 COORDINATOR = Coordinator(prefix='cinder-')

@@ -966,6 +966,10 @@ class UtilCommands(object):
                          if not objects.Snapshot.exists(self.ctxt, snap_id)}
             self._exclude_running_backups(backups)
 
+        def _err(filename: str, exc: Exception) -> None:
+            print('Failed to cleanup lock %(name)s: %(exc)s',
+                  {'name': filename, 'exc': exc})
+
         # Now clean
         for filenames in itertools.chain(volumes.values(),
                                          snapshots.values(),
@@ -973,11 +977,11 @@ class UtilCommands(object):
             for filename in filenames:
                 try:
                     os.remove(filename)
+                except OSError as exc:
+                    if (exc.errno != errno.ENOENT):
+                        _err(filename, exc)
                 except Exception as exc:
-                    if not (isinstance(exc, OSError) and
-                            exc.errno == errno.ENOENT):
-                        print('Failed to cleanup lock %(name)s: %(exc)s',
-                              {'name': filename, 'exc': exc})
+                    _err(filename, exc)
 
 
 CATEGORIES = {
