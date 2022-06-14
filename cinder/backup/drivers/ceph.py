@@ -110,7 +110,7 @@ class VolumeMetadataBackup(object):
 
     @property
     def name(self) -> str:
-        return utils.convert_str("backup.%s.meta" % self._backup_id)
+        return "backup.%s.meta" % self._backup_id
 
     @property
     def exists(self) -> bool:
@@ -192,9 +192,9 @@ class CephBackupDriver(driver.BackupDriver):
             self.rbd_stripe_count = 0
             self.rbd_stripe_unit = 0
 
-        self._ceph_backup_user = utils.convert_str(CONF.backup_ceph_user)
-        self._ceph_backup_pool = utils.convert_str(CONF.backup_ceph_pool)
-        self._ceph_backup_conf = utils.convert_str(CONF.backup_ceph_conf)
+        self._ceph_backup_user = CONF.backup_ceph_user
+        self._ceph_backup_pool = CONF.backup_ceph_pool
+        self._ceph_backup_conf = CONF.backup_ceph_conf
 
     @staticmethod
     def get_driver_options() -> list:
@@ -320,7 +320,7 @@ class CephBackupDriver(driver.BackupDriver):
                                       conffile=self._ceph_backup_conf))
         try:
             client.connect()
-            pool_to_open = utils.convert_str(pool or self._ceph_backup_pool)
+            pool_to_open = pool or self._ceph_backup_pool
             ioctx = client.open_ioctx(pool_to_open)
             return client, ioctx
         except self.rados.Error:
@@ -339,7 +339,7 @@ class CephBackupDriver(driver.BackupDriver):
     @staticmethod
     def _format_base_name(service_metadata: str) -> str:
         base_name = json.loads(service_metadata)["base"]
-        return utils.convert_str(base_name)
+        return base_name
 
     @staticmethod
     def _get_backup_base_name(
@@ -352,7 +352,7 @@ class CephBackupDriver(driver.BackupDriver):
         """
         # Ensure no unicode
         if not backup:
-            return utils.convert_str("volume-%s.backup.base" % volume_id)
+            return "volume-%s.backup.base" % volume_id
 
         if backup.service_metadata:
             return CephBackupDriver._format_base_name(backup.service_metadata)
@@ -367,13 +367,11 @@ class CephBackupDriver(driver.BackupDriver):
                 base_name = CephBackupDriver._format_base_name(
                     service_metadata)
             else:
-                base_name = utils.convert_str("volume-%s.backup.base"
-                                              % volume_id)
+                base_name = "volume-%s.backup.base" % volume_id
 
             return base_name
 
-        return utils.convert_str("volume-%s.backup.%s"
-                                 % (volume_id, backup.id))
+        return "volume-%s.backup.%s" % (volume_id, backup.id)
 
     def _discard_bytes(self,
                        volume: linuxrbd.RBDVolumeIOWrapper,
@@ -597,7 +595,7 @@ class CephBackupDriver(driver.BackupDriver):
 
             # Since we have deleted the base image we can delete the source
             # volume backup snapshot.
-            src_name = utils.convert_str(volume_id)
+            src_name = volume_id
             if src_name in eventlet.tpool.Proxy(
                     self.rbd.RBD()).list(client.ioctx):
                 LOG.debug("Deleting source volume snapshot '%(snapshot)s' "
@@ -670,14 +668,13 @@ class CephBackupDriver(driver.BackupDriver):
         if from_snap is not None:
             cmd1.extend(['--from-snap', from_snap])
         if src_snap:
-            path = utils.convert_str("%s/%s@%s"
-                                     % (src_pool, src_name, src_snap))
+            path = "%s/%s@%s" % (src_pool, src_name, src_snap)
         else:
-            path = utils.convert_str("%s/%s" % (src_pool, src_name))
+            path = "%s/%s" % (src_pool, src_name)
         cmd1.extend([path, '-'])
 
         cmd2 = ['rbd', 'import-diff'] + dest_ceph_args
-        rbd_path = utils.convert_str("%s/%s" % (dest_pool, dest_name))
+        rbd_path = "%s/%s" % (dest_pool, dest_name)
         cmd2.extend(['-', rbd_path])
 
         ret, stderr = self._piped_execute(cmd1, cmd2)
@@ -939,8 +936,7 @@ class CephBackupDriver(driver.BackupDriver):
         return backup_snaps
 
     def _get_new_snap_name(self, backup_id: str) -> str:
-        return utils.convert_str("backup.%s.snap.%s"
-                                 % (backup_id, time.time()))
+        return "backup.%s.snap.%s" % (backup_id, time.time())
 
     def _get_backup_snap_name(self, rbd_image: 'rbd.Image',
                               name: Optional[str], backup_id: str):
@@ -1123,7 +1119,7 @@ class CephBackupDriver(driver.BackupDriver):
                                   backup.container)) as client:
             adjust_size = 0
             base_image = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
-                                              utils.convert_str(backup_base),
+                                              backup_base,
                                               read_only=True))
             try:
                 if restore_length != base_image.size():

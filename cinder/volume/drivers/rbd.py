@@ -173,11 +173,9 @@ class RBDVolumeProxy(object):
         rados_client, rados_ioctx = driver._connect_to_rados(
             pool, remote, timeout) if self._close_conn else (client, ioctx)
 
-        if snapshot is not None:
-            snapshot = utils.convert_str(snapshot)
         try:
             self.volume = driver.rbd.Image(rados_ioctx,
-                                           utils.convert_str(name),
+                                           name,
                                            snapshot=snapshot,
                                            read_only=read_only)
             self.volume = tpool.Proxy(self.volume)
@@ -516,9 +514,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                                       'rados.Ioctx']:
             name, conf, user, secret_uuid = self._get_config_tuple(remote)
 
-            if pool is not None:
-                pool = utils.convert_str(pool)
-            else:
+            if pool is None:
                 pool = self.configuration.rbd_pool
 
             if timeout is None:
@@ -766,8 +762,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         and that clone has rbd_max_clone_depth clones behind it, the dest
         volume will be flattened.
         """
-        src_name = utils.convert_str(src_vref.name)
-        dest_name = utils.convert_str(volume.name)
+        src_name = src_vref.name
+        dest_name = volume.name
         clone_snap = "%s.clone_snap" % dest_name
 
         # Do full copy if requested
@@ -867,7 +863,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         Returns required volume update.
         """
-        vol_name = utils.convert_str(volume.name)
+        vol_name = volume.name
         with RBDVolumeProxy(self, vol_name) as image:
             had_exclusive_lock = (image.features() &
                                   self.RBD_FEATURE_EXCLUSIVE_LOCK)
@@ -887,7 +883,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 'replication_driver_data': driver_data}
 
     def _enable_multiattach(self, volume: Volume) -> dict[str, str]:
-        vol_name = utils.convert_str(volume.name)
+        vol_name = volume.name
         with RBDVolumeProxy(self, vol_name) as image:
             image_features = image.features()
             change_features = self.MULTIATTACH_EXCLUSIONS & image_features
@@ -897,7 +893,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 self._dumps({'saved_features': image_features})}
 
     def _disable_multiattach(self, volume: Volume) -> dict[str, None]:
-        vol_name = utils.convert_str(volume.name)
+        vol_name = volume.name
         with RBDVolumeProxy(self, vol_name) as image:
             try:
                 provider_location = json.loads(volume.provider_location)
@@ -1045,7 +1041,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
         order = int(math.log(chunk_size, 2))
-        vol_name = utils.convert_str(volume.name)
+        vol_name = volume.name
 
         with RADOSClient(self) as client:
             self.RBDProxy().create(client.ioctx,
@@ -1099,15 +1095,15 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                   dict(pool=src_pool, img=src_image, snap=src_snap,
                        dst=volume.name))
 
-        vol_name = utils.convert_str(volume.name)
+        vol_name = volume.name
 
         with RADOSClient(self, src_pool) as src_client:
             stripe_unit = self._get_stripe_unit(src_client.ioctx, src_image)
             order = int(math.log(stripe_unit, 2))
             with RADOSClient(self) as dest_client:
                 self.RBDProxy().clone(src_client.ioctx,
-                                      utils.convert_str(src_image),
-                                      utils.convert_str(src_snap),
+                                      src_image,
+                                      src_snap,
                                       dest_client.ioctx,
                                       vol_name,
                                       features=src_client.features,
@@ -1268,9 +1264,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def delete_volume(self, volume: Volume) -> None:
         """Deletes a logical volume."""
-        # NOTE(dosaboy): this was broken by commit cbe1d5f. Ensure names are
-        #                utf-8 otherwise librbd will barf.
-        volume_name = utils.convert_str(volume.name)
+        volume_name = volume.name
         with RADOSClient(self) as client:
             try:
                 rbd_image = self.rbd.Image(client.ioctx, volume_name)
@@ -1362,16 +1356,14 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     def create_snapshot(self, snapshot: Snapshot) -> None:
         """Creates an rbd snapshot."""
         with RBDVolumeProxy(self, snapshot.volume_name) as volume:
-            snap = utils.convert_str(snapshot.name)
+            snap = snapshot.name
             volume.create_snap(snap)
             volume.protect_snap(snap)
 
     def delete_snapshot(self, snapshot: Snapshot) -> None:
         """Deletes an rbd snapshot."""
-        # NOTE(dosaboy): this was broken by commit cbe1d5f. Ensure names are
-        #                utf-8 otherwise librbd will barf.
-        volume_name = utils.convert_str(snapshot.volume_name)
-        snap_name = utils.convert_str(snapshot.name)
+        volume_name = snapshot.volume_name
+        snap_name = snapshot.name
 
         with RBDVolumeProxy(self, volume_name) as volume:
             try:
@@ -1433,7 +1425,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def _disable_replication(self, volume: Volume) -> dict[str, Optional[str]]:
         """Disable replication on the given volume."""
-        vol_name = utils.convert_str(volume.name)
+        vol_name = volume.name
         with RBDVolumeProxy(self, vol_name) as image:
             image.mirror_image_disable(False)
             driver_data = json.loads(volume.replication_driver_data)
@@ -1495,7 +1487,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         """
         # Failover is allowed when volume has it enabled or it has already
         # failed over, because we may want to do a second failover.
-        vol_name = utils.convert_str(volume.name)
+        vol_name = volume.name
         try:
             self._exec_on_volume(vol_name, remote,
                                  'mirror_image_promote', not is_demoted)
@@ -1529,7 +1521,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         for volume in volumes:
             demoted = False
             if try_demoting:
-                vol_name = utils.convert_str(volume.name)
+                vol_name = volume.name
                 try:
                     self._exec_on_volume(vol_name, self._active_config,
                                          'mirror_image_demote')
@@ -1904,7 +1896,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             rbd_name = existing_ref['source-name']
             self.RBDProxy().rename(client.ioctx,
                                    utils.convert_str(rbd_name),
-                                   utils.convert_str(volume.name))
+                                   volume.name)
 
     def manage_existing_get_size(self,
                                  volume: Volume,
@@ -2050,8 +2042,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         with RADOSClient(self) as client:
             try:
                 self.RBDProxy().rename(client.ioctx,
-                                       utils.convert_str(existing_name),
-                                       utils.convert_str(wanted_name))
+                                       existing_name,
+                                       wanted_name)
             except (self.rbd.ImageNotFound, self.rbd.ImageExists):
                 LOG.error('Unable to rename the logical volume '
                           'for volume %s.', volume.id)
@@ -2165,7 +2157,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref, reason=reason)
 
-        volume_name = utils.convert_str(snapshot.volume_name)
+        volume_name = snapshot.volume_name
         snapshot_name = utils.convert_str(existing_ref['source-name'])
 
         with RADOSClient(self) as client:
@@ -2213,11 +2205,11 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         """
         if not isinstance(existing_ref, dict):
             existing_ref = {"source-name": existing_ref}
-        volume_name = utils.convert_str(snapshot.volume_name)
+        volume_name = snapshot.volume_name
         with RBDVolumeProxy(self, volume_name) as volume:
             snapshot_name = existing_ref['source-name']
             volume.rename_snap(utils.convert_str(snapshot_name),
-                               utils.convert_str(snapshot.name))
+                               snapshot.name)
             if not volume.is_protected_snap(snapshot.name):
                 volume.protect_snap(snapshot.name)
 
