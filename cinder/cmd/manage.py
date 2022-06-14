@@ -484,9 +484,6 @@ class QuotaCommands(object):
 
         discrepancy = False
 
-        # NOTE: It's important to always get the quota first and then the
-        # reservations to prevent deadlocks with quota commit and rollback from
-        # running Cinder services.
         for project in projects:
             discrepancy &= self._check_project_sync(
                 ctxt,
@@ -504,6 +501,10 @@ class QuotaCommands(object):
 
         discrepancy = False
         action_msg = ' - fixed' if do_fix else ''
+
+        # NOTE: It's important to always get the quota first and then the
+        # reservations to prevent deadlocks with quota commit and rollback from
+        # running Cinder services.
 
         # We only want to sync existing quota usage rows
         usages = self._get_usages(context, resources, project)
