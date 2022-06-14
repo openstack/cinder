@@ -1589,8 +1589,8 @@ class API(base.Base):
             if rollback:
                 _roll_back_status()
 
+        reservations = None
         try:
-            reservations = None
             reserve_opts = {'gigabytes': size_increase}
             QUOTAS.add_volume_type_opts(context, reserve_opts,
                                         volume.volume_type_id)
