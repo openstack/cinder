@@ -1224,6 +1224,11 @@ class PowerMaxRest(object):
                     element_name = self.utils.get_volume_element_name(name_id)
                     if vol_identifier == element_name:
                         found_device_id = device_id
+            else:
+                LOG.error("We cannot verify that device %(dev)s was "
+                          "created/managed by openstack by its "
+                          "identifier name.", {'dev': device_id})
+
         return found_device_id
 
     def add_vol_to_sg(self, array, storagegroup_name, device_id, extra_specs,
@@ -1412,6 +1417,9 @@ class PowerMaxRest(object):
         :returns: volume dict
         :raises: VolumeBackendAPIException
         """
+        if not device_id:
+            LOG.warning('No device id supplied to get_volume.')
+            return dict()
         version = self.get_uni_version()[1]
         volume_dict = self.get_resource(
             array, SLOPROVISIONING, 'volume', resource_name=device_id,
@@ -1530,6 +1538,9 @@ class PowerMaxRest(object):
         :param device_id: the volume device id
         :param new_name: the new name for the volume, can be None
         """
+        if not device_id:
+            LOG.warning('No device id supplied to rename operation.')
+            return
         if new_name is not None:
             vol_identifier_dict = {
                 "identifier_name": new_name,
@@ -1547,17 +1558,26 @@ class PowerMaxRest(object):
         :param array: the array serial number
         :param device_id: volume device id
         """
+        # Check if volume is in any storage group
+        sg_list = self.get_storage_groups_from_volume(
+            array, device_id)
+        if sg_list:
+            exception_message = (_(
+                "Device %(device_id)s is in storage group(s) "
+                "%(sg_list)s prior to delete.")
+                % {'device_id': device_id, 'sg_list': sg_list})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(exception_message)
 
         if ((self.ucode_major_level >= utils.UCODE_5978)
                 and (self.ucode_minor_level > utils.UCODE_5978_ELMSR)):
             # Use Rapid TDEV Deallocation to delete after ELMSR
             try:
-                # Rename volume, removing the OS-<cinderUUID>
-                self.rename_volume(array, device_id, None)
                 self.delete_resource(array, SLOPROVISIONING,
                                      "volume", device_id)
             except Exception as e:
-                LOG.warning('Delete volume failed with %(e)s.', {'e': e})
+                LOG.warning('Delete volume %(dev)s failed with %(e)s.',
+                            {'dev': device_id, 'e': e})
                 raise
         else:
             # Pre-Foxtail, deallocation and delete are separate calls
@@ -1569,12 +1589,14 @@ class PowerMaxRest(object):
                 self._modify_volume(array, device_id, payload)
                 pass
             except Exception as e:
-                LOG.warning('Deallocate volume failed with %(e)s.'
-                            'Attempting delete.', {'e': e})
+                LOG.warning('Deallocate volume %(dev)s failed with %(e)s.'
+                            'Attempting delete.',
+                            {'dev': device_id, 'e': e})
                 # Try to delete the volume if deallocate failed.
                 self.delete_resource(array, SLOPROVISIONING,
                                      "volume", device_id)
 
+    @retry(retry_exc_tuple, interval=2, retries=3)
     def find_mv_connections_for_vol(self, array, maskingview, device_id):
         """Find the host_lun_id for a volume in a masking view.
 
@@ -1595,16 +1617,35 @@ class PowerMaxRest(object):
                       'for %(mv)s.', {'mv': maskingview})
         else:
             try:
-                host_lun_id = (
-                    connection_info[
-                        'maskingViewConnection'][0]['host_lun_address'])
-                host_lun_id = int(host_lun_id, 16)
+                masking_view_conn = connection_info.get(
+                    'maskingViewConnection')
+                if masking_view_conn and isinstance(
+                        masking_view_conn, list):
+                    host_lun_id = masking_view_conn[0].get(
+                        'host_lun_address')
+                    if host_lun_id:
+                        host_lun_id = int(host_lun_id, 16)
+                    else:
+                        exception_message = (
+                            _('Unable to get host_lun_address for '
+                              'device %(dev)s on masking view %(mv)s. '
+                              'Retrying...')
+                            % {'dev': device_id, 'mv': maskingview})
+                        LOG.warning(exception_message)
+                        raise exception.VolumeBackendAPIException(
+                            message=exception_message)
             except Exception as e:
-                LOG.error("Unable to retrieve connection information "
-                          "for volume %(vol)s in masking view %(mv)s. "
-                          "Exception received: %(e)s.",
-                          {'vol': device_id, 'mv': maskingview,
-                           'e': e})
+                exception_message = (
+                    _("Unable to retrieve connection information "
+                      "for volume %(vol)s in masking view %(mv)s. "
+                      "Exception received: %(e)s. Retrying...")
+                    % {'vol': device_id, 'mv': maskingview,
+                       'e': e})
+                LOG.warning(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    message=exception_message)
+        LOG.debug("The hostlunid is %(hli)s for %(dev)s.",
+                  {'hli': host_lun_id, 'dev': device_id})
         return host_lun_id
 
     def get_storage_groups_from_volume(self, array, device_id):
@@ -1615,7 +1656,16 @@ class PowerMaxRest(object):
         :returns: storagegroup_list
         """
         sg_list = []
+        if not device_id:
+            return sg_list
         vol = self.get_volume(array, device_id)
+        if vol and isinstance(vol, list):
+            LOG.warning(
+                "Device id %(dev_id)s has brought back "
+                "multiple volume objects.",
+                {'vol_name': device_id})
+            return sg_list
+
         if vol and vol.get('storageGroupId'):
             sg_list = vol['storageGroupId']
         num_storage_groups = len(sg_list)
@@ -1647,13 +1697,19 @@ class PowerMaxRest(object):
         """
         device_id = None
         params = {"volume_identifier": volume_name}
-
-        volume_list = self.get_volume_list(array, params)
-        if not volume_list:
-            LOG.debug("Cannot find record for volume %(volumeId)s.",
-                      {'volumeId': volume_name})
+        device_list = self.get_volume_list(array, params)
+        if not device_list:
+            LOG.debug("Cannot find record for volume %(vol_name)s.",
+                      {'vol_name': volume_name})
         else:
-            device_id = volume_list[0]
+            LOG.debug("The device id list is %(dev_list)s for %(vol_name)s.",
+                      {'dev_list': device_list,
+                       'vol_name': volume_name})
+            device_id = device_list[0] if len(device_list) == 1 else (
+                device_list)
+            if isinstance(device_id, list):
+                LOG.warning("More than one devices returned for %(vol_name)s.",
+                            {'vol_name': volume_name})
         return device_id
 
     def find_volume_identifier(self, array, device_id):
@@ -1664,7 +1720,7 @@ class PowerMaxRest(object):
         :returns: the volume identifier -- string
         """
         vol = self.get_volume(array, device_id)
-        return vol['volume_identifier']
+        return vol.get('volume_identifier') if vol else None
 
     def get_size_of_device_on_array(self, array, device_id):
         """Get the size of the volume from the array.

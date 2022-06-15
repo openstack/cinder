@@ -146,7 +146,7 @@ class FakeRequestsSession(object):
         if '/private' in url:
             return_object = self.data.private_vol_details
         elif params:
-            if '1' in params.values():
+            if '1' in params.values() or 'volume_identifier' in params:
                 return_object = self.data.volume_list[0]
             elif '2' in params.values():
                 return_object = self.data.volume_list[1]

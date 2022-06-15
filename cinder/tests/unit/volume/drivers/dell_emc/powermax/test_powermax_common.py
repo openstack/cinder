@@ -400,7 +400,7 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs = self.common._initial_setup(test_volume)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.common._delete_volume, test_volume)
-        mck_cleanup.assert_called_once_with(array, device_id, extra_specs)
+        mck_cleanup.assert_called_with(array, device_id, extra_specs)
         mck_delete.assert_not_called()
 
     @mock.patch.object(common.PowerMaxCommon, '_delete_from_srp')
@@ -418,7 +418,7 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs = self.common._initial_setup(test_volume)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.common._delete_volume, test_volume)
-        mck_cleanup.assert_called_once_with(array, device_id, extra_specs)
+        mck_cleanup.assert_called_with(array, device_id, extra_specs)
         mck_delete.assert_not_called()
 
     @mock.patch.object(common.PowerMaxCommon, '_cleanup_device_snapvx')
@@ -1942,12 +1942,15 @@ class PowerMaxCommonTest(test.TestCase):
                 clone_name, snap_name, self.data.extra_specs,
                 target_volume=clone_volume)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_groups_from_volume',
+                       return_value=[])
     @mock.patch.object(rest.PowerMaxRest, 'get_snap_id',
                        return_value=tpd.PowerMaxData.snap_id)
     @mock.patch.object(
         masking.PowerMaxMasking,
         'remove_and_reset_members')
-    def test_cleanup_target_sync_present(self, mock_remove, mock_snaps):
+    def test_cleanup_target_sync_present(
+            self, mock_remove, mock_snaps, mock_sgs):
         array = self.data.array
         clone_volume = self.data.test_clone_volume
         source_device_id = self.data.device_id
@@ -3053,6 +3056,7 @@ class PowerMaxCommonTest(test.TestCase):
             model_update, __ = self.common._delete_group(group, volumes)
             self.assertEqual(ref_model_update, model_update)
 
+    @mock.patch.object(common.PowerMaxCommon, '_delete_from_srp')
     @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     @mock.patch.object(common.PowerMaxCommon, '_cleanup_device_snapvx')
     @mock.patch.object(common.PowerMaxCommon, '_get_members_of_volume_group',
@@ -3062,7 +3066,7 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
     def test_delete_group_snapshot_and_volume_cleanup(
             self, mock_check, mck_get_snaps, mock_members, mock_cleanup,
-            mock_remove):
+            mock_remove, mock_del):
         group = self.data.test_group_1
         volumes = [fake_volume.fake_volume_obj(
             context='cxt', provider_location=None)]
@@ -3966,6 +3970,13 @@ class PowerMaxCommonTest(test.TestCase):
         act_metadata = self.common.get_volume_metadata(array, device_id)
         self.assertEqual(ref_metadata, act_metadata)
 
+    def test_get_volume_metadata_device_none(self):
+        ref_metadata = {}
+        array = self.data.array
+        device_id = None
+        act_metadata = self.common.get_volume_metadata(array, device_id)
+        self.assertEqual(ref_metadata, act_metadata)
+
     @mock.patch.object(rest.PowerMaxRest, 'get_volume_snap_info',
                        return_value=tpd.PowerMaxData.priv_snap_response)
     def test_get_snapshot_metadata(self, mck_snap):
@@ -4049,6 +4060,23 @@ class PowerMaxCommonTest(test.TestCase):
 
         object_metadata = {'device-meta-key-1': 'device-meta-value-1',
                            'device-meta-key-2': 'device-meta-value-2'}
+
+        model_update = self.common.update_metadata(
+            model_update, existing_metadata, object_metadata)
+        self.assertEqual(ref_model_update, model_update)
+
+    def test_update_metadata_no_object_metadata(self):
+        model_update = {'provider_location': six.text_type(
+            self.data.provider_location)}
+        ref_model_update = (
+            {'provider_location': six.text_type(self.data.provider_location),
+             'metadata': {'user-meta-key-1': 'user-meta-value-1',
+                          'user-meta-key-2': 'user-meta-value-2'}})
+
+        existing_metadata = {'user-meta-key-1': 'user-meta-value-1',
+                             'user-meta-key-2': 'user-meta-value-2'}
+
+        object_metadata = {}
 
         model_update = self.common.update_metadata(
             model_update, existing_metadata, object_metadata)
@@ -4691,3 +4719,66 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertTrue(rnr.rdf_pair_broken)
         self.assertTrue(rnr.resume_original_sg)
         self.assertFalse(rnr.is_partitioned)
+
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_device_snapvx')
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snapshot_list',
+                       return_value=[])
+    @mock.patch.object(rest.PowerMaxRest, 'find_snap_vx_sessions',
+                       side_effect=[(None, tpd.PowerMaxData.snap_tgt_session),
+                                    (None, None)])
+    def test_cleanup_device_retry(self, mock_snapvx, mock_ss_list, mock_clean):
+        self.common._cleanup_device_retry(
+            self.data.array, self.data.device_id, self.data.extra_specs)
+        self.assertEqual(2, mock_clean.call_count)
+
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_device_id',
+                       return_value=[tpd.PowerMaxData.device_id,
+                                     tpd.PowerMaxData.device_id2])
+    def test_get_device_id_from_identifier_list(self, mock_dev_id):
+        ret_dev = self.common._get_device_id_from_identifier(
+            self.data.array, 'vol', self.data.device_id)
+        self.assertEqual(self.data.device_id, ret_dev)
+
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_device_id',
+                       return_value=tpd.PowerMaxData.device_id2)
+    def test_get_device_id_from_identifier_wrong(self, mock_dev_id):
+        ret_dev = self.common._get_device_id_from_identifier(
+            self.data.array, 'vol', self.data.device_id)
+        self.assertEqual(self.data.device_id2, ret_dev)
+
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_device_id',
+                       return_value=tpd.PowerMaxData.device_id)
+    def test_get_device_id_from_identifier_same(self, mock_dev_id):
+        ret_dev = self.common._get_device_id_from_identifier(
+            self.data.array, 'vol', self.data.device_id)
+        self.assertIsNone(ret_dev)
+
+    @mock.patch.object(rest.PowerMaxRest, 'rename_volume')
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_identifier',
+                       return_value='vol')
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_device_id',
+                       return_value=tpd.PowerMaxData.device_id)
+    def test_reset_identifier_on_rollback_rename(
+            self, mock_dev, mock_ident, mock_rename):
+        self.common._reset_identifier_on_rollback(self.data.array, 'vol')
+        mock_rename.assert_called_once()
+
+    @mock.patch.object(rest.PowerMaxRest, 'rename_volume')
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_identifier',
+                       return_value='diff_vol_name')
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_device_id',
+                       return_value=tpd.PowerMaxData.device_id)
+    def test_reset_identifier_on_rollback_no_rename(
+            self, mock_dev, mock_ident, mock_rename):
+        self.common._reset_identifier_on_rollback(self.data.array, 'vol')
+        mock_rename.assert_not_called()
+
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_device_snapvx')
+    @mock.patch.object(
+        provision.PowerMaxProvision, 'delete_volume_from_srp',
+        side_effect=[exception.VolumeBackendAPIException, None])
+    def test_test_delete_from_srp(self, mock_del, mock_clean):
+        self.common._delete_from_srp(
+            self.data.array, 'vol_name', self.data.device_id,
+            self.data.extra_specs)
+        mock_clean.assert_called_once()

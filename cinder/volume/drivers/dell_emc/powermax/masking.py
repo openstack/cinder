@@ -90,12 +90,14 @@ class PowerMaxMasking(object):
             error_message = self._get_or_create_masking_view(
                 serial_number, masking_view_dict,
                 default_sg_name, extra_specs)
-            LOG.debug(
-                "The masking view in the attach operation is "
-                "%(masking_name)s. The storage group "
-                "in the masking view is %(storage_name)s.",
-                {'masking_name': maskingview_name,
-                 'storage_name': storagegroup_name})
+            # Check that the device is in the correct storage group
+            if not self._validate_attach(
+                    serial_number, device_id, storagegroup_name,
+                    maskingview_name):
+                error_message = ("The attach validation for device "
+                                 "%(dev)s was unsuccessful.")
+                raise exception.VolumeBackendAPIException(
+                    message=error_message)
             rollback_dict['portgroup_name'] = (
                 self.rest.get_element_from_masking_view(
                     serial_number, maskingview_name, portgroup=True))
@@ -130,6 +132,71 @@ class PowerMaxMasking(object):
                 message=exception_message)
 
         return rollback_dict
+
+    def _validate_attach(
+            self, serial_number, device_id, dest_sg_name, dest_mv_name):
+        """Validate that the attach was successful.
+
+        :param serial_number: the array serial number
+        :param device_id: the device id
+        :param dest_sg_name: the correct storage group
+        :param dest_mv_name: the correct masking view
+        :returns: bool
+        """
+        sg_list = self.rest.get_storage_groups_from_volume(
+            serial_number, device_id)
+
+        def _validate_masking_view():
+            mv_list = self.rest.get_masking_views_from_storage_group(
+                serial_number, dest_sg_name)
+            if not mv_list:
+                LOG.error(
+                    "The masking view list of %(sg_name)s where device "
+                    "%(dev)s exists is empty.",
+                    {'sg_name': dest_sg_name,
+                     'dev': device_id})
+                return False
+
+            if dest_mv_name.lower() in (
+                    mv_name.lower() for mv_name in mv_list):
+                LOG.debug(
+                    "The masking view in the attach operation is "
+                    "%(masking_name)s. The storage group "
+                    "in the masking view is %(storage_name)s. "
+                    "The device id is %(dev)s.",
+                    {'masking_name': dest_mv_name,
+                     'storage_name': dest_sg_name,
+                     'dev': device_id})
+                return True
+            else:
+                LOG.error(
+                    "The masking view %(masking_name)s is not in "
+                    "the masking view list %(mv_list)s. "
+                    "%(sg_name)s is the storage group where device "
+                    "%(dev)s exists.",
+                    {'masking_name': dest_mv_name,
+                     'mv_list': mv_list,
+                     'sg_name': dest_sg_name,
+                     'dev': device_id})
+                return False
+
+        if not sg_list:
+            LOG.error(
+                "Device %(dev)s does not exist in any storage group.",
+                {'dev': device_id})
+            return False
+        if dest_sg_name.lower() in (
+                sg_name.lower() for sg_name in sg_list):
+            return _validate_masking_view()
+        else:
+            LOG.error(
+                "The storage group %(sg_name)s is not in "
+                "the storage group list %(sg_list)s "
+                "where device %(dev)s exists.",
+                {'sg_name': dest_sg_name,
+                 'sg_list': sg_list,
+                 'dev': device_id})
+            return False
 
     def _move_vol_from_default_sg(
             self, serial_number, device_id, volume_name,
@@ -767,6 +834,13 @@ class PowerMaxMasking(object):
                      {'volume_name': volume_name,
                       'sg_name': storagegroup_name})
         else:
+            storage_group_list = self.rest.get_storage_groups_from_volume(
+                serial_number, device_id)
+            if storage_group_list:
+                msg = self._check_add_volume_suitability(
+                    serial_number, device_id, volume_name, storagegroup_name)
+                if msg:
+                    return msg
             try:
                 force = True if extra_specs.get(utils.IS_RE) else False
                 self.add_volume_to_storage_group(
@@ -779,6 +853,42 @@ class PowerMaxMasking(object):
                           'e': six.text_type(e)})
                 LOG.error(msg)
         return msg
+
+    def _check_add_volume_suitability(
+            self, serial_number, device_id, volume_name, add_sg_name):
+        """Check if possible to add a volume to a storage group
+
+        If a volume already belongs to a storage group that is associated
+        with FAST it is not possible to add that same volume to another
+        storage group which is also associated with FAST
+
+        :param serial_number: the array serial number
+        :param device_id: the device id
+        :param volume_name: the client supplied volume name
+        :param add_sg_name: storage group that the volume is to be added to
+        :returns: msg -- str or None
+        """
+        storage_group = self.rest.get_storage_group(
+            serial_number, add_sg_name)
+        if storage_group and storage_group.get('slo') and (
+                storage_group.get('slo').lower() == 'none'):
+            return None
+        storage_group_list = self.rest.get_storage_groups_from_volume(
+            serial_number, device_id)
+        if storage_group_list:
+            msg = ("Volume %(vol)s with device id %(dev)s belongs "
+                   "to storage group(s) %(sgs)s. Cannot add volume "
+                   "to another storage group associated with FAST."
+                   % {'vol': volume_name, 'dev': device_id,
+                      'sgs': storage_group_list})
+            for storage_group_name in storage_group_list:
+                storage_group = self.rest.get_storage_group(
+                    serial_number, storage_group_name)
+                if storage_group and storage_group.get('slo') and (
+                        storage_group.get('slo').lower() != 'none'):
+                    LOG.error(msg)
+                    return msg
+        return None
 
     def add_volume_to_storage_group(
             self, serial_number, device_id, storagegroup_name,

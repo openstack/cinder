@@ -96,6 +96,8 @@ class PowerMaxMaskingTest(test.TestCase):
             self.maskingviewdict, self.extra_specs)
         mock_get_or_create_mv.assert_called_once()
 
+    @mock.patch.object(masking.PowerMaxMasking, '_validate_attach',
+                       return_value=True)
     @mock.patch.object(masking.PowerMaxMasking,
                        '_check_adding_volume_to_storage_group')
     @mock.patch.object(masking.PowerMaxMasking, '_move_vol_from_default_sg',
@@ -108,7 +110,7 @@ class PowerMaxMaskingTest(test.TestCase):
                                     Exception('Exception')])
     def test_get_or_create_masking_view_and_map_lun(
             self, mock_masking_view_element, mock_masking, mock_move,
-            mock_add_volume):
+            mock_add_volume, mock_validate):
         rollback_dict = (
             self.driver.masking.get_or_create_masking_view_and_map_lun(
                 self.data.array, self.data.test_volume,
@@ -920,6 +922,9 @@ class PowerMaxMaskingTest(test.TestCase):
             self.data.array, self.data.masking_view_name_i)
         mock_delete_mv.assert_called_once()
 
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
+        return_value=list())
     @mock.patch.object(masking.PowerMaxMasking,
                        'return_volume_to_volume_group')
     @mock.patch.object(rest.PowerMaxRest, 'move_volume_between_storage_groups')
@@ -927,7 +932,7 @@ class PowerMaxMaskingTest(test.TestCase):
                        'get_or_create_default_storage_group')
     @mock.patch.object(masking.PowerMaxMasking, 'add_volume_to_storage_group')
     def test_add_volume_to_default_storage_group(
-            self, mock_add_sg, mock_get_sg, mock_move, mock_return):
+            self, mock_add_sg, mock_get_sg, mock_move, mock_return, mock_sgs):
         self.mask.add_volume_to_default_storage_group(
             self.data.array, self.device_id, self.volume_name,
             self.extra_specs)
@@ -1428,3 +1433,36 @@ class PowerMaxMaskingTest(test.TestCase):
                 exception_message):
             self.mask._check_director_and_port_status(
                 self.data.array, self.data.port_group_name_f)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
+        return_value=([tpd.PowerMaxData.storagegroup_name_f]))
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_masking_views_from_storage_group',
+        return_value=[tpd.PowerMaxData.masking_view_name_f])
+    def test_validate_attach(self, mock_sgs, mock_mvs):
+        self.assertTrue(self.mask._validate_attach(
+            self.data.array, self.data.device_id,
+            self.data.storagegroup_name_f, self.data.masking_view_name_f))
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
+        return_value=([tpd.PowerMaxData.storagegroup_name_f]))
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_masking_views_from_storage_group',
+        return_value=[])
+    def test_validate_attach_no_mvs(self, mock_sgs, mock_mvs):
+        self.assertFalse(self.mask._validate_attach(
+            self.data.array, self.data.device_id,
+            self.data.storagegroup_name_f, self.data.masking_view_name_f))
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
+        return_value=([tpd.PowerMaxData.defaultstoragegroup_name]))
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_masking_views_from_storage_group',
+        return_value=[])
+    def test_validate_attach_incorrect_sg(self, mock_sgs, mock_mvs):
+        self.assertFalse(self.mask._validate_attach(
+            self.data.array, self.data.device_id,
+            self.data.storagegroup_name_f, self.data.masking_view_name_f))

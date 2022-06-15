@@ -216,12 +216,21 @@ class PowerMaxReplicationTest(test.TestCase):
                           self.iscsi_common.initialize_connection,
                           self.data.test_volume, self.data.connector)
 
+    @mock.patch.object(masking.PowerMaxMasking, '_validate_attach',
+                       return_value=True)
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
+        side_effect=[
+            [], [], [], [], [tpd.PowerMaxData.storagegroup_name_f], [],
+            [tpd.PowerMaxData.storagegroup_name_f],
+            [tpd.PowerMaxData.storagegroup_name_f]], )
     @mock.patch.object(
         masking.PowerMaxMasking, '_check_director_and_port_status')
     @mock.patch.object(
         masking.PowerMaxMasking, 'pre_multiattach',
         return_value=tpd.PowerMaxData.masking_view_dict_multiattach)
-    def test_attach_metro_volume(self, mock_pre, mock_check):
+    def test_attach_metro_volume(
+            self, mock_pre, mock_check, mock_sgs, mock_validate):
         rep_extra_specs = deepcopy(tpd.PowerMaxData.rep_extra_specs)
         rep_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         hostlunid, remote_port_group = self.common._attach_metro_volume(
@@ -802,10 +811,12 @@ class PowerMaxReplicationTest(test.TestCase):
             self.data.test_rep_group, self.data.rep_extra_specs)
         mock_rm.assert_called_once()
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_groups_from_volume',
+                       return_value=[])
     @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
     @mock.patch.object(masking.PowerMaxMasking,
                        'remove_volumes_from_storage_group')
-    def test_cleanup_group_replication(self, mock_rm, mock_rm_reset):
+    def test_cleanup_group_replication(self, mock_rm, mock_rm_reset, mock_sgs):
         self.common._cleanup_group_replication(
             self.data.array, self.data.test_vol_grp_name,
             [self.data.device_id], self.extra_specs, self.data.rep_config_sync)
