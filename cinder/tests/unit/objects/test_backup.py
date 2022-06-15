@@ -55,7 +55,7 @@ fake_snap = fake_snapshot.fake_db_snapshot(**snap_props)
 
 class TestBackup(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.get_by_id', return_value=fake_backup)
+    @mock.patch('cinder.db.api.get_by_id', return_value=fake_backup)
     def test_get_by_id(self, backup_get):
         backup = objects.Backup.get_by_id(self.context, fake.USER_ID)
         self._compare(self, fake_backup, backup)
@@ -74,14 +74,14 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         self.assertRaises(exception.BackupNotFound, objects.Backup.get_by_id,
                           self.context, 123)
 
-    @mock.patch('cinder.db.backup_create', return_value=fake_backup)
+    @mock.patch('cinder.db.api.backup_create', return_value=fake_backup)
     def test_create(self, backup_create):
         backup = objects.Backup(context=self.context)
         backup.create()
         self.assertEqual(fake_backup['id'], backup.id)
         self.assertEqual(fake_backup['volume_id'], backup.volume_id)
 
-    @mock.patch('cinder.db.backup_update')
+    @mock.patch('cinder.db.api.backup_update')
     def test_save(self, backup_update):
         backup = objects.Backup._from_db_object(
             self.context, objects.Backup(), fake_backup)
@@ -90,9 +90,9 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         backup_update.assert_called_once_with(self.context, backup.id,
                                               {'display_name': 'foobar'})
 
-    @mock.patch('cinder.db.backup_metadata_update',
+    @mock.patch('cinder.db.api.backup_metadata_update',
                 return_value={'key1': 'value1'})
-    @mock.patch('cinder.db.backup_update')
+    @mock.patch('cinder.db.api.backup_update')
     def test_save_with_metadata(self, backup_update, metadata_update):
         backup = objects.Backup._from_db_object(
             self.context, objects.Backup(), fake_backup)
@@ -168,7 +168,7 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         # Make sure we don't lose data when converting from string
         self.assertDictEqual(self._expected_backup(backup), imported_backup)
 
-    @mock.patch('cinder.db.get_by_id', return_value=fake_backup)
+    @mock.patch('cinder.db.api.get_by_id', return_value=fake_backup)
     def test_import_record_w_parent(self, backup_get):
         full_backup = objects.Backup.get_by_id(self.context, fake.USER_ID)
         self._compare(self, fake_backup, full_backup)
@@ -255,13 +255,13 @@ class TestBackup(test_objects.BaseObjectsTestCase):
 
 
 class TestBackupList(test_objects.BaseObjectsTestCase):
-    @mock.patch('cinder.db.backup_get_all', return_value=[fake_backup])
+    @mock.patch('cinder.db.api.backup_get_all', return_value=[fake_backup])
     def test_get_all(self, backup_get_all):
         backups = objects.BackupList.get_all(self.context)
         self.assertEqual(1, len(backups))
         TestBackup._compare(self, fake_backup, backups[0])
 
-    @mock.patch('cinder.db.backup_get_all_by_project',
+    @mock.patch('cinder.db.api.backup_get_all_by_project',
                 return_value=[fake_backup])
     def test_get_all_by_project(self, get_all_by_project):
         backups = objects.BackupList.get_all_by_project(
@@ -269,21 +269,21 @@ class TestBackupList(test_objects.BaseObjectsTestCase):
         self.assertEqual(1, len(backups))
         TestBackup._compare(self, fake_backup, backups[0])
 
-    @mock.patch('cinder.db.backup_get_all_by_host',
+    @mock.patch('cinder.db.api.backup_get_all_by_host',
                 return_value=[fake_backup])
     def test_get_all_by_host(self, get_all_by_host):
         backups = objects.BackupList.get_all_by_host(self.context, "fake_host")
         self.assertEqual(1, len(backups))
         TestBackup._compare(self, fake_backup, backups[0])
 
-    @mock.patch('cinder.db.backup_get_all', return_value=[fake_backup])
+    @mock.patch('cinder.db.api.backup_get_all', return_value=[fake_backup])
     def test_get_all_tenants(self, backup_get_all):
         search_opts = {'all_tenants': 1}
         backups = objects.BackupList.get_all(self.context, search_opts)
         self.assertEqual(1, len(backups))
         TestBackup._compare(self, fake_backup, backups[0])
 
-    @mock.patch('cinder.db.backup_get_all_by_volume',
+    @mock.patch('cinder.db.api.backup_get_all_by_volume',
                 return_value=[fake_backup])
     def test_get_all_by_volume(self, get_all_by_volume):
         backups = objects.BackupList.get_all_by_volume(
@@ -305,7 +305,7 @@ class BackupDeviceInfoTestCase(test_objects.BaseObjectsTestCase):
         self.backup_device_dict = {'secure_enabled': False,
                                    'is_snapshot': False, }
 
-    @mock.patch('cinder.db.volume_get', return_value=fake_vol)
+    @mock.patch('cinder.db.api.volume_get', return_value=fake_vol)
     def test_from_primitive_with_volume(self, mock_fake_vol):
         vol_obj = self.vol_obj
         self.backup_device_dict['backup_device'] = vol_obj
@@ -324,7 +324,7 @@ class BackupDeviceInfoTestCase(test_objects.BaseObjectsTestCase):
                                                          fake_vol)
         self.assertEqual(vol_obj_from_db, backup_device_info.volume)
 
-    @mock.patch('cinder.db.snapshot_get', return_value=fake_snap)
+    @mock.patch('cinder.db.api.snapshot_get', return_value=fake_snap)
     def test_from_primitive_with_snapshot(self, mock_fake_snap):
         snap_obj = self.snap_obj
         self.backup_device_dict['is_snapshot'] = True
@@ -341,7 +341,7 @@ class BackupDeviceInfoTestCase(test_objects.BaseObjectsTestCase):
             self.backup_device_dict, self.context, expected_attrs=['metadata'])
         self.assertEqual(snap_obj, backup_device_info.snapshot)
 
-    @mock.patch('cinder.db.volume_get', return_value=fake_vol)
+    @mock.patch('cinder.db.api.volume_get', return_value=fake_vol)
     def test_to_primitive_with_volume(self, mock_fake_vol):
         vol_obj = self.vol_obj
         self.backup_device_dict['backup_device'] = fake_vol
@@ -357,7 +357,7 @@ class BackupDeviceInfoTestCase(test_objects.BaseObjectsTestCase):
         self.assertEqual(self.backup_device_dict['backup_device'],
                          backup_device_ret_dict['backup_device'])
 
-    @mock.patch('cinder.db.snapshot_get', return_value=fake_snap)
+    @mock.patch('cinder.db.api.snapshot_get', return_value=fake_snap)
     def test_to_primitive_with_snapshot(self, mock_fake_snap):
         snap_obj = self.snap_obj
         backup_device_info = objects.BackupDeviceInfo()

@@ -20,7 +20,7 @@ from unittest import mock
 from eventlet import greenthread
 
 from cinder import context
-import cinder.db
+import cinder.db.api
 from cinder import exception
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as testutils
@@ -56,7 +56,7 @@ class InStorageMCSISCSIDriverTestCase(test.TestCase):
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
-        self.db = cinder.db
+        self.db = cinder.db.api
         self.iscsi_driver.db = self.db
         self.iscsi_driver.do_setup(None)
         self.iscsi_driver.check_for_setup_error()

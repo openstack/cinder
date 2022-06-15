@@ -50,11 +50,14 @@ class SchedulerHintsTestCase(test.TestCase):
             fake.USER_ID, fake.PROJECT_ID, auth_token=True)
         self.app = fakes.wsgi_app(fake_auth_context=self.user_ctxt)
         self.admin_ctxt = context.get_admin_context()
-        cinder.db.volume_type_create(self.admin_ctxt,
-                                     v3_fakes.fake_default_type_get(
-                                         fake.VOLUME_TYPE2_ID))
-        self.vol_type = cinder.db.volume_type_get_by_name(self.admin_ctxt,
-                                                          'vol_type_name')
+        cinder.db.api.volume_type_create(
+            self.admin_ctxt,
+            v3_fakes.fake_default_type_get(fake.VOLUME_TYPE2_ID),
+        )
+        self.vol_type = cinder.db.api.volume_type_get_by_name(
+            self.admin_ctxt,
+            'vol_type_name',
+        )
 
     def test_create_server_without_hints(self):
 

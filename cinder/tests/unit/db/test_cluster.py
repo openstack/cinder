@@ -19,7 +19,7 @@ from unittest import mock
 
 from sqlalchemy.orm import exc
 
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.tests.unit import test_db_api
 from cinder.tests.unit import utils

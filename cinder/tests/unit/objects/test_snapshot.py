@@ -51,7 +51,7 @@ fake_snapshot_obj = {
 @ddt.ddt
 class TestSnapshot(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.get_by_id', return_value=fake_db_snapshot)
+    @mock.patch('cinder.db.api.get_by_id', return_value=fake_db_snapshot)
     def test_get_by_id(self, snapshot_get):
         snapshot = objects.Snapshot.get_by_id(self.context, 1)
         self._compare(self, fake_snapshot_obj, snapshot)
@@ -71,14 +71,14 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
         snapshot.obj_reset_changes(['metadata'])
         self.assertEqual({'key1': 'value1'}, snapshot._orig_metadata)
 
-    @mock.patch('cinder.db.snapshot_create', return_value=fake_db_snapshot)
+    @mock.patch('cinder.db.api.snapshot_create', return_value=fake_db_snapshot)
     def test_create(self, snapshot_create):
         snapshot = objects.Snapshot(context=self.context)
         snapshot.create()
         self.assertEqual(fake_snapshot_obj['id'], snapshot.id)
         self.assertEqual(fake_snapshot_obj['volume_id'], snapshot.volume_id)
 
-    @mock.patch('cinder.db.snapshot_create')
+    @mock.patch('cinder.db.api.snapshot_create')
     def test_create_with_provider_id(self, snapshot_create):
         snapshot_create.return_value = copy.deepcopy(fake_db_snapshot)
         snapshot_create.return_value['provider_id'] = fake.PROVIDER_ID
@@ -87,7 +87,7 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
         snapshot.create()
         self.assertEqual(fake.PROVIDER_ID, snapshot.provider_id)
 
-    @mock.patch('cinder.db.snapshot_update')
+    @mock.patch('cinder.db.api.snapshot_update')
     def test_save(self, snapshot_update):
         snapshot = objects.Snapshot._from_db_object(
             self.context, objects.Snapshot(), fake_db_snapshot)
@@ -96,9 +96,9 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
         snapshot_update.assert_called_once_with(self.context, snapshot.id,
                                                 {'display_name': 'foobar'})
 
-    @mock.patch('cinder.db.snapshot_metadata_update',
+    @mock.patch('cinder.db.api.snapshot_metadata_update',
                 return_value={'key1': 'value1'})
-    @mock.patch('cinder.db.snapshot_update')
+    @mock.patch('cinder.db.api.snapshot_update')
     def test_save_with_metadata(self, snapshot_update,
                                 snapshot_metadata_update):
         snapshot = objects.Snapshot._from_db_object(
@@ -135,7 +135,7 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
             utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
             snapshot.deleted_at)
 
-    @mock.patch('cinder.db.snapshot_metadata_delete')
+    @mock.patch('cinder.db.api.snapshot_metadata_delete')
     def test_delete_metadata_key(self, snapshot_metadata_delete):
         snapshot = objects.Snapshot(self.context, id=fake.SNAPSHOT_ID)
         snapshot.metadata = {'key1': 'value1', 'key2': 'value2'}
@@ -194,7 +194,7 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
         self.assertIsNone(snapshot.group_snapshot)
         group_snapshot_get_by_id.assert_not_called()
 
-    @mock.patch('cinder.db.snapshot_data_get_for_project')
+    @mock.patch('cinder.db.api.snapshot_data_get_for_project')
     def test_snapshot_data_get_for_project(self, snapshot_data_get):
         snapshot = objects.Snapshot._from_db_object(
             self.context, objects.Snapshot(), fake_db_snapshot)
@@ -233,7 +233,8 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
 
 class TestSnapshotList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    @mock.patch('cinder.db.snapshot_get_all', return_value=[fake_db_snapshot])
+    @mock.patch('cinder.db.api.snapshot_get_all',
+                return_value=[fake_db_snapshot])
     def test_get_all(self, snapshot_get_all, volume_get_by_id):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
         volume_get_by_id.return_value = fake_volume_obj
@@ -247,7 +248,7 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
                                                  None, None, None, None, None)
 
     @mock.patch('cinder.objects.Volume.get_by_id')
-    @mock.patch('cinder.db.snapshot_get_all_by_host',
+    @mock.patch('cinder.db.api.snapshot_get_all_by_host',
                 return_value=[fake_db_snapshot])
     def test_get_by_host(self, get_by_host, volume_get_by_id):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
@@ -259,7 +260,7 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
         TestSnapshot._compare(self, fake_snapshot_obj, snapshots[0])
 
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    @mock.patch('cinder.db.snapshot_get_all_by_project',
+    @mock.patch('cinder.db.api.snapshot_get_all_by_project',
                 return_value=[fake_db_snapshot])
     def test_get_all_by_project(self, get_all_by_project, volume_get_by_id):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
@@ -276,7 +277,7 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
                                                    None, None, None)
 
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    @mock.patch('cinder.db.snapshot_get_all_for_volume',
+    @mock.patch('cinder.db.api.snapshot_get_all_for_volume',
                 return_value=[fake_db_snapshot])
     def test_get_all_for_volume(self, get_all_for_volume, volume_get_by_id):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
@@ -288,7 +289,7 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
         TestSnapshot._compare(self, fake_snapshot_obj, snapshots[0])
 
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    @mock.patch('cinder.db.snapshot_get_all_active_by_window',
+    @mock.patch('cinder.db.api.snapshot_get_all_active_by_window',
                 return_value=[fake_db_snapshot])
     def test_get_all_active_by_window(self, get_all_active_by_window,
                                       volume_get_by_id):
@@ -301,7 +302,7 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
         TestSnapshot._compare(self, fake_snapshot_obj, snapshots[0])
 
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    @mock.patch('cinder.db.snapshot_get_all_for_cgsnapshot',
+    @mock.patch('cinder.db.api.snapshot_get_all_for_cgsnapshot',
                 return_value=[fake_db_snapshot])
     def test_get_all_for_cgsnapshot(self, get_all_for_cgsnapshot,
                                     volume_get_by_id):
@@ -314,7 +315,7 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
         TestSnapshot._compare(self, fake_snapshot_obj, snapshots[0])
 
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    @mock.patch('cinder.db.snapshot_get_all')
+    @mock.patch('cinder.db.api.snapshot_get_all')
     def test_get_all_without_metadata(self, snapshot_get_all,
                                       volume_get_by_id):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
@@ -330,7 +331,7 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
                           self.context, search_opts)
 
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    @mock.patch('cinder.db.snapshot_get_all')
+    @mock.patch('cinder.db.api.snapshot_get_all')
     def test_get_all_with_metadata(self, snapshot_get_all, volume_get_by_id):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
         volume_get_by_id.return_value = fake_volume_obj

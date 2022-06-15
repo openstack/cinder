@@ -16,7 +16,7 @@ from unittest import mock
 from oslo_config import cfg
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import objects
 from cinder.policies import volume_actions as vol_action_policies

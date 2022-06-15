@@ -346,7 +346,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.message.api.API.create')
     @mock.patch('cinder.volume.volume_utils.require_driver_initialized')
     @mock.patch('cinder.volume.manager.VolumeManager._clone_image_volume')
-    @mock.patch('cinder.db.volume_metadata_update')
+    @mock.patch('cinder.db.api.volume_metadata_update')
     def test_clone_image_no_volume(self,
                                    fake_update,
                                    fake_clone,
@@ -383,7 +383,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.objects.VolumeType.get_by_id')
     @mock.patch('cinder.volume.volume_utils.require_driver_initialized')
     @mock.patch('cinder.volume.manager.VolumeManager._clone_image_volume')
-    @mock.patch('cinder.db.volume_metadata_update')
+    @mock.patch('cinder.db.api.volume_metadata_update')
     def test_clone_image_no_store_id(self,
                                      fake_update,
                                      fake_clone,
@@ -440,7 +440,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.objects.VolumeType.get_by_id')
     @mock.patch('cinder.volume.volume_utils.require_driver_initialized')
     @mock.patch('cinder.volume.manager.VolumeManager._clone_image_volume')
-    @mock.patch('cinder.db.volume_metadata_update')
+    @mock.patch('cinder.db.api.volume_metadata_update')
     def test_clone_image_with_store_id(self,
                                        fake_update,
                                        fake_clone,

@@ -79,7 +79,7 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
                           objects.ConsistencyGroup.get_by_id, self.context,
                           123)
 
-    @mock.patch('cinder.db.consistencygroup_create',
+    @mock.patch('cinder.db.api.consistencygroup_create',
                 return_value=fake_consistencygroup)
     def test_create(self, consistencygroup_create):
         fake_cg = fake_consistencygroup.copy()
@@ -89,7 +89,7 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
         consistencygroup.create()
         self._compare(self, fake_consistencygroup, consistencygroup)
 
-    @mock.patch('cinder.db.group_create',
+    @mock.patch('cinder.db.api.group_create',
                 return_value=fake_group)
     def test_create_from_group(self, group_create):
         fake_grp = fake_group.copy()
@@ -112,7 +112,7 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
             context=self.context, **{'id': fake.CONSISTENCY_GROUP_ID})
         self.assertRaises(exception.ObjectActionError, consistencygroup.create)
 
-    @mock.patch('cinder.db.consistencygroup_update')
+    @mock.patch('cinder.db.api.consistencygroup_update')
     def test_save(self, consistencygroup_update):
         consistencygroup = objects.ConsistencyGroup._from_db_object(
             self.context, objects.ConsistencyGroup(), fake_consistencygroup)
@@ -241,7 +241,7 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
 
 
 class TestConsistencyGroupList(test_objects.BaseObjectsTestCase):
-    @mock.patch('cinder.db.consistencygroup_get_all',
+    @mock.patch('cinder.db.api.consistencygroup_get_all',
                 return_value=[fake_consistencygroup])
     def test_get_all(self, consistencygroup_get_all):
         consistencygroups = objects.ConsistencyGroupList.get_all(self.context)
@@ -249,7 +249,7 @@ class TestConsistencyGroupList(test_objects.BaseObjectsTestCase):
         TestConsistencyGroup._compare(self, fake_consistencygroup,
                                       consistencygroups[0])
 
-    @mock.patch('cinder.db.consistencygroup_get_all_by_project',
+    @mock.patch('cinder.db.api.consistencygroup_get_all_by_project',
                 return_value=[fake_consistencygroup])
     def test_get_all_by_project(self, consistencygroup_get_all_by_project):
         consistencygroups = objects.ConsistencyGroupList.get_all_by_project(
@@ -258,7 +258,7 @@ class TestConsistencyGroupList(test_objects.BaseObjectsTestCase):
         TestConsistencyGroup._compare(self, fake_consistencygroup,
                                       consistencygroups[0])
 
-    @mock.patch('cinder.db.consistencygroup_get_all',
+    @mock.patch('cinder.db.api.consistencygroup_get_all',
                 return_value=[fake_consistencygroup])
     def test_get_all_with_pagination(self, consistencygroup_get_all):
         consistencygroups = objects.ConsistencyGroupList.get_all(
@@ -271,7 +271,7 @@ class TestConsistencyGroupList(test_objects.BaseObjectsTestCase):
         TestConsistencyGroup._compare(self, fake_consistencygroup,
                                       consistencygroups[0])
 
-    @mock.patch('cinder.db.consistencygroup_get_all_by_project',
+    @mock.patch('cinder.db.api.consistencygroup_get_all_by_project',
                 return_value=[fake_consistencygroup])
     def test_get_all_by_project_with_pagination(
             self, consistencygroup_get_all_by_project):
@@ -285,7 +285,7 @@ class TestConsistencyGroupList(test_objects.BaseObjectsTestCase):
         TestConsistencyGroup._compare(self, fake_consistencygroup,
                                       consistencygroups[0])
 
-    @mock.patch('cinder.db.consistencygroup_include_in_cluster')
+    @mock.patch('cinder.db.api.consistencygroup_include_in_cluster')
     def test_include_in_cluster(self, include_mock):
         filters = {'host': mock.sentinel.host,
                    'cluster_name': mock.sentinel.cluster_name}
@@ -295,7 +295,7 @@ class TestConsistencyGroupList(test_objects.BaseObjectsTestCase):
         include_mock.assert_called_once_with(self.context, cluster, True,
                                              **filters)
 
-    @mock.patch('cinder.db.consistencygroup_include_in_cluster')
+    @mock.patch('cinder.db.api.consistencygroup_include_in_cluster')
     def test_include_in_cluster_specify_partial(self, include_mock):
         filters = {'host': mock.sentinel.host,
                    'cluster_name': mock.sentinel.cluster_name}

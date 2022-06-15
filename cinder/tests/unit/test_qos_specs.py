@@ -22,7 +22,7 @@ from oslo_db import exception as db_exc
 from oslo_utils import timeutils
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test

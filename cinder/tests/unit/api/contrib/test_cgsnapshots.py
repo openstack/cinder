@@ -22,7 +22,7 @@ from oslo_serialization import jsonutils
 import webob
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.group import api as groupAPI
 from cinder import objects

@@ -26,7 +26,7 @@ from cinder.api.contrib import volume_transfer
 from cinder.api import microversions as mv
 from cinder.api.v3 import volume_transfer as volume_transfer_v3
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.objects import fields
 from cinder import quota

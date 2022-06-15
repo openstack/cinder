@@ -19,7 +19,7 @@ import ddt
 from cinder.api.contrib import volume_type_encryption as vol_type_enc
 from cinder.api import microversions as mv
 from cinder.api.v3 import types
-from cinder import db
+from cinder.db import api as db
 from cinder.policies import volume_type as type_policy
 from cinder.tests.unit.api import fakes as fake_api
 from cinder.tests.unit import fake_constants

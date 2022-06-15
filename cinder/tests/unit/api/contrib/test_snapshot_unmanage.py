@@ -88,8 +88,8 @@ class SnapshotUnmanageTest(test.TestCase):
         res = req.get_response(app())
         return res
 
-    @mock.patch('cinder.db.conditional_update', return_value=1)
-    @mock.patch('cinder.db.snapshot_update')
+    @mock.patch('cinder.db.api.conditional_update', return_value=1)
+    @mock.patch('cinder.db.api.snapshot_update')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.delete_snapshot')
     def test_unmanage_snapshot_ok(self, mock_rpcapi, mock_db_update,
                                   mock_conditional_update):

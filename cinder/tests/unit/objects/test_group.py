@@ -55,7 +55,7 @@ class TestGroup(test_objects.BaseObjectsTestCase):
                           objects.Group.get_by_id, self.context,
                           123)
 
-    @mock.patch('cinder.db.group_create',
+    @mock.patch('cinder.db.api.group_create',
                 return_value=fake_group)
     def test_create(self, group_create):
         fake_grp = fake_group.copy()
@@ -70,7 +70,7 @@ class TestGroup(test_objects.BaseObjectsTestCase):
             context=self.context, **{'id': fake.GROUP_ID})
         self.assertRaises(exception.ObjectActionError, group.create)
 
-    @mock.patch('cinder.db.group_update')
+    @mock.patch('cinder.db.api.group_update')
     def test_save(self, group_update):
         group = objects.Group._from_db_object(
             self.context, objects.Group(), fake_group)
@@ -112,7 +112,7 @@ class TestGroup(test_objects.BaseObjectsTestCase):
         mock_vol_get_all_by_group.assert_called_once_with(self.context,
                                                           group.id)
 
-    @mock.patch('cinder.db.group_destroy')
+    @mock.patch('cinder.db.api.group_destroy')
     def test_destroy(self, group_destroy):
         group = objects.Group(
             context=self.context, id=fake.GROUP_ID)
@@ -181,7 +181,7 @@ class TestGroup(test_objects.BaseObjectsTestCase):
 
 @ddt.ddt
 class TestGroupList(test_objects.BaseObjectsTestCase):
-    @mock.patch('cinder.db.group_get_all',
+    @mock.patch('cinder.db.api.group_get_all',
                 return_value=[fake_group])
     def test_get_all(self, group_get_all):
         groups = objects.GroupList.get_all(self.context)
@@ -189,7 +189,7 @@ class TestGroupList(test_objects.BaseObjectsTestCase):
         TestGroup._compare(self, fake_group,
                            groups[0])
 
-    @mock.patch('cinder.db.group_get_all_by_project',
+    @mock.patch('cinder.db.api.group_get_all_by_project',
                 return_value=[fake_group])
     def test_get_all_by_project(self, group_get_all_by_project):
         groups = objects.GroupList.get_all_by_project(
@@ -198,7 +198,7 @@ class TestGroupList(test_objects.BaseObjectsTestCase):
         TestGroup._compare(self, fake_group,
                            groups[0])
 
-    @mock.patch('cinder.db.group_get_all',
+    @mock.patch('cinder.db.api.group_get_all',
                 return_value=[fake_group])
     def test_get_all_with_pagination(self, group_get_all):
         groups = objects.GroupList.get_all(
@@ -211,7 +211,7 @@ class TestGroupList(test_objects.BaseObjectsTestCase):
         TestGroup._compare(self, fake_group,
                            groups[0])
 
-    @mock.patch('cinder.db.group_get_all_by_project',
+    @mock.patch('cinder.db.api.group_get_all_by_project',
                 return_value=[fake_group])
     def test_get_all_by_project_with_pagination(
             self, group_get_all_by_project):
@@ -227,7 +227,7 @@ class TestGroupList(test_objects.BaseObjectsTestCase):
 
     @ddt.data({'cluster_name': 'fake_cluster'}, {'host': 'fake_host'})
     @mock.patch('cinder.volume.group_types.get_group_type_specs')
-    @mock.patch('cinder.db.group_get_all')
+    @mock.patch('cinder.db.api.group_get_all')
     def test_get_all_replicated(self, filters, mock_get_groups,
                                 mock_get_specs):
         mock_get_specs.return_value = '<is> True'
@@ -248,7 +248,7 @@ class TestGroupList(test_objects.BaseObjectsTestCase):
             self.assertEqual(fake.GROUP_ID, res[0].id)
             self.assertIsNone(res[0].cluster_name)
 
-    @mock.patch('cinder.db.group_include_in_cluster')
+    @mock.patch('cinder.db.api.group_include_in_cluster')
     def test_include_in_cluster(self, include_mock):
         filters = {'host': mock.sentinel.host,
                    'cluster_name': mock.sentinel.cluster_name}
@@ -257,7 +257,7 @@ class TestGroupList(test_objects.BaseObjectsTestCase):
         include_mock.assert_called_once_with(self.context, cluster, True,
                                              **filters)
 
-    @mock.patch('cinder.db.group_include_in_cluster')
+    @mock.patch('cinder.db.api.group_include_in_cluster')
     def test_include_in_cluster_specify_partial(self, include_mock):
         filters = {'host': mock.sentinel.host,
                    'cluster_name': mock.sentinel.cluster_name}

@@ -27,7 +27,7 @@ from unittest import mock
 import uuid
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils

@@ -35,7 +35,7 @@ from cinder.api.v3 import volumes
 from cinder.backup import api as backup_api
 from cinder.common import constants as cinder_constants
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.group import api as group_api
 from cinder import objects
@@ -455,8 +455,8 @@ class VolumeApiTest(BaseVolumeTest):
         req.api_version_request = mv.get_api_version(version)
         return req
 
-    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
-                       autospec=True)
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                autospec=True)
     @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
     @mock.patch.object(volume_api.API, 'create', autospec=True)
     def test_volume_create_with_snapshot_image(self, create,
@@ -674,8 +674,8 @@ class VolumeApiTest(BaseVolumeTest):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_get)
         self.mock_object(volume_api.API, "create",
                          v3_fakes.fake_volume_api_create)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes')
         req.api_version_request = mv.get_api_version(max_ver)
@@ -694,8 +694,8 @@ class VolumeApiTest(BaseVolumeTest):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_get)
         self.mock_object(volume_api.API, "create",
                          v3_fakes.fake_volume_api_create)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes')
         req.api_version_request = mv.get_api_version(
@@ -739,8 +739,8 @@ class VolumeApiTest(BaseVolumeTest):
 
     @ddt.data(mv.GROUP_SNAPSHOTS, mv.get_prior_version(mv.GROUP_SNAPSHOTS))
     @mock.patch.object(group_api.API, 'get')
-    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
-                       autospec=True)
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                autospec=True)
     @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
     @mock.patch.object(volume_api.API, 'create', autospec=True)
     def test_volume_creation_from_snapshot(self, max_ver, create, get_snapshot,
@@ -784,8 +784,8 @@ class VolumeApiTest(BaseVolumeTest):
 
     @ddt.data(mv.VOLUME_CREATE_FROM_BACKUP,
               mv.get_prior_version(mv.VOLUME_CREATE_FROM_BACKUP))
-    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
-                       autospec=True)
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                autospec=True)
     @mock.patch.object(backup_api.API, 'get', autospec=True)
     @mock.patch.object(volume_api.API, 'create', autospec=True)
     def test_volume_creation_from_backup(self, max_ver, create, get_backup,
@@ -925,8 +925,8 @@ class VolumeApiTest(BaseVolumeTest):
     @ddt.unpack
     def test_volume_show_provider_id(self, admin, version):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_api_get)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID,
                                       version=version)
@@ -1277,8 +1277,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_get)
         self.mock_object(volume_api.API, "create",
                          v3_fakes.fake_volume_api_create)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         vol = self._vol_in_request_body()
         body = {"volume": vol}
@@ -1326,9 +1326,9 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
                          return_value=objects.VolumeList(objects=[vol_obj]))
         # NOTE(geguileo): This is required because common get_by_id method in
         # cinder.db.sqlalchemy.api caches the real get method.
-        db.sqlalchemy.api._GET_METHODS = {}
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._GET_METHODS', {})
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
         req = fakes.HTTPRequest.blank('/v3/volumes/detail')
         res_dict = self.controller.detail(req)
 
@@ -1425,8 +1425,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
                 'scheduler_hints': None,
                 }
 
-    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
-                       autospec=True)
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                autospec=True)
     @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
     @mock.patch.object(volume_api.API, 'create', autospec=True)
     def test_volume_creation_from_snapshot(self, create, get_snapshot,
@@ -1484,8 +1484,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
         self.assertRaises(exception.ValidationError, self.controller.create,
                           req, body=body)
 
-    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
-                       autospec=True)
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                autospec=True)
     @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
     @mock.patch.object(volume_api.API, 'create', autospec=True)
     def test_volume_creation_from_source_volume(self, create, get_volume,
@@ -1587,8 +1587,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
     def test_volume_create_with_image_ref(self):
         self.mock_object(volume_api.API, "create",
                          v3_fakes.fake_volume_api_create)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         vol = self._vol_in_request_body(
             availability_zone="nova",
@@ -1641,8 +1641,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
     def test_volume_create_with_image_id(self):
         self.mock_object(volume_api.API, "create",
                          v3_fakes.fake_volume_api_create)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         vol = self._vol_in_request_body(
             availability_zone="nova",
@@ -1695,8 +1695,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
     def test_volume_create_with_image_name(self):
         self.mock_object(volume_api.API, "create",
                          v3_fakes.fake_volume_api_create)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
         self.mock_object(fake_image._FakeImageService,
                          "detail",
                          v3_fakes.fake_image_service_detail)
@@ -1766,8 +1766,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
     def test_volume_update(self, body):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_api_get)
         self.mock_object(volume_api.API, "update", v3_fakes.fake_volume_update)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
         updates = {
             "name": body['name'],
             "description": body['description']
@@ -1788,8 +1788,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
     def test_volume_update_deprecation(self):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_api_get)
         self.mock_object(volume_api.API, "update", v3_fakes.fake_volume_update)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         updates = {
             "display_name": "Updated Test Name",
@@ -1810,8 +1810,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
         """Test current update keys have priority over deprecated keys."""
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_api_get)
         self.mock_object(volume_api.API, "update", v3_fakes.fake_volume_update)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         updates = {
             "name": "New Name",
@@ -1833,8 +1833,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
     def test_volume_update_metadata(self):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_api_get)
         self.mock_object(volume_api.API, "update", v3_fakes.fake_volume_update)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         updates = {
             "metadata": {"qos_max_iops": '2000'}
@@ -1959,8 +1959,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
     def test_volume_list_summary(self):
         self.mock_object(volume_api.API, 'get_all',
                          v3_fakes.fake_volume_api_get_all_by_project)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         res_dict = self.controller.index(req)
@@ -1991,8 +1991,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
     def test_volume_list_detail(self):
         self.mock_object(volume_api.API, 'get_all',
                          v3_fakes.fake_volume_api_get_all_by_project)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes/detail')
         res_dict = self.controller.detail(req)
@@ -2192,8 +2192,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
             ]
         self.mock_object(db, 'volume_get_all_by_project',
                          fake_volume_get_all_by_project)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes/detail?marker=1')
         res_dict = self.controller.detail(req)
@@ -2205,8 +2205,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
     def test_volume_detail_limit(self):
         self.mock_object(db, 'volume_get_all_by_project',
                          v3_fakes.fake_volume_get_all_by_project)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
         req = fakes.HTTPRequest.blank('/v3/%s/volumes/detail?limit=1'
                                       % fake.PROJECT_ID)
         res_dict = self.controller.detail(req)
@@ -2238,8 +2238,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
     def test_volume_detail_limit_marker(self):
         self.mock_object(db, 'volume_get_all_by_project',
                          v3_fakes.fake_volume_get_all_by_project)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes/detail?marker=1&limit=1')
         res_dict = self.controller.detail(req)
@@ -2444,8 +2444,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
 
     def test_volume_show(self):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_api_get)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
@@ -2470,8 +2470,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
         self.mock_object(volume_api.API, 'get', fake_volume_get)
         self.mock_object(db, 'volume_admin_metadata_get',
                          fake_volume_admin_metadata_get)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
@@ -2538,8 +2538,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
             return fake_volume.fake_volume_obj(context, **vol)
 
         self.mock_object(volume_api.API, 'get', fake_volume_get)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
@@ -2547,8 +2547,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
 
     def test_volume_show_with_unencrypted_volume(self):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_api_get)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
@@ -2561,8 +2561,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
             return fake_volume.fake_volume_obj(context, **vol)
 
         self.mock_object(volume_api.API, 'get', fake_volume_get)
-        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api._volume_type_get_full',
+                   v3_fakes.fake_volume_type_get)
 
         req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)

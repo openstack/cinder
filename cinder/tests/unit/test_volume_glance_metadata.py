@@ -17,7 +17,7 @@ Unit Tests for volume types extra specs code
 """
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import objects
 from cinder.tests.unit import fake_constants as fake

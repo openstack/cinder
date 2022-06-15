@@ -36,7 +36,7 @@ from cinder.common import constants
 from cinder import compute
 from cinder import context
 from cinder import coordination
-from cinder import db
+from cinder.db import api as db
 from cinder.db import base
 from cinder.db import utils as db_utils
 from cinder import exception

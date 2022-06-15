@@ -530,7 +530,7 @@ class VolumeTypesManageApiTest(test.TestCase):
                           DEFAULT_VOLUME_TYPE, body=body)
 
     @mock.patch('cinder.volume.volume_types.get_volume_type')
-    @mock.patch('cinder.db.volume_type_update')
+    @mock.patch('cinder.db.api.volume_type_update')
     @mock.patch('cinder.quota.VolumeTypeQuotaEngine.'
                 'update_quota_resource')
     def test_update_only_name(self, mock_update_quota,

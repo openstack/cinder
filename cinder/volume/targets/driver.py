@@ -14,7 +14,7 @@ import abc
 
 from oslo_config import cfg
 
-from cinder import db
+from cinder.db import api as db
 
 CONF = cfg.CONF
 

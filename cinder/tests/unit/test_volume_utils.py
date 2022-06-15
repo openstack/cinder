@@ -29,7 +29,7 @@ from oslo_config import cfg
 from oslo_utils import units
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.objects import fields
@@ -132,7 +132,7 @@ class NotifyUsageTestCase(test.TestCase):
             'snapshot.test_suffix',
             mock_usage.return_value)
 
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_usage_from_snapshot(self, volume_get):
         raw_volume = {
             'id': fake.VOLUME_ID,
@@ -175,7 +175,7 @@ class NotifyUsageTestCase(test.TestCase):
         }
         self.assertDictEqual(expected_snapshot, usage_info)
 
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_usage_from_deleted_snapshot(self, volume_get):
         raw_volume = {
             'id': fake.VOLUME_ID,
@@ -220,8 +220,8 @@ class NotifyUsageTestCase(test.TestCase):
         }
         self.assertDictEqual(expected_snapshot, usage_info)
 
-    @mock.patch('cinder.db.volume_glance_metadata_get')
-    @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
+    @mock.patch('cinder.db.api.volume_glance_metadata_get')
+    @mock.patch('cinder.db.api.volume_attachment_get_all_by_volume_id')
     def test_usage_from_volume(self, mock_attachment, mock_image_metadata):
         mock_image_metadata.return_value = {'image_id': 'fake_image_id'}
         mock_attachment.return_value = [{'instance_uuid': 'fake_instance_id'}]
@@ -1059,7 +1059,7 @@ class VolumeUtilsTestCase(test.TestCase):
         res = volume_utils.is_replicated_spec({'replication_enabled': enabled})
         self.assertFalse(res)
 
-    @mock.patch('cinder.db.group_get')
+    @mock.patch('cinder.db.api.group_get')
     def test_group_get_by_id(self, mock_db_group_get):
         expected = mock.Mock()
         mock_db_group_get.return_value = expected
@@ -1067,7 +1067,7 @@ class VolumeUtilsTestCase(test.TestCase):
         actual = volume_utils.group_get_by_id(group_id)
         self.assertEqual(expected, actual)
 
-    @mock.patch('cinder.db.group_get')
+    @mock.patch('cinder.db.api.group_get')
     def test_group_get_by_id_group_not_found(self, mock_db_group_get):
         group_id = fake.GROUP_ID
         mock_db_group_get.side_effect = exception.GroupNotFound(
@@ -1307,7 +1307,7 @@ class VolumeUtilsTestCase(test.TestCase):
                           volume_utils.require_driver_initialized,
                           driver)
 
-    @mock.patch('cinder.db.image_volume_cache_get_by_volume_id')
+    @mock.patch('cinder.db.api.image_volume_cache_get_by_volume_id')
     def test_is_image_cache_entry_true(self, mock_cache_get):
         """Test volume is an image cache entry when cache entry exists."""
         mock_cache_get.return_value = {'id': 1, 'volume_id': fake.VOLUME_ID}
@@ -1319,7 +1319,7 @@ class VolumeUtilsTestCase(test.TestCase):
         self.assertTrue(result)
         mock_cache_get.assert_called_once_with(ctx, volume.id)
 
-    @mock.patch('cinder.db.image_volume_cache_get_by_volume_id')
+    @mock.patch('cinder.db.api.image_volume_cache_get_by_volume_id')
     def test_is_image_cache_entry_false(self, mock_cache_get):
         """Test volume isn't an image cache entry when entry doesn't exist."""
         mock_cache_get.return_value = None
@@ -1331,7 +1331,7 @@ class VolumeUtilsTestCase(test.TestCase):
         self.assertFalse(result)
         mock_cache_get.assert_called_once_with(ctx, volume.id)
 
-    @mock.patch('cinder.db.image_volume_cache_get_by_volume_id')
+    @mock.patch('cinder.db.api.image_volume_cache_get_by_volume_id')
     def test_is_image_cache_entry_exception(self, mock_cache_get):
         """Test volume returns False when database error occurs."""
         mock_cache_get.side_effect = Exception("Database error")

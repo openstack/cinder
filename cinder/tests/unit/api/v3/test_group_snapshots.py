@@ -25,7 +25,7 @@ import webob
 from cinder.api import microversions as mv
 from cinder.api.v3 import group_snapshots as v3_group_snapshots
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.group import api as group_api
 from cinder import objects
@@ -383,7 +383,7 @@ class GroupSnapshotsAPITestCase(test.TestCase):
             else:
                 self.assertNotIn('project_id', group)
 
-    @mock.patch('cinder.db.volume_type_get')
+    @mock.patch('cinder.db.api.volume_type_get')
     @mock.patch('cinder.quota.VolumeTypeQuotaEngine.reserve')
     def test_create_group_snapshot_json(self, mock_quota, mock_vol_type):
         body = {"group_snapshot": {"name": "group_snapshot1",
@@ -401,7 +401,7 @@ class GroupSnapshotsAPITestCase(test.TestCase):
             context.get_admin_context(), res_dict['group_snapshot']['id'])
         group_snapshot.destroy()
 
-    @mock.patch('cinder.db.volume_type_get')
+    @mock.patch('cinder.db.api.volume_type_get')
     def test_create_group_snapshot_when_volume_in_error_status(
             self, mock_vol_type):
         group = utils.create_group(
@@ -632,7 +632,7 @@ class GroupSnapshotsAPITestCase(test.TestCase):
                          g_snapshot.status)
         group_snapshot.destroy()
 
-    @mock.patch('cinder.db.volume_type_get')
+    @mock.patch('cinder.db.api.volume_type_get')
     @mock.patch('cinder.quota.VolumeTypeQuotaEngine.reserve')
     def test_create_group_snapshot_with_null_validate(
             self, mock_quota, mock_vol_type):

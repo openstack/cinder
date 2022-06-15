@@ -43,7 +43,7 @@ from oslo_utils import units
 from cinder import compute
 from cinder import context
 from cinder import coordination
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils

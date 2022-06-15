@@ -16,7 +16,7 @@
 """Tests for default volume types."""
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 

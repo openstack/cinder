@@ -45,7 +45,7 @@ class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
             fake.GROUP_SNAPSHOT_ID)
         self._compare(self, fake_group_snapshot, group_snapshot)
 
-    @mock.patch('cinder.db.group_snapshot_create',
+    @mock.patch('cinder.db.api.group_snapshot_create',
                 return_value=fake_group_snapshot)
     def test_create(self, group_snapshot_create):
         fake_group_snap = fake_group_snapshot.copy()
@@ -61,7 +61,7 @@ class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
             **{'id': fake.GROUP_ID})
         self.assertRaises(exception.ObjectActionError, group_snapshot.create)
 
-    @mock.patch('cinder.db.group_snapshot_update')
+    @mock.patch('cinder.db.api.group_snapshot_update')
     def test_save(self, group_snapshot_update):
         group_snapshot = objects.GroupSnapshot._from_db_object(
             self.context, objects.GroupSnapshot(), fake_group_snapshot)
@@ -71,9 +71,9 @@ class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
                                                       group_snapshot.id,
                                                       {'status': 'active'})
 
-    @mock.patch('cinder.db.group_update',
+    @mock.patch('cinder.db.api.group_update',
                 return_value=fake_group)
-    @mock.patch('cinder.db.group_snapshot_update')
+    @mock.patch('cinder.db.api.group_snapshot_update')
     def test_save_with_group(self, group_snapshot_update,
                              group_snapshot_cg_update):
         group = objects.Group._from_db_object(
@@ -159,7 +159,7 @@ class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
 
 
 class TestGroupSnapshotList(test_objects.BaseObjectsTestCase):
-    @mock.patch('cinder.db.group_snapshot_get_all',
+    @mock.patch('cinder.db.api.group_snapshot_get_all',
                 return_value=[fake_group_snapshot])
     def test_get_all(self, group_snapshot_get_all):
         group_snapshots = objects.GroupSnapshotList.get_all(self.context)
@@ -167,7 +167,7 @@ class TestGroupSnapshotList(test_objects.BaseObjectsTestCase):
         TestGroupSnapshot._compare(self, fake_group_snapshot,
                                    group_snapshots[0])
 
-    @mock.patch('cinder.db.group_snapshot_get_all_by_project',
+    @mock.patch('cinder.db.api.group_snapshot_get_all_by_project',
                 return_value=[fake_group_snapshot])
     def test_get_all_by_project(self, group_snapshot_get_all_by_project):
         group_snapshots = objects.GroupSnapshotList.get_all_by_project(
@@ -176,7 +176,7 @@ class TestGroupSnapshotList(test_objects.BaseObjectsTestCase):
         TestGroupSnapshot._compare(self, fake_group_snapshot,
                                    group_snapshots[0])
 
-    @mock.patch('cinder.db.group_snapshot_get_all_by_group',
+    @mock.patch('cinder.db.api.group_snapshot_get_all_by_group',
                 return_value=[fake_group_snapshot])
     def test_get_all_by_group(self, group_snapshot_get_all_by_group):
         group_snapshots = objects.GroupSnapshotList.get_all_by_group(

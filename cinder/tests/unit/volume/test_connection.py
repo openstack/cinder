@@ -20,7 +20,7 @@ from unittest import mock
 import ddt
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.message import message_field
 from cinder import objects
@@ -121,7 +121,7 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
     @mock.patch.object(cinder.volume.targets.iscsi.ISCSITarget,
                        '_get_target_chap_auth')
     @mock.patch.object(db, 'volume_admin_metadata_get')
-    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     @mock.patch.object(db, 'volume_update')
     def test_initialize_connection_fetchqos(self,
                                             _mock_volume_update,
@@ -186,7 +186,7 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
     @mock.patch.object(cinder.volume.targets.iscsi.ISCSITarget,
                        '_get_target_chap_auth')
     @mock.patch.object(db, 'volume_admin_metadata_get')
-    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     @mock.patch.object(db, 'volume_update')
     def test_initialize_connection_qos_per_gb(self,
                                               _mock_volume_update,
@@ -253,7 +253,7 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
     @mock.patch.object(cinder.volume.targets.iscsi.ISCSITarget,
                        '_get_target_chap_auth')
     @mock.patch.object(db, 'volume_admin_metadata_get')
-    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     @mock.patch.object(db, 'volume_update')
     def test_initialize_connection_qos_per_gb_with_min_small(
             self, _mock_volume_update, _mock_volume_get,
@@ -325,7 +325,7 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
     @mock.patch.object(cinder.volume.targets.iscsi.ISCSITarget,
                        '_get_target_chap_auth')
     @mock.patch.object(db, 'volume_admin_metadata_get')
-    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     @mock.patch.object(db, 'volume_update')
     def test_initialize_connection_qos_per_gb_with_min_large(
             self, _mock_volume_update, _mock_volume_get,

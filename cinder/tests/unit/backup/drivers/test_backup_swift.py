@@ -32,7 +32,7 @@ import zstd
 
 from cinder.backup.drivers import swift as swift_dr
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects

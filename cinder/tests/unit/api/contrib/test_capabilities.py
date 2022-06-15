@@ -66,7 +66,7 @@ class CapabilitiesAPITest(test.TestCase):
         self.controller = capabilities.CapabilitiesController()
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities',
                 rpcapi_get_capabilities)
     def test_capabilities_summary(self, mock_services):
@@ -111,7 +111,7 @@ class CapabilitiesAPITest(test.TestCase):
 
         self.assertDictEqual(expected, res)
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities')
     def test_get_capabilities_rpc_timeout(self, mock_rpc, mock_services):
         mock_rpc.side_effect = oslo_messaging.MessagingTimeout
@@ -124,7 +124,7 @@ class CapabilitiesAPITest(test.TestCase):
         self.assertRaises(exception.RPCTimeout,
                           self.controller.show, req, 'fake')
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_get_capabilities_service_not_found(self, mock_services):
         mock_services.return_value = []
 

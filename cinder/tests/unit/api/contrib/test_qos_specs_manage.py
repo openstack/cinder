@@ -22,7 +22,7 @@ import webob
 
 from cinder.api.contrib import qos_specs_manage
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import objects
 from cinder.tests.unit.api import fakes

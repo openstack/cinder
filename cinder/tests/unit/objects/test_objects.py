@@ -14,7 +14,7 @@
 
 from oslo_versionedobjects import fixture
 
-from cinder import db
+from cinder.db import api as db
 from cinder import objects
 from cinder.objects import base
 from cinder.tests.unit import test

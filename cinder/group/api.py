@@ -24,7 +24,7 @@ from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 
-from cinder import db
+from cinder.db import api as db
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _

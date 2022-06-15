@@ -19,7 +19,7 @@ import uuid
 from oslo_utils import units
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.tests.unit.consistencygroup.fake_cgsnapshot import (
     fake_cgsnapshot_obj as fake_cgsnapshot)
 from cinder.tests.unit.consistencygroup.fake_consistencygroup import (

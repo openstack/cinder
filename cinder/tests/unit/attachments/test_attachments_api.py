@@ -14,7 +14,7 @@ from unittest import mock
 
 from cinder.compute import nova
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import objects
 from cinder.tests.unit.api.v3 import fakes as v3_fakes
@@ -312,8 +312,8 @@ class AttachmentManagerTestCase(test.TestCase):
                 return_value={})
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update',
                 return_value={})
-    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get',
-                       v3_fakes.fake_volume_type_get)
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get',
+                v3_fakes.fake_volume_type_get)
     def test_attachment_update_duplicate(self, mock_va_update, mock_db_upd):
         volume_params = {'status': 'available'}
 

@@ -98,7 +98,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
 
     @mock.patch('cinder.objects.Service.is_up', True)
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'failover')
-    @mock.patch.object(cinder.db, 'conditional_update')
+    @mock.patch.object(cinder.db.api, 'conditional_update')
     @mock.patch.object(objects.ServiceList, 'get_all')
     def test_failover(self, mock_get_all, mock_db_update, mock_failover):
         """Test replication failover."""
@@ -112,8 +112,8 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
         mock_failover.assert_called_once_with(self.context, service, None)
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'failover')
-    @mock.patch.object(cinder.db, 'conditional_update')
-    @mock.patch.object(cinder.db, 'service_get_all')
+    @mock.patch.object(cinder.db.api, 'conditional_update')
+    @mock.patch.object(cinder.db.api, 'service_get_all')
     def test_failover_unexpected_status(self, mock_db_get_all, mock_db_update,
                                         mock_failover):
         """Test replication failover unexpected status."""
@@ -130,7 +130,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
                           cluster_name=None)
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'freeze_host')
-    @mock.patch.object(cinder.db, 'conditional_update', return_value=1)
+    @mock.patch.object(cinder.db.api, 'conditional_update', return_value=1)
     @mock.patch.object(cinder.objects.ServiceList, 'get_all')
     def test_freeze_host(self, mock_get_all, mock_db_update,
                          mock_freeze):
@@ -145,8 +145,8 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
         mock_freeze.assert_called_once_with(self.context, service)
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'freeze_host')
-    @mock.patch.object(cinder.db, 'conditional_update')
-    @mock.patch.object(cinder.db, 'service_get_all')
+    @mock.patch.object(cinder.db.api, 'conditional_update')
+    @mock.patch.object(cinder.db.api, 'service_get_all')
     def test_freeze_host_unexpected_status(self, mock_get_all,
                                            mock_db_update,
                                            mock_freeze):
@@ -164,7 +164,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
                           cluster_name=None)
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'thaw_host')
-    @mock.patch.object(cinder.db, 'conditional_update', return_value=1)
+    @mock.patch.object(cinder.db.api, 'conditional_update', return_value=1)
     @mock.patch.object(cinder.objects.ServiceList, 'get_all')
     def test_thaw_host(self, mock_get_all, mock_db_update,
                        mock_thaw):
@@ -179,8 +179,8 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
         mock_thaw.assert_called_once_with(self.context, service)
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'thaw_host')
-    @mock.patch.object(cinder.db, 'conditional_update')
-    @mock.patch.object(cinder.db, 'service_get_all')
+    @mock.patch.object(cinder.db.api, 'conditional_update')
+    @mock.patch.object(cinder.db.api, 'service_get_all')
     def test_thaw_host_unexpected_status(self, mock_get_all,
                                          mock_db_update,
                                          mock_thaw):

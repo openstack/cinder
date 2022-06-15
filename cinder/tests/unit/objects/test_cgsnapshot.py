@@ -44,7 +44,7 @@ class TestCGSnapshot(test_objects.BaseObjectsTestCase):
                                                   fake.CGSNAPSHOT_ID)
         self._compare(self, fake_cgsnapshot, cgsnapshot)
 
-    @mock.patch('cinder.db.cgsnapshot_create',
+    @mock.patch('cinder.db.api.cgsnapshot_create',
                 return_value=fake_cgsnapshot)
     def test_create(self, cgsnapshot_create):
         fake_cgsnap = fake_cgsnapshot.copy()
@@ -58,7 +58,7 @@ class TestCGSnapshot(test_objects.BaseObjectsTestCase):
                                         **{'id': fake.CONSISTENCY_GROUP_ID})
         self.assertRaises(exception.ObjectActionError, cgsnapshot.create)
 
-    @mock.patch('cinder.db.cgsnapshot_update')
+    @mock.patch('cinder.db.api.cgsnapshot_update')
     def test_save(self, cgsnapshot_update):
         cgsnapshot = objects.CGSnapshot._from_db_object(
             self.context, objects.CGSnapshot(), fake_cgsnapshot)
@@ -67,9 +67,9 @@ class TestCGSnapshot(test_objects.BaseObjectsTestCase):
         cgsnapshot_update.assert_called_once_with(self.context, cgsnapshot.id,
                                                   {'status': 'active'})
 
-    @mock.patch('cinder.db.consistencygroup_update',
+    @mock.patch('cinder.db.api.consistencygroup_update',
                 return_value=fake_consistencygroup)
-    @mock.patch('cinder.db.cgsnapshot_update')
+    @mock.patch('cinder.db.api.cgsnapshot_update')
     def test_save_with_consistencygroup(self, cgsnapshot_update,
                                         cgsnapshot_cg_update):
         consistencygroup = objects.ConsistencyGroup._from_db_object(
@@ -151,14 +151,14 @@ class TestCGSnapshot(test_objects.BaseObjectsTestCase):
 
 
 class TestCGSnapshotList(test_objects.BaseObjectsTestCase):
-    @mock.patch('cinder.db.cgsnapshot_get_all',
+    @mock.patch('cinder.db.api.cgsnapshot_get_all',
                 return_value=[fake_cgsnapshot])
     def test_get_all(self, cgsnapshot_get_all):
         cgsnapshots = objects.CGSnapshotList.get_all(self.context)
         self.assertEqual(1, len(cgsnapshots))
         TestCGSnapshot._compare(self, fake_cgsnapshot, cgsnapshots[0])
 
-    @mock.patch('cinder.db.cgsnapshot_get_all_by_project',
+    @mock.patch('cinder.db.api.cgsnapshot_get_all_by_project',
                 return_value=[fake_cgsnapshot])
     def test_get_all_by_project(self, cgsnapshot_get_all_by_project):
         cgsnapshots = objects.CGSnapshotList.get_all_by_project(
@@ -166,7 +166,7 @@ class TestCGSnapshotList(test_objects.BaseObjectsTestCase):
         self.assertEqual(1, len(cgsnapshots))
         TestCGSnapshot._compare(self, fake_cgsnapshot, cgsnapshots[0])
 
-    @mock.patch('cinder.db.cgsnapshot_get_all_by_group',
+    @mock.patch('cinder.db.api.cgsnapshot_get_all_by_group',
                 return_value=[fake_cgsnapshot])
     def test_get_all_by_group(self, cgsnapshot_get_all_by_group):
         cgsnapshots = objects.CGSnapshotList.get_all_by_group(

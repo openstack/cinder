@@ -18,7 +18,7 @@
 import datetime
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake

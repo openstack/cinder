@@ -38,7 +38,7 @@ class TestService(test_objects.BaseObjectsTestCase):
         service_get.assert_called_once_with(self.context, 1)
 
     @ddt.data(True, False)
-    @mock.patch('cinder.db.service_get')
+    @mock.patch('cinder.db.api.service_get')
     def test_get_by_host_and_topic(self, show_disabled, service_get):
         db_service = fake_service.fake_db_service()
         service_get.return_value = db_service
@@ -49,7 +49,7 @@ class TestService(test_objects.BaseObjectsTestCase):
             self.context, disabled=show_disabled, host='fake-host',
             topic='fake-topic')
 
-    @mock.patch('cinder.db.service_get')
+    @mock.patch('cinder.db.api.service_get')
     def test_get_by_args(self, service_get):
         db_service = fake_service.fake_db_service()
         service_get.return_value = db_service
@@ -59,7 +59,7 @@ class TestService(test_objects.BaseObjectsTestCase):
         service_get.assert_called_once_with(
             self.context, host='fake-host', binary='fake-key')
 
-    @mock.patch('cinder.db.service_create')
+    @mock.patch('cinder.db.api.service_create')
     def test_create(self, service_create):
         db_service = fake_service.fake_db_service()
         service_create.return_value = db_service
@@ -69,7 +69,7 @@ class TestService(test_objects.BaseObjectsTestCase):
         service_create.assert_called_once_with(self.context,
                                                {'uuid': mock.ANY})
 
-    @mock.patch('cinder.db.service_update')
+    @mock.patch('cinder.db.api.service_update')
     def test_save(self, service_update):
         db_service = fake_service.fake_db_service()
         service = objects.Service._from_db_object(
@@ -116,7 +116,7 @@ class TestService(test_objects.BaseObjectsTestCase):
                                       mock.call.__bool__(),
                                       mock.call(self.context, 123)])
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_get_minimum_version(self, service_get_all):
         services_update = [
             {'rpc_current_version': '1.0', 'object_current_version': '1.3'},
@@ -134,7 +134,7 @@ class TestService(test_objects.BaseObjectsTestCase):
         service_get_all.assert_has_calls(
             [mock.call(self.context, binary='foo', disabled=None)] * 2)
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_get_minimum_version_liberty(self, service_get_all):
         services_update = [
             {'rpc_current_version': '1.0', 'object_current_version': '1.3'},
@@ -151,7 +151,7 @@ class TestService(test_objects.BaseObjectsTestCase):
                           objects.Service.get_minimum_obj_version,
                           self.context, 'foo')
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_get_minimum_version_no_binary(self, service_get_all):
         services_update = [
             {'rpc_current_version': '1.0', 'object_current_version': '1.3'},
@@ -204,7 +204,7 @@ class TestService(test_objects.BaseObjectsTestCase):
 
 
 class TestServiceList(test_objects.BaseObjectsTestCase):
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_get_all(self, service_get_all):
         db_service = fake_service.fake_db_service()
         service_get_all.return_value = [db_service]
@@ -215,7 +215,7 @@ class TestServiceList(test_objects.BaseObjectsTestCase):
         self.assertEqual(1, len(services))
         TestService._compare(self, db_service, services[0])
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_get_all_by_topic(self, service_get_all):
         db_service = fake_service.fake_db_service()
         service_get_all.return_value = [db_service]
@@ -227,7 +227,7 @@ class TestServiceList(test_objects.BaseObjectsTestCase):
         self.assertEqual(1, len(services))
         TestService._compare(self, db_service, services[0])
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_get_all_by_binary(self, service_get_all):
         db_service = fake_service.fake_db_service()
         service_get_all.return_value = [db_service]

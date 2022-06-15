@@ -36,7 +36,7 @@ from taskflow.engines.action_engine import engine
 from cinder.api import common
 from cinder import context
 from cinder import coordination
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.message import message_field
 from cinder import objects
@@ -476,7 +476,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           self.context,
                           volume.id)
 
-    @mock.patch('cinder.db.volume_metadata_update')
+    @mock.patch('cinder.db.api.volume_metadata_update')
     def test_create_volume_metadata(self, metadata_update):
         metadata = {'fake_key': 'fake_value'}
         metadata_update.return_value = metadata
@@ -558,7 +558,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           False,
                           FAKE_METADATA_TYPE.fake_type)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     def test_update_with_ovo(self, volume_update):
         """Test update volume using oslo_versionedobject."""
         volume = tests_utils.create_volume(self.context, **self.volume_params)
@@ -1136,9 +1136,9 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         mock_clean.assert_called_once_with(volume.id, self.volume.driver)
 
     @mock.patch('cinder.utils.clean_volume_file_locks')
-    @mock.patch.object(db.sqlalchemy.api, 'volume_get',
-                       side_effect=exception.VolumeNotFound(
-                           volume_id='12345678-1234-5678-1234-567812345678'))
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get',
+                side_effect=exception.VolumeNotFound(
+                    volume_id='12345678-1234-5678-1234-567812345678'))
     def test_delete_volume_not_found(self, mock_get_volume, mock_clean):
         """Test delete volume moves on if the volume does not exist."""
         volume_id = '12345678-1234-5678-1234-567812345678'
@@ -1388,7 +1388,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                                        **snapshot)
         snapshot_obj.volume = source_vol
 
-        with mock.patch('cinder.db.service_get_all') as mock_get_service, \
+        with mock.patch('cinder.db.api.service_get_all') as mock_get_service, \
             mock.patch.object(volume_api,
                               'list_availability_zones') as mock_get_azs:
             mock_get_service.return_value = [

@@ -17,7 +17,7 @@ from unittest import mock
 import ddt
 from sqlalchemy.orm import attributes
 
-from cinder import db
+from cinder.db import api as db
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
@@ -63,7 +63,7 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
             objects.VolumeAttachment._from_db_object(
                 self.context, objects.VolumeAttachment(), attach)
 
-    @mock.patch('cinder.db.volume_attachment_update')
+    @mock.patch('cinder.db.api.volume_attachment_update')
     def test_save(self, volume_attachment_update):
         attachment = fake_volume.volume_attachment_ovo(self.context)
         attachment.attach_status = fields.VolumeAttachStatus.ATTACHING
@@ -159,7 +159,7 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
 
 
 class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):
-    @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
+    @mock.patch('cinder.db.api.volume_attachment_get_all_by_volume_id')
     def test_get_all_by_volume_id(self, get_used_by_volume_id):
         db_attachment = fake_volume.volume_attachment_db_obj()
         get_used_by_volume_id.return_value = [db_attachment]
@@ -171,7 +171,7 @@ class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):
         self.assertEqual(1, len(attachments))
         self._compare(self, attachment_obj, attachments[0])
 
-    @mock.patch('cinder.db.volume_attachment_get_all_by_host')
+    @mock.patch('cinder.db.api.volume_attachment_get_all_by_host')
     def test_get_all_by_host(self, get_by_host):
         db_attachment = fake_volume.volume_attachment_db_obj()
         attachment_obj = fake_volume.volume_attachment_ovo(self.context)
@@ -182,7 +182,7 @@ class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):
         self.assertEqual(1, len(attachments))
         self._compare(self, attachment_obj, attachments[0])
 
-    @mock.patch('cinder.db.volume_attachment_get_all_by_instance_uuid')
+    @mock.patch('cinder.db.api.volume_attachment_get_all_by_instance_uuid')
     def test_get_all_by_instance_uuid(self, get_by_instance_uuid):
         db_attachment = fake_volume.volume_attachment_db_obj()
         get_by_instance_uuid.return_value = [db_attachment]

@@ -23,7 +23,7 @@ from webob import exc
 from cinder.api import api_utils
 from cinder.api import microversions as mv
 from cinder.api.v3 import default_types
-from cinder import db
+from cinder.db import api as db
 from cinder.policies import default_types as default_type_policies
 from cinder.tests.unit.api import fakes as fake_api
 from cinder.tests.unit import fake_constants

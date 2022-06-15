@@ -22,7 +22,7 @@ import webob
 from cinder.api.contrib import snapshot_actions
 from cinder.api import microversions as mv
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.objects import fields
 from cinder.tests.unit.api import fakes
@@ -50,10 +50,10 @@ class SnapshotActionsTest(test.TestCase):
             fake.USER_ID, fake.PROJECT_ID, auth_token=True)
         self.controller = snapshot_actions.SnapshotActionsController()
 
-    @mock.patch('cinder.db.snapshot_update', autospec=True)
+    @mock.patch('cinder.db.api.snapshot_update', autospec=True)
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
                 side_effect=fake_snapshot_get)
-    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.db.api.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_status(self, metadata_get, *args):
 
         body = {'os-update_snapshot_status':
@@ -70,7 +70,7 @@ class SnapshotActionsTest(test.TestCase):
 
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
                 side_effect=fake_snapshot_get)
-    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.db.api.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_status_invalid_status(self, metadata_get, *args):
         body = {'os-update_snapshot_status': {'status': 'in-use'}}
         req = webob.Request.blank('/v3/%s/snapshots/%s/action' % (
@@ -96,10 +96,10 @@ class SnapshotActionsTest(test.TestCase):
             fake_auth_context=self.user_ctxt))
         self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
-    @mock.patch('cinder.db.snapshot_update', autospec=True)
+    @mock.patch('cinder.db.api.snapshot_update', autospec=True)
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
                 side_effect=fake_snapshot_get)
-    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.db.api.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_valid_progress(self, metadata_get, *args):
         body = {'os-update_snapshot_status':
                 {'status': fields.SnapshotStatus.AVAILABLE,

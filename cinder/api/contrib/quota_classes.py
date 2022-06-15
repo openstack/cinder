@@ -19,7 +19,8 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.schemas import quota_classes as schema
 from cinder.api import validation
-from cinder import db
+from cinder.db import api as db
+from cinder.db.sqlalchemy import api as sqla_db
 from cinder import exception
 from cinder.policies import quota_class as policy
 from cinder import quota
@@ -42,7 +43,7 @@ class QuotaClassSetsController(wsgi.Controller):
         context = req.environ['cinder.context']
         context.authorize(policy.GET_POLICY)
         try:
-            db.sqlalchemy.api.authorize_quota_class_context(context, id)
+            sqla_db.authorize_quota_class_context(context, id)
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
         quota_set = QUOTAS.get_class_quotas(context, id)

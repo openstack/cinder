@@ -26,7 +26,7 @@ import webob.exc
 from cinder.api.contrib import quotas
 from cinder.common import constants
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test

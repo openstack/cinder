@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder import db
+from cinder.db import api as db
 from cinder import objects
 
 

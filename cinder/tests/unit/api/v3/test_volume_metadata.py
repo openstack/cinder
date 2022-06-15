@@ -23,7 +23,7 @@ from cinder.api import microversions as mv
 from cinder.api.v3 import volume_metadata
 from cinder.api.v3 import volumes
 from cinder.backup import rpcapi as backup_rpcapi
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import objects
 from cinder.objects import base as obj_base
@@ -122,7 +122,7 @@ class BaseVolumeMetadataTest(test.TestCase):
         self.mock_object(db, 'volume_metadata_get',
                          return_volume_metadata)
         self.patch(
-            'cinder.db.service_get_all', autospec=True,
+            'cinder.db.api.service_get_all', autospec=True,
             return_value=v3_fakes.fake_service_get_all_by_topic(None, None))
 
         self.mock_object(self.volume_api, 'update_volume_metadata',

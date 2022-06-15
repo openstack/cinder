@@ -26,7 +26,7 @@ from oslo_utils import timeutils
 from cinder import backup
 from cinder.backup import api as backup_api
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.db.sqlalchemy import api as sqa_api
 from cinder.db.sqlalchemy import models as sqa_models
 from cinder import exception

@@ -31,7 +31,7 @@ from oslo_utils import imageutils
 from oslo_utils import units
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 import cinder.image.glance
 from cinder.image import image_utils
@@ -3478,7 +3478,7 @@ class RBDTestCase(test.TestCase):
                 '/imgfile', self.volume_c.name)
 
     @mock.patch('cinder.objects.Volume.get_by_id')
-    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
+    @mock.patch('cinder.db.api.volume_glance_metadata_get', return_value={})
     @common_mocks
     def test_get_backup_device_ceph(self, mock_gm_get, volume_get_by_id):
         # Use the same volume for backup (volume_a)
@@ -3502,7 +3502,7 @@ class RBDTestCase(test.TestCase):
     @mock.patch('cinder.volume.driver.BaseVD._get_backup_volume_temp_snapshot')
     @mock.patch('cinder.volume.driver.BaseVD._get_backup_volume_temp_volume')
     @mock.patch('cinder.objects.Volume.get_by_id')
-    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
+    @mock.patch('cinder.db.api.volume_glance_metadata_get', return_value={})
     @common_mocks
     def test_get_backup_device_other(self,
                                      mock_gm_get,

@@ -192,7 +192,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         consistencygroup_get_by_id.assert_called_once_with(self.ctxt, 5)
         mock_extract_host.assert_called_once_with('cluster@backend#pool')
 
-    @mock.patch('cinder.db.volume_create')
+    @mock.patch('cinder.db.api.volume_create')
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_create_volume_from_snapshot(self, snapshot_get_by_id,
@@ -243,7 +243,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
 
     @ddt.data({'bootable': True},
               {'bootable': False})
-    @mock.patch('cinder.db.volume_create')
+    @mock.patch('cinder.db.api.volume_create')
     @mock.patch('cinder.objects.Volume.get_by_id')
     @ddt.unpack
     def test_create_from_source_volid_bootable(self,
@@ -270,7 +270,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               multiattach=None)
         self.assertEqual(bootable, result['volume_properties']['bootable'])
 
-    @mock.patch('cinder.db.volume_create')
+    @mock.patch('cinder.db.api.volume_create')
     @mock.patch('cinder.objects.Volume.get_by_id')
     @ddt.unpack
     def test_create_from_source_volid_encrypted(self,
@@ -1242,8 +1242,8 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
                 '_create_raw_volume')
-    @mock.patch('cinder.db.volume_update')
-    @mock.patch('cinder.db.backup_update')
+    @mock.patch('cinder.db.api.volume_update')
+    @mock.patch('cinder.db.api.backup_update')
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.objects.Backup.get_by_id')
     @ddt.unpack
@@ -1924,7 +1924,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                 '_cleanup_cg_in_volume')
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
     def test_create_from_image_extend_failure(
             self, mock_verify, mock_volume_update, mock_qemu_info,
@@ -2047,7 +2047,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             image_meta=image_meta
         )
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.check_available_space')
@@ -2120,7 +2120,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             image_meta=image_meta
         )
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.check_available_space')

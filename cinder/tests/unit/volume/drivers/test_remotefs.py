@@ -550,7 +550,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
     def test_create_snapshot_names(self, display_name):
         self._test_create_snapshot(display_name=display_name)
 
-    @mock.patch('cinder.db.snapshot_get')
+    @mock.patch('cinder.db.api.snapshot_get')
     @mock.patch('time.sleep')
     def test_create_snapshot_online_with_concurrent_delete(
             self, mock_sleep, mock_snapshot_get):

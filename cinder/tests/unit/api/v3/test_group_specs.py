@@ -20,7 +20,7 @@ import webob
 from cinder.api import microversions as mv
 from cinder.api.v3 import group_specs as v3_group_specs
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import rpc
 from cinder.tests.unit.api import fakes

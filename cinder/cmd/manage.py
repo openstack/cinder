@@ -74,7 +74,7 @@ from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import config  # noqa
 from cinder.common import constants
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.db import migration as db_migration
 from cinder.db.sqlalchemy import api as db_api
 from cinder.db.sqlalchemy import models

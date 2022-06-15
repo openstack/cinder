@@ -18,7 +18,7 @@ from unittest import mock
 
 from oslo_config import cfg
 
-from cinder import db
+from cinder.db import api as db
 from cinder.keymgr import migration
 from cinder import objects
 from cinder.tests.unit import fake_constants as fake

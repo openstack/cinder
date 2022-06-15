@@ -22,7 +22,7 @@ from oslo_config import cfg
 from oslo_upgradecheck import upgradecheck as uc
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import objects
 from cinder.policy import DEFAULT_POLICY_FILENAME

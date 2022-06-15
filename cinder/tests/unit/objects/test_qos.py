@@ -31,7 +31,7 @@ del fake_qos_no_id['id']
 
 
 class TestQos(test_objects.BaseObjectsTestCase):
-    @mock.patch('cinder.db.get_by_id', return_value=fake_qos)
+    @mock.patch('cinder.db.api.get_by_id', return_value=fake_qos)
     def test_get_by_id(self, qos_get):
         qos_object = objects.QualityOfServiceSpecs.get_by_id(
             self.context, fake.OBJECT_ID)
@@ -39,7 +39,7 @@ class TestQos(test_objects.BaseObjectsTestCase):
         qos_get.assert_called_once_with(
             self.context, models.QualityOfServiceSpecs, fake.OBJECT_ID)
 
-    @mock.patch('cinder.db.qos_specs_create',
+    @mock.patch('cinder.db.api.qos_specs_create',
                 return_value={'name': 'qos_name', 'id': fake.OBJECT_ID})
     def test_create(self, qos_fake_create):
         qos_object = objects.QualityOfServiceSpecs(
@@ -52,8 +52,8 @@ class TestQos(test_objects.BaseObjectsTestCase):
 
         self.assertEqual(1, len(qos_fake_create.mock_calls))
 
-    @mock.patch('cinder.db.qos_specs_item_delete')
-    @mock.patch('cinder.db.qos_specs_update')
+    @mock.patch('cinder.db.api.qos_specs_item_delete')
+    @mock.patch('cinder.db.api.qos_specs_update')
     def test_save(self, qos_fake_update, qos_fake_delete):
         qos_dict = fake_qos.copy()
         qos_dict['specs']['key_to_remove1'] = 'val'
@@ -102,7 +102,7 @@ class TestQos(test_objects.BaseObjectsTestCase):
             qos_object.deleted_at)
 
     @mock.patch('cinder.db.sqlalchemy.api.qos_specs_delete')
-    @mock.patch('cinder.db.qos_specs_disassociate_all')
+    @mock.patch('cinder.db.api.qos_specs_disassociate_all')
     @mock.patch('cinder.objects.VolumeTypeList.get_all_types_for_qos')
     def test_destroy_with_vol_types(self, fake_get_vol_types,
                                     qos_fake_disassociate, qos_fake_delete):
@@ -119,7 +119,7 @@ class TestQos(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.objects.VolumeTypeList.get_all_types_for_qos',
                 return_value=None)
-    @mock.patch('cinder.db.get_by_id', return_value=fake_qos)
+    @mock.patch('cinder.db.api.get_by_id', return_value=fake_qos)
     def test_get_volume_type(self, fake_get_by_id, fake_get_vol_types):
         qos_object = objects.QualityOfServiceSpecs.get_by_id(
             self.context, fake.OBJECT_ID)

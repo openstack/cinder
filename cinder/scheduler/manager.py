@@ -35,7 +35,7 @@ from oslo_utils import versionutils
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _

@@ -28,7 +28,7 @@ class AvailabilityZoneTestCase(base.BaseVolumeTestCase):
     def setUp(self):
         super(AvailabilityZoneTestCase, self).setUp()
         self.get_all = self.patch(
-            'cinder.db.service_get_all', autospec=True,
+            'cinder.db.api.service_get_all', autospec=True,
             return_value=[{'availability_zone': 'a', 'disabled': False,
                            'uuid': 'f838f35c-4035-464f-9792-ce60e390c13d'}])
 

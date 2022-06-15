@@ -17,7 +17,7 @@
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder import db
+from cinder.db import api as db
 from cinder import objects
 from cinder.policies import volumes as policy
 

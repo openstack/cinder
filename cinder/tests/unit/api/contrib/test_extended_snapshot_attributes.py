@@ -83,7 +83,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
                          snapshot.get('%sproject_id' % self.prefix))
         self.assertEqual(progress, snapshot.get('%sprogress' % self.prefix))
 
-    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.db.api.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     @mock.patch('cinder.context.RequestContext.authorize')

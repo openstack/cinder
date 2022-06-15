@@ -193,7 +193,7 @@ class ClustersTestCase(test.TestCase):
         self.ext_mgr.extensions = {}
         self.controller = clusters.ClusterController(self.ext_mgr)
 
-    @mock.patch('cinder.db.cluster_get_all',
+    @mock.patch('cinder.db.api.cluster_get_all',
                 side_effect=fake_db_api_cluster_get_all)
     def _test_list(self, get_all_mock, detailed, filters=None, expected=None,
                    version=mv.get_prior_version(mv.REPLICATION_CLUSTER)):

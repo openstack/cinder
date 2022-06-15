@@ -17,7 +17,7 @@ from oslo_config import cfg
 from oslo_utils import importutils
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.objects import fields
 from cinder.objects import volume_attachment
 from cinder.tests.unit.api.v3 import fakes as v3_fakes
@@ -49,8 +49,8 @@ class AttachmentManagerTestCase(test.TestCase):
                               'pools': {}}
 
     @ddt.data(False, True)
-    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get',
-                       v3_fakes.fake_volume_type_get)
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get',
+                v3_fakes.fake_volume_type_get)
     @mock.patch('cinder.db.sqlalchemy.api.volume_type_qos_specs_get')
     @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
     def test_attachment_update(self, enforce_mpath, get_extra_specs,
@@ -270,8 +270,8 @@ class AttachmentManagerTestCase(test.TestCase):
                 '_notify_about_volume_usage')
     @mock.patch('cinder.volume.manager.VolumeManager._connection_terminate',
                 return_value=None)
-    @mock.patch('cinder.db.volume_detached')
-    @mock.patch('cinder.db.volume_admin_metadata_delete')
+    @mock.patch('cinder.db.api.volume_detached')
+    @mock.patch('cinder.db.api.volume_admin_metadata_delete')
     def test_attachment_delete_none_shared_connection(self, mock_meta_del,
                                                       mock_vol_detached,
                                                       mock_conn_term,

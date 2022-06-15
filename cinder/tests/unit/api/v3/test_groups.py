@@ -24,7 +24,7 @@ import webob
 from cinder.api import microversions as mv
 from cinder.api.v3 import groups as v3_groups
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 import cinder.group
 from cinder import objects

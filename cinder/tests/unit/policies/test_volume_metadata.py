@@ -19,7 +19,7 @@ import ddt
 from cinder.api.contrib import volume_image_metadata as image_metadata
 from cinder.api import microversions as mv
 from cinder.api.v3 import volume_metadata
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.policies import volume_metadata as policy
 from cinder.tests.unit.api import fakes as fake_api

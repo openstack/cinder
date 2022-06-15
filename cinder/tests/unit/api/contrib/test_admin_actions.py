@@ -30,7 +30,7 @@ from cinder.backup import api as backup_api
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import objects
 from cinder.objects import base as obj_base
@@ -231,7 +231,7 @@ class AdminActionsTest(BaseAdminTest):
                                         {'status': 'in-use'})
         self.assertEqual(HTTPStatus.BAD_REQUEST, resp.status_int)
 
-    @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
+    @mock.patch('cinder.db.api.volume_attachment_get_all_by_volume_id')
     def test_reset_available_to_in_use_on_attached_volume(
             self, get_attachment):
         volume = db.volume_create(self.ctx,
@@ -937,7 +937,7 @@ class AdminActionsTest(BaseAdminTest):
                          res_dict['badRequest']['code'])
 
     @mock.patch('cinder.backup.rpcapi.BackupAPI.delete_backup', mock.Mock())
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.backup.api.API._check_support_to_force_delete')
     def _force_delete_backup_util(self, test_status, mock_check_support,
                                   mock_service_get_all):
