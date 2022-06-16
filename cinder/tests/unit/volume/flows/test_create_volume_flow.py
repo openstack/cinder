@@ -667,8 +667,10 @@ class CreateVolumeFlowTestCase(test.TestCase):
         fake_key_manager = mock_key_manager.MockKeyManager()
         volume_type = {'name': 'type1', 'id': 1}
 
-        with mock.patch.object(fake_key_manager, 'create_key',
-                               side_effect=castellan_exc.KeyManagerError):
+        with mock.patch.object(
+            fake_key_manager, 'create_key',
+            side_effect=castellan_exc.KeyManagerError('foo')
+        ):
             with mock.patch.object(fake_key_manager, 'get',
                                    return_value=fakes.ENCRYPTION_KEY_ID):
 
