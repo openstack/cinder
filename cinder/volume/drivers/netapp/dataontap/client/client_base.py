@@ -63,25 +63,26 @@ class Client(object):
         self.features = na_utils.Features()
 
     def get_ontap_version(self, cached=True):
-        """Gets the ONTAP version."""
+        """Gets the ONTAP version-string and version-tuple"""
 
         if cached:
             return self.connection.get_ontap_version()
 
         ontap_version = netapp_api.NaElement("system-get-version")
-        result = self.connection.invoke_successfully(ontap_version, True)
+        result = self.connection.invoke_successfully(
+            ontap_version, enable_tunneling=True)
 
         version_tuple = result.get_child_by_name(
             'version-tuple') or netapp_api.NaElement('none')
-        system_version_tuple = version_tuple.get_child_by_name(
+        ontap_version_tuple = version_tuple.get_child_by_name(
             'system-version-tuple') or netapp_api.NaElement('none')
 
-        generation = system_version_tuple.get_child_content("generation")
-        major = system_version_tuple.get_child_content("major")
+        version = (
+            int(ontap_version_tuple.get_child_content('generation')),
+            int(ontap_version_tuple.get_child_content('major')),
+            int(ontap_version_tuple.get_child_content('minor')))
 
-        return '%(generation)s.%(major)s' % {
-            'generation': generation,
-            'major': major}
+        return version
 
     def get_ontapi_version(self, cached=True):
         """Gets the supported ontapi version."""
@@ -120,7 +121,7 @@ class Client(object):
         # geometry on max_resize_size. In order to remove this
         # limitation we create the LUN with its maximum possible size
         # and then shrink to the requested size.
-        if ontap_version < '9.5':
+        if ontap_version < (9, 5, 0):
             initial_size = MAX_SIZE_FOR_A_LUN
             # In order to create a LUN with its maximum size (16TB),
             # the space_reservation needs to be disabled
@@ -153,7 +154,7 @@ class Client(object):
                            'volume_name': volume_name,
                            'ex': ex})
 
-        if ontap_version < '9.5':
+        if ontap_version < (9, 5, 0):
             self.do_direct_resize(path, six.text_type(size))
             if metadata['SpaceReserved'] == 'true':
                 self.set_lun_space_reservation(path, True)
