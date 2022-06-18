@@ -2878,6 +2878,7 @@ class PowerMaxRest(object):
                 payload.pop('establish')
         return payload
 
+    @retry(retry_exc_tuple, interval=5, retries=6)
     def srdf_protect_storage_group(
             self, array_id, remote_array_id, rdf_group_no, replication_mode,
             sg_name, service_level, extra_specs, target_sg=None):
@@ -3087,6 +3088,7 @@ class PowerMaxRest(object):
         self.delete_resource(array, REPLICATION, 'rdf_group', resource)
         LOG.debug("Device Pair successfully deleted.")
 
+    @retry(retry_exc_tuple, interval=5, retries=6)
     def srdf_create_device_pair(self, array, rdf_group_no, mode, device_id,
                                 rep_extra_specs, next_gen):
         """Create a RDF device pair in an existing RDF group.

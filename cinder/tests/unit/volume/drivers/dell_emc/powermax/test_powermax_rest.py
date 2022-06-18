@@ -1996,6 +1996,30 @@ class PowerMaxRestTest(test.TestCase):
         mck_create.assert_called_once_with(
             array_id, 'replication', ref_resource, ref_payload)
 
+    @mock.patch.object(
+        rest.PowerMaxRest, 'wait_for_job',
+        side_effect=exception.VolumeBackendAPIException(''))
+    @mock.patch.object(rest.PowerMaxRest, 'create_resource',
+                       return_value=(200, 'job'))
+    def test_srdf_protect_storage_group_retries(self, mck_create, mck_wait):
+        array_id = self.data.array
+        remote_array_id = self.data.remote_array
+        rdf_group_no = self.data.rdf_group_no_1
+        replication_mode = utils.REP_METRO
+        sg_name = self.data.default_sg_re_enabled
+        service_level = 'Diamond'
+        extra_specs = deepcopy(self.data.rep_extra_specs)
+        extra_specs[utils.METROBIAS] = True
+        remote_sg = self.data.rdf_managed_async_grp
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.rest.srdf_protect_storage_group,
+                          array_id, remote_array_id, rdf_group_no,
+                          replication_mode, sg_name, service_level,
+                          extra_specs, target_sg=remote_sg)
+        # 6 retries on a VolumeBackendAPIException
+        self.assertEqual(6, mck_create.call_count)
+
     @mock.patch.object(rest.PowerMaxRest, 'wait_for_job')
     @mock.patch.object(rest.PowerMaxRest, 'modify_resource',
                        return_value=(200, 'job'))
@@ -2280,6 +2304,31 @@ class PowerMaxRestTest(test.TestCase):
         mck_get.assert_called_once_with(
             array_id, rdf_group_no, device_id)
         self.assertEqual(ref_response, create_response)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_rdf_pair_volume',
+        return_value=tpd.PowerMaxData.rdf_group_vol_details)
+    @mock.patch.object(
+        rest.PowerMaxRest, 'wait_for_job',
+        side_effect=exception.VolumeBackendAPIException(''))
+    @mock.patch.object(rest.PowerMaxRest, 'create_resource',
+                       return_value=(200, 'job'))
+    def test_srdf_create_device_pair_retry(
+            self, mck_create, mck_wait, mck_get):
+        array_id = self.data.array
+        remote_array = self.data.remote_array
+        rdf_group_no = self.data.rdf_group_no_1
+        mode = utils.REP_ASYNC
+        device_id = self.data.device_id
+        rep_extra_specs = self.data.rep_extra_specs
+        rep_extra_specs['array'] = remote_array
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.rest.srdf_create_device_pair,
+                          array_id, rdf_group_no, mode, device_id,
+                          rep_extra_specs, True)
+        # 6 retries on a VolumeBackendAPIException
+        self.assertEqual(6, mck_create.call_count)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_rdf_group_state',
                        return_value=[utils.RDF_CONSISTENT_STATE])
