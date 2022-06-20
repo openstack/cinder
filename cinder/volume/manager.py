@@ -2620,6 +2620,14 @@ class VolumeManager(manager.CleanableManager,
         if not force_host_copy and self._can_use_driver_migration(diff):
             try:
                 LOG.debug("Issue driver.migrate_volume.", resource=volume)
+                # Update the remote host's allocated_capacity_gb first
+                # Because the migration can take a while, and the scheduler
+                # needs to account for the space consumed.
+                LOG.debug("Update remote allocated_capacity_gb for "
+                          "host %(host)s",
+                          {'host': volume.host},
+                          resource=volume)
+                rpcapi.update_migrated_volume_capacity(ctxt, volume)
                 moved, model_update = self.driver.migrate_volume(ctxt,
                                                                  volume,
                                                                  host)
@@ -2643,12 +2651,13 @@ class VolumeManager(manager.CleanableManager,
                     volume.save()
                     self._update_allocated_capacity(volume, decrement=True,
                                                     host=original_host)
-                    LOG.debug("Update remote allocated_capacity_gb for "
-                              "host %(host)s",
-                              {'host': volume.host},
-                              resource=volume)
-                    rpcapi.update_migrated_volume_capacity(ctxt, volume)
             except Exception:
+                LOG.debug("Decrement remote allocated_capacity_gb for "
+                          "host %(host)s",
+                          {'host': volume.host},
+                          resource=volume)
+                rpcapi.update_migrated_volume_capacity(ctxt, volume,
+                                                       decrement=True)
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': 'error'}
                     if status_update:
@@ -2658,15 +2667,21 @@ class VolumeManager(manager.CleanableManager,
         if not moved:
             try:
                 original_host = volume.host
-                self._migrate_volume_generic(ctxt, volume, host, new_type_id)
-                self._update_allocated_capacity(volume, decrement=True,
-                                                host=original_host)
                 LOG.debug("Update remote allocated_capacity_gb for "
                           "host %(host)s",
                           {'host': volume.host},
                           resource=volume)
                 rpcapi.update_migrated_volume_capacity(ctxt, volume)
+                self._migrate_volume_generic(ctxt, volume, host, new_type_id)
+                self._update_allocated_capacity(volume, decrement=True,
+                                                host=original_host)
             except Exception:
+                LOG.debug("Decrement remote allocated_capacity_gb for "
+                          "host %(host)s",
+                          {'host': volume.host},
+                          resource=volume)
+                rpcapi.update_migrated_volume_capacity(ctxt, volume,
+                                                       decrement=True)
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': 'error'}
                     if status_update:
@@ -4345,9 +4360,9 @@ class VolumeManager(manager.CleanableManager,
                                                 snapshots)
 
     @utils.trace
-    def update_migrated_volume_capacity(self, ctxt, volume):
-        """Update allocated_capacity_gb for the new migrated volume host."""
-        self._update_allocated_capacity(volume)
+    def update_migrated_volume_capacity(self, ctxt, volume, decrement=False):
+        """Update allocated_capacity_gb for the migrated volume host."""
+        self._update_allocated_capacity(volume, decrement=decrement)
 
     def update_migrated_volume(self, ctxt, volume, new_volume, volume_status):
         """Finalize migration process on backend device."""
