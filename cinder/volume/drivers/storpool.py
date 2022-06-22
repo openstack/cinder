@@ -362,6 +362,7 @@ class StorPoolDriver(driver.VolumeDriver):
             'driver_version': self.VERSION,
             'storage_protocol': constants.STORPOOL,
             # Driver capabilities
+            'clone_across_pools': True,
             'sparse_copy_volume': True,
             # The actual pools data
             'pools': pools

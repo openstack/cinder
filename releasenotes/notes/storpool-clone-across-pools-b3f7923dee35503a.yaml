@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    The StorPool driver now declares the "clone across pools" capability,
+    which allows it to create a volume into an arbitrary StorPool-backed
+    volume type from a StorPool-backed Glance image.
