@@ -1060,6 +1060,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
             self, volume_get_by_id, vol_update, rekey_vol, cleanup_cg):
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {}
         fake_volume_manager = mock.MagicMock()
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
             fake_volume_manager, fake_db, fake_driver)
@@ -1085,6 +1086,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                                   handle_bootable, cleanup_cg):
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {}
         fake_volume_manager = mock.MagicMock()
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
             fake_volume_manager, fake_db, fake_driver)
@@ -1110,6 +1112,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                                                  mock_cleanup_cg):
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {}
         fake_volume_manager = mock.MagicMock()
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
             fake_volume_manager, fake_db, fake_driver)
@@ -1146,6 +1149,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                                                 mock_cleanup_cg):
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {}
         fake_volume_manager = mock.MagicMock()
         fake_cache = mock.MagicMock()
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
@@ -1195,6 +1199,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                                                     mock_cleanup_cg):
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {}
         fake_volume_manager = mock.MagicMock()
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
             fake_volume_manager, fake_db, fake_driver)
@@ -1254,6 +1259,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                                 driver_error):
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {}
         fake_volume_manager = mock.MagicMock()
         backup_host = 'host@backend#pool'
         test_manager = create_volume_manager.CreateVolumeFromSpecTask(
@@ -1293,6 +1299,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
     def test_create_drive_error(self, mock_message_create):
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {}
         fake_volume_manager = mock.MagicMock()
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
             fake_volume_manager, fake_db, fake_driver)
@@ -1494,6 +1501,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
             spec=utils.get_file_spec())
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {}
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
             mock.MagicMock(), fake_db, fake_driver)
         fake_image_service = fake_image.FakeImageService()
@@ -1520,7 +1528,71 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
                       'cinder_encryption_key_id': None}
 
         fake_driver.clone_image.return_value = (None, False)
+        fake_db.volume_get_all.return_value = []
         fake_db.volume_get_all_by_host.return_value = [image_volume]
+
+        fake_manager._create_from_image(self.ctxt,
+                                        volume,
+                                        image_location,
+                                        image_id,
+                                        image_meta,
+                                        fake_image_service)
+        if format == 'raw' and not owner and location:
+            fake_driver.create_cloned_volume.assert_called_once_with(
+                volume, image_volume)
+            handle_bootable.assert_called_once_with(self.ctxt, volume,
+                                                    image_id=image_id,
+                                                    image_meta=image_meta)
+        else:
+            self.assertFalse(fake_driver.create_cloned_volume.called)
+        mock_cleanup_cg.assert_called_once_with(volume)
+
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
+                '_cleanup_cg_in_volume')
+    @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
+                '_handle_bootable_volume_glance_meta')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_from_image_across(self, mock_qemu_info, handle_bootable,
+                                      mock_fetch_img, mock_cleanup_cg,
+                                      format='raw', owner=None,
+                                      location=True):
+        self.flags(allowed_direct_url_schemes=['cinder'])
+        mock_fetch_img.return_value = mock.MagicMock(
+            spec=utils.get_file_spec())
+        fake_db = mock.MagicMock()
+        fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {'clone_across_pools': True}
+        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
+            mock.MagicMock(), fake_db, fake_driver)
+        fake_image_service = fake_image.FakeImageService()
+
+        volume = fake_volume.fake_volume_obj(self.ctxt,
+                                             host='host@backend#pool')
+        image_volume = fake_volume.fake_volume_obj(self.ctxt,
+                                                   volume_metadata={})
+        image_id = fakes.IMAGE_ID
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+
+        url = 'cinder://%s' % image_volume['id']
+        image_location = None
+        if location:
+            image_location = (url, [{'url': url, 'metadata': {}}])
+        image_meta = {'id': image_id,
+                      'container_format': 'bare',
+                      'disk_format': format,
+                      'size': 1024,
+                      'owner': owner or self.ctxt.project_id,
+                      'virtual_size': None,
+                      'cinder_encryption_key_id': None}
+
+        fake_driver.clone_image.return_value = (None, False)
+        fake_db.volume_get_all.return_value = [image_volume]
+        fake_db.volume_get_all_by_host.return_value = []
 
         fake_manager._create_from_image(self.ctxt,
                                         volume,
@@ -1564,6 +1636,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
             spec=utils.get_file_spec())
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_driver.capabilities = {}
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
             mock.MagicMock(), fake_db, fake_driver)
         fake_image_service = fake_image.FakeImageService()

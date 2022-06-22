@@ -160,6 +160,9 @@ class VolumeDriverCore(base.CinderInterface):
         * online_extend_support (Boolean)
             Whether the backend supports in-use volume extend or not. Defaults
             to True.
+        * clone_across_pools (Boolean)
+            Whether the backend supports cloning a volume across different
+            pools. Defaults to False.
 
         The returned dict may also contain a list, "pools", which has a similar
         dict for each pool being used with the backend.

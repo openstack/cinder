@@ -1,0 +1,16 @@
+---
+features:
+  - Add the clone_across_pools driver capability
+
+    Drivers can now declare that they can clone a volume into a
+    different pool. Essentially, if this capability is declared, Cinder
+    will skip the check that the pool of the destination volume is the
+    same as the pool of the source volume.
+
+    Some drivers do not have such a restriction and it may be possible
+    to complete the "create volume from image" operation very
+    efficiently instead of falling back to the "attach and dd" option.
+
+    This affects creating a volume from an image with and without the
+    image cache. For more details please check `bp clone_across_pools
+    <https://blueprints.launchpad.net/cinder/+spec/clone-across-pools>`__
