@@ -82,7 +82,7 @@ def _launch_backup_process(launcher, num_process, _semaphore):
         server = service.Service.create(binary='cinder-backup',
                                         coordination=True,
                                         service_name='backup',
-                                        process_number=num_process,
+                                        process_number=num_process + 1,
                                         semaphore=_semaphore)
     except Exception:
         LOG.exception('Backup service %s failed to start.', CONF.host)
@@ -113,10 +113,20 @@ def main():
     semaphore = utils.semaphore_factory(CONF.backup_max_operations,
                                         CONF.backup_workers)
 
-    LOG.info('Backup running with %s processes.', CONF.backup_workers)
-    launcher = service.get_launcher()
+    if CONF.backup_workers > 1:
+        LOG.info('Backup running with %s processes.', CONF.backup_workers)
+        launcher = service.get_launcher()
 
-    for i in range(1, CONF.backup_workers + 1):
-        _launch_backup_process(launcher, i, semaphore)
+        for i in range(CONF.backup_workers):
+            _launch_backup_process(launcher, i, semaphore)
 
-    launcher.wait()
+        launcher.wait()
+    else:
+        LOG.info('Backup running in single process mode.')
+        server = service.Service.create(binary='cinder-backup',
+                                        coordination=True,
+                                        service_name='backup',
+                                        process_number=1,
+                                        semaphore=semaphore)
+        service.serve(server)
+        service.wait()
