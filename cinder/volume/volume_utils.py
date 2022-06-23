@@ -1122,6 +1122,12 @@ def check_image_metadata(image_meta: Dict[str, Union[str, int]],
         msg = msg % {'volume_size': vol_size, 'min_disk': min_disk}
         raise exception.InvalidInput(reason=msg)
 
+    # Check if virtual size is not greater than volume size
+    virtual_size = utils.as_int(image_meta.get('virtual_size'))
+    if virtual_size:
+        image_utils.check_virtual_size(virtual_size, vol_size,
+                                       image_meta['id'])
+
 
 def enable_bootable_flag(volume: 'objects.Volume') -> None:
     try:
