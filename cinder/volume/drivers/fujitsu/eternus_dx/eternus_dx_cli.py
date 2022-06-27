@@ -15,6 +15,7 @@
 #
 
 """Cinder Volume driver for Fujitsu ETERNUS DX S3 series."""
+
 import six
 
 from cinder.i18n import _
@@ -47,6 +48,12 @@ class FJDXCLI(object):
         self.CMD_dic = {
             'check_user_role': self._check_user_role,
             'show_pool_provision': self._show_pool_provision,
+            'show_qos_bandwidth_limit': self._show_qos_bandwidth_limit,
+            'set_qos_bandwidth_limit': self._set_qos_bandwidth_limit,
+            'set_volume_qos': self._set_volume_qos,
+            'show_volume_qos': self._show_volume_qos,
+            'show_enclosure_status': self._show_enclosure_status,
+            'delete_volume': self._delete_volume
         }
 
         self.SMIS_dic = {
@@ -129,7 +136,7 @@ class FJDXCLI(object):
             stdoutdata = ''
             while True:
                 temp = chan.recv(65535)
-                if isinstance(temp, six.binary_type):
+                if isinstance(temp, bytes):
                     temp = temp.decode('utf-8')
                 else:
                     temp = str(temp)
@@ -143,7 +150,7 @@ class FJDXCLI(object):
                     break
         except Exception as e:
             raise Exception(_("Execute CLI "
-                              "command error. Error: %s") % six.text_type(e))
+                              "command error. Error: %s") % e)
         finally:
             if ssh:
                 self.ssh_pool.put(ssh)
@@ -188,7 +195,7 @@ class FJDXCLI(object):
     def _get_option(**option):
         """Create option strings from dictionary."""
         ret = ""
-        for key, value in six.iteritems(option):
+        for key, value in option.items():
             ret += " -%(key)s %(value)s" % {'key': key, 'value': value}
         return ret
 
@@ -232,6 +239,10 @@ class FJDXCLI(object):
             }
         return output
 
+    def _set_volume_qos(self, **option):
+        """Exec set volume-qos."""
+        return self._exec_cli("set volume-qos", **option)
+
     def _show_pool_provision(self, **option):
         """Get TPP provision capacity information."""
         try:
@@ -257,8 +268,129 @@ class FJDXCLI(object):
             output = {
                 'result': 0,
                 'rc': '4',
-                'message': "show pool provision capacity error: %s"
-                           % six.text_type(ex)
+                'message': "show pool provision capacity error: %s" % ex
             }
 
         return output
+
+    def _show_qos_bandwidth_limit(self, **option):
+        """Get qos bandwidth limit."""
+        clidata = None
+        try:
+            output = self._exec_cli("show qos-bandwidth-limit", **option)
+
+            # return error
+            rc = output['rc']
+
+            if rc != "0":
+                return output
+
+            qoslist = []
+            clidatalist = output.get('message')
+
+            for clidataline in clidatalist[1:]:
+                clidata = clidataline.split('\t')
+                qoslist.append({'total_limit': int(clidata[0], 16),
+                                'total_iops_sec': int(clidata[1], 16),
+                                'total_bytes_sec': int(clidata[2], 16),
+                                'read_limit': int(clidata[0], 16),
+                                'read_iops_sec': int(clidata[3], 16),
+                                'read_bytes_sec': int(clidata[4], 16),
+                                'write_limit': int(clidata[0], 16),
+                                'write_iops_sec': int(clidata[5], 16),
+                                'write_bytes_sec': int(clidata[6], 16)})
+
+            output['message'] = qoslist
+
+        except IndexError as ex:
+            msg = ('The results returned by cli are not as expected. '
+                   'Exception string: %s' % clidata)
+            output = {'result': 0,
+                      'rc': '4',
+                      'message': "Show qos bandwidth limit error: %s. %s"
+                                 % (ex, msg)}
+
+        except Exception as ex:
+            output = {'result': 0,
+                      'rc': '4',
+                      'message': "Show qos bandwidth limit error: %s" % ex}
+
+        return output
+
+    def _set_qos_bandwidth_limit(self, **option):
+        """Set qos bandwidth limit"""
+        return self._exec_cli("set qos-bandwidth-limit", **option)
+
+    def _show_volume_qos(self, **option):
+        """Get volumes with qos."""
+        clidata = None
+        try:
+            output = self._exec_cli("show volume-qos", **option)
+
+            # return error
+            rc = output['rc']
+
+            if rc != "0":
+                return output
+
+            vqosdatalist = []
+            clidatalist = output.get('message')
+
+            for clidataline in clidatalist[1:]:
+                clidata = clidataline.split('\t')
+                vqosdatalist.append({'total_limit': int(clidata[2], 16),
+                                     'read_limit': int(clidata[3], 16),
+                                     'write_limit': int(clidata[4], 16)})
+
+            output['message'] = vqosdatalist
+
+        except IndexError as ex:
+            msg = ('The results returned by cli are not as expected. '
+                   'Exception string: %s' % clidata)
+            output = {'result': 0,
+                      'rc': '4',
+                      'message': "Show volume qos error: %s. %s" % (ex, msg)}
+
+        except Exception as ex:
+            output = {'result': 0,
+                      'rc': '4',
+                      'message': "Show volume qos error: %s" % ex}
+
+        return output
+
+    def _show_enclosure_status(self, **option):
+        """Get the version of machine."""
+        clidata = None
+        try:
+            output = self._exec_cli("show enclosure-status", **option)
+
+            # return error
+            rc = output['rc']
+
+            if rc != "0":
+                return output
+
+            clidatalist = output.get('message')
+            clidata = clidatalist[0].split('\t')
+            versioninfo = {'version': clidata[11]}
+
+            output['message'] = versioninfo
+
+        except IndexError as ex:
+            msg = ('The results returned by cli are not as expected. '
+                   'Exception string: %s' % clidata)
+            output = {'result': 0,
+                      'rc': '4',
+                      'message': "Show enclosure status error: %s. %s"
+                                 % (ex, msg)}
+
+        except Exception as ex:
+            output = {'result': 0,
+                      'rc': '4',
+                      'message': "Show enclosure status error: %s" % ex}
+
+        return output
+
+    def _delete_volume(self, **option):
+        """Exec delete volume."""
+        return self._exec_cli('delete volume', **option)

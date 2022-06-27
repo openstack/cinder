@@ -18,7 +18,6 @@
 
 """Cinder Volume driver for Fujitsu ETERNUS DX S3 series."""
 
-import ast
 import base64
 import time
 
@@ -31,12 +30,15 @@ from oslo_utils.secretutils import md5
 from oslo_utils import units
 import six
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.fujitsu.eternus_dx import constants as CONSTANTS
 from cinder.volume.drivers.fujitsu.eternus_dx import eternus_dx_cli
+from cinder.volume import qos_specs
+from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
@@ -58,14 +60,22 @@ CONF.register_opts(FJ_ETERNUS_DX_OPT_opts, group=conf.SHARED_CONF_GROUP)
 
 
 class FJDXCommon(object):
-    """Common code that does not depend on protocol."""
+    """Common code that does not depend on protocol.
 
-    VERSION = "1.3.0"
+    Version history:
+
+    1.0   - Initial driver
+    1.3.0 - Community base version
+    1.4.0 - Add support for QoS.
+
+    """
+
+    VERSION = "1.4.0"
     stats = {
         'driver_version': VERSION,
         'storage_protocol': None,
         'vendor_name': 'FUJITSU',
-        'QoS_support': False,
+        'QoS_support': True,
         'volume_backend_name': None,
     }
 
@@ -77,12 +87,9 @@ class FJDXCommon(object):
         self.configuration = configuration
         self.configuration.append_config_values(FJ_ETERNUS_DX_OPT_opts)
 
-        if prtcl == 'iSCSI':
-            # Get iSCSI ipaddress from driver configuration file.
-            self.configuration.iscsi_ip_address = (
-                self._get_drvcfg('EternusISCSIIP'))
         self.conn = None
         self.fjdxcli = {}
+        self.model_name = self._get_eternus_model()
         self._check_user()
 
     @staticmethod
@@ -95,68 +102,118 @@ class FJDXCommon(object):
                   'volume id: %(vid)s, volume size: %(vsize)s.',
                   {'vid': volume['id'], 'vsize': volume['size']})
 
+        d_metadata = self.get_metadata(volume)
+
+        element_path, metadata = self._create_volume(volume)
+
+        d_metadata.update(metadata)
+
+        model_update = {
+            'provider_location': str(element_path),
+            'metadata': d_metadata
+        }
+
+        # Set qos to created volume.
+        try:
+            self._set_qos(volume, use_id=True)
+        except Exception as ex:
+            LOG.error('create_volume, '
+                      'error occurred while setting volume qos. '
+                      'Error information: %s', ex)
+            # While set qos failed, delete volume from backend
+            volumename = metadata['FJ_Volume_Name']
+            self._delete_volume_after_error(volumename)
+
+        return model_update
+
+    def _create_volume(self, volume):
+        LOG.debug('_create_volume, '
+                  'volume id: %(vid)s, volume size: %(vsize)s.',
+                  {'vid': volume['id'], 'vsize': volume['size']})
+
         self.conn = self._get_eternus_connection()
         volumesize = int(volume['size']) * units.Gi
-        volumename = self._create_volume_name(volume['id'])
+        volumename = self._get_volume_name(volume, use_id=True)
 
-        LOG.debug('create_volume, volumename: %(volumename)s, '
+        LOG.debug('_create_volume, volumename: %(volumename)s, '
                   'volumesize: %(volumesize)u.',
                   {'volumename': volumename,
                    'volumesize': volumesize})
 
-        # get poolname from driver configuration file
-        eternus_pool = volume_utils.extract_host(volume['host'], 'pool')
-        # Existence check the pool
-        pool = self._find_pool(eternus_pool)
-
-        if 'RSP' in pool['InstanceID']:
-            pooltype = CONSTANTS.RAIDGROUP
-        else:
-            pooltype = CONSTANTS.TPPOOL
-
         configservice = self._find_eternus_service(CONSTANTS.STOR_CONF)
-        if configservice is None:
-            msg = (_('create_volume, volume: %(volume)s, '
+        if not configservice:
+            msg = (_('_create_volume, volume: %(volume)s, '
                      'volumename: %(volumename)s, '
                      'eternus_pool: %(eternus_pool)s, '
                      'Storage Configuration Service not found.')
                    % {'volume': volume,
-                      'volumename': volumename,
-                      'eternus_pool': eternus_pool})
+                      'volumename': volumename})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug('create_volume, '
-                  'CreateOrModifyElementFromStoragePool, '
-                  'ConfigService: %(service)s, '
-                  'ElementName: %(volumename)s, '
-                  'InPool: %(eternus_pool)s, '
-                  'ElementType: %(pooltype)u, '
-                  'Size: %(volumesize)u.',
-                  {'service': configservice,
-                   'volumename': volumename,
-                   'eternus_pool': eternus_pool,
-                   'pooltype': pooltype,
-                   'volumesize': volumesize})
+        # Get all pools information on ETERNUS.
+        pools_instance_list = self._find_all_pools_instances(self.conn)
 
-        # Invoke method for create volume
-        rc, errordesc, job = self._exec_eternus_service(
-            'CreateOrModifyElementFromStoragePool',
-            configservice,
-            ElementName=volumename,
-            InPool=pool,
-            ElementType=self._pywbem_uint(pooltype, '16'),
-            Size=self._pywbem_uint(volumesize, '64'))
+        if 'host' in volume:
+            eternus_pool = volume_utils.extract_host(volume['host'], 'pool')
 
-        if rc == CONSTANTS.VOLUMENAME_IN_USE:  # Element Name is in use
-            LOG.warning('create_volume, '
+            for pool, ptype in pools_instance_list:
+                if eternus_pool == pool['ElementName']:
+                    pool_instance = pool
+                    if ptype == 'RAID':
+                        pooltype = CONSTANTS.RAIDGROUP
+                    else:
+                        pooltype = CONSTANTS.TPPOOL
+                    break
+            else:
+                msg = (_('_create_volume, volume: %(volume)s, '
+                         'volumename: %(volumename)s, '
+                         'poolname: %(poolname)s, '
+                         'Cannot find this pool on ETERNUS.')
+                       % {'volume': volume,
+                          'volumename': volumename,
+                          'poolname': eternus_pool})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            LOG.debug('_create_volume, '
+                      'CreateOrModifyElementFromStoragePool, '
+                      'ConfigService: %(service)s, '
+                      'ElementName: %(volumename)s, '
+                      'InPool: %(eternus_pool)s, '
+                      'ElementType: %(pooltype)u, '
+                      'Size: %(volumesize)u.',
+                      {'service': configservice,
+                       'volumename': volumename,
+                       'eternus_pool': eternus_pool,
+                       'pooltype': pooltype,
+                       'volumesize': volumesize})
+
+            # Invoke method for create volume.
+            rc, errordesc, job = self._exec_eternus_service(
+                'CreateOrModifyElementFromStoragePool',
+                configservice,
+                ElementName=volumename,
+                InPool=pool_instance.path,
+                ElementType=self._pywbem_uint(pooltype, '16'),
+                Size=self._pywbem_uint(volumesize, '64'))
+
+        else:
+            msg = (_('create_volume, volume id: %(vid)s, '
+                     'volume size: %(vsize)s, '
+                     'Cannot find volume host.')
+                   % {'vid': volume['id'], 'vsize': volume['size']})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        if rc == CONSTANTS.VOLUMENAME_IN_USE:  # Element Name is in use.
+            LOG.warning('_create_volume, '
                         'volumename: %(volumename)s, '
                         'Element Name is in use.',
                         {'volumename': volumename})
-            vol_instance = self._find_lun(volume)
-            element = vol_instance
+            element = self._find_lun(volume)
         elif rc != 0:
-            msg = (_('create_volume, '
+            msg = (_('_create_volume, '
                      'volumename: %(volumename)s, '
                      'poolname: %(eternus_pool)s, '
                      'Return code: %(rc)lu, '
@@ -170,12 +227,13 @@ class FJDXCommon(object):
         else:
             element = job['TheElement']
 
-        # Get eternus model name
+        # Get eternus model name.
         try:
-            systemnamelist = (
-                self._enum_eternus_instances('FUJITSU_StorageProduct'))
+            systemnamelist = self._enum_eternus_instances(
+                'FUJITSU_StorageProduct',
+                conn=self.conn)
         except Exception:
-            msg = (_('create_volume, '
+            msg = (_('_create_volume, '
                      'volume: %(volume)s, '
                      'EnumerateInstances, '
                      'cannot connect to ETERNUS.')
@@ -183,16 +241,12 @@ class FJDXCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug('create_volume, '
+        LOG.debug('_create_volume, '
                   'volumename: %(volumename)s, '
-                  'Return code: %(rc)lu, '
-                  'Error: %(errordesc)s, '
                   'Backend: %(backend)s, '
                   'Pool Name: %(eternus_pool)s, '
                   'Pool Type: %(pooltype)s.',
                   {'volumename': volumename,
-                   'rc': rc,
-                   'errordesc': errordesc,
                    'backend': systemnamelist[0]['IdentifyingNumber'],
                    'eternus_pool': eternus_pool,
                    'pooltype': CONSTANTS.POOL_TYPE_dic[pooltype]})
@@ -201,22 +255,22 @@ class FJDXCommon(object):
         element_path = {
             'classname': element.classname,
             'keybindings': {
-                'CreationClassName': element['CreationClassName'],
                 'SystemName': element['SystemName'],
                 'DeviceID': element['DeviceID'],
-                'SystemCreationClassName': element['SystemCreationClassName']
-            }
+            },
+            'vol_name': volumename,
         }
 
         volume_no = "0x" + element['DeviceID'][24:28]
+        metadata = {
+            'FJ_Backend': systemnamelist[0]['IdentifyingNumber'],
+            'FJ_Volume_Name': volumename,
+            'FJ_Volume_No': volume_no,
+            'FJ_Pool_Name': eternus_pool,
+            'FJ_Pool_Type': CONSTANTS.POOL_TYPE_dic[pooltype],
+        }
 
-        metadata = {'FJ_Backend': systemnamelist[0]['IdentifyingNumber'],
-                    'FJ_Volume_Name': volumename,
-                    'FJ_Volume_No': volume_no,
-                    'FJ_Pool_Name': eternus_pool,
-                    'FJ_Pool_Type': CONSTANTS.POOL_TYPE_dic[pooltype]}
-
-        return (element_path, metadata)
+        return element_path, metadata
 
     def create_pool_info(self, pool_instance, volume_count, pool_type):
         """Create pool information from pool instance."""
@@ -280,9 +334,11 @@ class FJDXCommon(object):
             raise exception.VolumeBackendAPIException(data=msg)
 
         # Create volume for the target volume.
-        (element_path, metadata) = self.create_volume(volume)
+        model_update = self.create_volume(volume)
+        element_path = eval(model_update.get('provider_location'))
+        metadata = model_update.get('metadata')
         target_volume_instancename = self._create_eternus_instance_name(
-            element_path['classname'], element_path['keybindings'])
+            element_path['classname'], element_path['keybindings'].copy())
 
         try:
             target_volume_instance = (
@@ -316,9 +372,11 @@ class FJDXCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        (element_path, metadata) = self.create_volume(volume)
+        model_update = self.create_volume(volume)
+        element_path = eval(model_update.get('provider_location'))
+        metadata = model_update.get('metadata')
         target_volume_instancename = self._create_eternus_instance_name(
-            element_path['classname'], element_path['keybindings'])
+            element_path['classname'], element_path['keybindings'].copy())
 
         try:
             target_volume_instance = (
@@ -413,7 +471,7 @@ class FJDXCommon(object):
         LOG.debug('_delete_volume_setting, volume id: %s.', volume['id'])
 
         # Check the existence of volume.
-        volumename = self._create_volume_name(volume['id'])
+        volumename = self._get_volume_name(volume)
         vol_instance = self._find_lun(volume)
 
         if vol_instance is None:
@@ -508,6 +566,31 @@ class FJDXCommon(object):
                    'rc': rc,
                    'errordesc': errordesc})
 
+    def _delete_volume_after_error(self, volumename):
+        # If error occures while set qos after create a volume,then delete
+        # the created volume.
+        LOG.debug('_delete_volume_after_error, '
+                  'volume name: %(volumename)s.',
+                  {'volumename': volumename})
+
+        param_dict = {'volume-name': volumename}
+        rc, errordesc, data = self._exec_eternus_cli(
+            'delete_volume',
+            **param_dict)
+
+        if rc == 0:
+            msg = (_('_delete_volume_after_error, '
+                     'volumename: %(volumename)s, '
+                     'Delete Successed.')
+                   % {'volumename': volumename})
+        else:
+            msg = (_('_delete_volume_after_error, '
+                     'volumename: %(volumename)s, '
+                     'Delete Failed.')
+                   % {'volumename': volumename})
+        LOG.error(msg)
+        raise exception.VolumeBackendAPIException(data=msg)
+
     @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
     def create_snapshot(self, snapshot):
         """Create snapshot using SnapOPC."""
@@ -518,10 +601,9 @@ class FJDXCommon(object):
         self.conn = self._get_eternus_connection()
         snapshotname = snapshot['name']
         volumename = snapshot['volume_name']
-        vol_id = snapshot['volume_id']
         volume = snapshot['volume']
-        d_volumename = self._create_volume_name(snapshot['id'])
-        s_volumename = self._create_volume_name(vol_id)
+        d_volumename = self._get_volume_name(snapshot, use_id=True)
+        s_volumename = self._get_volume_name(volume)
         vol_instance = self._find_lun(volume)
         repservice = self._find_eternus_service(CONSTANTS.REPL)
 
@@ -610,11 +692,10 @@ class FJDXCommon(object):
         element_path = {
             'classname': element.classname,
             'keybindings': {
-                'CreationClassName': element['CreationClassName'],
                 'SystemName': element['SystemName'],
                 'DeviceID': element['DeviceID'],
-                'SystemCreationClassName': element['SystemCreationClassName']
-            }
+            },
+            'vol_name': d_volumename,
         }
 
         sdv_no = "0x" + element['DeviceID'][24:28]
@@ -741,7 +822,7 @@ class FJDXCommon(object):
 
         self.conn = self._get_eternus_connection()
         volumesize = new_size * units.Gi
-        volumename = self._create_volume_name(volume['id'])
+        volumename = self._get_volume_name(volume)
 
         # Get source volume instance.
         vol_instance = self._find_lun(volume)
@@ -1093,24 +1174,34 @@ class FJDXCommon(object):
         LOG.debug('_get_eternus_connection, conn: %s.', conn)
         return conn
 
-    def _create_volume_name(self, id_code):
-        """create volume_name on ETERNUS from id on OpenStack."""
-        LOG.debug('_create_volume_name, id_code: %s.', id_code)
+    def _get_volume_name(self, volume, use_id=False):
+        """Get volume_name on ETERNUS from volume on OpenStack."""
+        LOG.debug('_get_volume_name, volume_id: %s.', volume['id'])
 
-        if id_code is None:
-            msg = _('_create_volume_name, id_code is None.')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        if (not use_id and 'provider_location' in volume and
+                volume['provider_location']):
+            location = eval(volume['provider_location'])
+            if 'vol_name' in location:
+                LOG.debug('_get_volume_name, by provider_location, '
+                          'vol_name: %s.', location['vol_name'])
+                return location['vol_name']
+
+        id_code = volume['id']
 
         m = md5(usedforsecurity=False)
         m.update(id_code.encode('utf-8'))
 
-        # pylint: disable=E1121
+        # Pylint: disable=E1121.
         volumename = base64.urlsafe_b64encode(m.digest()).decode()
-        ret = CONSTANTS.VOL_PREFIX + six.text_type(volumename)
+        vol_name = CONSTANTS.VOL_PREFIX + six.text_type(volumename)
 
-        LOG.debug('_create_volume_name, ret: %s', ret)
-        return ret
+        if self.model_name == CONSTANTS.DX_S2:
+            LOG.debug('_get_volume_name, volume name is 16 digit.')
+            vol_name = vol_name[:16]
+
+        LOG.debug('_get_volume_name, by volume id, '
+                  'vol_name: %s.', vol_name)
+        return vol_name
 
     def _find_pool(self, eternus_pool, detail=False):
         """find Instance or InstanceName of pool by pool name on ETERNUS."""
@@ -1156,6 +1247,30 @@ class FJDXCommon(object):
         LOG.debug('_find_pool, pool: %s.', ret)
         return ret
 
+    def _find_all_pools_instances(self, conn):
+        LOG.debug('_find_all_pools_instances, conn: %s', conn)
+
+        try:
+            tppoollist = self._enum_eternus_instances(
+                'FUJITSU_ThinProvisioningPool', conn=conn)
+            rgpoollist = self._enum_eternus_instances(
+                'FUJITSU_RAIDStoragePool', conn=conn)
+        except Exception:
+            msg = _('_find_pool, '
+                    'eternus_pool:%(eternus_pool)s, '
+                    'EnumerateInstances, '
+                    'cannot connect to ETERNUS.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        # Make total pools list.
+        tppools = [(tppool, 'TPP') for tppool in tppoollist]
+        rgpools = [(rgpool, 'RAID') for rgpool in rgpoollist]
+        poollist = tppools + rgpools
+
+        LOG.debug('_find_all_pools_instances, poollist: %s', len(poollist))
+        return poollist
+
     def _find_pools(self, poolname_list, conn):
         """Find Instance or InstanceName of pool by pool name on ETERNUS."""
         LOG.debug('_find_pool, pool name: %s.', poolname_list)
@@ -1164,24 +1279,7 @@ class FJDXCommon(object):
         pools = []
 
         # Get pools info from CIM instance(include info about instance path).
-        try:
-            tppoollist = self._enum_eternus_instances(
-                'FUJITSU_ThinProvisioningPool', conn=conn)
-            rgpoollist = self._enum_eternus_instances(
-                'FUJITSU_RAIDStoragePool', conn=conn)
-        except Exception:
-            msg = (_('_find_pool, '
-                     'eternus_pool:%(eternus_pool)s, '
-                     'EnumerateInstances, '
-                     'cannot connect to ETERNUS.')
-                   % {'eternus_pool': target_poolname})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        # Make total pools list.
-        tppools = [(tppool, 'TPP') for tppool in tppoollist]
-        rgpools = [(rgpool, 'RAID') for rgpool in rgpoollist]
-        poollist = tppools + rgpools
+        poollist = self._find_all_pools_instances(conn)
 
         # One eternus backend has only one special pool name
         # so just use pool name can get the target pool.
@@ -1396,13 +1494,21 @@ class FJDXCommon(object):
 
     @lockutils.synchronized('ETERNUS-SMIS-getinstance', 'cinder-', True)
     @utils.retry(exception.VolumeBackendAPIException)
-    def _get_eternus_instance(self, classname, **param_dict):
+    def _get_eternus_instance(self, classname, allownone=False, **param_dict):
         """Get Instance."""
         LOG.debug('_get_eternus_instance, '
                   'classname: %(cls)s, param: %(param)s.',
                   {'cls': classname, 'param': param_dict})
 
-        ret = self.conn.GetInstance(classname, **param_dict)
+        ret = None
+        try:
+            ret = self.conn.GetInstance(classname, **param_dict)
+        except Exception as e:
+            if e.args[0] == 6 and allownone:
+                return ret
+            else:
+                msg = _('_get_eternus_instance, Error:%s.') % e
+                raise exception.VolumeBackendAPIException(data=msg)
 
         LOG.debug('_get_eternus_instance, ret: %s.', ret)
         return ret
@@ -1458,7 +1564,8 @@ class FJDXCommon(object):
                   'classname: %(cls)s, bindings: %(bind)s.',
                   {'cls': classname, 'bind': bindings})
 
-        instancename = None
+        bindings['CreationClassName'] = classname
+        bindings['SystemCreationClassName'] = 'FUJITSU_StorageComputerSystem'
 
         try:
             instancename = pywbem.CIMInstanceName(
@@ -1472,13 +1579,13 @@ class FJDXCommon(object):
         return instancename
 
     def _find_lun(self, volume):
-        """find lun instance from volume class or volumename on ETERNUS."""
+        """Find lun instance from volume class or volumename on ETERNUS."""
         LOG.debug('_find_lun, volume id: %s.', volume['id'])
         volumeinstance = None
-        volumename = self._create_volume_name(volume['id'])
+        volumename = self._get_volume_name(volume)
 
         try:
-            location = ast.literal_eval(volume['provider_location'])
+            location = eval(volume['provider_location'])
             classname = location['classname']
             bindings = location['keybindings']
 
@@ -1495,10 +1602,10 @@ class FJDXCommon(object):
                           'volume_insatnce_name: %(volume_instance_name)s.',
                           {'volume_instance_name': volume_instance_name})
 
-                vol_instance = (
-                    self._get_eternus_instance(volume_instance_name))
+                vol_instance = self._get_eternus_instance(volume_instance_name,
+                                                          allownone=True,)
 
-                if vol_instance['ElementName'] == volumename:
+                if vol_instance and vol_instance['ElementName'] == volumename:
                     volumeinstance = vol_instance
         except Exception:
             volumeinstance = None
@@ -1506,47 +1613,17 @@ class FJDXCommon(object):
                       'Cannot get volume instance from provider location, '
                       'Search all volume using EnumerateInstanceNames.')
 
-        if volumeinstance is None:
-            # for old version
-
+        if not volumeinstance:
+            # For old version.
             LOG.debug('_find_lun, '
                       'volumename: %(volumename)s.',
                       {'volumename': volumename})
 
-            # get volume instance from volumename on ETERNUS
-            try:
-                namelist = self._enum_eternus_instance_names(
-                    'FUJITSU_StorageVolume')
-            except Exception:
-                msg = (_('_find_lun, '
-                         'volumename: %(volumename)s, '
-                         'EnumerateInstanceNames, '
-                         'cannot connect to ETERNUS.')
-                       % {'volumename': volumename})
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-
-            for name in namelist:
-                try:
-                    vol_instance = self._get_eternus_instance(name)
-
-                    if vol_instance['ElementName'] == volumename:
-                        volumeinstance = vol_instance
-                        path = volumeinstance.path
-
-                        LOG.debug('_find_lun, '
-                                  'volumename: %(volumename)s, '
-                                  'vol_instance: %(vol_instance)s.',
-                                  {'volumename': volumename,
-                                   'vol_instance': path})
-                        break
-                except Exception:
-                    continue
-            else:
-                LOG.debug('_find_lun, '
-                          'volumename: %(volumename)s, '
-                          'volume not found on ETERNUS.',
-                          {'volumename': volumename})
+            vol_name = {
+                'source-name': volumename
+            }
+            # Get volume instance from volumename on ETERNUS.
+            volumeinstance = self._find_lun_with_listup(**vol_name)
 
         LOG.debug('_find_lun, ret: %s.', volumeinstance)
         return volumeinstance
@@ -1977,7 +2054,7 @@ class FJDXCommon(object):
                   {'vid': volume['id'],
                    'connector': connector, 'frc': force})
 
-        volumename = self._create_volume_name(volume['id'])
+        volumename = self._get_volume_name(volume)
         vol_instance = self._find_lun(volume)
         if vol_instance is None:
             LOG.info('_unmap_lun, '
@@ -2261,6 +2338,86 @@ class FJDXCommon(object):
 
         return result
 
+    def _find_lun_with_listup(self, conn=None, **kwargs):
+        """Find lun instance with source name or source id on ETERNUS."""
+        LOG.debug('_find_lun_with_listup start.')
+
+        volumeinstance = None
+        src_id = kwargs.get('source-id', None)
+        src_name = kwargs.get('source-name', None)
+
+        if not src_id and not src_name:
+            msg = (_('_find_lun_with_listup, '
+                     'source-name or source-id: %s, '
+                     'Must specify source-name or source-id.')
+                   % kwargs)
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(data=msg)
+
+        if src_id and src_name:
+            msg = (_('_find_lun_with_listup, '
+                     'source-name or source-id: %s, '
+                     'Must only specify source-name or source-id.')
+                   % kwargs)
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(data=msg)
+
+        if src_id and not src_id.isdigit():
+            msg = (_('_find_lun_with_listup, '
+                     'the specified source-id(%s) must be a decimal number.')
+                   % src_id)
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(data=msg)
+
+        # Get volume instance by volumename or volumeno on ETERNUS.
+        try:
+            propertylist = [
+                'SystemName',
+                'DeviceID',
+                'ElementName',
+                'Purpose',
+                'BlockSize',
+                'NumberOfBlocks',
+                'Name',
+                'OtherUsageDescription',
+                'IsCompressed',
+                'IsDeduplicated'
+            ]
+            vollist = self._enum_eternus_instances(
+                'FUJITSU_StorageVolume',
+                conn=conn,
+                PropertyList=propertylist)
+        except Exception:
+            msg = (_('_find_lun_with_listup, '
+                     'source-name or source-id: %s, '
+                     'EnumerateVolumeInstance.')
+                   % kwargs)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        for vol_instance in vollist:
+            if src_id:
+                volume_no = "0x" + vol_instance['DeviceID'][24:28]
+                try:
+                    # Skip hidden tppv volumes.
+                    if int(src_id) == int(volume_no, 16):
+                        volumeinstance = vol_instance
+                        break
+                except ValueError:
+                    continue
+            if src_name:
+                if vol_instance['ElementName'] == src_name:
+                    volumeinstance = vol_instance
+                    break
+        else:
+            LOG.debug('_find_lun_with_listup, '
+                      'source-name or source-id: %s, '
+                      'volume not found on ETERNUS.', kwargs)
+
+        LOG.debug('_find_lun_with_listup end, '
+                  'volume instance: %s.', volumeinstance)
+        return volumeinstance
+
     def _find_pool_from_volume(self, vol_instance, manage_type='volume'):
         """Find Instance or InstanceName of pool by volume instance."""
         LOG.debug('_find_pool_from_volume, volume: %(volume)s.',
@@ -2323,6 +2480,32 @@ class FJDXCommon(object):
                   'target_pool: %(target_pool)s.',
                   {'poolname': poolname, 'target_pool': target_pool})
         return poolname, target_pool
+
+    def _get_eternus_model(self):
+        """Get ENTERNUS model."""
+        self.conn = self._get_eternus_connection()
+        ret = CONSTANTS.DX_S3
+        try:
+            systemnamelist = self._enum_eternus_instances(
+                'FUJITSU_StorageProduct', conn=self.conn)
+        except Exception:
+            msg = _('_get_eternus_model, EnumerateInstances, '
+                    'cannot connect to ETERNUS.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        systemname = systemnamelist[0]['IdentifyingNumber']
+
+        LOG.debug('_get_eternus_model, '
+                  'systemname: %(systemname)s, '
+                  'storage is DX S%(model)s.',
+                  {'systemname': systemname,
+                   'model': systemname[4]})
+
+        if six.text_type(systemname[4]) == '2':
+            ret = CONSTANTS.DX_S2
+
+        return ret
 
     def _check_user(self):
         """Check whether user's role is accessible to ETERNUS and Software."""
@@ -2500,3 +2683,422 @@ class FJDXCommon(object):
                    'rc': rc,
                    'errordesc': errordesc})
         return ret
+
+    @staticmethod
+    def get_metadata(volume):
+        """Get metadata using volume information."""
+        LOG.debug('get_metadata, volume id: %s.',
+                  volume['id'])
+
+        d_metadata = {}
+
+        metadata = volume.get('volume_metadata')
+
+        # value={} enters the if branch, value=None enters the else.
+        if metadata is not None:
+            d_metadata = {
+                data['key']: data['value'] for data in metadata
+            }
+        else:
+            metadata = volume.get('metadata')
+            if metadata:
+                d_metadata = {
+                    key: metadata[key] for key in metadata
+                }
+
+        LOG.debug('get_metadata, metadata is: %s.', d_metadata)
+        return d_metadata
+
+    def _set_qos(self, volume, use_id=False):
+        """Set volume qos using ETERNUS CLI."""
+        LOG.debug('_set_qos, volumeid: %(volumeid)s.',
+                  {'volumeid': volume['id']})
+
+        qos_support = self._is_qos_or_format_support('QOS setting')
+        # Storage is DX S2 series, qos is not supported.
+        if not qos_support:
+            return
+
+        qos_specs_dict = self._get_qos_specs(volume)
+        if not qos_specs_dict:
+            # Can not get anything from 'qos_specs_id'.
+            return
+
+        # Get storage version information.
+        rc, emsg, clidata = self._exec_eternus_cli('show_enclosure_status')
+        if rc != 0:
+            msg = (_('_set_qos, '
+                     'show_enclosure_status failed. '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errormsg)s, '
+                     'Message: %(clidata)s.')
+                   % {'rc': rc,
+                      'errormsg': emsg,
+                      'clidata': clidata})
+            LOG.warning(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        category_dict = {}
+        unsupport = []
+
+        # If storage version is before V11L30.
+        if clidata['version'] < CONSTANTS.QOS_VERSION:
+            for key, value in qos_specs_dict.items():
+                if (key in CONSTANTS.FJ_QOS_KEY_BYTES_list or
+                        key in CONSTANTS.FJ_QOS_KEY_IOPS_list):
+                    msg = (_('_set_qos, Can not support QoS '
+                             'parameter "%(key)s" on firmware version '
+                             '%(version)s.')
+                           % {'key': key,
+                              'version': clidata['version']})
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+                if key in CONSTANTS.FJ_QOS_KEY_list:
+                    category_dict = self._get_qos_category_by_value(
+                        key, value)
+                else:
+                    unsupport.append(key)
+            if unsupport:
+                LOG.warning('_set_qos, '
+                            'Can not support QoS parameter "%s".',
+                            unsupport)
+
+        # If storage version is after V11L30.
+        if clidata['version'] >= 'V11L30-0000':
+            key_dict = self._get_param(qos_specs_dict)
+            if not key_dict:
+                return
+
+            # Get total/read/write bandwidth limit.
+            category_dict = self._get_qos_category(key_dict)
+
+        if category_dict:
+            # Set volume qos.
+            volumename = self._get_volume_name(volume, use_id=use_id)
+            category_dict['volume-name'] = volumename
+            rc, errordesc, job = self._exec_eternus_cli(
+                'set_volume_qos',
+                **category_dict)
+            if rc != 0:
+                msg = (_('_set_qos, '
+                         'set_volume_qos failed. '
+                         'Return code: %(rc)lu, '
+                         'Error: %(errordesc)s, '
+                         'Message: %(job)s.')
+                       % {'rc': rc,
+                          'errordesc': errordesc,
+                          'job': job})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+    @staticmethod
+    def _get_qos_specs(volume):
+        """Get qos specs information from volume information."""
+        LOG.debug('_get_qos_specs, volume id: %s.', volume['id'])
+
+        qos_specs_dict = {}
+        qos_specs_id = None
+        ctxt = None
+
+        volume_type_id = volume.get('volume_type_id')
+
+        if volume_type_id:
+            ctxt = context.get_admin_context()
+            volume_type = volume_types.get_volume_type(ctxt, volume_type_id)
+            qos_specs_id = volume_type.get('qos_specs_id')
+
+        if qos_specs_id:
+            qos_specs_dict = (
+                qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs'])
+
+        LOG.debug('_get_qos_specs, qos_specs_dict: %s.', qos_specs_dict)
+        return qos_specs_dict
+
+    def _is_qos_or_format_support(self, func_name):
+        """If storage is DX S2 series, qos or format is not supported."""
+        is_support = True
+
+        if self.model_name == CONSTANTS.DX_S2:
+            is_support = False
+            LOG.warning('%s is not supported for DX S2, '
+                        'Skip this process.', func_name)
+        return is_support
+
+    @staticmethod
+    def _get_qos_category_by_value(key, value):
+        """Get qos category using value."""
+        LOG.debug('_get_qos_category_by_value, '
+                  'key: %(key)s, value: %(value)s.',
+                  {'key': key, 'value': value})
+
+        ret = 0
+
+        # Log error method.
+        def _get_qos_category_by_value_error():
+            """Input value is invalid, log error and raise exception."""
+            msg = (_('_get_qos_category_by_value, '
+                     'Invalid value is input, '
+                     'key: %(key)s, '
+                     'value: %(value)s.')
+                   % {'key': key,
+                      'value': value})
+            LOG.warning(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        if key == "maxBWS":
+            try:
+                digit = int(float(value))
+            except Exception:
+                _get_qos_category_by_value_error()
+
+            if digit >= 800:
+                ret = 1
+            elif digit >= 700:
+                ret = 2
+            elif digit >= 600:
+                ret = 3
+            elif digit >= 500:
+                ret = 4
+            elif digit >= 400:
+                ret = 5
+            elif digit >= 300:
+                ret = 6
+            elif digit >= 200:
+                ret = 7
+            elif digit >= 100:
+                ret = 8
+            elif digit >= 70:
+                ret = 9
+            elif digit >= 40:
+                ret = 10
+            elif digit >= 25:
+                ret = 11
+            elif digit >= 20:
+                ret = 12
+            elif digit >= 15:
+                ret = 13
+            elif digit >= 10:
+                ret = 14
+            elif digit > 0:
+                ret = 15
+            else:
+                _get_qos_category_by_value_error()
+
+        LOG.debug('_get_qos_category_by_value (%s).', ret)
+
+        category_dict = {}
+        if ret > 0:
+            category_dict = {'bandwidth-limit': ret}
+
+        return category_dict
+
+    def _get_param(self, qos_specs_dict):
+        # Get all keys which have been set and its value.
+        LOG.debug('_get_param, '
+                  'qos_specs_dict: %(qos_specs_dict)s.',
+                  {'qos_specs_dict': qos_specs_dict})
+        key_dict = {}
+        unsupport = []
+        for key, value in qos_specs_dict.items():
+            if key in CONSTANTS.FJ_QOS_KEY_list:
+                msg = (_('_get_param, Can not support QoS '
+                         'parameter "%(key)s" on firmware version '
+                         'V11L30-0000 or above.')
+                       % {'key': key})
+                LOG.warning(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            if key in CONSTANTS.FJ_QOS_KEY_BYTES_list:
+                key_dict[key] = self._check_throughput(key, value)
+                # Example: When "read_bytes_sec" is specified,
+                # the corresponding "read_iops_sec" also needs to be specified.
+                # If not, it is specified as the maximum.
+                iopsStr = key.replace('bytes', 'iops')
+                if iopsStr not in qos_specs_dict.keys():
+                    key_dict[iopsStr] = CONSTANTS.MAX_IOPS
+            elif key in CONSTANTS.FJ_QOS_KEY_IOPS_list:
+                key_dict[key] = self._check_iops(key, value)
+                # If can not get the corresponding bytes,
+                # the bytes is set to the maximum value.
+                throughputStr = key.replace('iops', 'bytes')
+                if throughputStr not in qos_specs_dict.keys():
+                    key_dict[throughputStr] = CONSTANTS.MAX_THROUGHPUT
+            else:
+                unsupport.append(key)
+        if unsupport:
+            LOG.warning('_get_param, '
+                        'Can not support QoS parameter "%s".', unsupport)
+
+        return key_dict
+
+    def _check_iops(self, key, value):
+        """Check input value of IOPS."""
+        LOG.debug('_check_iops, key: %(key)s, value: %(value)s.',
+                  {'key': key, 'value': value})
+        value = int(float(value))
+        if value < CONSTANTS.MIN_IOPS or value > CONSTANTS.MAX_IOPS:
+            msg = (_('_check_iops, '
+                     '%(key)s is out of range.')
+                   % {'key': key})
+            LOG.warning(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return value
+
+    def _check_throughput(self, key, value):
+        LOG.debug('_check_throughput, key: %(key)s, value: %(value)s.',
+                  {'key': key, 'value': value})
+        value = float(value) / units.Mi
+        if (value < CONSTANTS.MIN_THROUGHPUT or
+                value > CONSTANTS.MAX_THROUGHPUT):
+            msg = (_('_check_throughput, '
+                     '%(key)s is out of range.')
+                   % {'key': key})
+            LOG.warning(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return int(value)
+
+    def _get_qos_category(self, key_dict):
+        """Get qos category by parameters according to the specific volume."""
+        LOG.debug('_get_qos_category, '
+                  'key_dict: %(key_dict)s.',
+                  {'key_dict': key_dict})
+
+        # Get all the bandwidth limits.
+        rc, errordesc, bandwidthlist = self._exec_eternus_cli(
+            'show_qos_bandwidth_limit')
+        if rc != 0:
+            msg = (_('_get_qos_category, '
+                     'show_qos_bandwidth_limit failed. '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errordesc)s, '
+                     'Message: %(clidata)s.')
+                   % {'rc': rc,
+                      'errordesc': errordesc,
+                      'clidata': bandwidthlist})
+            LOG.warning(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        ret_dict = {}
+        for bw in bandwidthlist:
+            if 'total_iops_sec' in key_dict.keys():
+                if (bw['total_iops_sec'] == key_dict['total_iops_sec'] and
+                        bw['total_bytes_sec'] == key_dict['total_bytes_sec']):
+                    ret_dict['bandwidth-limit'] = bw['total_limit']
+            if 'read_iops_sec' in key_dict.keys():
+                if (bw['read_iops_sec'] == key_dict['read_iops_sec'] and
+                        bw['read_bytes_sec'] == key_dict['read_bytes_sec']):
+                    ret_dict['read-bandwidth-limit'] = bw['read_limit']
+            if 'write_iops_sec' in key_dict.keys():
+                if (bw['write_iops_sec'] == key_dict['write_iops_sec'] and
+                        bw['write_bytes_sec'] == key_dict['write_bytes_sec']):
+                    ret_dict['write-bandwidth-limit'] = bw['write_limit']
+
+        # If find all available pairs.
+        # len(key_dict) must be 2, 4 or 6
+        if len(key_dict) / 2 == len(ret_dict):
+            return ret_dict
+
+        rc, errordesc, vqosdatalist = self._exec_eternus_cli('show_volume_qos')
+        if rc != 0:
+            msg = (_('_get_qos_category, '
+                     'show_volume_qos failed. '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errordesc)s, '
+                     'Message: %(clidata)s.')
+                   % {'rc': rc,
+                      'errordesc': errordesc,
+                      'clidata': vqosdatalist})
+            LOG.warning(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        # Get used total/read/write bandwidth limit.
+        totalusedlimits = set()
+        readusedlimits = set()
+        writeusedlimits = set()
+        for vqos in vqosdatalist:
+            totalusedlimits.add(vqos['total_limit'])
+            readusedlimits.add(vqos['read_limit'])
+            writeusedlimits.add(vqos['write_limit'])
+
+        # Get unused total/read/write bandwidth limit.
+        totalunusedlimits = list(set(range(1, 16)) - totalusedlimits)
+        readunusedlimits = list(set(range(1, 16)) - readusedlimits)
+        writeunusedlimits = list(set(range(1, 16)) - writeusedlimits)
+
+        # If there is no same couple, set new qos bandwidth limit.
+        if 'total_iops_sec' in key_dict.keys():
+            if 'bandwidth-limit' not in ret_dict.keys():
+                if len(totalunusedlimits) == 0:
+                    msg = _('_get_qos_category, '
+                            'There is no available total bandwidth limit.')
+                    LOG.warning(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+                else:
+                    self._set_limit('volume-qos',
+                                    totalunusedlimits[0],
+                                    key_dict['total_iops_sec'],
+                                    key_dict['total_bytes_sec'])
+                    ret_dict['bandwidth-limit'] = totalunusedlimits[0]
+        else:
+            ret_dict['bandwidth-limit'] = 0
+
+        if 'read_iops_sec' in key_dict.keys():
+            if 'read-bandwidth-limit' not in ret_dict.keys():
+                if len(readunusedlimits) == 0:
+                    msg = _('_get_qos_category, '
+                            'There is no available read bandwidth limit.')
+                    LOG.warning(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+                else:
+                    self._set_limit('volume-qos-read',
+                                    readunusedlimits[0],
+                                    key_dict['read_iops_sec'],
+                                    key_dict['read_bytes_sec'])
+                    ret_dict['read-bandwidth-limit'] = readunusedlimits[0]
+        else:
+            ret_dict['read-bandwidth-limit'] = 0
+
+        if 'write_bytes_sec' in key_dict.keys():
+            if 'write-bandwidth-limit' not in ret_dict.keys():
+                if len(writeunusedlimits) == 0:
+                    msg = _('_get_qos_category, '
+                            'There is no available write bandwidth limit.')
+                    LOG.warning(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+                else:
+                    self._set_limit('volume-qos-write',
+                                    writeunusedlimits[0],
+                                    key_dict['write_iops_sec'],
+                                    key_dict['write_bytes_sec'])
+                    ret_dict['write-bandwidth-limit'] = writeunusedlimits[0]
+        else:
+            ret_dict['write-bandwidth-limit'] = 0
+
+        return ret_dict
+
+    def _set_limit(self, mode, limit, iops, throughput):
+        """Register a new qos scheme at the specified bandwidth"""
+        LOG.debug('_set_limit, mode: %(mode)s, '
+                  'limit: %(limit)s, iops:%(iops)s, '
+                  'throughput: %(throughput)s.',
+                  {'mode': mode, 'limit': limit,
+                   'iops': iops, 'throughput': throughput})
+        param_dict = ({'mode': mode,
+                       'bandwidth-limit': limit,
+                       'iops': iops,
+                       'throughput': throughput})
+
+        rc, emsg, clidata = self._exec_eternus_cli(
+            'set_qos_bandwidth_limit', **param_dict)
+
+        if rc != 0:
+            msg = (_('_set_limit, '
+                     'set_qos_bandwidth_limit failed. '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errormsg)s, '
+                     'Message: %(clidata)s.')
+                   % {'rc': rc,
+                      'errormsg': emsg,
+                      'clidata': clidata})
+            LOG.warning(msg)
+            raise exception.VolumeBackendAPIException(data=msg)

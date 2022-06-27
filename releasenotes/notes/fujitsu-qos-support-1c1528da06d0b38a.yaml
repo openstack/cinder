@@ -1,0 +1,33 @@
+---
+features:
+  - |
+    Fujitsu ETERNUS DX driver: Added support for QoS
+
+    What QoS settings are available depends upon the storage firmware version
+    of the ETERNUS AF/DX.
+
+    * When the storage firmware version is less than V11L30-0000,
+      only the upper limit of bandwidth(BWS) can be set using:
+
+      - ``maxBWS``
+
+      Note that when the firmware version of the ETERNUS AF/DX is earlier
+      than V11L30, upper limits for the volume QoS settings of
+      the ETERNUS AF/DX are set using predefined options.  This means that
+      you should set the upper limit *of the ETERNUS AF/DX side* to a maximum
+      value that does not exceed the specified ``maxBWS``.
+
+    * When the storage firmware version is greater than V11L30-0000,
+      the IOPS/Throughput of Total/Read/Write for the volume can be set
+      separately using:
+
+      - ``read_bytes_sec``
+      - ``write_bytes_sec``
+      - ``total_bytes_sec``
+      - ``read_iops_sec``
+      - ``write_iops_sec``
+      - ``total_iops_sec``
+
+      See the `Fujitsu ETERNUS DX driver documentation
+      <https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/fujitsu-eternus-dx-driver.html>`_
+      for details.

@@ -22,6 +22,8 @@ RETURN_TO_RESOURCEPOOL = 19
 DETACH = 8
 BROKEN = 5
 
+DX_S2 = 2
+DX_S3 = 3
 JOB_RETRIES = 60
 JOB_INTERVAL_SEC = 10
 TIMES_MIN = 3
@@ -40,6 +42,15 @@ STOR_CONF = "FUJITSU_StorageConfigurationService"
 CTRL_CONF = "FUJITSU_ControllerConfigurationService"
 UNDEF_MSG = 'Undefined Error!!'
 
+MAX_IOPS = 4294967295
+MAX_THROUGHPUT = 2097151
+MIN_IOPS = 1
+MIN_THROUGHPUT = 1
+
+QOS_VERSION = 'V11L30-0000'
+# Here is a misspelling, and the right value should be "Thinprovisioning_POOL".
+# It would not be compatible with the metadata of the legacy volumes,
+# so this spelling mistake needs to be retained.
 POOL_TYPE_dic = {
     RAIDGROUP: 'RAID_GROUP',
     TPPOOL: 'Thinporvisioning_POOL',
@@ -53,6 +64,19 @@ OPERATION_dic = {
     OPC: DETACH,
     EC_REC: DETACH,
 }
+FJ_QOS_KEY_list = [
+    'maxBWS'
+]
+FJ_QOS_KEY_BYTES_list = [
+    'read_bytes_sec',
+    'write_bytes_sec',
+    'total_bytes_sec'
+]
+FJ_QOS_KEY_IOPS_list = [
+    'read_iops_sec',
+    'write_iops_sec',
+    'total_iops_sec'
+]
 
 RETCODE_dic = {
     '0': 'Success',
