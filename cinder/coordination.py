@@ -32,6 +32,7 @@ from tooz import coordination
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import utils
 
 LOG = log.getLogger(__name__)
 
@@ -183,16 +184,16 @@ def synchronized(lock_name: str,
         call_args = inspect.getcallargs(f, *a, **k)
         call_args['f_name'] = f.__name__
         lock = coordinator.get_lock(lock_name.format(**call_args))
+        name = utils.convert_str(lock.name)
+        f_name = f.__name__
         t1 = timeutils.now()
         t2 = None
         try:
+            LOG.debug(f'Acquiring lock "{name}" by "{f_name}"')
             with lock(blocking):
                 t2 = timeutils.now()
-                LOG.debug('Lock "%(name)s" acquired by "%(function)s" :: '
-                          'waited %(wait_secs)0.3fs',
-                          {'name': lock.name,
-                           'function': f.__name__,
-                           'wait_secs': (t2 - t1)})
+                LOG.debug(f'Lock "{name}" acquired by "{f_name}" :: '
+                          f'waited {t2 - t1:0.3f}s')
                 return f(*a, **k)
         finally:
             t3 = timeutils.now()
@@ -200,10 +201,7 @@ def synchronized(lock_name: str,
                 held_secs = "N/A"
             else:
                 held_secs = "%0.3fs" % (t3 - t2)
-            LOG.debug('Lock "%(name)s" released by "%(function)s" :: held '
-                      '%(held_secs)s',
-                      {'name': lock.name,
-                       'function': f.__name__,
-                       'held_secs': held_secs})
+            LOG.debug(
+                f'Lock "{name}" released by "{f_name}" :: held {held_secs}')
 
     return _synchronized
