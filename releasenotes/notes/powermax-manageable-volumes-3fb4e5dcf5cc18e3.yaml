@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    PowerMax driver `bug #1979668
+    <https://bugs.launchpad.net/cinder/+bug/1979668>`_: Fixed
+    visibility of manageable volumes in multiple storage groups.
