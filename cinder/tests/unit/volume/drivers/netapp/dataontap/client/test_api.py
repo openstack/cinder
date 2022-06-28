@@ -508,9 +508,10 @@ class SSHUtilTests(test.TestCase):
                           self.sshutil.execute_command, ssh, 'ls')
         wait_on_stdout.assert_not_called()
 
-    @ddt.data('Password:',
-              'Password: ',
-              'Password: \n\n')
+    @ddt.data(b'Password:',
+              b'Password: ',
+              b'Password: \n\n',
+              b'Fake response \r\n Password: \n\n')
     def test_execute_command_with_prompt(self, response):
         ssh = mock.Mock(paramiko.SSHClient)
         stdin, stdout, stderr = self._mock_ssh_channel_files(paramiko.Channel)
@@ -533,7 +534,7 @@ class SSHUtilTests(test.TestCase):
         ssh = mock.Mock(paramiko.SSHClient)
         stdin, stdout, stderr = self._mock_ssh_channel_files(paramiko.Channel)
         stdout_read = self.mock_object(stdout.channel, 'recv',
-                                       return_value='bad response')
+                                       return_value=b'bad response')
         self.mock_object(ssh, 'exec_command',
                          return_value=(stdin, stdout, stderr))
 

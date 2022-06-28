@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed a CHAP authentication issue while trying to attach an iSCSI volume
+    using the NetApp ONTAP driver. Please refer to the
+    `Launchpad bug #1914639 <https://bugs.launchpad.net/cinder/+bug/1914639>`_
+    for more details.
