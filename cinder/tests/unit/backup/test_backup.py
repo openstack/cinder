@@ -2078,13 +2078,86 @@ class BackupAPITestCase(BaseBackupTest):
                                     'user_id': backup.user_id,
                                     'volume_id': backup.volume_id,
                                     'size': 1}
-        mock_reserve.return_value = 'fake_reservation'
 
         self.assertRaises(exception.InvalidBackup,
                           self.api._get_import_backup,
                           self.ctxt, 'fake_backup_url')
+
+        # make sure Bug #1965847 has been fixed
+        backup = db.backup_get(self.ctxt, backup.id)
+        self.assertNotEqual(fields.BackupStatus.DELETED, backup.status)
+
+        # the fix for Bug #1965847 changed the workflow in the method
+        # under test, so we check that none of this stuff happens any more
+        mock_reserve.assert_not_called()
+        mock_rollback.assert_not_called()
+        mock_commit.assert_not_called()
+
+    @mock.patch.object(objects.Backup, 'decode_record')
+    @mock.patch.object(quota.QUOTAS, 'commit')
+    @mock.patch.object(quota.QUOTAS, 'rollback')
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    def test__get_import_backup_reuse_backup(
+            self, mock_reserve, mock_rollback, mock_commit, mock_decode):
+        backup = self._create_backup_db_entry(
+            size=1,
+            status=fields.BackupStatus.DELETED)
+        mock_decode.return_value = {'id': backup.id,
+                                    'project_id': backup.project_id,
+                                    'user_id': backup.user_id,
+                                    'volume_id': backup.volume_id,
+                                    'size': 1}
+        mock_reserve.return_value = 'fake_reservation'
+        self.ctxt.user_id = 'fake_user'
+        self.ctxt.project_id = 'fake_project'
+
+        # check pre-conditions
+        self.assertNotEqual(self.ctxt.user_id, backup.user_id)
+        self.assertNotEqual(self.ctxt.project_id, backup.project_id)
+        self.assertEqual(fields.BackupStatus.DELETED, backup.status)
+
+        self.api._get_import_backup(self.ctxt, 'fake_backup_url')
+
+        # check post-conditions
+        backup = db.backup_get(self.ctxt, backup.id)
+        self.assertEqual(self.ctxt.user_id, backup.user_id)
+        self.assertEqual(self.ctxt.project_id, backup.project_id)
+        self.assertNotEqual(fields.BackupStatus.DELETED, backup.status)
+
         mock_reserve.assert_called_with(
             self.ctxt, backups=1, backup_gigabytes=1)
+        mock_commit.assert_called_with(self.ctxt, 'fake_reservation')
+        mock_rollback.assert_not_called()
+
+    @mock.patch.object(objects.BackupImport, '__init__')
+    @mock.patch.object(objects.BackupImport, 'get_by_id')
+    @mock.patch.object(objects.Backup, 'decode_record')
+    @mock.patch.object(quota.QUOTAS, 'commit')
+    @mock.patch.object(quota.QUOTAS, 'rollback')
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    def test__get_import_backup_rollback_situation(
+            self, mock_reserve, mock_rollback, mock_commit, mock_decode,
+            mock_get_by_id, mock_imp_init):
+        mock_decode.return_value = {'id': fake.BACKUP_ID,
+                                    'project_id': fake.PROJECT_ID,
+                                    'user_id': fake.USER_ID,
+                                    'volume_id': fake.VOLUME_ID,
+                                    'size': 1}
+        # we won't find a backup, so we'll need to create one
+        mock_get_by_id.side_effect = exception.BackupNotFound(
+            backup_id=fake.BACKUP_ID)
+        # we should make a reservation ...
+        mock_reserve.return_value = 'fake_reservation'
+        # ... but will fail to create and will have to roll back
+        mock_imp_init.side_effect = FakeBackupException,
+
+        self.assertRaises(FakeBackupException,
+                          self.api._get_import_backup,
+                          self.ctxt, 'fake_backup_url')
+
+        mock_reserve.assert_called_with(
+            self.ctxt, backups=1, backup_gigabytes=1)
+        mock_commit.assert_not_called()
         mock_rollback.assert_called_with(self.ctxt, "fake_reservation")
 
     @mock.patch('cinder.objects.BackupList.get_all_by_volume')
