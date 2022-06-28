@@ -330,6 +330,8 @@ class BackendState(object):
         # Protocols that have variants are replaced with ALL the variants
         protocol = capability.get('storage_protocol', None)
         self.storage_protocol = self.get_storage_protocol_variants(protocol)
+        if 'storage_protocol' in capability:
+            capability['storage_protocol'] = self.storage_protocol
         self.updated = capability['timestamp']
 
     def consume_from_volume(self,
