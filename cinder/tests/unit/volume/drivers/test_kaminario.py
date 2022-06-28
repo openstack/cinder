@@ -143,6 +143,8 @@ class TestKaminarioCommon(test.TestCase):
         self.conf.volume_dd_blocksize = 2
         self.conf.disable_discovery = False
         self.conf.unique_fqdn_network = True
+        self.conf.use_multipath_for_image_xfer = False
+        self.conf.enforce_multipath_for_image_xfer = False
 
     def _setup_driver(self):
         self.driver = (kaminario_iscsi.

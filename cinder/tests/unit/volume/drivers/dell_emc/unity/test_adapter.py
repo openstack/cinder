@@ -51,6 +51,8 @@ class MockConfig(object):
         self.driver_ssl_cert_verify = True
         self.driver_ssl_cert_path = None
         self.remove_empty_host = False
+        self.use_multipath_for_image_xfer = False
+        self.enforce_multipath_for_image_xfer = False
 
     def safe_get(self, name):
         return getattr(self, name)
@@ -391,7 +393,7 @@ def get_backend_qos_specs(volume):
     return None
 
 
-def get_connector_properties():
+def get_connector_properties(use_multipath, enforce_multipath):
     return {'host': 'host1', 'wwpns': 'abcdefg'}
 
 

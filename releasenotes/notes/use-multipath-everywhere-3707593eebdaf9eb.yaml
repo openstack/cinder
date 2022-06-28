@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    `Bug #1951982 <https://bugs.launchpad.net/cinder/+bug/1951982>`_: Fixed
+    cloning of encrypted volumes not using multipathing to change the
+    encryption key used on the new volume.
+  - |
+    `Bug #1951977 <https://bugs.launchpad.net/cinder/+bug/1951977>`_: Fixed
+    backup create and restore not using multipath configuration when attaching
+    the volume.
+  - |
+    Kaminario driver `bug #1951981
+    <https://bugs.launchpad.net/cinder/+bug/1951981>`_: Fixed
+    create volume from volume or snapshot not using multipath configuration.

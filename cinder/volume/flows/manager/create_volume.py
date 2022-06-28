@@ -526,7 +526,14 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
         LOG.debug('rekey volume %s', volume.name)
 
-        properties = volume_utils.brick_get_connector_properties(False, False)
+        # Rekeying writes very little data (KB), so doing a single pathed
+        # connection is more efficient, but it is less robust, because the
+        # driver could be returning a single path, and it happens to be down
+        # then the attach would fail where the multipathed connection would
+        # have succeeded.
+        properties = volume_utils.brick_get_connector_properties(
+            self.driver.configuration.use_multipath_for_image_xfer,
+            self.driver.configuration.enforce_multipath_for_image_xfer)
         LOG.debug("properties: %s", properties)
         attach_info = None
         model_update = {}
