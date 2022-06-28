@@ -231,6 +231,16 @@ class TestOpenStackClient(object):
     def put_volume(self, volume_id, volume):
         return self.api_put('/volumes/%s' % volume_id, volume)['volume']
 
+    def post_manage_volume(self, host=None, ref=None):
+        if not host:
+            host = "fake-host"
+        if not ref:
+            ref = {"one": "A", "two": "B"}
+        req_body = {"volume": {}}
+        req_body['volume']['host'] = host
+        req_body['volume']['ref'] = ref
+        return self.api_post('/os-volume-manage', req_body)
+
     def get_snapshot(self, snapshot_id):
         return self.api_get('/snapshots/%s' % snapshot_id)['snapshot']
 
