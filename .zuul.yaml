@@ -68,7 +68,6 @@
             voting: false
             irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-nfs-tempest-full:
-            voting: false
             irrelevant-files: *gate-irrelevant-files
         - tempest-slow-py3:
             irrelevant-files: *gate-irrelevant-files
