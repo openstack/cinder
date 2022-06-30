@@ -412,6 +412,14 @@ class PowerMaxData(object):
                    'array': array,
                    'interval': 3,
                    'retries': 120}
+    extra_specs_no_workload = {
+        'pool_name': u'Diamond+NONE+SRP_1+000197800123',
+        'slo': slo,
+        'srp': srp,
+        'workload': 'NONE',
+        'array': array,
+        'interval': 3,
+        'retries': 120}
     extra_specs_optimized = {
         'pool_name': u'Optimized+None+SRP_1+000197800123',
         'slo': 'Optimized', 'workload': 'None',
