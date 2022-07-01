@@ -1816,6 +1816,16 @@ class PowerMaxRest(object):
 
         port_info = self.get_request(
             target_uri, 'port IP interface', params)
+        if not port_info:
+            msg = (_(
+                "Unable to get port IP interface from Virtual port %(vp)s "
+                "using IP address %(ip)s. Please check iSCSI configuration "
+                "of backend array %(arr)s." % {
+                    'vp': virtual_port, 'ip': ip_address, 'arr': array_id}
+            ))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(message=msg)
+
         port_key = port_info.get('symmetrixPortKey', [])
 
         if len(port_key) == 1:
