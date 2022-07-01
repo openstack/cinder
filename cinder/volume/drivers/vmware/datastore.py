@@ -158,6 +158,10 @@ class DatastoreSelector(object):
 
         return valid_hosts
 
+    def is_datastore_usable(self, summary):
+        return summary.accessible and not self._vops._in_maintenance(
+            summary)
+
     def _filter_datastores(self,
                            datastores,
                            size_bytes,
@@ -174,10 +178,6 @@ class DatastoreSelector(object):
             return (ds_type in DatastoreType.get_all_types() and
                     (hard_affinity_ds_types is None or
                      ds_type in hard_affinity_ds_types))
-
-        def _is_ds_usable(summary):
-            return summary.accessible and not self._vops._in_maintenance(
-                summary)
 
         valid_host_refs = valid_host_refs or []
         valid_hosts = [host_ref.value for host_ref in valid_host_refs]
@@ -207,7 +207,8 @@ class DatastoreSelector(object):
                     not _is_ds_accessible_to_valid_host(host_mounts)):
                 return False
 
-            return _is_valid_ds_type(summary) and _is_ds_usable(summary)
+            return (_is_valid_ds_type(summary) and
+                    self.is_datastore_usable(summary))
 
         datastores = {k: v for k, v in datastores.items()
                       if _is_ds_valid(k, v)}

@@ -233,15 +233,20 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                        "storage_profile": "Gold"}}
         return result(), datastores
 
+    @mock.patch('cinder.volume.drivers.vmware.datastore.'
+                'DatastoreSelector.is_datastore_usable')
     @mock.patch.object(VMDK_DRIVER, '_collect_backend_stats')
     @mock.patch.object(VMDK_DRIVER, 'session')
-    def test_get_volume_stats_pools(self, session, mock_stats):
+    def test_get_volume_stats_pools(self, session, mock_stats,
+                                    datastore_usable):
         fake_result, fake_datastore_profiles = self._fake_stats_result()
         mock_stats.return_value = (fake_result, fake_datastore_profiles)
+        datastore_usable.return_value = True
         self._config.vmware_datastores_as_pools = True
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
                                                additional_endpoints=[],
                                                db=self._db)
+        self._driver._ds_sel = mock.MagicMock()
 
         retr_result_mock = mock.Mock(spec=['objects'])
         retr_result_mock.objects = []
@@ -257,7 +262,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertEqual(0, stats["pools"][0]['reserved_percentage'])
         self.assertEqual(9313, stats["pools"][0]['total_capacity_gb'])
         self.assertEqual(4657, stats["pools"][0]['free_capacity_gb'])
-        self.assertEqual('up', stats["pools"][0]['backend_state'])
+        self.assertEqual('up', stats["pools"][0]['pool_state'])
+        self.assertEqual('up', stats["backend_state"])
         self.assertFalse(stats["pools"][0]['Multiattach'])
         self.assertEqual(vmdk.LOCATION_DRIVER_NAME + ":fake-service",
                          stats['location_info'])

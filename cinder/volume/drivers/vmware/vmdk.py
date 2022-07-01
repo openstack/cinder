@@ -496,22 +496,30 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         max_over_subscription_ratio = self.configuration.safe_get(
             'max_over_subscription_ratio')
 
+        backend_state = 'up'
         data = {'volume_backend_name': backend_name,
                 'vendor_name': 'VMware',
                 'driver_version': self.VERSION,
                 'storage_protocol': 'vmdk',
                 'location_info': location_info,
+                'backend_state': backend_state,
                 }
 
         result, datastores = self._collect_backend_stats()
         connection_capabilities = self._get_connection_capabilities()
+        if not datastores:
+            backend_state = 'down'
+            data['backend_state'] = backend_state
         if self.configuration.vmware_datastores_as_pools:
             pools = []
             for ds_name in datastores:
                 datastore = datastores[ds_name]
                 summary = datastore["summary"]
 
-                pool_state = "up" if summary.accessible is True else "down"
+                pool_state = 'down'
+                if self.ds_sel.is_datastore_usable(summary):
+                    pool_state = 'up'
+
                 pool = {'pool_name': summary.name,
                         'total_capacity_gb': round(
                             summary.capacity / units.Gi),
@@ -526,9 +534,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         'datastore_type': summary.type,
                         'location_url': summary.url,
                         'location_info': location_info,
-                        'backend_state': pool_state,
                         'storage_profile': datastore["storage_profile"],
                         'connection_capabilities': connection_capabilities,
+                        'backend_state': backend_state,
+                        'pool_state': pool_state
                         }
 
                 # Add any custom attributes associated with the datastore
