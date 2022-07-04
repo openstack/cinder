@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize family driver
+    `Bug #1978290 <https://bugs.launchpad.net/cinder/+bug/1978290>`_:
+    Optimize lsmdiskgrp SSH calls in creation of replicated volumes
+    to reduce the computational time.

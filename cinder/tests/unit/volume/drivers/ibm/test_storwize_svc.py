@@ -5220,6 +5220,16 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         elif online_node and node_status == 'offline':
             self.assertEqual(nodes, empty_nodes_info)
 
+    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                       '_build_pool_stats')
+    def test_update_volume_stats_non_replication(self, _build_pool_stats):
+        self.driver._update_volume_stats()
+        self.assertFalse(self.driver._replica_enabled)
+        self.assertEqual(SVC_POOLS, self.driver._get_backend_pools())
+        self.assertEqual(len(SVC_POOLS), _build_pool_stats.call_count)
+        self.assertIsNotNone(self.driver._master_backend_helpers.stats)
+        self.assertIsNone(self.driver._aux_backend_helpers)
+
     @ddt.data((False, 'enabled', ''),
               (False, 'disabled', 'site 2 down'),
               (True, '', ''))
@@ -11037,6 +11047,38 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
     def _get_pool_volumes(self, pool):
         vdisks = self.sim._cmd_lsvdisks_from_filter('mdisk_grp_name', pool)
         return vdisks
+
+    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                       '_build_pool_stats')
+    def test_update_volume_stats_replication(self, _build_pool_stats):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver._update_volume_stats()
+        self.assertTrue(self.driver._replica_enabled)
+        target_pools = [self.driver._replica_target.get('pool_name')]
+        # Expected call count = Number of primary Pools and Secondary Pools
+        expected_call_count = len(SVC_POOLS) + len(target_pools)
+        self.assertEqual(expected_call_count, _build_pool_stats.call_count)
+        self.assertIsNotNone(self.driver._master_backend_helpers.stats)
+        self.assertIsNotNone(self.driver._aux_backend_helpers.stats)
+
+    @ddt.data((False, False), (True, True))
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_pool_attrs')
+    @ddt.unpack
+    def test_build_pool_stats_calls(self, replication_enabled,
+                                    target, get_pool_attrs):
+        pool = "openstack"
+        master_helper = self.driver._master_backend_helpers
+        target_helper = self.driver._aux_backend_helpers
+        if replication_enabled:
+            self.driver.configuration.set_override('replication_device',
+                                                   [self.rep_target])
+        self.driver._build_pool_stats(pool, target)
+        if target:
+            target_helper.get_pool_attrs.assert_called_once_with(pool)
+        else:
+            master_helper.get_pool_attrs.assert_called_once_with(pool)
 
     def test_storwize_do_replication_setup_error(self):
         fake_targets = [self.rep_target, self.rep_target]
