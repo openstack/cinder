@@ -5039,8 +5039,16 @@ class PowerMaxCommon(object):
             device_uuid = self.utils.get_volume_element_name(volume.id)
             self.rest.rename_volume(remote_array, r2_device_id, device_uuid)
 
+            if rep_extra_specs['srp'].lower() != extra_specs['srp'].lower():
+                LOG.warning("The source %(src)s and target %(tgt)s array SRPs "
+                            "are different.", {'src': extra_specs['srp'],
+                                               'tgt': rep_extra_specs['srp']})
+                target_srp = extra_specs['srp']
+            else:
+                target_srp = rep_extra_specs['srp']
+
             tgt_sg_name = self.masking.get_or_create_default_storage_group(
-                remote_array, rep_extra_specs['srp'], rep_extra_specs['slo'],
+                remote_array, target_srp, rep_extra_specs['slo'],
                 rep_extra_specs['workload'], rep_extra_specs,
                 disable_compression, is_re=True, rep_mode=rep_mode)
             remote_sg_get = True
@@ -5707,6 +5715,12 @@ class PowerMaxCommon(object):
         rep_extra_specs = deepcopy(extra_specs)
         rep_extra_specs[utils.ARRAY] = rep_config['array']
         rep_extra_specs[utils.SRP] = rep_config['srp']
+        if extra_specs[utils.SRP].lower() != (
+                rep_extra_specs[utils.SRP].lower()):
+            LOG.warning("The source %(src)s and target %(tgt)s array SRPs "
+                        "are different.", {'src': extra_specs[utils.SRP],
+                                           'tgt': rep_extra_specs[utils.SRP]})
+
         rep_extra_specs[utils.PORTGROUPNAME] = rep_config['portgroup']
 
         # Get the RDF Group label & number
