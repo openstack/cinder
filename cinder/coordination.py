@@ -135,18 +135,43 @@ def synchronized_remove(glob_name, coordinator=COORDINATOR):
     coordinator.remove_lock(glob_name)
 
 
-def synchronized(lock_name: str,
+def __acquire(lock, blocking, f_name):
+    """Acquire a lock and return the time when it was acquired."""
+    t1 = timeutils.now()
+    name = utils.convert_str(lock.name)
+    LOG.debug('Acquiring lock "%s" by "%s"', name, f_name)
+    lock.acquire(blocking)
+    t2 = timeutils.now()
+    LOG.debug('Lock "%s" acquired by "%s" :: waited %0.3fs',
+              name, f_name, t2 - t1)
+    return t2
+
+
+def __release(lock, acquired_time, f_name):
+    """Release a lock ignoring exceptions."""
+    name = utils.convert_str(lock.name)
+    try:
+        lock.release()
+        held = timeutils.now() - acquired_time
+        LOG.debug('Lock "%s" released by "%s" :: held %0.3fs',
+                  name, f_name, held)
+    except Exception as e:
+        LOG.error('Failed to release lock "%s": %s', name, e)
+
+
+def synchronized(*lock_names: str,
                  blocking: bool = True,
                  coordinator: Coordinator = COORDINATOR) -> Callable:
     """Synchronization decorator.
 
-    :param str lock_name: Lock name.
+    :param str lock_names: Arbitrary number of Lock names.
     :param blocking: If True, blocks until the lock is acquired.
             If False, raises exception when not acquired. Otherwise,
             the value is used as a timeout value and if lock is not acquired
-            after this number of seconds exception is raised.
+            after this number of seconds exception is raised. This is a keyword
+            only argument.
     :param coordinator: Coordinator class to use when creating lock.
-        Defaults to the global coordinator.
+        Defaults to the global coordinator.  This is a keyword only argument.
     :raises tooz.coordination.LockAcquireFailed: if lock is not acquired
 
     Decorating a method like so::
@@ -175,37 +200,44 @@ def synchronized(lock_name: str,
         def foo(self, vol, snap):
            ...
 
+    Multiple locks can be requested simultaneously and the decorator will
+    reorder the names by rendered lock names to prevent potential deadlocks.
+
+        @synchronized('{f_name}-{vol.id}-{snap[name]}',
+                      '{f_name}-{vol.id}.delete')
+        def foo(self, vol, snap):
+           ...
+
     Available field names are: decorated function parameters and
     `f_name` as a decorated function name.
     """
-
     @decorator.decorator
     def _synchronized(f, *a, **k) -> Callable:
         call_args = inspect.getcallargs(f, *a, **k)
         call_args['f_name'] = f.__name__
-        lock = coordinator.get_lock(lock_name.format(**call_args))
-        name = utils.convert_str(lock.name)
+
+        # Prevent deadlocks not duplicating and sorting them by name to always
+        # acquire them in the same order.
+        names = sorted(set([name.format(**call_args) for name in lock_names]))
+        locks = [coordinator.get_lock(name) for name in names]
+        acquired_times = []
         f_name = f.__name__
         t1 = timeutils.now()
-        t2 = None
         try:
-            LOG.debug('Acquiring lock "%(name)s" by "%(f_name)s"',
-                      {'name': name, 'f_name': f_name})
-            with lock(blocking):
-                t2 = timeutils.now()
-                LOG.debug('Lock "%(name)s" acquired by "%(f_name)s" :: '
-                          'waited %(wait)s',
-                          {'name': name, 'f_name': f_name,
-                           'wait': "%0.3fs" % (t2 - t1)})
-                return f(*a, **k)
+            if len(locks) > 1:  # Don't pollute logs for single locks
+                LOG.debug('Acquiring %s locks by %s', len(locks), f_name)
+
+            for lock in locks:
+                acquired_times.append(__acquire(lock, blocking, f_name))
+
+            if len(locks) > 1:
+                t = timeutils.now() - t1
+                LOG.debug('Acquired %s locks by %s in %0.3fs',
+                          len(locks), f_name, t)
+
+            return f(*a, **k)
         finally:
-            t3 = timeutils.now()
-            if t2 is None:
-                held_secs = "N/A"
-            else:
-                held_secs = "%0.3fs" % (t3 - t2)
-            LOG.debug(
-                'Lock "%(name)s" released by "%(f_name)s" :: held %(held)s',
-                {'name': name, 'f_name': f_name, 'held': held_secs})
+            for lock, acquired_time in zip(locks, acquired_times):
+                __release(lock, acquired_time, f_name)
 
     return _synchronized
