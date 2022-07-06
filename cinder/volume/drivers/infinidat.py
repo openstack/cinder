@@ -125,10 +125,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         1.8 - added revert to snapshot
         1.9 - added manage/unmanage/manageable-list volume/snapshot
         1.10 - added support for TLS/SSL communication
+        1.11 - fixed generic volume migration
 
     """
 
-    VERSION = '1.10'
+    VERSION = '1.11'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "INFINIDAT_CI"
@@ -202,8 +203,17 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                       'in the connector.', {'data': required})
             raise exception.InvalidConnectorException(missing=required)
 
-    def _make_volume_name(self, cinder_volume):
-        return 'openstack-vol-%s' % cinder_volume.id
+    def _make_volume_name(self, cinder_volume, migration=False):
+        """Return the Infinidat volume name.
+
+        Use Cinder volume id in case of volume migration
+        and use Cinder volume name_id for all other cases.
+        """
+        if migration:
+            key = cinder_volume.id
+        else:
+            key = cinder_volume.name_id
+        return 'openstack-vol-%s' % key
 
     def _make_snapshot_name(self, cinder_snapshot):
         return 'openstack-snap-%s' % cinder_snapshot.id
@@ -655,7 +665,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         # we need a cinder-volume-like object to map the clone by name
         # (which is derived from the cinder id) but the clone is internal
         # so there is no such object. mock one
-        clone = mock.Mock(id=str(volume.id) + '-internal')
+        clone = mock.Mock(name_id=str(volume.name_id) + '-internal')
         try:
             infinidat_volume = self._create_volume(volume)
             try:
@@ -1194,3 +1204,41 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         """
         infinidat_snapshot = self._get_infinidat_snapshot(snapshot)
         infinidat_snapshot.clear_metadata()
+
+    @infinisdk_to_cinder_exceptions
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Return model update from Infinidat for migrated volume.
+
+        This method should rename the back-end volume name(id) on the
+        destination host back to its original name(id) on the source host.
+
+        :param ctxt: The context used to run the method update_migrated_volume
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
+        :returns: model_update to update DB with any needed changes
+        """
+        model_update = {'_name_id': new_volume.name_id,
+                        'provider_location': None}
+        new_volume_name = self._make_volume_name(new_volume, migration=True)
+        new_infinidat_volume = self._get_infinidat_volume(new_volume)
+        self._set_cinder_object_metadata(new_infinidat_volume, volume)
+        volume_name = self._make_volume_name(volume, migration=True)
+        try:
+            infinidat_volume = self._get_infinidat_volume(volume)
+        except exception.VolumeNotFound:
+            LOG.debug('Source volume %s not found', volume_name)
+        else:
+            volume_pool = infinidat_volume.get_pool_name()
+            LOG.debug('Found source volume %s in pool %s',
+                      volume_name, volume_pool)
+            return model_update
+        try:
+            new_infinidat_volume.update_name(volume_name)
+        except infinisdk.core.exceptions.InfiniSDKException as error:
+            LOG.error('Failed to rename destination volume %s -> %s: %s',
+                      new_volume_name, volume_name, error)
+            return model_update
+        return {'_name_id': None, 'provider_location': None}

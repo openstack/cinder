@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Infinidat Driver `bug #1982405
+    <https://bugs.launchpad.net/cinder/+bug/1982405>`_:
+    Fixed Infinidat driver to allow generic volume migration
+    between two storage pools within the same cluster.
