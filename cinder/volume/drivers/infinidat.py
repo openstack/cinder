@@ -118,10 +118,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         1.5 - added support for volume compression
         1.6 - added support for volume multi-attach
         1.7 - fixed iSCSI to return all portals
+        1.8 - added revert to snapshot
 
     """
 
-    VERSION = '1.7'
+    VERSION = '1.8'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "INFINIDAT_CI"
@@ -837,3 +838,24 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         for snapshot in snapshots:
             self.delete_snapshot(snapshot)
         return None, None
+
+    def snapshot_revert_use_temp_snapshot(self):
+        """Disable the use of a temporary snapshot on revert."""
+        return False
+
+    @infinisdk_to_cinder_exceptions
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert volume to snapshot.
+
+        Note: the revert process should not change the volume's
+        current size, that means if the driver shrank
+        the volume during the process, it should extend the
+        volume internally.
+        """
+        infinidat_snapshot = self._get_infinidat_snapshot(snapshot)
+        infinidat_volume = self._get_infinidat_volume(snapshot.volume)
+        infinidat_volume.restore(infinidat_snapshot)
+        volume_size = infinidat_volume.get_size()
+        snapshot_size = snapshot.volume.size * capacity.GiB
+        if volume_size < snapshot_size:
+            self.extend_volume(volume, snapshot.volume.size)

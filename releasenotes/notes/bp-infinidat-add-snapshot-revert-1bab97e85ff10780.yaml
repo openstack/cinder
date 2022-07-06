@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Infinidat driver: Added support for revert to snapshot operation.
