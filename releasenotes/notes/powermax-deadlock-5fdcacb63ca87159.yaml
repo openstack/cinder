@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Dell EMC PowerMax driver `bug #1980870
+    <https://bugs.launchpad.net/cinder/+bug/1980870>`_: Fixed potential
+    deadlock when moving volumes between Storage Groups.
