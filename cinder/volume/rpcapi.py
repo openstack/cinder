@@ -310,10 +310,12 @@ class VolumeAPI(rpc.RPCAPI):
                    new_volume=new_volume,
                    volume_status=original_volume_status)
 
-    def update_migrated_volume_capacity(self, ctxt, volume, decrement=False):
+    def update_migrated_volume_capacity(self, ctxt, volume, host=None,
+                                        decrement=False):
         cctxt = self._get_cctxt(volume.service_topic_queue)
         cctxt.cast(ctxt, 'update_migrated_volume_capacity',
                    volume=volume,
+                   host=host,
                    decrement=decrement)
 
     def freeze_host(self, ctxt, service):
