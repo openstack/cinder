@@ -57,8 +57,10 @@ TEST_SNAPSHOT_SOURCE_NAME = 'test-snapshot'
 TEST_SNAPSHOT_SOURCE_ID = 67890
 TEST_SNAPSHOT_METADATA = {'cinder_id': fake.SNAPSHOT_ID}
 
-test_volume = mock.Mock(id=fake.VOLUME_ID, size=1,
+test_volume = mock.Mock(id=fake.VOLUME_ID, name_id=fake.VOLUME_ID, size=1,
                         volume_type_id=fake.VOLUME_TYPE_ID)
+test_volume2 = mock.Mock(id=fake.VOLUME2_ID, name_id=fake.VOLUME2_ID, size=1,
+                         volume_type_id=fake.VOLUME_TYPE_ID)
 test_snapshot = mock.Mock(id=fake.SNAPSHOT_ID, volume=test_volume,
                           volume_id=test_volume.id)
 test_clone = mock.Mock(id=fake.VOLUME4_ID, size=1)
@@ -104,6 +106,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         # mock external library dependencies
         infinisdk = self.patch("cinder.volume.drivers.infinidat.infinisdk")
         capacity = self.patch("cinder.volume.drivers.infinidat.capacity")
+        self._log = self.patch("cinder.volume.drivers.infinidat.LOG")
         self._iqn = self.patch("cinder.volume.drivers.infinidat.iqn")
         self._wwn = self.patch("cinder.volume.drivers.infinidat.wwn")
         self._wwn.WWN = mock.Mock
@@ -857,6 +860,62 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     def test_unmanage_snapshot(self):
         self.driver.unmanage_snapshot(test_snapshot)
+
+    def test_update_migrated_volume_new_volume_not_found(self):
+        self._system.volumes.safe_get.side_effect = [
+            None, self._mock_volume]
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.update_migrated_volume,
+                          None, test_volume, test_volume2,
+                          'available')
+
+    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
+                '_set_cinder_object_metadata')
+    def test_update_migrated_volume_volume_not_found(self, set_metadata):
+        self._system.volumes.safe_get.side_effect = [
+            self._mock_new_volume, None]
+        update = self.driver.update_migrated_volume(None,
+                                                    test_volume,
+                                                    test_volume2,
+                                                    'available')
+        expected = {'_name_id': None, 'provider_location': None}
+        self.assertEqual(expected, update)
+        set_metadata.assert_called_once_with(self._mock_new_volume,
+                                             test_volume)
+
+    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
+                '_set_cinder_object_metadata')
+    def test_update_migrated_new_volume_rename_error(self, set_metadata):
+        self._system.volumes.safe_get.side_effect = [
+            self._mock_new_volume, None]
+        self._mock_new_volume.update_name.side_effect = [
+            FakeInfinisdkException]
+        update = self.driver.update_migrated_volume(None,
+                                                    test_volume,
+                                                    test_volume2,
+                                                    'available')
+        expected = {'_name_id': test_volume2.name_id,
+                    'provider_location': None}
+        self.assertEqual(expected, update)
+        set_metadata.assert_called_once_with(self._mock_new_volume,
+                                             test_volume)
+
+    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
+                '_set_cinder_object_metadata')
+    def test_update_migrated(self, set_metadata):
+        self._system.volumes.safe_get.side_effect = [
+            self._mock_new_volume, self._mock_volume]
+        self._mock_new_volume.update_name.side_effect = None
+        update = self.driver.update_migrated_volume(None,
+                                                    test_volume,
+                                                    test_volume2,
+                                                    'available')
+        expected = {'_name_id': test_volume2.name_id,
+                    'provider_location': None}
+        self.assertEqual(expected, update)
+        set_metadata.assert_called_once_with(self._mock_new_volume,
+                                             test_volume)
+        self.assertEqual(0, self._log.error.call_count)
 
 
 class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
