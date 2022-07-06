@@ -30,6 +30,7 @@ cinder/scheduler/weights/chance.py
 cinder/scheduler/weights/goodness.py
 cinder/scheduler/weights/stochastic.py
 cinder/scheduler/weights/volume_number.py
+cinder/service.py
 cinder/utils.py
 cinder/volume/__init__.py
 cinder/volume/api.py
