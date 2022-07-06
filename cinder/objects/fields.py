@@ -213,7 +213,7 @@ class VolumeMigrationStatus(BaseCinderEnum):
 
 
 class VolumeMigrationStatusField(BaseEnumField):
-    AUTO_TYPE = VolumeStatus()
+    AUTO_TYPE = VolumeMigrationStatus()
 
 
 class DictOfNullableField(fields.AutoTypedField):
