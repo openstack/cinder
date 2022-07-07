@@ -34,6 +34,7 @@ import __original_module_threading as orig_threading  # pylint: disable=E0401
 import threading # noqa
 orig_threading.current_thread.__globals__['_active'] = threading._active
 
+import os_brick
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -108,6 +109,7 @@ def main():
     priv_context.init(root_helper=shlex.split(utils.get_root_helper()))
     utils.monkey_patch()
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
+    os_brick.setup(CONF)
     global LOG
     LOG = logging.getLogger(__name__)
     semaphore = utils.semaphore_factory(CONF.backup_max_operations,
