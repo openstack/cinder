@@ -24,6 +24,7 @@ import ddt
 from oslo_utils import units
 
 from cinder import exception
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 from cinder import version
 from cinder.volume import configuration
@@ -49,12 +50,20 @@ TEST_TARGET_PORTAL3 = '{}:{}'.format(TEST_IP_ADDRESS3, TEST_ISCSI_TCP_PORT2)
 TEST_TARGET_PORTAL4 = '{}:{}'.format(TEST_IP_ADDRESS4, TEST_ISCSI_TCP_PORT2)
 TEST_FC_PROTOCOL = 'fc'
 TEST_ISCSI_PROTOCOL = 'iscsi'
+TEST_VOLUME_SOURCE_NAME = 'test-volume'
+TEST_VOLUME_SOURCE_ID = 12345
+TEST_VOLUME_METADATA = {'cinder_id': fake.VOLUME_ID}
+TEST_SNAPSHOT_SOURCE_NAME = 'test-snapshot'
+TEST_SNAPSHOT_SOURCE_ID = 67890
+TEST_SNAPSHOT_METADATA = {'cinder_id': fake.SNAPSHOT_ID}
 
-test_volume = mock.Mock(id=1, size=1, volume_type_id=1)
-test_snapshot = mock.Mock(id=2, volume=test_volume, volume_id='1')
-test_clone = mock.Mock(id=3, size=1)
-test_group = mock.Mock(id=4)
-test_snapgroup = mock.Mock(id=5, group=test_group)
+test_volume = mock.Mock(id=fake.VOLUME_ID, size=1,
+                        volume_type_id=fake.VOLUME_TYPE_ID)
+test_snapshot = mock.Mock(id=fake.SNAPSHOT_ID, volume=test_volume,
+                          volume_id=test_volume.id)
+test_clone = mock.Mock(id=fake.VOLUME4_ID, size=1)
+test_group = mock.Mock(id=fake.GROUP_ID)
+test_snapgroup = mock.Mock(id=fake.GROUP_SNAPSHOT_ID, group=test_group)
 test_connector = dict(wwpns=[TEST_WWN_1],
                       initiator=TEST_INITIATOR_IQN)
 
@@ -120,9 +129,17 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
     def _infinibox_mock(self):
         result = mock.Mock()
         self._mock_volume = mock.Mock()
+        self._mock_new_volume = mock.Mock()
+        self._mock_volume.get_id.return_value = TEST_VOLUME_SOURCE_ID
+        self._mock_volume.get_name.return_value = TEST_VOLUME_SOURCE_NAME
+        self._mock_volume.get_type.return_value = 'MASTER'
+        self._mock_volume.get_pool_name.return_value = (
+            self.configuration.infinidat_pool_name)
         self._mock_volume.get_size.return_value = 1 * units.Gi
         self._mock_volume.has_children.return_value = False
+        self._mock_volume.get_qos_policy.return_value = None
         self._mock_volume.get_logical_units.return_value = []
+        self._mock_volume.get_all_metadata.return_value = {}
         self._mock_volume.create_snapshot.return_value = self._mock_volume
         self._mock_snapshot = mock.Mock()
         self._mock_host = mock.Mock()
@@ -131,6 +148,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self._mock_pool = mock.Mock()
         self._mock_pool.get_free_physical_capacity.return_value = units.Gi
         self._mock_pool.get_physical_capacity.return_value = units.Gi
+        self._mock_pool.get_volumes.return_value = [self._mock_volume]
         self._mock_name_space1 = mock.Mock()
         self._mock_name_space2 = mock.Mock()
         self._mock_name_space1.get_ips.return_value = [
@@ -218,7 +236,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     def test_initialize_connection_volume_doesnt_exist(self):
         self._system.volumes.safe_get.return_value = None
-        self.assertRaises(exception.InvalidVolume,
+        self.assertRaises(exception.VolumeNotFound,
                           self.driver.initialize_connection,
                           test_volume, test_connector)
 
@@ -253,7 +271,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     def test_terminate_connection_volume_doesnt_exist(self):
         self._system.volumes.safe_get.return_value = None
-        self.assertRaises(exception.InvalidVolume,
+        self.assertRaises(exception.VolumeNotFound,
                           self.driver.terminate_connection,
                           test_volume, test_connector)
 
@@ -363,7 +381,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     def test_create_snapshot_volume_doesnt_exist(self):
         self._system.volumes.safe_get.return_value = None
-        self.assertRaises(exception.InvalidVolume,
+        self.assertRaises(exception.VolumeNotFound,
                           self.driver.create_snapshot, test_snapshot)
 
     def test_create_snapshot_api_fail(self):
@@ -381,7 +399,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     def test_create_volume_from_snapshot_doesnt_exist(self):
         self._system.volumes.safe_get.return_value = None
-        self.assertRaises(exception.InvalidSnapshot,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.driver.create_volume_from_snapshot,
                           test_clone, test_snapshot)
 
@@ -623,6 +641,221 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         else:
             delta = (snapshot_size - volume_size) * units.Gi
             self._mock_volume.resize.assert_called_with(delta)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_manage_existing_by_source_name(self, *mocks):
+        existing_ref = {'source-name': TEST_VOLUME_SOURCE_NAME}
+        self.driver.manage_existing(test_volume, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_manage_existing_by_source_id(self, *mocks):
+        existing_ref = {'source-id': TEST_VOLUME_SOURCE_ID}
+        self.driver.manage_existing(test_volume, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_manage_existing_by_invalid_source(self, *mocks):
+        existing_ref = {'source-path': None}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing,
+                          test_volume, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.volume_utils.check_already_managed_volume',
+                return_value=False)
+    def test_manage_existing_not_managed(self, *mocks):
+        self._mock_volume.get_all_metadata.return_value = (
+            TEST_VOLUME_METADATA)
+        existing_ref = {'source-name': TEST_VOLUME_SOURCE_NAME}
+        self.driver.manage_existing(test_volume, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.volume_utils.check_already_managed_volume',
+                return_value=True)
+    def test_manage_existing_already_managed(self, *mocks):
+        self._mock_volume.get_all_metadata.return_value = (
+            TEST_VOLUME_METADATA)
+        existing_ref = {'source-name': TEST_VOLUME_SOURCE_NAME}
+        self.assertRaises(exception.ManageExistingAlreadyManaged,
+                          self.driver.manage_existing,
+                          test_volume, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_manage_existing_invalid_pool(self, *mocks):
+        existing_ref = {'source-name': TEST_VOLUME_SOURCE_NAME}
+        self._mock_volume.get_pool_name.return_value = 'invalid'
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.driver.manage_existing,
+                          test_volume, existing_ref)
+
+    def test_manage_existing_get_size(self):
+        existing_ref = {'source-name': TEST_VOLUME_SOURCE_NAME}
+        size = self.driver.manage_existing_get_size(test_volume, existing_ref)
+        self.assertEqual(test_volume.size, size)
+
+    def test_get_manageable_volumes(self):
+        cinder_volumes = [test_volume]
+        self._mock_volume.is_snapshot.return_value = False
+        self._mock_volume.get_all_metadata.return_value = {
+            'cinder_id': fake.VOLUME2_ID
+        }
+        self.driver.get_manageable_volumes(cinder_volumes, None,
+                                           1, 0, [], [])
+
+    def test_get_manageable_volumes_already_managed(self):
+        cinder_volumes = [test_volume]
+        self._mock_volume.get_id.return_value = TEST_VOLUME_SOURCE_ID
+        self._mock_volume.get_all_metadata.return_value = (
+            TEST_VOLUME_METADATA)
+        self._mock_volume.is_snapshot.return_value = False
+        self.driver.get_manageable_volumes(cinder_volumes, None,
+                                           1, 0, [], [])
+
+    def test_get_manageable_volumes_but_snapshots(self):
+        cinder_volumes = [test_volume]
+        self._mock_volume.is_snapshot.return_value = True
+        self.driver.get_manageable_volumes(cinder_volumes, None,
+                                           1, 0, [], [])
+
+    def test_get_manageable_volumes_has_mappings(self):
+        cinder_volumes = [test_volume]
+        self._mock_volume.is_snapshot.return_value = False
+        self._mock_volume.get_all_metadata.return_value = {
+            'cinder_id': fake.VOLUME2_ID
+        }
+        lun = mock.Mock()
+        self._mock_volume.get_logical_units.return_value = [lun]
+        self.driver.get_manageable_volumes(cinder_volumes, None,
+                                           1, 0, [], [])
+
+    def test_get_manageable_volumes_has_snapshots(self):
+        cinder_volumes = [test_volume]
+        self._mock_volume.is_snapshot.return_value = False
+        self._mock_volume.has_children.return_value = True
+        self._mock_volume.get_all_metadata.return_value = {
+            'cinder_id': fake.VOLUME2_ID
+        }
+        self.driver.get_manageable_volumes(cinder_volumes, None,
+                                           1, 0, [], [])
+
+    def test_unmanage(self):
+        self.driver.unmanage(test_volume)
+
+    @mock.patch('cinder.objects.Snapshot.exists', return_value=True)
+    def test__check_already_managed_snapshot(self, *mocks):
+        self.driver._check_already_managed_snapshot(test_snapshot.id)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_manage_existing_snapshot_by_source_name(self, *mocks):
+        existing_ref = {'source-name': TEST_SNAPSHOT_SOURCE_NAME}
+        self.driver.manage_existing_snapshot(test_snapshot, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_manage_existing_snapshot_by_source_id(self, *mocks):
+        existing_ref = {'source-id': TEST_SNAPSHOT_SOURCE_ID}
+        self.driver.manage_existing_snapshot(test_snapshot, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_manage_existing_snapshot_but_volume(self, *mocks):
+        existing_ref = {'source-id': TEST_SNAPSHOT_SOURCE_ID}
+        self._mock_volume.is_snapshot.return_value = False
+        self.assertRaises(exception.InvalidSnapshot,
+                          self.driver.manage_existing_snapshot,
+                          test_snapshot, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_manage_existing_snapshot_by_invalid_source(self, *mocks):
+        existing_ref = {'source-path': None}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          test_snapshot, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_manage_existing_snapshot_by_non_cinder_id(self, *mocks):
+        self._mock_volume.get_all_metadata.return_value = {'cinder_id': 'x'}
+        existing_ref = {'source-id': TEST_SNAPSHOT_SOURCE_ID}
+        self.driver.manage_existing_snapshot(test_snapshot, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
+                '_check_already_managed_snapshot', return_value=False)
+    def test_manage_existing_snapshot_not_managed(self, *mocks):
+        self._mock_volume.get_all_metadata.return_value = (
+            TEST_SNAPSHOT_METADATA)
+        existing_ref = {'source-name': TEST_SNAPSHOT_SOURCE_NAME}
+        self.driver.manage_existing(test_snapshot, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
+                '_check_already_managed_snapshot', return_value=True)
+    def test_manage_existing_snapshot_already_managed(self, *mocks):
+        self._mock_volume.get_all_metadata.return_value = (
+            TEST_SNAPSHOT_METADATA)
+        existing_ref = {'source-name': TEST_SNAPSHOT_SOURCE_NAME}
+        self.assertRaises(exception.ManageExistingAlreadyManaged,
+                          self.driver.manage_existing_snapshot,
+                          test_snapshot, existing_ref)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    def test_manage_existing_snapshot_invalid_pool(self, *mocks):
+        existing_ref = {'source-name': TEST_SNAPSHOT_SOURCE_NAME}
+        self._mock_volume.get_pool_name.return_value = 'invalid'
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.driver.manage_existing_snapshot,
+                          test_snapshot, existing_ref)
+
+    def test_manage_existing_snapshot_get_size(self):
+        existing_ref = {'source-name': TEST_SNAPSHOT_SOURCE_NAME}
+        size = self.driver.manage_existing_snapshot_get_size(test_volume,
+                                                             existing_ref)
+        self.assertEqual(test_snapshot.volume.size, size)
+
+    def test_get_manageable_snapshots(self):
+        cinder_snapshots = [test_snapshot]
+        self._mock_volume.is_snapshot.return_value = True
+        self._mock_volume.get_all_metadata.return_value = {
+            'cinder_id': fake.SNAPSHOT2_ID
+        }
+        self.driver.get_manageable_snapshots(cinder_snapshots,
+                                             None, 1, 0, [], [])
+
+    def test_get_manageable_snapshots_already_managed(self):
+        cinder_snapshots = [test_snapshot]
+        self._mock_volume.get_id.return_value = TEST_SNAPSHOT_SOURCE_ID
+        self._mock_volume.get_all_metadata.return_value = (
+            TEST_SNAPSHOT_METADATA)
+        self._mock_volume.is_snapshot.return_value = True
+        self.driver.get_manageable_snapshots(cinder_snapshots,
+                                             None, 1, 0, [], [])
+
+    def test_get_manageable_snapshots_but_volumes(self):
+        cinder_snapshots = [test_snapshot]
+        self._mock_volume.is_snapshot.return_value = False
+        self.driver.get_manageable_snapshots(cinder_snapshots,
+                                             None, 1, 0, [], [])
+
+    def test_get_manageable_snapshots_has_mappings(self):
+        cinder_snapshots = [test_snapshot]
+        self._mock_volume.is_snapshot.return_value = True
+        self._mock_volume.get_all_metadata.return_value = {
+            'cinder_id': fake.SNAPSHOT2_ID
+        }
+        lun = mock.Mock()
+        self._mock_volume.get_logical_units.return_value = [lun]
+        self.driver.get_manageable_snapshots(cinder_snapshots,
+                                             None, 1, 0, [], [])
+
+    def test_get_manageable_snapshots_has_clones(self):
+        cinder_snapshots = [test_snapshot]
+        self._mock_volume.is_snapshot.return_value = True
+        self._mock_volume.has_children.return_value = True
+        self._mock_volume.get_all_metadata.return_value = {
+            'cinder_id': fake.SNAPSHOT2_ID
+        }
+        self.driver.get_manageable_snapshots(cinder_snapshots,
+                                             None, 1, 0, [], [])
+
+    def test_unmanage_snapshot(self):
+        self.driver.unmanage_snapshot(test_snapshot)
 
 
 class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):

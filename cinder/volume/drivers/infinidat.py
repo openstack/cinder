@@ -16,19 +16,23 @@
 
 from contextlib import contextmanager
 import functools
+import math
 import platform
 import socket
 from unittest import mock
+import uuid
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder.common import constants
+from cinder import context as cinder_context
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder import objects
 from cinder.objects import fields
 from cinder import version
 from cinder.volume import configuration
@@ -119,10 +123,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         1.6 - added support for volume multi-attach
         1.7 - fixed iSCSI to return all portals
         1.8 - added revert to snapshot
+        1.9 - added manage/unmanage/manageable-list volume/snapshot
 
     """
 
-    VERSION = '1.8'
+    VERSION = '1.9'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "INFINIDAT_CI"
@@ -223,21 +228,41 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                 "host.created_by": _INFINIDAT_CINDER_IDENTIFIER}
         infinidat_object.set_metadata_from_dict(data)
 
+    def _get_infinidat_dataset_by_ref(self, existing_ref):
+        if 'source-id' in existing_ref:
+            kwargs = dict(id=existing_ref['source-id'])
+        elif 'source-name' in existing_ref:
+            kwargs = dict(name=existing_ref['source-name'])
+        else:
+            reason = _('dataset reference must contain '
+                       'source-id or source-name key')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+        return self._system.volumes.safe_get(**kwargs)
+
+    def _get_infinidat_volume_by_ref(self, existing_ref):
+        infinidat_volume = self._get_infinidat_dataset_by_ref(existing_ref)
+        if infinidat_volume is None:
+            raise exception.VolumeNotFound(volume_id=existing_ref)
+        return infinidat_volume
+
+    def _get_infinidat_snapshot_by_ref(self, existing_ref):
+        infinidat_snapshot = self._get_infinidat_dataset_by_ref(existing_ref)
+        if infinidat_snapshot is None:
+            raise exception.SnapshotNotFound(snapshot_id=existing_ref)
+        if not infinidat_snapshot.is_snapshot():
+            reason = (_('reference %(existing_ref)s is a volume')
+                      % {'existing_ref': existing_ref})
+            raise exception.InvalidSnapshot(reason=reason)
+        return infinidat_snapshot
+
     def _get_infinidat_volume_by_name(self, name):
-        volume = self._system.volumes.safe_get(name=name)
-        if volume is None:
-            msg = _('Volume "%s" not found') % name
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
-        return volume
+        ref = {'source-name': name}
+        return self._get_infinidat_volume_by_ref(ref)
 
     def _get_infinidat_snapshot_by_name(self, name):
-        snapshot = self._system.volumes.safe_get(name=name)
-        if snapshot is None:
-            msg = _('Snapshot "%s" not found') % name
-            LOG.error(msg)
-            raise exception.InvalidSnapshot(reason=msg)
-        return snapshot
+        ref = {'source-name': name}
+        return self._get_infinidat_snapshot_by_ref(ref)
 
     def _get_infinidat_volume(self, cinder_volume):
         volume_name = self._make_volume_name(cinder_volume)
@@ -260,9 +285,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         group_name = self._make_cg_name(cinder_group)
         infinidat_cg = self._system.cons_groups.safe_get(name=group_name)
         if infinidat_cg is None:
-            msg = _('Consistency group "%s" not found') % group_name
-            LOG.error(msg)
-            raise exception.InvalidGroup(message=msg)
+            raise exception.GroupNotFound(group_id=group_name)
         return infinidat_cg
 
     def _get_or_create_host(self, port):
@@ -338,8 +361,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                     yield str(port.get_wwpn())
 
     def _initialize_connection_fc(self, volume, connector):
-        volume_name = self._make_volume_name(volume)
-        infinidat_volume = self._get_infinidat_volume_by_name(volume_name)
+        infinidat_volume = self._get_infinidat_volume(volume)
         ports = [wwn.WWN(wwpn) for wwpn in connector['wwpns']]
         for port in ports:
             infinidat_host = self._get_or_create_host(port)
@@ -380,8 +402,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         raise exception.VolumeDriverException(message=msg)
 
     def _initialize_connection_iscsi(self, volume, connector):
-        volume_name = self._make_volume_name(volume)
-        infinidat_volume = self._get_infinidat_volume_by_name(volume_name)
+        infinidat_volume = self._get_infinidat_volume(volume)
         port = iqn.IQN(connector['initiator'])
         infinidat_host = self._get_or_create_host(port)
         if self.configuration.use_chap_auth:
@@ -546,14 +567,13 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     @infinisdk_to_cinder_exceptions
     def delete_volume(self, volume):
         """Delete a volume from the backend."""
-        volume_name = self._make_volume_name(volume)
         try:
-            infinidat_volume = self._get_infinidat_volume_by_name(volume_name)
-        except exception.InvalidVolume:
-            return      # volume not found
+            infinidat_volume = self._get_infinidat_volume(volume)
+        except exception.VolumeNotFound:
+            return
         if infinidat_volume.has_children():
             # can't delete a volume that has a live snapshot
-            raise exception.VolumeIsBusy(volume_name=volume_name)
+            raise exception.VolumeIsBusy(volume_name=volume.name)
         infinidat_volume.safe_delete()
 
     @infinisdk_to_cinder_exceptions
@@ -654,8 +674,8 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         """Deletes a snapshot."""
         try:
             snapshot = self._get_infinidat_snapshot(snapshot)
-        except exception.InvalidSnapshot:
-            return      # snapshot not found
+        except exception.SnapshotNotFound:
+            return
         snapshot.safe_delete()
 
     def _asssert_volume_not_mapped(self, volume):
@@ -749,8 +769,8 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             raise NotImplementedError()
         try:
             infinidat_cg = self._get_infinidat_cg(group)
-        except exception.InvalidGroup:
-            pass      # group not found
+        except exception.GroupNotFound:
+            pass
         else:
             infinidat_cg.safe_delete()
         for volume in volumes:
@@ -859,3 +879,313 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         snapshot_size = snapshot.volume.size * capacity.GiB
         if volume_size < snapshot_size:
             self.extend_volume(volume, snapshot.volume.size)
+
+    @infinisdk_to_cinder_exceptions
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing Infinidat volume.
+
+        Checks if the volume is already managed.
+        Renames the Infinidat volume to match the expected name.
+        Updates QoS and metadata.
+
+        :param volume:       Cinder volume to manage
+        :param existing_ref: dictionary of the forms:
+                             {'source-name': 'Infinidat volume name'} or
+                             {'source-id': 'Infinidat volume serial number'}
+        """
+        infinidat_volume = self._get_infinidat_volume_by_ref(existing_ref)
+        infinidat_metadata = infinidat_volume.get_all_metadata()
+        if 'cinder_id' in infinidat_metadata:
+            cinder_id = infinidat_metadata['cinder_id']
+            if volume_utils.check_already_managed_volume(cinder_id):
+                raise exception.ManageExistingAlreadyManaged(
+                    volume_ref=cinder_id)
+        infinidat_pool = infinidat_volume.get_pool_name()
+        if infinidat_pool != self.configuration.infinidat_pool_name:
+            message = (_('unexpected pool name %(infinidat_pool)s')
+                       % {'infinidat_pool': infinidat_pool})
+            raise exception.InvalidConfigurationValue(message=message)
+        cinder_name = self._make_volume_name(volume)
+        infinidat_volume.update_name(cinder_name)
+        self._set_qos(volume, infinidat_volume)
+        self._set_cinder_object_metadata(infinidat_volume, volume)
+
+    @infinisdk_to_cinder_exceptions
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of an existing Infinidat volume.
+
+        When calculating the size, round up to the next GB.
+
+        :param volume:       Cinder volume to manage
+        :param existing_ref: dictionary of the forms:
+                             {'source-name': 'Infinidat volume name'} or
+                             {'source-id': 'Infinidat volume serial number'}
+        :returns size:       Volume size in GiB (integer)
+        """
+        infinidat_volume = self._get_infinidat_volume_by_ref(existing_ref)
+        return int(math.ceil(infinidat_volume.get_size() / capacity.GiB))
+
+    @infinisdk_to_cinder_exceptions
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        """List volumes on the Infinidat backend available for management.
+
+        Returns a list of dictionaries, each specifying a volume on the
+        Infinidat backend, with the following keys:
+        - reference (dictionary): The reference for a volume, which can be
+        passed to "manage_existing". Each reference contains keys:
+        Infinidat volume name and Infinidat volume serial number.
+        - size (int): The size of the volume according to the Infinidat
+        storage backend, rounded up to the nearest GB.
+        - safe_to_manage (boolean): Whether or not this volume is safe to
+        manage according to the storage backend. For example, is the volume
+        already managed, in use, has snapshots or active mappings.
+        - reason_not_safe (string): If safe_to_manage is False, the reason why.
+        - cinder_id (string): If already managed, provide the Cinder ID.
+        - extra_info (string): Extra information (pool name, volume type,
+        QoS and metadata) to return to the user.
+
+        :param cinder_volumes: A list of volumes in this host that Cinder
+                               currently manages, used to determine if
+                               a volume is manageable or not.
+        :param marker:    The last item of the previous page; we return the
+                          next results after this value (after sorting)
+        :param limit:     Maximum number of items to return
+        :param offset:    Number of items to skip after marker
+        :param sort_keys: List of keys to sort results by (valid keys are
+                          'identifier' and 'size')
+        :param sort_dirs: List of directions to sort by, corresponding to
+                          sort_keys (valid directions are 'asc' and 'desc')
+        """
+        manageable_volumes = []
+        cinder_ids = [cinder_volume.id for cinder_volume in cinder_volumes]
+        infinidat_pool = self._get_infinidat_pool()
+        infinidat_volumes = infinidat_pool.get_volumes()
+        for infinidat_volume in infinidat_volumes:
+            if infinidat_volume.is_snapshot():
+                continue
+            safe_to_manage = False
+            reason_not_safe = None
+            volume_id = infinidat_volume.get_id()
+            volume_name = infinidat_volume.get_name()
+            volume_size = infinidat_volume.get_size()
+            volume_type = infinidat_volume.get_type()
+            volume_pool = infinidat_volume.get_pool_name()
+            volume_qos = infinidat_volume.get_qos_policy()
+            volume_meta = infinidat_volume.get_all_metadata()
+            cinder_id = volume_meta.get('cinder_id')
+            volume_luns = infinidat_volume.get_logical_units()
+            if cinder_id and cinder_id in cinder_ids:
+                reason_not_safe = _('volume already managed')
+            elif volume_luns:
+                reason_not_safe = _('volume has mappings')
+            elif infinidat_volume.has_children():
+                reason_not_safe = _('volume has snapshots')
+            else:
+                safe_to_manage = True
+            reference = {
+                'source-name': volume_name,
+                'source-id': str(volume_id)
+            }
+            extra_info = {
+                'pool': volume_pool,
+                'type': volume_type,
+                'qos': str(volume_qos),
+                'meta': str(volume_meta)
+            }
+            manageable_volume = {
+                'reference': reference,
+                'size': int(math.ceil(volume_size / capacity.GiB)),
+                'safe_to_manage': safe_to_manage,
+                'reason_not_safe': reason_not_safe,
+                'cinder_id': cinder_id,
+                'extra_info': extra_info
+            }
+            manageable_volumes.append(manageable_volume)
+        return volume_utils.paginate_entries_list(
+            manageable_volumes, marker, limit,
+            offset, sort_keys, sort_dirs)
+
+    @infinisdk_to_cinder_exceptions
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management.
+
+        Does not delete the underlying backend storage object.
+
+        For most drivers, this will not need to do anything.  However, some
+        drivers might use this call as an opportunity to clean up any
+        Cinder-specific configuration that they have associated with the
+        backend storage object.
+
+        :param volume: Cinder volume to unmanage
+        """
+        infinidat_volume = self._get_infinidat_volume(volume)
+        infinidat_volume.clear_metadata()
+
+    def _check_already_managed_snapshot(self, snapshot_id):
+        """Check cinder db for already managed snapshot.
+
+        :param snapshot_id snapshot id parameter
+        :returns: bool -- return True, if db entry with specified
+                          snapshot id exists, otherwise return False
+        """
+        try:
+            uuid.UUID(snapshot_id, version=4)
+        except ValueError:
+            return False
+        ctxt = cinder_context.get_admin_context()
+        return objects.Snapshot.exists(ctxt, snapshot_id)
+
+    @infinisdk_to_cinder_exceptions
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Manage an existing Infinidat snapshot.
+
+        Checks if the snapshot is already managed.
+        Renames the Infinidat snapshot to match the expected name.
+        Updates QoS and metadata.
+
+        :param snapshot:     Cinder snapshot to manage
+        :param existing_ref: dictionary of the forms:
+                             {'source-name': 'Infinidat snapshot name'} or
+                             {'source-id': 'Infinidat snapshot serial number'}
+        """
+        infinidat_snapshot = self._get_infinidat_snapshot_by_ref(existing_ref)
+        infinidat_metadata = infinidat_snapshot.get_all_metadata()
+        if 'cinder_id' in infinidat_metadata:
+            cinder_id = infinidat_metadata['cinder_id']
+            if self._check_already_managed_snapshot(cinder_id):
+                raise exception.ManageExistingAlreadyManaged(
+                    volume_ref=cinder_id)
+        infinidat_pool = infinidat_snapshot.get_pool_name()
+        if infinidat_pool != self.configuration.infinidat_pool_name:
+            message = (_('unexpected pool name %(infinidat_pool)s')
+                       % {'infinidat_pool': infinidat_pool})
+            raise exception.InvalidConfigurationValue(message=message)
+        cinder_name = self._make_snapshot_name(snapshot)
+        infinidat_snapshot.update_name(cinder_name)
+        self._set_qos(snapshot, infinidat_snapshot)
+        self._set_cinder_object_metadata(infinidat_snapshot, snapshot)
+
+    @infinisdk_to_cinder_exceptions
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return size of an existing Infinidat snapshot.
+
+        When calculating the size, round up to the next GB.
+
+        :param snapshot:     Cinder snapshot to manage
+        :param existing_ref: dictionary of the forms:
+                             {'source-name': 'Infinidat snapshot name'} or
+                             {'source-id': 'Infinidat snapshot serial number'}
+        :returns size:       Snapshot size in GiB (integer)
+        """
+        infinidat_snapshot = self._get_infinidat_snapshot_by_ref(existing_ref)
+        return int(math.ceil(infinidat_snapshot.get_size() / capacity.GiB))
+
+    @infinisdk_to_cinder_exceptions
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        """List snapshots on the Infinidat backend available for management.
+
+        Returns a list of dictionaries, each specifying a snapshot on the
+        Infinidat backend, with the following keys:
+        - reference (dictionary): The reference for a snapshot, which can be
+        passed to "manage_existing_snapshot". Each reference contains keys:
+        Infinidat snapshot name and Infinidat snapshot serial number.
+        - size (int): The size of the snapshot according to the Infinidat
+        storage backend, rounded up to the nearest GB.
+        - safe_to_manage (boolean): Whether or not this snapshot is safe to
+        manage according to the storage backend. For example, is the snapshot
+        already managed, has clones or active mappings.
+        - reason_not_safe (string): If safe_to_manage is False, the reason why.
+        - cinder_id (string): If already managed, provide the Cinder ID.
+        - extra_info (string): Extra information (pool name, snapshot type,
+        QoS and metadata) to return to the user.
+        - source_reference (string): Similar to "reference", but for the
+        snapshot's source volume. The source reference contains two keys:
+        Infinidat volume name and Infinidat volume serial number.
+
+        :param cinder_snapshots: A list of snapshots in this host that Cinder
+                                 currently manages, used to determine if
+                                 a snapshot is manageable or not.
+        :param marker:    The last item of the previous page; we return the
+                          next results after this value (after sorting)
+        :param limit:     Maximum number of items to return
+        :param offset:    Number of items to skip after marker
+        :param sort_keys: List of keys to sort results by (valid keys are
+                          'identifier' and 'size')
+        :param sort_dirs: List of directions to sort by, corresponding to
+                          sort_keys (valid directions are 'asc' and 'desc')
+        """
+        manageable_snapshots = []
+        cinder_ids = [cinder_snapshot.id for cinder_snapshot
+                      in cinder_snapshots]
+        infinidat_pool = self._get_infinidat_pool()
+        infinidat_snapshots = infinidat_pool.get_volumes()
+        for infinidat_snapshot in infinidat_snapshots:
+            if not infinidat_snapshot.is_snapshot():
+                continue
+            safe_to_manage = False
+            reason_not_safe = None
+            parent = infinidat_snapshot.get_parent()
+            parent_id = parent.get_id()
+            parent_name = parent.get_name()
+            snapshot_id = infinidat_snapshot.get_id()
+            snapshot_name = infinidat_snapshot.get_name()
+            snapshot_size = infinidat_snapshot.get_size()
+            snapshot_type = infinidat_snapshot.get_type()
+            snapshot_pool = infinidat_snapshot.get_pool_name()
+            snapshot_qos = infinidat_snapshot.get_qos_policy()
+            snapshot_meta = infinidat_snapshot.get_all_metadata()
+            cinder_id = snapshot_meta.get('cinder_id')
+            snapshot_luns = infinidat_snapshot.get_logical_units()
+            if cinder_id and cinder_id in cinder_ids:
+                reason_not_safe = _('snapshot already managed')
+            elif snapshot_luns:
+                reason_not_safe = _('snapshot has mappings')
+            elif infinidat_snapshot.has_children():
+                reason_not_safe = _('snapshot has clones')
+            else:
+                safe_to_manage = True
+            reference = {
+                'source-name': snapshot_name,
+                'source-id': str(snapshot_id)
+            }
+            source_reference = {
+                'source-name': parent_name,
+                'source-id': str(parent_id)
+            }
+            extra_info = {
+                'pool': snapshot_pool,
+                'type': snapshot_type,
+                'qos': str(snapshot_qos),
+                'meta': str(snapshot_meta)
+            }
+            manageable_snapshot = {
+                'reference': reference,
+                'size': int(math.ceil(snapshot_size / capacity.GiB)),
+                'safe_to_manage': safe_to_manage,
+                'reason_not_safe': reason_not_safe,
+                'cinder_id': cinder_id,
+                'extra_info': extra_info,
+                'source_reference': source_reference
+            }
+            manageable_snapshots.append(manageable_snapshot)
+        return volume_utils.paginate_entries_list(
+            manageable_snapshots, marker, limit,
+            offset, sort_keys, sort_dirs)
+
+    @infinisdk_to_cinder_exceptions
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Cinder management.
+
+        Does not delete the underlying backend storage object.
+
+        For most drivers, this will not need to do anything. However, some
+        drivers might use this call as an opportunity to clean up any
+        Cinder-specific configuration that they have associated with the
+        backend storage object.
+
+        :param snapshot: Cinder volume snapshot to unmanage
+        """
+        infinidat_snapshot = self._get_infinidat_snapshot(snapshot)
+        infinidat_snapshot.clear_metadata()

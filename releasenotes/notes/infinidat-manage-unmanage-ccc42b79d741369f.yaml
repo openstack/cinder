@@ -1,0 +1,6 @@
+---
+features:
+ - |
+   Infinidat driver: Added support to manage and unmanage volumes and
+   snapshots. Also added the functionality to list the manageable
+   volumes and snapshots.
