@@ -100,6 +100,8 @@ from cinder.volume.drivers.dell_emc import xtremio as \
     cinder_volume_drivers_dell_emc_xtremio
 from cinder.volume.drivers.fujitsu.eternus_dx import eternus_dx_common as \
     cinder_volume_drivers_fujitsu_eternus_dx_eternusdxcommon
+from cinder.volume.drivers.fungible import driver as \
+    cinder_volume_drivers_fungible_driver
 from cinder.volume.drivers.fusionstorage import dsware as \
     cinder_volume_drivers_fusionstorage_dsware
 from cinder.volume.drivers.hitachi import hbsd_common as \
@@ -284,6 +286,7 @@ def list_opts():
                 cinder_volume_driver.backup_opts,
                 cinder_volume_driver.image_opts,
                 cinder_volume_drivers_datera_dateraiscsi.d_opts,
+                cinder_volume_drivers_fungible_driver.fungible_opts,
                 cinder_volume_drivers_fusionstorage_dsware.volume_opts,
                 cinder_volume_drivers_infortrend_raidcmd_cli_commoncli.
                 infortrend_opts,
