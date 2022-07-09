@@ -102,7 +102,7 @@ class BackupAPI(rpc.RPCAPI):
                   "on host %(host)s.",
                   {'id': backup.id, 'host': backup.host})
         cctxt = self._get_cctxt(server=backup.host)
-        return cctxt.cast(ctxt, 'reset_status', backup=backup, status=status)
+        cctxt.cast(ctxt, 'reset_status', backup=backup, status=status)
 
     def check_support_to_force_delete(self, ctxt, host) -> bool:
         LOG.debug("Check if backup driver supports force delete "
