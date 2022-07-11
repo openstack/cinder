@@ -16,7 +16,6 @@
 import functools
 import gettext
 import inspect
-import platform
 
 from oslo_log import log as logging
 from oslo_utils import timeutils
@@ -239,12 +238,6 @@ class IBMStorageProxy(object):
                 'id': host_id,
                 'wwpns': wwpns,
                 'chap': chap}
-
-    @_trace_time
-    def _get_os_type(self):
-        """Gets a string representation of the current os"""
-        dist = platform.dist()
-        return "%s-%s-%s" % (dist[0], dist[1], platform.processor())
 
     def _log(self, level, message, **kwargs):
         """Wrapper around the logger"""
