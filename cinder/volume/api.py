@@ -1839,6 +1839,20 @@ class API(base.Base):
         # in a cluster we will do a cluster migration.
         cluster_name = svc.cluster_name
 
+        # Add a check here to ensure that a volume isn't moved
+        # to another shard if it's attached.
+        # migrate_by_connector is called for nova live migration
+        # so this is only called by an admin manually migrating a volume
+        if volume.status == 'in-use':
+            # Check if the new host is in a different shard.
+            src_host = volume_utils.extract_host(volume['host'], 'host')
+            dst_host = volume_utils.extract_host(host, 'host')
+            if src_host != dst_host:
+                msg = ("Cannot migrate an attached volume to a different "
+                       "host/shard")
+                LOG.error(msg)
+                raise exception.InvalidHost(reason=msg)
+
         # Build required conditions for conditional update
         expected = {'status': ('available', 'in-use'),
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS,
