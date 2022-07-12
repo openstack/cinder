@@ -2393,7 +2393,6 @@ def _volume_get(context, volume_id, joined_load=True, for_update=False):
         joined_load=joined_load,
     )
     if joined_load:
-        # TODO: Is this correct?
         result = result.options(
             joinedload(models.Volume.volume_type).joinedload(
                 models.VolumeType.extra_specs
