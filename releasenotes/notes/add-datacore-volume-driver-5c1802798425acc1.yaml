@@ -1,0 +1,4 @@
+---
+features:
+  - Added iSCSI and Fibre Channel volume drivers for DataCore's
+    SANsymphony and Hyper-converged Virtual SAN storage.

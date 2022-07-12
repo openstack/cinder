@@ -45,3 +45,6 @@ storpool.spopenstack>=2.2.1 # Apache-2.0
 
 # Datera
 dfs_sdk>=1.2.25 # Apache-2.0
+
+# DataCore SANsymphony
+websocket-client>=1.3.2 # LGPLv2+
