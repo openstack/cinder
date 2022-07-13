@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    PowerMax driver `bug #1930290
+    <https://bugs.launchpad.net/cinder/+bug/1930290>`_: This fixes the
+    QoS conflict issue on a child storage group by not setting QoS on a
+    parent storage group.
