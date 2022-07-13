@@ -85,8 +85,6 @@ class PowerStoreClient(object):
                       payload=None,
                       params=None,
                       log_response_data=True):
-        if not payload:
-            payload = {}
         if not params:
             params = {}
         request_params = {
@@ -94,7 +92,7 @@ class PowerStoreClient(object):
             "verify": self._verify_cert,
             "params": params
         }
-        if method != "GET":
+        if payload and method != "GET":
             request_params["data"] = json.dumps(payload)
         request_url = self.base_url + url
         r = requests.request(method, request_url, **request_params)
