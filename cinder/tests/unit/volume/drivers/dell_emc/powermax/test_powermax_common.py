@@ -4142,6 +4142,61 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertTrue(success)
 
     @mock.patch.object(
+        utils.PowerMaxUtils, 'get_port_name_label',
+        return_value='my_pg')
+    @mock.patch.object(
+        utils.PowerMaxUtils, 'get_volume_attached_hostname',
+        return_value='HostX')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'is_volume_in_storagegroup', return_value=True)
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'return_volume_to_volume_group')
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'move_volume_between_storage_groups')
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'add_child_sg_to_parent_sg')
+    @mock.patch.object(
+        provision.PowerMaxProvision, 'create_storage_group')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group',
+        side_effect=[None, tpd.PowerMaxData.volume_info_dict])
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_volume',
+        return_value=tpd.PowerMaxData.volume_details[0])
+    @mock.patch.object(
+        utils.PowerMaxUtils, 'get_rdf_management_group_name',
+        return_value=tpd.PowerMaxData.rdf_managed_async_grp)
+    def test_retype_volume_attached_metro(
+            self, mck_get_rdf, mck_get_vol, mck_get_sg, mck_create, mck_add,
+            mck_move_vol, mck_return_vol, mck_is_vol, mck_host, mck_pg):
+
+        array = self.data.array
+        srp = self.data.srp
+        device_id = self.data.device_id
+        volume = self.data.test_attached_volume
+        volume_name = self.data.volume_id
+        extra_specs = self.data.rep_extra_specs_rep_config_metro
+        target_slo = self.data.slo_silver
+        target_workload = self.data.workload
+        target_extra_specs = deepcopy(self.data.rep_extra_specs)
+        target_extra_specs[utils.DISABLECOMPRESSION] = False
+        target_extra_specs[utils.REP_CONFIG] = self.data.rep_config_sync
+
+        success, target_sg_name = self.common._retype_volume(
+            array, srp, device_id, volume, volume_name, extra_specs,
+            target_slo, target_workload, target_extra_specs, remote=True,
+            metro_attach=True)
+        mck_get_rdf.assert_called_once()
+        mck_get_vol.assert_called_once()
+        mck_create.assert_called_once()
+        mck_add.assert_called_once()
+        mck_move_vol.assert_called_once()
+        mck_return_vol.assert_called_once()
+        mck_is_vol.assert_called_once()
+        self.assertEqual(2, mck_get_sg.call_count)
+        self.assertTrue(success)
+
+    @mock.patch.object(
         utils.PowerMaxUtils, 'get_volume_attached_hostname', return_value=None)
     @mock.patch.object(
         rest.PowerMaxRest, 'get_volume',
@@ -4157,7 +4212,8 @@ class PowerMaxCommonTest(test.TestCase):
         device_id = self.data.device_id
         volume = self.data.test_attached_volume
         volume_name = self.data.volume_id
-        extra_specs = self.data.rep_extra_specs_rep_config
+        extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         target_slo = self.data.slo_silver
         target_workload = self.data.workload
         target_extra_specs = deepcopy(self.data.rep_extra_specs)
