@@ -152,7 +152,8 @@ class Cluster(BASE, CinderBase):
     last_heartbeat = column_property(
         sa.select([func.max(Service.updated_at)])
         .where(sa.and_(Service.cluster_name == name, ~Service.deleted))
-        .correlate_except(Service),
+        .correlate_except(Service)
+        .scalar_subquery(),
         deferred=False,
     )
 
@@ -160,7 +161,8 @@ class Cluster(BASE, CinderBase):
     num_hosts = column_property(
         sa.select([func.count(Service.id)])
         .where(sa.and_(Service.cluster_name == name, ~Service.deleted))
-        .correlate_except(Service),
+        .correlate_except(Service)
+        .scalar_subquery(),
         group='services_summary',
         deferred=True,
     )
@@ -175,7 +177,8 @@ class Cluster(BASE, CinderBase):
                 Service.updated_at < sa.bindparam('expired'),
             )
         )
-        .correlate_except(Service),
+        .correlate_except(Service)
+        .scalar_subquery(),
         group='services_summary',
         deferred=True,
     )
