@@ -221,13 +221,6 @@ class WarningsFixture(fixtures.Fixture):
         warnings.filterwarnings(
             'ignore',
             module='cinder',
-            message=r'Passing a string to Connection.execute\(\) is ',
-            category=sqla_exc.SADeprecationWarning,
-        )
-
-        warnings.filterwarnings(
-            'ignore',
-            module='cinder',
             message='The Session.begin.subtransactions flag is deprecated ',
             category=sqla_exc.SADeprecationWarning,
         )
