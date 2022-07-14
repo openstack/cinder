@@ -3371,19 +3371,21 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
             self.assertIsNotNone(host)
         vol_updates = {'id': volume_iscsi['id'], 'size': 1}
         volume_model = models.Volume(**vol_updates)
-        attachment_updates1 = {'volume': volume_model,
-                               'volume_id': volume_iscsi['id'],
-                               'id': '4dc3bb12-ad75-41b9-ab2c-7609e743e600',
-                               'attach_status': 'attached',
-                               'attached_host': 'storwize-svc-host'
-                               }
+        attachment_updates1 = {
+            'volume': volume_model,
+            'volume_id': volume_iscsi['id'],
+            'id': '271eb937-5a5a-45bc-86a1-014afa8e4c37',
+            'attach_status': 'attached',
+            'attached_host': 'storwize-svc-host'
+        }
         db_attachment1 = models.VolumeAttachment(**attachment_updates1)
-        attachment_updates2 = {'volume': volume_model,
-                               'volume_id': volume_iscsi['id'],
-                               'id': '5af6aq34-gq56-76v8-ac1c-7212f567f300',
-                               'attach_status': 'attached',
-                               'attached_host': 'storwize-svc-host'
-                               }
+        attachment_updates2 = {
+            'volume': volume_model,
+            'volume_id': volume_iscsi['id'],
+            'id': '9a3b9fc4-2524-4367-8092-5382a43e5125',
+            'attach_status': 'attached',
+            'attached_host': 'storwize-svc-host'
+        }
         db_attachment2 = models.VolumeAttachment(**attachment_updates2)
         if no_of_fake_attachments == 1:
             get_db_vol_attach.return_value = [db_attachment1]
@@ -4419,19 +4421,21 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
             self.assertIsNotNone(host)
         vol_updates = {'id': volume_fc['id'], 'size': 1}
         volume_model = models.Volume(**vol_updates)
-        attachment_updates = {'volume': volume_model,
-                              'volume_id': volume_fc['id'],
-                              'id': '4dc3bb12-ad75-41b9-ab2c-7609e743e600',
-                              'attach_status': 'attached',
-                              'attached_host': 'storwize-svc-host'
-                              }
+        attachment_updates = {
+            'volume': volume_model,
+            'volume_id': volume_fc['id'],
+            'id': '271eb937-5a5a-45bc-86a1-014afa8e4c37',
+            'attach_status': 'attached',
+            'attached_host': 'storwize-svc-host'
+        }
         db_attachment1 = models.VolumeAttachment(**attachment_updates)
-        attachment_updates2 = {'volume': volume_model,
-                               'volume_id': volume_fc['id'],
-                               'id': '5af6aq34-gq56-76v8-ac1c-7212f567f300',
-                               'attach_status': 'attached',
-                               'attached_host': 'storwize-svc-host'
-                               }
+        attachment_updates2 = {
+            'volume': volume_model,
+            'volume_id': volume_fc['id'],
+            'id': '9a3b9fc4-2524-4367-8092-5382a43e5125',
+            'attach_status': 'attached',
+            'attached_host': 'storwize-svc-host'
+        }
         db_attachment2 = models.VolumeAttachment(**attachment_updates2)
         if no_of_fake_attachments == 1:
             get_db_vol_attach.return_value = [db_attachment1]
