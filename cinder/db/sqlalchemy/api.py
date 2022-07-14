@@ -37,9 +37,9 @@ from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 osprofiler_sqlalchemy = importutils.try_import('osprofiler.sqlalchemy')
-import sqlalchemy
+import sqlalchemy as sa
 from sqlalchemy import MetaData
-from sqlalchemy import or_, and_, case
+from sqlalchemy import or_, and_
 from sqlalchemy.orm import joinedload, undefer_group, load_only
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy import sql
@@ -80,9 +80,7 @@ def configure(conf):
     CONF.import_group("profiler", "cinder.service")
     if CONF.profiler.enabled:
         if CONF.profiler.trace_sqlalchemy:
-            lambda eng: osprofiler_sqlalchemy.add_tracing(
-                sqlalchemy, eng, "db"
-            )
+            lambda eng: osprofiler_sqlalchemy.add_tracing(sa, eng, "db")
 
 
 def get_engine():
@@ -548,8 +546,8 @@ def is_orm_value(obj):
     return isinstance(
         obj,
         (
-            sqlalchemy.orm.attributes.InstrumentedAttribute,
-            sqlalchemy.sql.expression.ColumnElement,
+            sa.orm.attributes.InstrumentedAttribute,
+            sa.sql.expression.ColumnElement,
         ),
     )
 
@@ -562,7 +560,7 @@ def _check_is_not_multitable(values, model):
     """
     used_models = set()
     for field in values:
-        if isinstance(field, sqlalchemy.orm.attributes.InstrumentedAttribute):
+        if isinstance(field, sa.orm.attributes.InstrumentedAttribute):
             used_models.add(field.class_)
         elif isinstance(field, str):
             used_models.add(model)
@@ -635,10 +633,10 @@ def _conditional_update(
     unordered_list = []
     for key, value in values.items():
         if isinstance(value, db.Case):
-            # TODO: This uses deprecated whens kwarg, so once our minimum
-            # version of SQLA is 1.4 replace with: value = case(*value.whens,
-            value = case(
-                whens=value.whens, value=value.value, else_=value.else_
+            value = sa.case(
+                *value.whens,
+                value=value.value,
+                else_=value.else_,
             )
 
         if key in order:

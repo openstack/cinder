@@ -143,16 +143,18 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
             for j in range(0, i):
                 model_attr = getattr(model, sort_keys[j])
                 default = _get_default_column_value(model, sort_keys[j])
-                attr = sa_sql.expression.case([(model_attr.isnot(None),
-                                                model_attr), ],
-                                              else_=default)
+                attr = sa_sql.expression.case(
+                    *[(model_attr.isnot(None), model_attr)],
+                    else_=default,
+                )
                 crit_attrs.append((attr == marker_values[j]))
 
             model_attr = getattr(model, sort_keys[i])
             default = _get_default_column_value(model, sort_keys[i])
-            attr = sa_sql.expression.case([(model_attr.isnot(None),
-                                            model_attr), ],
-                                          else_=default)
+            attr = sa_sql.expression.case(
+                *[(model_attr.isnot(None), model_attr)],
+                else_=default,
+            )
             if sort_dirs[i] == 'desc':
                 crit_attrs.append((attr < marker_values[i]))
             elif sort_dirs[i] == 'asc':
