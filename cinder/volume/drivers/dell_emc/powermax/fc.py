@@ -130,9 +130,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Use of snap id instead of generation (bp powermax-snapset-ids)
               - Support for Failover Abilities (bp/powermax-failover-abilities)
         4.4.0 - Early check for status of port
+        4.4.1 - Report trim/discard support
     """
 
-    VERSION = "4.4.0"
+    VERSION = "4.4.1"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerMAX_CI"
@@ -310,6 +311,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
                 'data': {'target_lun': device_number,
                          'target_discovered': True,
                          'target_wwn': target_wwns,
+                         'discard': True,
                          'initiator_target_map': init_targ_map}}
 
         LOG.debug("Return FC data for zone addition: %(data)s.",

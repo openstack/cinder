@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Dell EMC PowerStore driver: Report trimming/discard support to Nova and
+    Cinder.
+  - |
+    Dell EMC PowerMax driver: Report trimming/discard support to Nova and
+    Cinder.
+  - |
+    Dell EMC PowerFlex driver: Report trimming/discard support to Nova and
+    Cinder on thin volumes that don't have snapshots.  Not doing trim on
+    volumes with snapshots is the vendor's recommendation, but can be overriden
+    with the ``report_discard_supported`` configuration option.

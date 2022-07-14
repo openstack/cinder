@@ -108,6 +108,7 @@ class PowerMaxFCTest(test.TestCase):
                 'data': {'target_lun': self.data.fc_device_info['hostlunid'],
                          'target_discovered': True,
                          'target_wwn': [],
+                         'discard': True,
                          'initiator_target_map': {}}}
             data = self.driver.populate_data(self.data.fc_device_info,
                                              self.data.test_volume,

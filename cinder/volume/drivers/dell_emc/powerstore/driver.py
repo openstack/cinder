@@ -50,9 +50,10 @@ class PowerStoreDriver(driver.VolumeDriver):
         1.1.2 - Fix iSCSI targets not being returned from the REST API call if
                 targets are used for multiple purposes
                 (iSCSI target, Replication target, etc.)
+        1.1.3 - Report trim/discard support
     """
 
-    VERSION = "1.1.2"
+    VERSION = "1.1.3"
     VENDOR = "Dell EMC"
 
     # ThirdPartySystems wiki page
