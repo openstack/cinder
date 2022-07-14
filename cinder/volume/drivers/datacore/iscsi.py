@@ -45,7 +45,9 @@ datacore_iscsi_opts = [
     cfg.StrOpt('datacore_iscsi_chap_storage',
                default='$state_path/.datacore_chap',
                help='Fully qualified file name where dynamically generated '
-                    'iSCSI CHAP secrets are stored.'),
+                    'iSCSI CHAP secrets are stored.  This must be changed '
+                    'to a unique per-backend value if deploying multiple '
+                    'DataCore backends on the same host.'),
 ]
 
 CONF = cfg.CONF
