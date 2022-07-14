@@ -3075,7 +3075,7 @@ class HPE3PARCommon(object):
             LOG.info('Completed: convert_to_base_volume: '
                      'id=%s.', volume['id'])
         except hpeexceptions.HTTPConflict:
-            msg = _("Volume (%s) already exists on array.") % volume_name
+            msg = _("Volume (%s) already exists on array.") % temp_vol_name
             LOG.error(msg)
             raise exception.Duplicate(msg)
         except hpeexceptions.HTTPBadRequest as ex:
