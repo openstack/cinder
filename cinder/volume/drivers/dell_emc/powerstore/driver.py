@@ -52,9 +52,10 @@ class PowerStoreDriver(driver.VolumeDriver):
                 targets are used for multiple purposes
                 (iSCSI target, Replication target, etc.)
         1.2.0 - Add NVMe-OF support
+        1.2.1 - Report trim/discard support
     """
 
-    VERSION = "1.2.0"
+    VERSION = "1.2.1"
     VENDOR = "Dell EMC"
 
     # ThirdPartySystems wiki page
