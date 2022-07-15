@@ -3361,7 +3361,7 @@ def volume_qos_allows_retype(new_vol_type):
     specifies anything other than the back-end in any of the 2 volume_types.
     """
     # Query to get the qos of the volume type new_vol_type
-    q = sql.select([models.VolumeType.qos_specs_id]).where(
+    q = sql.select(models.VolumeType.qos_specs_id).where(
         and_(~models.VolumeType.deleted, models.VolumeType.id == new_vol_type)
     )
     # Construct the filter to check qos when volume is 'in-use'
@@ -7216,7 +7216,7 @@ def cg_creating_from_src(cg_id=None, cgsnapshot_id=None):
     # subquery to trick MySQL into using the same table in the update and the
     # where clause.
     subq = (
-        sql.select([models.ConsistencyGroup])
+        sql.select(models.ConsistencyGroup)
         .where(
             and_(
                 ~models.ConsistencyGroup.deleted,
@@ -7608,7 +7608,7 @@ def group_creating_from_src(group_id=None, group_snapshot_id=None):
     # subquery to trick MySQL into using the same table in the update and the
     # where clause.
     subq = (
-        sql.select([models.Group])
+        sql.select(models.Group)
         .where(and_(~models.Group.deleted, models.Group.status == 'creating'))
         .alias('group2')
     )
@@ -7624,7 +7624,7 @@ def group_creating_from_src(group_id=None, group_snapshot_id=None):
         )
         raise exception.ProgrammingError(reason=msg)
 
-    return sql.exists([subq]).where(match_id)
+    return sql.exists(subq).where(match_id)
 
 
 @require_admin_context

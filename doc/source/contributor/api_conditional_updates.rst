@@ -458,9 +458,12 @@ these filters using the select subquery method like this:
 .. code:: python
 
     def cg_creating_from_src(cg_id):
-       subq = sql.select([models.ConsistencyGroup]).where(and_(
-           ~model.deleted,
-           model.status == 'creating')).alias('cg2')
+       subq = sql.select(models.ConsistencyGroup).where(
+           and_(
+               ~model.deleted,
+               model.status == 'creating'
+           )
+       ).alias('cg2')
 
        return sql.exists([subq]).where(subq.c.source_cgid == cgid)
 
