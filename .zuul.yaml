@@ -57,7 +57,20 @@
             voting: false
             irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-plugin-lvm-lio-barbican:
-            irrelevant-files: *gate-irrelevant-files
+            # NOTE: we use this as a canary job to make sure at least
+            # one expensive tempest job is run on changes excluded by
+            # the gate-irrelevant-files defined above
+            irrelevant-files:
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/cmd/status\.py$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/functional.*$
+              - ^cinder/tests/hacking/.*$
+              - ^cinder/tests/unit.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
+              - ^tools/.*$
         - cinder-tempest-plugin-lvm-lio-barbican-fips:
             voting: false
             irrelevant-files: *gate-irrelevant-files
