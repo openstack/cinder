@@ -3361,8 +3361,15 @@ def volume_qos_allows_retype(new_vol_type):
     specifies anything other than the back-end in any of the 2 volume_types.
     """
     # Query to get the qos of the volume type new_vol_type
-    q = sql.select(models.VolumeType.qos_specs_id).where(
-        and_(~models.VolumeType.deleted, models.VolumeType.id == new_vol_type)
+    q = (
+        sql.select(models.VolumeType.qos_specs_id)
+        .where(
+            and_(
+                ~models.VolumeType.deleted,
+                models.VolumeType.id == new_vol_type,
+            )
+        )
+        .scalar_subquery()
     )
     # Construct the filter to check qos when volume is 'in-use'
     return or_(
@@ -3373,7 +3380,7 @@ def volume_qos_allows_retype(new_vol_type):
             and_(
                 ~models.VolumeType.deleted,
                 models.VolumeType.id == models.Volume.volume_type_id,
-                models.VolumeType.qos_specs_id == q.as_scalar(),
+                models.VolumeType.qos_specs_id == q,
             )
         ),
         # Or they are different specs but they are handled by the backend or
