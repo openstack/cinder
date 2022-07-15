@@ -4065,7 +4065,7 @@ def _snapshot_data_get_for_project(
         query = query.filter(~models.Snapshot.use_quota.is_(False))
 
     if volume_type_id or host:
-        query = query.join('volume')
+        query = query.join(models.Snapshot.volume)
         if volume_type_id:
             query = query.filter(
                 models.Volume.volume_type_id == volume_type_id

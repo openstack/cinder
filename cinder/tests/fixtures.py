@@ -193,13 +193,6 @@ class WarningsFixture(fixtures.Fixture):
         warnings.filterwarnings(
             'ignore',
             module='cinder',
-            message='Using strings to indicate relationship names in Query',
-            category=sqla_exc.SADeprecationWarning,
-        )
-
-        warnings.filterwarnings(
-            'ignore',
-            module='cinder',
             message='The current statement is being autocommitted using ',
             category=sqla_exc.SADeprecationWarning,
         )
