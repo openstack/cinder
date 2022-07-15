@@ -1,20 +1,21 @@
 ==============================================================
-Dell PowerVault ME4 Series Fibre Channel and iSCSI drivers
+Dell PowerVault ME Series Fibre Channel and iSCSI drivers
 ==============================================================
 
 The ``PVMEFCDriver`` and ``PVMEISCSIDriver`` Cinder drivers allow the
-Dell PowerVault ME4 Series storage arrays to be used for Block
+Dell PowerVault ME Series storage arrays to be used for Block
 Storage in OpenStack deployments.
 
 System requirements
 ~~~~~~~~~~~~~~~~~~~
 
-To use the PowerVault ME4 Series drivers, the following are required:
+To use the PowerVault ME Series drivers, the following are required:
 
-- PowerVault ME4 Series storage array with:
+- PowerVault ME5 Series storage array with I200 or later firmware, or
 
-  - iSCSI or FC host interfaces
-  - G28x firmware or later
+- PowerVault ME4 Series storage array with G280 or later firmware
+
+- iSCSI or Fibre Channel host interfaces
 
 - Network connectivity between the OpenStack hosts and the array's
   embedded management interface
