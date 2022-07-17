@@ -86,7 +86,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         super(VolumeMigrationTestCase, self).tearDown()
         self._clear_patch.stop()
 
-    def test_migrate_volume_driver(self):
+    def test_migrate_volume_driver(self, extend_spec=None):
         """Test volume migration done by driver."""
         # Mock driver and rpc functions
         self.mock_object(self.volume.driver, 'migrate_volume',
@@ -97,13 +97,23 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                            host=CONF.host,
                                            migration_status='migrating')
         host_obj = {'host': 'newhost', 'capabilities': {}}
-        self.volume.migrate_volume(self.context, volume, host_obj, False)
+        self.volume.migrate_volume(self.context, volume, host_obj, False,
+                                   extend_spec=extend_spec)
 
         # check volume properties
         volume = objects.Volume.get_by_id(context.get_admin_context(),
                                           volume.id)
         self.assertEqual('newhost', volume.host)
         self.assertEqual('success', volume.migration_status)
+
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'extend_volume')
+    def test_migrate_volume_driver_with_extend(self, fake_extend):
+        extend_spec = {'new_size': 10, 'reservations': 'fake-rsv'}
+        self.test_migrate_volume_driver(extend_spec=extend_spec)
+        self.assertTrue(fake_extend.called)
+        named_args = fake_extend.call_args[1]
+        self.assertEqual(10, named_args['new_size'])
+        self.assertEqual('fake-rsv', named_args['reservations'])
 
     def test_migrate_volume_driver_cross_az(self):
         """Test volume migration done by driver."""

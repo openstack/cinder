@@ -303,6 +303,7 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
                            volume=self.fake_volume_obj,
                            dest_backend=dest_backend,
                            force_host_copy=True,
+                           extend_spec=None,
                            expected_kwargs_diff={
                                'host': {'host': 'fake_host',
                                         'cluster_name': 'cluster_name',

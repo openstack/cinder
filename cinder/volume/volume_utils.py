@@ -1643,3 +1643,37 @@ def log_unsupported_driver_warning(driver):
 def is_all_zero(chunk: bytes) -> bool:
     """Return true if the chunk of bytes is all zeroes."""
     return chunk == bytes(len(chunk))
+
+
+def get_scheduler_hints_from_volume(volume):
+    filter_properties = {}
+    if "scheduler_hint_same_host" in volume.metadata:
+        LOG.debug("Found a scheduler_hint_same_host in volume %s",
+                  volume.metadata["scheduler_hint_same_host"])
+        hint = volume.metadata["scheduler_hint_same_host"]
+        filter_properties["same_host"] = hint.split(',')
+
+    if "scheduler_hint_different_host" in volume.metadata:
+        LOG.debug("Found a scheduler_hint_different_host in volume %s",
+                  volume.metadata["scheduler_hint_different_host"])
+        hint = volume.metadata["scheduler_hint_different_host"]
+        filter_properties["different_host"] = hint.split(',')
+    return filter_properties
+
+
+def set_scheduler_hints_to_volume_metadata(scheduler_hints,
+                                           metadata):
+    if scheduler_hints:
+        if 'same_host' in scheduler_hints:
+            if isinstance(scheduler_hints['same_host'], str):
+                hint = scheduler_hints['same_host']
+            else:
+                hint = ','.join(scheduler_hints["same_host"])
+            metadata["scheduler_hint_same_host"] = hint
+        if "different_host" in scheduler_hints:
+            if isinstance(scheduler_hints['different_host'], str):
+                hint = scheduler_hints["different_host"]
+            else:
+                hint = ','.join(scheduler_hints["different_host"])
+            metadata["scheduler_hint_different_host"] = hint
+    return metadata

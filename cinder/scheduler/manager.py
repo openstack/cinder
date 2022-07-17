@@ -489,15 +489,56 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                 {'size': new_size - volume.size})
             volume_rpcapi.VolumeAPI().extend_volume(context, volume, new_size,
                                                     reservations)
-        except exception.NoValidBackend as ex:
-            QUOTAS.rollback(context, reservations,
-                            project_id=volume.project_id)
-            _extend_volume_set_error(self, context, ex, request_spec)
-            self.message_api.create(
-                context,
-                message_field.Action.EXTEND_VOLUME,
-                resource_uuid=volume.id,
-                exception=ex)
+        except exception.NoValidBackend:
+            try:
+                self._extend_migrate(context, volume, new_size, request_spec,
+                                     filter_properties, reservations)
+            except exception.NoValidBackend as ex:
+                QUOTAS.rollback(context, reservations,
+                                project_id=volume.project_id)
+                _extend_volume_set_error(self, context, ex, request_spec)
+                self.message_api.create(
+                    context,
+                    message_field.Action.EXTEND_VOLUME,
+                    resource_uuid=volume.id,
+                    exception=ex)
+
+    def _extend_migrate(self, context, volume, new_size, request_spec,
+                        filter_properties, reservations):
+
+        if volume.consistencygroup_id or volume.group_id:
+            raise exception.NoValidBackend(
+                reason='The volume is in a group and cannot be migrated.')
+
+        scheduler_hints = \
+            vol_utils.get_scheduler_hints_from_volume(volume)
+        filter_properties.update(scheduler_hints)
+        filter_properties.pop('new_size')
+
+        if not request_spec:
+            request_spec = {'volume_properties': {'size': new_size}}
+        else:
+            request_spec['volume_properties']['size'] = new_size
+
+        if volume['availability_zone']:
+            request_spec['resource_properties'] = {
+                'availability_zone': volume['availability_zone']}
+
+        # SAP
+        # We have to force the destination host to be on
+        # the same backend, or it might get migrated
+        # to another vcenter.
+        backend = vol_utils.extract_host(volume['host'])
+
+        backend_state = self.driver.backend_passes_filters(
+            context, backend, request_spec, filter_properties)
+
+        backend_state.consume_from_volume(volume)
+
+        volume_rpcapi.VolumeAPI().migrate_volume(
+            context, volume, backend_state,
+            force_host_copy=False, wait_for_completion=False,
+            extend_spec={'new_size': new_size, 'reservations': reservations})
 
     def _set_volume_state_and_notify(self, method, updates, context, ex,
                                      request_spec, msg=None):

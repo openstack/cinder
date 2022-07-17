@@ -357,7 +357,7 @@ class API(base.Base):
         if not metadata:
             metadata = {}
 
-        metadata = self._set_scheduler_hints_to_volume_metadata(
+        metadata = volume_utils.set_scheduler_hints_to_volume_metadata(
             scheduler_hints,
             metadata
         )
@@ -933,7 +933,8 @@ class API(base.Base):
             'volume_id': volume.id}
 
         # Check if there is an affinity/antiaffinity against the volume
-        filter_properties = self._get_scheduler_hints_from_volume(volume)
+        filter_properties = \
+            volume_utils.get_scheduler_hints_from_volume(volume)
 
         try:
             dest = self.scheduler_rpcapi.find_backend_for_connector(
@@ -1897,7 +1898,7 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
         # Check if there is an affinity/antiaffinity against the volume
-        filter_props = self._get_scheduler_hints_from_volume(volume)
+        filter_props = volume_utils.get_scheduler_hints_from_volume(volume)
 
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
