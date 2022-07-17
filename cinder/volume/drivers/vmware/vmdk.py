@@ -2946,7 +2946,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """
 
         false_ret = (False, None)
-        allowed_statuses = ['available', 'reserved', 'in-use', 'maintenance']
+        allowed_statuses = ['available', 'reserved', 'in-use', 'maintenance',
+                            'extending']
         if volume['status'] not in allowed_statuses:
             LOG.debug('Only %s volumes can be migrated using backend '
                       'assisted migration. Falling back to generic migration.',

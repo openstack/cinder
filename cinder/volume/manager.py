@@ -2595,7 +2595,8 @@ class VolumeManager(manager.CleanableManager,
                        host,
                        force_host_copy: bool = False,
                        new_type_id=None,
-                       diff=None) -> None:
+                       diff=None,
+                       extend_spec=None) -> None:
         """Migrate the volume to the specified host (called on source host)."""
         try:
             # NOTE(flaper87): Verify the driver is enabled
@@ -2612,7 +2613,7 @@ class VolumeManager(manager.CleanableManager,
         rpcapi = volume_rpcapi.VolumeAPI()
 
         status_update = None
-        if volume.status in ('retyping', 'maintenance'):
+        if volume.status in ('retyping', 'maintenance', 'extending'):
             status_update = {'status': volume.previous_status}
 
         volume.migration_status = 'migrating'
@@ -2652,6 +2653,8 @@ class VolumeManager(manager.CleanableManager,
                     volume.save()
                     self._update_allocated_capacity(volume, decrement=True,
                                                     host=original_host)
+                    if extend_spec:
+                        rpcapi.extend_volume(ctxt, volume, **extend_spec)
             except Exception:
                 LOG.debug("Decrement remote allocated_capacity_gb for "
                           "host %(host)s",
