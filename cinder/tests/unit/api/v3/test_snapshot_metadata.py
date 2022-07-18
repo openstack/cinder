@@ -83,7 +83,7 @@ def return_snapshot(context, snapshot_id):
     return {'id': '0cc3346e-9fef-4445-abe6-5d2b2690ec64',
             'name': 'fake',
             'status': 'available',
-            'metadata': {}}
+            'snapshot_metadata': {}}
 
 
 # First argument needs to be self to receive the context argument in the right
@@ -572,7 +572,7 @@ class SnapshotMetaDataTest(test.TestCase):
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get')
     @mock.patch('cinder.db.snapshot_metadata_update', autospec=True)
     def test_update_item_empty_key(self, metadata_update, snapshot_get):
-        snapshot_get.return_value = fake_get
+        snapshot_get.side_effect = return_snapshot
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
