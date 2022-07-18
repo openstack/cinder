@@ -1144,6 +1144,36 @@ class VolumeUtilsTestCase(test.TestCase):
                                 vol_size)
         self.assertIn("Image 1 is not active.", str(res))
 
+    @ddt.data(None, 1, 3)
+    def test_check_image_metadata_virtual_size(self, fake_virtual_size):
+        image_meta = {'id': 1, 'min_disk': 1, 'status': 'active',
+                      'size': 1 * units.Gi,
+                      'virtual_size': fake_virtual_size * units.Gi
+                      if fake_virtual_size else None}
+        vol_size = 2
+        if fake_virtual_size and fake_virtual_size > vol_size:
+            res = self.assertRaises(
+                exception.ImageUnacceptable,
+                volume_utils.check_image_metadata,
+                image_meta,
+                vol_size)
+            self.assertIn("Image virtual size is %(image_size)dGB"
+                          " and doesn't fit in a volume of size"
+                          " %(volume_size)dGB." %
+                          {'image_size': fake_virtual_size,
+                           'volume_size': vol_size}, str(res))
+        else:
+            with mock.patch(
+                    'cinder.image.image_utils.check_virtual_size') as \
+                    mock_check_virtual_size:
+                volume_utils.check_image_metadata(image_meta, vol_size)
+                if fake_virtual_size:
+                    mock_check_virtual_size.assert_called_once_with(
+                        image_meta['virtual_size'], vol_size,
+                        image_meta['id'])
+                else:
+                    mock_check_virtual_size.assert_not_called()
+
     def test_enable_volume_bootable(self):
         ctxt = context.get_admin_context()
         volume = test_utils.create_volume(ctxt, bootable=False)
