@@ -2632,6 +2632,23 @@ class PowerMaxCommonTest(test.TestCase):
         self.common.promotion = False
         self.assertEqual(ref_return, return_val)
 
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
+        return_value=tpd.PowerMaxData.default_sg_re_managed_list)
+    def test_is_valid_for_storage_assisted_migration_rep_with_mgmt_group(
+            self, mock_sg_list):
+        device_id = self.data.device_id
+        host = {'host': self.data.fake_host}
+        volume_name = self.data.test_volume.name
+        ref_return = (True, 'Diamond', 'NONE')
+        with mock.patch.object(self.rest, 'is_next_gen_array',
+                               return_value=True):
+            return_val = self.common._is_valid_for_storage_assisted_migration(
+                device_id, host, self.data.array,
+                self.data.srp, volume_name, False, False, self.data.slo,
+                self.data.workload, False)
+            self.assertEqual(ref_return, return_val)
+
     def test_find_volume_group(self):
         group = self.data.test_group_1
         array = self.data.array
