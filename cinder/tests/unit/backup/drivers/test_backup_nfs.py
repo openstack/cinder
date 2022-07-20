@@ -698,7 +698,7 @@ class BackupNFSTestCase(test.TestCase):
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             backup.status = objects.fields.BackupStatus.RESTORING
             backup.save()
-            service.restore(backup, volume_id, restored_file)
+            service.restore(backup, volume_id, restored_file, False)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
@@ -721,7 +721,7 @@ class BackupNFSTestCase(test.TestCase):
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             backup.status = objects.fields.BackupStatus.RESTORING
             backup.save()
-            service.restore(backup, volume_id, restored_file)
+            service.restore(backup, volume_id, restored_file, False)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
@@ -747,7 +747,7 @@ class BackupNFSTestCase(test.TestCase):
 
         with tempfile.NamedTemporaryFile() as restored_file:
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
-            service.restore(backup, volume_id, restored_file)
+            service.restore(backup, volume_id, restored_file, False)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
@@ -773,7 +773,7 @@ class BackupNFSTestCase(test.TestCase):
 
         with tempfile.NamedTemporaryFile() as restored_file:
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
-            service.restore(backup, volume_id, restored_file)
+            service.restore(backup, volume_id, restored_file, False)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
@@ -842,7 +842,7 @@ class BackupNFSTestCase(test.TestCase):
 
             self.assertRaises(exception.BackupRestoreCancel,
                               service.restore, backup, volume_id,
-                              restored_file)
+                              restored_file, False)
 
     def test_restore_delta(self):
         volume_id = fake.VOLUME_ID
@@ -890,8 +890,7 @@ class BackupNFSTestCase(test.TestCase):
 
         with tempfile.NamedTemporaryFile() as restored_file:
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
-            service.restore(backup, volume_id,
-                            restored_file)
+            service.restore(backup, volume_id, restored_file, False)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 

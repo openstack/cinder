@@ -64,6 +64,7 @@ from cinder import interface
 from cinder import objects
 from cinder import utils
 import cinder.volume.drivers.rbd as rbd_driver
+from cinder.volume import volume_utils
 
 try:
     import rados
@@ -413,7 +414,8 @@ class CephBackupDriver(driver.BackupDriver):
                        src_name: str,
                        dest: linuxrbd.RBDVolumeIOWrapper,
                        dest_name: str,
-                       length: int) -> None:
+                       length: int,
+                       discard_zeros: bool = False) -> None:
         """Transfer data between files (Python IO objects)."""
         LOG.debug("Transferring data between '%(src)s' and '%(dest)s'",
                   {'src': src_name, 'dest': dest_name})
@@ -434,13 +436,17 @@ class CephBackupDriver(driver.BackupDriver):
 
                 return
 
-            dest.write(data)
-            dest.flush()
+            if (discard_zeros and volume_utils.is_all_zero(data)):
+                action = "Discarded"
+            else:
+                dest.write(data)
+                dest.flush()
+                action = "Transferred"
             delta = (time.time() - before)
             rate = (self.chunk_size / delta) / 1024
-            LOG.debug("Transferred chunk %(chunk)s of %(chunks)s "
-                      "(%(rate)dK/s)",
-                      {'chunk': chunk + 1,
+            LOG.debug("%(action)s chunk %(chunk)s of %(chunks)s (%(rate)dK/s)",
+                      {'action': action,
+                       'chunk': chunk + 1,
                        'chunks': chunks,
                        'rate': rate})
 
@@ -1075,6 +1081,7 @@ class CephBackupDriver(driver.BackupDriver):
                       dest_file,
                       dest_name: str,
                       length: int,
+                      volume_is_new: bool,
                       src_snap=None) -> None:
         """Restore volume using full copy i.e. all extents.
 
@@ -1103,7 +1110,8 @@ class CephBackupDriver(driver.BackupDriver):
                                                      self._ceph_backup_conf)
                 rbd_fd = linuxrbd.RBDVolumeIOWrapper(rbd_meta)
                 self._transfer_data(eventlet.tpool.Proxy(rbd_fd), backup_name,
-                                    dest_file, dest_name, length)
+                                    dest_file, dest_name, length,
+                                    discard_zeros=volume_is_new)
             finally:
                 src_rbd.close()
 
@@ -1279,7 +1287,8 @@ class CephBackupDriver(driver.BackupDriver):
     def _restore_volume(self,
                         backup: 'objects.Backup',
                         volume: 'objects.Volume',
-                        volume_file: linuxrbd.RBDVolumeIOWrapper) -> None:
+                        volume_file: linuxrbd.RBDVolumeIOWrapper,
+                        volume_is_new: bool) -> None:
         """Restore volume from backup using diff transfer if possible.
 
         Attempts a differential restore and reverts to full copy if diff fails.
@@ -1313,7 +1322,7 @@ class CephBackupDriver(driver.BackupDriver):
             # Otherwise full copy
             LOG.debug("Running full restore.")
             self._full_restore(backup, volume_file, volume.name,
-                               length, src_snap=restore_point)
+                               length, volume_is_new, src_snap=restore_point)
 
     def _restore_metadata(self,
                           backup: 'objects.Backup',
@@ -1340,18 +1349,21 @@ class CephBackupDriver(driver.BackupDriver):
     def restore(self,
                 backup: 'objects.Backup',
                 volume_id: str,
-                volume_file: linuxrbd.RBDVolumeIOWrapper) -> None:
+                volume_file: linuxrbd.RBDVolumeIOWrapper,
+                volume_is_new: bool) -> None:
         """Restore volume from backup in Ceph object store.
 
         If volume metadata is available this will also be restored.
         """
         target_volume = self.db.volume_get(self.context, volume_id)
         LOG.debug('Starting restore from Ceph backup=%(src)s to '
-                  'volume=%(dest)s',
-                  {'src': backup.id, 'dest': target_volume.name})
+                  'volume=%(dest)s new=%(new)s',
+                  {'src': backup.id, 'dest': target_volume.name,
+                   'new': volume_is_new})
 
         try:
-            self._restore_volume(backup, target_volume, volume_file)
+            self._restore_volume(backup, target_volume, volume_file,
+                                 volume_is_new)
 
             # Be tolerant of IO implementations that do not support fileno()
             try:

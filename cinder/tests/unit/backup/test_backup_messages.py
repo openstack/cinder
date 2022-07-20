@@ -379,7 +379,7 @@ class BackupUserMessagesTest(test.TestCase):
 
         self.assertRaises(
             exception.InvalidVolume, manager.restore_backup,
-            fake_context, fake_backup, fake.VOLUME_ID)
+            fake_context, fake_backup, fake.VOLUME_ID, False)
         mock_msg_create.assert_called_once_with(
             fake_context,
             action=message_field.Action.BACKUP_RESTORE,
@@ -409,7 +409,7 @@ class BackupUserMessagesTest(test.TestCase):
 
         self.assertRaises(
             exception.InvalidBackup, manager.restore_backup,
-            fake_context, fake_backup, fake.VOLUME_ID)
+            fake_context, fake_backup, fake.VOLUME_ID, False)
         self.assertEqual(message_field.Action.BACKUP_RESTORE,
                          fake_context.message_action)
         self.assertEqual(message_field.Resource.VOLUME_BACKUP,
@@ -455,7 +455,7 @@ class BackupUserMessagesTest(test.TestCase):
 
         self.assertRaises(
             exception.InvalidBackup, manager.restore_backup,
-            fake_context, fake_backup, fake.VOLUME_ID)
+            fake_context, fake_backup, fake.VOLUME_ID, False)
         self.assertEqual(message_field.Action.BACKUP_RESTORE,
                          fake_context.message_action)
         self.assertEqual(message_field.Resource.VOLUME_BACKUP,
@@ -505,7 +505,7 @@ class BackupUserMessagesTest(test.TestCase):
 
         self.assertRaises(
             exception.InvalidBackup, manager.restore_backup,
-            fake_context, fake_backup, fake.VOLUME_ID)
+            fake_context, fake_backup, fake.VOLUME_ID, False)
         self.assertEqual(message_field.Action.BACKUP_RESTORE,
                          fake_context.message_action)
         self.assertEqual(message_field.Resource.VOLUME_BACKUP,
@@ -555,7 +555,7 @@ class BackupUserMessagesTest(test.TestCase):
 
         self.assertRaises(
             exception.InvalidBackup, manager.restore_backup,
-            fake_context, fake_backup, fake.VOLUME_ID)
+            fake_context, fake_backup, fake.VOLUME_ID, False)
         self.assertEqual(message_field.Action.BACKUP_RESTORE,
                          fake_context.message_action)
         self.assertEqual(message_field.Resource.VOLUME_BACKUP,

@@ -23,7 +23,7 @@ class FakeBackupService(driver.BackupDriver):
     def backup(self, backup, volume_file):
         pass
 
-    def restore(self, backup, volume_id, volume_file):
+    def restore(self, backup, volume_id, volume_file, volume_is_new):
         pass
 
     def delete_backup(self, backup):

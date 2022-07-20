@@ -799,7 +799,7 @@ class BackupSwiftTestCase(test.TestCase):
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             backup.status = objects.fields.BackupStatus.RESTORING
             backup.save()
-            service.restore(backup, volume_id, volume_file)
+            service.restore(backup, volume_id, volume_file, False)
 
     def test_restore_delta(self):
         volume_id = '04d83506-bcf7-4ff5-9c65-00000051bd2e'
@@ -849,8 +849,7 @@ class BackupSwiftTestCase(test.TestCase):
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
             backup.status = objects.fields.BackupStatus.RESTORING
             backup.save()
-            service.restore(backup, volume_id,
-                            restored_file)
+            service.restore(backup, volume_id, restored_file, False)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
@@ -865,7 +864,7 @@ class BackupSwiftTestCase(test.TestCase):
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             self.assertRaises(exception.SwiftConnectionFailed,
                               service.restore,
-                              backup, volume_id, volume_file)
+                              backup, volume_id, volume_file, False)
 
     def test_restore_unsupported_version(self):
         volume_id = '390db8c1-32d3-42ca-82c9-00000010c703'
@@ -878,7 +877,7 @@ class BackupSwiftTestCase(test.TestCase):
             backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             self.assertRaises(exception.InvalidBackup,
                               service.restore,
-                              backup, volume_id, volume_file)
+                              backup, volume_id, volume_file, False)
 
     def test_delete(self):
         volume_id = '9ab256c8-3175-4ad8-baa1-0000007f9d31'

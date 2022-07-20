@@ -916,7 +916,7 @@ class BackupCephTestCase(test.TestCase):
                     self.volume_file.seek(0)
 
                     self.service.restore(self.alt_backup, self.volume_id,
-                                         test_file)
+                                         test_file, False)
 
                     checksum = hashlib.sha256()
                     test_file.seek(0)

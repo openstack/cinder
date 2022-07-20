@@ -66,6 +66,26 @@ CONF = cfg.CONF
 CONF.register_opts(backup_opts)
 
 
+def _write_nonzero(volume_file, volume_offset, content):
+    """Write non-zero parts of `content` into `volume_file`."""
+    chunk_length = 1024 * 1024
+    for chunk_offset in range(0, len(content), chunk_length):
+        chunk_end = chunk_offset + chunk_length
+        chunk = content[chunk_offset:chunk_end]
+        # The len(chunk) may be smaller than chunk_length. It's okay.
+        if not volume_utils.is_all_zero(chunk):
+            volume_file.seek(volume_offset + chunk_offset)
+            volume_file.write(chunk)
+
+
+def _write_volume(volume_is_new, volume_file, volume_offset, content):
+    if volume_is_new:
+        _write_nonzero(volume_file, volume_offset, content)
+    else:
+        volume_file.seek(volume_offset)
+        volume_file.write(content)
+
+
 # Object writer and reader returned by inheriting classes must not have any
 # logging calls, as well as the compression libraries, as eventlet has a bug
 # (https://github.com/eventlet/eventlet/issues/432) that would result in
@@ -666,7 +686,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         self._finalize_backup(backup, container, object_meta, object_sha256)
 
     def _restore_v1(self, backup, volume_id, metadata, volume_file,
-                    requested_backup):
+                    volume_is_new, requested_backup):
         """Restore a v1 volume backup.
 
         Raises BackupRestoreCancel on any requested_backup status change, we
@@ -717,16 +737,17 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
                 body = reader.read()
             compression_algorithm = metadata_object[object_name]['compression']
             decompressor = self._get_compressor(compression_algorithm)
-            volume_file.seek(obj['offset'])
             if decompressor is not None:
                 LOG.debug('decompressing data using %s algorithm',
                           compression_algorithm)
                 decompressed = decompressor.decompress(body)
                 body = None  # Allow Python to free it
-                volume_file.write(decompressed)
+                _write_volume(volume_is_new,
+                              volume_file, obj['offset'], decompressed)
                 decompressed = None  # Allow Python to free it
             else:
-                volume_file.write(body)
+                _write_volume(volume_is_new,
+                              volume_file, obj['offset'], body)
                 body = None  # Allow Python to free it
 
             # force flush every write to avoid long blocking write on close
@@ -748,7 +769,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         LOG.debug('v1 volume backup restore of %s finished.',
                   backup_id)
 
-    def restore(self, backup, volume_id, volume_file):
+    def restore(self, backup, volume_id, volume_file, volume_is_new):
         """Restore the given volume backup from backup repository.
 
         Raises BackupRestoreCancel on any backup status change.
@@ -757,13 +778,15 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         container = backup['container']
         object_prefix = backup['service_metadata']
         LOG.debug('starting restore of backup %(object_prefix)s '
-                  'container: %(container)s, to volume %(volume_id)s, '
+                  'container: %(container)s, '
+                  'to %(new)s volume %(volume_id)s, '
                   'backup: %(backup_id)s.',
                   {
                       'object_prefix': object_prefix,
                       'container': container,
                       'volume_id': volume_id,
                       'backup_id': backup_id,
+                      'new': 'new' if volume_is_new else 'existing',
                   })
         metadata = self._read_metadata(backup)
         metadata_version = metadata['version']
@@ -794,7 +817,8 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
             backup1 = backup_list[index]
             index = index - 1
             metadata = self._read_metadata(backup1)
-            restore_func(backup1, volume_id, metadata, volume_file, backup)
+            restore_func(backup1, volume_id, metadata, volume_file,
+                         volume_is_new, backup)
 
             volume_meta = metadata.get('volume_meta', None)
             try:

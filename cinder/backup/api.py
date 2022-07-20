@@ -404,6 +404,7 @@ class API(base.Base):
                      "backup %(backup_id)s.",
                      {'size': size, 'backup_id': backup_id})
             volume = self.volume_api.create(context, size, name, description)
+            volume_is_new = True
             volume_id = volume['id']
 
             while True:
@@ -419,6 +420,7 @@ class API(base.Base):
                 raise exception.InvalidVolume(reason=msg)
         else:
             volume = self.volume_api.get(context, volume_id)
+            volume_is_new = False
 
         if volume['status'] != "available":
             msg = _('Volume to be restored to must be available')
@@ -447,7 +449,7 @@ class API(base.Base):
                                                    'restoring-backup'})
 
         self.backup_rpcapi.restore_backup(context, backup.host, backup,
-                                          volume_id)
+                                          volume_id, volume_is_new)
 
         d = {'backup_id': backup_id,
              'volume_id': volume_id,

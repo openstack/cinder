@@ -374,7 +374,7 @@ class BackupDriver(base.Base, metaclass=abc.ABCMeta):
         return
 
     @abc.abstractmethod
-    def restore(self, backup, volume_id, volume_file):
+    def restore(self, backup, volume_id, volume_file, volume_is_new):
         """Restore a saved backup.
 
         Some I/O operations may block greenthreads, so in order to prevent

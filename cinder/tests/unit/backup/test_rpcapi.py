@@ -31,6 +31,9 @@ class BackupRPCAPITestCase(test.RPCAPITestCase):
         self.rpcapi = backup_rpcapi.BackupAPI
         self.fake_backup_obj = fake_backup.fake_backup_obj(self.context)
 
+        self.can_send_version_mock = self.patch(
+            'oslo_messaging.RPCClient.can_send_version', return_value=True)
+
     def test_create_backup(self):
         self._test_rpc_api('create_backup',
                            rpc_method='cast',
@@ -43,7 +46,18 @@ class BackupRPCAPITestCase(test.RPCAPITestCase):
                            server='fake_volume_host',
                            backup_host='fake_volume_host',
                            backup=self.fake_backup_obj,
-                           volume_id=fake.VOLUME_ID)
+                           volume_id=fake.VOLUME_ID,
+                           volume_is_new=True)
+
+        with mock.patch('cinder.rpc.LAST_RPC_VERSIONS',
+                        {'cinder-backup': '2.0'}):
+            self._test_rpc_api('restore_backup',
+                               rpc_method='cast',
+                               server='fake_volume_host',
+                               backup_host='fake_volume_host',
+                               backup=self.fake_backup_obj,
+                               volume_id=fake.VOLUME_ID,
+                               volume_is_new=False)
 
     def test_delete_backup(self):
         self._test_rpc_api('delete_backup',

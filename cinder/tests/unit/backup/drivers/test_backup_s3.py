@@ -528,7 +528,7 @@ class BackupS3TestCase(test.TestCase):
         service.backup(backup, self.volume_file)
 
         with tempfile.NamedTemporaryFile() as volume_file:
-            service.restore(backup, volume_id, volume_file)
+            service.restore(backup, volume_id, volume_file, False)
 
     @mock_s3
     def test_restore_delta(self):
@@ -555,8 +555,7 @@ class BackupS3TestCase(test.TestCase):
         service2.backup(deltabackup, self.volume_file, True)
 
         with tempfile.NamedTemporaryFile() as restored_file:
-            service2.restore(deltabackup, volume_id,
-                             restored_file)
+            service2.restore(deltabackup, volume_id, restored_file, False)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
@@ -571,7 +570,7 @@ class BackupS3TestCase(test.TestCase):
         with tempfile.NamedTemporaryFile() as volume_file:
             self.assertRaises(s3_dr.S3ClientError,
                               service.restore,
-                              backup, volume_id, volume_file)
+                              backup, volume_id, volume_file, False)
 
     @s3_client
     def test_restore_faili2(self):
@@ -584,7 +583,7 @@ class BackupS3TestCase(test.TestCase):
         with tempfile.NamedTemporaryFile() as volume_file:
             self.assertRaises(s3_dr.S3ConnectionFailure,
                               service.restore,
-                              backup, volume_id, volume_file)
+                              backup, volume_id, volume_file, False)
 
     @mock_s3
     def test_backup_md5_validation(self):
@@ -618,4 +617,4 @@ class BackupS3TestCase(test.TestCase):
         service.backup(backup, self.volume_file)
 
         with tempfile.NamedTemporaryFile() as volume_file:
-            service.restore(backup, volume_id, volume_file)
+            service.restore(backup, volume_id, volume_file, False)
