@@ -49,8 +49,16 @@ backup_opts = [
                 help='Backup services use same backend.')
 ]
 
+sap_backup_opts = [
+    cfg.BoolOpt('sap_disable_incremental_backup',
+                default=False,
+                help='Silently disable incremental backup.')
+]
+
+
 CONF = cfg.CONF
 CONF.register_opts(backup_opts)
+CONF.register_opts(sap_backup_opts)
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
 IMPORT_VOLUME_ID = '00000000-0000-0000-0000-000000000000'
@@ -202,6 +210,11 @@ class API(base.Base):
         """Make the RPC call to create a volume backup."""
         volume = self.volume_api.get(context, volume_id)
         context.authorize(policy.CREATE_POLICY, target_obj=volume)
+        if CONF.sap_disable_incremental_backup:
+            # This means force incremental to be OFF
+            incremental = False
+            LOG.info("Incremental Backups have been silently disabled."
+                     "  Will do a full backup.")
         snapshot = None
         if snapshot_id:
             snapshot = self.volume_api.get_snapshot(context, snapshot_id)
