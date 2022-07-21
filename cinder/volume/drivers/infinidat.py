@@ -126,10 +126,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         1.9 - added manage/unmanage/manageable-list volume/snapshot
         1.10 - added support for TLS/SSL communication
         1.11 - fixed generic volume migration
+        1.12 - fixed volume multi-attach
 
     """
 
-    VERSION = '1.11'
+    VERSION = '1.12'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "INFINIDAT_CI"
@@ -478,6 +479,32 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             ports = [iqn.IQN(connector['initiator'])]
         return ports
 
+    def _is_volume_multiattached(self, volume, connector):
+        """Returns whether the volume is multiattached.
+
+        Check if there are multiple attachments to the volume
+        from the same connector. Terminate connection only for
+        the last attachment from the corresponding host.
+        """
+        if not (connector and volume.multiattach and
+                volume.volume_attachment):
+            return False
+        keys = ['system uuid']
+        if self._protocol == constants.FC:
+            keys.append('wwpns')
+        else:
+            keys.append('initiator')
+        for key in keys:
+            if not (key in connector and connector[key]):
+                continue
+            if sum(1 for attachment in volume.volume_attachment if
+                   attachment.connector and key in attachment.connector and
+                   attachment.connector[key] == connector[key]) > 1:
+                LOG.debug('Volume %s is multiattached to %s %s',
+                          volume.name_id, key, connector[key])
+                return True
+        return False
+
     @infinisdk_to_cinder_exceptions
     @coordination.synchronized('infinidat-{self.management_address}-lock')
     def initialize_connection(self, volume, connector):
@@ -491,6 +518,8 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     @coordination.synchronized('infinidat-{self.management_address}-lock')
     def terminate_connection(self, volume, connector, **kwargs):
         """Unmap an InfiniBox volume from the host"""
+        if self._is_volume_multiattached(volume, connector):
+            return True
         infinidat_volume = self._get_infinidat_volume(volume)
         if self._protocol == constants.FC:
             volume_type = 'fibre_channel'
@@ -521,11 +550,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                                                          target_wwpns))
                     result_data = dict(target_wwn=target_wwpns,
                                        initiator_target_map=target_map)
-        conn_info = dict(driver_volume_type=volume_type,
-                         data=result_data)
         if self._protocol == constants.FC:
+            conn_info = dict(driver_volume_type=volume_type,
+                             data=result_data)
             fczm_utils.remove_fc_zone(conn_info)
-        return conn_info
+        return volume.volume_attachment and len(volume.volume_attachment) > 1
 
     @infinisdk_to_cinder_exceptions
     def get_volume_stats(self, refresh=False):
@@ -665,7 +694,8 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         # we need a cinder-volume-like object to map the clone by name
         # (which is derived from the cinder id) but the clone is internal
         # so there is no such object. mock one
-        clone = mock.Mock(name_id=str(volume.name_id) + '-internal')
+        clone = mock.Mock(name_id=str(volume.name_id) + '-internal',
+                          multiattach=False, volume_attachment=[])
         try:
             infinidat_volume = self._create_volume(volume)
             try:
