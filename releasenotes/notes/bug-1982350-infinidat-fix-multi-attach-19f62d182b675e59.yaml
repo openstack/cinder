@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Infinidat Driver `bug #1982350
+    <https://bugs.launchpad.net/cinder/+bug/1982350>`_:
+    Fixed Infinidat driver multi-attach feature.
+    Added a check if there are multiple attachments to the volume
+    from the same connector and terminate connection only for the
+    last attachment from the corresponding host.

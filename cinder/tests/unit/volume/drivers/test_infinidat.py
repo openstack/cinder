@@ -39,6 +39,7 @@ TEST_IP_ADDRESS2 = '2.2.2.2'
 TEST_IP_ADDRESS3 = '3.3.3.3'
 TEST_IP_ADDRESS4 = '4.4.4.4'
 TEST_INITIATOR_IQN = 'iqn.2012-07.org.initiator:01'
+TEST_INITIATOR_IQN2 = 'iqn.2012-07.org.initiator:02'
 TEST_TARGET_IQN = 'iqn.2012-07.org.target:01'
 TEST_ISCSI_TCP_PORT1 = 3261
 TEST_ISCSI_TCP_PORT2 = 3262
@@ -58,16 +59,25 @@ TEST_SNAPSHOT_SOURCE_ID = 67890
 TEST_SNAPSHOT_METADATA = {'cinder_id': fake.SNAPSHOT_ID}
 
 test_volume = mock.Mock(id=fake.VOLUME_ID, name_id=fake.VOLUME_ID, size=1,
-                        volume_type_id=fake.VOLUME_TYPE_ID)
+                        volume_type_id=fake.VOLUME_TYPE_ID,
+                        multiattach=False, volume_attachment=None)
 test_volume2 = mock.Mock(id=fake.VOLUME2_ID, name_id=fake.VOLUME2_ID, size=1,
-                         volume_type_id=fake.VOLUME_TYPE_ID)
+                         volume_type_id=fake.VOLUME_TYPE_ID,
+                         multiattach=False, volume_attachment=None)
 test_snapshot = mock.Mock(id=fake.SNAPSHOT_ID, volume=test_volume,
                           volume_id=test_volume.id)
-test_clone = mock.Mock(id=fake.VOLUME4_ID, size=1)
+test_clone = mock.Mock(id=fake.VOLUME4_ID, size=1, multiattach=False,
+                       volume_attachment=None)
 test_group = mock.Mock(id=fake.GROUP_ID)
 test_snapgroup = mock.Mock(id=fake.GROUP_SNAPSHOT_ID, group=test_group)
 test_connector = dict(wwpns=[TEST_WWN_1],
                       initiator=TEST_INITIATOR_IQN)
+test_connector2 = dict(wwpns=[TEST_WWN_2],
+                       initiator=TEST_INITIATOR_IQN2)
+test_connector3 = dict(wwpns=None, initiator=None)
+test_attachment1 = mock.Mock(connector=test_connector)
+test_attachment2 = mock.Mock(connector=test_connector2)
+test_attachment3 = mock.Mock(connector=None)
 
 
 def skip_driver_setup(func):
@@ -261,15 +271,41 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.driver.initialize_connection(test_volume, test_connector)
         self._validate_host_metadata()
 
+    @ddt.data({'connector': None, 'multiattach': True,
+               'attachment': [test_attachment1, test_attachment1]},
+              {'connector': test_connector3, 'multiattach': True,
+               'attachment': [test_attachment1, test_attachment1]},
+              {'connector': test_connector, 'multiattach': False,
+               'attachment': [test_attachment1]},
+              {'connector': test_connector, 'multiattach': True,
+               'attachment': None},
+              {'connector': test_connector, 'multiattach': True,
+               'attachment': [test_attachment2, test_attachment3]})
+    @ddt.unpack
+    def test__is_volume_multiattached_negative(self, connector,
+                                               multiattach, attachment):
+        volume = copy.deepcopy(test_volume)
+        volume.multiattach = multiattach
+        volume.volume_attachment = attachment
+        self.assertFalse(self.driver._is_volume_multiattached(volume,
+                                                              connector))
+
     def test_terminate_connection(self):
-        self.driver.terminate_connection(test_volume, test_connector)
+        volume = copy.deepcopy(test_volume)
+        volume.volume_attachment = [test_attachment1]
+        self.assertFalse(self.driver.terminate_connection(volume,
+                                                          test_connector))
 
     def test_terminate_connection_delete_host(self):
         self._mock_host.get_luns.return_value = [object()]
-        self.driver.terminate_connection(test_volume, test_connector)
+        volume = copy.deepcopy(test_volume)
+        volume.volume_attachment = [test_attachment1]
+        self.assertFalse(self.driver.terminate_connection(volume,
+                                                          test_connector))
         self.assertEqual(0, self._mock_host.safe_delete.call_count)
         self._mock_host.get_luns.return_value = []
-        self.driver.terminate_connection(test_volume, test_connector)
+        self.assertFalse(self.driver.terminate_connection(volume,
+                                                          test_connector))
         self.assertEqual(1, self._mock_host.safe_delete.call_count)
 
     def test_terminate_connection_volume_doesnt_exist(self):
@@ -617,8 +653,10 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         mock_mapping = mock.Mock()
         mock_mapping.get_host.return_value = mock_infinidat_host
         self._mock_volume.get_logical_units.return_value = [mock_mapping]
+        volume = copy.deepcopy(test_volume)
+        volume.volume_attachment = [test_attachment1, test_attachment2]
         # connector is None - force detach - detach all mappings
-        self.driver.terminate_connection(test_volume, None)
+        self.assertTrue(self.driver.terminate_connection(volume, None))
         # make sure we actually detached the host mapping
         self._mock_host.unmap_volume.assert_called_once()
         self._mock_host.safe_delete.assert_called_once()
@@ -861,6 +899,27 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     def test_unmanage_snapshot(self):
         self.driver.unmanage_snapshot(test_snapshot)
 
+    def test_terminate_connection_no_attachment_connector(self):
+        volume = copy.deepcopy(test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [test_attachment3]
+        self.assertFalse(self.driver.terminate_connection(volume,
+                                                          test_connector))
+
+    def test_terminate_connection_no_host(self):
+        self._system.hosts.safe_get.return_value = None
+        volume = copy.deepcopy(test_volume)
+        volume.volume_attachment = [test_attachment1]
+        self.assertFalse(self.driver.terminate_connection(volume,
+                                                          test_connector))
+
+    def test_terminate_connection_no_mapping(self):
+        self._mock_host.unmap_volume.side_effect = KeyError
+        volume = copy.deepcopy(test_volume)
+        volume.volume_attachment = [test_attachment1]
+        self.assertFalse(self.driver.terminate_connection(volume,
+                                                          test_connector))
+
     def test_update_migrated_volume_new_volume_not_found(self):
         self._system.volumes.safe_get.side_effect = [
             None, self._mock_volume]
@@ -918,6 +977,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertEqual(0, self._log.error.call_count)
 
 
+@ddt.ddt
 class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
     def test_initialize_connection_multiple_wwpns(self):
         connector = {'wwpns': [TEST_WWN_1, TEST_WWN_2]}
@@ -931,7 +991,27 @@ class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector, iscsi_connector)
 
+    @ddt.data({'connector': test_connector,
+               'attachment': [test_attachment1, test_attachment1]},
+              {'connector': test_connector2,
+               'attachment': [test_attachment2, test_attachment2]})
+    @ddt.unpack
+    def test__is_volume_multiattached_positive(self, connector, attachment):
+        volume = copy.deepcopy(test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = attachment
+        self.assertTrue(self.driver._is_volume_multiattached(volume,
+                                                             connector))
 
+    def test_terminate_connection_multiattached_volume(self):
+        volume = copy.deepcopy(test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [test_attachment1, test_attachment1]
+        self.assertTrue(self.driver.terminate_connection(volume,
+                                                         test_connector))
+
+
+@ddt.ddt
 class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
     def setUp(self):
         super(InfiniboxDriverTestCaseISCSI, self).setUp()
@@ -1114,8 +1194,23 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
         }
         self.assertEqual(expected, result)
 
+    @ddt.data({'connector': test_connector,
+               'attachment': [test_attachment1, test_attachment1]},
+              {'connector': test_connector2,
+               'attachment': [test_attachment2, test_attachment2]})
+    @ddt.unpack
+    def test__is_volume_multiattached_positive(self, connector, attachment):
+        volume = copy.deepcopy(test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = attachment
+        self.assertTrue(self.driver._is_volume_multiattached(volume,
+                                                             connector))
+
     def test_terminate_connection(self):
-        self.driver.terminate_connection(test_volume, test_connector)
+        volume = copy.deepcopy(test_volume)
+        volume.volume_attachment = [test_attachment1]
+        self.assertFalse(self.driver.terminate_connection(volume,
+                                                          test_connector))
 
     def test_validate_connector(self):
         fc_connector = {'wwpns': [TEST_WWN_1, TEST_WWN_2]}
