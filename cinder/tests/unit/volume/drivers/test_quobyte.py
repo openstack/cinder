@@ -16,6 +16,7 @@
 """Unit tests for the Quobyte driver module."""
 
 import errno
+from io import StringIO
 import os
 import shutil
 import traceback
@@ -27,7 +28,6 @@ from oslo_utils import fileutils
 from oslo_utils import imageutils
 from oslo_utils import units
 import psutil
-import six
 
 from cinder import context
 from cinder import db
@@ -121,7 +121,7 @@ class QuobyteDriverTestCase(test.TestCase):
             self.assertIsInstance(exc, excClass,
                                   'Wrong exception caught: %s Stacktrace: %s' %
                                   (exc, traceback.format_exc()))
-            self.assertIn(msg, six.text_type(exc))
+            self.assertIn(msg, str(exc))
 
         if not caught:
             self.fail('Expected raised exception but nothing caught.')
@@ -375,7 +375,7 @@ class QuobyteDriverTestCase(test.TestCase):
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '._validate_volume') as mock_validate:
             # Content of /proc/mount (not mounted yet).
-            mock_open.return_value = six.StringIO(
+            mock_open.return_value = StringIO(
                 "/dev/sda5 / ext4 rw,relatime,data=ordered 0 0")
 
             self._driver._mount_quobyte(self.TEST_QUOBYTE_VOLUME,
@@ -396,7 +396,7 @@ class QuobyteDriverTestCase(test.TestCase):
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '._validate_volume') as mock_validate:
             # Content of /proc/mount (already mounted).
-            mock_open.return_value = six.StringIO(
+            mock_open.return_value = StringIO(
                 "quobyte@%s %s fuse rw,nosuid,nodev,noatime,user_id=1000"
                 ",group_id=100,default_permissions,allow_other 0 0"
                 % (self.TEST_QUOBYTE_VOLUME, self.TEST_MNT_POINT))
@@ -423,7 +423,7 @@ class QuobyteDriverTestCase(test.TestCase):
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '._validate_volume') as mock_validate:
             # Content of /proc/mount (empty).
-            mock_open.return_value = six.StringIO()
+            mock_open.return_value = StringIO()
             mock_execute.side_effect = [None, putils.ProcessExecutionError(
                 stderr='is busy or already mounted')]
 
@@ -452,7 +452,7 @@ class QuobyteDriverTestCase(test.TestCase):
                 mock.patch('oslo_utils.fileutils.ensure_tree') as mock_mkdir, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open:
-            mock_open.return_value = six.StringIO()
+            mock_open.return_value = StringIO()
             mock_execute.side_effect = [
                 None,  # mkdir
                 putils.ProcessExecutionError(  # mount
