@@ -242,6 +242,7 @@ def list_opts():
                 cinder.api.openstack.openstack_api_opts,
                 cinder_api_views_versions.versions_opts,
                 cinder_backup_api.backup_opts,
+                cinder_backup_api.sap_backup_opts,
                 cinder_backup_chunkeddriver.backup_opts,
                 cinder_backup_driver.backup_opts,
                 cinder_backup_drivers_ceph.service_opts,
