@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    HPE 3PAR driver `Bug #1819903 <https://bugs.launchpad.net/cinder/+bug/1819903>`_:
+    Fixed: umanaged volumes & snapshots missing from cinder manageable-list.

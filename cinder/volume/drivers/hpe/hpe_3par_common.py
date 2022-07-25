@@ -298,11 +298,13 @@ class HPE3PARCommon(object):
         4.0.14 - Added Peer Persistence feature
         4.0.15 - Support duplicated FQDN in network. Bug #1834695
         4.0.16 - In multi host env, fix multi-detach operation. Bug #1958122
+        4.0.17 - Added get_manageable_volumes and get_manageable_snapshots.
+                 Bug #1819903
 
 
     """
 
-    VERSION = "4.0.16"
+    VERSION = "4.0.17"
 
     stats = {}
 
@@ -1222,6 +1224,105 @@ class HPE3PARCommon(object):
                  {'disp': snapshot['display_name'],
                   'vol': snap_name,
                   'new': new_snap_name})
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        already_managed = {}
+        for vol_obj in cinder_volumes:
+            cinder_id = vol_obj.id
+            volume_name = self._get_3par_vol_name(cinder_id)
+            already_managed[volume_name] = cinder_id
+
+        cinder_cpg = self._client_conf['hpe3par_cpg'][0]
+
+        manageable_vols = []
+
+        body = self.client.getVolumes()
+        all_volumes = body['members']
+        for vol in all_volumes:
+            cpg = vol.get('userCPG')
+            if cpg == cinder_cpg:
+                size_gb = int(vol['sizeMiB'] / 1024)
+                vol_name = vol['name']
+                if vol_name in already_managed:
+                    is_safe = False
+                    reason_not_safe = _('Volume already managed')
+                    cinder_id = already_managed[vol_name]
+                else:
+                    is_safe = False
+                    hostname = None
+                    cinder_id = None
+                    # Check if the unmanaged volume is attached to any host
+                    try:
+                        vlun = self.client.getVLUN(vol_name)
+                        hostname = vlun['hostname']
+                    except hpe3parclient.exceptions.HTTPNotFound:
+                        # not attached to any host
+                        is_safe = True
+
+                    if is_safe:
+                        reason_not_safe = None
+                    else:
+                        reason_not_safe = _('Volume attached to host ' +
+                                            hostname)
+
+                manageable_vols.append({
+                    'reference': {'name': vol_name},
+                    'size': size_gb,
+                    'safe_to_manage': is_safe,
+                    'reason_not_safe': reason_not_safe,
+                    'cinder_id': cinder_id,
+                })
+
+        return volume_utils.paginate_entries_list(
+            manageable_vols, marker, limit, offset, sort_keys, sort_dirs)
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        already_managed = {}
+        for snap_obj in cinder_snapshots:
+            cinder_snap_id = snap_obj.id
+            snap_name = self._get_3par_snap_name(cinder_snap_id)
+            already_managed[snap_name] = cinder_snap_id
+
+        cinder_cpg = self._client_conf['hpe3par_cpg'][0]
+
+        cpg_volumes = []
+
+        body = self.client.getVolumes()
+        all_volumes = body['members']
+        for vol in all_volumes:
+            cpg = vol.get('userCPG')
+            if cpg == cinder_cpg:
+                cpg_volumes.append(vol)
+
+        manageable_snaps = []
+
+        for vol in cpg_volumes:
+            size_gb = int(vol['sizeMiB'] / 1024)
+            snapshots = self.client.getSnapshotsOfVolume(cinder_cpg,
+                                                         vol['name'])
+            for snap_name in snapshots:
+                if snap_name in already_managed:
+                    is_safe = False
+                    reason_not_safe = _('Snapshot already managed')
+                    cinder_snap_id = already_managed[snap_name]
+                else:
+                    is_safe = True
+                    reason_not_safe = None
+                    cinder_snap_id = None
+
+                manageable_snaps.append({
+                    'reference': {'name': snap_name},
+                    'size': size_gb,
+                    'safe_to_manage': is_safe,
+                    'reason_not_safe': reason_not_safe,
+                    'cinder_id': cinder_snap_id,
+                    'source_reference': {'name': vol['name']},
+                })
+
+        return volume_utils.paginate_entries_list(
+            manageable_snaps, marker, limit, offset, sort_keys, sort_dirs)
 
     def _get_existing_volume_ref_name(self, existing_ref, is_snapshot=False):
         """Returns the volume name of an existing reference.

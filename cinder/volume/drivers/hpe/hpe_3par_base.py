@@ -237,6 +237,20 @@ class HPE3PARDriverBase(driver.ManageableVD,
         return self.common.unmanage_snapshot(snapshot)
 
     @volume_utils.trace
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        return self.common.get_manageable_volumes(cinder_volumes, marker,
+                                                  limit, offset, sort_keys,
+                                                  sort_dirs)
+
+    @volume_utils.trace
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        return self.common.get_manageable_snapshots(cinder_snapshots, marker,
+                                                    limit, offset, sort_keys,
+                                                    sort_dirs)
+
+    @volume_utils.trace
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
         common = self._login()
