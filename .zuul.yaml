@@ -11,8 +11,7 @@
       jobs:
         - cinder-code-coverage:
             voting: false
-        - cinder-mypy:
-            voting: false
+        - cinder-mypy
         - cinder-tox-bandit-baseline:
             voting: false
         - openstack-tox-functional-py38:
