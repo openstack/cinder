@@ -25,7 +25,6 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import units
-import six
 
 from cinder.brick.local_dev import lvm
 from cinder import exception
@@ -363,7 +362,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 except processutils.ProcessExecutionError as exc:
                     exception_message = (_("Failed to create thin pool, "
                                            "error message was: %s")
-                                         % six.text_type(exc.stderr))
+                                         % str(exc.stderr))
                     raise exception.VolumeBackendAPIException(
                         data=exception_message)
 
@@ -802,7 +801,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             with excutils.save_and_reraise_exception():
                 LOG.error("Volume migration failed due to "
                           "exception: %(reason)s.",
-                          {'reason': six.text_type(e)}, resource=volume)
+                          {'reason': str(e)}, resource=volume)
                 dest_vg_ref.delete(volume)
         self._delete_volume(volume)
         return (True, None)
