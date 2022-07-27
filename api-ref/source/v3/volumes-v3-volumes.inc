@@ -140,6 +140,7 @@ Response Parameters
    - provider_id:  provider_id
    - service_uuid: service_uuid
    - shared_targets: shared_targets
+   - shared_targets: shared_targets_tristate
    - cluster_name: cluster_name
    - consumes_quota: consumes_quota
    - count: count
@@ -267,6 +268,7 @@ Response Parameters
    - provider_id:  provider_id
    - service_uuid: service_uuid
    - shared_targets: shared_targets
+   - shared_targets: shared_targets_tristate
    - cluster_name: cluster_name
    - consumes_quota: consumes_quota
 
@@ -403,6 +405,7 @@ Response Parameters
    - volume_type_id: volume_type_id_363
    - service_uuid: service_uuid
    - shared_targets: shared_targets
+   - shared_targets: shared_targets_tristate
    - cluster_name: cluster_name
    - provider_id:  provider_id
    - group_id: group_id_optional
@@ -485,6 +488,7 @@ Response Parameters
    - provider_id:  provider_id
    - service_uuid: service_uuid
    - shared_targets: shared_targets
+   - shared_targets: shared_targets_tristate
    - cluster_name: cluster_name
    - consumes_quota: consumes_quota
 

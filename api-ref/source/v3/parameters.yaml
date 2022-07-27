@@ -2683,6 +2683,18 @@ shared_targets:
   required: true
   type: boolean
   min_version: 3.48
+  max_version: 3.68
+shared_targets_tristate:
+  description: |
+    An indicator whether the host connecting the volume should lock for the
+    whole attach/detach process or not. ``true`` means only is iSCSI initiator
+    running on host doesn't support manual scans, ``false`` means never use
+    locks, and ``null`` means to always use locks. Look at os-brick's
+    ``guard_connection`` context manager.  Default=True.
+  in: body
+  required: true
+  type: boolean
+  min_version: 3.69
 size:
   description: |
     The size of the volume, in gibibytes (GiB).

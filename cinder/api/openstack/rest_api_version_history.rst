@@ -518,3 +518,13 @@ not be specified in the API path.
 ----------------------
 Support ability to re-image a volume with a specific image. Specify the
 ``os-reimage`` action in the request body.
+
+3.69
+----
+Volume field ``shared_targets`` is a tristate boolean value now, with the
+following meanings:
+
+- ``true``: Do os-brick locking when host iSCSI initiator doesn't support
+  manual scans.
+- ``false``: Never do locking.
+- ``null``: Forced locking regardless of the iSCSI initiator.

@@ -49,6 +49,8 @@ class BaseVolumeTestCase(test.TestCase):
         self.flags(volumes_dir=vol_tmpdir)
         self.addCleanup(self._cleanup)
         self.volume = importutils.import_object(CONF.volume_manager)
+        self.mock_object(self.volume, '_driver_shares_targets',
+                         return_value=False)
         self.volume.message_api = mock.Mock()
         self.configuration = mock.Mock(conf.Configuration)
         self.context = context.get_admin_context()

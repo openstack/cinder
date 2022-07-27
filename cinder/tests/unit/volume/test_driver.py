@@ -161,6 +161,8 @@ class BaseDriverTestCase(test.TestCase):
         self.override_config('volumes_dir', vol_tmpdir,
                              conf.SHARED_CONF_GROUP)
         self.volume = importutils.import_object(CONF.volume_manager)
+        self.mock_object(self.volume, '_driver_shares_targets',
+                         return_value=False)
         self.context = context.get_admin_context()
         self.output = ""
         self.configuration = conf.Configuration(None)

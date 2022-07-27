@@ -36,6 +36,8 @@ class AttachmentManagerTestCase(test.TestCase):
         """Setup test class."""
         super(AttachmentManagerTestCase, self).setUp()
         self.manager = importutils.import_object(CONF.volume_manager)
+        self.mock_object(self.manager, '_driver_shares_targets',
+                         return_value=False)
         self.configuration = mock.Mock(conf.Configuration)
         self.context = context.get_admin_context()
         self.context.user_id = fake.USER_ID
