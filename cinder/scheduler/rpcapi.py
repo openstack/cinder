@@ -107,7 +107,7 @@ class SchedulerAPI(rpc.RPCAPI):
                     'volume': volume, 'backup_id': backup_id}
         if not self.client.can_send_version('3.10'):
             msg_args.pop('backup_id')
-        return cctxt.cast(ctxt, 'create_volume', **msg_args)
+        cctxt.cast(ctxt, 'create_volume', **msg_args)
 
     @rpc.assert_min_rpc_version('3.8')
     def validate_host_capacity(self, ctxt, backend, request_spec,
@@ -126,7 +126,7 @@ class SchedulerAPI(rpc.RPCAPI):
                     'volume': volume,
                     'snapshot': snapshot,
                     'backend': backend}
-        return cctxt.cast(ctxt, 'create_snapshot', **msg_args)
+        cctxt.cast(ctxt, 'create_snapshot', **msg_args)
 
     def migrate_volume(self, ctxt, volume, backend, force_copy=False,
                        request_spec=None, filter_properties=None):
@@ -145,14 +145,14 @@ class SchedulerAPI(rpc.RPCAPI):
             method = 'migrate_volume_to_host'
 
         cctxt = self._get_cctxt(version=version)
-        return cctxt.cast(ctxt, method, **msg_args)
+        cctxt.cast(ctxt, method, **msg_args)
 
     def retype(self, ctxt, volume, request_spec=None, filter_properties=None):
         cctxt = self._get_cctxt()
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {'request_spec': request_spec_p,
                     'filter_properties': filter_properties, 'volume': volume}
-        return cctxt.cast(ctxt, 'retype', **msg_args)
+        cctxt.cast(ctxt, 'retype', **msg_args)
 
     def manage_existing(self, ctxt, volume, request_spec=None,
                         filter_properties=None):
@@ -162,7 +162,7 @@ class SchedulerAPI(rpc.RPCAPI):
             'request_spec': request_spec_p,
             'filter_properties': filter_properties, 'volume': volume,
         }
-        return cctxt.cast(ctxt, 'manage_existing', **msg_args)
+        cctxt.cast(ctxt, 'manage_existing', **msg_args)
 
     @rpc.assert_min_rpc_version('3.11')
     def manage_existing_snapshot(self, ctxt, volume, snapshot, ref,
@@ -176,7 +176,7 @@ class SchedulerAPI(rpc.RPCAPI):
             'snapshot': snapshot,
             'ref': ref,
         }
-        return cctxt.cast(ctxt, 'manage_existing_snapshot', **msg_args)
+        cctxt.cast(ctxt, 'manage_existing_snapshot', **msg_args)
 
     @rpc.assert_min_rpc_version('3.2')
     def extend_volume(self, ctxt, volume, new_size, reservations,
@@ -192,7 +192,7 @@ class SchedulerAPI(rpc.RPCAPI):
             'filter_properties': filter_properties,
         }
 
-        return cctxt.cast(ctxt, 'extend_volume', **msg_args)
+        cctxt.cast(ctxt, 'extend_volume', **msg_args)
 
     def get_pools(self, ctxt, filters=None):
         cctxt = self._get_cctxt()
@@ -266,4 +266,4 @@ class SchedulerAPI(rpc.RPCAPI):
     def create_backup(self, ctxt, backup):
         cctxt = self._get_cctxt()
         msg_args = {'backup': backup}
-        return cctxt.cast(ctxt, 'create_backup', **msg_args)
+        cctxt.cast(ctxt, 'create_backup', **msg_args)
