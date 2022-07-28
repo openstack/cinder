@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NFS driver `bug #1946059
+    <https://bugs.launchpad.net/cinder/+bug/1946059>`_: Fixed
+    revert to snapshot operation.
