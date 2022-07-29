@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Pure Storage adds a new driver to support NVMe-RoCE for the
+    FlashArray.
+    All features of the iSCSI and FC drivers are fully supported by this new
+    driver with the exception of synchronous replication.
