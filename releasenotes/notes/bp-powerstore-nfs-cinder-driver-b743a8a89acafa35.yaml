@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Dell PowerStore: Added NFS storage driver.

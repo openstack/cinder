@@ -86,6 +86,8 @@ from cinder.volume.drivers.dell_emc.powermax import common as \
     cinder_volume_drivers_dell_emc_powermax_common
 from cinder.volume.drivers.dell_emc.powerstore import driver as \
     cinder_volume_drivers_dell_emc_powerstore_driver
+from cinder.volume.drivers.dell_emc.powerstore import nfs as \
+    cinder_volume_drivers_dell_emc_powerstore_nfs
 from cinder.volume.drivers.dell_emc.powervault import common as \
     cinder_volume_drivers_dell_emc_powervault_common
 from cinder.volume.drivers.dell_emc.sc import storagecenter_common as \
@@ -335,6 +337,7 @@ def list_opts():
                 cinder_volume_drivers_dell_emc_powermax_common.powermax_opts,
                 cinder_volume_drivers_dell_emc_powerstore_driver.
                 POWERSTORE_OPTS,
+                cinder_volume_drivers_dell_emc_powerstore_nfs.nfs_opts,
                 cinder_volume_drivers_dell_emc_powervault_common.common_opts,
                 cinder_volume_drivers_dell_emc_powervault_common.iscsi_opts,
                 cinder_volume_drivers_dell_emc_sc_storagecentercommon.
