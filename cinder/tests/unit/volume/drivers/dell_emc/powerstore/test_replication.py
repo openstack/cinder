@@ -24,8 +24,10 @@ from cinder.volume.drivers.dell_emc.powerstore import client
 
 class TestReplication(powerstore.TestPowerStoreDriver):
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_array_version")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
-    def setUp(self, mock_chap):
+    def setUp(self, mock_chap, mock_version):
         super(TestReplication, self).setUp()
         self.replication_backend_id = "repl_1"
         replication_device = [
@@ -38,6 +40,7 @@ class TestReplication(powerstore.TestPowerStoreDriver):
         ]
         self._override_shared_conf("replication_device",
                                    override=replication_device)
+        mock_version.return_value = "3.0.0.0"
         self.driver.do_setup({})
         self.driver.check_for_setup_error()
         self.volume = fake_volume.fake_volume_obj(

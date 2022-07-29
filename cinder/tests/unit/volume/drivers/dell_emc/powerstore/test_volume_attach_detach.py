@@ -31,6 +31,12 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
         mock_chap.return_value = {"mode": "Single"}
         self.iscsi_driver.check_for_setup_error()
         self.fc_driver.check_for_setup_error()
+        with mock.patch.object(self.nvme_driver.adapter.client,
+                               "get_array_version",
+                               return_value=(
+                                   "3.0.0.0"
+                               )):
+            self.nvme_driver.check_for_setup_error()
         self.volume = fake_volume.fake_volume_obj(
             self.context,
             host="host@backend",
@@ -74,6 +80,20 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
                 "wwn": "58:cc:f0:98:49:23:07:02"
             },
         ]
+        fake_nvme_portals_response = [
+            {
+                "address": "11.22.33.44"
+            },
+            {
+                "address": "55.66.77.88"
+            }
+        ]
+        fake_nvme_nqn_response = [
+            {
+                "nvm_subsystem_nqn":
+                    "nqn.2020-07.com.dell:powerstore:00:test-nqn"
+            }
+        ]
         self.fake_connector = {
             "host": self.volume.host,
             "wwpns": ["58:cc:f0:98:49:21:07:02", "58:cc:f0:98:49:23:07:02"],
@@ -88,6 +108,16 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
             self.fc_driver.adapter.client,
             "get_fc_port",
             return_value=fake_fc_wwns_response
+        )
+        self.nvme_portal_mock = self.mock_object(
+            self.nvme_driver.adapter.client,
+            "get_ip_pool_address",
+            return_value=fake_nvme_portals_response
+        )
+        self.nvme_nqn_mock = self.mock_object(
+            self.nvme_driver.adapter.client,
+            "get_subsystem_nqn",
+            return_value=fake_nvme_nqn_response
         )
 
     def test_initialize_connection_chap_enabled(self):
@@ -159,6 +189,10 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
                                   self.iscsi_driver.adapter._get_iscsi_targets)
         self.assertIn("There are no accessible iSCSI targets on the system.",
                       error.msg)
+
+    def test_get_nvme_targets(self):
+        portals, nqn = self.nvme_driver.adapter._get_nvme_targets()
+        self.assertEqual(2, len(portals))
 
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.adapter."
                 "CommonAdapter._detach_volume_from_hosts")

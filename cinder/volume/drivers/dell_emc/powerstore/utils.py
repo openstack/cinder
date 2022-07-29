@@ -15,12 +15,14 @@
 
 """Utilities for Dell EMC PowerStore Cinder driver."""
 
+from distutils import version
 import functools
 import re
 
 from oslo_log import log as logging
 from oslo_utils import units
 
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
@@ -31,6 +33,9 @@ from cinder.volume import volume_utils
 LOG = logging.getLogger(__name__)
 CHAP_DEFAULT_USERNAME = "PowerStore_iSCSI_CHAP_Username"
 CHAP_DEFAULT_SECRET_LENGTH = 60
+PROTOCOL_FC = constants.FC
+PROTOCOL_ISCSI = constants.ISCSI
+PROTOCOL_NVME = "NVMe"
 
 
 def bytes_to_gib(size_in_bytes):
@@ -91,7 +96,7 @@ def powerstore_host_name(connector, protocol):
     """Generate PowerStore host name for connector.
 
     :param connector: connection properties
-    :param protocol: storage protocol (FC or iSCSI)
+    :param protocol: storage protocol (FC, iSCSI or NVMe)
     :return: unique host name
     """
 
@@ -178,3 +183,7 @@ def is_group_a_cg_snapshot_type(func):
             raise NotImplementedError
         return func(self, *args, **kwargs)
     return inner
+
+
+def version_gte(ver1, ver2):
+    return version.LooseVersion(ver1) >= version.LooseVersion(ver2)

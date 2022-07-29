@@ -18,7 +18,6 @@
 from oslo_log import log as logging
 from oslo_utils import strutils
 
-from cinder.common import constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -32,9 +31,8 @@ from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)
-PROTOCOL_FC = constants.FC
-PROTOCOL_ISCSI = constants.ISCSI
 CHAP_MODE_SINGLE = "Single"
+POWERSTORE_NVME_VERSION_SUPPORT = "3.0"
 
 
 class CommonAdapter(object):
@@ -74,7 +72,7 @@ class CommonAdapter(object):
 
     def check_for_setup_error(self):
         self.client.check_for_setup_error()
-        if self.storage_protocol == PROTOCOL_ISCSI:
+        if self.storage_protocol == utils.PROTOCOL_ISCSI:
             chap_config = self.client.get_chap_config()
             if chap_config.get("mode") == CHAP_MODE_SINGLE:
                 self.use_chap_auth = True
@@ -560,7 +558,7 @@ class CommonAdapter(object):
 
         :param host: PowerStore host object
         :param volume: OpenStack volume object
-        :return: attached volume logical number
+        :return: attached volume identifier
         """
 
         provider_id = self._get_volume_provider_id(volume)
@@ -575,21 +573,25 @@ class CommonAdapter(object):
                       "host_provider_id": host["id"],
                   })
         self.client.attach_volume_to_host(host["id"], provider_id)
-        volume_lun = self.client.get_volume_lun(host["id"], provider_id)
+        if self.storage_protocol == utils.PROTOCOL_NVME:
+            volume_identifier = self.client.get_volume_nguid(provider_id)
+        else:
+            volume_identifier = self.client.get_volume_lun(host["id"],
+                                                           provider_id)
         LOG.debug("Successfully attached PowerStore volume %(volume_name)s "
                   "with id %(volume_id)s to host %(host_name)s. "
                   "PowerStore volume id: %(volume_provider_id)s, "
-                  "host id: %(host_provider_id)s. Volume LUN: "
-                  "%(volume_lun)s.",
+                  "host id: %(host_provider_id)s. Volume identifier: "
+                  "%(volume_identifier)s.",
                   {
                       "volume_name": volume.name,
                       "volume_id": volume.id,
                       "host_name": host["name"],
                       "volume_provider_id": provider_id,
                       "host_provider_id": host["id"],
-                      "volume_lun": volume_lun,
+                      "volume_identifier": volume_identifier,
                   })
-        return volume_lun
+        return volume_identifier
 
     def _create_host_and_attach(self, connector, volume):
         """Create PowerStore host and attach volume.
@@ -610,11 +612,13 @@ class CommonAdapter(object):
         :return: volume connection properties
         """
 
-        chap_credentials, volume_lun = self._create_host_and_attach(
+        chap_credentials, volume_identifier = self._create_host_and_attach(
             connector,
             volume
         )
-        connection_properties = self._get_connection_properties(volume_lun)
+        connection_properties = self._get_connection_properties(
+            volume_identifier
+        )
         if self.use_chap_auth:
             connection_properties["data"]["auth_method"] = "CHAP"
             connection_properties["data"]["auth_username"] = (
@@ -1019,7 +1023,7 @@ class CommonAdapter(object):
 class FibreChannelAdapter(CommonAdapter):
     def __init__(self, **kwargs):
         super(FibreChannelAdapter, self).__init__(**kwargs)
-        self.storage_protocol = PROTOCOL_FC
+        self.storage_protocol = utils.PROTOCOL_FC
         self.driver_volume_type = "fibre_channel"
 
     @staticmethod
@@ -1043,10 +1047,10 @@ class FibreChannelAdapter(CommonAdapter):
             raise exception.VolumeBackendAPIException(data=msg)
         return wwns
 
-    def _get_connection_properties(self, volume_lun):
+    def _get_connection_properties(self, volume_identifier):
         """Fill connection properties dict with data to attach volume.
 
-        :param volume_lun: attached volume logical unit number
+        :param volume_identifier: attached volume logical unit number
         :return: connection properties
         """
 
@@ -1055,7 +1059,7 @@ class FibreChannelAdapter(CommonAdapter):
             "driver_volume_type": self.driver_volume_type,
             "data": {
                 "target_discovered": False,
-                "target_lun": volume_lun,
+                "target_lun": volume_identifier,
                 "target_wwn": target_wwns,
             }
         }
@@ -1064,7 +1068,7 @@ class FibreChannelAdapter(CommonAdapter):
 class iSCSIAdapter(CommonAdapter):
     def __init__(self, **kwargs):
         super(iSCSIAdapter, self).__init__(**kwargs)
-        self.storage_protocol = PROTOCOL_ISCSI
+        self.storage_protocol = utils.PROTOCOL_ISCSI
         self.driver_volume_type = "iscsi"
 
     @staticmethod
@@ -1079,7 +1083,9 @@ class iSCSIAdapter(CommonAdapter):
 
         iqns = []
         portals = []
-        ip_pool_addresses = self.client.get_ip_pool_address()
+        ip_pool_addresses = self.client.get_ip_pool_address(
+            self.storage_protocol
+        )
         for address in ip_pool_addresses:
             if self._port_is_allowed(address["address"]):
                 portals.append(
@@ -1092,10 +1098,10 @@ class iSCSIAdapter(CommonAdapter):
             raise exception.VolumeBackendAPIException(data=msg)
         return iqns, portals
 
-    def _get_connection_properties(self, volume_lun):
+    def _get_connection_properties(self, volume_identifier):
         """Fill connection properties dict with data to attach volume.
 
-        :param volume_lun: attached volume logical unit number
+        :param volume_identifier: attached volume logical unit number
         :return: connection properties
         """
 
@@ -1106,9 +1112,74 @@ class iSCSIAdapter(CommonAdapter):
                 "target_discovered": False,
                 "target_portal": portals[0],
                 "target_iqn": iqns[0],
-                "target_lun": volume_lun,
+                "target_lun": volume_identifier,
                 "target_portals": portals,
                 "target_iqns": iqns,
-                "target_luns": [volume_lun] * len(portals),
+                "target_luns": [volume_identifier] * len(portals),
+            },
+        }
+
+
+class NVMEoFAdapter(CommonAdapter):
+    def __init__(self, **kwargs):
+        super(NVMEoFAdapter, self).__init__(**kwargs)
+        self.storage_protocol = utils.PROTOCOL_NVME
+        self.driver_volume_type = "nvmeof"
+
+    @staticmethod
+    def initiators(connector):
+        return [connector["nqn"]]
+
+    def check_for_setup_error(self):
+        array_version = self.client.get_array_version()
+        if not utils.version_gte(
+                array_version,
+                POWERSTORE_NVME_VERSION_SUPPORT
+        ):
+            msg = (_("PowerStore arrays support NVMe-OF starting from version "
+                     "%(nvme_support_version)s. Current PowerStore array "
+                     "version: %(current_version)s.")
+                   % {"nvme_support_version": POWERSTORE_NVME_VERSION_SUPPORT,
+                      "current_version": array_version, })
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+        super(NVMEoFAdapter, self).check_for_setup_error()
+
+    def _get_nvme_targets(self):
+        """Get available NVMe portals and subsystem NQN.
+
+        :return: NVMe portals and NQN
+        """
+
+        portals = []
+        ip_pool_addresses = self.client.get_ip_pool_address(
+            self.storage_protocol
+        )
+        for address in ip_pool_addresses:
+            if self._port_is_allowed(address["address"]):
+                portals.append(address["address"])
+        if not portals:
+            msg = _("There are no accessible NVMe targets on the "
+                    "system.")
+            raise exception.VolumeBackendAPIException(data=msg)
+        nqn = self.client.get_subsystem_nqn()
+        return portals, nqn
+
+    def _get_connection_properties(self, volume_identifier):
+        """Fill connection properties dict with data to attach volume.
+
+        :param volume_identifier: attached volume NGUID
+        :return: connection properties
+        """
+
+        portals, nqn = self._get_nvme_targets()
+        return {
+            "driver_volume_type": self.driver_volume_type,
+            "data": {
+                "target_portal": portals[0],
+                "nqn": nqn,
+                "target_port": 4420,
+                "transport_type": "tcp",
+                "volume_nguid": volume_identifier
             },
         }

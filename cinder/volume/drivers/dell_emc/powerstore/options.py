@@ -19,6 +19,7 @@ from oslo_config import cfg
 
 POWERSTORE_APPLIANCES = "powerstore_appliances"
 POWERSTORE_PORTS = "powerstore_ports"
+POWERSTORE_NVME = "powerstore_nvme"
 
 POWERSTORE_OPTS = [
     cfg.ListOpt(POWERSTORE_APPLIANCES,
@@ -34,5 +35,9 @@ POWERSTORE_OPTS = [
                 default=[],
                 help="Allowed ports. Comma separated list of PowerStore "
                      "iSCSI IPs or FC WWNs (ex. 58:cc:f0:98:49:22:07:02) "
-                     "to be used. If option is not set all ports are allowed.")
+                     "to be used. If option is not set all ports are allowed."
+                ),
+    cfg.BoolOpt(POWERSTORE_NVME,
+                default=False,
+                help="Connect PowerStore volumes using NVMe-OF.")
 ]

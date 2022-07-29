@@ -25,6 +25,7 @@ from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.powerstore import adapter
 from cinder.volume.drivers.dell_emc.powerstore import options
+from cinder.volume.drivers.dell_emc.powerstore import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import manager
 
@@ -50,9 +51,10 @@ class PowerStoreDriver(driver.VolumeDriver):
         1.1.2 - Fix iSCSI targets not being returned from the REST API call if
                 targets are used for multiple purposes
                 (iSCSI target, Replication target, etc.)
+        1.2.0 - Add NVMe-OF support
     """
 
-    VERSION = "1.1.2"
+    VERSION = "1.2.0"
     VENDOR = "Dell EMC"
 
     # ThirdPartySystems wiki page
@@ -89,9 +91,11 @@ class PowerStoreDriver(driver.VolumeDriver):
         if not self.active_backend_id:
             self.active_backend_id = manager.VolumeManager.FAILBACK_SENTINEL
         storage_protocol = self.configuration.safe_get("storage_protocol")
-        if (
+        if self.configuration.safe_get(options.POWERSTORE_NVME):
+            adapter_class = adapter.NVMEoFAdapter
+        elif (
                 storage_protocol and
-                storage_protocol.lower() == adapter.PROTOCOL_FC.lower()
+                storage_protocol.lower() == utils.PROTOCOL_FC.lower()
         ):
             adapter_class = adapter.FibreChannelAdapter
         else:
