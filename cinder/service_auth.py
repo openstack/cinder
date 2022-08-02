@@ -52,12 +52,7 @@ def reset_globals():
     _SERVICE_AUTH = None
 
 
-def get_auth_plugin(context, auth=None):
-    if auth:
-        user_auth = auth
-    else:
-        user_auth = context.get_auth_plugin()
-
+def get_service_auth_plugin():
     if CONF.service_user.send_service_user_token:
         global _SERVICE_AUTH
         if not _SERVICE_AUTH:
@@ -67,7 +62,19 @@ def get_auth_plugin(context, auth=None):
                 # This can happen if no auth_type is specified, which probably
                 # means there's no auth information in the [service_user] group
                 raise exception.ServiceUserTokenNoAuth()
+        return _SERVICE_AUTH
+    return None
+
+
+def get_auth_plugin(context, auth=None):
+    if auth:
+        user_auth = auth
+    else:
+        user_auth = context.get_auth_plugin()
+
+    service_auth = get_service_auth_plugin()
+    if service_auth is not None:
         return service_token.ServiceTokenAuthWrapper(
-            user_auth=user_auth, service_auth=_SERVICE_AUTH)
+            user_auth=user_auth, service_auth=service_auth)
 
     return user_auth

@@ -36,7 +36,7 @@ class FakeSwiftConnection2(object):
     def __init__(self, *args, **kwargs):
         self.tempdir = tempfile.mkdtemp()
 
-    def head_container(self, container):
+    def head_container(self, container, headers=None):
         if container == 'missing_container':
             raise swift.ClientException('fake exception',
                                         http_status=http_client.NOT_FOUND)
@@ -49,7 +49,7 @@ class FakeSwiftConnection2(object):
     def put_container(self, container, headers=None):
         pass
 
-    def get_container(self, container, **kwargs):
+    def get_container(self, container, headers=None, **kwargs):
         fake_header = None
         container_dir = tempfile.gettempdir() + '/' + container
         fake_body = []
@@ -62,10 +62,10 @@ class FakeSwiftConnection2(object):
 
         return fake_header, fake_body
 
-    def head_object(self, container, name):
+    def head_object(self, container, name, headers=None):
         return {'etag': 'fake-md5-sum'}
 
-    def get_object(self, container, name):
+    def get_object(self, container, name, headers=None):
         if container == 'socket_error_on_get':
             raise socket.error(111, 'ECONNREFUSED')
         object_path = tempfile.gettempdir() + '/' + container + '/' + name
@@ -80,5 +80,5 @@ class FakeSwiftConnection2(object):
             object_file.write(reader.read())
         return md5(reader.read(), usedforsecurity=False).hexdigest()
 
-    def delete_object(self, container, name):
+    def delete_object(self, container, name, headers=None):
         pass
