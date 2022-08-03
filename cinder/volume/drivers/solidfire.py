@@ -281,9 +281,14 @@ class SolidFireDriver(san.SanISCSIDriver):
                    as retyping.
                    Fix bug #1932964 SolidFire duplicate volume name exception
                    on migration and replication.
+          2.2.4  - Fix bug #1934435 fix driver failing with multiple exceptions
+                   during Element OS upgrade by adding xDBOperationTimeout,
+                   xDBConnectionLoss, xNoHandler, xSnapshotFailed,
+                   xRecvTimeout, xDBNoSuchPath, xPermissionDenied to the
+                   retryable exception list
     """
 
-    VERSION = '2.2.3'
+    VERSION = '2.2.4'
 
     SUPPORTS_ACTIVE_ACTIVE = True
 
@@ -322,7 +327,14 @@ class SolidFireDriver(san.SanISCSIDriver):
                         'xMaxClonesPerNodeExceeded',
                         'xSliceNotRegistered',
                         'xNotReadyForIO',
-                        'xNotPrimary']
+                        'xNotPrimary',
+                        'xDBOperationTimeout',
+                        'xDBConnectionLoss',
+                        'xNoHandler',
+                        'xSnapshotFailed',
+                        'xRecvTimeout',
+                        'xDBNoSuchPath',
+                        'xPermissionDenied']
 
     def __init__(self, *args, **kwargs):
         super(SolidFireDriver, self).__init__(*args, **kwargs)
