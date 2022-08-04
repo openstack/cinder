@@ -27,13 +27,6 @@ from cinder.tests.unit.backup import fake_service
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 
-_backup_db_fields = ['id', 'user_id', 'project_id',
-                     'volume_id', 'host', 'availability_zone',
-                     'display_name', 'display_description',
-                     'container', 'status', 'fail_reason',
-                     'service_metadata', 'service', 'size',
-                     'object_count']
-
 
 class BackupBaseDriverTestCase(test.TestCase):
 
