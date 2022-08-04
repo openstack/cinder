@@ -13,11 +13,14 @@
 #    under the License.
 
 import copy
+from datetime import datetime
+from datetime import timedelta
 import math
 from time import time
 
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import units
 import six
 
 from cinder import exception
@@ -35,6 +38,7 @@ ONTAP_C190 = 'C190'
 HTTP_ACCEPTED = 202
 DELETED_PREFIX = 'deleted_cinder_'
 DEFAULT_TIMEOUT = 15
+REST_SYNC_TIMEOUT = 15
 
 # Keys in this map are REST API's endpoints that the user shall have permission
 # in order to enable extra specs reported to Cinder's scheduler.
@@ -1787,3 +1791,499 @@ class RestClient(object):
             msg = _('Volume %s not found.')
             msg_args = flexvol_path or flexvol_name
             raise na_utils.NetAppDriverException(msg % msg_args)
+
+    def get_provisioning_options_from_flexvol(self, flexvol_name):
+        """Get a dict of provisioning options matching existing flexvol."""
+
+        flexvol_info = self.get_flexvol(flexvol_name=flexvol_name)
+        dedupe_info = self.get_flexvol_dedupe_info(flexvol_name)
+
+        provisioning_opts = {
+            'aggregate': flexvol_info['aggregate'],
+            # space-guarantee can be 'none', 'file', 'volume'
+            'space_guarantee_type': flexvol_info.get('space-guarantee'),
+            'snapshot_policy': flexvol_info['snapshot-policy'],
+            'language': flexvol_info['language'],
+            'dedupe_enabled': dedupe_info['dedupe'],
+            'compression_enabled': dedupe_info['compression'],
+            'snapshot_reserve': flexvol_info['percentage-snapshot-reserve'],
+            'volume_type': flexvol_info['type'],
+            'size': int(math.ceil(float(flexvol_info['size']) / units.Gi)),
+            'is_flexgroup': flexvol_info['style-extended'] == 'flexgroup',
+        }
+
+        return provisioning_opts
+
+    def flexvol_exists(self, volume_name):
+        """Checks if a flexvol exists on the storage array."""
+        LOG.debug('Checking if volume %s exists', volume_name)
+
+        query = {
+            'name': volume_name,
+            'return_records': 'false'
+        }
+
+        response = self.send_request('/storage/volumes/', 'get', query=query)
+
+        return response['num_records'] > 0
+
+    def create_volume_async(self, name, aggregate_list, size_gb,
+                            space_guarantee_type=None, snapshot_policy=None,
+                            language=None, dedupe_enabled=False,
+                            compression_enabled=False, snapshot_reserve=None,
+                            volume_type='rw'):
+        """Creates a volume asynchronously."""
+
+        body = {
+            'name': name,
+            'size': size_gb * units.Gi,
+            'type': volume_type,
+        }
+
+        if isinstance(aggregate_list, list):
+            body['style'] = 'flexgroup'
+            body['aggregates'] = [{'name': aggr} for aggr in aggregate_list]
+        else:
+            body['style'] = 'flexvol'
+            body['aggregates'] = [{'name': aggregate_list}]
+
+        if volume_type == 'dp':
+            snapshot_policy = None
+        else:
+            body['nas'] = {'path': '/%s' % name}
+
+        if snapshot_policy is not None:
+            body['snapshot_policy'] = {'name': snapshot_policy}
+
+        if space_guarantee_type:
+            body['guarantee'] = {'type': space_guarantee_type}
+
+        if language is not None:
+            body['language'] = language
+
+        if snapshot_reserve is not None:
+            body['space'] = {
+                'snapshot': {
+                    'reserve_percent': str(snapshot_reserve)
+                }
+            }
+
+        # cDOT compression requires that deduplication be enabled.
+        if dedupe_enabled or compression_enabled:
+            body['efficiency'] = {'dedupe': 'background'}
+
+        if compression_enabled:
+            body['efficiency']['compression'] = 'background'
+
+        response = self.send_request('/storage/volumes/', 'post', body=body,
+                                     wait_on_accepted=False)
+
+        job_info = {
+            'status': None,
+            'jobid': response["job"]["uuid"],
+            'error-code': None,
+            'error-message': None,
+        }
+
+        return job_info
+
+    def create_flexvol(self, flexvol_name, aggregate_name, size_gb,
+                       space_guarantee_type=None, snapshot_policy=None,
+                       language=None, dedupe_enabled=False,
+                       compression_enabled=False, snapshot_reserve=None,
+                       volume_type='rw'):
+        """Creates a flexvol asynchronously and return the job info."""
+
+        return self.create_volume_async(
+            flexvol_name, aggregate_name, size_gb,
+            space_guarantee_type=space_guarantee_type,
+            snapshot_policy=snapshot_policy, language=language,
+            dedupe_enabled=dedupe_enabled,
+            compression_enabled=compression_enabled,
+            snapshot_reserve=snapshot_reserve, volume_type=volume_type)
+
+    def enable_volume_dedupe_async(self, volume_name):
+        """Enable deduplication on FlexVol/FlexGroup volume asynchronously."""
+
+        query = {
+            'name': volume_name,
+            'fields': 'uuid,style',
+        }
+        body = {
+            'efficiency': {'dedupe': 'background'}
+        }
+        self.send_request('/storage/volumes/', 'patch', body=body, query=query,
+                          wait_on_accepted=False)
+
+    def enable_volume_compression_async(self, volume_name):
+        """Enable compression on FlexVol/FlexGroup volume asynchronously."""
+        query = {
+            'name': volume_name
+        }
+        body = {
+            'efficiency': {'compression': 'background'}
+        }
+        self.send_request('/storage/volumes/', 'patch', body=body, query=query,
+                          wait_on_accepted=False)
+
+    def _parse_lagtime(self, time_str):
+        """Parse lagtime string (ISO 8601) into a number of seconds."""
+
+        fmt_str = 'PT'
+        if 'H' in time_str:
+            fmt_str += '%HH'
+        if 'M' in time_str:
+            fmt_str += '%MM'
+        if 'S' in time_str:
+            fmt_str += '%SS'
+
+        t = None
+        try:
+            t = datetime.strptime(time_str, fmt_str)
+        except Exception:
+            LOG.debug("Failed to parse lagtime: %s", time_str)
+            raise
+
+        # convert to timedelta to get the total seconds
+        td = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
+        return td.total_seconds()
+
+    def _get_snapmirrors(self, source_vserver=None, source_volume=None,
+                         destination_vserver=None, destination_volume=None):
+
+        fields = ['state', 'source.svm.name', 'source.path',
+                  'destination.svm.name', 'destination.path',
+                  'transfer.end_time', 'lag_time', 'healthy', 'uuid']
+
+        query = {}
+        query['fields'] = '{}'.format(','.join(f for f in fields))
+
+        query_src_vol = source_volume if source_volume else '*'
+        query_src_vserver = source_vserver if source_vserver else '*'
+        query['source.path'] = query_src_vserver + ':' + query_src_vol
+
+        query_dst_vol = destination_volume if destination_volume else '*'
+        query_dst_vserver = destination_vserver if destination_vserver else '*'
+        query['destination.path'] = query_dst_vserver + ':' + query_dst_vol
+
+        response = self.send_request(
+            '/snapmirror/relationships', 'get', query=query)
+
+        snapmirrors = []
+        for record in response.get('records', []):
+            snapmirrors.append({
+                'relationship-status': record.get('state'),
+                'mirror-state': record['state'],
+                'source-vserver': record['source']['svm']['name'],
+                'source-volume': (record['source']['path'].split(':')[1] if
+                                  record.get('source') else None),
+                'destination-vserver': record['destination']['svm']['name'],
+                'destination-volume': (
+                    record['destination']['path'].split(':')[1]
+                    if record.get('destination') else None),
+                'last-transfer-end-timestamp':
+                    (record['transfer']['end_time'] if
+                     record.get('transfer', {}).get('end_time') else None),
+                'lag-time': (self._parse_lagtime(record['lag_time']) if
+                             record.get('lag_time') else None),
+                'is-healthy': record['healthy'],
+                'uuid': record['uuid']
+            })
+
+        return snapmirrors
+
+    def get_snapmirrors(self, source_vserver, source_volume,
+                        destination_vserver, destination_volume,
+                        desired_attributes=None):
+        """Gets one or more SnapMirror relationships.
+
+        Either the source or destination info may be omitted.
+        Desired attributes exists only to keep consistent with ZAPI client
+        signature and has no effect in the output.
+        """
+
+        snapmirrors = self._get_snapmirrors(
+            source_vserver=source_vserver,
+            source_volume=source_volume,
+            destination_vserver=destination_vserver,
+            destination_volume=destination_volume)
+
+        return snapmirrors
+
+    def create_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume,
+                          schedule=None, policy=None,
+                          relationship_type='data_protection'):
+        """Creates a SnapMirror relationship.
+
+        The schedule and relationship type is kept to avoid breaking
+        the API used by data_motion, but are not used on the REST API.
+
+        The schedule is part of the policy associated the relationship and the
+        relationship_type will be ignored because XDP is the only type
+        supported through REST API.
+        """
+
+        body = {
+            'source': {
+                'path': source_vserver + ':' + source_volume
+            },
+            'destination': {
+                'path': destination_vserver + ':' + destination_volume
+            }
+        }
+
+        if policy:
+            body['policy'] = {'name': policy}
+
+        try:
+            self.send_request('/snapmirror/relationships/', 'post', body=body)
+        except netapp_api.NaApiError as e:
+            if e.code != netapp_api.REST_ERELATION_EXISTS:
+                raise e
+
+    def _set_snapmirror_state(self, state, source_vserver, source_volume,
+                              destination_vserver, destination_volume,
+                              wait_result=True):
+        """Change the snapmirror state between two volumes."""
+
+        snapmirror = self.get_snapmirrors(source_vserver, source_volume,
+                                          destination_vserver,
+                                          destination_volume)
+
+        if not snapmirror:
+            msg = _('Failed to get information about relationship between '
+                    'source %(src_vserver)s:%(src_volume)s and '
+                    'destination %(dst_vserver)s:%(dst_volume)s.') % {
+                'src_vserver': source_vserver,
+                'src_volume': source_volume,
+                'dst_vserver': destination_vserver,
+                'dst_volume': destination_volume}
+            raise na_utils.NetAppDriverException(msg)
+
+        uuid = snapmirror[0]['uuid']
+        body = {'state': state}
+        result = self.send_request('/snapmirror/relationships/' + uuid,
+                                   'patch', body=body,
+                                   wait_on_accepted=wait_result)
+        job = result['job']
+        job_info = {
+            'operation-id': None,
+            'status': None,
+            'jobid': job.get('uuid'),
+            'error-code': None,
+            'error-message': None,
+            'relationship-uuid': uuid,
+        }
+
+        return job_info
+
+    def initialize_snapmirror(self, source_vserver, source_volume,
+                              destination_vserver, destination_volume,
+                              source_snapshot=None, transfer_priority=None):
+        """Initializes a SnapMirror relationship."""
+
+        # TODO: Trigger a geometry exception to be caught by data_motion.
+        # This error is raised when using ZAPI with different volume component
+        # numbers, but in REST, the job must be checked sometimes before that
+        # error occurs.
+
+        return self._set_snapmirror_state(
+            'snapmirrored', source_vserver, source_volume,
+            destination_vserver, destination_volume, wait_result=False)
+
+    def abort_snapmirror(self, source_vserver, source_volume,
+                         destination_vserver, destination_volume,
+                         clear_checkpoint=False):
+        """Stops ongoing transfers for a SnapMirror relationship."""
+
+        snapmirror = self.get_snapmirrors(source_vserver, source_volume,
+                                          destination_vserver,
+                                          destination_volume)
+        if not snapmirror:
+            msg = _('Failed to get information about relationship between '
+                    'source %(src_vserver)s:%(src_volume)s and '
+                    'destination %(dst_vserver)s:%(dst_volume)s.') % {
+                'src_vserver': source_vserver,
+                'src_volume': source_volume,
+                'dst_vserver': destination_vserver,
+                'dst_volume': destination_volume}
+            raise na_utils.NetAppDriverException(msg)
+
+        snapmirror_uuid = snapmirror[0]['uuid']
+
+        query = {'state': 'transferring'}
+        transfers = self.send_request('/snapmirror/relationships/' +
+                                      snapmirror_uuid + '/transfers/', 'get',
+                                      query=query)
+
+        if not transfers.get('records'):
+            raise netapp_api.NaApiError(
+                code=netapp_api.ENOTRANSFER_IN_PROGRESS)
+
+        body = {'state': 'hard_aborted' if clear_checkpoint else 'aborted'}
+
+        for transfer in transfers['records']:
+            transfer_uuid = transfer['uuid']
+            self.send_request('/snapmirror/relationships/' +
+                              snapmirror_uuid + '/transfers/' +
+                              transfer_uuid, 'patch', body=body)
+
+    def delete_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume):
+
+        """Deletes an SnapMirror relationship on destination."""
+
+        query_uuid = {}
+        query_uuid['source.path'] = source_vserver + ':' + source_volume
+        query_uuid['destination.path'] = (destination_vserver + ':' +
+                                          destination_volume)
+        query_uuid['fields'] = 'uuid'
+
+        response = self.send_request('/snapmirror/relationships/', 'get',
+                                     query=query_uuid)
+
+        records = response.get('records')
+        if not records:
+            raise netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND)
+
+        # 'destination_only' deletes the snapmirror on destination but does not
+        # release it on source.
+        query_delete = {"destination_only": "true"}
+
+        snapmirror_uuid = records[0].get('uuid')
+        self.send_request('/snapmirror/relationships/' +
+                          snapmirror_uuid, 'delete',
+                          query=query_delete)
+
+    def resume_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume):
+
+        """Resume a SnapMirror relationship."""
+
+        query_uuid = {}
+        query_uuid['source.path'] = source_vserver + ':' + source_volume
+        query_uuid['destination.path'] = (destination_vserver + ':' +
+                                          destination_volume)
+        query_uuid['fields'] = 'uuid,policy.type'
+
+        response_snapmirrors = self.send_request('/snapmirror/relationships/',
+                                                 'get', query=query_uuid)
+
+        records = response_snapmirrors.get('records')
+        if not records:
+            raise netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND)
+
+        snapmirror_uuid = records[0]['uuid']
+        snapmirror_policy = records[0]['policy']['type']
+
+        body_resync = {}
+        if snapmirror_policy == 'async':
+            body_resync['state'] = 'snapmirrored'
+        elif snapmirror_policy == 'sync':
+            body_resync['state'] = 'in_sync'
+
+        self.send_request('/snapmirror/relationships/' +
+                          snapmirror_uuid, 'patch',
+                          body=body_resync)
+
+    def release_snapmirror(self, source_vserver, source_volume,
+                           destination_vserver, destination_volume,
+                           relationship_info_only=False):
+        """Removes a SnapMirror relationship on the source endpoint."""
+
+        query_uuid = {}
+        query_uuid['list_destinations_only'] = 'true'
+        query_uuid['source.path'] = source_vserver + ':' + source_volume
+        query_uuid['destination.path'] = (destination_vserver + ':' +
+                                          destination_volume)
+        query_uuid['fields'] = 'uuid'
+
+        response_snapmirrors = self.send_request('/snapmirror/relationships/',
+                                                 'get', query=query_uuid)
+
+        records = response_snapmirrors.get('records')
+        if not records:
+            raise netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND)
+
+        query_release = {}
+        if relationship_info_only:
+            # release without removing related snapshots
+            query_release['source_info_only'] = 'true'
+        else:
+            # release and removing all related snapshots
+            query_release['source_only'] = 'true'
+
+        snapmirror_uuid = records[0].get('uuid')
+        self.send_request('/snapmirror/relationships/' +
+                          snapmirror_uuid, 'delete',
+                          query=query_release)
+
+    def resync_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume):
+        """Resync a SnapMirror relationship."""
+
+        # We reuse the resume operation for resync since both are handled in
+        # the same way in the REST API, by setting the snapmirror relationship
+        # to the snapmirrored state.
+        self.resume_snapmirror(source_vserver,
+                               source_volume,
+                               destination_vserver,
+                               destination_volume)
+
+    def quiesce_snapmirror(self, source_vserver, source_volume,
+                           destination_vserver, destination_volume):
+        """Disables future transfers to a SnapMirror destination."""
+
+        return self._set_snapmirror_state(
+            'paused', source_vserver, source_volume,
+            destination_vserver, destination_volume)
+
+    def break_snapmirror(self, source_vserver, source_volume,
+                         destination_vserver, destination_volume):
+        """Breaks a data protection SnapMirror relationship."""
+
+        self._set_snapmirror_state(
+            'broken-off', source_vserver, source_volume,
+            destination_vserver, destination_volume)
+
+    def update_snapmirror(self, source_vserver, source_volume,
+                          destination_vserver, destination_volume):
+        """Schedules a SnapMirror update."""
+
+        snapmirror = self.get_snapmirrors(source_vserver, source_volume,
+                                          destination_vserver,
+                                          destination_volume)
+        if not snapmirror:
+            msg = _('Failed to get information about relationship between '
+                    'source %(src_vserver)s:%(src_volume)s and '
+                    'destination %(dst_vserver)s:%(dst_volume)s.') % {
+                'src_vserver': source_vserver,
+                'src_volume': source_volume,
+                'dst_vserver': destination_vserver,
+                'dst_volume': destination_volume}
+
+            raise na_utils.NetAppDriverException(msg)
+
+        snapmirror_uuid = snapmirror[0]['uuid']
+
+        # NOTE(nahimsouza): A POST with an empty body starts the update
+        # snapmirror operation.
+        try:
+            self.send_request('/snapmirror/relationships/' +
+                              snapmirror_uuid + '/transfers/', 'post',
+                              wait_on_accepted=False)
+        except netapp_api.NaApiError as e:
+            if (e.code != netapp_api.REST_UPDATE_SNAPMIRROR_FAILED):
+                LOG.warning('Unexpected failure during snapmirror update.'
+                            'Code: %(code)s, Message: %(message)s',
+                            {'code': e.code, 'message': e.message})
+            raise
+
+    def mount_flexvol(self, flexvol_name, junction_path=None):
+        """Mounts a volume on a junction path."""
+
+        query = {'name': flexvol_name}
+        body = {'nas.path': (
+            junction_path if junction_path else '/%s' % flexvol_name)}
+        self.send_request('/storage/volumes', 'patch', query=query, body=body)

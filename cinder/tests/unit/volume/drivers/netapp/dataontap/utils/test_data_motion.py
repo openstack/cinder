@@ -674,6 +674,12 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                           'is_flexgroup': is_flexgroup})
         self.mock_object(self.dm_mixin, '_get_replication_aggregate_map',
                          return_value=aggr_map)
+        self.mock_object(self.dm_mixin,
+                         '_get_replication_volume_online_timeout',
+                         return_value=2)
+        self.mock_object(self.mock_dest_client,
+                         'get_volume_state',
+                         return_value='online')
         mock_client_call = self.mock_object(
             self.mock_dest_client, 'create_flexvol')
 
@@ -763,18 +769,18 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             return_value=False)
         self.mock_object(self.dm_mixin, '_get_replication_aggregate_map',
                          return_value=aggr_map)
+        self.mock_object(self.dm_mixin,
+                         '_get_replication_volume_online_timeout',
+                         return_value=2)
+        mock_volume_state = self.mock_object(self.mock_dest_client,
+                                             'get_volume_state',
+                                             return_value='online')
 
         pool_is_flexgroup = False
         if volume_style == 'flexgroup':
             pool_is_flexgroup = True
-            self.mock_object(self.dm_mixin,
-                             '_get_replication_volume_online_timeout',
-                             return_value=2)
             mock_create_volume_async = self.mock_object(self.mock_dest_client,
                                                         'create_volume_async')
-            mock_volume_state = self.mock_object(self.mock_dest_client,
-                                                 'get_volume_state',
-                                                 return_value='online')
             mock_dedupe_enabled = self.mock_object(
                 self.mock_dest_client, 'enable_volume_dedupe_async')
             mock_compression_enabled = self.mock_object(
@@ -837,6 +843,12 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             return_value=True)
         self.mock_object(self.dm_mixin, '_get_replication_aggregate_map',
                          return_value=aggr_map)
+        self.mock_object(self.dm_mixin,
+                         '_get_replication_volume_online_timeout',
+                         return_value=2)
+        self.mock_object(self.mock_dest_client,
+                         'get_volume_state',
+                         return_value='online')
         mock_client_call = self.mock_object(
             self.mock_dest_client, 'create_flexvol')
 
