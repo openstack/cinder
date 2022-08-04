@@ -314,7 +314,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         """Gets the vserver and export volume for share."""
         (host_ip, export_path) = self._get_export_ip_path(volume_id, share)
         ifs = self.zapi_client.get_if_info_by_ip(host_ip)
-        vserver = ifs[0].get_child_content('vserver')
+        vserver = ifs[0].get('vserver')
         exp_volume = self.zapi_client.get_vol_by_junc_vserver(vserver,
                                                               export_path)
         return vserver, exp_volume
@@ -512,7 +512,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         """Get vserver for the mentioned ip."""
         try:
             ifs = self.zapi_client.get_if_info_by_ip(ip)
-            vserver = ifs[0].get_child_content('vserver')
+            vserver = ifs[0].get('vserver')
             return vserver
         except Exception:
             return None

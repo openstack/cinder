@@ -236,27 +236,14 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         if len(lun) == 0:
             msg = _("No cloned LUN named %s found on the filer")
             raise exception.VolumeBackendAPIException(data=msg % new_name)
-        clone_meta = self._create_lun_meta(lun[0])
-        self._add_lun_to_table(
-            block_base.NetAppLun('%s:%s' % (clone_meta['Vserver'],
-                                            clone_meta['Path']),
-                                 new_name,
-                                 lun[0].get_child_content('size'),
-                                 clone_meta))
 
-    def _create_lun_meta(self, lun):
-        """Creates LUN metadata dictionary."""
-        self.zapi_client.check_is_naelement(lun)
-        meta_dict = {}
-        meta_dict['Vserver'] = lun.get_child_content('vserver')
-        meta_dict['Volume'] = lun.get_child_content('volume')
-        meta_dict['Qtree'] = lun.get_child_content('qtree')
-        meta_dict['Path'] = lun.get_child_content('path')
-        meta_dict['OsType'] = lun.get_child_content('multiprotocol-type')
-        meta_dict['SpaceReserved'] = \
-            lun.get_child_content('is-space-reservation-enabled')
-        meta_dict['UUID'] = lun.get_child_content('uuid')
-        return meta_dict
+        clone_lun = lun[0]
+        self._add_lun_to_table(
+            block_base.NetAppLun('%s:%s' % (clone_lun['Vserver'],
+                                            clone_lun['Path']),
+                                 new_name,
+                                 clone_lun['Size'],
+                                 clone_lun))
 
     def _get_fc_target_wwpns(self, include_partner=True):
         return self.zapi_client.get_fc_target_wwpns()
@@ -879,8 +866,6 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         LOG.info("Cloning LUN %s from snapshot %s in volume %s.", lun_name,
                  snapshot_name, flexvol_name)
 
-        metadata = snapshot_lun.metadata
-
         block_count = self._get_lun_block_count(snapshot_path)
         if block_count == 0:
             msg = _("%s cannot be reverted using clone operation"
@@ -889,12 +874,9 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
 
         new_snap_name = "new-%s" % snapshot_name
 
-        self.zapi_client.create_lun(
-            flexvol_name, new_snap_name,
-            six.text_type(snapshot_lun.size), metadata)
         try:
             self._clone_lun(snapshot_name, new_snap_name,
-                            block_count=block_count)
+                            space_reserved='false', is_snapshot=True)
             return new_snap_name
         except Exception:
             with excutils.save_and_reraise_exception():

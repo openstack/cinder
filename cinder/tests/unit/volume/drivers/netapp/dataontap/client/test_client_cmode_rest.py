@@ -22,13 +22,16 @@ import uuid
 import ddt
 import six
 
+from cinder import exception
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fakes as fake_client)
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode_rest
+from cinder.volume.drivers.netapp import utils as netapp_utils
 
 
 CONNECTION_INFO = {'hostname': 'hostname',
@@ -306,3 +309,2197 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             mock.call(next_url_1, 'get', query=None, enable_tunneling=True),
             mock.call(next_url_2, 'get', query=None, enable_tunneling=True),
         ])
+
+    def test__get_unique_volume(self):
+        api_response = fake_client.VOLUME_GET_ITER_STYLE_RESPONSE_REST
+
+        result = self.client._get_unique_volume(api_response["records"])
+
+        expected = fake_client.VOLUME_FLEXGROUP_STYLE_REST
+        self.assertEqual(expected, result)
+
+    def test__get_unique_volume_raise_exception(self):
+        api_response = fake_client.VOLUME_GET_ITER_SAME_STYLE_RESPONSE_REST
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client._get_unique_volume,
+                          api_response["records"])
+
+    @ddt.data(fake.REST_FIELDS, None)
+    def test__get_volume_by_args(self, fields):
+        mock_get_unique_vol = self.mock_object(
+            self.client, '_get_unique_volume',
+            return_value=fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_REST)
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST)
+
+        volume = self.client._get_volume_by_args(
+            vol_name=fake.VOLUME_NAME, vol_path=fake.VOLUME_PATH,
+            vserver=fake.VSERVER_NAME, fields=fields)
+
+        self.assertEqual(fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_REST,
+                         volume)
+        mock_get_unique_vol.assert_called_once_with(
+            fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST['records'])
+        expected_query = {
+            'type': 'rw',
+            'style': 'flex*',
+            'is_svm_root': 'false',
+            'error_state.is_inconsistent': 'false',
+            'state': 'online',
+            'name': fake.VOLUME_NAME,
+            'nas.path': fake.VOLUME_PATH,
+            'svm.name': fake.VSERVER_NAME,
+            'fields': 'name,style' if not fields else fields,
+        }
+        mock_send_request.assert_called_once_with('/storage/volumes/', 'get',
+                                                  query=expected_query)
+
+    @ddt.data(False, True)
+    def test_get_flexvol(self, is_flexgroup):
+
+        if is_flexgroup:
+            api_response = \
+                fake_client.VOLUME_GET_ITER_SSC_RESPONSE_FLEXGROUP_REST
+            volume_response = \
+                fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_FLEXGROUP_REST
+        else:
+            api_response = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST
+            volume_response = \
+                fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_REST
+
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        mock_get_unique_vol = self.mock_object(
+            self.client, '_get_volume_by_args', return_value=volume_response)
+
+        result = self.client.get_flexvol(
+            flexvol_name=fake_client.VOLUME_NAMES[0],
+            flexvol_path='/%s' % fake_client.VOLUME_NAMES[0])
+
+        fields = ('aggregates.name,name,svm.name,nas.path,'
+                  'type,guarantee.honored,guarantee.type,'
+                  'space.snapshot.reserve_percent,space.size,'
+                  'qos.policy.name,snapshot_policy,language,style')
+        mock_get_unique_vol.assert_called_once_with(
+            vol_name=fake_client.VOLUME_NAMES[0],
+            vol_path='/%s' % fake_client.VOLUME_NAMES[0], fields=fields)
+
+        if is_flexgroup:
+            self.assertEqual(fake_client.VOLUME_INFO_SSC_FLEXGROUP, result)
+        else:
+            self.assertEqual(fake_client.VOLUME_INFO_SSC, result)
+
+    def test_list_flexvols(self):
+        api_response = fake_client.VOLUME_GET_ITER_LIST_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.list_flexvols()
+
+        query = {
+            'type': 'rw',
+            'style': 'flex*',  # Match both 'flexvol' and 'flexgroup'
+            'is_svm_root': 'false',
+            'error_state.is_inconsistent': 'false',
+            # 'is-invalid': 'false',
+            'state': 'online',
+            'fields': 'name'
+        }
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/volumes/', 'get', query=query)
+        self.assertEqual(list(fake_client.VOLUME_NAMES), result)
+
+    def test_list_flexvols_not_found(self):
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.list_flexvols()
+        self.assertEqual([], result)
+
+    def test_is_flexvol_mirrored(self):
+
+        api_response = fake_client.GET_NUM_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.is_flexvol_mirrored(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
+
+        query = {
+            'source.path': fake_client.VOLUME_VSERVER_NAME +
+            ':' + fake_client.VOLUME_NAMES[0],
+            'state': 'snapmirrored',
+            'return_records': 'false',
+        }
+
+        self.client.send_request.assert_called_once_with(
+            '/snapmirror/relationships/', 'get', query=query)
+        self.assertTrue(result)
+
+    def test_is_flexvol_mirrored_not_mirrored(self):
+
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.is_flexvol_mirrored(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_is_flexvol_mirrored_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=self._mock_api_error())
+
+        result = self.client.is_flexvol_mirrored(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_is_flexvol_encrypted(self):
+
+        api_response = fake_client.GET_NUM_RECORDS_RESPONSE_REST
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION')
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.is_flexvol_encrypted(
+            fake_client.VOLUME_NAME, fake_client.VOLUME_VSERVER_NAME)
+
+        query = {
+            'encryption.enabled': 'true',
+            'name': fake_client.VOLUME_NAME,
+            'svm.name': fake_client.VOLUME_VSERVER_NAME,
+            'return_records': 'false',
+        }
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/volumes/', 'get', query=query)
+
+        self.assertTrue(result)
+
+    def test_is_flexvol_encrypted_unsupported_version(self):
+
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION', supported=False)
+        result = self.client.is_flexvol_encrypted(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_is_flexvol_encrypted_no_records_found(self):
+
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.is_flexvol_encrypted(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_is_flexvol_encrypted_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=self._mock_api_error())
+
+        result = self.client.is_flexvol_encrypted(
+            fake_client.VOLUME_NAMES[0], fake_client.VOLUME_VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    @ddt.data({'types': {'FCAL'}, 'expected': ['FCAL']},
+              {'types': {'SATA', 'SSD'}, 'expected': ['SATA', 'SSD']},)
+    @ddt.unpack
+    def test_get_aggregate_disk_types(self, types, expected):
+
+        mock_get_aggregate_disk_types = self.mock_object(
+            self.client, '_get_aggregate_disk_types', return_value=types)
+
+        result = self.client.get_aggregate_disk_types(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertCountEqual(expected, result)
+        mock_get_aggregate_disk_types.assert_called_once_with(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+    def test_get_aggregate_disk_types_not_found(self):
+
+        mock_get_aggregate_disk_types = self.mock_object(
+            self.client, '_get_aggregate_disk_types', return_value=set())
+
+        result = self.client.get_aggregate_disk_types(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
+        mock_get_aggregate_disk_types.assert_called_once_with(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+    def test_get_aggregate_disk_types_api_not_found(self):
+
+        api_error = netapp_api.NaApiError()
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=api_error)
+
+        result = self.client.get_aggregate_disk_types(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
+
+    def test__get_aggregates(self):
+
+        api_response = fake_client.AGGR_GET_ITER_RESPONSE_REST
+        mock_send_request = self.mock_object(self.client,
+                                             'send_request',
+                                             return_value=api_response)
+
+        result = self.client._get_aggregates()
+
+        mock_send_request.assert_has_calls(
+            [mock.call('/storage/aggregates', 'get', query={},
+                       enable_tunneling=False)])
+        self.assertEqual(result, api_response['records'])
+
+    def test__get_aggregates_with_filters(self):
+
+        api_response = fake_client.AGGR_GET_ITER_RESPONSE_REST
+        mock_send_request = self.mock_object(self.client,
+                                             'send_request',
+                                             return_value=api_response)
+        query = {
+            'fields': 'space.block_storage.size,space.block_storage.available',
+            'name': ','.join(fake_client.VOLUME_AGGREGATE_NAMES),
+        }
+
+        result = self.client._get_aggregates(
+            aggregate_names=fake_client.VOLUME_AGGREGATE_NAMES,
+            fields=query['fields'])
+
+        mock_send_request.assert_has_calls([
+            mock.call('/storage/aggregates', 'get', query=query,
+                      enable_tunneling=False)])
+        self.assertEqual(result, api_response['records'])
+
+    def test__get_aggregates_not_found(self):
+
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        mock_send_request = self.mock_object(self.client,
+                                             'send_request',
+                                             return_value=api_response)
+
+        result = self.client._get_aggregates()
+
+        mock_send_request.assert_has_calls([
+            mock.call('/storage/aggregates', 'get', query={},
+                      enable_tunneling=False)])
+        self.assertEqual([], result)
+
+    def test_get_aggregate_none_specified(self):
+
+        result = self.client.get_aggregate('')
+
+        self.assertEqual({}, result)
+
+    def test_get_aggregate(self):
+
+        api_response = [fake_client.AGGR_GET_ITER_RESPONSE_REST['records'][1]]
+
+        mock__get_aggregates = self.mock_object(self.client,
+                                                '_get_aggregates',
+                                                return_value=api_response)
+
+        response = self.client.get_aggregate(fake_client.VOLUME_AGGREGATE_NAME)
+
+        fields = ('name,block_storage.primary.raid_type,'
+                  'block_storage.storage_type,home_node.name')
+        mock__get_aggregates.assert_has_calls([
+            mock.call(
+                aggregate_names=[fake_client.VOLUME_AGGREGATE_NAME],
+                fields=fields)])
+
+        expected = {
+            'name': fake_client.VOLUME_AGGREGATE_NAME,
+            'raid-type': 'raid0',
+            'is-hybrid': False,
+            'node-name': fake_client.NODE_NAME,
+        }
+        self.assertEqual(expected, response)
+
+    def test_get_aggregate_not_found(self):
+
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.get_aggregate(fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
+    def test_get_aggregate_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=self._mock_api_error())
+
+        result = self.client.get_aggregate(fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
+    def test_get_aggregate_api_not_found(self):
+
+        api_error = netapp_api.NaApiError(code=netapp_api.REST_API_NOT_FOUND)
+
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=api_error)
+
+        result = self.client.get_aggregate(fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
+    @ddt.data(True, False)
+    def test_is_qos_min_supported(self, supported):
+        self.client.features.add_feature('test', supported=supported)
+        mock_name = self.mock_object(netapp_utils,
+                                     'qos_min_feature_name',
+                                     return_value='test')
+        result = self.client.is_qos_min_supported(True, 'node')
+
+        mock_name.assert_called_once_with(True, 'node')
+        self.assertEqual(result, supported)
+
+    def test_is_qos_min_supported_invalid_node(self):
+        mock_name = self.mock_object(netapp_utils,
+                                     'qos_min_feature_name',
+                                     return_value='invalid_feature')
+        result = self.client.is_qos_min_supported(True, 'node')
+
+        mock_name.assert_called_once_with(True, 'node')
+        self.assertFalse(result)
+
+    def test_is_qos_min_supported_none_node(self):
+        result = self.client.is_qos_min_supported(True, None)
+
+        self.assertFalse(result)
+
+    def test_get_flexvol_dedupe_info(self):
+
+        api_response = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST
+        mock_send_request = self.mock_object(self.client,
+                                             'send_request',
+                                             return_value=api_response)
+
+        result = self.client.get_flexvol_dedupe_info(
+            fake_client.VOLUME_NAMES[0])
+
+        query = {
+            'efficiency.volume_path': '/vol/%s' % fake_client.VOLUME_NAMES[0],
+            'fields': 'efficiency.state,efficiency.compression'
+        }
+
+        mock_send_request.assert_called_once_with(
+            '/storage/volumes', 'get', query=query)
+        self.assertEqual(
+            fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA, result)
+
+    def test_get_flexvol_dedupe_info_no_logical_data_values(self):
+
+        api_response = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.get_flexvol_dedupe_info(
+            fake_client.VOLUME_NAMES[0])
+
+        self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA,
+                         result)
+
+    def test_get_flexvol_dedupe_info_not_found(self):
+
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.get_flexvol_dedupe_info(
+            fake_client.VOLUME_NAMES[0])
+
+        self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA,
+                         result)
+
+    def test_get_flexvol_dedupe_info_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=self._mock_api_error())
+
+        result = self.client.get_flexvol_dedupe_info(
+            fake_client.VOLUME_NAMES[0])
+
+        self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA,
+                         result)
+
+    def test_get_flexvol_dedupe_info_api_insufficient_privileges(self):
+
+        api_error = netapp_api.NaApiError(code=netapp_api.EAPIPRIVILEGE)
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=api_error)
+
+        result = self.client.get_flexvol_dedupe_info(
+            fake_client.VOLUME_NAMES[0])
+
+        self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA,
+                         result)
+
+    def test_get_lun_list(self):
+        response = fake_client.LUN_GET_ITER_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=response)
+
+        expected_result = fake_client.LUN_GET_ITER_RESULT
+        luns = self.client.get_lun_list()
+
+        self.assertEqual(expected_result, luns)
+        self.assertEqual(2, len(luns))
+
+    def test_get_lun_list_no_records(self):
+        response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=response)
+
+        luns = self.client.get_lun_list()
+
+        self.assertEqual([], luns)
+
+    def test_get_lun_sizes_by_volume(self):
+        volume_name = fake_client.VOLUME_NAME
+        query = {
+            'location.volume.name': volume_name,
+            'fields': 'space.size,name'
+        }
+        response = fake_client.LUN_GET_ITER_REST
+        expected_result = []
+        for lun in fake_client.LUN_GET_ITER_RESULT:
+            expected_result.append({
+                'size': lun['Size'],
+                'path': lun['Path'],
+            })
+
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=response)
+
+        luns = self.client.get_lun_sizes_by_volume(volume_name)
+
+        self.assertEqual(expected_result, luns)
+        self.assertEqual(2, len(luns))
+        self.client.send_request.assert_called_once_with(
+            '/storage/luns/', 'get', query=query)
+
+    def test_get_lun_sizes_by_volume_no_records(self):
+        volume_name = fake_client.VOLUME_NAME
+        query = {
+            'location.volume.name': volume_name,
+            'fields': 'space.size,name'
+        }
+        response = fake_client.NO_RECORDS_RESPONSE_REST
+
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=response)
+
+        luns = self.client.get_lun_sizes_by_volume(volume_name)
+
+        self.assertEqual([], luns)
+        self.client.send_request.assert_called_once_with(
+            '/storage/luns/', 'get', query=query)
+
+    def test_get_lun_by_args(self):
+        response = fake_client.LUN_GET_ITER_REST
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', return_value=response)
+
+        lun_info_args = {
+            'vserver': fake.VSERVER_NAME,
+            'path': fake.LUN_PATH,
+            'uuid': fake.UUID1,
+        }
+
+        luns = self.client.get_lun_by_args(**lun_info_args)
+
+        query = {
+            'svm.name': fake.VSERVER_NAME,
+            'name': fake.LUN_PATH,
+            'uuid': fake.UUID1,
+            'fields': 'svm.name,location.volume.name,space.size,'
+                      'location.qtree.name,name,os_type,'
+                      'space.guarantee.requested,uuid'
+        }
+
+        mock_send_request.assert_called_once_with(
+            '/storage/luns/', 'get', query=query)
+
+        self.assertEqual(2, len(luns))
+
+    def test_get_lun_by_args_no_lun_found(self):
+        response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=response)
+
+        luns = self.client.get_lun_by_args()
+
+        self.assertEqual([], luns)
+
+    def test_get_lun_by_args_with_one_arg(self):
+        path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
+        response = fake_client.LUN_GET_ITER_REST
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', return_value=response)
+
+        luns = self.client.get_lun_by_args(path=path)
+
+        query = {
+            'name': path,
+            'fields': 'svm.name,location.volume.name,space.size,'
+                      'location.qtree.name,name,os_type,'
+                      'space.guarantee.requested,uuid'
+        }
+
+        mock_send_request.assert_called_once_with(
+            '/storage/luns/', 'get', query=query)
+
+        self.assertEqual(2, len(luns))
+
+    def test_get_file_sizes_by_dir(self):
+        volume = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        query = {
+            'type': 'file',
+            'fields': 'size,name'
+        }
+        response = fake_client.FILE_DIRECTORY_GET_ITER_REST
+        expected_result = fake_client.FILE_DIRECTORY_GET_ITER_RESULT_REST
+
+        self.mock_object(self.client,
+                         '_get_volume_by_args',
+                         return_value=volume)
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=response)
+
+        files = self.client.get_file_sizes_by_dir(volume['name'])
+
+        self.assertEqual(expected_result, files)
+        self.assertEqual(2, len(files))
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{volume["uuid"]}/files',
+            'get', query=query)
+
+    def test_get_file_sizes_by_dir_no_records(self):
+        volume = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        query = {
+            'type': 'file',
+            'fields': 'size,name'
+        }
+
+        api_error = netapp_api.NaApiError(code=netapp_api.REST_NO_SUCH_FILE)
+
+        self.mock_object(self.client,
+                         '_get_volume_by_args',
+                         return_value=volume)
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=api_error)
+
+        files = self.client.get_file_sizes_by_dir(volume['name'])
+
+        self.assertEqual([], files)
+        self.assertEqual(0, len(files))
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{volume["uuid"]}/files',
+            'get', query=query)
+
+    def test_get_file_sizes_by_dir_exception(self):
+        volume = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        api_error = netapp_api.NaApiError(code=0)
+
+        self.mock_object(self.client,
+                         '_get_volume_by_args',
+                         return_value=volume)
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=api_error)
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.get_file_sizes_by_dir,
+                          volume['name'])
+
+    @ddt.data({'junction_path': '/fake/vol'},
+              {'name': 'fake_volume'},
+              {'junction_path': '/fake/vol', 'name': 'fake_volume'})
+    def test_get_volume_state(self, kwargs):
+        query_args = {}
+        query_args['fields'] = 'state'
+
+        if 'name' in kwargs:
+            query_args['name'] = kwargs['name']
+        if 'junction_path' in kwargs:
+            query_args['nas.path'] = kwargs['junction_path']
+
+        response = fake_client.VOLUME_GET_ITER_STATE_RESPONSE_REST
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', return_value=response)
+
+        state = self.client.get_volume_state(**kwargs)
+
+        mock_send_request.assert_called_once_with(
+            '/storage/volumes/', 'get', query=query_args)
+
+        self.assertEqual(fake_client.VOLUME_STATE_ONLINE, state)
+
+    def test_delete_snapshot(self):
+        volume = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_REST
+        self.mock_object(
+            self.client, '_get_volume_by_args',
+            return_value=volume)
+        snap_name = fake.SNAPSHOT["name"]
+        self.mock_object(self.client, 'send_request')
+
+        self.client.delete_snapshot(volume["name"], snap_name)
+
+        self.client._get_volume_by_args.assert_called_once_with(
+            vol_name=volume["name"])
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{volume["uuid"]}/snapshots'
+            f'?name={snap_name}', 'delete')
+
+    def test_get_operational_lif_addresses(self):
+        expected_result = ['1.2.3.4', '99.98.97.96']
+        api_response = fake_client.GET_OPERATIONAL_LIF_ADDRESSES_RESPONSE_REST
+        mock_send_request = self.mock_object(self.client,
+                                             'send_request',
+                                             return_value=api_response)
+
+        address_list = self.client.get_operational_lif_addresses()
+
+        query = {
+            'state': 'up',
+            'fields': 'ip.address',
+        }
+
+        mock_send_request.assert_called_once_with(
+            '/network/ip/interfaces/', 'get', query=query)
+
+        self.assertEqual(expected_result, address_list)
+
+    def test__list_vservers(self):
+        api_response = fake_client.VSERVER_DATA_LIST_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+        result = self.client._list_vservers()
+        query = {
+            'fields': 'name',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('/svm/svms', 'get', query=query,
+                      enable_tunneling=False)])
+        self.assertListEqual(
+            [fake_client.VSERVER_NAME, fake_client.VSERVER_NAME_2], result)
+
+    def test_list_vservers_not_found(self):
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+        result = self.client._list_vservers()
+        self.assertListEqual([], result)
+
+    def test_get_ems_log_destination_vserver(self):
+        mock_list_vservers = self.mock_object(
+            self.client,
+            '_list_vservers',
+            return_value=[fake_client.VSERVER_NAME])
+        result = self.client._get_ems_log_destination_vserver()
+        mock_list_vservers.assert_called_once_with()
+        self.assertEqual(fake_client.VSERVER_NAME, result)
+
+    def test_get_ems_log_destination_vserver_not_found(self):
+        mock_list_vservers = self.mock_object(
+            self.client,
+            '_list_vservers',
+            return_value=[])
+
+        self.assertRaises(exception.NotFound,
+                          self.client._get_ems_log_destination_vserver)
+
+        mock_list_vservers.assert_called_once_with()
+
+    def test_send_ems_log_message(self):
+
+        message_dict = {
+            'computer-name': '25-dev-vm',
+            'event-source': 'Cinder driver NetApp_iSCSI_Cluster_direct',
+            'app-version': '20.1.0.dev|vendor|Linux-5.4.0-120-generic-x86_64',
+            'category': 'provisioning',
+            'log-level': '5',
+            'auto-support': 'false',
+            'event-id': '1',
+            'event-description':
+                '{"pools": {"vserver": "vserver_name",'
+                + '"aggregates": [], "flexvols": ["flexvol_01"]}}'
+        }
+
+        body = {
+            'computer_name': message_dict['computer-name'],
+            'event_source': message_dict['event-source'],
+            'app_version': message_dict['app-version'],
+            'category': message_dict['category'],
+            'severity': 'notice',
+            'autosupport_required': message_dict['auto-support'] == 'true',
+            'event_id': message_dict['event-id'],
+            'event_description': message_dict['event-description'],
+        }
+
+        self.mock_object(self.client, '_get_ems_log_destination_vserver',
+                         return_value='vserver_name')
+        self.mock_object(self.client, 'send_request')
+
+        self.client.send_ems_log_message(message_dict)
+
+        self.client.send_request.assert_called_once_with(
+            '/support/ems/application-logs', 'post', body=body)
+
+    @ddt.data('cp_phase_times', 'domain_busy')
+    def test_get_performance_counter_info(self, counter_name):
+
+        response1 = fake_client.PERF_COUNTER_LIST_INFO_WAFL_RESPONSE_REST
+        response2 = fake_client.PERF_COUNTER_TABLE_ROWS_WAFL
+
+        object_name = 'wafl'
+
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[response1, response2])
+
+        result = self.client.get_performance_counter_info(object_name,
+                                                          counter_name)
+
+        expected = {
+            'name': 'cp_phase_times',
+            'base-counter': 'total_cp_msecs',
+            'labels': fake_client.PERF_COUNTER_TOTAL_CP_MSECS_LABELS_RESULT,
+        }
+
+        query1 = {
+            'counter_schemas.name': counter_name,
+            'fields': 'counter_schemas.*'
+        }
+
+        query2 = {
+            'counters.name': counter_name,
+            'fields': 'counters.*'
+        }
+
+        if counter_name == 'domain_busy':
+            expected['name'] = 'domain_busy'
+            expected['labels'] = (
+                fake_client.PERF_COUNTER_TOTAL_CP_MSECS_LABELS_REST)
+            query1['counter_schemas.name'] = 'domain_busy_percent'
+            query2['counters.name'] = 'domain_busy_percent'
+
+        self.assertEqual(expected, result)
+
+        mock_send_request.assert_has_calls([
+            mock.call(f'/cluster/counter/tables/{object_name}',
+                      'get', query=query1, enable_tunneling=False),
+            mock.call(f'/cluster/counter/tables/{object_name}/rows',
+                      'get', query=query2, enable_tunneling=False),
+        ])
+
+    def test_get_performance_counter_info_not_found_rows(self):
+        response1 = fake_client.PERF_COUNTER_LIST_INFO_WAFL_RESPONSE_REST
+        response2 = fake_client.NO_RECORDS_RESPONSE_REST
+
+        object_name = 'wafl'
+        counter_name = 'cp_phase_times'
+
+        self.mock_object(
+            self.client, 'send_request',
+            side_effect=[response1, response2])
+
+        result = self.client.get_performance_counter_info(object_name,
+                                                          counter_name)
+
+        expected = {
+            'name': 'cp_phase_times',
+            'base-counter': 'total_cp_msecs',
+            'labels': [],
+        }
+        self.assertEqual(expected, result)
+
+    def test_get_performance_instance_uuids(self):
+        response = fake_client.PERF_COUNTER_TABLE_ROWS_WAFL
+
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            return_value=response)
+
+        object_name = 'wafl'
+        result = self.client.get_performance_instance_uuids(
+            object_name, fake_client.NODE_NAME)
+
+        expected = [fake_client.NODE_NAME + ':wafl']
+        self.assertEqual(expected, result)
+
+        query = {
+            'id': fake_client.NODE_NAME + ':*',
+        }
+        mock_send_request.assert_called_once_with(
+            f'/cluster/counter/tables/{object_name}/rows',
+            'get', query=query, enable_tunneling=False)
+
+    def test_get_performance_counters(self):
+        response = fake_client.PERF_GET_INSTANCES_PROCESSOR_RESPONSE_REST
+
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            return_value=response)
+
+        instance_uuids = [
+            fake_client.NODE_NAME + ':processor0',
+            fake_client.NODE_NAME + ':processor1',
+        ]
+        object_name = 'processor'
+        counter_names = ['domain_busy', 'processor_elapsed_time']
+        rest_counter_names = ['domain_busy_percent', 'elapsed_time']
+        result = self.client.get_performance_counters(object_name,
+                                                      instance_uuids,
+                                                      counter_names)
+
+        expected = fake_client.PERF_COUNTERS_PROCESSOR_EXPECTED
+        self.assertEqual(expected, result)
+
+        query = {
+            'id': '|'.join(instance_uuids),
+            'counters.name': '|'.join(rest_counter_names),
+            'fields': 'id,counter_table.name,counters.*',
+        }
+
+        mock_send_request.assert_called_once_with(
+            f'/cluster/counter/tables/{object_name}/rows',
+            'get', query=query, enable_tunneling=False)
+
+    def test_get_aggregate_capacities(self):
+        aggr1_capacities = {
+            'percent-used': 50,
+            'size-available': 100.0,
+            'size-total': 200.0,
+        }
+        aggr2_capacities = {
+            'percent-used': 75,
+            'size-available': 125.0,
+            'size-total': 500.0,
+        }
+        mock_get_aggregate_capacity = self.mock_object(
+            self.client, '_get_aggregate_capacity',
+            side_effect=[aggr1_capacities, aggr2_capacities])
+
+        result = self.client.get_aggregate_capacities(['aggr1', 'aggr2'])
+
+        expected = {
+            'aggr1': aggr1_capacities,
+            'aggr2': aggr2_capacities,
+        }
+        self.assertEqual(expected, result)
+        mock_get_aggregate_capacity.assert_has_calls([
+            mock.call('aggr1'),
+            mock.call('aggr2'),
+        ])
+
+    def test_get_aggregate_capacities_not_found(self):
+        mock_get_aggregate_capacity = self.mock_object(
+            self.client, '_get_aggregate_capacity', side_effect=[{}, {}])
+
+        result = self.client.get_aggregate_capacities(['aggr1', 'aggr2'])
+
+        expected = {
+            'aggr1': {},
+            'aggr2': {},
+        }
+        self.assertEqual(expected, result)
+        mock_get_aggregate_capacity.assert_has_calls([
+            mock.call('aggr1'),
+            mock.call('aggr2'),
+        ])
+
+    def test_get_aggregate_capacities_not_list(self):
+        result = self.client.get_aggregate_capacities('aggr1')
+        self.assertEqual({}, result)
+
+    def test__get_aggregate_capacity(self):
+        api_response = fake_client.AGGR_GET_ITER_RESPONSE_REST['records']
+        mock_get_aggregates = self.mock_object(self.client,
+                                               '_get_aggregates',
+                                               return_value=api_response)
+
+        result = self.client._get_aggregate_capacity(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        fields = ('space.block_storage.available,space.block_storage.size,'
+                  'space.block_storage.used')
+        mock_get_aggregates.assert_has_calls([
+            mock.call(aggregate_names=[fake_client.VOLUME_AGGREGATE_NAME],
+                      fields=fields)])
+
+        available = float(fake_client.AGGR_SIZE_AVAILABLE)
+        total = float(fake_client.AGGR_SIZE_TOTAL)
+        used = float(fake_client.AGGR_SIZE_USED)
+        percent_used = int((used * 100) // total)
+
+        expected = {
+            'percent-used': percent_used,
+            'size-available': available,
+            'size-total': total,
+        }
+        self.assertEqual(expected, result)
+
+    def test__get_aggregate_capacity_not_found(self):
+
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client._get_aggregate_capacity(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
+    def test__get_aggregate_capacity_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=self._mock_api_error())
+
+        result = self.client._get_aggregate_capacity(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
+    def test__get_aggregate_capacity_api_not_found(self):
+
+        api_error = netapp_api.NaApiError(code=netapp_api.REST_API_NOT_FOUND)
+        self.mock_object(
+            self.client, 'send_request', side_effect=api_error)
+
+        result = self.client._get_aggregate_capacity(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
+    def test_get_node_for_aggregate(self):
+
+        api_response = fake_client.AGGR_GET_ITER_RESPONSE_REST['records']
+        mock_get_aggregates = self.mock_object(self.client,
+                                               '_get_aggregates',
+                                               return_value=api_response)
+
+        result = self.client.get_node_for_aggregate(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        fields = 'home_node.name'
+        mock_get_aggregates.assert_has_calls([
+            mock.call(
+                aggregate_names=[fake_client.VOLUME_AGGREGATE_NAME],
+                fields=fields)])
+
+        self.assertEqual(fake_client.NODE_NAME, result)
+
+    def test_get_node_for_aggregate_none_requested(self):
+        result = self.client.get_node_for_aggregate(None)
+        self.assertIsNone(result)
+
+    def test_get_node_for_aggregate_api_not_found(self):
+        api_error = netapp_api.NaApiError(code=netapp_api.REST_API_NOT_FOUND)
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=api_error)
+
+        result = self.client.get_node_for_aggregate(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
+
+    def test_get_node_for_aggregate_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.get_node_for_aggregate,
+                          fake_client.VOLUME_AGGREGATE_NAME)
+
+    def test_get_node_for_aggregate_not_found(self):
+
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        result = self.client.get_node_for_aggregate(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
+
+    @ddt.data(None, {'legacy': 'fake'}, {})
+    def test_provision_qos_policy_group_invalid_policy_info(self, policy_info):
+        self.mock_object(self.client, '_validate_qos_policy_group')
+        self.mock_object(self.client, '_get_qos_first_policy_group_by_name')
+        self.mock_object(self.client, '_create_qos_policy_group')
+        self.mock_object(self.client, '_modify_qos_policy_group')
+
+        self.client.provision_qos_policy_group(policy_info, False)
+
+        self.client._validate_qos_policy_group.assert_not_called()
+        self.client._get_qos_first_policy_group_by_name.assert_not_called()
+        self.client._create_qos_policy_group.assert_not_called()
+        self.client._modify_qos_policy_group.assert_not_called()
+
+    @ddt.data(True, False)
+    def test_provision_qos_policy_group_qos_policy_create(self, is_adaptive):
+        policy_info = fake.QOS_POLICY_GROUP_INFO
+        policy_spec = fake.QOS_POLICY_GROUP_SPEC
+        if is_adaptive:
+            policy_info = fake.ADAPTIVE_QOS_POLICY_GROUP_INFO
+            policy_spec = fake.ADAPTIVE_QOS_SPEC
+
+        self.mock_object(self.client, '_validate_qos_policy_group')
+        self.mock_object(self.client, '_get_qos_first_policy_group_by_name',
+                         return_value=None)
+        self.mock_object(self.client, '_create_qos_policy_group')
+        self.mock_object(self.client, '_modify_qos_policy_group')
+
+        self.client.provision_qos_policy_group(policy_info, True)
+
+        self.client._validate_qos_policy_group.assert_called_once_with(
+            is_adaptive, spec=policy_spec, qos_min_support=True)
+        (self.client._get_qos_first_policy_group_by_name.
+            assert_called_once_with(policy_spec['policy_name']))
+        self.client._create_qos_policy_group.assert_called_once_with(
+            policy_spec, is_adaptive)
+        self.client._modify_qos_policy_group.assert_not_called()
+
+    @ddt.data(True, False)
+    def test_provision_qos_policy_group_qos_policy_modify(self, is_adaptive):
+        policy_rest_item = fake.QOS_POLICY_BY_NAME_RESPONSE_REST['records'][0]
+        policy_info = fake.QOS_POLICY_GROUP_INFO
+        policy_spec = fake.QOS_POLICY_GROUP_SPEC
+        if is_adaptive:
+            policy_info = fake.ADAPTIVE_QOS_POLICY_GROUP_INFO
+            policy_spec = fake.ADAPTIVE_QOS_SPEC
+
+        self.mock_object(self.client, '_validate_qos_policy_group')
+        self.mock_object(self.client, '_get_qos_first_policy_group_by_name',
+                         return_value=policy_rest_item)
+        self.mock_object(self.client, '_create_qos_policy_group')
+        self.mock_object(self.client, '_modify_qos_policy_group')
+
+        self.client.provision_qos_policy_group(policy_info, True)
+
+        self.client._validate_qos_policy_group.assert_called_once_with(
+            is_adaptive, spec=policy_spec, qos_min_support=True)
+        (self.client._get_qos_first_policy_group_by_name.
+            assert_called_once_with(policy_spec['policy_name']))
+        self.client._create_qos_policy_group.assert_not_called()
+        self.client._modify_qos_policy_group.assert_called_once_with(
+            policy_spec, is_adaptive, policy_rest_item)
+
+    @ddt.data(True, False)
+    def test__get_qos_first_policy_group_by_name(self, is_empty):
+        qos_rest_records = []
+        qos_item = fake.QOS_POLICY_BY_NAME_RESPONSE_REST['records'][0]
+        if not is_empty:
+            qos_rest_records = fake.QOS_POLICY_BY_NAME_RESPONSE_REST['records']
+
+        self.mock_object(self.client, '_get_qos_policy_group_by_name',
+                         return_value=qos_rest_records)
+
+        result = self.client._get_qos_first_policy_group_by_name(
+            qos_item['name'])
+
+        self.client._get_qos_policy_group_by_name.assert_called_once_with(
+            qos_item['name']
+        )
+        if not is_empty:
+            self.assertEqual(qos_item, result)
+        else:
+            self.assertTrue(result is None)
+
+    @ddt.data(True, False)
+    def test__get_qos_policy_group_by_name(self, is_empty):
+        qos_rest_response = {}
+        qos_rest_records = []
+        qos_name = fake.QOS_POLICY_BY_NAME_RESPONSE_REST['records'][0]['name']
+        if not is_empty:
+            qos_rest_response = fake.QOS_POLICY_BY_NAME_RESPONSE_REST
+            qos_rest_records = qos_rest_response['records']
+
+        self.mock_object(self.client, 'send_request',
+                         return_value=qos_rest_response)
+
+        result = self.client._get_qos_policy_group_by_name(qos_name)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/qos/policies/', 'get', query={'name': qos_name})
+        self.assertEqual(qos_rest_records, result)
+
+    @ddt.data(True, False)
+    def test__qos_spec_to_api_args(self, is_adaptive):
+        policy_spec = copy.deepcopy(fake.QOS_POLICY_GROUP_SPEC)
+        expected_args = fake.QOS_POLICY_GROUP_API_ARGS_REST
+        if is_adaptive:
+            policy_spec = fake.ADAPTIVE_QOS_SPEC
+            expected_args = fake.ADAPTIVE_QOS_API_ARGS_REST
+
+        result = self.client._qos_spec_to_api_args(
+            policy_spec, is_adaptive, vserver=fake.VSERVER_NAME)
+
+        self.assertEqual(expected_args, result)
+
+    def test__qos_spec_to_api_args_bps(self):
+        policy_spec = copy.deepcopy(fake.QOS_POLICY_GROUP_SPEC_BPS)
+        expected_args = fake.QOS_POLICY_GROUP_API_ARGS_REST_BPS
+
+        result = self.client._qos_spec_to_api_args(
+            policy_spec, False, vserver=fake.VSERVER_NAME)
+
+        self.assertEqual(expected_args, result)
+
+    @ddt.data('100IOPS', '100iops', '100B/s', '100b/s')
+    def test__sanitize_qos_spec_value(self, value):
+        result = self.client._sanitize_qos_spec_value(value)
+
+        self.assertEqual(100, result)
+
+    @ddt.data(True, False)
+    def test__create_qos_policy_group(self, is_adaptive):
+        self.client.vserver = fake.VSERVER_NAME
+        policy_spec = fake.QOS_POLICY_GROUP_SPEC
+        body_args = fake.QOS_POLICY_GROUP_API_ARGS_REST
+        if is_adaptive:
+            policy_spec = fake.ADAPTIVE_QOS_SPEC
+            body_args = fake.ADAPTIVE_QOS_API_ARGS_REST
+
+        self.mock_object(self.client, '_qos_spec_to_api_args',
+                         return_value=body_args)
+        self.mock_object(self.client, 'send_request')
+
+        self.client._create_qos_policy_group(policy_spec, is_adaptive)
+
+        self.client._qos_spec_to_api_args.assert_called_once_with(
+            policy_spec, is_adaptive, vserver=fake.VSERVER_NAME)
+        self.client.send_request.assert_called_once_with(
+            '/storage/qos/policies/', 'post', body=body_args,
+            enable_tunneling=False)
+
+    @ddt.data((False, False), (False, True), (True, False), (True, True))
+    @ddt.unpack
+    def test__modify_qos_policy_group(self, is_adaptive, same_name):
+        self.client.vserver = fake.VSERVER_NAME
+        policy_spec = fake.QOS_POLICY_GROUP_SPEC
+        body_args = copy.deepcopy(fake.QOS_POLICY_GROUP_API_ARGS_REST)
+        if is_adaptive:
+            policy_spec = fake.ADAPTIVE_QOS_SPEC
+            body_args = copy.deepcopy(fake.ADAPTIVE_QOS_API_ARGS_REST)
+
+        expected_body_args = copy.deepcopy(body_args)
+        qos_group_item = copy.deepcopy(
+            fake.QOS_POLICY_BY_NAME_RESPONSE_REST['records'][0])
+        if same_name:
+            qos_group_item['name'] = policy_spec['policy_name']
+            expected_body_args.pop('name')
+
+        self.mock_object(self.client, '_qos_spec_to_api_args',
+                         return_value=body_args)
+        self.mock_object(self.client, 'send_request')
+
+        self.client._modify_qos_policy_group(
+            policy_spec, is_adaptive, qos_group_item)
+
+        self.client._qos_spec_to_api_args.assert_called_once_with(
+            policy_spec, is_adaptive)
+        self.client.send_request.assert_called_once_with(
+            f'/storage/qos/policies/{qos_group_item["uuid"]}', 'patch',
+            body=expected_body_args, enable_tunneling=False)
+
+    def test_get_vol_by_junc_vserver(self):
+        api_response = fake_client.VOLUME_LIST_SIMPLE_RESPONSE_REST
+        volume_response = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        file_path = f'/vol/{fake_client.VOLUME_NAMES[0]}/cinder-vol'
+
+        self.mock_object(self.client, 'send_request',
+                         return_value=api_response)
+        self.mock_object(self.client, '_get_unique_volume',
+                         return_value=volume_response)
+
+        result = self.client.get_vol_by_junc_vserver(
+            fake_client.VOLUME_VSERVER_NAME, file_path)
+
+        query = {
+            'type': 'rw',
+            'style': 'flex*',
+            'is_svm_root': 'false',
+            'error_state.is_inconsistent': 'false',
+            'state': 'online',
+            'nas.path': file_path,
+            'svm.name': fake_client.VOLUME_VSERVER_NAME,
+            'fields': 'name,style'
+        }
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/volumes/', 'get', query=query)
+        self.client._get_unique_volume.assert_called_once_with(
+            api_response["records"])
+
+        self.assertEqual(volume_response['name'], result)
+
+    def test_file_assign_qos(self):
+        volume = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_REST
+        self.mock_object(
+            self.client, '_get_volume_by_args',
+            return_value=volume)
+        self.mock_object(self.client, 'send_request')
+
+        self.client.file_assign_qos(
+            volume['name'], fake.QOS_POLICY_GROUP_NAME, True, fake.VOLUME_NAME)
+
+        self.client._get_volume_by_args.assert_called_once_with(volume['name'])
+        body = {'qos_policy.name': fake.QOS_POLICY_GROUP_NAME}
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{volume["uuid"]}/files/{fake.VOLUME_NAME}',
+            'patch', body=body, enable_tunneling=False)
+
+    @ddt.data(None, {})
+    def test_mark_qos_policy_group_for_deletion_invalid_policy(self,
+                                                               policy_info):
+        self.mock_object(self.client, '_rename_qos_policy_group')
+        self.mock_object(self.client, 'remove_unused_qos_policy_groups')
+
+        self.client.mark_qos_policy_group_for_deletion(policy_info, False)
+
+        self.client._rename_qos_policy_group.assert_not_called()
+        if policy_info is None:
+            self.client.remove_unused_qos_policy_groups.assert_not_called()
+        else:
+            (self.client.remove_unused_qos_policy_groups
+             .assert_called_once_with())
+
+    @ddt.data((False, False), (False, True), (True, False), (True, True))
+    @ddt.unpack
+    def test_mark_qos_policy_group_for_deletion(self, is_adaptive, has_error):
+        policy_info = fake.QOS_POLICY_GROUP_INFO
+        if is_adaptive:
+            policy_info = fake.ADAPTIVE_QOS_POLICY_GROUP_INFO
+        current_name = policy_info['spec']['policy_name']
+        deleted_name = client_base.DELETED_PREFIX + current_name
+
+        self.mock_object(self.client, 'remove_unused_qos_policy_groups')
+        if has_error:
+            self.mock_object(self.client, '_rename_qos_policy_group',
+                             side_effect=self._mock_api_error())
+        else:
+            self.mock_object(self.client, '_rename_qos_policy_group')
+
+        self.client.mark_qos_policy_group_for_deletion(
+            policy_info, is_adaptive)
+
+        self.client._rename_qos_policy_group.assert_called_once_with(
+            current_name, deleted_name)
+        self.client.remove_unused_qos_policy_groups.assert_called_once_with()
+
+    def test__rename_qos_policy_group(self):
+        self.mock_object(self.client, 'send_request')
+        new_policy_name = 'fake_new_policy'
+
+        self.client._rename_qos_policy_group(fake.QOS_POLICY_GROUP_NAME,
+                                             new_policy_name)
+
+        body = {'name': new_policy_name}
+        query = {'name': fake.QOS_POLICY_GROUP_NAME}
+        self.client.send_request.assert_called_once_with(
+            '/storage/qos/policies/', 'patch', body=body, query=query,
+            enable_tunneling=False)
+
+    def test_remove_unused_qos_policy_groups(self):
+        deleted_preffix = f'{client_base.DELETED_PREFIX}*'
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.remove_unused_qos_policy_groups()
+
+        query = {'name': deleted_preffix}
+        self.client.send_request.assert_called_once_with(
+            '/storage/qos/policies', 'delete', query=query)
+
+    def test_create_lun(self):
+        metadata = copy.deepcopy(fake_client.LUN_GET_ITER_RESULT[0])
+        path = f'/vol/{fake.VOLUME_NAME}/{fake.LUN_NAME}'
+        size = 2048
+        initial_size = size
+        qos_policy_group_is_adaptive = False
+
+        self.mock_object(self.client, '_validate_qos_policy_group')
+        self.mock_object(self.client, 'send_request')
+
+        body = {
+            'name': path,
+            'space.size': str(initial_size),
+            'os_type': metadata['OsType'],
+            'space.guarantee.requested': metadata['SpaceReserved'],
+            'qos_policy.name': fake.QOS_POLICY_GROUP_NAME
+        }
+
+        self.client.create_lun(
+            fake.VOLUME_NAME, fake.LUN_NAME, size, metadata,
+            qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME,
+            qos_policy_group_is_adaptive=qos_policy_group_is_adaptive)
+
+        self.client._validate_qos_policy_group.assert_called_once_with(
+            qos_policy_group_is_adaptive)
+        self.client.send_request.assert_called_once_with(
+            '/storage/luns', 'post', body=body)
+
+    def test_do_direct_resize(self):
+        lun_path = f'/vol/{fake_client.VOLUME_NAMES[0]}/cinder-lun'
+        new_size_bytes = '1073741824'
+        body = {'name': lun_path, 'space.size': new_size_bytes}
+
+        self.mock_object(self.client, '_lun_update_by_path')
+
+        self.client.do_direct_resize(lun_path, new_size_bytes)
+
+        self.client._lun_update_by_path.assert_called_once_with(lun_path, body)
+
+    @ddt.data(True, False)
+    def test__get_lun_by_path(self, is_empty):
+        lun_path = f'/vol/{fake_client.VOLUME_NAMES[0]}/cinder-lun'
+        lun_response = fake_client.LUN_GET_ITER_REST
+        lun_records = fake_client.LUN_GET_ITER_REST['records']
+        if is_empty:
+            lun_response = {}
+            lun_records = []
+
+        self.mock_object(self.client, 'send_request',
+                         return_value=lun_response)
+
+        result = self.client._get_lun_by_path(lun_path)
+
+        query = {'name': lun_path}
+        self.client.send_request.assert_called_once_with(
+            '/storage/luns', 'get', query=query)
+        self.assertEqual(result, lun_records)
+
+    @ddt.data(True, False)
+    def test__get_first_lun_by_path(self, is_empty):
+        lun_path = f'/vol/{fake_client.VOLUME_NAMES[0]}/cinder-lun'
+        lun_records = fake_client.LUN_GET_ITER_REST['records']
+        lun_item = lun_records[0]
+        if is_empty:
+            lun_records = []
+
+        self.mock_object(self.client, '_get_lun_by_path',
+                         return_value=lun_records)
+
+        result = self.client._get_first_lun_by_path(lun_path)
+
+        self.client._get_lun_by_path.assert_called_once_with(lun_path)
+        if is_empty:
+            self.assertTrue(result is None)
+        else:
+            self.assertEqual(result, lun_item)
+
+    def test__lun_update_by_path(self):
+        lun_path = f'/vol/{fake_client.VOLUME_NAMES[0]}/cinder-lun'
+        lun_item = fake_client.LUN_GET_ITER_REST['records'][0]
+        new_size_bytes = '1073741824'
+        body = {
+            'name': lun_path,
+            'space.guarantee.requested': 'True',
+            'space.size': new_size_bytes
+        }
+
+        self.mock_object(self.client, '_get_first_lun_by_path',
+                         return_value=lun_item)
+        self.mock_object(self.client, 'send_request')
+
+        self.client._lun_update_by_path(lun_path, body)
+
+        self.client._get_first_lun_by_path.assert_called_once_with(lun_path)
+        self.client.send_request.assert_called_once_with(
+            f'/storage/luns/{lun_item["uuid"]}', 'patch', body=body)
+
+    def test__lun_update_by_path_not_found(self):
+        lun_path = f'/vol/{fake_client.VOLUME_NAMES[0]}/cinder-lun'
+        lun_item = None
+        new_size_bytes = '1073741824'
+        body = {
+            'name': lun_path,
+            'space.guarantee.requested': 'True',
+            'space.size': new_size_bytes
+        }
+
+        self.mock_object(self.client, '_get_first_lun_by_path',
+                         return_value=lun_item)
+        self.mock_object(self.client, 'send_request')
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client._lun_update_by_path,
+            lun_path,
+            body
+        )
+
+        self.client._get_first_lun_by_path.assert_called_once_with(lun_path)
+        self.client.send_request.assert_not_called()
+
+    def test__validate_qos_policy_group_unsupported_qos(self):
+        is_adaptive = True
+        self.client.features.ADAPTIVE_QOS = False
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client._validate_qos_policy_group,
+            is_adaptive
+        )
+
+    def test__validate_qos_policy_group_no_spec(self):
+        is_adaptive = True
+        self.client.features.ADAPTIVE_QOS = True
+
+        result = self.client._validate_qos_policy_group(is_adaptive)
+
+        self.assertTrue(result is None)
+
+    def test__validate_qos_policy_group_unsupported_feature(self):
+        is_adaptive = True
+        self.client.features.ADAPTIVE_QOS = True
+        spec = {
+            'min_throughput': fake.MIN_IOPS_REST
+        }
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client._validate_qos_policy_group,
+            is_adaptive,
+            spec=spec,
+            qos_min_support=False
+        )
+
+    @ddt.data(True, False)
+    def test__validate_qos_policy_group(self, is_adaptive):
+        self.client.features.ADAPTIVE_QOS = True
+        spec = {
+            'max_throughput': fake.MAX_IOPS_REST,
+            'min_throughput': fake.MIN_IOPS_REST
+        }
+
+        self.client._validate_qos_policy_group(
+            is_adaptive, spec=spec, qos_min_support=True)
+
+    def test_delete_file(self):
+        """Delete file at path."""
+        path_to_file = fake.VOLUME_PATH
+        volume_response = fake_client.VOLUME_LIST_SIMPLE_RESPONSE_REST
+        volume_item = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+
+        volume_name = path_to_file.split('/')[2]
+        relative_path = '/'.join(path_to_file.split('/')[3:])
+
+        query = {
+            'type': 'rw',
+            'style': 'flex*',  # Match both 'flexvol' and 'flexgroup'
+            'is_svm_root': 'false',
+            'error_state.is_inconsistent': 'false',
+            'state': 'online',
+            'name': volume_name,
+            'fields': 'name,style'
+        }
+        self.mock_object(self.client, 'send_request',
+                         return_value=volume_response)
+        self.mock_object(self.client, '_get_unique_volume',
+                         return_value=volume_item)
+        self.client.delete_file(path_to_file)
+
+        relative_path = relative_path.replace('/', '%2F').replace('.', '%2E')
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/storage/volumes/', 'get', query=query),
+            mock.call(f'/storage/volumes/{volume_item["uuid"]}'
+                      + f'/files/{relative_path}', 'delete')
+        ])
+
+        self.client._get_unique_volume.assert_called_once_with(
+            volume_response['records'])
+
+    def test_get_igroup_by_initiators_none_found(self):
+        initiator = 'initiator'
+        expected_response = fake_client.NO_RECORDS_RESPONSE_REST
+
+        self.mock_object(self.client, 'send_request',
+                         return_value=expected_response)
+
+        igroup_list = self.client.get_igroup_by_initiators([initiator])
+
+        self.assertEqual([], igroup_list)
+
+    def test_get_igroup_by_initiators(self):
+        initiators = ['iqn.1993-08.org.fake:01:5b67769f5c5e']
+        expected_igroup = [{
+            'initiator-group-os-type': 'linux',
+            'initiator-group-type': 'iscsi',
+            'initiator-group-name':
+                'openstack-e6bf1584-bfb3-4cdb-950d-525bf6f26b53'
+        }]
+
+        expected_query = {
+            'svm.name': fake_client.VOLUME_VSERVER_NAME,
+            'initiators.name': ' '.join(initiators),
+            'fields': 'name,protocol,os_type'
+        }
+
+        self.mock_object(self.client, 'send_request',
+                         return_value=fake_client.IGROUP_GET_ITER_REST)
+
+        igroup_list = self.client.get_igroup_by_initiators(initiators)
+        self.client.send_request.assert_called_once_with(
+            '/protocols/san/igroups', 'get', query=expected_query)
+        self.assertEqual(expected_igroup, igroup_list)
+
+    def test_get_igroup_by_initiators_multiple(self):
+        initiators = ['iqn.1993-08.org.fake:01:5b67769f5c5e',
+                      'iqn.1993-08.org.fake:02:5b67769f5c5e']
+
+        expected_igroup = [{
+            'initiator-group-os-type': 'linux',
+            'initiator-group-type': 'iscsi',
+            'initiator-group-name':
+                'openstack-e6bf1584-bfb3-4cdb-950d-525bf6f26b53'
+        }]
+
+        expected_query = {
+            'svm.name': fake_client.VOLUME_VSERVER_NAME,
+            'initiators.name': ' '.join(initiators),
+            'fields': 'name,protocol,os_type'
+        }
+
+        self.mock_object(self.client, 'send_request',
+                         return_value=fake_client.IGROUP_GET_ITER_INITS_REST)
+
+        igroup_list = self.client.get_igroup_by_initiators(initiators)
+        self.client.send_request.assert_called_once_with(
+            '/protocols/san/igroups', 'get', query=expected_query)
+        self.assertEqual(expected_igroup, igroup_list)
+
+    def test_get_igroup_by_initiators_multiple_records(self):
+        initiators = ['iqn.1993-08.org.fake:01:5b67769f5c5e']
+        expected_element = {
+            'initiator-group-os-type': 'linux',
+            'initiator-group-type': 'iscsi',
+            'initiator-group-name':
+                'openstack-e6bf1584-bfb3-4cdb-950d-525bf6f26b53'
+        }
+        expected_igroup = [expected_element, expected_element]
+
+        self.mock_object(self.client, 'send_request',
+                         return_value=fake_client.IGROUP_GET_ITER_MULT_REST)
+
+        igroup_list = self.client.get_igroup_by_initiators(initiators)
+        self.assertEqual(expected_igroup, igroup_list)
+
+    def test_add_igroup_initiator(self):
+        igroup = 'fake_igroup'
+        initiator = 'fake_initator'
+
+        mock_return = fake_client.IGROUP_GET_ITER_REST
+        expected_uuid = fake_client.IGROUP_GET_ITER_REST['records'][0]['uuid']
+        mock_send_request = self.mock_object(self.client, 'send_request',
+                                             return_value = mock_return)
+
+        self.client.add_igroup_initiator(igroup, initiator)
+
+        expected_body = {
+            'name': initiator
+        }
+        mock_send_request.assert_has_calls([
+            mock.call('/protocols/san/igroups/' +
+                      expected_uuid + '/initiators',
+                      'post', body=expected_body)])
+
+    def test_create_igroup(self):
+        igroup = 'fake_igroup'
+        igroup_type = 'fake_type'
+        os_type = 'fake_os'
+
+        body = {
+            'name': igroup,
+            'protocol': igroup_type,
+            'os_type': os_type,
+        }
+
+        self.mock_object(self.client, 'send_request')
+        self.client.create_igroup(igroup, igroup_type, os_type)
+        self.client.send_request.assert_called_once_with(
+            '/protocols/san/igroups', 'post', body=body)
+
+    @ddt.data(None, 0, 4095)
+    def test_map_lun(self, lun_id):
+        fake_record = fake_client.GET_LUN_MAP_REST['records'][0]
+        path = fake_record['lun']['name']
+        igroup_name = fake_record['igroup']['name']
+
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.GET_LUN_MAP_REST)
+
+        result = self.client.map_lun(path, igroup_name, lun_id)
+
+        self.assertEqual(0, result)
+        expected_body = {
+            'lun.name': path,
+            'igroup.name': igroup_name,
+        }
+        if lun_id is not None:
+            expected_body['logical_unit_number'] = lun_id
+
+        mock_send_request.assert_has_calls([
+            mock.call('/protocols/san/lun-maps', 'post',
+                      body=expected_body, query={'return_records': 'true'})])
+
+    def test_get_lun_map(self):
+        fake_record = fake_client.GET_LUN_MAP_REST['records'][0]
+        path = fake_record['lun']['name']
+
+        expected_lun_map = [{
+            'initiator-group': fake_record['igroup']['name'],
+            'lun-id': fake_record['logical_unit_number'],
+            'vserver': fake_record['svm']['name'],
+        }]
+
+        expected_query = {
+            'lun.name': path,
+            'fields': 'igroup.name,logical_unit_number,svm.name',
+        }
+
+        self.mock_object(self.client, 'send_request',
+                         return_value=fake_client.GET_LUN_MAP_REST)
+
+        lun_map = self.client.get_lun_map(path)
+        self.assertEqual(observed=lun_map, expected=expected_lun_map)
+        self.client.send_request.assert_called_once_with(
+            '/protocols/san/lun-maps', 'get', query=expected_query)
+
+    def test_get_lun_map_no_luns_mapped(self):
+        fake_record = fake_client.GET_LUN_MAP_REST['records'][0]
+        path = fake_record['lun']['name']
+
+        expected_lun_map = []
+        expected_query = {
+            'lun.name': path,
+            'fields': 'igroup.name,logical_unit_number,svm.name',
+        }
+
+        self.mock_object(self.client, 'send_request',
+                         return_value = fake_client.NO_RECORDS_RESPONSE_REST)
+
+        lun_map = self.client.get_lun_map(path)
+        self.assertEqual(observed=lun_map, expected=expected_lun_map)
+        self.client.send_request.assert_called_once_with(
+            '/protocols/san/lun-maps', 'get', query=expected_query)
+
+    def test_get_fc_target_wwpns(self):
+        fake_record = fake_client.FC_INTERFACE_REST['records'][0]
+        expected_wwpns = [fake_record['wwpn']]
+        expected_query = {
+            'fields': 'wwpn'
+        }
+        self.mock_object(self.client, 'send_request',
+                         return_value = fake_client.FC_INTERFACE_REST)
+        wwpns = self.client.get_fc_target_wwpns()
+        self.assertEqual(observed=wwpns, expected=expected_wwpns)
+        self.client.send_request.assert_called_once_with(
+            '/network/fc/interfaces', 'get', query=expected_query)
+
+    def test_get_fc_target_wwpns_not_found(self):
+        expected_wwpns = []
+        expected_query = {
+            'fields': 'wwpn'
+        }
+        self.mock_object(self.client, 'send_request',
+                         return_value = fake_client.NO_RECORDS_RESPONSE_REST)
+        wwpns = self.client.get_fc_target_wwpns()
+        self.assertEqual(observed=wwpns, expected=expected_wwpns)
+        self.client.send_request.assert_called_once_with(
+            '/network/fc/interfaces', 'get', query=expected_query)
+
+    def test_unmap_lun(self):
+        get_uuid_response = fake_client.GET_LUN_MAP_REST
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[get_uuid_response, None])
+
+        self.client.unmap_lun(fake_client.LUN_NAME_PATH,
+                              fake_client.IGROUP_NAME)
+
+        query_uuid = {
+            'igroup.name': fake_client.IGROUP_NAME,
+            'lun.name': fake_client.LUN_NAME_PATH,
+            'fields': 'lun.uuid,igroup.uuid'
+        }
+
+        lun_uuid = get_uuid_response['records'][0]['lun']['uuid']
+        igroup_uuid = get_uuid_response['records'][0]['igroup']['uuid']
+
+        mock_send_request.assert_has_calls([
+            mock.call('/protocols/san/lun-maps', 'get', query=query_uuid),
+            mock.call(f'/protocols/san/lun-maps/{lun_uuid}/{igroup_uuid}',
+                      'delete'),
+        ])
+
+    def test_unmap_lun_with_api_error(self):
+        get_uuid_response = fake_client.GET_LUN_MAP_REST
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[get_uuid_response, netapp_api.NaApiError()])
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.unmap_lun,
+                          fake_client.LUN_NAME_PATH,
+                          fake_client.IGROUP_NAME)
+
+        query_uuid = {
+            'igroup.name': fake_client.IGROUP_NAME,
+            'lun.name': fake_client.LUN_NAME_PATH,
+            'fields': 'lun.uuid,igroup.uuid'
+        }
+
+        lun_uuid = get_uuid_response['records'][0]['lun']['uuid']
+        igroup_uuid = get_uuid_response['records'][0]['igroup']['uuid']
+
+        mock_send_request.assert_has_calls([
+            mock.call('/protocols/san/lun-maps', 'get', query=query_uuid),
+            mock.call(f'/protocols/san/lun-maps/{lun_uuid}/{igroup_uuid}',
+                      'delete'),
+        ])
+
+    def test_unmap_lun_invalid_input(self):
+        get_uuid_response = fake_client.NO_RECORDS_RESPONSE_REST
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[get_uuid_response,
+                         None])
+
+        self.client.unmap_lun(fake_client.LUN_NAME_PATH,
+                              fake_client.IGROUP_NAME)
+
+        query_uuid = {
+            'igroup.name': fake_client.IGROUP_NAME,
+            'lun.name': fake_client.LUN_NAME_PATH,
+            'fields': 'lun.uuid,igroup.uuid'
+        }
+
+        mock_send_request.assert_called_once_with(
+            '/protocols/san/lun-maps', 'get', query=query_uuid)
+
+    def test_unmap_lun_not_mapped_in_group(self):
+        get_uuid_response = fake_client.GET_LUN_MAP_REST
+
+        # Exception REST_NO_SUCH_LUN_MAP is handled inside the function
+        # and should not be re-raised
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[
+                get_uuid_response,
+                netapp_api.NaApiError(
+                    code=netapp_api.REST_NO_SUCH_LUN_MAP)])
+
+        self.client.unmap_lun(fake_client.LUN_NAME_PATH,
+                              fake_client.IGROUP_NAME)
+
+        query_uuid = {
+            'igroup.name': fake_client.IGROUP_NAME,
+            'lun.name': fake_client.LUN_NAME_PATH,
+            'fields': 'lun.uuid,igroup.uuid'
+        }
+
+        lun_uuid = get_uuid_response['records'][0]['lun']['uuid']
+        igroup_uuid = get_uuid_response['records'][0]['igroup']['uuid']
+
+        mock_send_request.assert_has_calls([
+            mock.call('/protocols/san/lun-maps', 'get', query=query_uuid),
+            mock.call(f'/protocols/san/lun-maps/{lun_uuid}/{igroup_uuid}',
+                      'delete'),
+        ])
+
+    def test_has_luns_mapped_to_initiators(self):
+        initiators = ['iqn.2005-03.org.open-iscsi:49ebe8a87d1']
+        api_response = fake_client.GET_LUN_MAPS
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', return_value=api_response)
+
+        self.assertTrue(self.client.has_luns_mapped_to_initiators(initiators))
+
+        query = {
+            'initiators.name': ' '.join(initiators),
+            'fields': 'lun_maps'
+        }
+
+        mock_send_request.assert_called_once_with(
+            '/protocols/san/igroups', 'get', query=query)
+
+    def test_has_luns_mapped_to_initiators_no_records(self):
+        initiators = ['iqn.2005-03.org.open-iscsi:49ebe8a87d1']
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', return_value=api_response)
+
+        self.assertFalse(self.client.has_luns_mapped_to_initiators(initiators))
+
+        query = {
+            'initiators.name': ' '.join(initiators),
+            'fields': 'lun_maps'
+        }
+
+        mock_send_request.assert_called_once_with(
+            '/protocols/san/igroups', 'get', query=query)
+
+    def test_has_luns_mapped_to_initiators_not_mapped(self):
+        initiators = ['iqn.2005-03.org.open-iscsi:49ebe8a87d1']
+        api_response = fake_client.GET_LUN_MAPS_NO_MAPS
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', return_value=api_response)
+
+        self.assertFalse(self.client.has_luns_mapped_to_initiators(initiators))
+
+        query = {
+            'initiators.name': ' '.join(initiators),
+            'fields': 'lun_maps'
+        }
+
+        mock_send_request.assert_called_once_with(
+            '/protocols/san/igroups', 'get', query=query)
+
+    def test_iscsi_service_details(self):
+        fake_record = fake_client.GET_ISCSI_SERVICE_DETAILS_REST['records'][0]
+        expected_iqn = fake_record['target']['name']
+        expected_query = {
+            'fields': 'target.name'
+        }
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.GET_ISCSI_SERVICE_DETAILS_REST)
+        iqn = self.client.get_iscsi_service_details()
+        self.assertEqual(expected_iqn, iqn)
+        mock_send_request.assert_called_once_with(
+            '/protocols/san/iscsi/services', 'get', query=expected_query)
+
+    def test_iscsi_service_details_not_found(self):
+        expected_iqn = None
+        expected_query = {
+            'fields': 'target.name'
+        }
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.NO_RECORDS_RESPONSE_REST)
+        iqn = self.client.get_iscsi_service_details()
+        self.assertEqual(expected_iqn, iqn)
+        mock_send_request.assert_called_once_with(
+            '/protocols/san/iscsi/services', 'get', query=expected_query)
+
+    def test_check_iscsi_initiator_exists(self):
+        fake_record = fake_client.CHECK_ISCSI_INITIATOR_REST['records'][0]
+        iqn = fake_record['initiator']
+        expected_query = {
+            'initiator': iqn
+        }
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.CHECK_ISCSI_INITIATOR_REST)
+        initiator_exists = self.client.check_iscsi_initiator_exists(iqn)
+        self.assertEqual(expected=True, observed=initiator_exists)
+        mock_send_request.assert_called_once_with(
+            '/protocols/san/iscsi/credentials', 'get',
+            query=expected_query)
+
+    def test_check_iscsi_initiator_exists_not_found(self):
+        fake_record = fake_client.CHECK_ISCSI_INITIATOR_REST['records'][0]
+        iqn = fake_record['initiator']
+        expected_query = {
+            'initiator': iqn
+        }
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.NO_RECORDS_RESPONSE_REST)
+        initiator_exists = self.client.check_iscsi_initiator_exists(iqn)
+        self.assertEqual(expected=False, observed=initiator_exists)
+        mock_send_request.assert_called_once_with(
+            '/protocols/san/iscsi/credentials', 'get',
+            query=expected_query)
+
+    def test_get_iscsi_target_details(self):
+        fake_record = fake_client.GET_ISCSI_TARGET_DETAILS_REST['records'][0]
+        expected_details = [{
+            'address': fake_record['ip']['address'],
+            'port': 3260,
+            'tpgroup-tag': None,
+            'interface-enabled': fake_record['enabled'],
+        }]
+        expected_query = {
+            'services': 'data_iscsi',
+            'fields': 'ip.address,enabled'
+        }
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.GET_ISCSI_TARGET_DETAILS_REST)
+        details = self.client.get_iscsi_target_details()
+        self.assertEqual(expected_details, details)
+        mock_send_request.assert_called_once_with('/network/ip/interfaces',
+                                                  'get', query=expected_query)
+
+    def test_get_iscsi_target_details_no_details(self):
+        expected_details = []
+        expected_query = {
+            'services': 'data_iscsi',
+            'fields': 'ip.address,enabled'
+        }
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.NO_RECORDS_RESPONSE_REST)
+        details = self.client.get_iscsi_target_details()
+        self.assertEqual(expected_details, details)
+        mock_send_request.assert_called_once_with('/network/ip/interfaces',
+                                                  'get', query=expected_query)
+
+    def test_move_lun(self):
+        fake_cur_path = '/vol/fake_vol/fake_lun_cur'
+        fake_new_path = '/vol/fake_vol/fake_lun_new'
+        expected_query = {
+            'svm.name': self.vserver,
+            'name': fake_cur_path,
+        }
+        expected_body = {
+            'name': fake_new_path,
+        }
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        self.client.move_lun(fake_cur_path, fake_new_path)
+        mock_send_request.assert_called_once_with(
+            '/storage/luns/', 'patch', query=expected_query,
+            body=expected_body)
+
+    @ddt.data(True, False)
+    def test_clone_file_snapshot(self, overwrite_dest):
+        fake_volume = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        self.client.features.BACKUP_CLONE_PARAM = True
+
+        fake_name = fake.NFS_VOLUME['name']
+        fake_new_name = fake.SNAPSHOT_NAME
+        api_version = (1, 19)
+
+        expected_body = {
+            'volume': {
+                'uuid': fake_volume['uuid'],
+                'name': fake_volume['name']
+            },
+            'source_path': fake_name,
+            'destination_path': fake_new_name,
+            'is_backup': True
+        }
+        if overwrite_dest:
+            api_version = (1, 20)
+            expected_body['overwrite_destination'] = True
+
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_get_volume_by_args',
+                         return_value=fake_volume)
+        self.mock_object(self.client.connection, 'get_api_version',
+                         return_value=api_version)
+
+        self.client.clone_file(
+            fake_volume['name'], fake_name, fake_new_name, fake.VSERVER_NAME,
+            is_snapshot=True, dest_exists=overwrite_dest)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/storage/file/clone', 'post', body=expected_body),
+        ])
+
+    def test_clone_lun(self):
+        self.client.vserver = fake.VSERVER_NAME
+
+        expected_body = {
+            'svm': {
+                'name': fake.VSERVER_NAME
+            },
+            'name': f'/vol/{fake.VOLUME_NAME}/{fake.SNAPSHOT_NAME}',
+            'clone': {
+                'source': {
+                    'name': f'/vol/{fake.VOLUME_NAME}/{fake.LUN_NAME}',
+                }
+            },
+            'space': {
+                'guarantee': {
+                    'requested': True,
+                }
+            },
+            'qos_policy': {
+                'name': fake.QOS_POLICY_GROUP_NAME,
+            }
+        }
+
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', return_value=None)
+        mock_validate_policy = self.mock_object(
+            self.client, '_validate_qos_policy_group')
+
+        self.client.clone_lun(
+            volume=fake.VOLUME_NAME, name=fake.LUN_NAME,
+            new_name=fake.SNAPSHOT_NAME,
+            qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME,
+            is_snapshot=True)
+
+        mock_validate_policy.assert_called_once_with(False)
+        mock_send_request.assert_called_once_with(
+            '/storage/luns', 'post', body=expected_body)
+
+    def test_destroy_lun(self, force=True):
+        path = f'/vol/{fake_client.VOLUME_NAME}/{fake_client.FILE_NAME}'
+
+        query = {}
+        query['name'] = path
+        query['svm'] = fake_client.VOLUME_VSERVER_NAME
+        if force:
+            query['allow_delete_while_mapped'] = 'true'
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.destroy_lun(path)
+
+        self.client.send_request.assert_called_once_with('/storage/luns/',
+                                                         'delete', query=query)
+
+    def test_get_flexvol_capacity(self, ):
+
+        api_response = fake_client.VOLUME_GET_ITER_CAPACITY_RESPONSE_REST
+        volume_response = api_response['records'][0]
+        mock_get_unique_vol = self.mock_object(
+            self.client, '_get_volume_by_args', return_value=volume_response)
+
+        capacity = self.client.get_flexvol_capacity(
+            flexvol_path=fake.VOLUME_PATH, flexvol_name=fake.VOLUME_NAME)
+
+        mock_get_unique_vol.assert_called_once_with(
+            vol_name=fake.VOLUME_NAME, vol_path=fake.VOLUME_PATH,
+            fields='name,space.available,space.afs_total')
+        self.assertEqual(float(fake_client.VOLUME_SIZE_TOTAL),
+                         capacity['size-total'])
+        self.assertEqual(float(fake_client.VOLUME_SIZE_AVAILABLE),
+                         capacity['size-available'])
+
+    def test_get_flexvol_capacity_not_found(self):
+
+        self.mock_object(
+            self.client, '_get_volume_by_args',
+            side_effect=exception.VolumeBackendAPIException(data="fake"))
+
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          self.client.get_flexvol_capacity,
+                          flexvol_path='fake_path')
+
+    def test_check_api_permissions(self):
+
+        mock_log = self.mock_object(client_cmode_rest.LOG, 'warning')
+        self.mock_object(self.client, 'check_cluster_api', return_value=True)
+
+        self.client.check_api_permissions()
+
+        self.client.check_cluster_api.assert_has_calls(
+            [mock.call(key) for key in client_cmode_rest.SSC_API_MAP.keys()])
+        self.assertEqual(0, mock_log.call_count)
+
+    def test_check_api_permissions_failed_ssc_apis(self):
+
+        def check_cluster_api(api):
+            if api != '/storage/volumes':
+                return False
+            return True
+
+        self.mock_object(self.client, 'check_cluster_api',
+                         side_effect=check_cluster_api)
+
+        mock_log = self.mock_object(client_cmode_rest.LOG, 'warning')
+
+        self.client.check_api_permissions()
+
+        self.assertEqual(1, mock_log.call_count)
+
+    def test_check_api_permissions_failed_volume_api(self):
+
+        def check_cluster_api(api):
+            if api == '/storage/volumes':
+                return False
+            return True
+
+        self.mock_object(self.client, 'check_cluster_api',
+                         side_effect=check_cluster_api)
+
+        mock_log = self.mock_object(client_cmode_rest.LOG, 'warning')
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.check_api_permissions)
+
+        self.assertEqual(0, mock_log.call_count)
+
+    def test_check_cluster_api(self):
+
+        endpoint_api = '/storage/volumes'
+        endpoint_request = '/storage/volumes?return_records=false'
+        mock_send_request = self.mock_object(self.client,
+                                             'send_request',
+                                             return_value=True)
+
+        result = self.client.check_cluster_api(endpoint_api)
+
+        mock_send_request.assert_has_calls([mock.call(endpoint_request, 'get',
+                                            enable_tunneling=False)])
+        self.assertTrue(result)
+
+    def test_check_cluster_api_error(self):
+
+        endpoint_api = '/storage/volumes'
+        api_error = netapp_api.NaApiError(code=netapp_api.REST_UNAUTHORIZED)
+
+        self.mock_object(self.client, 'send_request',
+                         side_effect=[api_error])
+
+        result = self.client.check_cluster_api(endpoint_api)
+
+        self.assertFalse(result)

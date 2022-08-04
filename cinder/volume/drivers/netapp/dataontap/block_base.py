@@ -410,12 +410,11 @@ class NetAppBlockStorageLibrary(object):
     def _extract_lun_info(self, lun):
         """Extracts the LUNs from API and populates the LUN table."""
 
-        meta_dict = self._create_lun_meta(lun)
-        path = lun.get_child_content('path')
+        path = lun['Path']
         (_rest, _splitter, name) = path.rpartition('/')
-        handle = self._create_lun_handle(meta_dict)
-        size = lun.get_child_content('size')
-        return NetAppLun(handle, name, size, meta_dict)
+        handle = self._create_lun_handle(lun)
+        size = lun['Size']
+        return NetAppLun(handle, name, size, lun)
 
     def _extract_and_populate_luns(self, api_luns):
         """Extracts the LUNs from API and populates the LUN table."""
@@ -546,9 +545,6 @@ class NetAppBlockStorageLibrary(object):
         except Exception as e:
             LOG.error("Error getting LUN attribute. Exception: %s", e)
         return None
-
-    def _create_lun_meta(self, lun):
-        raise NotImplementedError()
 
     def _get_fc_target_wwpns(self, include_partner=True):
         raise NotImplementedError()
@@ -725,8 +721,8 @@ class NetAppBlockStorageLibrary(object):
             msg = _('Failure getting LUN info for %s.')
             raise exception.VolumeBackendAPIException(data=msg % seg[-1])
         lun_info = lun_infos[-1]
-        bs = int(lun_info.get_child_content('block-size'))
-        ls = int(lun_info.get_child_content('size'))
+        bs = int(lun_info['BlockSize'])
+        ls = int(lun_info['Size'])
         block_count = ls / bs
         return block_count
 

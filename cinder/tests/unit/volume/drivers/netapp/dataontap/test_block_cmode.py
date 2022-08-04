@@ -19,7 +19,6 @@
 from unittest import mock
 
 import ddt
-import six
 
 from cinder import exception
 from cinder.objects import fields
@@ -279,10 +278,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library._get_lun_attr = mock.Mock(return_value={'Volume':
                                                              'fakeLUN'})
         self.library.zapi_client = mock.Mock()
-        self.library.zapi_client.get_lun_by_args.return_value = [
-            mock.Mock(spec=netapp_api.NaElement)]
-        lun = fake.FAKE_LUN
-        self.library._get_lun_by_args = mock.Mock(return_value=[lun])
+        lun = fake.FAKE_LUN_GET_ITER_RESULT
+        self.library.zapi_client.get_lun_by_args.return_value = lun
         self.library._add_lun_to_table = mock.Mock()
 
         self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false')
@@ -302,10 +299,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library._get_lun_attr = mock.Mock(return_value={'Volume':
                                                              'fakeLUN'})
         self.library.zapi_client = mock.Mock()
-        self.library.zapi_client.get_lun_by_args.return_value = [
-            mock.Mock(spec=netapp_api.NaElement)]
-        lun = fake.FAKE_LUN
-        self.library._get_lun_by_args = mock.Mock(return_value=[lun])
+        lun = fake.FAKE_LUN_GET_ITER_RESULT
+        self.library.zapi_client.get_lun_by_args.return_value = lun
         self.library._add_lun_to_table = mock.Mock()
 
         self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false',
@@ -326,10 +321,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                                                              'fakeLUN'})
         self.library.zapi_client = mock.Mock()
         self.library.lun_space_reservation = 'false'
-        self.library.zapi_client.get_lun_by_args.return_value = [
-            mock.Mock(spec=netapp_api.NaElement)]
-        lun = fake.FAKE_LUN
-        self.library._get_lun_by_args = mock.Mock(return_value=[lun])
+        lun = fake.FAKE_LUN_GET_ITER_RESULT
+        self.library.zapi_client.get_lun_by_args.return_value = lun
         self.library._add_lun_to_table = mock.Mock()
 
         self.library._clone_lun('fakeLUN', 'newFakeLUN', is_snapshot=True)
@@ -1537,27 +1530,22 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                                        fake.LUN_WITH_METADATA['metadata'])
         new_snap_name = 'new-%s' % fake.SNAPSHOT['name']
         snapshot_path = lun_obj.metadata['Path']
-        flexvol_name = lun_obj.metadata['Volume']
         block_count = 40960
 
         mock__get_lun_from_table = self.mock_object(
             self.library, '_get_lun_from_table', return_value=lun_obj)
         mock__get_lun_block_count = self.mock_object(
             self.library, '_get_lun_block_count', return_value=block_count)
-        mock_create_lun = self.mock_object(self.library.zapi_client,
-                                           'create_lun')
         mock__clone_lun = self.mock_object(self.library, '_clone_lun')
 
         self.library._clone_snapshot(fake.SNAPSHOT['name'])
 
         mock__get_lun_from_table.assert_called_once_with(fake.SNAPSHOT['name'])
         mock__get_lun_block_count.assert_called_once_with(snapshot_path)
-        mock_create_lun.assert_called_once_with(flexvol_name, new_snap_name,
-                                                six.text_type(lun_obj.size),
-                                                lun_obj.metadata)
         mock__clone_lun.assert_called_once_with(fake.SNAPSHOT['name'],
                                                 new_snap_name,
-                                                block_count=block_count)
+                                                space_reserved='false',
+                                                is_snapshot=True)
 
     def test__clone_snapshot_invalid_block_count(self):
         lun_obj = block_base.NetAppLun(fake.LUN_WITH_METADATA['handle'],
@@ -1589,8 +1577,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             self.library, '_get_lun_from_table', return_value=lun_obj)
         mock__get_lun_block_count = self.mock_object(
             self.library, '_get_lun_block_count', return_value=block_count)
-        mock_create_lun = self.mock_object(self.library.zapi_client,
-                                           'create_lun')
         side_effect = exception.VolumeBackendAPIException(data='data')
         mock__clone_lun = self.mock_object(self.library, '_clone_lun',
                                            side_effect=side_effect)
@@ -1603,12 +1589,10 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         mock__get_lun_from_table.assert_called_once_with(fake.SNAPSHOT['name'])
         mock__get_lun_block_count.assert_called_once_with(snapshot_path)
-        mock_create_lun.assert_called_once_with(flexvol_name, new_snap_name,
-                                                six.text_type(lun_obj.size),
-                                                lun_obj.metadata)
         mock__clone_lun.assert_called_once_with(fake.SNAPSHOT['name'],
                                                 new_snap_name,
-                                                block_count=block_count)
+                                                space_reserved='false',
+                                                is_snapshot=True)
         mock_destroy_lun.assert_called_once_with(new_lun_path)
 
     def test__swap_luns(self):

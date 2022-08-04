@@ -275,8 +275,9 @@ IGROUP1 = {'initiator-group-os-type': 'linux',
 QOS_SPECS = {}
 EXTRA_SPECS = {}
 MAX_THROUGHPUT = '21734278B/s'
-MIN_IOPS = '256IOPS'
-MAX_IOPS = '512IOPS'
+MIN_IOPS = '256iops'
+MAX_IOPS = '512iops'
+MAX_BPS = '1000000B/s'
 QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
 
 QOS_POLICY_GROUP_INFO_LEGACY = {
@@ -287,6 +288,11 @@ QOS_POLICY_GROUP_INFO_LEGACY = {
 QOS_POLICY_GROUP_SPEC = {
     'min_throughput': MIN_IOPS,
     'max_throughput': MAX_IOPS,
+    'policy_name': QOS_POLICY_GROUP_NAME,
+}
+
+QOS_POLICY_GROUP_SPEC_BPS = {
+    'max_throughput': MAX_BPS,
     'policy_name': QOS_POLICY_GROUP_NAME,
 }
 
@@ -416,6 +422,19 @@ FAKE_LUN = netapp_api.NaElement.create_node_with_children(
        'uuid': 'cec1f3d7-3d41-11e2-9cf4-123478563412',
        'volume': 'fakeLUN',
        'vserver': 'fake_vserver'})
+
+FAKE_LUN_GET_ITER_RESULT = [
+    {
+        'Vserver': 'fake_vserver',
+        'Volume': 'fake_volume',
+        'Size': 123,
+        'Qtree': 'fake_qtree',
+        'Path': 'fake_path',
+        'OsType': 'fake_os',
+        'SpaceReserved': 'true',
+        'UUID': 'fake-uuid',
+    },
+]
 
 CG_VOLUME_NAME = 'fake_cg_volume'
 CG_GROUP_NAME = 'fake_consistency_group'
@@ -740,12 +759,219 @@ def get_fake_net_interface_get_iter_response():
 
 
 def get_fake_ifs():
-    list_of_ifs = [
-        etree.XML("""<net-interface-info>
-        <address>FAKE_IP</address></net-interface-info>"""),
-        etree.XML("""<net-interface-info>
-        <address>FAKE_IP2</address></net-interface-info>"""),
-        etree.XML("""<net-interface-info>
-        <address>FAKE_IP3</address></net-interface-info>"""),
-    ]
-    return [netapp_api.NaElement(el) for el in list_of_ifs]
+    return [{'vserver': VSERVER_NAME}]
+
+
+AFF_SYSTEM_NODE_GET_ITER_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "9eff6c76-fc13-11ea-8799-525400",
+            "name": "aff-node1",
+            "model": "AFFA400",
+            "is_all_flash_optimized": True,
+            "is_all_flash_select_optimized": False,
+            "_links": {
+                "self": {
+                    "href": "/api/cluster/nodes/9eff6c76-fc13-11ea-8799-525400"
+                }
+            }
+        },
+        {
+            "uuid": "9eff6c76-fc13-11ea-8799-52540006bba9",
+            "name": "aff-node2",
+            "model": "AFFA400",
+            "is_all_flash_optimized": True,
+            "is_all_flash_select_optimized": False,
+            "_links": {
+                "self": {
+                    "href": "/api/cluster/nodes/9eff6c76-fc13-11ea-8799-525400"
+                }
+            }
+        }
+    ],
+    "num_records": 2,
+    "_links": {
+        "self": {
+            "href": "/api/cluster/nodes?fields=model,name,"
+                    "is_all_flash_optimized,is_all_flash_select_optimized"
+        }
+    }
+}
+
+FAS_SYSTEM_NODE_GET_ITER_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "9eff6c76-fc13-11ea-8799-52540006bba9",
+            "name": "fas-node1",
+            "model": "FAS2554",
+            "is_all_flash_optimized": False,
+            "is_all_flash_select_optimized": False,
+            "_links": {
+                "self": {
+                    "href": "/api/cluster/nodes/9eff6c76-fc13-11ea-8799-525400"
+                }
+            }
+        },
+        {
+            "uuid": "9eff6c76-fc13-11ea-8799-52540006bba9",
+            "name": "fas-node2",
+            "model": "FAS2554",
+            "is_all_flash_optimized": False,
+            "is_all_flash_select_optimized": False,
+            "_links": {
+                "self": {
+                    "href": "/api/cluster/nodes/9eff6c76-fc13-11ea-8799-525400"
+                }
+            }
+        }
+    ],
+    "num_records": 2,
+    "_links": {
+        "self": {
+            "href": "/api/cluster/nodes?fields=model,name,"
+                    "is_all_flash_optimized,is_all_flash_select_optimized"
+        }
+    }
+}
+
+HYBRID_SYSTEM_NODE_GET_ITER_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "9eff6c76-fc13-11ea-8799-52540006bba9",
+            "name": "select-node",
+            "model": "FDvM300",
+            "is_all_flash_optimized": False,
+            "is_all_flash_select_optimized": True,
+            "_links": {
+                "self": {
+                    "href": "/api/cluster/nodes/9eff6c76-fc13-11ea-8799-525400"
+                }
+            }
+        },
+        {
+            "uuid": "9eff6c76-fc13-11ea-8799-52540006bba9",
+            "name": "c190-node",
+            "model": "AFF-C190",
+            "is_all_flash_optimized": True,
+            "is_all_flash_select_optimized": False,
+            "_links": {
+                "self": {
+                    "href": "/api/cluster/nodes/9eff6c76-fc13-11ea-8799-525400"
+                }
+            }
+        }
+    ],
+    "num_records": 2,
+    "_links": {
+        "self": {
+            "href": "/api/cluster/nodes?fields=model,name,"
+                    "is_all_flash_optimized,is_all_flash_select_optimized"
+        }
+    }
+}
+
+QOS_POLICY_BY_NAME_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "9eff6c76-fc13-11ea-8799-52540006bba9",
+            "name": "openstack-cd-uuid",
+            "_links": {
+                "self": {
+                    "href": "/api/storage/qos/policies/"
+                            "9eff6c76-fc13-11ea-8799-52540006bba9"
+                }
+            }
+        }
+    ],
+    "num_records": 1,
+    "_links": {
+        "self": {
+            "href": "/api/storage/qos/policies?fields=name"
+        }
+    }
+}
+
+QOS_SPECS_REST = {}
+MAX_THROUGHPUT_REST = '21734278'
+MIN_IOPS_REST = '256'
+MAX_IOPS_REST = '512'
+MAX_BPS_REST = '1'
+
+QOS_POLICY_GROUP_INFO_LEGACY_REST = {
+    'legacy': 'legacy-' + QOS_POLICY_GROUP_NAME,
+    'spec': None,
+}
+
+QOS_POLICY_GROUP_SPEC_REST = {
+    'min_throughput': MIN_IOPS_REST,
+    'max_throughput': MAX_IOPS_REST,
+    'policy_name': QOS_POLICY_GROUP_NAME,
+}
+
+QOS_POLICY_GROUP_API_ARGS_REST = {
+    'name': QOS_POLICY_GROUP_NAME,
+    'svm': {
+        'name': VSERVER_NAME
+    },
+    'fixed': {
+        'max_throughput_iops': int(MAX_IOPS_REST),
+        'min_throughput_iops': int(MIN_IOPS_REST)
+    }
+}
+
+QOS_POLICY_GROUP_API_ARGS_REST_BPS = {
+    'name': QOS_POLICY_GROUP_NAME,
+    'svm': {
+        'name': VSERVER_NAME
+    },
+    'fixed': {
+        'max_throughput_mbps': int(MAX_BPS_REST),
+    }
+}
+
+QOS_POLICY_GROUP_SPEC_MAX_REST = {
+    'max_throughput': MAX_THROUGHPUT_REST,
+    'policy_name': QOS_POLICY_GROUP_NAME,
+}
+
+EXPECTED_IOPS_PER_GB_REST = '128'
+PEAK_IOPS_PER_GB_REST = '512'
+PEAK_IOPS_ALLOCATION_REST = 'used-space'
+EXPECTED_IOPS_ALLOCATION_REST = 'used-space'
+ABSOLUTE_MIN_IOPS_REST = '75'
+BLOCK_SIZE_REST = 'ANY'
+ADAPTIVE_QOS_SPEC_REST = {
+    'policy_name': QOS_POLICY_GROUP_NAME,
+    'expected_iops': EXPECTED_IOPS_PER_GB_REST,
+    'expected_iops_allocation': EXPECTED_IOPS_ALLOCATION_REST,
+    'peak_iops': PEAK_IOPS_PER_GB_REST,
+    'peak_iops_allocation': PEAK_IOPS_ALLOCATION_REST,
+    'absolute_min_iops': ABSOLUTE_MIN_IOPS_REST,
+    'block_size': BLOCK_SIZE_REST,
+}
+
+ADAPTIVE_QOS_API_ARGS_REST = {
+    'name': QOS_POLICY_GROUP_NAME,
+    'svm': {
+        'name': VSERVER_NAME
+    },
+    'adaptive': {
+        'absolute_min_iops': int(ABSOLUTE_MIN_IOPS_REST),
+        'expected_iops': int(EXPECTED_IOPS_PER_GB_REST),
+        'expected_iops_allocation': EXPECTED_IOPS_ALLOCATION_REST,
+        'peak_iops': int(PEAK_IOPS_PER_GB_REST),
+        'peak_iops_allocation': PEAK_IOPS_ALLOCATION_REST,
+        'block_size': BLOCK_SIZE_REST,
+    }
+}
+
+QOS_POLICY_GROUP_INFO_REST = {
+    'legacy': None, 'spec': QOS_POLICY_GROUP_SPEC_REST}
+QOS_POLICY_GROUP_INFO_MAX_REST = {
+    'legacy': None, 'spec': QOS_POLICY_GROUP_SPEC_MAX_REST}
+ADAPTIVE_QOS_POLICY_GROUP_INFO_REST = {
+    'legacy': None,
+    'spec': ADAPTIVE_QOS_SPEC_REST,
+}
+
+REST_FIELDS = 'uuid,name,style'
