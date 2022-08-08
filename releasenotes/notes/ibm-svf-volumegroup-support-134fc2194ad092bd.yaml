@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family driver: Added support for volumegroup
+    for SVC Code Level 8.5.1.0 and above. User can now create, modify
+    and delete volumegroup using the exising cinder CLI for group operations.
