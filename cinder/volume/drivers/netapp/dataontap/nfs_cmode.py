@@ -1085,10 +1085,10 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             try:
                 dest_client.delete_file(file_path)
             except Exception:
-                LOG.warn('Error cleaning up file %s in destination volume. '
-                         'Verify if destination volume still exists in pool '
-                         '%s and delete it manually to avoid unused '
-                         'resources.', file_path, dest_pool)
+                LOG.warning('Error cleaning up file %s in destination volume. '
+                            'Verify if destination volume still exists in '
+                            'pool %s and delete it manually to avoid unused '
+                            'resources.', file_path, dest_pool)
 
     def _copy_file(self, volume, src_ontap_volume, src_vserver,
                    dest_ontap_volume, dest_vserver, dest_file_name=None,
