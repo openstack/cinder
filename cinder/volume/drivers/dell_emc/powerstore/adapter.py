@@ -293,6 +293,7 @@ class CommonAdapter(object):
             "compression_support": True,
             "multiattach": True,
             "consistent_group_snapshot_enabled": True,
+            "sparse_copy_volume": True,
         }
         backend_stats = self.client.get_metrics()
         backend_total_capacity = utils.bytes_to_gib(
@@ -1061,6 +1062,7 @@ class FibreChannelAdapter(CommonAdapter):
                 "target_discovered": False,
                 "target_lun": volume_identifier,
                 "target_wwn": target_wwns,
+                "discard": True,
             }
         }
 
@@ -1180,6 +1182,7 @@ class NVMEoFAdapter(CommonAdapter):
                 "nqn": nqn,
                 "target_port": 4420,
                 "transport_type": "tcp",
-                "volume_nguid": volume_identifier
+                "volume_nguid": volume_identifier,
+                "discard": True,
             },
         }

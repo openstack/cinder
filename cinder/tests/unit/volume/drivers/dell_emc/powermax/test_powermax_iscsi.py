@@ -155,6 +155,7 @@ class PowerMaxISCSITest(test.TestCase):
             'target_iqn': ip_and_iqn[0]['iqn'].split(',')[0],
             'target_portal': ip_and_iqn[0]['ip'] + ':3260',
             'target_lun': host_lun_id,
+            'discard': True,
             'volume_id': self.data.test_volume.id}
         iscsi_properties = self.driver.vmax_get_iscsi_properties(
             self.data.array, vol, ip_and_iqn, True, host_lun_id, [], None)
@@ -271,6 +272,7 @@ class PowerMaxISCSITest(test.TestCase):
             'target_iqn': ip_and_iqn[0]['iqn'].split(',')[0],
             'target_portal': ip_and_iqn[0]['ip'] + ':3260',
             'target_lun': host_lun_id,
+            'discard': True,
             'volume_id': self.data.test_volume.id}
         iscsi_properties = self.driver.vmax_get_iscsi_properties(
             self.data.array, self.data.test_volume, ip_and_iqn, True,
