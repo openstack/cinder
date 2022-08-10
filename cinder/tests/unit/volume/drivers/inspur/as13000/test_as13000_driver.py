@@ -685,8 +685,10 @@ class AS13000DriverTestCase(test.TestCase):
                           self.as13000_san.delete_snapshot, snapshot)
         mock_cv.assert_called_once_with(snapshot.volume)
 
-    @ddt.data((time.time() - 3000), (time.time() - 4000))
-    def test__update_volume_stats(self, time_token):
+    @mock.patch('time.time')
+    @ddt.data(2000, 1000)
+    def test__update_volume_stats(self, time_token, mock_time):
+        mock_time.return_value = 5000
         self.as13000_san.VENDOR = 'INSPUR'
         self.as13000_san.VERSION = 'V1.3.1'
         self.as13000_san.PROTOCOL = 'iSCSI'
@@ -705,7 +707,7 @@ class AS13000DriverTestCase(test.TestCase):
 
         self.as13000_san._update_volume_stats()
         backend_data = {'driver_version': 'V1.3.1',
-                        'pools': [{'pool_name': 'fake_pool'}],
+                        'pools': fake_pool_backend,
                         'storage_protocol': 'iSCSI',
                         'vendor_name': 'INSPUR',
                         'volume_backend_name': 'fake_backend_name'}
