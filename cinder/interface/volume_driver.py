@@ -17,7 +17,9 @@
 """
 Core backend volume driver interface.
 
-All backend drivers should support this interface as a bare minimum.
+All backend drivers should support this interface as a bare minimum, but some
+methods (marked as optional in their description) can rely on the default
+implementation.
 """
 
 from cinder.interface import base
@@ -222,16 +224,71 @@ class VolumeDriverCore(base.CinderInterface):
                           force-detach and can be None.
         """
 
-    def clone_image(self, volume, image_location, image_id, image_metadata,
-                    image_service):
-        """Clone an image to a volume.
+    def clone_image(self, context, volume,
+                    image_location, image_meta, image_service):
+        """Create a volume efficiently from an existing image.
 
-        :param volume: The volume to create.
-        :param image_location: Where to pull the image from.
-        :param image_id: The image identifier.
-        :param image_metadata: Information about the image.
-        :param image_service: The image service to use.
-        :returns: Model updates.
+        Drivers that, always or under some circumstances, can efficiently
+        create a volume from a Glance image can implement this method to be
+        given a chance to try to do the volume creation as efficiently as
+        possible.
+
+        If the driver cannot do it efficiently on a specific call it can
+        return ``(None, False)`` to let Cinder try other mechanisms.
+
+        **This method is optional** and most drivers won't need to implement
+        it and can leverage the default driver implementation that returns
+        ``(None, False)`` to indicate that this optimization is not possible on
+        this driver.
+
+        Examples where drivers can do this optimization:
+
+        - When images are stored on the same storage system and the driver can
+          locate them and efficiently create a volume.  For example the RBD
+          driver can efficiently create a volume if the image is stored on the
+          same Ceph cluster and the image format is ``raw``.  Another example
+          is the GPFS driver.
+
+        - When volumes are locally accessible and accessing them that way is
+          more efficient than going through the remote connection mechanism.
+          For example in the GPFS driver if the cloning feature doesn't work it
+          will copy the file without using os-brick to connect to the volume.
+
+        :param context: Security/policy info for the request.
+        :param volume: The volume to create, as an OVO instance. Drivers should
+                       use attributes to access its values instead of using the
+                       dictionary compatibility interface it provides.
+        :param image_location: Tuple with (``direct_url``, ``locations``) from
+                               the `image metadata fields.
+                               <https://docs.openstack.org/api-ref/image/v2/index.html?expanded=show-image-detail#show-image-detail>`_
+                               ``direct_url``, when present, is a string whose
+                               format depends on the image service's external
+                               storage in use.
+                               Any, or both, tuple positions can be None,
+                               depending on the image service configuration.
+                               ``locations``, when present, is a list of
+                               dictionaries where the value of the ``url`` key
+                               contains the direct urls (including the one from
+                               ``direct_url``).
+        :param image_meta: Dictionary containing `information about the image
+                           <https://docs.openstack.org/api-ref/image/v2/index.html?expanded=show-image-detail#show-image-detail>`_,
+                           including basic attributes and custom properties.
+                           Some transformations have been applied, such as
+                           converting timestamps (from ``created_at``,
+                           ``updated_at``, and ``deleted_at``) to datetimes,
+                           and deserializing JSON values from
+                           ``block_device_mapping`` and ``mappings`` keys if
+                           present.
+                           Base properties, as per the image's schema, will be
+                           stored on the base dictionary and the rest will be
+                           stored under the ``properties`` key.
+                           An important field to check in this method is the
+                           ``disk_format`` (e.g.  raw, qcow2).
+        :param image_service: The image service to use (``GlanceImageService``
+                              instance).  Can fetch image data directly using
+                              it.
+        :returns: Tuple of (model_update, boolean) where the boolean specifies
+                  whether the clone occurred.
         """
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):

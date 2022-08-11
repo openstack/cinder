@@ -1158,8 +1158,13 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         return attach_info
 
     def clone_image(self, context, volume,
-                    image_location, image_meta,
-                    image_service):
+                    image_location, image_meta, image_service):
+        """Create a volume efficiently from an existing image.
+
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.clone_image`
+        for additional information.
+        """
         return None, False
 
     def backup_use_temp_snapshot(self):
@@ -1984,29 +1989,13 @@ class BaseVD(object, metaclass=abc.ABCMeta):
 
 class CloneableImageVD(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def clone_image(self, volume, image_location,
-                    image_id, image_meta, image_service):
+    def clone_image(self, context, volume,
+                    image_location, image_meta, image_service):
         """Create a volume efficiently from an existing image.
 
-        image_location is a string whose format depends on the
-        image service backend in use. The driver should use it
-        to determine whether cloning is possible.
-
-        image_id is a string which represents id of the image.
-        It can be used by the driver to introspect internal
-        stores or registry to do an efficient image clone.
-
-        image_meta is a dictionary that includes 'disk_format' (e.g.
-        raw, qcow2) and other image attributes that allow drivers to
-        decide whether they can clone the image without first requiring
-        conversion.
-
-        image_service is the reference of the image_service to use.
-        Note that this is needed to be passed here for drivers that
-        will want to fetch images from the image service directly.
-
-        Returns a dict of volume properties eg. provider_location,
-        boolean indicating whether cloning occurred
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.clone_image`
+        for additional information.
         """
         return None, False
 
@@ -2553,8 +2542,14 @@ class VolumeDriver(ManageableVD, CloneableImageVD, ManageableSnapshotsVD,
         """
         raise NotImplementedError()
 
-    def clone_image(self, volume, image_location, image_id, image_meta,
-                    image_service):
+    def clone_image(self, context, volume,
+                    image_location, image_meta, image_service):
+        """Create a volume efficiently from an existing image.
+
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.clone_image`
+        for additional information.
+        """
         return None, False
 
     def get_pool(self, volume):
