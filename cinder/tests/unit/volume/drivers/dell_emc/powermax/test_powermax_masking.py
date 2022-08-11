@@ -181,6 +181,15 @@ class PowerMaxMaskingTest(test.TestCase):
         mck_mod.assert_called_with(
             self.data.array, self.data.storagegroup_name_i, ref_payload)
 
+    @mock.patch.object(rest.PowerMaxRest, 'move_volume_between_storage_groups')
+    def test_move_volume_between_storage_groups_same_target(self, mock_mv):
+        src = 'OS-SG'
+        tgt = 'OS-SG'
+        self.driver.masking.move_volume_between_storage_groups(
+            self.data.array, self.data.device_id,
+            src, tgt, self.data.extra_specs)
+        mock_mv.assert_not_called()
+
     @mock.patch.object(rest.PowerMaxRest, 'remove_child_sg_from_parent_sg')
     @mock.patch.object(masking.PowerMaxMasking, 'get_parent_sg_from_child',
                        side_effect=[None, tpd.PowerMaxData.parent_sg_f])
