@@ -70,3 +70,5 @@
      - (Dictionary) Specifies the site information for host. One WWPN or multi-WWPNs used in the host can be specified. For example: storwize_preferred_host_site=site1:wwpn1,site2:wwpn2&wwpn3 or storwize_preferred_host_site=site1:iqn1,site2:iqn2
    * - ``cycle_period_seconds`` = ``300``
      - (Integer) Defines an optional cycle period that applies to Global Mirror relationships with a cycling mode of multi. A Global Mirror relationship using the multi cycling_mode performs a complete cycle at most once each period. The default is 300 seconds, and the valid seconds are 60-86400.
+   * - ``storwize_portset`` = ``None``
+     - (String) Specifies the name of the portset in which host to be created.
