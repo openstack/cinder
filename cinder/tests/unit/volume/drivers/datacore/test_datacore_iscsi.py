@@ -129,6 +129,9 @@ class ISCSIVolumeDriverTestCase(
     def init_driver(config):
         driver = iscsi.ISCSIVolumeDriver(configuration=config)
         driver.do_setup(None)
+        driver.AWAIT_DISK_ONLINE_INTERVAL = 0
+        driver.AWAIT_SNAPSHOT_ONLINE_INTERVAL = 0
+        driver.AWAIT_SNAPSHOT_ONLINE_INITIAL_DELAY = 0
         return driver
 
     @staticmethod
