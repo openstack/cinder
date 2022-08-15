@@ -27,6 +27,7 @@ from cinder.image import image_utils
 from cinder.objects import fields
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes as \
     fake_ssc
@@ -1926,6 +1927,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
               ('destroyed', na_utils.NetAppDriverException),
               ('destroyed', na_utils.NetAppDriverException))
     @ddt.unpack
+    @mock.patch('oslo_service.loopingcall.FixedIntervalWithTimeoutLoopingCall',
+                new=test_utils.ZeroIntervalWithTimeoutLoopingCall)
     def test_copy_file_error(self, status_on_error, copy_exception):
         self.driver.configuration.netapp_migrate_volume_timeout = 1
         fake_job_status = {
