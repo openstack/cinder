@@ -434,8 +434,13 @@ class ZeroIntervalWithTimeoutLoopingCall(
         loopingcall.FixedIntervalWithTimeoutLoopingCall):
     def start(self, interval, initial_delay=None,
               stop_on_exception=True, timeout=0):
-        return super(ZeroIntervalWithTimeoutLoopingCall, self).start(
-            0, 0, stop_on_exception, timeout)
+
+        result = None
+        with mock.patch('time.time', side_effect=[0, (timeout + 1)]):
+            result = super(ZeroIntervalWithTimeoutLoopingCall, self).start(
+                0, 0, stop_on_exception, timeout)
+
+        return result
 
 
 def replace_obj_loader(testcase, obj):
