@@ -342,7 +342,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 3.4.2.99.3 - Add support for reporting each datastore as a pool.
     # 3.4.2.99.4 - Default to thick provisioning and report provisioning type
     #              based on the volume type extra specs if possible.
-    VERSION = '3.4.2.99.4'
+    # 3.4.2.99.5 - Mark datastore/pool as down if it has red flag alert.
+    VERSION = '3.4.2.99.5'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -556,8 +557,25 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 storage_profile = datastore["storage_profile"].get("name")
 
                 pool_state = 'down'
+                pool_down_reason = 'Datastore not usable'
                 if self.ds_sel.is_datastore_usable(summary):
                     pool_state = 'up'
+                    pool_down_reason = 'up'
+
+                # make sure the datastore isn't in red flag alert!
+                for alarm in datastore.get('alarms', []):
+                    for alarm_state in alarm:
+                        if alarm_state['overallStatus'] in ('red', 'yellow'):
+                            alarm_info = self.volumeops.get_datastore_alarm(
+                                alarm_state['alarm']
+                            )
+                            if ('volume capacity threshold exceeded' in
+                                    alarm_info['info.description']):
+                                # vCenter will fail to create volumes here
+                                pool_state = 'down'
+                                pool_down_reason = (
+                                    alarm_info['info.description']
+                                )
 
                 pool = {'pool_name': summary.name,
                         'total_capacity_gb': round(
@@ -576,7 +594,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         'storage_profile': storage_profile,
                         'connection_capabilities': connection_capabilities,
                         'backend_state': backend_state,
-                        'pool_state': pool_state
+                        'pool_state': pool_state,
+                        'pool_down_reason': pool_down_reason
                         }
 
                 # Add any custom attributes associated with the datastore
@@ -2509,6 +2528,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                 custom_attributes[field] = v.value
                         datastores[summary.name][
                             "custom_attributes"] = custom_attributes
+
+                    if ('triggeredAlarmState' in objects and
+                            objects['triggeredAlarmState']):
+                        alarms = []
+                        for (_x, alarm) in objects['triggeredAlarmState']:
+                            alarms.append(alarm)
+                        datastores[summary.name]['alarms'] = alarms
         return datastores
 
     def _new_host_for_volume(self, volume):

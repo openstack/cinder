@@ -996,7 +996,17 @@ class VMwareVolumeOps(object):
                                         properties_to_collect=[
                                             "summary",
                                             "availableField",
-                                            "customValue"
+                                            "customValue",
+                                            "triggeredAlarmState"
+                                        ])
+
+    def get_datastore_alarm(self, alarm):
+        return self._session.invoke_api(vim_util, 'get_object_properties_dict',
+                                        self._session.vim, alarm,
+                                        properties_to_collect=[
+                                            'info.name',
+                                            'info.systemName',
+                                            'info.description'
                                         ])
 
     def _create_relocate_spec_disk_locator(self, datastore, disk_type,
