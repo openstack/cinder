@@ -19,6 +19,7 @@ from oslo_config import cfg
 
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as\
     dataontap_fakes
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes
@@ -691,6 +692,8 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.assertFalse(mock_client_call.called)
 
     @ddt.data('mixed', None)
+    @mock.patch('oslo_service.loopingcall.FixedIntervalWithTimeoutLoopingCall',
+                new=test_utils.ZeroIntervalWithTimeoutLoopingCall)
     def test_create_destination_flexgroup_online_timeout(self, volume_state):
         aggr_map = {
             fakes.PROVISIONING_OPTS['aggregate'][0]: 'aggr01',

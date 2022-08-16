@@ -430,6 +430,14 @@ class ZeroIntervalLoopingCall(loopingcall.FixedIntervalLoopingCall):
             0, 0, stop_on_exception)
 
 
+class ZeroIntervalWithTimeoutLoopingCall(
+        loopingcall.FixedIntervalWithTimeoutLoopingCall):
+    def start(self, interval, initial_delay=None,
+              stop_on_exception=True, timeout=0):
+        return super(ZeroIntervalWithTimeoutLoopingCall, self).start(
+            0, 0, stop_on_exception, timeout)
+
+
 def replace_obj_loader(testcase, obj):
     def fake_obj_load_attr(self, name):
         # This will raise KeyError for non existing fields as expected
