@@ -336,7 +336,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         # Used for service state report
         data['replication_enabled'] = self.replication_enabled
 
-        self._spawn_clean_cache_job()
         self._stats = data
 
     def _get_pool_stats(self, filter_function=None, goodness_function=None):

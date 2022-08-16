@@ -25,7 +25,6 @@ import copy
 import math
 import os
 import re
-import threading
 import time
 
 from oslo_concurrency import processutils
@@ -114,6 +113,13 @@ class NetAppNfsDriver(driver.ManageableVD,
         self.loopingcalls.add_task(
             self._handle_ems_logging,
             loopingcalls.ONE_HOUR)
+
+        # Add the task that periodically cleanup old expired internal
+        # image caching.
+        self.loopingcalls.add_task(
+            self._clean_image_cache,
+            self.configuration.netapp_nfs_image_cache_cleanup_interval
+        )
 
     def _delete_snapshots_marked_for_deletion(self):
         snapshots = self.zapi_client.get_snapshots_marked_for_deletion()
@@ -546,49 +552,32 @@ class NetAppNfsDriver(driver.ManageableVD,
                 os.utime(src_path, None)
         _do_clone()
 
-    @utils.synchronized('clean_cache')
-    def _spawn_clean_cache_job(self):
-        """Spawns a clean task if not running."""
-        if getattr(self, 'cleaning', None):
-            LOG.debug('Image cache cleaning in progress. Returning... ')
-            return
-        else:
-            # Set cleaning to True
-            self.cleaning = True
-            t = threading.Timer(0, self._clean_image_cache)
-            t.start()
-
     def _clean_image_cache(self):
         """Clean the image cache files in cache of space crunch."""
-        try:
-            LOG.debug('Image cache cleaning in progress.')
-            thres_size_perc_start = (
-                self.configuration.thres_avl_size_perc_start)
-            thres_size_perc_stop = self.configuration.thres_avl_size_perc_stop
-            for share in getattr(self, '_mounted_shares', []):
-                try:
-                    total_size, total_avl = self._get_capacity_info(share)
-                    avl_percent = int((float(total_avl) / total_size) * 100)
-                    if avl_percent <= thres_size_perc_start:
-                        LOG.info('Cleaning cache for share %s.', share)
-                        eligible_files = self._find_old_cache_files(share)
-                        threshold_size = int(
-                            (thres_size_perc_stop * total_size) / 100)
-                        bytes_to_free = int(threshold_size - total_avl)
-                        LOG.debug('Files to be queued for deletion %s',
-                                  eligible_files)
-                        self._delete_files_till_bytes_free(
-                            eligible_files, share, bytes_to_free)
-                    else:
-                        continue
-                except Exception as e:
-                    LOG.warning('Exception during cache cleaning'
-                                ' %(share)s. Message - %(ex)s',
-                                {'share': share, 'ex': e})
+        LOG.debug('Image cache cleaning in progress.')
+        thres_size_perc_start = (
+            self.configuration.thres_avl_size_perc_start)
+        thres_size_perc_stop = self.configuration.thres_avl_size_perc_stop
+        for share in self._mounted_shares:
+            try:
+                total_size, total_avl = self._get_capacity_info(share)
+                avl_percent = int((float(total_avl) / total_size) * 100)
+                if avl_percent <= thres_size_perc_start:
+                    LOG.info('Cleaning cache for share %s.', share)
+                    eligible_files = self._find_old_cache_files(share)
+                    threshold_size = int(
+                        (thres_size_perc_stop * total_size) / 100)
+                    bytes_to_free = int(threshold_size - total_avl)
+                    LOG.debug('Files to be queued for deletion %s',
+                              eligible_files)
+                    self._delete_files_till_bytes_free(
+                        eligible_files, share, bytes_to_free)
+                else:
                     continue
-        finally:
-            LOG.debug('Image cache cleaning done.')
-            self.cleaning = False
+            except Exception as e:
+                LOG.warning('Exception during cache cleaning'
+                            ' %(share)s. Message - %(ex)s',
+                            {'share': share, 'ex': e})
 
     def _shortlist_del_eligible_files(self, share, old_files):
         """Prepares list of eligible files to be deleted from cache."""
