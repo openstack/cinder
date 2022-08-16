@@ -16,7 +16,6 @@
 """Unit tests for the NetApp NFS storage driver."""
 import copy
 import os
-import threading
 import time
 from unittest import mock
 
@@ -620,36 +619,6 @@ class NetAppNfsDriverTestCase(test.TestCase):
         os.path.exists.assert_called_once_with(
             'dir/' + fake.CLONE_DESTINATION_NAME)
 
-    def test__spawn_clean_cache_job_clean_job_setup(self):
-        self.driver.cleaning = True
-        mock_debug_log = self.mock_object(nfs_base.LOG, 'debug')
-        self.mock_object(utils, 'synchronized', return_value=lambda f: f)
-
-        retval = self.driver._spawn_clean_cache_job()
-
-        self.assertIsNone(retval)
-        self.assertEqual(1, mock_debug_log.call_count)
-
-    def test__spawn_clean_cache_job_new_clean_job(self):
-
-        class FakeTimer(object):
-            def start(self):
-                pass
-
-        fake_timer = FakeTimer()
-        self.mock_object(utils, 'synchronized', return_value=lambda f: f)
-        self.mock_object(fake_timer, 'start')
-        self.mock_object(nfs_base.LOG, 'debug')
-        self.mock_object(self.driver, '_clean_image_cache')
-        self.mock_object(threading, 'Timer', return_value=fake_timer)
-
-        retval = self.driver._spawn_clean_cache_job()
-
-        self.assertIsNone(retval)
-        threading.Timer.assert_called_once_with(
-            0, self.driver._clean_image_cache)
-        fake_timer.start.assert_called_once_with()
-
     def test_cleanup_volume_on_failure(self):
         path = '%s/%s' % (fake.NFS_SHARE, fake.NFS_VOLUME['name'])
         mock_local_path = self.mock_object(self.driver, 'local_path')
@@ -1077,13 +1046,22 @@ class NetAppNfsDriverTestCase(test.TestCase):
             self.driver, '_delete_snapshots_marked_for_deletion')
         mock_call_ems_logging = self.mock_object(
             self.driver, '_handle_ems_logging')
+        mock_call_clean_image_cache = self.mock_object(
+            self.driver, '_clean_image_cache')
+
+        # image cache cleanup task can be configured with custom timeout
+        cache_cleanup_interval = loopingcalls.ONE_HOUR
+        self.driver.configuration.netapp_nfs_image_cache_cleanup_interval = (
+            cache_cleanup_interval)
 
         self.driver._add_looping_tasks()
 
         mock_add_task.assert_has_calls([
             mock.call(mock_call_snap_cleanup, loopingcalls.ONE_MINUTE,
                       loopingcalls.ONE_MINUTE),
-            mock.call(mock_call_ems_logging, loopingcalls.ONE_HOUR)])
+            mock.call(mock_call_ems_logging, loopingcalls.ONE_HOUR),
+            mock.call(mock_call_clean_image_cache, cache_cleanup_interval)
+        ])
 
     def test__clone_from_cache(self):
         image_id = 'fake_image_id'
