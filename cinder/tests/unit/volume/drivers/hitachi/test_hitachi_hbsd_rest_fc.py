@@ -662,7 +662,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @reduce_retrying_time
     @mock.patch.object(requests.Session, "request")
     def test_create_volume_timeout(self, request):
-        self.configuration.hitachi_rest_timeout = 2
+        self.driver.common.conf.hitachi_rest_timeout = 0
+        self.driver.common.conf.hitachi_exec_retry_interval = 0
         request.return_value = FakeResponse(
             500, ERROR_RESULT,
             headers={'Content-Type': 'json'})
