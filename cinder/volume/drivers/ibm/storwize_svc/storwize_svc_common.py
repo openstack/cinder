@@ -1105,18 +1105,19 @@ class StorwizeHelpers(object):
         if code_level >= (8, 4, 2, 0):
             portset_name = portset if portset else 'portset0'
             lsip_resp = self.ssh.lsip(portset=portset_name)
+            # For every node_id there is one IP address in a particular
+            # portset_name. Hence storing that one IP address of the
+            # corresponding node_id in storage_node list.
             for node_data in storage_nodes:
-                ip_addresses = []
                 try:
                     for ip_data in lsip_resp:
                         if ip_data['node_id'] in node_data:
-                            if (ip_data['IP_address']):
-                                ip_addresses.append(ip_data['IP_address'])
+                            if ip_data['IP_address']:
+                                (storage_nodes[ip_data['node_id']]
+                                    ['IP_address']) = (
+                                        [ip_data['IP_address']])
                 except KeyError:
                     self.handle_keyerror('lsip', ip_data)
-                if ip_addresses:
-                    storage_nodes[ip_data['node_id']]['IP_address'] = (
-                        ip_addresses)
         else:
             lsportip_resp = self.ssh.lsportip()
             for ip_data in lsportip_resp:
