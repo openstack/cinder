@@ -275,6 +275,8 @@ class InStorageMCSReplicationTestCase(test.TestCase):
         rel_info = self.driver._assistant.get_relationship_info(volume['name'])
         self.assertIsNone(rel_info)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_instorage_create_snapshot_volume_with_mirror_replica(self):
         # Set replication target
         self.driver.configuration.set_override('replication_device',
@@ -297,6 +299,8 @@ class InStorageMCSReplicationTestCase(test.TestCase):
         self.driver.delete_volume(vol1)
         self.driver.delete_volume(vol2)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_instorage_create_cloned_volume_with_mirror_replica(self):
         # Set replication target
         self.driver.configuration.set_override('replication_device',
