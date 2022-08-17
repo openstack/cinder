@@ -25,6 +25,7 @@ import requests
 from cinder import context
 from cinder import exception
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.veritas_access import veritas_iscsi
 
@@ -528,6 +529,8 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         self._driver.initialize_connection(self.volume, self.connector)
         self.assertEqual(1, self._driver._vrts_get_iscsi_properties.call_count)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalWithTimeoutLoopingCall',
+                new=test_utils.ZeroIntervalWithTimeoutLoopingCall)
     def test_initialize_connection_negative(self):
         self.mock_object(self._driver, '_access_api')
         self.mock_object(self._driver, '_get_vrts_lun_list')
@@ -538,7 +541,6 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         lun['lun_name'] = 'fakelun'
         lun['target_name'] = 'iqn.2017-02.com.veritas:faketarget'
         lun_list = {'output': {'output': {'luns': [lun]}}}
-        self._driver.LUN_FOUND_INTERVAL = 5
 
         self._driver._get_vrts_lun_list.return_value = lun_list
         self._driver._access_api.return_value = True
