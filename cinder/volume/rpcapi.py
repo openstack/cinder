@@ -135,6 +135,7 @@ class VolumeAPI(rpc.RPCAPI):
         3.15 - Add revert_to_snapshot method
         3.16 - Add no_snapshots to accept_transfer method
         3.17 - Make get_backup_device a cast (async)
+        3.17 - SAP - Added recount_host_stats (async)
     """
 
     RPC_API_VERSION = '3.17'
@@ -158,6 +159,11 @@ class VolumeAPI(rpc.RPCAPI):
             kwargs['server'] = server
 
         return super(VolumeAPI, self)._get_cctxt(version=version, **kwargs)
+
+    @rpc.assert_min_rpc_version('3.17')
+    def recount_host_stats(self, ctxt, host):
+        cctxt = self._get_cctxt(host=host)
+        cctxt.cast(ctxt, 'recount_host_stats')
 
     def create_volume(self, ctxt, volume, request_spec, filter_properties,
                       allow_reschedule=True):

@@ -1460,7 +1460,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         # locked
         self.volume.delete_volume(self.context, dst_vol)
-        mock_lock.assert_called_with('%s-delete_volume' % dst_vol.id)
+        mock_lock.assert_any_call('%s-delete_volume' % dst_vol.id)
+        mock_lock.assert_any_call('volume-stats')
 
         # locked
         self.volume.delete_snapshot(self.context, snapshot_obj)
@@ -1468,7 +1469,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         # locked
         self.volume.delete_volume(self.context, src_vol)
-        mock_lock.assert_called_with('%s-delete_volume' % src_vol.id)
+        mock_lock.assert_any_call('%s-delete_volume' % src_vol.id)
+        mock_lock.assert_any_call('volume-stats')
 
         self.assertTrue(mock_lvm_create.called)
 
@@ -1513,11 +1515,12 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         # locked
         self.volume.delete_volume(self.context, dst_vol)
-        mock_lock.assert_called_with('%s-delete_volume' % dst_vol_id)
+        mock_lock.assert_any_call('%s-delete_volume' % dst_vol_id)
+        mock_lock.assert_any_call('volume-stats')
 
         # locked
         self.volume.delete_volume(self.context, src_vol)
-        mock_lock.assert_called_with('%s-delete_volume' % src_vol_id)
+        mock_lock.assert_any_call('%s-delete_volume' % src_vol_id)
 
     def _raise_metadata_copy_failure(self, method, dst_vol):
         # MetadataCopyFailure exception will be raised if DB service is Down

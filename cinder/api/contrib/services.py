@@ -153,6 +153,15 @@ class ServiceController(wsgi.Controller):
                                cluster_name, body.get('backend_id'))
         return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
+    @validation.schema(os_services.recount_host_stats)
+    def _recount_host_stats(self, req, context, body):
+        """Ask the volume manager to recount allocated capacity for host."""
+        cluster_name, host = common.get_cluster_host(req, body,
+                                                     mv.REPLICATION_CLUSTER)
+        self._volume_api_proxy(self.volume_api.recount_host_stats, context,
+                               host)
+        return webob.Response(status_int=http_client.ACCEPTED)
+
     def _log_params_binaries_services(self, context, body):
         """Get binaries and services referred by given log set/get request."""
         query_filters = {'is_up': True}
@@ -273,6 +282,8 @@ class ServiceController(wsgi.Controller):
             return self._set_log(req, context, body=body)
         elif support_dynamic_log and id == 'get-log':
             return self._get_log(req, context, body=body)
+        elif id == "recount_host_stats":
+            return self._recount_host_stats(req, context, body=body)
         else:
             raise exception.InvalidInput(reason=_("Unknown action"))
 

@@ -2145,6 +2145,11 @@ class API(base.Base):
         if not self.volume_rpcapi.thaw_host(ctxt, services[0]):
             return "Backend reported error during thaw_host operation."
 
+    def recount_host_stats(self, ctxt, host):
+        ctxt.authorize(svr_policy.RECOUNT_STATS_POLICY)
+        ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
+        self.volume_rpcapi.recount_host_stats(ctxt, host)
+
     def check_volume_filters(self, filters, strict=False):
         """Sets the user filter value to accepted format"""
         booleans = self.db.get_booleans_for_table('volume')

@@ -496,6 +496,44 @@ class VolumeManager(manager.CleanableManager,
         # Initialize backend capabilities list
         self.driver.init_capabilities()
 
+        # collect and count all host volumes and snapshots
+        volumes_to_migrate = self._count_host_stats(ctxt, export_volumes=True)
+
+        self.driver.set_throttle()
+
+        # at this point the driver is considered initialized.
+        # NOTE(jdg): Careful though because that doesn't mean
+        # that an entry exists in the service table
+        self.driver.set_initialized()
+
+        # Keep the image tmp file clean when init host.
+        backend_name = volume_utils.extract_host(self.service_topic_queue)
+        image_utils.cleanup_temporary_file(backend_name)
+
+        # Migrate any ConfKeyManager keys based on fixed_key to the currently
+        # configured key manager.
+        self._add_to_threadpool(key_migration.migrate_fixed_key,
+                                volumes=volumes_to_migrate)
+
+        # collect and publish service capabilities
+        self.publish_service_capabilities(ctxt)
+        LOG.info("Driver initialization completed successfully.",
+                 resource={'type': 'driver',
+                           'id': self.driver.__class__.__name__})
+
+        # Make sure to call CleanableManager to do the cleanup
+        super(VolumeManager, self).init_host(added_to_cluster=added_to_cluster,
+                                             **kwargs)
+
+    def recount_host_stats(self, context):
+        self._count_host_stats(context, export_volumes=False)
+
+    @coordination.synchronized('volume-stats')
+    def _count_host_stats(self, context, export_volumes=False):
+        """Recount the number of volumes and allocated capacity."""
+        ctxt = context.elevated()
+        LOG.info("Recounting Allocated capacity")
+
         # Zero stats
         self.stats['pools'] = {}
         self.stats.update({'allocated_capacity_gb': 0})
@@ -524,7 +562,6 @@ class VolumeManager(manager.CleanableManager,
 
         req_offset: int
         for req_offset in req_range:
-
             # Retrieve 'req_limit' number of objects starting from
             # 'req_offset' position
             volumes, snapshots = [], []
@@ -541,6 +578,7 @@ class VolumeManager(manager.CleanableManager,
                                                        offset=req_offset)
                 else:
                     snapshots = objects.SnapshotList()
+
             # or retrieve all volumes and snapshots per single request
             else:
                 volumes = self._get_my_volumes(ctxt)
@@ -556,6 +594,7 @@ class VolumeManager(manager.CleanableManager,
                         # calculate allocated capacity for driver
                         self._count_allocated_capacity(ctxt, volume)
 
+                    if export_volumes:
                         try:
                             if volume['status'] in ['in-use']:
                                 self.driver.ensure_export(ctxt, volume)
@@ -565,8 +604,6 @@ class VolumeManager(manager.CleanableManager,
                                           resource=volume)
                             volume.conditional_update({'status': 'error'},
                                                       {'status': 'in-use'})
-                # All other cleanups are processed by parent class -
-                # CleanableManager
 
             except Exception:
                 LOG.exception("Error during re-export on driver init.",
@@ -579,31 +616,7 @@ class VolumeManager(manager.CleanableManager,
             del volumes
             del snapshots
 
-        self.driver.set_throttle()
-
-        # at this point the driver is considered initialized.
-        # NOTE(jdg): Careful though because that doesn't mean
-        # that an entry exists in the service table
-        self.driver.set_initialized()
-
-        # Keep the image tmp file clean when init host.
-        backend_name = volume_utils.extract_host(self.service_topic_queue)
-        image_utils.cleanup_temporary_file(backend_name)
-
-        # Migrate any ConfKeyManager keys based on fixed_key to the currently
-        # configured key manager.
-        self._add_to_threadpool(key_migration.migrate_fixed_key,
-                                volumes=volumes_to_migrate)
-
-        # collect and publish service capabilities
-        self.publish_service_capabilities(ctxt)
-        LOG.info("Driver initialization completed successfully.",
-                 resource={'type': 'driver',
-                           'id': self.driver.__class__.__name__})
-
-        # Make sure to call CleanableManager to do the cleanup
-        super(VolumeManager, self).init_host(added_to_cluster=added_to_cluster,
-                                             **kwargs)
+        return volumes_to_migrate
 
     def init_host_with_rpc(self) -> None:
         LOG.info("Initializing RPC dependent components of volume "
@@ -2813,6 +2826,7 @@ class VolumeManager(manager.CleanableManager,
                 # queue it to be sent to the Schedulers.
                 self.update_service_capabilities(volume_stats)
 
+    @coordination.synchronized('volume-stats')
     def _append_volume_stats(self, vol_stats) -> None:
         pools = vol_stats.get('pools', None)
         if pools:

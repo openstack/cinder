@@ -82,3 +82,12 @@ failover_host = {
     },
     'additionalProperties': False,
 }
+
+
+recount_host_stats = {
+    'type': 'object',
+    'properties': {
+        'host': parameter_types.hostname,
+    },
+    'additionalProperties': False,
+}
