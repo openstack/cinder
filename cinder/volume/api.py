@@ -2442,6 +2442,11 @@ class API(base.Base):
 
         return None
 
+    def recount_host_stats(self, ctxt, host):
+        ctxt.authorize(svr_policy.RECOUNT_STATS_POLICY)
+        ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
+        self.volume_rpcapi.recount_host_stats(ctxt, host)
+
     def check_volume_filters(self,
                              filters: dict,
                              strict: bool = False) -> None:
