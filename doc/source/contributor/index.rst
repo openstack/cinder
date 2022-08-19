@@ -30,6 +30,7 @@ Getting Started
 
     contributing
     backporting
+    releases
     documentation
 
 Writing Release Notes
