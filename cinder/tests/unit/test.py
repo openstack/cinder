@@ -51,8 +51,10 @@ from cinder.objects import base as objects_base
 from cinder import rpc
 from cinder import service
 from cinder.tests import fixtures as cinder_fixtures
+from cinder.tests import unit as cinder_unit
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
+from cinder.tests.unit import known_issues as issues
 from cinder.volume import configuration
 from cinder.volume import driver as vol_driver
 from cinder.volume import volume_types
@@ -290,11 +292,6 @@ class TestCase(testtools.TestCase):
         coordination.COORDINATOR.start()
         self.addCleanup(coordination.COORDINATOR.stop)
 
-        # Ensure we have the default tpool size value and we don't carry
-        # threads from other test runs.
-        tpool.killall()
-        tpool._nthreads = 20
-
         # NOTE(mikal): make sure we don't load a privsep helper accidentally
         self.useFixture(cinder_fixtures.PrivsepNoHelperFixture())
 
@@ -340,11 +337,20 @@ class TestCase(testtools.TestCase):
             except Exception:
                 pass
 
+        # Stop any looping call that has not yet been stopped
+        cinder_unit.stop_looping_calls()
+
         # Delete attributes that don't start with _ so they don't pin
         # memory around unnecessarily for the duration of the test
         # suite
         for key in [k for k in self.__dict__ if k[0] != '_']:
             del self.__dict__[key]
+
+        if not issues.TPOOL_KILLALL_ISSUE:
+            # Ensure we have the default tpool size value and we don't carry
+            # threads from other test runs.
+            tpool.killall()
+            tpool._nthreads = 20
 
     def override_config(self, name, override, group=None):
         """Cleanly override CONF variables."""
