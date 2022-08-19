@@ -2242,9 +2242,14 @@ class BackupsAPITestCase(test.TestCase):
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: Backup already exists in database.',
                          res_dict['badRequest']['message'])
-        mock_reserve.assert_called_with(
-            ctx, backups=1, backup_gigabytes=1)
-        mock_rollback.assert_called_with(ctx, "fake_reservation")
+
+        # Bug #1965847: already existing backup should not be deleted
+        self.assertNotEqual(fields.BackupStatus.DELETED,
+                            self._get_backup_attrib(backup.id, 'status'))
+        mock_reserve.assert_not_called()
+        mock_rollback.assert_not_called()
+        mock_commit.assert_not_called()
+
         backup.destroy()
 
     @mock.patch.object(quota.QUOTAS, 'commit')
