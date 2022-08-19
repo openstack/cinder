@@ -1160,7 +1160,7 @@ class StorwizeHelpers(object):
         # indicates whether the port can be used for host I/O
         targetportfc_resp = self.ssh.lstargetportfc(current_node_id=node_id,
                                                     host_io_permitted=host_io)
-        if code_level >= (8, 4, 2, 0):
+        if code_level >= (8, 5, 0, 0):
             portset_name = portset if portset else 'portset64'
             port_ids = set()
             fcportsetmember_resp = self.ssh.lsfcportsetmember()
