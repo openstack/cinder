@@ -18,6 +18,7 @@ import functools
 import socket
 from unittest import mock
 import uuid
+import weakref
 
 import fixtures
 from oslo_config import cfg
@@ -582,3 +583,46 @@ def time_format(at=None):
     # Need to handle either iso8601 or python UTC format
     date_string += ('Z' if tz in ['UTC', 'UTC+00:00'] else tz)
     return date_string
+
+
+class InstanceTracker(object):
+    """Track instances of a given class.
+
+    Going through the Garbage collection objects searching for instances makes
+    tests take up to 12 times longer.
+
+    The slower GC code alternative that was compared was something like:
+
+        for obj in gc.get_objects():
+            try:
+                if isinstance(obj, cls):
+                    <do_something>
+            except ReferenceError:
+                pass
+    """
+    def __init__(self, cls):
+        self.cls = cls
+        self.refs = []
+        self.init_method = getattr(cls, '__init__')
+        setattr(cls, '__init__', self._track_instances())
+
+    def _track_instances(self):
+        def track(init_self, *args, **kwargs):
+            # Use weak references so garbage collector doesn't count these
+            # references.
+            self.refs.append(weakref.ref(init_self))
+            return self.init_method(init_self, *args, **kwargs)
+        return track
+
+    def clear(self):
+        self.refs.clear()
+
+    @property
+    def instances(self):
+        result = []
+        for ref in self.refs:
+            inst = ref()
+            # Only return instances that have not been garbage collected
+            if inst is not None:
+                result.append(inst)
+        return result
