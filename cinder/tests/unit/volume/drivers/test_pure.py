@@ -4117,8 +4117,8 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
                                    config_ratio,
                                    expected_ratio,
                                    auto):
-        volume_utils.get_max_over_subscription_ratio = mock.Mock(
-            return_value=expected_ratio)
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio',
+                         return_value=expected_ratio)
         self.mock_config.pure_automatic_max_oversubscription_ratio = auto
         self.mock_config.max_over_subscription_ratio = config_ratio
         actual_ratio = self.driver._get_thin_provisioning(provisioned, used)
