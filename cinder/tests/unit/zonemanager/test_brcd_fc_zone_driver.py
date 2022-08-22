@@ -92,10 +92,12 @@ class BrcdFcZoneDriverBaseTest(object):
 class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
 
     def setUp(self):
+        global GlobalVars
+        GlobalVars = GlobalVarsClass()
+
         super(TestBrcdFcZoneDriver, self).setUp()
         # setup config for normal flow
         self.setup_driver(self.setup_config(True, 1))
-        GlobalVars._zone_state = []
 
     def setup_driver(self, config):
         self.driver = importutils.import_object(
@@ -269,10 +271,8 @@ class FakeBrcdFCSanLookupService(object):
         return device_map
 
 
-class GlobalVars(object):
-    global _active_cfg
-    _active_cfg = {}
-    global _zone_state
-    _zone_state = list()
-    global _is_normal_test
-    _is_normal_test = True
+class GlobalVarsClass(object):
+    def __init__(self):
+        self._active_cfg = {}
+        self._zone_state = list()
+        self._is_normal_test = True
