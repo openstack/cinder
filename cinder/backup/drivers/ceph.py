@@ -889,17 +889,22 @@ class CephBackupDriver(driver.BackupDriver):
             LOG.debug("Copying data from volume %s.", volume_id)
             dest_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
                                             backup_name))
+            meta_io_proxy = None
             try:
                 rbd_meta = linuxrbd.RBDImageMetadata(dest_rbd,
                                                      backup.container,
                                                      self._ceph_backup_user,
                                                      self._ceph_backup_conf)
                 rbd_fd = linuxrbd.RBDVolumeIOWrapper(rbd_meta)
-                self._transfer_data(src_volume, src_name,
-                                    eventlet.tpool.Proxy(rbd_fd),
+                meta_io_proxy = eventlet.tpool.Proxy(rbd_fd)
+                self._transfer_data(src_volume, src_name, meta_io_proxy,
                                     backup_name, length)
             finally:
-                dest_rbd.close()
+                # Closing the wrapper will close the image as well
+                if meta_io_proxy:
+                    meta_io_proxy.close()
+                else:
+                    dest_rbd.close()
 
     @staticmethod
     def backup_snapshot_name_pattern() -> str:
