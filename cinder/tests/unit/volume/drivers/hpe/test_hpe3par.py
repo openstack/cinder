@@ -5795,7 +5795,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         typ_info.return_value = type_info
         source_volume = self.volume_src_cg
-        volume = self.volume_tiramisu
+        volume = self.volume_tiramisu.copy()
         volume['source_volid'] = source_volume['id']
         common = hpecommon.HPE3PARCommon(None)
         vol_name = common._get_3par_vol_name(volume.get('id'))
@@ -7161,8 +7161,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             mock_create_client.return_value = mock_client
             mock_replication_client.return_value = mock_replicated_client
 
-            volume = self.volume
-            volume['replication_status'] = 'enabled'
+            volume = copy.deepcopy(self.volume)
+            volume.replication_status = 'enabled'
 
             result = self.driver.initialize_connection(
                 volume,
@@ -7521,8 +7521,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.getPorts()]
 
-        volume = self.volume
-        volume['replication_status'] = 'enabled'
+        volume = copy.deepcopy(self.volume)
+        volume.replication_status = 'enabled'
 
         with mock.patch.object(
                 hpecommon.HPE3PARCommon,
@@ -8484,8 +8484,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            volume = self.volume
-            volume['replication_status'] = 'disabled'
+            volume = copy.deepcopy(self.volume)
+            volume.replication_status = 'disabled'
             result = self.driver.initialize_connection(
                 volume,
                 self.connector_multipath_enabled)
@@ -8546,8 +8546,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            volume = self.volume
-            volume['replication_status'] = 'disabled'
+            volume = copy.deepcopy(self.volume)
+            volume.replication_status = 'disabled'
             result = self.driver.initialize_connection(
                 volume,
                 self.connector_multipath_enabled)
@@ -8620,9 +8620,10 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 expected +
                 self.standard_logout)
 
-            expected_properties = self.properties
+            expected_properties = self.properties.copy()
+            expected_properties['data'] = self.properties['data'].copy()
             expected_properties['data']['encrypted'] = True
-            self.assertDictEqual(self.properties, result)
+            self.assertDictEqual(expected_properties, result)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_initialize_connection_peer_persistence(self, _mock_volume_types):
@@ -8697,8 +8698,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             mock_create_client.return_value = mock_client
             mock_replication_client.return_value = mock_replicated_client
 
-            volume = self.volume
-            volume['replication_status'] = 'enabled'
+            volume = copy.deepcopy(self.volume)
+            volume.replication_status = 'enabled'
 
             result = self.driver.initialize_connection(
                 volume,
@@ -10549,8 +10550,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             }]
         }
 
-        volume = self.volume
-        volume['replication_status'] = 'enabled'
+        volume = copy.deepcopy(self.volume)
+        volume.replication_status = 'enabled'
 
         with mock.patch.object(
                 hpecommon.HPE3PARCommon,
