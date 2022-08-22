@@ -34,7 +34,7 @@ class PowerMaxMaskingTest(test.TestCase):
     def setUp(self):
         self.data = tpd.PowerMaxData()
         super(PowerMaxMaskingTest, self).setUp()
-        volume_utils.get_max_over_subscription_ratio = mock.Mock()
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio')
         self.replication_device = self.data.sync_rep_device
         configuration = tpfo.FakeConfiguration(
             None, 'MaskingTests', 1, 1, san_ip='1.1.1.1',
@@ -43,10 +43,10 @@ class PowerMaxMaskingTest(test.TestCase):
             powermax_port_groups=[self.data.port_group_name_f],
             replication_device=self.replication_device)
         self._gather_info = common.PowerMaxCommon._gather_info
-        common.PowerMaxCommon._get_u4p_failover_info = mock.Mock()
-        common.PowerMaxCommon._gather_info = mock.Mock()
-        rest.PowerMaxRest._establish_rest_session = mock.Mock(
-            return_value=tpfo.FakeRequestsSession())
+        self.mock_object(common.PowerMaxCommon, '_get_u4p_failover_info')
+        self.mock_object(common.PowerMaxCommon, '_gather_info')
+        self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
+                         return_value=tpfo.FakeRequestsSession())
         driver = common.PowerMaxCommon(
             'iSCSI', self.data.version, configuration=configuration)
         driver_fc = common.PowerMaxCommon(

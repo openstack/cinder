@@ -600,7 +600,7 @@ class PowerMaxData(object):
         'connector': connector,
         'device_id': device_id,
         'init_group_name': initiatorgroup_name_f,
-        'initiator_check': None,
+        'initiator_check': False,
         'maskingview_name': masking_view_name_f,
         'parent_sg_name': parent_sg_f,
         'srp': srp,

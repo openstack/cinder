@@ -55,8 +55,8 @@ class PowerMaxCommonTest(test.TestCase):
             powermax_port_groups=[self.data.port_group_name_f],
             powermax_port_group_name_template='portGroupName',
             replication_device=replication_device)
-        rest.PowerMaxRest._establish_rest_session = mock.Mock(
-            return_value=tpfo.FakeRequestsSession())
+        self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
+                         return_value=tpfo.FakeRequestsSession())
         driver = fc.PowerMaxFCDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
@@ -64,9 +64,10 @@ class PowerMaxCommonTest(test.TestCase):
         self.provision = self.common.provision
         self.rest = self.common.rest
         self.utils = self.common.utils
-        self.utils.get_volumetype_extra_specs = (
-            mock.Mock(return_value=self.data.vol_type_extra_specs))
-        self.rest.is_snap_id = True
+        self.mock_object(
+            self.utils, 'get_volumetype_extra_specs',
+            return_value=deepcopy(self.data.vol_type_extra_specs))
+        self.mock_object(self.rest, 'is_snap_id', True)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_array_ucode_version',
                        return_value=tpd.PowerMaxData.next_gen_ucode)
@@ -102,14 +103,10 @@ class PowerMaxCommonTest(test.TestCase):
         common.PowerMaxCommon, '_get_attributes_from_config')
     def test_gather_info_rep_enabled_duplicate_serial_numbers(
             self, mck_get_cnf, mck_get_c_cnf, mck_set, mck_model, mck_ucode):
-        is_enabled = self.common.replication_enabled
-        targets = self.common.replication_targets
-        self.common.replication_enabled = True
-        self.common.replication_targets = [self.data.array]
+        self.mock_object(self.common, 'replication_enabled', True)
+        self.mock_object(self.common, 'replication_targets', [self.data.array])
         self.assertRaises(
             exception.InvalidConfigurationValue, self.common._gather_info)
-        self.common.replication_enabled = is_enabled
-        self.common.replication_targets = targets
 
     @mock.patch.object(common.PowerMaxCommon,
                        '_gather_info')
@@ -160,35 +157,35 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertIsNone(driver.common.powermax_port_group_name_template)
 
     def test_get_slo_workload_combinations_powermax(self):
-        self.common.next_gen = True
-        self.common.array_model = 'PowerMax_2000'
+        self.mock_object(self.common, 'next_gen', True)
+        self.mock_object(self.common, 'array_model', 'PowerMax_2000')
         array_info = {}
         pools = self.common._get_slo_workload_combinations(array_info)
         self.assertTrue(len(pools) == 24)
 
     def test_get_slo_workload_combinations_afa_powermax(self):
-        self.common.next_gen = True
-        self.common.array_model = 'VMAX250F'
+        self.mock_object(self.common, 'next_gen', True)
+        self.mock_object(self.common, 'array_model', 'VMAX250F')
         array_info = {}
         pools = self.common._get_slo_workload_combinations(array_info)
         self.assertTrue(len(pools) == 28)
 
     def test_get_slo_workload_combinations_afa_hypermax(self):
-        self.common.next_gen = False
-        self.common.array_model = 'VMAX250F'
+        self.mock_object(self.common, 'next_gen', False)
+        self.mock_object(self.common, 'array_model', 'VMAX250F')
         array_info = {}
         pools = self.common._get_slo_workload_combinations(array_info)
         self.assertTrue(len(pools) == 16)
 
     def test_get_slo_workload_combinations_hybrid(self):
-        self.common.next_gen = False
-        self.common.array_model = 'VMAX100K'
+        self.mock_object(self.common, 'next_gen', False)
+        self.mock_object(self.common, 'array_model', 'VMAX100K')
         array_info = {}
         pools = self.common._get_slo_workload_combinations(array_info)
         self.assertTrue(len(pools) == 44)
 
     def test_get_slo_workload_combinations_failed(self):
-        self.common.array_model = 'xxxxxx'
+        self.mock_object(self.common, 'array_model', 'xxxxxx')
         array_info = {}
         self.assertRaises(
             exception.VolumeBackendAPIException,
@@ -665,9 +662,8 @@ class PowerMaxCommonTest(test.TestCase):
             deepcopy(self.data.test_volume_attachment)]
         extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
         extra_specs[utils.FORCE_VOL_EDIT] = True
-        self.common.promotion = True
+        self.mock_object(self.common, 'promotion', True)
         self.common._unmap_lun(volume, connector)
-        self.common.promotion = False
         self.assertEqual(1, mck_rem.call_count)
 
     @mock.patch.object(common.PowerMaxCommon, '_unmap_lun')
@@ -848,11 +844,10 @@ class PowerMaxCommonTest(test.TestCase):
         connector = self.data.connector
         with mock.patch.object(
                 self.common, '_unmap_lun_promotion') as mock_unmap:
-            self.common.promotion = True
+            self.mock_object(self.common, 'promotion', True)
             self.common.terminate_connection(volume, connector)
             mock_unmap.assert_called_once_with(
                 volume, connector)
-            self.common.promotion = False
 
     @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
     @mock.patch.object(common.PowerMaxCommon, '_extend_vol_validation_checks')
@@ -879,7 +874,7 @@ class PowerMaxCommonTest(test.TestCase):
     def test_extend_vol_rep_success_next_gen(
             self, mck_setup, mck_val_chk, mck_get_rdf, mck_ode, mck_extend,
             mck_validate):
-        self.common.next_gen = True
+        self.mock_object(self.common, 'next_gen', True)
         volume = self.data.test_volume
         array = self.data.array
         device_id = self.data.device_id
@@ -907,8 +902,8 @@ class PowerMaxCommonTest(test.TestCase):
     def test_extend_vol_rep_success_next_gen_legacy_r2(
             self, mck_setup, mck_val_chk, mck_get_rdf, mck_ode, mck_leg_extend,
             mck_extend, mck_validate):
-        self.common.next_gen = True
-        self.common.rep_config = self.data.rep_config
+        self.mock_object(self.common, 'next_gen', True)
+        self.mock_object(self.common, 'rep_configs', [self.data.rep_config])
         volume = self.data.test_volume
         array = self.data.array
         device_id = self.data.device_id
@@ -938,8 +933,8 @@ class PowerMaxCommonTest(test.TestCase):
     def test_extend_vol_rep_success_legacy(
             self, mck_setup, mck_val_chk, mck_get_rdf, mck_ode, mck_leg_extend,
             mck_extend, mck_validate):
-        self.common.rep_config = self.data.rep_config
-        self.common.next_gen = False
+        self.mock_object(self.common, 'rep_configs', [self.data.rep_config])
+        self.mock_object(self.common, 'next_gen', False)
         volume = self.data.test_volume
         array = self.data.array
         device_id = self.data.device_id
@@ -967,8 +962,8 @@ class PowerMaxCommonTest(test.TestCase):
         return_value=tpd.PowerMaxData.ex_specs_rep_config_no_extend)
     def test_extend_vol_rep_success_legacy_allow_extend_false(
             self, mck_setup, mck_val_chk, mck_get_rdf, mck_ode, mck_validate):
-        self.common.rep_config = self.data.rep_config
-        self.common.next_gen = False
+        self.mock_object(self.common, 'rep_configs', [self.data.rep_config])
+        self.mock_object(self.common, 'next_gen', False)
         volume = self.data.test_volume
         new_size = self.data.test_volume.size
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -1080,8 +1075,8 @@ class PowerMaxCommonTest(test.TestCase):
             self, mock_vol, mock_mvs, mock_mv_conns):
         expected_dict = {'hostlunid': '1', 'maskingview': 'OS-HostX-I-PG-MV',
                          'array': '000197800123', 'device_id': '00001'}
-        self.common.powermax_short_host_name_template = (
-            'shortHostName[:7]finance')
+        self.mock_object(self.common, 'powermax_short_host_name_template',
+                         'shortHostName[:7]finance')
         masked_vols, is_multiattach = self.common.find_host_lun_id(
             self.data.test_volume, 'HostX',
             self.data.extra_specs)
@@ -1161,8 +1156,9 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         extra_specs[utils.WORKLOAD] = self.data.workload
         ref_mv_dict = self.data.masking_view_dict
-        self.common.next_gen = False
-        self.common.powermax_port_group_name_template = 'portGroupName'
+        self.mock_object(self.common, 'next_gen', False)
+        self.mock_object(self.common, 'powermax_port_group_name_template',
+                         'portGroupName')
         extra_specs.pop(utils.IS_RE, None)
         masking_view_dict = self.common._populate_masking_dict(
             volume, connector, extra_specs)
@@ -1208,7 +1204,7 @@ class PowerMaxCommonTest(test.TestCase):
         connector = self.data.connector
         extra_specs = deepcopy(self.data.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
-        self.common.next_gen = True
+        self.mock_object(self.common, 'next_gen', True)
         masking_view_dict = self.common._populate_masking_dict(
             volume, connector, extra_specs)
         self.assertEqual('NONE', masking_view_dict[utils.WORKLOAD])
@@ -1408,7 +1404,7 @@ class PowerMaxCommonTest(test.TestCase):
         volume_name = '1'
         volume_size = self.data.test_volume.size
         extra_specs = self.data.extra_specs
-        self.common.next_gen = True
+        self.mock_object(self.common, 'next_gen', True)
         with mock.patch.object(
                 self.utils, 'is_compression_disabled', return_value=True):
             with mock.patch.object(
@@ -1598,20 +1594,22 @@ class PowerMaxCommonTest(test.TestCase):
         with mock.patch.object(self.rest, 'is_compression_capable',
                                return_value=True):
             srp_record = self.common.get_attributes_from_cinder_config()
-            extra_specs = self.common._set_vmax_extra_specs(
-                self.data.vol_type_extra_specs_compr_disabled, srp_record)
+            specs = deepcopy(self.data.vol_type_extra_specs_compr_disabled)
+            extra_specs = self.common._set_vmax_extra_specs(specs, srp_record)
             ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
             ref_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
             ref_extra_specs[utils.DISABLECOMPRESSION] = "true"
             self.assertEqual(ref_extra_specs, extra_specs)
 
     def test_set_vmax_extra_specs_compr_disabled_not_compr_capable(self):
-        srp_record = self.common.get_attributes_from_cinder_config()
-        extra_specs = self.common._set_vmax_extra_specs(
-            self.data.vol_type_extra_specs_compr_disabled, srp_record)
-        ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
-        ref_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
-        self.assertEqual(ref_extra_specs, extra_specs)
+        with mock.patch.object(self.rest, 'is_compression_capable',
+                               return_value=False):
+            srp_record = self.common.get_attributes_from_cinder_config()
+            specs = deepcopy(self.data.vol_type_extra_specs_compr_disabled)
+            extra_specs = self.common._set_vmax_extra_specs(specs, srp_record)
+            ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+            ref_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+            self.assertEqual(ref_extra_specs, extra_specs)
 
     def test_set_vmax_extra_specs_portgroup_as_spec(self):
         srp_record = self.common.get_attributes_from_cinder_config()
@@ -1631,7 +1629,7 @@ class PowerMaxCommonTest(test.TestCase):
 
     def test_set_vmax_extra_specs_next_gen(self):
         srp_record = self.common.get_attributes_from_cinder_config()
-        self.common.next_gen = True
+        self.mock_object(self.common, 'next_gen', True)
         extra_specs = self.common._set_vmax_extra_specs(
             self.data.vol_type_extra_specs, srp_record)
         ref_extra_specs = deepcopy(self.data.extra_specs_intervals_set)
@@ -1762,7 +1760,8 @@ class PowerMaxCommonTest(test.TestCase):
                        'interval': 1, 'retries': 1, 'slo': 'Diamond',
                        'workload': 'DSS'}
         host_template = 'shortHostName[:10]uuid[:5]'
-        self.common.powermax_short_host_name_template = host_template
+        self.mock_object(self.common, 'powermax_short_host_name_template',
+                         host_template)
         self.common.get_target_wwns_from_masking_view(
             self.data.test_volume, connector)
         mock_label.assert_called_once_with(
@@ -2274,9 +2273,8 @@ class PowerMaxCommonTest(test.TestCase):
         volume = self.data.test_rep_volume
         new_type = {'extra_specs': {}}
         host = {'host': self.data.new_host}
-        self.common.promotion = True
+        self.mock_object(self.common, 'promotion', True)
         self.common.retype(volume, new_type, host)
-        self.common.promotion = False
         mck_migrate.assert_called_once_with(
             device_id, volume, host, volume_name, new_type, rep_extra_specs)
 
@@ -2664,12 +2662,11 @@ class PowerMaxCommonTest(test.TestCase):
         host = {'host': self.data.new_host}
         volume_name = self.data.test_volume.name
         ref_return = (False, None, None)
-        self.common.promotion = True
+        self.mock_object(self.common, 'promotion', True)
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
             self.data.srp, volume_name, True, False, self.data.slo_silver,
             self.data.workload, False)
-        self.common.promotion = False
         self.assertEqual(ref_return, return_val)
 
     def test_is_valid_for_storage_assisted_migration_promotion_change_slo(
@@ -2678,12 +2675,11 @@ class PowerMaxCommonTest(test.TestCase):
         host = {'host': self.data.new_host}
         volume_name = self.data.test_volume.name
         ref_return = (False, None, None)
-        self.common.promotion = True
+        self.mock_object(self.common, 'promotion', True)
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
             self.data.srp, volume_name, False, False, self.data.slo,
             self.data.workload, False)
-        self.common.promotion = False
         self.assertEqual(ref_return, return_val)
 
     def test_is_valid_for_storage_assisted_migration_promotion_change_workload(
@@ -2692,12 +2688,11 @@ class PowerMaxCommonTest(test.TestCase):
         host = {'host': self.data.new_host}
         volume_name = self.data.test_volume.name
         ref_return = (False, None, None)
-        self.common.promotion = True
+        self.mock_object(self.common, 'promotion', True)
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
             self.data.srp, volume_name, False, False, self.data.slo_silver,
             'fail_workload', False)
-        self.common.promotion = False
         self.assertEqual(ref_return, return_val)
 
     def test_is_valid_for_storage_assisted_migration_promotion_target_not_rep(
@@ -2706,12 +2701,11 @@ class PowerMaxCommonTest(test.TestCase):
         host = {'host': self.data.new_host}
         volume_name = self.data.test_volume.name
         ref_return = (False, None, None)
-        self.common.promotion = True
+        self.mock_object(self.common, 'promotion', True)
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
             self.data.srp, volume_name, False, False, self.data.slo_silver,
             'OLTP', True)
-        self.common.promotion = False
         self.assertEqual(ref_return, return_val)
 
     @mock.patch.object(
@@ -2943,11 +2937,10 @@ class PowerMaxCommonTest(test.TestCase):
         group = self.data.test_group_1
         add_vols = []
         remove_vols = [self.data.test_volume_group_member]
-        self.common.failover = True
+        self.mock_object(self.common, 'failover', True)
         self.assertRaises(
             exception.VolumeBackendAPIException, self.common.update_group,
             group, add_vols, remove_vols)
-        self.common.failover = False
 
     @mock.patch.object(volume_utils, 'is_group_a_type',
                        return_value=False)
@@ -2960,10 +2953,9 @@ class PowerMaxCommonTest(test.TestCase):
         add_vols = []
         remove_vols = [self.data.test_volume_group_member]
         ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
-        self.common.promotion = True
+        self.mock_object(self.common, 'promotion', True)
         model_update, __, __ = self.common.update_group(
             group, add_vols, remove_vols)
-        self.common.promotion = False
         mck_update.assert_called_once_with(group, add_vols, remove_vols)
         self.assertEqual(ref_model_update, model_update)
 
@@ -3230,10 +3222,10 @@ class PowerMaxCommonTest(test.TestCase):
             powermax_array=self.data.array, powermax_srp='SRP_1',
             san_password='smc', san_api_port=8443,
             powermax_port_groups=[self.data.port_group_name_i])
-        self.common.configuration = configuration
+        self.mock_object(self.common, 'configuration', configuration)
         kwargs_returned = self.common.get_attributes_from_cinder_config()
         self.assertEqual(kwargs_expected, kwargs_returned)
-        self.common.configuration = old_conf
+        self.mock_object(self.common, 'configuration', old_conf)
         kwargs = self.common.get_attributes_from_cinder_config()
         self.assertIsNone(kwargs)
 
@@ -3248,7 +3240,7 @@ class PowerMaxCommonTest(test.TestCase):
             powermax_array=self.data.array, powermax_srp='SRP_1',
             san_password='smc', san_api_port=3448,
             powermax_port_groups=[self.data.port_group_name_i])
-        self.common.configuration = configuration
+        self.mock_object(self.common, 'configuration', configuration)
         kwargs_returned = self.common.get_attributes_from_cinder_config()
         self.assertEqual(kwargs_expected, kwargs_returned)
 
@@ -3263,7 +3255,7 @@ class PowerMaxCommonTest(test.TestCase):
             powermax_array=self.data.array, powermax_srp='SRP_1',
             san_password='smc',
             powermax_port_groups=[self.data.port_group_name_i])
-        self.common.configuration = configuration
+        self.mock_object(self.common, 'configuration', configuration)
         kwargs_returned = self.common.get_attributes_from_cinder_config()
         self.assertEqual(kwargs_expected, kwargs_returned)
 
@@ -3276,7 +3268,7 @@ class PowerMaxCommonTest(test.TestCase):
             driver_ssl_cert_verify=True,
             driver_ssl_cert_path='/path/to/cert')
 
-        self.common.configuration = conf
+        self.mock_object(self.common, 'configuration', conf)
         conf_returned = self.common.get_attributes_from_cinder_config()
         self.assertEqual('/path/to/cert', conf_returned['SSLVerify'])
 
@@ -3473,12 +3465,12 @@ class PowerMaxCommonTest(test.TestCase):
                           self.common.revert_to_snapshot, volume, snapshot)
 
     def test_get_initiator_check_flag(self):
-        self.common.configuration.initiator_check = False
+        self.mock_object(self.common.configuration, 'initiator_check', False)
         initiator_check = self.common._get_initiator_check_flag()
         self.assertFalse(initiator_check)
 
     def test_get_initiator_check_flag_true(self):
-        self.common.configuration.initiator_check = True
+        self.mock_object(self.common.configuration, 'initiator_check', True)
         initiator_check = self.common._get_initiator_check_flag()
         self.assertTrue(initiator_check)
 
@@ -3594,14 +3586,15 @@ class PowerMaxCommonTest(test.TestCase):
             self.assertEqual(vols_lists, expected_response)
 
     def test_get_slo_workload_combo_from_cinder_conf(self):
-        self.common.configuration.powermax_service_level = 'Diamond'
-        self.common.configuration.vmax_workload = 'DSS'
+        self.mock_object(self.common.configuration, 'powermax_service_level',
+                         'Diamond')
+        self.mock_object(self.common.configuration, 'vmax_workload', 'DSS')
         response1 = self.common.get_attributes_from_cinder_config()
         self.assertEqual('Diamond', response1['ServiceLevel'])
         self.assertEqual('DSS', response1['Workload'])
 
-        self.common.configuration.powermax_service_level = 'Diamond'
-        self.common.configuration.vmax_workload = None
+        #  powermax_service_level  is already set to Diamond
+        self.mock_object(self.common.configuration, 'vmax_workload', None)
         response2 = self.common.get_attributes_from_cinder_config()
         self.assertEqual(self.common.configuration.powermax_service_level,
                          response2['ServiceLevel'])
@@ -3613,13 +3606,14 @@ class PowerMaxCommonTest(test.TestCase):
             'SerialNumber': '000197800123', 'srpName': 'SRP_1',
             'PortGroup': ['OS-fibre-PG']}
 
-        self.common.configuration.powermax_service_level = None
-        self.common.configuration.vmax_workload = 'DSS'
+        self.mock_object(self.common.configuration, 'powermax_service_level',
+                         None)
+        self.mock_object(self.common.configuration, 'vmax_workload', 'DSS')
         response3 = self.common.get_attributes_from_cinder_config()
         self.assertEqual(expected_response, response3)
 
-        self.common.configuration.powermax_service_level = None
-        self.common.configuration.vmax_workload = None
+        # powermax_service_level is already set to None
+        self.mock_object(self.common.configuration, 'vmax_workload', None)
         response4 = self.common.get_attributes_from_cinder_config()
         self.assertEqual(expected_response, response4)
 
@@ -3633,7 +3627,7 @@ class PowerMaxCommonTest(test.TestCase):
             u4p_failover_retries='3', u4p_failover_timeout='10',
             u4p_primary='10.10.10.10', powermax_array=self.data.array,
             powermax_srp=self.data.srp)
-        self.common.configuration = configuration
+        self.mock_object(self.common, 'configuration', configuration)
         self.common._get_u4p_failover_info()
         self.assertTrue(self.rest.u4p_failover_enabled)
         self.assertIsNotNone(self.rest.u4p_failover_targets)
@@ -3667,21 +3661,21 @@ class PowerMaxCommonTest(test.TestCase):
                 'RestUserName': 'test', 'RestPassword': 'test',
                 'SerialNumber': '000197800123', 'srpName': 'SRP_1',
                 'PortGroup': None, 'SSLVerify': True}}
-        self.common.configuration = configuration
+        self.mock_object(self.common, 'configuration', configuration)
         self.common._get_u4p_failover_info()
         self.assertIsNotNone(self.rest.u4p_failover_targets)
         mck_set_fo.assert_called_once_with(expected_u4p_failover_config)
 
     def test_update_vol_stats_retest_u4p(self):
-        self.rest.u4p_in_failover = True
-        self.rest.u4p_failover_autofailback = True
+        self.mock_object(self.rest, 'u4p_in_failover', True)
+        self.mock_object(self.rest, 'u4p_failover_autofailback', True)
         with mock.patch.object(
                 self.common, 'retest_primary_u4p') as mock_retest:
             self.common.update_volume_stats()
             mock_retest.assert_called_once()
 
-        self.rest.u4p_in_failover = True
-        self.rest.u4p_failover_autofailback = False
+        self.mock_object(self.rest, 'u4p_in_failover', False)
+        self.mock_object(self.rest, 'u4p_failover_autofailback', False)
         with mock.patch.object(
                 self.common, 'retest_primary_u4p') as mock_retest:
             self.common.update_volume_stats()
@@ -3730,7 +3724,7 @@ class PowerMaxCommonTest(test.TestCase):
         device_id = self.data.device_id
         new_size = self.data.test_volume.size + 1
         extra_specs = deepcopy(self.data.extra_specs)
-        self.common.next_gen = False
+        self.mock_object(self.common, 'next_gen', False)
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.common._extend_vol_validation_checks,
@@ -3753,7 +3747,7 @@ class PowerMaxCommonTest(test.TestCase):
     def test_array_ode_capabilities_check_non_next_gen_local(self):
         """Rep enabled, neither array next gen, returns F,F,F,F"""
         array = self.data.powermax_model_details['symmetrixId']
-        self.common.next_gen = False
+        self.mock_object(self.common, 'next_gen', False)
         (r1_ode, r1_ode_metro,
          r2_ode, r2_ode_metro) = self.common._array_ode_capabilities_check(
             array, self.data.rep_config_metro, True)
@@ -3770,8 +3764,8 @@ class PowerMaxCommonTest(test.TestCase):
             self, mock_rdf, mock_det):
         """Rep disabled, local array next gen, pre elm, returns T,F,F,F"""
         array = self.data.powermax_model_details['symmetrixId']
-        self.common.ucode_level = '5978.1.1'
-        self.common.next_gen = True
+        self.mock_object(self.common, 'ucode_level', '5978.1.1')
+        self.mock_object(self.common, 'next_gen', True)
         (r1_ode, r1_ode_metro,
          r2_ode, r2_ode_metro) = self.common._array_ode_capabilities_check(
             array, self.data.rep_config_metro, False)
@@ -3788,8 +3782,9 @@ class PowerMaxCommonTest(test.TestCase):
             self, mock_rdf, mock_det):
         """Rep enabled, remote not next gen, returns T,T,F,F"""
         array = self.data.powermax_model_details['symmetrixId']
-        self.common.ucode_level = self.data.powermax_model_details['ucode']
-        self.common.next_gen = True
+        self.mock_object(self.common, 'ucode_level',
+                         self.data.powermax_model_details['ucode'])
+        self.mock_object(self.common, 'next_gen', True)
         (r1_ode, r1_ode_metro,
          r2_ode, r2_ode_metro) = self.common._array_ode_capabilities_check(
             array, self.data.rep_config_metro, True)
@@ -3806,8 +3801,9 @@ class PowerMaxCommonTest(test.TestCase):
             self, mock_rdf, mock_det):
         """Rep enabled, both array next gen, tgt<5978.221, returns T,T,T,F"""
         array = self.data.powermax_model_details['symmetrixId']
-        self.common.ucode_level = self.data.powermax_model_details['ucode']
-        self.common.next_gen = True
+        self.mock_object(self.common, 'ucode_level',
+                         self.data.powermax_model_details['ucode'])
+        self.mock_object(self.common, 'next_gen', True)
         (r1_ode, r1_ode_metro,
          r2_ode, r2_ode_metro) = self.common._array_ode_capabilities_check(
             array, self.data.rep_config_metro, True)
@@ -3824,8 +3820,9 @@ class PowerMaxCommonTest(test.TestCase):
             self, mock_rdf, mock_det):
         """Rep enabled, both array next gen, tgt>5978.221 returns T,T,T,T"""
         array = self.data.powermax_model_details['symmetrixId']
-        self.common.ucode_level = self.data.powermax_model_details['ucode']
-        self.common.next_gen = True
+        self.mock_object(self.common, 'ucode_level',
+                         self.data.powermax_model_details['ucode'])
+        self.mock_object(self.common, 'next_gen', True)
         (r1_ode, r1_ode_metro,
          r2_ode, r2_ode_metro) = self.common._array_ode_capabilities_check(
             array, self.data.rep_config_metro, True)
@@ -3879,7 +3876,7 @@ class PowerMaxCommonTest(test.TestCase):
             powermax_array=self.data.array, powermax_srp='SRP_1',
             san_password='smc', san_api_port=1234,
             powermax_port_groups=[self.data.port_group_name_i])
-        self.common.configuration = configuration
+        self.mock_object(self.common, 'configuration', configuration)
         port = self.common._get_unisphere_port()
         self.assertEqual(1234, port)
 
@@ -3889,7 +3886,7 @@ class PowerMaxCommonTest(test.TestCase):
             powermax_array=self.data.array, powermax_srp='SRP_1',
             san_password='smc',
             powermax_port_groups=[self.data.port_group_name_i])
-        self.common.configuration = configuration
+        self.mock_object(self.common, 'configuration', configuration)
         ref_port = utils.DEFAULT_PORT
         port = self.common._get_unisphere_port()
         self.assertEqual(ref_port, port)
@@ -4186,13 +4183,18 @@ class PowerMaxCommonTest(test.TestCase):
         mock_verify.assert_not_called()
 
     def test_set_config_file_and_get_extra_specs(self):
-        self.common.rep_config = {
-            'mode': utils.REP_METRO, utils.METROBIAS: True}
-        with mock.patch.object(self.utils, 'get_volumetype_extra_specs',
-                               return_value=self.data.rep_extra_specs_metro):
-            extra_specs, __ = self.common._set_config_file_and_get_extra_specs(
-                self.data.test_volume, None)
-            self.assertEqual(self.data.rep_extra_specs_metro, extra_specs)
+        self.mock_object(self.common, 'rep_configs',
+                         [{'mode': utils.REP_METRO, utils.METROBIAS: True}])
+        original_specs = deepcopy(self.data.rep_extra_specs_metro)
+        try:
+            with mock.patch.object(
+                    self.utils, 'get_volumetype_extra_specs',
+                    return_value=self.data.rep_extra_specs_metro):
+                specs, __ = self.common._set_config_file_and_get_extra_specs(
+                    self.data.test_volume, None)
+                self.assertEqual(self.data.rep_extra_specs_metro, specs)
+        finally:
+            self.data.rep_extra_specs_metro = original_specs
 
     @mock.patch.object(utils.PowerMaxUtils, 'get_rdf_management_group_name')
     def test_retype_volume_promotion_get_extra_specs_mgmt_group(self, mck_get):
@@ -4207,11 +4209,10 @@ class PowerMaxCommonTest(test.TestCase):
         target_extra_specs = deepcopy(self.data.extra_specs)
         target_extra_specs[utils.DISABLECOMPRESSION] = False
         extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
-        self.common.promotion = True
+        self.mock_object(self.common, 'promotion', True)
         self.common._retype_volume(
             array, srp, device_id, volume, volume_name, extra_specs,
             target_slo, target_workload, target_extra_specs)
-        self.common.promotion = False
         mck_get.assert_called_once_with(extra_specs[utils.REP_CONFIG])
 
     @mock.patch.object(rest.PowerMaxRest, 'is_volume_in_storagegroup',
@@ -4458,8 +4459,8 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(utils.PowerMaxUtils, 'get_volume_group_utils',
                        return_value=(None, {'interval': 1, 'retries': 1}))
     def test_get_volume_group_info(self, mock_group_utils):
-        self.common.interval = 1
-        self.common.retries = 1
+        self.mock_object(self.common, 'interval', 1)
+        self.mock_object(self.common, 'retries', 1)
         with mock.patch.object(
                 tpfo.FakeConfiguration, 'safe_get') as mock_array:
             self.common._get_volume_group_info(
@@ -4481,9 +4482,9 @@ class PowerMaxCommonTest(test.TestCase):
             port_load_metric='PercentBusy')
 
         ref_perf_conf = self.data.performance_config
-        volume_utils.get_max_over_subscription_ratio = mock.Mock()
-        rest.PowerMaxRest._establish_rest_session = mock.Mock(
-            return_value=tpfo.FakeRequestsSession())
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio')
+        self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
+                         return_value=tpfo.FakeRequestsSession())
         driver = fc.PowerMaxFCDriver(configuration=ref_cinder_conf)
         self.assertEqual(ref_perf_conf, driver.common.performance.config)
 
@@ -4521,7 +4522,8 @@ class PowerMaxCommonTest(test.TestCase):
         """
         extra_specs = {utils.ARRAY: self.data.array}
         pool_record = {utils.PORT_GROUP: self.data.perf_port_groups}
-        self.common.performance.config = self.data.performance_config
+        self.mock_object(self.common.performance, 'config',
+                         self.data.performance_config)
         with mock.patch.object(
                 self.common.performance, 'process_port_group_load',
                 side_effect=(

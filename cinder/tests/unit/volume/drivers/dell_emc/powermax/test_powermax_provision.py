@@ -33,14 +33,14 @@ class PowerMaxProvisionTest(test.TestCase):
     def setUp(self):
         self.data = tpd.PowerMaxData()
         super(PowerMaxProvisionTest, self).setUp()
-        volume_utils.get_max_over_subscription_ratio = mock.Mock()
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio')
         configuration = tpfo.FakeConfiguration(
             None, 'ProvisionTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             powermax_array=self.data.array, powermax_srp='SRP_1',
             san_password='smc', san_api_port=8443,
             powermax_port_groups=[self.data.port_group_name_i])
-        rest.PowerMaxRest._establish_rest_session = mock.Mock(
-            return_value=tpfo.FakeRequestsSession())
+        self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
+                         return_value=tpfo.FakeRequestsSession())
         driver = iscsi.PowerMaxISCSIDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common

@@ -39,7 +39,7 @@ from cinder.volume import volume_utils
 class PowerMaxUtilsTest(test.TestCase):
     def setUp(self):
         self.data = tpd.PowerMaxData()
-        volume_utils.get_max_over_subscription_ratio = mock.Mock()
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio')
         super(PowerMaxUtilsTest, self).setUp()
         self.replication_device = self.data.sync_rep_device
         configuration = tpfo.FakeConfiguration(
@@ -48,8 +48,8 @@ class PowerMaxUtilsTest(test.TestCase):
             san_password='smc', san_api_port=8443,
             powermax_port_groups=[self.data.port_group_name_i],
             replication_device=self.replication_device)
-        rest.PowerMaxRest._establish_rest_session = mock.Mock(
-            return_value=tpfo.FakeRequestsSession())
+        self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
+                         return_value=tpfo.FakeRequestsSession())
         driver = iscsi.PowerMaxISCSIDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
@@ -59,17 +59,18 @@ class PowerMaxUtilsTest(test.TestCase):
         with mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                                return_value={'specs'}) as type_mock:
             # path 1: volume_type_id not passed in
-            self.data.test_volume.volume_type_id = (
-                self.data.test_volume_type.id)
-            self.utils.get_volumetype_extra_specs(self.data.test_volume)
+            volume = deepcopy(self.data.test_volume)
+            volume.volume_type_id = self.data.test_volume_type.id
+            self.utils.get_volumetype_extra_specs(volume)
             type_mock.assert_called_once_with(self.data.test_volume_type.id)
             type_mock.reset_mock()
             # path 2: volume_type_id passed in
-            self.utils.get_volumetype_extra_specs(self.data.test_volume, '123')
+            self.utils.get_volumetype_extra_specs(volume, '123')
             type_mock.assert_called_once_with('123')
             type_mock.reset_mock()
             # path 3: no type_id
-            self.utils.get_volumetype_extra_specs(self.data.test_clone_volume)
+            volume = deepcopy(self.data.test_clone_volume)
+            self.utils.get_volumetype_extra_specs(volume)
             type_mock.assert_not_called()
 
     def test_get_volumetype_extra_specs_exception(self):
@@ -1265,7 +1266,7 @@ class PowerMaxUtilsTest(test.TestCase):
     def test_is_retype_supported(self):
         # Volume source type not replicated, target type Metro replicated,
         # volume is detached, host-assisted retype supported
-        volume = self.data.test_volume
+        volume = deepcopy(self.data.test_volume)
         volume.attach_status = 'detached'
 
         src_extra_specs = deepcopy(self.data.extra_specs)
@@ -1620,7 +1621,7 @@ class PowerMaxUtilsTest(test.TestCase):
             self.assertEqual(expected_msg, e.msg)
 
     def test_get_migration_delete_extra_specs_replicated(self):
-        volume = self.data.test_volume
+        volume = deepcopy(self.data.test_volume)
         metadata = deepcopy(self.data.volume_metadata)
         metadata[utils.IS_RE_CAMEL] = 'True'
         metadata['ReplicationMode'] = utils.REP_SYNC
@@ -1639,7 +1640,7 @@ class PowerMaxUtilsTest(test.TestCase):
         self.assertEqual(ref_extra_specs, updated_extra_specs)
 
     def test_get_migration_delete_extra_specs_non_replicated(self):
-        volume = self.data.test_volume
+        volume = deepcopy(self.data.test_volume)
         volume.metadata = self.data.volume_metadata
         extra_specs = deepcopy(self.data.extra_specs)
         extra_specs[utils.IS_RE] = True

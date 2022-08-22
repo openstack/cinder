@@ -36,19 +36,19 @@ class PowerMaxRestTest(test.TestCase):
     def setUp(self):
         self.data = tpd.PowerMaxData()
         super(PowerMaxRestTest, self).setUp()
-        volume_utils.get_max_over_subscription_ratio = mock.Mock()
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio')
         configuration = tpfo.FakeConfiguration(
             None, 'RestTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             powermax_array=self.data.array, powermax_srp='SRP_1',
             san_password='smc', san_api_port=8443,
             powermax_port_groups=[self.data.port_group_name_i])
-        rest.PowerMaxRest._establish_rest_session = mock.Mock(
-            return_value=tpfo.FakeRequestsSession())
+        self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
+                         return_value=tpfo.FakeRequestsSession())
         driver = fc.PowerMaxFCDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
         self.rest = self.common.rest
-        self.rest.is_snap_id = True
+        self.mock_object(self.rest, 'is_snap_id', True)
         self.utils = self.common.utils
 
     def test_rest_request_no_response(self):
@@ -84,22 +84,21 @@ class PowerMaxRestTest(test.TestCase):
             with mock.patch.object(self.rest.session, 'request',
                                    side_effect=[requests.ConnectionError,
                                                 response]):
-                self.rest.u4p_failover_enabled = True
+                self.mock_object(self.rest, 'u4p_failover_enabled', True)
                 self.rest.request('/fake_uri', 'GET')
                 mock_fail.assert_called_once()
 
     @mock.patch.object(time, 'sleep')
     def test_rest_request_failover_escape(self, mck_sleep):
-        self.rest.u4p_failover_lock = True
+        self.mock_object(self.rest, 'u4p_failover_lock', True)
         response = tpfo.FakeResponse(200, 'Success')
         with mock.patch.object(self.rest, '_handle_u4p_failover')as mock_fail:
             with mock.patch.object(self.rest.session, 'request',
                                    side_effect=[requests.ConnectionError,
                                                 response]):
-                self.rest.u4p_failover_enabled = True
+                self.mock_object(self.rest, 'u4p_failover_enabled', True)
                 self.rest.request('/fake_uri', 'GET')
                 mock_fail.assert_called_once()
-        self.rest.u4p_failover_lock = False
 
     def test_wait_for_job_complete(self):
         rc, job, status, task = self.rest.wait_for_job_complete(
@@ -761,8 +760,9 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=[])
     def test_delete_volume(self, mock_sgs):
         device_id = self.data.device_id
-        self.rest.ucode_major_level = utils.UCODE_5978
-        self.rest.ucode_minor_level = utils.UCODE_5978_HICKORY
+        self.mock_object(self.rest, 'ucode_major_level', utils.UCODE_5978)
+        self.mock_object(self.rest, 'ucode_minor_level',
+                         utils.UCODE_5978_HICKORY)
         with mock.patch.object(
                 self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_volume(self.data.array, device_id)
@@ -773,8 +773,9 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=['OS-SG'])
     def test_delete_volume_in_sg(self, mock_sgs):
         device_id = self.data.device_id
-        self.rest.ucode_major_level = utils.UCODE_5978
-        self.rest.ucode_minor_level = utils.UCODE_5978_HICKORY
+        self.mock_object(self.rest, 'ucode_major_level', utils.UCODE_5978)
+        self.mock_object(self.rest, 'ucode_minor_level',
+                         utils.UCODE_5978_HICKORY)
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.rest.delete_volume, self.data.array, device_id)
@@ -1878,7 +1879,8 @@ class PowerMaxRestTest(test.TestCase):
                          self.rest.u4p_failover_targets[1]['san_ip'])
 
     def test_handle_u4p_failover_with_targets(self):
-        self.rest.u4p_failover_targets = self.data.u4p_failover_target
+        self.mock_object(self.rest, 'u4p_failover_targets',
+                         self.data.u4p_failover_target)
         self.rest._handle_u4p_failover()
 
         self.assertTrue(self.rest.u4p_in_failover)
@@ -1889,7 +1891,7 @@ class PowerMaxRestTest(test.TestCase):
                          self.rest.base_uri)
 
     def test_handle_u4p_failover_no_targets_exception(self):
-        self.rest.u4p_failover_targets = []
+        self.mock_object(self.rest, 'u4p_failover_targets', [])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.rest._handle_u4p_failover)
 
@@ -2112,7 +2114,7 @@ class PowerMaxRestTest(test.TestCase):
         array_id = self.data.array
         rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
-        rep_extra_specs = self.data.rep_extra_specs
+        rep_extra_specs = deepcopy(self.data.rep_extra_specs)
         rep_extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
         rep_extra_specs[utils.REP_MODE] = utils.REP_ASYNC
 
@@ -2249,7 +2251,7 @@ class PowerMaxRestTest(test.TestCase):
         mode = utils.REP_ASYNC
         device_id = self.data.device_id
         tgt_device_id = self.data.device_id2
-        rep_extra_specs = self.data.rep_extra_specs
+        rep_extra_specs = deepcopy(self.data.rep_extra_specs)
         rep_extra_specs['array'] = remote_array
 
         ref_payload = {
@@ -2284,7 +2286,7 @@ class PowerMaxRestTest(test.TestCase):
         mode = utils.REP_SYNC
         device_id = self.data.device_id
         tgt_device_id = self.data.device_id2
-        rep_extra_specs = self.data.rep_extra_specs
+        rep_extra_specs = deepcopy(self.data.rep_extra_specs)
         rep_extra_specs[utils.ARRAY] = remote_array
 
         ref_payload = {
@@ -2320,7 +2322,7 @@ class PowerMaxRestTest(test.TestCase):
         rdf_group_no = self.data.rdf_group_no_1
         mode = utils.REP_ASYNC
         device_id = self.data.device_id
-        rep_extra_specs = self.data.rep_extra_specs
+        rep_extra_specs = deepcopy(self.data.rep_extra_specs)
         rep_extra_specs['array'] = remote_array
 
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -2536,7 +2538,7 @@ class PowerMaxRestTest(test.TestCase):
                                     [{'snap_name': 'generation_string',
                                       'generation': '0'}]])
     def test_get_snap_id_legacy_generation(self, mock_snaps):
-        self.rest.is_snap_id = False
+        self.mock_object(self.rest, 'is_snap_id', False)
         for x in range(0, 2):
             snap_id = self.rest.get_snap_id(
                 self.data.array, self.data.device_id,

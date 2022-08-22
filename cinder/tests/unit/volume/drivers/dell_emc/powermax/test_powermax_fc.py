@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 from unittest import mock
 
 from cinder import exception
@@ -32,21 +33,22 @@ class PowerMaxFCTest(test.TestCase):
     def setUp(self):
         self.data = tpd.PowerMaxData()
         super(PowerMaxFCTest, self).setUp()
-        volume_utils.get_max_over_subscription_ratio = mock.Mock()
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio')
         self.configuration = tpfo.FakeConfiguration(
             None, 'FCTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             powermax_array=self.data.array, powermax_srp='SRP_1',
             san_password='smc', san_api_port=8443,
             powermax_port_groups=[self.data.port_group_name_i])
-        rest.PowerMaxRest._establish_rest_session = mock.Mock(
-            return_value=tpfo.FakeRequestsSession())
+        self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
+                         return_value=tpfo.FakeRequestsSession())
         driver = fc.PowerMaxFCDriver(configuration=self.configuration)
         self.driver = driver
         self.common = self.driver.common
         self.masking = self.common.masking
         self.utils = self.common.utils
-        self.utils.get_volumetype_extra_specs = (
-            mock.Mock(return_value=self.data.vol_type_extra_specs))
+        self.mock_object(
+            self.utils, 'get_volumetype_extra_specs',
+            return_value=copy.deepcopy(self.data.vol_type_extra_specs))
 
     def test_create_volume(self):
         with mock.patch.object(self.common, 'create_volume') as mock_create:
@@ -138,11 +140,11 @@ class PowerMaxFCTest(test.TestCase):
     def test_get_zoning_mappings(self):
         ref_mappings = self.data.zoning_mappings
         zoning_mappings = self.driver._get_zoning_mappings(
-            self.data.test_volume, self.data.connector)
+            self.data.test_volume, copy.deepcopy(self.data.connector))
         self.assertEqual(ref_mappings, zoning_mappings)
         # Legacy vol
         zoning_mappings2 = self.driver._get_zoning_mappings(
-            self.data.test_legacy_vol, self.data.connector)
+            self.data.test_legacy_vol, copy.deepcopy(self.data.connector))
         self.assertEqual(ref_mappings, zoning_mappings2)
 
     def test_get_zoning_mappings_no_mv(self):

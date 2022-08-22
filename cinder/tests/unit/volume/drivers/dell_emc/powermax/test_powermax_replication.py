@@ -42,15 +42,15 @@ class PowerMaxReplicationTest(test.TestCase):
         self.data = tpd.PowerMaxData()
         super(PowerMaxReplicationTest, self).setUp()
         self.replication_device = self.data.sync_rep_device
-        volume_utils.get_max_over_subscription_ratio = mock.Mock()
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio')
         configuration = tpfo.FakeConfiguration(
             None, 'CommonReplicationTests', interval=1, retries=1,
             san_ip='1.1.1.1', san_login='smc', powermax_array=self.data.array,
             powermax_srp='SRP_1', san_password='smc', san_api_port=8443,
             powermax_port_groups=[self.data.port_group_name_f],
             replication_device=self.replication_device)
-        rest.PowerMaxRest._establish_rest_session = mock.Mock(
-            return_value=tpfo.FakeRequestsSession())
+        self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
+                         return_value=tpfo.FakeRequestsSession())
         driver = fc.PowerMaxFCDriver(configuration=configuration)
         iscsi_config = tpfo.FakeConfiguration(
             None, 'CommonReplicationTests', interval=1, retries=1,
@@ -66,9 +66,9 @@ class PowerMaxReplicationTest(test.TestCase):
         self.provision = self.common.provision
         self.rest = self.common.rest
         self.utils = self.common.utils
-        self.utils.get_volumetype_extra_specs = (
-            mock.Mock(
-                return_value=self.data.vol_type_extra_specs_rep_enabled))
+        self.mock_object(
+            self.utils, 'get_volumetype_extra_specs',
+            return_value=deepcopy(self.data.vol_type_extra_specs_rep_enabled))
         self.extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
         self.extra_specs['retries'] = 1
         self.extra_specs['interval'] = 1
@@ -370,8 +370,9 @@ class PowerMaxReplicationTest(test.TestCase):
     @mock.patch.object(common.PowerMaxCommon,
                        '_update_volume_list_from_sync_vol_list',
                        return_value={'vol_updates'})
-    @mock.patch.object(common.PowerMaxCommon, '_initial_setup',
-                       return_value=tpd.PowerMaxData.ex_specs_rep_config_sync)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_initial_setup',
+        return_value=tpd.PowerMaxData.ex_specs_rep_config_sync.copy())
     @mock.patch.object(common.PowerMaxCommon, 'failover_replication',
                        return_value=('grp_updates', {'grp_vol_updates'}))
     def test_populate_volume_and_group_update_lists(
@@ -396,7 +397,7 @@ class PowerMaxReplicationTest(test.TestCase):
         self.assertEqual(group_updates_ref, group_updates)
 
     @mock.patch.object(common.PowerMaxCommon, '_initial_setup',
-                       return_value=tpd.PowerMaxData.extra_specs)
+                       return_value=tpd.PowerMaxData.extra_specs.copy())
     def test_populate_volume_and_group_update_lists_promotion_non_rep(
             self, mck_setup):
         volumes = [self.data.test_volume]
@@ -663,7 +664,7 @@ class PowerMaxReplicationTest(test.TestCase):
         self.assertEqual(ref_vol_update, vols_model_update[0])
 
     @mock.patch.object(common.PowerMaxCommon, '_initial_setup',
-                       return_value=tpd.PowerMaxData.extra_specs)
+                       return_value=tpd.PowerMaxData.extra_specs.copy())
     def test_populate_volume_and_group_update_lists_group_update_vol_list(
             self, mck_setup):
         volume = deepcopy(self.data.test_volume)

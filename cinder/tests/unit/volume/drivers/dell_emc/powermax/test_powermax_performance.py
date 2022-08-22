@@ -50,9 +50,9 @@ class PowerMaxPerformanceTest(test.TestCase):
 
         super(PowerMaxPerformanceTest, self).setUp()
 
-        volume_utils.get_max_over_subscription_ratio = mock.Mock()
-        rest.PowerMaxRest._establish_rest_session = mock.Mock(
-            return_value=tpfo.FakeRequestsSession())
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio')
+        self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
+                         return_value=tpfo.FakeRequestsSession())
         driver = iscsi.PowerMaxISCSIDriver(
             configuration=self.reference_cinder_conf)
         self.driver = driver
