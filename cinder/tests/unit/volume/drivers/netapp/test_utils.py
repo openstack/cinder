@@ -138,11 +138,10 @@ class NetAppDriverUtilsTestCase(test.TestCase):
             [fake.ISCSI_FAKE_PORT, fake.ISCSI_FAKE_PORT])
 
         actual_properties_mapped = actual_properties['data']
-        expected = fake.ISCSI_MP_TARGET_INFO_DICT.copy()
+        expected = copy.deepcopy(fake.ISCSI_MP_TARGET_INFO_DICT)
         expected['target_iqns'][1] = expected['target_iqns'][0]
 
-        self.assertDictEqual(actual_properties_mapped,
-                             fake.ISCSI_MP_TARGET_INFO_DICT)
+        self.assertDictEqual(expected, actual_properties_mapped)
 
     def test_iscsi_connection_lun_id_type_str(self):
         FAKE_LUN_ID = '1'
