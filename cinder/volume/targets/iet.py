@@ -60,7 +60,7 @@ class IetAdm(iscsi.ISCSITarget):
             LOG.exception("Failed to open iet session list for %s", iqn)
             raise
 
-        session_list = re.split('^tid:(?m)', sessions)[1:]
+        session_list = re.split('(?m)^tid:', sessions)[1:]
         for ses in session_list:
             m = re.match(r'(\d+) name:(\S+)\s+', ses)
             if m and iqn in m.group(2):
@@ -213,7 +213,7 @@ class IetAdm(iscsi.ISCSITarget):
                      {'vol_id': vol_id, 'e': e})
             return None
 
-        session_list = re.split('^tid:(?m)', sessions)[1:]
+        session_list = re.split('(?m)^tid:', sessions)[1:]
         for ses in session_list:
             m = re.match(r'(\d+) name:(\S+)\s+sid:(\d+).+\s+cid:(\d+)', ses)
             if m and tid in m.group(1) and name in m.group(2):
