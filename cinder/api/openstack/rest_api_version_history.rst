@@ -528,3 +528,8 @@ following meanings:
   manual scans.
 - ``false``: Never do locking.
 - ``null``: Forced locking regardless of the iSCSI initiator.
+
+3.70
+----
+
+Add the ability to transfer encrypted volumes and their snapshots.

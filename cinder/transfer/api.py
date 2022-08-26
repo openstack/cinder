@@ -31,6 +31,7 @@ import six
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _
+from cinder.keymgr import transfer as key_transfer
 from cinder import objects
 from cinder.policies import volume_transfer as policy
 from cinder import quota
@@ -76,6 +77,8 @@ class API(base.Base):
                                                "transfer.delete.start")
         if volume_ref['status'] != 'awaiting-transfer':
             LOG.error("Volume in unexpected state")
+        if volume_ref.encryption_key_id is not None:
+            key_transfer.transfer_delete(context, volume_ref, conf=CONF)
         self.db.transfer_destroy(context, transfer_id)
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "transfer.delete.end")
@@ -126,16 +129,23 @@ class API(base.Base):
             auth_key = auth_key.encode('utf-8')
         return hmac.new(salt, auth_key, hashlib.sha1).hexdigest()
 
-    def create(self, context, volume_id, display_name, no_snapshots=False):
+    def create(self, context, volume_id, display_name, no_snapshots=False,
+               allow_encrypted=False):
         """Creates an entry in the transfers table."""
         LOG.info("Generating transfer record for volume %s", volume_id)
         volume_ref = objects.Volume.get_by_id(context, volume_id)
         context.authorize(policy.CREATE_POLICY, target_obj=volume_ref)
         if volume_ref['status'] != "available":
             raise exception.InvalidVolume(reason=_("status must be available"))
-        if volume_ref['encryption_key_id'] is not None:
-            raise exception.InvalidVolume(
-                reason=_("transferring encrypted volume is not supported"))
+
+        if volume_ref.encryption_key_id is not None:
+            if not allow_encrypted:
+                raise exception.InvalidVolume(
+                    reason=_("transferring encrypted volume is not supported"))
+            if no_snapshots:
+                raise exception.InvalidVolume(
+                    reason=_("transferring an encrypted volume without its "
+                             "snapshots is not supported"))
 
         if not no_snapshots:
             snapshots = self.db.snapshot_get_all_for_volume(context, volume_id)
@@ -143,10 +153,6 @@ class API(base.Base):
                 if snapshot['status'] != "available":
                     msg = _("snapshot: %s status must be "
                             "available") % snapshot['id']
-                    raise exception.InvalidSnapshot(reason=msg)
-                if snapshot.get('encryption_key_id'):
-                    msg = _("snapshot: %s encrypted snapshots cannot be "
-                            "transferred") % snapshot['id']
                     raise exception.InvalidSnapshot(reason=msg)
 
         volume_utils.notify_about_volume_usage(context, volume_ref,
@@ -170,6 +176,15 @@ class API(base.Base):
         except Exception:
             LOG.error("Failed to create transfer record for %s", volume_id)
             raise
+
+        if volume_ref.encryption_key_id is not None:
+            try:
+                key_transfer.transfer_create(context, volume_ref, conf=CONF)
+            except Exception:
+                LOG.error("Failed to transfer keys for %s", volume_id)
+                self.db.transfer_destroy(context, transfer.id)
+                raise
+
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "transfer.create.end")
         return {'id': transfer['id'],
@@ -284,6 +299,8 @@ class API(base.Base):
 
         volume_utils.notify_about_volume_usage(context, vol_ref,
                                                "transfer.accept.start")
+
+        encryption_key_transferred = False
         try:
             # Transfer ownership of the volume now, must use an elevated
             # context.
@@ -292,6 +309,10 @@ class API(base.Base):
                                             context.user_id,
                                             context.project_id,
                                             transfer['no_snapshots'])
+            if vol_ref.encryption_key_id is not None:
+                key_transfer.transfer_accept(context, vol_ref, conf=CONF)
+                encryption_key_transferred = True
+
             self.db.transfer_accept(context.elevated(),
                                     transfer_id,
                                     context.user_id,
@@ -306,6 +327,11 @@ class API(base.Base):
                 QUOTAS.commit(context, snap_donor_res, project_id=donor_id)
             LOG.info("Volume %s has been transferred.", volume_id)
         except Exception:
+            # If an exception occurs after the encryption key was transferred
+            # then we need to transfer the key *back* to the service project.
+            # This is done by making another key transfer request.
+            if encryption_key_transferred:
+                key_transfer.transfer_create(context, vol_ref, conf=CONF)
             with excutils.save_and_reraise_exception():
                 QUOTAS.rollback(context, reservations)
                 if snap_res:

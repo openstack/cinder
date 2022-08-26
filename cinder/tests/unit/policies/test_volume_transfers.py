@@ -19,7 +19,6 @@ import ddt
 from cinder.api.v3 import volume_transfer
 from cinder import context
 from cinder import exception
-from cinder.objects import volume as volume_obj
 from cinder.policies import volume_transfer as vol_transfer_policies
 from cinder.tests.unit.api import fakes as fake_api
 from cinder.tests.unit.policies import base
@@ -98,19 +97,15 @@ class VolumeTransferPolicyTest(base.BasePolicyTest):
                                           testcase_instance=self)
         return volume
 
-    @mock.patch.object(volume_obj.Volume, 'get_by_id')
-    def _create_volume_transfer(self, mock_get_vol, volume=None):
+    def _create_volume_transfer(self, volume=None):
         if not volume:
             volume = self._create_volume()
-        mock_get_vol.return_value = volume
         return self.volume_transfer_api.create(context.get_admin_context(),
                                                volume.id, 'test-transfer')
 
     @ddt.data(*base.all_users)
-    @mock.patch.object(volume_obj.Volume, 'get_by_id')
-    def test_create_volume_transfer_policy(self, user_id, mock_get_vol):
+    def test_create_volume_transfer_policy(self, user_id):
         volume = self._create_volume()
-        mock_get_vol.return_value = volume
         rule_name = vol_transfer_policies.CREATE_POLICY
         url = self.api_path
         req = fake_api.HTTPRequest.blank(url)
@@ -126,8 +121,7 @@ class VolumeTransferPolicyTest(base.BasePolicyTest):
                                  body=body)
 
     @ddt.data(*base.all_users)
-    @mock.patch.object(volume_obj.Volume, 'get_by_id')
-    def test_get_volume_transfer_policy(self, user_id, mock_get_vol):
+    def test_get_volume_transfer_policy(self, user_id):
         vol_transfer = self._create_volume_transfer()
         rule_name = vol_transfer_policies.GET_POLICY
         url = '%s/%s' % (self.api_path, vol_transfer['id'])
@@ -176,10 +170,8 @@ class VolumeTransferPolicyTest(base.BasePolicyTest):
         self.assertEqual(transfer_count, len(transfers))
 
     @ddt.data(*base.all_users)
-    @mock.patch.object(volume_obj.Volume, 'get_by_id')
     @mock.patch.object(volume_utils, 'notify_about_volume_usage')
-    def test_delete_volume_transfer_policy(self, user_id, mock_get_vol,
-                                           mock_notify):
+    def test_delete_volume_transfer_policy(self, user_id, mock_notify):
         vol_transfer = self._create_volume_transfer()
         rule_name = vol_transfer_policies.DELETE_POLICY
         url = '%s/%s' % (self.api_path, vol_transfer['id'])
@@ -196,13 +188,10 @@ class VolumeTransferPolicyTest(base.BasePolicyTest):
 
     @ddt.data(*base.all_users)
     @mock.patch('cinder.transfer.api.QUOTAS')
-    @mock.patch.object(volume_obj.Volume, 'get_by_id')
     @mock.patch.object(volume_utils, 'notify_about_volume_usage')
     def test_accept_volume_transfer_policy(self, user_id, mock_notify,
-                                           mock_get_vol, mock_quotas):
-        volume = self._create_volume()
-        vol_transfer = self._create_volume_transfer(volume=volume)
-        mock_get_vol.return_value = volume
+                                           mock_quotas):
+        vol_transfer = self._create_volume_transfer()
         rule_name = vol_transfer_policies.ACCEPT_POLICY
         url = '%s/%s/accept' % (self.api_path, vol_transfer['id'])
         req = fake_api.HTTPRequest.blank(url)

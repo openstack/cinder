@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Starting with API microversion 3.70, encrypted volumes can be transferred
+    to a user in a different project. Prior to microversion 3.70, the transfer
+    is blocked due to the inability to transfer ownership of the volume's
+    encryption key. With microverson 3.70, ownership of the encryption key is
+    transferred when the volume is transferred.

@@ -96,11 +96,15 @@ class VolumeTransferController(volume_transfer_v2.VolumeTransferController):
         no_snapshots = strutils.bool_from_string(transfer.get('no_snapshots',
                                                               False))
 
+        req_version = req.api_version_request
+        allow_encrypted = req_version.matches(mv.TRANSFER_ENCRYPTED_VOLUME)
+
         LOG.info("Creating transfer of volume %s", volume_id)
 
         try:
-            new_transfer = self.transfer_api.create(context, volume_id, name,
-                                                    no_snapshots=no_snapshots)
+            new_transfer = self.transfer_api.create(
+                context, volume_id, name,
+                no_snapshots=no_snapshots, allow_encrypted=allow_encrypted)
         # Not found exception will be handled at the wsgi level
         except exception.Invalid as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
