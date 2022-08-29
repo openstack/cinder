@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 from unittest import mock
 
 from oslo_utils import timeutils
@@ -1110,13 +1111,15 @@ class LinstorIscsiDriverTestCase(test.TestCase):
     @mock.patch(DRIVER + 'LinstorIscsiDriver._get_volume_stats')
     def test_iscsi_get_volume_stats(self, m_vol_stats, m_rsc_list):
 
-        m_vol_stats.return_value = VOLUME_STATS_RESP
+        m_vol_stats.return_value = copy.deepcopy(VOLUME_STATS_RESP)
         m_rsc_list.return_value = RESOURCE_LIST
 
         val = self.driver.get_volume_stats()
 
-        expected = VOLUME_STATS_RESP
+        expected = copy.deepcopy(VOLUME_STATS_RESP)
         expected["storage_protocol"] = 'iSCSI'
+        expected["pools"][0]['location_info'] = (
+            'LinstorIscsiDriver:' + expected["pools"][0]['location_info'])
         self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'linstor')
@@ -1178,11 +1181,13 @@ class LinstorDrbdDriverTestCase(test.TestCase):
 
     @mock.patch(DRIVER + 'LinstorDrbdDriver._get_volume_stats')
     def test_drbd_get_volume_stats(self, m_vol_stats):
-        m_vol_stats.return_value = VOLUME_STATS_RESP
+        m_vol_stats.return_value = copy.deepcopy(VOLUME_STATS_RESP)
 
         val = self.driver.get_volume_stats()
-        expected = VOLUME_STATS_RESP
+        expected = copy.deepcopy(VOLUME_STATS_RESP)
         expected["storage_protocol"] = 'DRBD'
+        expected["pools"][0]['location_info'] = (
+            'LinstorDrbdDriver:' + expected["pools"][0]['location_info'])
         self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'linstor')
