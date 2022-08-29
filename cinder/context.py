@@ -93,6 +93,9 @@ class RequestContext(context.RequestContext):
                  quota_class=None,
                  service_catalog: Optional[dict] = None,
                  user_auth_plugin=None,
+                 message_resource_id = None,
+                 message_resource_type = None,
+                 message_action = None,
                  **kwargs):
         """Initialize RequestContext.
 
@@ -119,9 +122,9 @@ class RequestContext(context.RequestContext):
             timestamp = timeutils.parse_isotime(timestamp)
         self.timestamp = timestamp
         self.quota_class = quota_class
-        self.message_resource_id = None
-        self.message_resource_type = None
-        self.message_action = None
+        self.message_resource_id = message_resource_id
+        self.message_resource_type = message_resource_type
+        self.message_action = message_action
 
         if service_catalog:
             # Only include required parts of service_catalog
@@ -176,6 +179,9 @@ class RequestContext(context.RequestContext):
         result['quota_class'] = self.quota_class
         result['service_catalog'] = self.service_catalog
         result['request_id'] = self.request_id
+        result['message_resource_id'] = self.message_resource_id
+        result['message_resource_type'] = self.message_resource_type
+        result['message_action'] = self.message_action
         return result
 
     @classmethod
@@ -196,6 +202,9 @@ class RequestContext(context.RequestContext):
                    auth_token=values.get('auth_token'),
                    user_domain_id=values.get('user_domain_id'),
                    project_domain_id=values.get('project_domain_id'),
+                   message_resource_id = values.get('message_resource_id'),
+                   message_resource_type = values.get('message_resource_type'),
+                   message_action = values.get('message_action')
                    )
 
     def authorize(self,

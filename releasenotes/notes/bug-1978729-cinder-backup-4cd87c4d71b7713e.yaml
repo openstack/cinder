@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1978729 <https://bugs.launchpad.net/cinder/+bug/1978729>`_: Fixed
+    context.message_action is None on errors by backup drivers. The message_*
+    properties of the context were not passed during rpc, which caused a double
+    exception when a backup driver raised an exception, masking the actual backup
+    driver exception.
