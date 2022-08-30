@@ -1148,7 +1148,7 @@ class VMwareVolumeOps(object):
                       'ds': ds_val, 'rp': rp_val})
         except Exception as e:
             LOG.error("Relocation of main vmdk: %s failed.", vmdk_path)
-            raise vmdk_exceptions.StorageMigratonFailed(e)
+            raise vmdk_exceptions.StorageMigrationFailed(e)
         finally:
             rename_vm(ownervm, original_name)
 
