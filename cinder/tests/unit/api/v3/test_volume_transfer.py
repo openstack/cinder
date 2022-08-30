@@ -27,12 +27,14 @@ from cinder.api import microversions as mv
 from cinder.api.v3 import volume_transfer as volume_transfer_v3
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder.objects import fields
 from cinder import quota
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 import cinder.transfer
 
 
@@ -358,3 +360,145 @@ class VolumeTransferAPITestCase357(VolumeTransferAPITestCase):
     microversion = mv.TRANSFER_WITH_HISTORY
     DETAIL_LEN = 9
     expect_transfer_history = True
+
+
+@ddt.ddt
+class VolumeTransferEncryptedAPITestCase(test.TestCase):
+    # NOTE:
+    # - The TRANSFER_ENCRYPTED_VOLUME microversion is only relevant when
+    #   creating a volume transfer. The microversion specified when accepting
+    #   or deleting a transfer is not relevant.
+    # - The tests take advantage of the fact that a project_id is no longer
+    #   required in API URLs.
+
+    def setUp(self):
+        super(VolumeTransferEncryptedAPITestCase, self).setUp()
+        self.volume_transfer_api = cinder.transfer.API()
+        self.controller = volume_transfer_v3.VolumeTransferController()
+        self.user_ctxt = context.RequestContext(
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+        self.admin_ctxt = context.get_admin_context()
+
+    def _create_volume(self, encryption_key_id):
+        vol_type = test_utils.create_volume_type(self.admin_ctxt,
+                                                 name='fake_vol_type',
+                                                 testcase_instance=self)
+        volume = test_utils.create_volume(self.user_ctxt,
+                                          volume_type_id=vol_type.id,
+                                          testcase_instance=self,
+                                          encryption_key_id=encryption_key_id)
+        return volume
+
+    @mock.patch('cinder.keymgr.transfer.transfer_create')
+    def _create_transfer(self, volume_id, mock_key_transfer_create):
+        transfer = self.volume_transfer_api.create(self.admin_ctxt,
+                                                   volume_id,
+                                                   display_name='test',
+                                                   allow_encrypted=True)
+        return transfer
+
+    @ddt.data(None, fake.ENCRYPTION_KEY_ID)
+    @mock.patch('cinder.keymgr.transfer.transfer_create')
+    def test_create_transfer(self,
+                             encryption_key_id,
+                             mock_key_transfer_create):
+        volume = self._create_volume(encryption_key_id)
+        body = {"transfer": {"name": "transfer1",
+                             "volume_id": volume.id}}
+
+        req = webob.Request.blank('/v3/volume-transfers')
+        req.method = 'POST'
+        req.headers = mv.get_mv_header(mv.TRANSFER_ENCRYPTED_VOLUME)
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
+
+        call_count = 0 if encryption_key_id is None else 1
+        self.assertEqual(mock_key_transfer_create.call_count, call_count)
+
+    def test_create_transfer_encrypted_volume_not_supported(self):
+        volume = self._create_volume(fake.ENCRYPTION_KEY_ID)
+        body = {"transfer": {"name": "transfer1",
+                             "volume_id": volume.id}}
+
+        req = webob.Request.blank('/v3/volume-transfers')
+        req.method = 'POST'
+        req.headers = mv.get_mv_header(
+            mv.get_prior_version(mv.TRANSFER_ENCRYPTED_VOLUME))
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(('Invalid volume: '
+                          'transferring encrypted volume is not supported'),
+                         res_dict['badRequest']['message'])
+
+    @mock.patch('cinder.keymgr.transfer.transfer_create',
+                side_effect=exception.KeyManagerError('whoops!'))
+    def test_create_transfer_key_transfer_failed(self,
+                                                 mock_key_transfer_create):
+        volume = self._create_volume(fake.ENCRYPTION_KEY_ID)
+        body = {"transfer": {"name": "transfer1",
+                             "volume_id": volume.id}}
+
+        req = webob.Request.blank('/v3/volume-transfers')
+        req.method = 'POST'
+        req.headers = mv.get_mv_header(mv.TRANSFER_ENCRYPTED_VOLUME)
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+
+        self.assertEqual(HTTPStatus.INTERNAL_SERVER_ERROR, res.status_int)
+
+    @ddt.data(None, fake.ENCRYPTION_KEY_ID)
+    @mock.patch('cinder.keymgr.transfer.transfer_accept')
+    @mock.patch('cinder.volume.api.API.accept_transfer')
+    def test_accept_transfer(self,
+                             encryption_key_id,
+                             mock_volume_accept_transfer,
+                             mock_key_transfer_accept):
+        volume = self._create_volume(encryption_key_id)
+        transfer = self._create_transfer(volume.id)
+
+        body = {"accept": {"auth_key": transfer['auth_key']}}
+
+        req = webob.Request.blank('/v3/volume-transfers/%s/accept' % (
+                                  transfer['id']))
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
+
+        call_count = 0 if encryption_key_id is None else 1
+        self.assertEqual(mock_key_transfer_accept.call_count, call_count)
+
+    @ddt.data(None, fake.ENCRYPTION_KEY_ID)
+    @mock.patch('cinder.keymgr.transfer.transfer_delete')
+    def test_delete_transfer(self,
+                             encryption_key_id,
+                             mock_key_transfer_delete):
+        volume = self._create_volume(encryption_key_id)
+        transfer = self._create_transfer(volume.id)
+
+        req = webob.Request.blank('/v3/volume-transfers/%s' % (
+            transfer['id']))
+        req.method = 'DELETE'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
+
+        call_count = 0 if encryption_key_id is None else 1
+        self.assertEqual(mock_key_transfer_delete.call_count, call_count)

@@ -506,6 +506,9 @@ Starting with microversion 3.55 and later, Cinder supports the ability to
 transfer volume without snapshots. If users don't want to transfer snapshots,
 they need to specify the new optional argument `--no-snapshots`.
 
+Starting with microversion 3.70 and later, Cinder supports the ability to
+transfer encrypted volumes. Snapshots must be transferred with the volume.
+
 .. note::
 
    The procedure for volume transfer is intended for projects (both the

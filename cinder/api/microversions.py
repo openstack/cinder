@@ -177,6 +177,8 @@ SUPPORT_REIMAGE_VOLUME = '3.68'
 
 SHARED_TARGETS_TRISTATE = '3.69'
 
+TRANSFER_ENCRYPTED_VOLUME = '3.70'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

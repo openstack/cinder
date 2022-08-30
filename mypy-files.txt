@@ -11,6 +11,7 @@ cinder/i18n.py
 cinder/image/cache.py
 cinder/image/glance.py
 cinder/image/image_utils.py
+cinder/keymgr/transfer.py
 cinder/exception.py
 cinder/manager.py
 cinder/objects/backup.py
