@@ -87,6 +87,10 @@ FC_PORT_NAMES = ["ct0.fc2", "ct0.fc3", "ct1.fc2", "ct1.fc3"]
 NVME_IPS = ["10.0.0." + str(i + 1) for i in range(len(NVME_PORT_NAMES))]
 NVME_IPS += ["[2001:db8::" + str(i + 1) + "]"
              for i in range(len(NVME_PORT_NAMES))]
+AC_NVME_IPS = ["10.0.0." + str(i + 1 + len(NVME_PORT_NAMES))
+               for i in range(len(NVME_PORT_NAMES))]
+AC_NVME_IPS += ["[2001:db8::1:" + str(i + 1) + "]"
+                for i in range(len(NVME_PORT_NAMES))]
 NVME_CIDR = "0.0.0.0/0"
 NVME_CIDR_V6 = "::/0"
 NVME_PORT = 4420
@@ -131,6 +135,7 @@ NVME_CONNECTOR = {"nqn": INITIATOR_NQN, "host": HOSTNAME}
 ISCSI_CONNECTOR = {"initiator": INITIATOR_IQN, "host": HOSTNAME}
 FC_CONNECTOR = {"wwpns": {INITIATOR_WWN}, "host": HOSTNAME}
 TARGET_NQN = "nqn.2010-06.com.purestorage:flasharray.12345abc"
+AC_TARGET_NQN = "nqn.2010-06.com.purestorage:flasharray.67890def"
 TARGET_IQN = "iqn.2010-06.com.purestorage:flasharray.12345abc"
 AC_TARGET_IQN = "iqn.2018-06.com.purestorage:flasharray.67890def"
 TARGET_WWN = "21000024ff59fe94"
@@ -166,6 +171,12 @@ NVME_PORTS = [{"name": name,
                "portal": ip + ":" + TARGET_ROCE_PORT,
                "wwn": None,
                } for name, ip in zip(NVME_PORT_NAMES * 2, NVME_IPS)]
+AC_NVME_PORTS = [{"name": name,
+                  "nqn": AC_TARGET_NQN,
+                  "iqn": None,
+                  "portal": ip + ":" + TARGET_ROCE_PORT,
+                  "wwn": None,
+                  } for name, ip in zip(NVME_PORT_NAMES * 2, AC_NVME_IPS)]
 ISCSI_PORTS = [{"name": name,
                 "iqn": TARGET_IQN,
                 "portal": ip + ":" + TARGET_PORT,
@@ -340,7 +351,55 @@ NVME_CONNECTION_INFO_V6 = {
         "volume_nguid": "0009714b5cb916324a9374c470002b2c8",
     },
 }
-
+NVME_CONNECTION_INFO_AC = {
+    "driver_volume_type": "nvmeof",
+    "data": {
+        "target_nqn": TARGET_NQN,
+        "discard": True,
+        "portals": [
+            (NVME_IPS[0], NVME_PORT, "rdma"),
+            (NVME_IPS[1], NVME_PORT, "rdma"),
+            (NVME_IPS[2], NVME_PORT, "rdma"),
+            (NVME_IPS[3], NVME_PORT, "rdma"),
+            (AC_NVME_IPS[0], NVME_PORT, "rdma"),
+            (AC_NVME_IPS[1], NVME_PORT, "rdma"),
+            (AC_NVME_IPS[2], NVME_PORT, "rdma"),
+            (AC_NVME_IPS[3], NVME_PORT, "rdma")],
+        "volume_nguid": "0009714b5cb916324a9374c470002b2c8",
+    },
+}
+NVME_CONNECTION_INFO_AC_FILTERED = {
+    "driver_volume_type": "nvmeof",
+    "data": {
+        "target_nqn": TARGET_NQN,
+        "discard": True,
+        # Final entry filtered by NVME_CIDR_FILTERED
+        "portals": [
+            (NVME_IPS[0], NVME_PORT, "rdma"),
+            (NVME_IPS[1], NVME_PORT, "rdma"),
+            (NVME_IPS[2], NVME_PORT, "rdma"),
+            (NVME_IPS[3], NVME_PORT, "rdma"),
+            (AC_NVME_IPS[0], NVME_PORT, "rdma"),
+            (AC_NVME_IPS[1], NVME_PORT, "rdma"),
+            (AC_NVME_IPS[2], NVME_PORT, "rdma")],
+        "volume_nguid": "0009714b5cb916324a9374c470002b2c8",
+    },
+}
+NVME_CONNECTION_INFO_AC_FILTERED_LIST = {
+    "driver_volume_type": "nvmeof",
+    "data": {
+        "target_nqn": TARGET_NQN,
+        "discard": True,
+        # Final entry filtered by NVME_CIDR_FILTERED
+        "portals": [
+            (NVME_IPS[1], NVME_PORT, "rdma"),
+            (NVME_IPS[2], NVME_PORT, "rdma"),
+            (AC_NVME_IPS[5].strip("[]"), NVME_PORT, "rdma"),  # IPv6
+            (AC_NVME_IPS[6].strip("[]"), NVME_PORT, "rdma"),  # IPv6
+        ],
+        "volume_nguid": "0009714b5cb916324a9374c470002b2c8",
+    },
+}
 FC_CONNECTION_INFO = {
     "driver_volume_type": "fibre_channel",
     "data": {
@@ -977,37 +1036,6 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_setup_pods.assert_has_calls([
             mock.call(self.array, [mock_sync_target], 'cinder-pod')
         ])
-
-    @mock.patch(BASE_DRIVER_OBJ + '._setup_replicated_pods')
-    @mock.patch(BASE_DRIVER_OBJ + '._generate_replication_retention')
-    @mock.patch(BASE_DRIVER_OBJ + '._setup_replicated_pgroups')
-    def test_do_setup_replicated_sync_rep_bad_driver(
-            self,
-            mock_setup_repl_pgroups,
-            mock_generate_replication_retention,
-            mock_setup_pods):
-        retention = mock.MagicMock()
-        mock_generate_replication_retention.return_value = retention
-        self._setup_mocks_for_replication()
-
-        self.mock_config.safe_get.return_value = [
-            {
-                "backend_id": "foo",
-                "managed_backend_name": None,
-                "san_ip": "1.2.3.4",
-                "api_token": "abc123",
-                "type": "sync",
-            }
-        ]
-        mock_sync_target = mock.MagicMock()
-        mock_sync_target.get.return_value = GET_ARRAY_SECONDARY
-        self.array.get.return_value = GET_ARRAY_PRIMARY
-        self.driver._storage_protocol = 'NVMe-RoCE'
-        self.purestorage_module.FlashArray.side_effect = [self.array,
-                                                          mock_sync_target]
-        self.assertRaises(pure.PureDriverException,
-                          self.driver.do_setup,
-                          None)
 
     def test_update_provider_info_update_all(self):
         test_vols = [
@@ -4518,6 +4546,155 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
             self.driver.initialize_connection,
             vol,
             NVME_CONNECTOR,
+        )
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
+    @mock.patch(NVME_DRIVER_OBJ + "._connect")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    def test_initialize_connection_uniform_ac(
+        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
+        mock_get_nguid
+    ):
+        repl_extra_specs = {
+            "replication_type": "<in> sync",
+            "replication_enabled": "<is> true",
+        }
+        vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        mock_get_nvme_ports.side_effect = [NVME_PORTS, AC_NVME_PORTS]
+        mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
+        mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
+        mock_connection.side_effect = [
+            {
+                "vol": vol_name,
+                "lun": 1,
+            },
+            {
+                "vol": vol_name,
+                "lun": 5,
+            },
+        ]
+        result = deepcopy(NVME_CONNECTION_INFO_AC)
+
+        self.driver._is_active_cluster_enabled = True
+        mock_secondary = mock.MagicMock()
+        self.driver._uniform_active_cluster_target_arrays = [mock_secondary]
+
+        real_result = self.driver.initialize_connection(vol, NVME_CONNECTOR)
+        self.assertDictEqual(result, real_result)
+        mock_get_nvme_ports.assert_has_calls(
+            [
+                mock.call(self.array),
+                mock.call(mock_secondary),
+            ]
+        )
+        mock_connection.assert_has_calls(
+            [
+                mock.call(self.array, vol_name, NVME_CONNECTOR),
+                mock.call(
+                    mock_secondary, vol_name, NVME_CONNECTOR),
+            ]
+        )
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
+    @mock.patch(NVME_DRIVER_OBJ + "._connect")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    def test_initialize_connection_uniform_ac_cidr(
+        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
+        mock_get_nguid
+    ):
+        repl_extra_specs = {
+            "replication_type": "<in> sync",
+            "replication_enabled": "<is> true",
+        }
+        vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        mock_get_nvme_ports.side_effect = [NVME_PORTS, AC_NVME_PORTS]
+        mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
+        mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
+        mock_connection.side_effect = [
+            {
+                "vol": vol_name,
+                "lun": 1,
+            },
+            {
+                "vol": vol_name,
+                "lun": 5,
+            },
+        ]
+        result = deepcopy(NVME_CONNECTION_INFO_AC_FILTERED)
+        self.driver._is_active_cluster_enabled = True
+        # Set up some CIDRs to block: this will block only one of the
+        # get four+three results back
+        self.driver.configuration.pure_nvme_cidr = NVME_CIDR_FILTERED
+        mock_secondary = mock.MagicMock()
+        self.driver._uniform_active_cluster_target_arrays = [mock_secondary]
+
+        real_result = self.driver.initialize_connection(vol, NVME_CONNECTOR)
+        self.assertDictEqual(result, real_result)
+        mock_get_nvme_ports.assert_has_calls(
+            [
+                mock.call(self.array),
+                mock.call(mock_secondary),
+            ]
+        )
+        mock_connection.assert_has_calls(
+            [
+                mock.call(self.array, vol_name, NVME_CONNECTOR),
+                mock.call(mock_secondary, vol_name, NVME_CONNECTOR),
+            ]
+        )
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
+    @mock.patch(NVME_DRIVER_OBJ + "._connect")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    def test_initialize_connection_uniform_ac_cidrs(
+        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
+        mock_get_nguid
+    ):
+        repl_extra_specs = {
+            "replication_type": "<in> sync",
+            "replication_enabled": "<is> true",
+        }
+        vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        mock_get_nvme_ports.side_effect = [NVME_PORTS, AC_NVME_PORTS]
+        mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
+        mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
+        mock_connection.side_effect = [
+            {
+                "vol": vol_name,
+                "lun": 1,
+            },
+            {
+                "vol": vol_name,
+                "lun": 5,
+            },
+        ]
+        result = deepcopy(NVME_CONNECTION_INFO_AC_FILTERED_LIST)
+
+        self.driver._is_active_cluster_enabled = True
+        # Set up some CIDRs to block: this will allow only 2 addresses from
+        # each host of the ActiveCluster, so we should check that we only
+        # get two+two results back
+        self.driver.configuration.pure_nvme = NVME_CIDR
+        self.driver.configuration.pure_nvme_cidr_list = NVME_CIDRS_FILTERED
+        mock_secondary = mock.MagicMock()
+        self.driver._uniform_active_cluster_target_arrays = [mock_secondary]
+
+        real_result = self.driver.initialize_connection(vol, NVME_CONNECTOR)
+        self.assertDictEqual(result, real_result)
+        mock_get_nvme_ports.assert_has_calls(
+            [
+                mock.call(self.array),
+                mock.call(mock_secondary),
+            ]
+        )
+        mock_connection.assert_has_calls(
+            [
+                mock.call(self.array, vol_name, NVME_CONNECTOR),
+                mock.call(mock_secondary, vol_name, NVME_CONNECTOR),
+            ]
         )
 
     @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")

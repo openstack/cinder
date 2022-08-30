@@ -282,13 +282,6 @@ class PureBaseVolumeDriver(san.SanDriver):
                 ssl_cert_path = replication_device.get("ssl_cert_path", None)
                 repl_type = replication_device.get("type",
                                                    REPLICATION_TYPE_ASYNC)
-                if (
-                    repl_type == REPLICATION_TYPE_SYNC
-                    and "NVMe" in self._storage_protocol
-                ):
-                    msg = _('NVMe driver does not support synchronous '
-                            'replication')
-                    raise PureDriverException(reason=msg)
                 uniform = strutils.bool_from_string(
                     replication_device.get("uniform", False))
 
