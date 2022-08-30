@@ -226,7 +226,7 @@ class API(base.Base):
         return result
 
     def reimage_volume(self, context, server_ids, volume_id):
-        api_version = '2.91'
+        api_version = '2.93'
         events = [self._get_volume_reimaged_event(server_id, volume_id)
                   for server_id in server_ids]
         result = self._send_events(context, events, api_version=api_version)
