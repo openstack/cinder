@@ -88,7 +88,7 @@ class DPLCommand(object):
         # base64 encode the username and password
         auth = base64.encodebytes('%s:%s'
                                   % (self.username,
-                                      self.password)).replace('\n', '')
+                                     self.password)).replace('\n', '')
         header['Authorization'] = 'Basic %s' % auth
 
         if not params:
