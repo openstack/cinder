@@ -1,6 +1,7 @@
 # Document dependencies that are only used if using
 # certain drivers.  This file is not managed by
 # requirements tools.
+# check [extras] section of setup.cfg for versions.
 
 # HPE 3PAR
 python-3parclient>=4.2.10 # Apache-2.0
