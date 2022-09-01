@@ -295,7 +295,7 @@ class NovaApiTestCase(test.TestCase):
 
         mock_novaclient.assert_called_once_with(self.ctx,
                                                 privileged_user=True,
-                                                api_version='2.91')
+                                                api_version='2.93')
         mock_create_event.assert_called_once_with([
             {'name': 'volume-reimaged',
              'server_uuid': 'server-id-1',
@@ -323,7 +323,7 @@ class NovaApiTestCase(test.TestCase):
 
         mock_novaclient.assert_called_once_with(self.ctx,
                                                 privileged_user=True,
-                                                api_version='2.91')
+                                                api_version='2.93')
         mock_create.assert_called_once_with(
             self.ctx,
             message_field.Action.REIMAGE_VOLUME,
