@@ -26,8 +26,6 @@ means you do not have the high-availability and non-disruptive upgrade
 benefits provided by FlashArray. Multipathing must be used to take advantage
 of these benefits.
 
-The NVMe driver does not support synchronous replication using ActiveCluster.
-
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -51,8 +49,7 @@ Supported operations
 
 * Create a thin provisioned volume.
 
-* Replicate volumes to remote Pure Storage array(s) - synchronous replication
-  is not supported with the NVMe driver.
+* Replicate volumes to remote Pure Storage array(s)
 
 QoS support for the Pure Storage drivers include the ability to set the
 following capabilities in the OpenStack Block Storage API
@@ -266,10 +263,6 @@ of the remote array.
 
 The ``REPLICATION_TYPE`` value for the ``type`` key can be either ``sync`` or
 ``async``
-
-.. note::
-
-   Synchronous replication is not supported by the NVMe driver.
 
 If the ``type`` is ``sync`` volumes will be created in a stretched Pod. This
 requires two arrays pre-configured with Active Cluster enabled. You can
