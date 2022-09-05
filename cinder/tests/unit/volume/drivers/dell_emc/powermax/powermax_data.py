@@ -705,7 +705,7 @@ class PowerMaxData(object):
     # replication
     volume_snap_vx = {'snapshotLnks': [],
                       'snapshotSrcs': [
-                          {'generation': 0,
+                          {'generation': '0',
                            'linkedDevices': [
                                {'targetDevice': device_id2,
                                 'percentageCopied': 100,
@@ -1119,10 +1119,10 @@ class PowerMaxData(object):
 
     snapshot_src_details = {'snapshotSrcs': [{
         'snapshotName': 'temp-000AA-snapshot_for_clone',
-        'generation': 0, 'state': 'Established', 'expired': False,
+        'generation': '0', 'state': 'Established', 'expired': False,
         'linkedDevices': [{'targetDevice': device_id2, 'state': 'Copied',
                            'copy': True}]},
-        {'snapshotName': 'temp-000AA-snapshot_for_clone', 'generation': 1,
+        {'snapshotName': 'temp-000AA-snapshot_for_clone', 'generation': '1',
          'state': 'Established', 'expired': False,
          'linkedDevices': [{'targetDevice': device_id3, 'state': 'Copied',
                             'copy': True}]}],
@@ -1133,24 +1133,24 @@ class PowerMaxData(object):
 
     snap_tgt_vol_details = {"timeFinderInfo": {"snapVXSession": [{
         "tgtSrcSnapshotGenInfo": {
-            "generation": 6, "expired": True,
+            "generation": '6', "expired": True,
             "snapshotName": "temp-000AA-snapshot_for_clone"}}]}}
 
     snap_tgt_session = {
-        'generation': 0, 'expired': False, 'copy_mode': False,
+        'generation': '0', 'expired': False, 'copy_mode': False,
         'snap_name': 'temp-000AA-snapshot_for_clone', 'state': 'Copied',
         'source_vol_id': device_id, 'target_vol_id': device_id2}
 
     snap_tgt_session_cm_enabled = {
-        'generation': 0, 'expired': False, 'copy_mode': True,
+        'generation': '0', 'expired': False, 'copy_mode': True,
         'snap_name': 'temp-000AA-snapshot_for_clone', 'state': 'Copied',
         'source_vol_id': device_id, 'target_vol_id': device_id2}
 
     snap_src_sessions = [
-        {'generation': 0, 'expired': False, 'copy_mode': False,
+        {'generation': '0', 'expired': False, 'copy_mode': False,
          'snap_name': 'temp-000AA-snapshot_for_clone', 'state': 'Copied',
          'source_vol_id': device_id, 'target_vol_id': device_id3},
-        {'generation': 1, 'expired': False, 'copy_mode': False,
+        {'generation': '1', 'expired': False, 'copy_mode': False,
          'snap_name': 'temp-000AA-snapshot_for_clone', 'state': 'Copied',
          'source_vol_id': device_id, 'target_vol_id': device_id4}]
 

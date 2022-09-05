@@ -1124,11 +1124,12 @@ class PowerMaxRestTest(test.TestCase):
                    'copy': 'false', 'action': "",
                    'star': 'false', 'force': 'false',
                    'exact': 'false', 'remote': 'false',
-                   'symforce': 'false', 'generation': 0}
+                   'symforce': 'false', 'generation': '0'}
         payload_restore = {'deviceNameListSource': [{'name': source_id}],
                            'deviceNameListTarget': [{'name': source_id}],
                            'action': 'Restore',
-                           'star': 'false', 'force': 'false'}
+                           'star': 'false', 'force': 'false',
+                           'generation': '0'}
         with mock.patch.object(
                 self.rest, 'modify_resource',
                 return_value=(202, self.data.job_list[0])) as mock_modify:
@@ -1177,11 +1178,11 @@ class PowerMaxRestTest(test.TestCase):
         snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         source_device_id = self.data.device_id
         payload = {'deviceNameListSource': [{'name': source_device_id}],
-                   'generation': 0}
+                   'generation': '0'}
         generation = 0
         with mock.patch.object(self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_volume_snap(
-                array, snap_name, source_device_id, generation)
+                array, snap_name, source_device_id, generation=generation)
             mock_delete.assert_called_once_with(
                 array, 'replication', 'snapshot', snap_name,
                 payload=payload, private='/private')
@@ -1191,7 +1192,7 @@ class PowerMaxRestTest(test.TestCase):
         snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         source_device_id = self.data.device_id
         payload = {'deviceNameListSource': [{'name': source_device_id}],
-                   'restore': True, 'generation': 0}
+                   'restore': True, 'generation': '0'}
         with mock.patch.object(self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_volume_snap(
                 array, snap_name, source_device_id, restored=True)
@@ -1258,13 +1259,13 @@ class PowerMaxRestTest(test.TestCase):
     def test_find_snap_vx_sessions(self):
         array = self.data.array
         source_id = self.data.device_id
-        ref_sessions = [{'generation': 0,
+        ref_sessions = [{'generation': '0',
                          'snap_name': 'temp-000AA-snapshot_for_clone',
                          'source_vol_id': self.data.device_id,
                          'target_vol_id': self.data.device_id2,
                          'expired': False, 'copy_mode': True,
                          'state': 'Copied'},
-                        {'generation': 1,
+                        {'generation': '1',
                          'snap_name': 'temp-000AA-snapshot_for_clone',
                          'source_vol_id': self.data.device_id,
                          'target_vol_id': self.data.device_id3,
@@ -1284,7 +1285,8 @@ class PowerMaxRestTest(test.TestCase):
     def test_find_snap_vx_sessions_tgt_only(self, mck_snap, mck_vol):
         array = self.data.array
         source_id = self.data.device_id
-        ref_session = {'generation': 6, 'state': 'Linked', 'copy_mode': False,
+        ref_session = {'generation': '6', 'state': 'Linked',
+                       'copy_mode': False,
                        'snap_name': 'temp-000AA-snapshot_for_clone',
                        'source_vol_id': self.data.device_id2,
                        'target_vol_id': source_id, 'expired': True}
