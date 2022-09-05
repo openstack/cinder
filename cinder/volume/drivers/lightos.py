@@ -537,8 +537,9 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         must be supplied'
         # while creating lightos volume we can stop on any terminal status
         # possible states: Unknown, Creating, Available, Deleting, Deleted,
-        # Failed, Updating
-        states = ('Available', 'Deleting', 'Deleted', 'Failed', 'UNKNOWN')
+        # Failed, Updating, Migrating, Rollback
+        states = ('Available', 'Deleting', 'Deleted', 'Failed', 'UNKNOWN',
+                  'Migrating', 'Rollback')
 
         stop = time.time() + timeout
         while time.time() <= stop:
@@ -664,7 +665,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                 project_name,
                 timeout=self.logical_op_timeout,
                 vol_uuid=lightos_uuid)
-            if vol_state == 'Available':
+            allowed_states = ['Available', 'Migrating']
+            if vol_state in allowed_states:
                 LOG.debug(
                     "LIGHTOS created volume name %s lightos_uuid \
                      %s project %s",
@@ -1226,7 +1228,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         # for the volume to stabilize
         vol_state = self._wait_for_volume_available(
             project_name, timeout=end - time.time(), vol_name=lightos_volname)
-        if vol_state != 'Available':
+        allowed_states = ['Available', 'Migrating']
+        if vol_state not in allowed_states:
             LOG.warning(
                 'Timed out waiting for volume %s project %s to stabilize, \
                 last state %s',
