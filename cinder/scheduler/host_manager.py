@@ -396,6 +396,7 @@ class PoolState(BackendState):
                     capability, CONF.max_over_subscription_ratio))
 
             self.multiattach = capability.get('multiattach', False)
+            self.pool_state = capability.get('pool_state', 'up')
 
             self.filter_function = capability.get('filter_function', None)
             self.goodness_function = capability.get('goodness_function', 0)

@@ -2860,6 +2860,69 @@ class VolumeManager(manager.CleanableManager,
                 # queue it to be sent to the Schedulers.
                 self.update_service_capabilities(volume_stats)
 
+    def _set_pool_state(self, pool):
+        """Check the pool stats to decide if the pool should be down.
+
+        When a pool is overcommited already, the pool should not be
+        available to accept new volumes, so we mark the pool down.
+        """
+        # Lets see if we should mark the pool as down
+        # if we are overcommited over the allowed amount
+        thin = pool.get('thin_provisioning_support', None)
+        thick = pool.get('thick_provisioning_support', None)
+        if not thin and not thick:
+            return
+
+        if thin:
+            max_over_subscription_ratio = pool.get(
+                'max_over_subscription_ratio',
+                self.configuration.max_over_subscription_ratio
+            )
+            thin_factors = utils.calculate_capacity_factors(
+                pool['total_capacity_gb'],
+                pool['free_capacity_gb'],
+                pool['allocated_capacity_gb'],
+                True,
+                max_over_subscription_ratio,
+                pool['reserved_percentage'],
+                True
+            )
+            if thin_factors['virtual_free_capacity'] <= 0:
+                # The pool has no free space left or has been
+                # overcommited past what is allowed.
+                LOG.error("Pool(%(pool_name)s is overcommited!!",
+                          {'pool_name': pool['pool_name']})
+                pool['pool_state'] = 'down'
+                pool['pool_state_reason'] = (
+                    'Volume manager marked pool down for being'
+                    ' allocated beyond what is allowed for thin'
+                    ' provisioning.'
+                )
+        else:
+            # Thick provisioning won't allow max oversub
+            # So we force it to 1:1
+            max_oversubscription_ratio = 1
+            thick_factors = utils.calculate_capacity_factors(
+                pool['total_capacity_gb'],
+                pool['free_capacity_gb'],
+                pool['allocated_capacity_gb'],
+                False,
+                max_oversubscription_ratio,
+                pool['reserved_percentage'],
+                False
+            )
+            if thick_factors['virtual_free_capacity'] <= 0:
+                # The pool has no free space left or has been
+                # overcommited past what is allowed.
+                LOG.error("Pool(%(pool_name)s is overcommited!!",
+                          {'pool_name': pool['pool_name']})
+                pool['pool_state'] = 'down'
+                pool['pool_state_reason'] = (
+                    'Volume manager marked pool down for being'
+                    ' allocated beyond what is allowed for thick'
+                    ' provisioning'
+                )
+
     @coordination.synchronized('volume-stats')
     def _append_volume_stats(self, vol_stats) -> None:
         pools = vol_stats.get('pools', None)
@@ -2874,6 +2937,8 @@ class VolumeManager(manager.CleanableManager,
                         pool_stats = dict(allocated_capacity_gb=0)
 
                     pool.update(pool_stats)
+                    self._set_pool_state(pool)
+
             else:
                 raise exception.ProgrammingError(
                     reason='Pools stats reported by the driver are not '
