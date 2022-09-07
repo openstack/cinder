@@ -39,7 +39,7 @@ from oslo_vmware import image_transfer
 from oslo_vmware import pbm
 from oslo_vmware import vim_util
 
-from cinder.common import constants
+from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
@@ -340,7 +340,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 3.4.2.99.2 - Added soft sharding volume migration, fixed a small issue
     #          in check_for_setup_error where storage_profile not set.
     # 3.4.2.99.3 - Add support for reporting each datastore as a pool.
-    VERSION = '3.4.2.99.3'
+    # 3.4.2.99.4 - Default to thick provisioning and report provisioning type
+    #              based on the volume type extra specs if possible.
+    VERSION = '3.4.2.99.4'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -370,6 +372,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         ])
         self._remote_api = remote_api.VmdkDriverRemoteApi()
         self._storage_profiles = []
+        self._volume_type_by_backend = None
 
     @staticmethod
     def get_driver_options():
@@ -488,11 +491,41 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         return (result, {})
 
+    def _get_volume_type_by_backend_name(self, backend_name):
+        if not self._volume_type_by_backend:
+            self._volume_type_by_backend = {}
+            ctxt = context.get_admin_context()
+            all_types = volume_types.get_all_types(ctxt)
+            for v_type_name, v_type in all_types.items():
+                specs = v_type['extra_specs']
+                if 'volume_backend_name' in specs:
+                    self._volume_type_by_backend[backend_name] = v_type
+
+        return self._volume_type_by_backend.get(backend_name, None)
+
     @volume_utils.trace
     def _get_volume_stats(self):
         backend_name = self.configuration.safe_get('volume_backend_name')
         if not backend_name:
             backend_name = self.__class__.__name__
+
+        # Force the reporting of provisioning support based
+        # on the volume type setting
+        v_type_provisioning_type = 'thick'
+
+        # Volume type matches for this backend
+        v_type = self._get_volume_type_by_backend_name(backend_name)
+        if v_type and v_type.get('extra_specs', None):
+            extra_specs = v_type.get('extra_specs')
+            v_type_provisioning_type = extra_specs.get('provisioning:type',
+                                                       'thin')
+
+        if v_type_provisioning_type == 'thin':
+            thin_provisioning_on = True
+            thick_provisioning_on = False
+        else:
+            thin_provisioning_on = False
+            thick_provisioning_on = True
 
         location_info = '%(driver_name)s:%(vcenter)s' % {
             'driver_name': LOCATION_DRIVER_NAME,
@@ -531,8 +564,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                             summary.capacity / units.Gi),
                         'free_capacity_gb': round(
                             summary.freeSpace / units.Gi),
-                        'thin_provisioning_support': True,
-                        'thick_provisioning_support': True,
+                        'thin_provisioning_support': thin_provisioning_on,
+                        'thick_provisioning_support': thick_provisioning_on,
                         'max_over_subscription_ratio': (
                             max_over_subscription_ratio),
                         'reserved_percentage': reserved_percentage,
