@@ -62,25 +62,13 @@ from cinder.volume import volume_utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
+
 # Map with cases where attach status differs from volume status
 ATTACH_STATUS_MAP = {'attached': 'in-use', 'detached': 'available'}
-
 
 options.set_defaults(CONF, connection='sqlite:///$state_path/cinder.sqlite')
 
 main_context_manager = enginefacade.transaction_context()
-
-
-def configure(conf):
-    main_context_manager.configure(**dict(conf.database))
-    # NOTE(geguileo): To avoid a cyclical dependency we import the
-    # group here.  Dependency cycle is objects.base requires db.api,
-    # which requires db.sqlalchemy.api, which requires service which
-    # requires objects.base
-    CONF.import_group("profiler", "cinder.service")
-    if CONF.profiler.enabled:
-        if CONF.profiler.trace_sqlalchemy:
-            lambda eng: osprofiler_sqlalchemy.add_tracing(sa, eng, "db")
 
 
 def get_engine():
