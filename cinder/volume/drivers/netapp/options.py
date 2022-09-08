@@ -129,7 +129,10 @@ netapp_nfs_extra_opts = [
                help=('This option specifies the path of the NetApp copy '
                      'offload tool binary. Ensure that the binary has execute '
                      'permissions set which allow the effective user of the '
-                     'cinder-volume process to execute the file.')), ]
+                     'cinder-volume process to execute the file.'),
+               deprecated_for_removal=True,
+               deprecated_reason='The CopyOfflload tool is no longer '
+                                 'available for downloading.'), ]
 netapp_san_opts = [
     cfg.StrOpt('netapp_lun_ostype',
                help=('This option defines the type of operating system that'

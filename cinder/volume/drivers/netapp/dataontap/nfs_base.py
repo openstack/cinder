@@ -31,6 +31,7 @@ import time
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import netutils
 from oslo_utils import units
 import six
@@ -675,6 +676,11 @@ class NetAppNfsDriver(driver.ManageableVD,
         major, minor = self.zapi_client.get_ontapi_version()
         col_path = self.configuration.netapp_copyoffload_tool_path
 
+        if col_path:
+            msg = ('The "netapp_copyoffload_tool_path" configuration option '
+                   'is deprecated and will be removed soon. Please, do not '
+                   'set it.')
+            versionutils.report_deprecated_feature(LOG, msg)
         try:
             cache_result = self._find_image_in_cache(image_id)
             if cache_result:
