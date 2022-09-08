@@ -48,8 +48,8 @@ Supported operations
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~
 
-.. note:: The following instructions should all be performed on Block Storage
-          nodes.
+.. note:: The following instructions should all be performed on
+          cinder-volume container.
 
 #. Install `storops` from pypi:
 
