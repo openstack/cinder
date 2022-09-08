@@ -41,6 +41,7 @@ from cinder import quota
 from cinder.tests import fake_driver
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import known_issues as issues
 from cinder.tests.unit import test
 from cinder.tests.unit import utils
 from cinder.volume import rpcapi as volume_rpcapi
@@ -1879,6 +1880,7 @@ class BackupTestCase(BaseBackupTest):
         backup = self._create_backup_db_entry(volume_id=vol_id)
         self.assertFalse(backup.has_dependent_backups)
 
+    @test.testtools.skipIf(issues.TPOOL_KILLALL_ISSUE, 'tpool.killall bug')
     def test_default_tpool_size(self):
         """Test we can set custom tpool size."""
         tpool._nthreads = 20
@@ -1889,6 +1891,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(60, tpool._nthreads)
         self.assertListEqual([], tpool._threads)
 
+    @test.testtools.skipIf(issues.TPOOL_KILLALL_ISSUE, 'tpool.killall bug')
     def test_tpool_size(self):
         """Test we can set custom tpool size."""
         self.assertNotEqual(100, tpool._nthreads)
