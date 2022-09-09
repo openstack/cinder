@@ -1441,6 +1441,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                             <num-records>1</num-records>
                             <attributes-list>
                                 <net-interface-info>
+                                <vserver>fake_vserver</vserver>
                                 </net-interface-info>
                             </attributes-list>
                           </results>"""))
@@ -4494,3 +4495,46 @@ class NetAppCmodeClientTestCase(test.TestCase):
         }
         self.client.connection.send_request.assert_called_once_with(
             'file-rename-file', api_args)
+
+    def test_check_api_permissions(self):
+
+        mock_log = self.mock_object(client_cmode.LOG, 'warning')
+        self.mock_object(self.client, 'check_cluster_api', return_value=True)
+
+        self.client.check_api_permissions()
+
+        self.client.check_cluster_api.assert_has_calls(
+            [mock.call(*key) for key in client_cmode.SSC_API_MAP.keys()])
+        self.assertEqual(0, mock_log.call_count)
+
+    def test_check_api_permissions_failed_ssc_apis(self):
+
+        def check_cluster_api(object_name, operation_name, api):
+            if api != 'volume-get-iter':
+                return False
+            return True
+
+        self.mock_object(self.client, 'check_cluster_api',
+                         side_effect=check_cluster_api)
+
+        mock_log = self.mock_object(client_cmode.LOG, 'warning')
+
+        self.client.check_api_permissions()
+
+        self.assertEqual(1, mock_log.call_count)
+
+    def test_check_api_permissions_failed_volume_api(self):
+
+        def check_cluster_api(object_name, operation_name, api):
+            if api == 'volume-get-iter':
+                return False
+            return True
+
+        self.mock_object(self.client, 'check_cluster_api',
+                         side_effect=check_cluster_api)
+        mock_log = self.mock_object(client_cmode.LOG, 'warning')
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.check_api_permissions)
+
+        self.assertEqual(0, mock_log.call_count)

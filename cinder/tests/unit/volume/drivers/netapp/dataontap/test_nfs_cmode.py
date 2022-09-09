@@ -453,7 +453,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         vserver = self.driver._get_vserver_for_ip('FAKE_IP')
 
-        self.assertIsNone(vserver)
+        self.assertEqual(fake.VSERVER_NAME, vserver)
 
     def test_check_for_setup_error(self):
         mock_add_looping_tasks = self.mock_object(
@@ -892,9 +892,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             is_snapshot=is_snapshot)
 
     def test__clone_backing_file_for_volume(self):
-        body = fake.get_fake_net_interface_get_iter_response()
         self.driver.zapi_client.get_if_info_by_ip = mock.Mock(
-            return_value=[netapp_api.NaElement(body)])
+            return_value=[{'ip': 'fake_ip'}])
         self.driver.zapi_client.get_vol_by_junc_vserver = mock.Mock(
             return_value='nfsvol')
         self.mock_object(self.driver, '_get_export_ip_path',

@@ -20,7 +20,6 @@ from unittest import mock
 import ddt
 import six
 
-from cinder import exception
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fakes as fake_client)
@@ -45,45 +44,6 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         config = na_fakes.create_configuration_cmode()
         config.volume_backend_name = 'fake_backend'
         return config
-
-    def test_check_api_permissions(self):
-
-        mock_log = self.mock_object(capabilities.LOG, 'warning')
-
-        self.ssc_library.check_api_permissions()
-
-        self.zapi_client.check_cluster_api.assert_has_calls(
-            [mock.call(*key) for key in capabilities.SSC_API_MAP.keys()])
-        self.assertEqual(0, mock_log.call_count)
-
-    def test_check_api_permissions_failed_ssc_apis(self):
-
-        def check_cluster_api(object_name, operation_name, api):
-            if api != 'volume-get-iter':
-                return False
-            return True
-
-        self.zapi_client.check_cluster_api.side_effect = check_cluster_api
-        mock_log = self.mock_object(capabilities.LOG, 'warning')
-
-        self.ssc_library.check_api_permissions()
-
-        self.assertEqual(1, mock_log.call_count)
-
-    def test_check_api_permissions_failed_volume_api(self):
-
-        def check_cluster_api(object_name, operation_name, api):
-            if api == 'volume-get-iter':
-                return False
-            return True
-
-        self.zapi_client.check_cluster_api.side_effect = check_cluster_api
-        mock_log = self.mock_object(capabilities.LOG, 'warning')
-
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.ssc_library.check_api_permissions)
-
-        self.assertEqual(0, mock_log.call_count)
 
     def test_get_ssc(self):
 

@@ -76,6 +76,7 @@ LUN_NAME = 'fake-lun-name'
 DEST_LUN_NAME = 'new-fake-lun-name'
 FILE_NAME = 'fake-file-name'
 DEST_FILE_NAME = 'new-fake-file-name'
+FAKE_UUID = 'b32bab78-82be-11ec-a8a3-0242ac120002'
 
 FAKE_QUERY = {'volume-attributes': None}
 
@@ -646,6 +647,7 @@ AGGR_INFO_SSC = {
 AGGR_SIZE_TOTAL = 107374182400
 AGGR_SIZE_AVAILABLE = 59055800320
 AGGR_USED_PERCENT = 45
+AGGR_SIZE_USED = 58888957952
 AGGR_GET_ITER_CAPACITY_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -719,7 +721,6 @@ VOLUME_GET_ITER_CAPACITY_RESPONSE = etree.XML("""
 """ % {
     'volume': VOLUME_GET_ITER_CAPACITY_ATTR_STR,
 })
-
 
 VOLUME_GET_ITER_STYLE_RESPONSE = etree.XML("""
     <results status="passed">
@@ -1349,6 +1350,8 @@ SM_SOURCE_VSERVER = 'fake_source_vserver'
 SM_SOURCE_VOLUME = 'fake_source_volume'
 SM_DEST_VSERVER = 'fake_destination_vserver'
 SM_DEST_VOLUME = 'fake_destination_volume'
+IGROUP_NAME = 'openstack-d9b4194f-5f65-4952-fake-26c911f1e4b2'
+LUN_NAME_PATH = '/vol/volume-fake/lun-path-fake-1234'
 
 CLUSTER_PEER_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
@@ -1582,6 +1585,136 @@ DESTROY_FILE_COPY_RESPONSE = etree.XML("""
     <results status="passed" />
 """)
 
+VOLUME_GET_ITER_SSC_RESPONSE_STR_FLEXGROUP_REST = {
+    "uuid": "2407b637-119c-11ec-a4fb",
+    "language": "c.utf_8",
+    "name": VOLUME_NAMES[0],
+    "style": "flexgroup",
+    "is_svm_root": False,
+    "type": "rw",
+    "aggregates": [
+        {
+            "name": VOLUME_AGGREGATE_NAMES[0]
+        }
+    ],
+    "error_state": {
+        "is_inconsistent": False
+    },
+    "nas": {
+        "path": '/' + VOLUME_NAMES[0]
+    },
+    "snapshot_policy": {
+        "name": "default",
+        "uuid": "e7b0f455-fc15-11ea-b64a"
+    },
+    "svm": {
+        "name": VOLUME_VSERVER_NAME
+    },
+    "space": {
+        "size": 12345,
+        "snapshot": {
+            "reserve_percent": 5
+        }
+    },
+    "qos": {
+        "policy": {
+            "name": "fake_qos_policy_group_name"
+        }
+    },
+    "guarantee": {
+        "type": "none",
+        "honored": True
+    },
+    "_links": {
+        "self": {
+            "href": "/api/storage/volumes/2407b637-119c-11ec-a4fb"
+        }
+    }
+}
+
+VOLUME_GET_ITER_SSC_RESPONSE_FLEXGROUP_REST = {
+    "records": [
+        VOLUME_GET_ITER_SSC_RESPONSE_STR_FLEXGROUP_REST,
+    ],
+    "num_records": 1,
+    "_links": {
+        "self": {
+            "href": "/api/storage/volumes"
+        }
+    }
+}
+
+VOLUME_GET_ITER_SSC_RESPONSE_STR_REST = {
+    "uuid": "2407b637-119c-11ec-a4fb",
+    "language": "c.utf_8",
+    "name": VOLUME_NAMES[0],
+    "style": "flexvol",
+    "is_svm_root": False,
+    "type": "rw",
+    "aggregates": [
+        {
+            "name": VOLUME_AGGREGATE_NAMES[0]
+        }
+    ],
+    "error_state": {
+        "is_inconsistent": False
+    },
+    "nas": {
+        "path": '/' + VOLUME_NAMES[0]
+    },
+    "snapshot_policy": {
+        "name": "default",
+        "uuid": "e7b0f455-fc15-11ea-b64a"
+    },
+    "svm": {
+        "name": VOLUME_VSERVER_NAME
+    },
+    "space": {
+        "size": 12345,
+        "snapshot": {
+            "reserve_percent": 5
+        }
+    },
+    "qos": {
+        "policy": {
+            "name": "fake_qos_policy_group_name"
+        }
+    },
+    "guarantee": {
+        "type": "none",
+        "honored": True
+    },
+    "efficiency": {
+        "compression": "none",
+        "dedupe": "none",
+        "cross_volume_dedupe": "none",
+        "compaction": "none",
+        "schedule": "-",
+        "volume_path": "/vol/" + VOLUME_NAMES[0],
+        "state": "disabled",
+        "policy": {
+            "name": "-"
+        }
+    },
+    "_links": {
+        "self": {
+            "href": "/api/storage/volumes/2407b637-119c-11ec-a4fb"
+        }
+    }
+}
+
+VOLUME_GET_ITER_SSC_RESPONSE_REST = {
+    "records": [
+        VOLUME_GET_ITER_SSC_RESPONSE_STR_REST,
+    ],
+    "num_records": 1,
+    "_links": {
+        "self": {
+            "href": "/api/storage/volumes"
+        }
+    }
+}
+
 VOLUME_GET_ITER_RESPONSE_LIST_REST = [
     {
         "uuid": "2407b637-119c-11ec-a4fb-00a0b89c9a78",
@@ -1616,6 +1749,47 @@ VOLUME_GET_ITER_RESPONSE_LIST_REST = [
         }
     }
 ]
+
+VOLUME_GET_ITER_LIST_RESPONSE_REST = {
+    "records": [
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[1],
+    ],
+    "num_records": 2,
+    "_links": {
+        "self": {
+            "href": "/api/storage/volumes"
+        }
+    }
+}
+
+VOLUME_ITEM_SIMPLE_RESPONSE_REST = {
+    "uuid": "2407b637-119c-11ec-a4fb-00a0b89c9a78",
+    "name": VOLUME_NAMES[0],
+    "style": 'flexvol',
+    "_links": {
+        "self": {
+            "href": "/api/storage/volumes/2407b637-119c-11ec-a4fb-00a0b89c9a78"
+        }
+    }
+}
+
+VOLUME_LIST_SIMPLE_RESPONSE_REST = {
+    "records": [
+        VOLUME_ITEM_SIMPLE_RESPONSE_REST
+    ],
+    "num_records": 1,
+    "_links": {
+        "self": {
+            "href": "/api/storage/volumes"
+        }
+    }
+}
+
+NO_RECORDS_RESPONSE_REST = {
+    "records": [],
+    "num_records": 0,
+}
 
 VOLUME_GET_ITER_RESPONSE_REST_PAGE = {
     "records": [
@@ -1665,14 +1839,678 @@ INVALID_GET_ITER_RESPONSE_NO_NUM_RECORDS_REST = {
     "records": [],
 }
 
-NO_RECORDS_RESPONSE_REST = {
-    "records": [],
-    "num_records": 0,
+VOLUME_GET_ITER_STYLE_RESPONSE_REST = {
+    "records": [
+        {
+            "style": "flexgroup",
+        },
+    ],
+    "num_records": 1,
+}
+
+VOLUME_FLEXGROUP_STYLE_REST = \
+    VOLUME_GET_ITER_STYLE_RESPONSE_REST["records"][0]
+
+VOLUME_GET_ITER_SAME_STYLE_RESPONSE_REST = {
+    "records": [
+        {
+            "style": "flexvol",
+        },
+        {
+            "style": "flexvol",
+        },
+        {
+            "style": "flexvol",
+        },
+    ],
+    "num_records": 3,
+}
+
+GET_NUM_RECORDS_RESPONSE_REST = {
+    "num_records": 1,
+}
+
+AGGR_GET_ITER_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "6aad2b76-a069-47e9-93ee-e501ebf2cdd2",
+            "name": VOLUME_AGGREGATE_NAMES[1],
+            "node": {
+                "uuid": "2ac8f13a-fc16-11ea-8799-52540006bba9",
+                "name": NODE_NAME
+            },
+            "home_node": {
+                "uuid": "2ac8f13a-fc16-11ea-8799-52540006bba9",
+                "name": NODE_NAME
+            },
+            "snapshot": {
+                "files_total": 0,
+                "files_used": 0,
+                "max_files_available": 0,
+                "max_files_used": 0
+            },
+            "space": {
+                "footprint": 58491584512,
+                "footprint_percent": 4,
+                "block_storage": {
+                    "size": AGGR_SIZE_TOTAL,
+                    "available": AGGR_SIZE_AVAILABLE,
+                    "used": AGGR_SIZE_USED,
+                    "inactive_user_data": 0,
+                    "inactive_user_data_percent": 0,
+                    "full_threshold_percent": 98,
+                    "physical_used": 7706808320,
+                    "physical_used_percent": 1,
+                    "aggregate_metadata": 397373440,
+                    "aggregate_metadata_percent": 0,
+                    "used_including_snapshot_reserve": 58888957952,
+                    "used_including_snapshot_reserve_percent": 4,
+                    "data_compacted_count": 0,
+                    "data_compaction_space_saved": 0,
+                    "data_compaction_space_saved_percent": 0,
+                    "volume_deduplication_shared_count": 0,
+                    "volume_deduplication_space_saved": 0,
+                    "volume_deduplication_space_saved_percent": 0
+                },
+                "snapshot": {
+                    "used_percent": 0,
+                    "available": 0,
+                    "total": 0,
+                    "used": 0,
+                    "reserve_percent": 0
+                },
+                "cloud_storage": {
+                    "used": 0
+                },
+                "efficiency": {
+                    "savings": 0,
+                    "ratio": 1,
+                    "logical_used": 117510144
+                },
+                "efficiency_without_snapshots": {
+                    "savings": 0,
+                    "ratio": 1,
+                    "logical_used": 9617408
+                },
+                "efficiency_without_snapshots_flexclones": {
+                    "savings": 0,
+                    "ratio": 1,
+                    "logical_used": 9617408
+                }
+            },
+            "state": "online",
+            "snaplock_type": "non_snaplock",
+            "create_time": "2020-09-21T14:45:11+00:00",
+            "data_encryption": {
+                "software_encryption_enabled": False,
+                "drive_protection_enabled": False
+            },
+            "block_storage": {
+                "primary": {
+                    "disk_count": 1,
+                    "disk_class": "virtual",
+                    "raid_type": "raid0",
+                    "raid_size": 8,
+                    "checksum_style": "advanced_zoned",
+                    "disk_type": "vm_disk"
+                },
+                "hybrid_cache": {
+                    "enabled": False
+                },
+                "mirror": {
+                    "enabled": False,
+                    "state": "unmirrored"
+                },
+                "plexes": [
+                    {
+                        "name": "plex0"
+                    }
+                ],
+                "storage_type": "hdd"
+            },
+            "cloud_storage": {
+                "attach_eligible": True
+            },
+            "inactive_data_reporting": {
+                "enabled": False
+            },
+            "metric": {
+                "timestamp": "2021-12-21T13:25:15Z",
+                "duration": "PT15S",
+                "status": "ok",
+                "throughput": {
+                    "read": 0,
+                    "write": 13107,
+                    "other": 0,
+                    "total": 13107
+                },
+                "latency": {
+                    "read": 0,
+                    "write": 2659,
+                    "other": 0,
+                    "total": 2659
+                },
+                "iops": {
+                    "read": 0,
+                    "write": 0,
+                    "other": 0,
+                    "total": 0
+                }
+            },
+            "statistics": {
+                "timestamp": "2021-12-21T13:25:21Z",
+                "status": "ok",
+                "throughput_raw": {
+                    "read": 3699994624,
+                    "write": 111813349376,
+                    "other": 0,
+                    "total": 115513344000
+                },
+                "latency_raw": {
+                    "read": 1884163936,
+                    "write": 9308463160,
+                    "other": 0,
+                    "total": 11192627096
+                },
+                "iops_raw": {
+                    "read": 242498,
+                    "write": 4871034,
+                    "other": 0,
+                    "total": 5113532
+                }
+            }
+        },
+        {
+            "uuid": "ad20dafb-1dcb-483a-b457-012ae9225062",
+            "name": VOLUME_AGGREGATE_NAMES[0],
+            "node": {
+                "uuid": "2ac8f13a-fc16-11ea-8799-52540006bba9",
+                "name": NODE_NAME
+            },
+            "home_node": {
+                "uuid": "2ac8f13a-fc16-11ea-8799-52540006bba9",
+                "name": NODE_NAME
+            },
+            "snapshot": {
+                "files_total": 0,
+                "files_used": 0,
+                "max_files_available": 0,
+                "max_files_used": 0
+            },
+            "space": {
+                "footprint": 172316893184,
+                "footprint_percent": 14,
+                "block_storage": {
+                    "size": 1271819509760,
+                    "available": 1099709939712,
+                    "used": 172109570048,
+                    "inactive_user_data": 0,
+                    "inactive_user_data_percent": 0,
+                    "full_threshold_percent": 98,
+                    "physical_used": 27038863360,
+                    "physical_used_percent": 2,
+                    "aggregate_metadata": 0,
+                    "aggregate_metadata_percent": 0,
+                    "used_including_snapshot_reserve": 172109570048,
+                    "used_including_snapshot_reserve_percent": 14,
+                    "data_compacted_count": 0,
+                    "data_compaction_space_saved": 0,
+                    "data_compaction_space_saved_percent": 0,
+                    "volume_deduplication_shared_count": 0,
+                    "volume_deduplication_space_saved": 0,
+                    "volume_deduplication_space_saved_percent": 0
+                },
+                "snapshot": {
+                    "used_percent": 0,
+                    "available": 0,
+                    "total": 0,
+                    "used": 0,
+                    "reserve_percent": 0
+                },
+                "cloud_storage": {
+                    "used": 0
+                },
+                "efficiency": {
+                    "savings": 74937720832,
+                    "ratio": 9.238858947247071,
+                    "logical_used": 84033363968
+                },
+                "efficiency_without_snapshots": {
+                    "savings": 0,
+                    "ratio": 1,
+                    "logical_used": 7005036544
+                },
+                "efficiency_without_snapshots_flexclones": {
+                    "savings": 0,
+                    "ratio": 1,
+                    "logical_used": 7005036544
+                }
+            },
+            "state": "online",
+            "snaplock_type": "non_snaplock",
+            "create_time": "2020-09-21T14:44:51+00:00",
+            "data_encryption": {
+                "software_encryption_enabled": False,
+                "drive_protection_enabled": False
+            },
+            "block_storage": {
+                "primary": {
+                    "disk_count": 1,
+                    "disk_class": "virtual",
+                    "raid_type": "raid0",
+                    "raid_size": 8,
+                    "checksum_style": "advanced_zoned",
+                    "disk_type": "vm_disk"
+                },
+                "hybrid_cache": {
+                    "enabled": False
+                },
+                "mirror": {
+                    "enabled": False,
+                    "state": "unmirrored"
+                },
+                "plexes": [
+                    {
+                        "name": "plex0"
+                    }
+                ],
+                "storage_type": "hdd"
+            },
+            "cloud_storage": {
+                "attach_eligible": True
+            },
+            "inactive_data_reporting": {
+                "enabled": False
+            },
+            "metric": {
+                "timestamp": "2021-12-21T13:25:15Z",
+                "duration": "PT15S",
+                "status": "ok",
+                "throughput": {
+                    "read": 0,
+                    "write": 27033,
+                    "other": 0,
+                    "total": 27033
+                },
+                "latency": {
+                    "read": 0,
+                    "write": 1173,
+                    "other": 0,
+                    "total": 1173
+                },
+                "iops": {
+                    "read": 0,
+                    "write": 0,
+                    "other": 0,
+                    "total": 0
+                }
+            },
+            "statistics": {
+                "timestamp": "2021-12-21T13:25:21Z",
+                "status": "ok",
+                "throughput_raw": {
+                    "read": 5740912640,
+                    "write": 132358234112,
+                    "other": 0,
+                    "total": 138099146752
+                },
+                "latency_raw": {
+                    "read": 15095876198,
+                    "write": 12140289450,
+                    "other": 0,
+                    "total": 27236165648
+                },
+                "iops_raw": {
+                    "read": 535930,
+                    "write": 6011240,
+                    "other": 0,
+                    "total": 6547170
+                }
+            }
+        }
+    ],
+    "num_records": 2
+}
+
+LUN_GET_ITER_REST = {
+    "records": [
+        {
+            "uuid": "bd6baab3-4842-45b6-b627-45b305ed2e84",
+            "svm": {
+                "uuid": "fake-uuid",
+                "name": "vserver-name",
+            },
+            "name": "/vol/nahim_dev_vol01/volume-fake-uuid",
+            "location": {
+                "logical_unit": "volume-fake-uuid",
+                "node": {
+                    "name": "node-name",
+                    "uuid": "fake-uuid",
+                },
+                "volume": {
+                    "uuid": "fake-uuid",
+                    "name": "nahim_dev_vol01",
+                }
+            },
+            "auto_delete": False,
+            "class": "regular",
+            "create_time": "2021-12-09T14:07:31+00:00",
+            "enabled": True,
+            "lun_maps": [
+                {
+                    "logical_unit_number": 0,
+                    "igroup": {
+                        "uuid": "fake-uuid",
+                        "name": "openstack-fake-uuid",
+                    },
+                }
+            ],
+            "os_type": "linux",
+            "serial_number": "ZlAFA?QMnBdX",
+            "space": {
+                "scsi_thin_provisioning_support_enabled": False,
+                "size": 10737418240,
+                "used": 3474366464,
+                "guarantee": {
+                    "requested": False,
+                    "reserved": False
+                }
+            },
+            "status": {
+                "container_state": "online",
+                "mapped": True,
+                "read_only": False,
+                "state": "online"
+            },
+            "vvol": {
+                "is_bound": False
+            },
+            "metric": {
+                "timestamp": "2021-12-23T20:36:00Z",
+                "duration": "PT15S",
+                "status": "ok",
+                "throughput": {
+                    "read": 0,
+                    "write": 0,
+                    "other": 0,
+                    "total": 0
+                },
+                "iops": {
+                    "read": 0,
+                    "write": 0,
+                    "other": 0,
+                    "total": 0
+                },
+                "latency": {
+                    "read": 0,
+                    "write": 0,
+                    "other": 0,
+                    "total": 0
+                }
+            },
+            "statistics": {
+                "timestamp": "2021-12-23T20:36:02Z",
+                "status": "ok",
+                "throughput_raw": {
+                    "read": 1078230528,
+                    "write": 3294724096,
+                    "other": 0,
+                    "total": 4372954624
+                },
+                "iops_raw": {
+                    "read": 16641,
+                    "write": 51257,
+                    "other": 59,
+                    "total": 67957
+                },
+                "latency_raw": {
+                    "read": 2011655,
+                    "write": 1235068755,
+                    "other": 1402,
+                    "total": 1237081812
+                }
+            },
+        },
+        {
+            "uuid": "dff549b8-fabe-466b-8608-871a6493b492",
+            "svm": {
+                "uuid": "fake-uuid",
+                "name": "vserver-name",
+                "_links": {
+                    "self": {
+                        "href": "/api/svm/svms/fake-uuid"
+                    }
+                }
+            },
+            "name": "/vol/nahim_dev_vol01/volume-fake-uuid",
+            "location": {
+                "logical_unit": "volume-fake-uuid",
+                "node": {
+                    "name": "node-name",
+                    "uuid": "fake-uuid",
+                    "_links": {
+                        "self": {
+                            "href": "/api/cluster/nodes/fake-uuid"
+                        }
+                    }
+                },
+                "volume": {
+                    "uuid": "fake-uuid",
+                    "name": "nahim_dev_vol01",
+                    "_links": {
+                        "self": {
+                            "href": "/api/storage/volumes/fake-uuid"
+                        }
+                    }
+                }
+            },
+            "auto_delete": False,
+            "class": "regular",
+            "create_time": "2021-12-14T18:12:38+00:00",
+            "enabled": True,
+            "os_type": "linux",
+            "serial_number": "ZlAFA?QMnBdf",
+            "space": {
+                "scsi_thin_provisioning_support_enabled": False,
+                "size": 5368709120,
+                "used": 0,
+                "guarantee": {
+                    "requested": False,
+                    "reserved": False
+                }
+            },
+            "status": {
+                "container_state": "online",
+                "mapped": False,
+                "read_only": False,
+                "state": "online"
+            },
+            "vvol": {
+                "is_bound": False
+            },
+        }
+    ],
+    "num_records": 2,
+}
+
+LUN_GET_ITER_RESULT = [
+    {
+        'Vserver': LUN_GET_ITER_REST['records'][0]['svm']['name'],
+        'Volume':
+            LUN_GET_ITER_REST['records'][0]['location']['volume']['name'],
+        'Size': LUN_GET_ITER_REST['records'][0]['space']['size'],
+        'Qtree': (LUN_GET_ITER_REST['records'][0]['location']
+                  .get('qtree', {}).get('name', '')),
+        'Path': LUN_GET_ITER_REST['records'][0]['name'],
+        'OsType': LUN_GET_ITER_REST['records'][0]['os_type'],
+        'SpaceReserved':
+            LUN_GET_ITER_REST['records'][0]['space']['guarantee']['requested'],
+        'UUID': LUN_GET_ITER_REST['records'][0]['uuid'],
+    },
+    {
+        'Vserver': LUN_GET_ITER_REST['records'][1]['svm']['name'],
+        'Volume':
+            LUN_GET_ITER_REST['records'][1]['location']['volume']['name'],
+        'Size': LUN_GET_ITER_REST['records'][1]['space']['size'],
+        'Qtree': (LUN_GET_ITER_REST['records'][1]['location']
+                  .get('qtree', {}).get('name', '')),
+        'Path': LUN_GET_ITER_REST['records'][1]['name'],
+        'OsType': LUN_GET_ITER_REST['records'][1]['os_type'],
+        'SpaceReserved':
+            LUN_GET_ITER_REST['records'][1]['space']['guarantee']['requested'],
+        'UUID': LUN_GET_ITER_REST['records'][1]['uuid'],
+    },
+]
+
+FILE_DIRECTORY_GET_ITER_REST = {
+    "_links": {
+        "next": {
+            "href": "/api/resourcelink"
+        },
+        "self": {
+            "href": "/api/resourcelink"
+        }
+    },
+    "num_records": 2,
+    "records": [
+        {
+            "_links": {
+                "metadata": {
+                    "href": "/api/resourcelink"
+                },
+                "self": {
+                    "href": "/api/resourcelink"
+                }
+            },
+            "name": "test_file",
+            "path": "d1/d2/d3",
+            "size": 200,
+            "type": "file"
+        },
+        {
+            "_links": {
+                "metadata": {
+                    "href": "/api/resourcelink"
+                },
+                "self": {
+                    "href": "/api/resourcelink"
+                }
+            },
+            "name": "test_file_2",
+            "path": "d1/d2/d3",
+            "size": 250,
+            "type": "file"
+        }
+    ]
+}
+
+FILE_DIRECTORY_GET_ITER_RESULT_REST = [
+    {
+        'name': FILE_DIRECTORY_GET_ITER_REST['records'][0]['name'],
+        'file-size': float(FILE_DIRECTORY_GET_ITER_REST['records'][0]['size'])
+    },
+    {
+        'name': FILE_DIRECTORY_GET_ITER_REST['records'][1]['name'],
+        'file-size': float(FILE_DIRECTORY_GET_ITER_REST['records'][1]['size'])
+    }
+]
+
+LUN_GET_MOVEMENT_REST = {
     "_links": {
         "self": {
-            "href": "/api/cluster/nodes"
+            "href": "/api/resourcelink"
+        }
+    },
+    "name": "/vol/volume1/qtree1/lun1",
+    "uuid": "1cd8a442-86d1-11e0-ae1c-123478563412",
+    "movement": {
+        "progress": {
+            "elapsed": 0,
+            "failure": {
+                "arguments": [
+                    {
+                        "code": "string",
+                        "message": "string"
+                    }
+                ],
+                "code": "4",
+                "message": "entry doesn't exist",
+                "target": "uuid"
+            },
+            "percent_complete": 0,
+            "state": "preparing",
+            "volume_snapshot_blocked": True
         }
     }
+}
+
+LUN_GET_COPY_REST = {
+    "_links": {
+        "self": {
+            "href": "/api/resourcelink"
+        }
+    },
+    "name": "/vol/volume1/qtree1/lun1",
+    "uuid": "1cd8a442-86d1-11e0-ae1c-123478563412",
+    "copy": {
+        "source": {
+            "_links": {
+                "self": {
+                    "href": "/api/resourcelink"
+                }
+            },
+            "progress": {
+                "elapsed": 0,
+                "failure": {
+                    "arguments": [
+                        {
+                            "code": "string",
+                            "message": "string"
+                        }
+                    ],
+                    "code": "4",
+                    "message": "entry doesn't exist",
+                    "target": "uuid"
+                },
+                "percent_complete": 0,
+                "state": "preparing",
+                "volume_snapshot_blocked": True
+            },
+        }
+    },
+}
+
+VOLUME_GET_ITER_STATE_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "c19aef05-ac60-4211-9fe4-3ef8c8816c83",
+            "name": "fake_volume",
+            "state": VOLUME_STATE_ONLINE,
+            "style": "flexvol",
+            "nas": {
+                "path": "/fake/vol"
+            },
+        }
+    ],
+    "num_records": 1,
+}
+
+GET_OPERATIONAL_LIF_ADDRESSES_RESPONSE_REST = {
+    'records': [
+        {
+            'uuid': 'fake_uuid_1',
+            'name': 'vserver_name',
+            'ip': {'address': '1.2.3.4'},
+            'state': 'up'
+        },
+        {
+            'uuid': 'fake_uuid_2',
+            'name': 'vserver_name',
+            'ip': {'address': '99.98.97.96'},
+            'state': 'up'
+        }
+    ],
+    'num_records': 2
 }
 
 ERROR_RESPONSE_REST = {
@@ -1698,4 +2536,388 @@ JOB_RESPONSE_REST = {
             }
         }
     }
+}
+
+VSERVER_DATA_LIST_RESPONSE_REST = {
+    'records': [
+        {
+            'name': VSERVER_NAME
+        },
+        {
+            'name': VSERVER_NAME_2
+        }
+    ],
+    'num_records': 2,
+}
+
+PERF_COUNTER_LIST_INFO_WAFL_RESPONSE_REST = {
+    'name': 'wafl',
+    'counter_schemas': [
+        {
+            'name': 'cp_phase_times',
+            'description': 'Array of percentage time spent in different phases'
+                           + ' of Consistency Point (CP).',
+            'type': 'percent',
+            'unit': 'percent',
+            'denominator': {
+                'name': 'total_cp_msecs'
+            }
+        }
+    ],
+}
+
+PERF_COUNTER_TOTAL_CP_MSECS_LABELS_REST = [
+    'cp_setup', 'cp_pre_p0', 'cp_p0_snap_del', 'cp_p1_clean', 'cp_p1_quota',
+    'cp_ipu_disk_add', 'cp_p2v_inofile', 'cp_p2v_ino_pub', 'cp_p2v_ino_pri',
+    'cp_p2v_fsinfo', 'cp_p2v_dlog1', 'cp_p2v_dlog2', 'cp_p2v_refcount',
+    'cp_p2v_topaa', 'cp_p2v_df_scores_sub', 'cp_p2v_bm', 'cp_p2v_snap',
+    'cp_p2v_df_scores', 'cp_p2v_volinfo', 'cp_p2v_cont', 'cp_p2a_inofile',
+    'cp_p2a_ino', 'cp_p2a_dlog1', 'cp_p2a_hya', 'cp_p2a_dlog2',
+    'cp_p2a_fsinfo', 'cp_p2a_ipu_bitmap_grow', 'cp_p2a_refcount',
+    'cp_p2a_topaa', 'cp_p2a_hyabc', 'cp_p2a_bm', 'cp_p2a_snap',
+    'cp_p2a_volinfo', 'cp_p2_flush', 'cp_p2_finish', 'cp_p3_wait',
+    'cp_p3v_volinfo', 'cp_p3a_volinfo', 'cp_p3_finish', 'cp_p4_finish',
+    'cp_p5_finish',
+]
+
+PERF_COUNTER_TOTAL_CP_MSECS_LABELS_RESULT = [
+    label[3:] for label in PERF_COUNTER_TOTAL_CP_MSECS_LABELS_REST
+]
+
+PERF_COUNTER_TOTAL_CP_MSECS_VALUES_REST = [
+    0, 3112, 3, 0, 0, 3, 757, 0, 99, 0, 26, 0, 22, 1, 0, 194, 4, 224, 359, 222,
+    0, 0, 0, 0, 0, 0, 82, 0, 0, 0, 0, 0, 0, 62, 0, 133, 16, 35, 334219, 43,
+    2218, 20, 0,
+]
+
+PERF_COUNTER_TABLE_ROWS_WAFL = {
+    'records': [
+        {
+            'id': NODE_NAME + ':wafl',
+            'counters': [
+                {
+                    'name': 'cp_phase_times',
+                    'values': PERF_COUNTER_TOTAL_CP_MSECS_VALUES_REST,
+                    'labels': PERF_COUNTER_TOTAL_CP_MSECS_LABELS_REST
+                }
+            ],
+        }
+    ],
+    'num_records': 1,
+}
+
+PERF_COUNTER_DOMAIN_BUSY_LABELS = [
+    'exempt', 'ha', 'host_os', 'idle', 'kahuna', 'kahuna_legacy', 'none',
+    'nwk_exempt', 'network', 'protocol', 'raid', 'raid_exempt', 'sm_exempt',
+    'ssan_exempt', 'storage', 'target', 'unclassified', 'wafl_exempt',
+    'wafl_mpcleaner', 'xor_exempt', 'ssan_exempt2', 'exempt_ise', 'zombie',
+]
+
+PERF_COUNTER_DOMAIN_BUSY_VALUES_1 = [
+    83071627197, 1334877, 19459898, 588539096, 11516887, 14878622, 18,
+    647698, 20, 229232646, 4310322, 441035, 12946782, 57837913, 38765442,
+    1111004351701, 1497335, 949657, 109890, 768027, 21, 14, 13
+]
+
+PERF_COUNTER_DOMAIN_BUSY_VALUES_2 = [
+    1191129018056, 135991, 22842513, 591213798, 9449562, 15345460, 0,
+    751656, 0, 162605694, 3927323, 511160, 7644403, 29696759, 21787992,
+    3585552592, 1058902, 957296, 87811, 499766, 0, 0, 0
+]
+
+PERF_COUNTER_ELAPSED_TIME_1 = 1199265469753
+PERF_COUNTER_ELAPSED_TIME_2 = 1199265469755
+
+PERF_GET_INSTANCES_PROCESSOR_RESPONSE_REST = {
+    'records': [
+        {
+            'counter_table': {
+                'name': 'processor'
+            },
+            'id': NODE_NAME + ':processor0',
+            'counters': [
+                {
+                    'name': 'domain_busy_percent',
+                    'values': PERF_COUNTER_DOMAIN_BUSY_VALUES_1,
+                    'labels': PERF_COUNTER_DOMAIN_BUSY_LABELS
+                },
+                {
+                    'name': 'elapsed_time',
+                    'value': PERF_COUNTER_ELAPSED_TIME_1,
+                }
+            ],
+        },
+        {
+            'counter_table': {
+                'name': 'processor'
+            },
+            'id': NODE_NAME + ':processor1',
+            'counters': [
+                {
+                    'name': 'domain_busy_percent',
+                    'values': PERF_COUNTER_DOMAIN_BUSY_VALUES_2,
+                    'labels': PERF_COUNTER_DOMAIN_BUSY_LABELS
+                },
+                {
+                    'name': 'elapsed_time',
+                    'value': PERF_COUNTER_ELAPSED_TIME_2,
+                }
+            ],
+        }
+    ],
+    'num_records': 2,
+}
+
+PERF_COUNTERS_PROCESSOR_EXPECTED = [
+    {
+        'instance-name': 'processor',
+        'instance-uuid': NODE_NAME + ':processor0',
+        'node-name': NODE_NAME,
+        'timestamp': mock.ANY,
+        'domain_busy':
+            ','.join([str(v) for v in PERF_COUNTER_DOMAIN_BUSY_VALUES_1])
+    },
+    {
+        'instance-name': 'processor',
+        'instance-uuid': NODE_NAME + ':processor0',
+        'node-name': NODE_NAME,
+        'timestamp': mock.ANY,
+        'processor_elapsed_time': PERF_COUNTER_ELAPSED_TIME_1
+    },
+    {
+        'instance-name': 'processor',
+        'instance-uuid': NODE_NAME + ':processor1',
+        'node-name': NODE_NAME,
+        'timestamp': mock.ANY,
+        'domain_busy':
+            ','.join([str(v) for v in PERF_COUNTER_DOMAIN_BUSY_VALUES_2])
+    },
+    {
+        'instance-name': 'processor',
+        'instance-uuid': NODE_NAME + ':processor1',
+        'node-name': NODE_NAME,
+        'timestamp': mock.ANY,
+        'processor_elapsed_time': PERF_COUNTER_ELAPSED_TIME_2
+    },
+]
+
+SINGLE_IGROUP_REST = {
+    "svm": {
+        "uuid": FAKE_UUID,
+        "name": VOLUME_VSERVER_NAME,
+    },
+    "uuid": FAKE_UUID,
+    "name": "openstack-e6bf1584-bfb3-4cdb-950d-525bf6f26b53",
+            "protocol": "iscsi",
+            "os_type": "linux",
+            "initiators": [
+                {
+                    "name": "iqn.1993-08.org.fake:01:5b67769f5c5e",
+                }
+    ],
+}
+
+IGROUP_GET_ITER_REST = {
+    "records": [
+        SINGLE_IGROUP_REST
+    ],
+    "num_records": 1,
+}
+
+IGROUP_GET_ITER_MULT_REST = {
+    "records": [
+        SINGLE_IGROUP_REST,
+        SINGLE_IGROUP_REST
+    ],
+    "num_records": 2,
+}
+
+IGROUP_GET_ITER_INITS_REST = {
+    "records": [
+        {
+            "svm": {
+                "uuid": FAKE_UUID,
+                "name": VOLUME_VSERVER_NAME,
+            },
+            "uuid": FAKE_UUID,
+            "name": "openstack-e6bf1584-bfb3-4cdb-950d-525bf6f26b53",
+            "protocol": "iscsi",
+            "os_type": "linux",
+            "initiators": [
+                {
+                    "name": "iqn.1993-08.org.fake:01:5b67769f5c5e",
+                },
+                {
+                    "name": "iqn.1993-08.org.fake:02:5b67769f5c5e",
+                }
+            ],
+        }
+    ],
+    "num_records": 1,
+}
+
+GET_LUN_MAP_REST = {
+    "records": [
+        {
+            "svm": {
+                "uuid": FAKE_UUID,
+                "name": VSERVER_NAME,
+            },
+            "lun": {
+                "uuid": "6c2969dc-b022-434c-b7cd-9240bs975187",
+                "name": LUN_NAME_PATH,
+            },
+            "igroup": {
+                "uuid": "08088517-a6f5-11ec-82cc-00a0b89c9a78",
+                "name": IGROUP_NAME,
+            },
+            "logical_unit_number": 0,
+        }
+    ],
+    "num_records": 1,
+}
+
+FC_INTERFACE_REST = {
+    "records": [
+        {
+            "data_protocol": "fcp",
+            "location": {
+                "port": {
+                    "name": "0a",
+                    "uuid": FAKE_UUID,
+                    "node": {
+                        "name": "node1"
+                    }
+                },
+                "node": {
+                    "name": "node1",
+                    "uuid": FAKE_UUID,
+                }
+            },
+            "wwpn": "20:00:00:50:56:b4:13:a8",
+            "name": "lif1",
+            "uuid": FAKE_UUID,
+            "state": "up",
+            "port_address": "5060F",
+            "wwnn": "20:00:00:50:56:b4:13:01",
+            "comment": "string",
+            "svm": {
+                "name": VOLUME_VSERVER_NAME,
+                "uuid": FAKE_UUID,
+            },
+            "enabled": True
+        }
+    ],
+    "num_records": 1
+}
+
+GET_LUN_MAPS = {
+    "records": [
+        {
+            "svm": {
+                "uuid": "77deec3a-38ea-11ec-aca8-00a0b89c9a78",
+                "name": VOLUME_NAME,
+            },
+            "uuid": "99809170-a92c-11ec-82cc-0aa0b89c9a78",
+            "name": "openstack-626d20dc-c420-4a5a-929c-59178d64f2c5",
+            "initiators": [
+                {
+                    "name": "iqn.2005-03.org.open-iscsi:49ebe8a87d1",
+                }
+            ],
+            "lun_maps": [
+                {
+                    "logical_unit_number": 0,
+                    "lun": {
+                        "name": LUN_NAME_PATH,
+                        "uuid": "91e83a0a-72c3-4278-9a24-f2f8135aa5db",
+                        "node": {
+                            "name": CLUSTER_NAME,
+                            "uuid": "9eff6c76-fc13-11ea-8799-525a0006bba9",
+                        },
+                    },
+                }
+            ],
+        }
+    ],
+    "num_records": 1,
+}
+
+GET_LUN_MAPS_NO_MAPS = {
+    "records": [
+        {
+            "svm": {
+                "uuid": "77deec3a-38ea-11ec-aca8-00a0b89c9a78",
+                "name": VOLUME_NAME,
+            },
+            "uuid": "99809170-a92c-11ec-82cc-0aa0b89c9a78",
+            "name": "openstack-626d20dc-c420-4a5a-929c-59178d64f2c5",
+            "initiators": [
+                {
+                    "name": "iqn.2005-03.org.open-iscsi:49ebe8a87d1",
+                }
+            ],
+        }
+    ],
+    "num_records": 1,
+}
+
+GET_ISCSI_SERVICE_DETAILS_REST = {
+    "records": [
+        {
+            "svm": {
+                "uuid": FAKE_UUID,
+                "name": VOLUME_VSERVER_NAME,
+            },
+            "target": {
+                "name": INITIATOR_IQN
+            },
+        }
+    ],
+    "num_records": 1,
+}
+
+CHECK_ISCSI_INITIATOR_REST = {
+    "records": [
+        {
+            "svm": {
+                "uuid": FAKE_UUID,
+                "name": VOLUME_VSERVER_NAME,
+            },
+            "initiator": INITIATOR_IQN,
+        }
+    ],
+    "num_records": 1,
+}
+
+GET_ISCSI_TARGET_DETAILS_REST = {
+    "records": [
+        {
+            "uuid": FAKE_UUID,
+            "name": VOLUME_VSERVER_NAME,
+            "ip": {
+                "address": "192.168.1.254"
+            },
+            "enabled": True,
+            "services": [
+                "data_core",
+                "data_iscsi"
+            ],
+        }
+    ],
+    "num_records": 1,
+}
+
+VOLUME_GET_ITER_CAPACITY_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": FAKE_UUID,
+            "name": VOLUME_NAME,
+            "space": {
+                "available": VOLUME_SIZE_AVAILABLE,
+                "afs_total": VOLUME_SIZE_TOTAL
+            },
+        }
+    ],
+    "num_records": 1,
 }

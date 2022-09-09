@@ -37,6 +37,28 @@ DEFAULT_MAX_PAGE_LENGTH = 50
 ONTAP_SELECT_MODEL = 'FDvM300'
 ONTAP_C190 = 'C190'
 
+# NOTE(cknight): The keys in this map are tuples that contain arguments needed
+# for efficient use of the system-user-capability-get-iter cDOT API.  The
+# values are SSC extra specs associated with the APIs listed in the keys.
+SSC_API_MAP = {
+    ('storage.aggregate', 'show', 'aggr-options-list-info'): [
+        'netapp_raid_type',
+    ],
+    ('storage.disk', 'show', 'storage-disk-get-iter'): [
+        'netapp_disk_type',
+    ],
+    ('snapmirror', 'show', 'snapmirror-get-iter'): [
+        'netapp_mirrored',
+    ],
+    ('volume.efficiency', 'show', 'sis-get-iter'): [
+        'netapp_dedup',
+        'netapp_compression',
+    ],
+    ('volume', '*show', 'volume-get-iter'): [
+        'netapp_flexvol_encryption',
+    ],
+}
+
 
 @six.add_metaclass(volume_utils.TraceWrapperMetaclass)
 class Client(client_base.Client):
@@ -181,6 +203,32 @@ class Client(client_base.Client):
             six.text_type(num_records))
         result.get_child_by_name('next-tag').set_content('')
         return result
+
+    def check_api_permissions(self):
+        """Check which APIs that support SSC functionality are available."""
+
+        inaccessible_apis = []
+        invalid_extra_specs = []
+
+        for api_tuple, extra_specs in SSC_API_MAP.items():
+            object_name, operation_name, api = api_tuple
+            if not self.check_cluster_api(object_name,
+                                          operation_name,
+                                          api):
+                inaccessible_apis.append(api)
+                invalid_extra_specs.extend(extra_specs)
+
+        if inaccessible_apis:
+            if 'volume-get-iter' in inaccessible_apis:
+                msg = _('User not permitted to query Data ONTAP volumes.')
+                raise exception.VolumeBackendAPIException(data=msg)
+            else:
+                LOG.warning('The configured user account does not have '
+                            'sufficient privileges to use all needed '
+                            'APIs. The following extra specs will fail '
+                            'or be ignored: %s.', invalid_extra_specs)
+
+        return invalid_extra_specs
 
     def _get_cluster_nodes_info(self):
         """Return a list of models of the nodes in the cluster"""
@@ -481,7 +529,25 @@ class Client(client_base.Client):
             tag = result.get_child_content('next-tag')
             if tag is None:
                 break
-        return luns
+
+        lun_list = [self._create_lun_meta(lun) for lun in luns]
+        return lun_list
+
+    def _create_lun_meta(self, lun):
+        """Creates LUN metadata dictionary."""
+        self.check_is_naelement(lun)
+        meta_dict = {}
+        meta_dict['Vserver'] = lun.get_child_content('vserver')
+        meta_dict['Volume'] = lun.get_child_content('volume')
+        meta_dict['Size'] = lun.get_child_content('size')
+        meta_dict['Qtree'] = lun.get_child_content('qtree')
+        meta_dict['Path'] = lun.get_child_content('path')
+        meta_dict['OsType'] = lun.get_child_content('multiprotocol-type')
+        meta_dict['SpaceReserved'] = \
+            lun.get_child_content('is-space-reservation-enabled')
+        meta_dict['UUID'] = lun.get_child_content('uuid')
+        meta_dict['BlockSize'] = lun.get_child_content('block-size')
+        return meta_dict
 
     def get_lun_map(self, path):
         """Gets the LUN map by LUN path."""
@@ -853,7 +919,10 @@ class Client(client_base.Client):
         attr_list = luns.get_child_by_name('attributes-list')
         if not attr_list:
             return []
-        return attr_list.get_children()
+
+        lun_list = [self._create_lun_meta(lun)
+                    for lun in attr_list.get_children()]
+        return lun_list
 
     def file_assign_qos(self, flex_vol, qos_policy_group_name,
                         qos_policy_group_is_adaptive, file_path):
@@ -1061,7 +1130,8 @@ class Client(client_base.Client):
         num_records = result.get_child_content('num-records')
         if num_records and int(num_records) >= 1:
             attr_list = result.get_child_by_name('attributes-list')
-            return attr_list.get_children()
+            return [{'vserver': attr.get_child_content('vserver')}
+                    for attr in attr_list.get_children()]
         raise exception.NotFound(
             _('No interface found on cluster for ip %s') % ip)
 
