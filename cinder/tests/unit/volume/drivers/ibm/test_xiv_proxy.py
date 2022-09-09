@@ -2610,7 +2610,7 @@ class XIVProxyTest(test.TestCase):
             test_mock.cinder.exception,
             driver)
 
-        xiv_replication.VolumeReplication = mock.MagicMock()
+        self.mock_object(xiv_replication, 'VolumeReplication')
         grp = testutils.create_group(self.ctxt, name='bla', group_type_id='1')
         volume = testutils.create_volume(self.ctxt, display_name='bla',
                                          volume_type_id=self.vt['id'])
