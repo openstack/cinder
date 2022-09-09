@@ -399,7 +399,7 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
 
-    def test_create_volume_in_failed_state(self):
+    def _create_volume_in_failed_state(self, vol_state):
         """Verify scenario of created volume in failed state:
 
         Driver is expected to issue a deletion command and raise exception
@@ -415,25 +415,16 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
                     "compression": kwargs["compression"],
                     "src_snapshot_name": kwargs["src_snapshot_name"],
                     "acl": {'values': kwargs.get('acl')},
-                    "state": "Failed",
+                    "state": vol_state,
                 }
                 volume["ETag"] = get_vol_etag(volume)
                 code, new_vol = self.db.create_volume(volume)
                 return (code, new_vol)
-            elif cmd == "delete_volume":
-                return self.db.delete_volume(kwargs["project_name"],
-                                             kwargs["volume_uuid"])
-            elif cmd == "get_volume":
-                return self.db.get_volume_by_uuid(kwargs["project_name"],
-                                                  kwargs["volume_uuid"])
-            elif cmd == "get_volume_by_name":
-                return self.db.get_volume_by_name(kwargs["project_name"],
-                                                  kwargs["volume_name"])
             else:
-                raise RuntimeError(
-                    f"'{cmd}' is not implemented. kwargs: {kwargs}")
+                return cluster_send_cmd(cmd, **kwargs)
 
         self.driver.do_setup(None)
+        cluster_send_cmd = deepcopy(self.driver.cluster.send_cmd)
         self.driver.cluster.send_cmd = send_cmd_mock
         vol_type = test_utils.create_volume_type(self.ctxt, self,
                                                  name='my_vol_type')
@@ -444,6 +435,48 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         proj = self.db.data["projects"][lightos.LIGHTOS_DEFAULT_PROJECT_NAME]
         actual_volumes = proj["volumes"]
         self.assertEqual(0, len(actual_volumes))
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_create_volume_in_failed_state(self):
+        self._create_volume_in_failed_state("Failed")
+
+    def test_create_volume_in_rollback_state(self):
+        self._create_volume_in_failed_state("Rollback")
+
+    def test_create_volume_in_migrating_state_succeed(self):
+        """Verify scenario of created volume in migrating state:
+
+        Driver is expected to succeed.
+        """
+        def send_cmd_mock(cmd, **kwargs):
+            if cmd == "create_volume":
+                project_name = kwargs["project_name"]
+                volume = {
+                    "project_name": project_name,
+                    "name": kwargs["name"],
+                    "size": kwargs["size"],
+                    "n_replicas": kwargs["n_replicas"],
+                    "compression": kwargs["compression"],
+                    "src_snapshot_name": kwargs["src_snapshot_name"],
+                    "acl": {'values': kwargs.get('acl')},
+                    "state": "Migrating",
+                }
+                volume["ETag"] = get_vol_etag(volume)
+                code, new_vol = self.db.create_volume(volume)
+                return (code, new_vol)
+            else:
+                return cluster_send_cmd(cmd, **kwargs)
+        self.driver.do_setup(None)
+        cluster_send_cmd = deepcopy(self.driver.cluster.send_cmd)
+        self.driver.cluster.send_cmd = send_cmd_mock
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+        proj = self.db.data["projects"][lightos.LIGHTOS_DEFAULT_PROJECT_NAME]
+        actual_volumes = proj["volumes"]
+        self.assertEqual(1, len(actual_volumes))
         db.volume_destroy(self.ctxt, volume.id)
 
     def test_delete_volume_fail_if_not_created(self):
@@ -606,6 +639,50 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         connection_props = \
             self.driver.initialize_connection(volume,
                                               get_connector_properties())
+        self.assertIn('driver_volume_type', connection_props)
+        self.assertEqual('lightos', connection_props['driver_volume_type'])
+        self.assertEqual(FAKE_LIGHTOS_CLUSTER_INFO['subsystemNQN'],
+                         connection_props['data']['subsysnqn'])
+        self.assertEqual(
+            self.db.data['projects']['default']['volumes'][0]['UUID'],
+            connection_props['data']['uuid'])
+
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_initialize_connection_mirgrating_volume(self):
+        InitialConnectorMock.nqn = "hostnqn1"
+        InitialConnectorMock.found_discovery_client = True
+
+        def send_cmd_mock(cmd, **kwargs):
+            if cmd == "create_volume":
+                project_name = kwargs["project_name"]
+                volume = {
+                    "project_name": project_name,
+                    "name": kwargs["name"],
+                    "size": kwargs["size"],
+                    "n_replicas": kwargs["n_replicas"],
+                    "compression": kwargs["compression"],
+                    "src_snapshot_name": kwargs["src_snapshot_name"],
+                    "acl": {'values': kwargs.get('acl')},
+                    "state": "Migrating",
+                }
+                volume["ETag"] = get_vol_etag(volume)
+                code, new_vol = self.db.create_volume(volume)
+                return (code, new_vol)
+            else:
+                return cluster_send_cmd(cmd, **kwargs)
+        self.driver.do_setup(None)
+        cluster_send_cmd = deepcopy(self.driver.cluster.send_cmd)
+        self.driver.cluster.send_cmd = send_cmd_mock
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+        connection_props = (
+            self.driver.initialize_connection(volume,
+                                              get_connector_properties()))
         self.assertIn('driver_volume_type', connection_props)
         self.assertEqual('lightos', connection_props['driver_volume_type'])
         self.assertEqual(FAKE_LIGHTOS_CLUSTER_INFO['subsystemNQN'],
