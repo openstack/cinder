@@ -2529,10 +2529,10 @@ FAKE_FORMATTED_HTTP_QUERY = '?type=fake_type'
 
 JOB_RESPONSE_REST = {
     "job": {
-        "uuid": "uuid-12345",
+        "uuid": FAKE_UUID,
         "_links": {
             "self": {
-                "href": "/api/cluster/jobs/uuid-12345"
+                "href": f"/api/cluster/jobs/{FAKE_UUID}"
             }
         }
     }
@@ -2843,6 +2843,32 @@ GET_LUN_MAPS = {
     "num_records": 1,
 }
 
+SNAPMIRROR_GET_ITER_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": FAKE_UUID,
+            "source": {
+                "path": SM_SOURCE_VSERVER + ':' + SM_SOURCE_VOLUME,
+                "svm": {
+                    "name": SM_SOURCE_VSERVER
+                }
+            },
+            "destination": {
+                "path": SM_DEST_VSERVER + ':' + SM_DEST_VOLUME,
+                "svm": {
+                    "name": SM_DEST_VSERVER
+                }
+            },
+            "policy": {
+                "type": "async"
+            },
+            "state": "snapmirrored",
+            "healthy": True
+        }
+    ],
+    "num_records": 1,
+}
+
 GET_LUN_MAPS_NO_MAPS = {
     "records": [
         {
@@ -2920,4 +2946,51 @@ VOLUME_GET_ITER_CAPACITY_RESPONSE_REST = {
         }
     ],
     "num_records": 1,
+}
+
+REST_GET_SNAPMIRRORS_RESPONSE = [{
+    'destination-volume': SM_DEST_VOLUME,
+    'destination-vserver': SM_DEST_VSERVER,
+    'is-healthy': True,
+    'lag-time': None,
+    'last-transfer-end-timestamp': None,
+    'mirror-state': 'snapmirrored',
+    'relationship-status': 'snapmirrored',
+    'source-volume': SM_SOURCE_VOLUME,
+    'source-vserver': SM_SOURCE_VSERVER,
+    'uuid': FAKE_UUID,
+}]
+
+TRANSFERS_GET_ITER_REST = {
+    "records": [
+        {
+            "uuid": FAKE_UUID,
+            "state": "transferring"
+        },
+        {
+            "uuid": FAKE_UUID,
+            "state": "failed"
+        }
+    ],
+    "num_records": 2,
+}
+
+JOB_SUCCESSFUL_REST = {
+    "uuid": FAKE_UUID,
+    "description": "Fake description",
+    "state": "success",
+    "message": "success",
+    "code": 0,
+    "start_time": "2022-02-18T20:08:03+00:00",
+    "end_time": "2022-02-18T20:08:04+00:00",
+}
+
+JOB_ERROR_REST = {
+    "uuid": FAKE_UUID,
+    "description": "Fake description",
+    "state": "failure",
+    "message": "failure",
+    "code": -1,
+    "start_time": "2022-02-18T20:08:03+00:00",
+    "end_time": "2022-02-18T20:08:04+00:00",
 }

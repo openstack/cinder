@@ -353,7 +353,8 @@ class DataMotionMixin(object):
                 src_vserver, src_flexvol_name, dest_vserver,
                 dest_flexvol_name,
                 desired_attributes=['relationship-status', 'mirror-state'])[0]
-            if snapmirror.get('relationship-status') != 'quiesced':
+            if (snapmirror.get('relationship-status') not in ['quiesced',
+                                                              'paused']):
                 msg = _("SnapMirror relationship is not quiesced.")
                 raise na_utils.NetAppDriverException(msg)
 
@@ -524,8 +525,8 @@ class DataMotionMixin(object):
                         dest_flexvol_name)
 
             except loopingcall.LoopingCallTimeOut:
-                msg = _("Timeout waiting destination FlexGroup to to come "
-                        "online.")
+                msg = _("Timeout waiting destination FlexGroup "
+                        "to come online.")
                 raise na_utils.NetAppDriverException(msg)
 
         else:
@@ -533,6 +534,24 @@ class DataMotionMixin(object):
                                        destination_aggregate[0],
                                        size,
                                        **provisioning_options)
+
+            timeout = self._get_replication_volume_online_timeout()
+
+            def _wait_volume_is_online():
+                volume_state = dest_client.get_volume_state(
+                    name=dest_flexvol_name)
+                if volume_state and volume_state == 'online':
+                    raise loopingcall.LoopingCallDone()
+
+            try:
+                wait_call = loopingcall.FixedIntervalWithTimeoutLoopingCall(
+                    _wait_volume_is_online)
+                wait_call.start(interval=5, timeout=timeout).wait()
+
+            except loopingcall.LoopingCallTimeOut:
+                msg = _("Timeout waiting destination FlexVol to to come "
+                        "online.")
+                raise na_utils.NetAppDriverException(msg)
 
     def ensure_snapmirrors(self, config, src_backend_name, src_flexvol_names):
         """Ensure all the SnapMirrors needed for whole-backend replication."""

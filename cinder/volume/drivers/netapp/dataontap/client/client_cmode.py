@@ -1741,7 +1741,8 @@ class Client(client_base.Client):
 
     def create_volume_async(self, name, aggregate_list, size_gb,
                             space_guarantee_type=None, snapshot_policy=None,
-                            language=None, snapshot_reserve=None,
+                            language=None, dedupe_enabled=False,
+                            compression_enabled=False, snapshot_reserve=None,
                             volume_type='rw'):
         """Creates a FlexGroup volume asynchronously."""
 

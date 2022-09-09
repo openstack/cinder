@@ -20,6 +20,7 @@ from unittest import mock
 import uuid
 
 import ddt
+from oslo_utils import units
 import six
 
 from cinder import exception
@@ -995,10 +996,10 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
     def test_get_operational_lif_addresses(self):
         expected_result = ['1.2.3.4', '99.98.97.96']
         api_response = fake_client.GET_OPERATIONAL_LIF_ADDRESSES_RESPONSE_REST
+
         mock_send_request = self.mock_object(self.client,
                                              'send_request',
                                              return_value=api_response)
-
         address_list = self.client.get_operational_lif_addresses()
 
         query = {
@@ -2503,3 +2504,879 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         result = self.client.check_cluster_api(endpoint_api)
 
         self.assertFalse(result)
+
+    def test_get_provisioning_options_from_flexvol(self):
+
+        self.mock_object(self.client, 'get_flexvol',
+                         return_value=fake_client.VOLUME_INFO_SSC)
+        self.mock_object(self.client, 'get_flexvol_dedupe_info',
+                         return_value=fake_client.VOLUME_DEDUPE_INFO_SSC)
+
+        expected_prov_opts = {
+            'aggregate': 'fake_aggr1',
+            'compression_enabled': False,
+            'dedupe_enabled': True,
+            'language': 'c.utf_8',
+            'size': 1,
+            'snapshot_policy': 'default',
+            'snapshot_reserve': '5',
+            'space_guarantee_type': 'none',
+            'volume_type': 'rw',
+            'is_flexgroup': False,
+        }
+
+        actual_prov_opts = self.client.get_provisioning_options_from_flexvol(
+            fake_client.VOLUME_NAME)
+
+        self.assertEqual(expected_prov_opts, actual_prov_opts)
+
+    def test_flexvol_exists(self):
+
+        api_response = fake_client.GET_NUM_RECORDS_RESPONSE_REST
+        mock_send_request = self.mock_object(self.client,
+                                             'send_request',
+                                             return_value=api_response)
+
+        result = self.client.flexvol_exists(fake_client.VOLUME_NAME)
+
+        query = {
+            'name': fake_client.VOLUME_NAME,
+            'return_records': 'false'
+        }
+
+        mock_send_request.assert_has_calls([
+            mock.call('/storage/volumes/', 'get', query=query)])
+        self.assertTrue(result)
+
+    def test_flexvol_exists_not_found(self):
+
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=api_response)
+
+        self.assertFalse(self.client.flexvol_exists(fake_client.VOLUME_NAME))
+
+    @ddt.data(fake_client.VOLUME_AGGREGATE_NAME,
+              [fake_client.VOLUME_AGGREGATE_NAME],
+              [fake_client.VOLUME_AGGREGATE_NAMES[0],
+               fake_client.VOLUME_AGGREGATE_NAMES[1]])
+    def test_create_volume_async(self, aggregates):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_volume_async(
+            fake_client.VOLUME_NAME, aggregates, 100, volume_type='dp')
+
+        body = {
+            'name': fake_client.VOLUME_NAME,
+            'size': 100 * units.Gi,
+            'type': 'dp'
+        }
+
+        if isinstance(aggregates, list):
+            body['style'] = 'flexgroup'
+            body['aggregates'] = [{'name': aggr} for aggr in aggregates]
+        else:
+            body['style'] = 'flexvol'
+            body['aggregates'] = [{'name': aggregates}]
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/volumes/', 'post', body=body, wait_on_accepted=False)
+
+    @ddt.data('dp', 'rw', None)
+    def test_create_volume_async_with_extra_specs(self, volume_type):
+        self.mock_object(self.client, 'send_request')
+
+        aggregates = [fake_client.VOLUME_AGGREGATE_NAME]
+        snapshot_policy = 'default'
+        size = 100
+        space_guarantee_type = 'volume'
+        language = 'en-US'
+        snapshot_reserve = 15
+
+        self.client.create_volume_async(
+            fake_client.VOLUME_NAME, aggregates, size,
+            space_guarantee_type=space_guarantee_type, language=language,
+            snapshot_policy=snapshot_policy, snapshot_reserve=snapshot_reserve,
+            volume_type=volume_type)
+
+        body = {
+            'name': fake_client.VOLUME_NAME,
+            'size': size * units.Gi,
+            'type': volume_type,
+            'guarantee': {'type': space_guarantee_type},
+            'space': {'snapshot': {'reserve_percent': str(snapshot_reserve)}},
+            'language': language,
+        }
+
+        if isinstance(aggregates, list):
+            body['style'] = 'flexgroup'
+            body['aggregates'] = [{'name': aggr} for aggr in aggregates]
+        else:
+            body['style'] = 'flexvol'
+            body['aggregates'] = [{'name': aggregates}]
+
+        if volume_type == 'dp':
+            snapshot_policy = None
+        else:
+            body['nas'] = {'path': '/%s' % fake_client.VOLUME_NAME}
+
+        if snapshot_policy is not None:
+            body['snapshot_policy'] = {'name': snapshot_policy}
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/volumes/', 'post', body=body, wait_on_accepted=False)
+
+    def test_create_flexvol(self):
+        aggregates = [fake_client.VOLUME_AGGREGATE_NAME]
+        size = 100
+
+        mock_response = {
+            'job': {
+                'uuid': fake.JOB_UUID,
+            }
+        }
+
+        self.mock_object(self.client, 'send_request',
+                         return_value=mock_response)
+
+        expected_response = {
+            'status': None,
+            'jobid': fake.JOB_UUID,
+            'error-code': None,
+            'error-message': None
+        }
+
+        response = self.client.create_volume_async(fake_client.VOLUME_NAME,
+                                                   aggregates, size_gb = size)
+        self.assertEqual(expected_response, response)
+
+    def test_enable_volume_dedupe_async(self):
+        query = {
+            'name': fake_client.VOLUME_NAME,
+            'fields': 'uuid,style',
+        }
+
+        # This is needed because the first calling to send_request inside
+        # enable_volume_dedupe_async must return a valid uuid for the given
+        # volume name.
+        mock_response = {
+            'records': [
+                {
+                    'uuid': fake.JOB_UUID,
+                    'name': fake_client.VOLUME_NAME,
+                    "style": 'flexgroup',
+                }
+            ],
+            "num_records": 1,
+        }
+
+        body = {
+            'efficiency': {'dedupe': 'background'}
+        }
+
+        mock_send_request = self.mock_object(self.client, 'send_request',
+                                             return_value=mock_response)
+
+        call_list = [mock.call('/storage/volumes/',
+                               'patch', body=body, query=query,
+                               wait_on_accepted=False)]
+
+        self.client.enable_volume_dedupe_async(fake_client.VOLUME_NAME)
+        mock_send_request.assert_has_calls(call_list)
+
+    def test_enable_volume_compression_async(self):
+        query = {
+            'name': fake_client.VOLUME_NAME,
+        }
+
+        # This is needed because the first calling to send_request inside
+        # enable_volume_compression_async must return a valid uuid for the
+        # given volume name.
+        mock_response = {
+            'records': [
+                {
+                    'uuid': fake.JOB_UUID,
+                    'name': fake_client.VOLUME_NAME,
+                    "style": 'flexgroup',
+                }
+            ],
+            "num_records": 1,
+        }
+
+        body = {
+            'efficiency': {'compression': 'background'}
+        }
+
+        mock_send_request = self.mock_object(self.client, 'send_request',
+                                             return_value=mock_response)
+
+        call_list = [mock.call('/storage/volumes/',
+                               'patch', body=body, query=query,
+                               wait_on_accepted=False)]
+
+        self.client.enable_volume_compression_async(fake_client.VOLUME_NAME)
+        mock_send_request.assert_has_calls(call_list)
+
+    def test__get_snapmirrors(self):
+
+        api_response = fake_client.SNAPMIRROR_GET_ITER_RESPONSE_REST
+        mock_send_request = self.mock_object(self.client,
+                                             'send_request',
+                                             return_value=api_response)
+
+        result = self.client._get_snapmirrors(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        query = {
+            'source.path': (fake_client.SM_SOURCE_VSERVER + ':' +
+                            fake_client.SM_SOURCE_VOLUME),
+            'destination.path': (fake_client.SM_DEST_VSERVER +
+                                 ':' + fake_client.SM_DEST_VOLUME),
+            'fields': 'state,source.svm.name,source.path,destination.svm.name,'
+                      'destination.path,transfer.end_time,lag_time,healthy,'
+                      'uuid'
+        }
+
+        mock_send_request.assert_called_once_with('/snapmirror/relationships',
+                                                  'get', query=query)
+        self.assertEqual(1, len(result))
+
+    def test__get_snapmirrors_not_found(self):
+
+        api_response = fake_client.NO_RECORDS_RESPONSE_REST
+        mock_send_request = self.mock_object(self.client,
+                                             'send_request',
+                                             return_value=api_response)
+
+        result = self.client._get_snapmirrors(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        query = {
+            'source.path': (fake_client.SM_SOURCE_VSERVER + ':' +
+                            fake_client.SM_SOURCE_VOLUME),
+            'destination.path': (fake_client.SM_DEST_VSERVER +
+                                 ':' + fake_client.SM_DEST_VOLUME),
+            'fields': 'state,source.svm.name,source.path,destination.svm.name,'
+                      'destination.path,transfer.end_time,lag_time,healthy,'
+                      'uuid'
+        }
+
+        mock_send_request.assert_called_once_with('/snapmirror/relationships',
+                                                  'get', query=query)
+        self.assertEqual([], result)
+
+    def test_get_snapmirrors(self):
+
+        api_response = fake_client.SNAPMIRROR_GET_ITER_RESPONSE_REST
+        mock_send_request = self.mock_object(self.client,
+                                             'send_request',
+                                             return_value=api_response)
+
+        result = self.client.get_snapmirrors(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        expected = fake_client.REST_GET_SNAPMIRRORS_RESPONSE
+
+        query = {
+            'source.path': (fake_client.SM_SOURCE_VSERVER + ':' +
+                            fake_client.SM_SOURCE_VOLUME),
+            'destination.path': (fake_client.SM_DEST_VSERVER +
+                                 ':' + fake_client.SM_DEST_VOLUME),
+            'fields': 'state,source.svm.name,source.path,destination.svm.name,'
+                      'destination.path,transfer.end_time,lag_time,healthy,'
+                      'uuid'
+        }
+
+        mock_send_request.assert_called_once_with('/snapmirror/relationships',
+                                                  'get', query=query)
+        self.assertEqual(expected, result)
+
+    @ddt.data({'policy': 'fake_policy'},
+              {'policy': None})
+    @ddt.unpack
+    def test_create_snapmirror(self, policy):
+        api_responses = [
+            {
+                "job": {
+                    "uuid": fake_client.FAKE_UUID,
+                },
+            },
+        ]
+        self.mock_object(self.client, 'send_request',
+                         side_effect = copy.deepcopy(api_responses))
+        self.client.create_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            policy=policy)
+
+        body = {
+            'source': {
+                'path': (fake_client.SM_SOURCE_VSERVER + ':' +
+                         fake_client.SM_SOURCE_VOLUME),
+            },
+            'destination': {
+                'path': (fake_client.SM_DEST_VSERVER + ':' +
+                         fake_client.SM_DEST_VOLUME)
+            }
+        }
+
+        if policy:
+            body['policy'] = {'name': policy}
+        self.client.send_request.assert_has_calls([
+            mock.call('/snapmirror/relationships/', 'post', body=body)])
+
+    def test_create_snapmirror_already_exists(self):
+        api_responses = netapp_api.NaApiError(
+            code=netapp_api.REST_ERELATION_EXISTS)
+        self.mock_object(self.client, 'send_request',
+                         side_effect=api_responses)
+
+        response = self.client.create_snapmirror(
+            fake_client.SM_SOURCE_VSERVER,
+            fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER,
+            fake_client.SM_DEST_VOLUME,
+            schedule=None,
+            policy=None,
+            relationship_type='data_protection')
+        self.assertIsNone(response)
+        self.assertTrue(self.client.send_request.called)
+
+    def test_create_snapmirror_error(self):
+        self.mock_object(self.client, 'send_request',
+                         side_effect=netapp_api.NaApiError(code=123))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.create_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME,
+                          schedule=None,
+                          policy=None,
+                          relationship_type='data_protection')
+        self.assertTrue(self.client.send_request.called)
+
+    def test__set_snapmirror_state(self):
+
+        api_responses = [
+            fake_client.SNAPMIRROR_GET_ITER_RESPONSE_REST,
+            {
+                "job":
+                {
+                    "uuid": fake_client.FAKE_UUID
+                },
+                "num_records": 1
+            }
+        ]
+
+        expected_body = {'state': 'snapmirrored'}
+        self.mock_object(self.client,
+                         'send_request',
+                         side_effect=copy.deepcopy(api_responses))
+
+        result = self.client._set_snapmirror_state(
+            'snapmirrored',
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/snapmirror/relationships/' + fake_client.FAKE_UUID,
+                      'patch', body=expected_body, wait_on_accepted=True)])
+
+        expected = {
+            'operation-id': None,
+            'status': None,
+            'jobid': fake_client.FAKE_UUID,
+            'error-code': None,
+            'error-message': None,
+            'relationship-uuid': fake_client.FAKE_UUID
+        }
+        self.assertEqual(expected, result)
+
+    def test_initialize_snapmirror(self):
+
+        expected_job = {
+            'operation-id': None,
+            'status': None,
+            'jobid': fake_client.FAKE_UUID,
+            'error-code': None,
+            'error-message': None,
+        }
+
+        mock_set_snapmirror_state = self.mock_object(
+            self.client,
+            '_set_snapmirror_state',
+            return_value=expected_job)
+
+        result = self.client.initialize_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        mock_set_snapmirror_state.assert_called_once_with(
+            'snapmirrored',
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            wait_result=False)
+
+        self.assertEqual(expected_job, result)
+
+    @ddt.data(True, False)
+    def test_abort_snapmirror(self, clear_checkpoint):
+
+        self.mock_object(
+            self.client, 'get_snapmirrors',
+            return_value=fake_client.REST_GET_SNAPMIRRORS_RESPONSE)
+        responses = [fake_client.TRANSFERS_GET_ITER_REST, None, None]
+        self.mock_object(self.client, 'send_request',
+                         side_effect=copy.deepcopy(responses))
+
+        self.client.abort_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            clear_checkpoint=clear_checkpoint)
+
+        body = {'state': 'hard_aborted' if clear_checkpoint else 'aborted'}
+        query = {'state': 'transferring'}
+        self.client.send_request.assert_has_calls([
+            mock.call('/snapmirror/relationships/' +
+                      fake_client.FAKE_UUID + '/transfers/', 'get',
+                      query=query),
+            mock.call('/snapmirror/relationships/' +
+                      fake_client.FAKE_UUID + '/transfers/' +
+                      fake_client.FAKE_UUID, 'patch', body=body)])
+        self.client.get_snapmirrors.assert_called_once_with(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+    def test_abort_snapmirror_no_transfer_in_progress(self):
+
+        self.mock_object(self.client, 'send_request',
+                         return_value=fake_client.NO_RECORDS_RESPONSE_REST)
+        self.mock_object(
+            self.client, 'get_snapmirrors',
+            return_value=fake_client.REST_GET_SNAPMIRRORS_RESPONSE)
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.abort_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME,
+                          clear_checkpoint=True)
+
+        query = {'state': 'transferring'}
+        self.client.send_request.assert_has_calls([
+            mock.call('/snapmirror/relationships/' + fake_client.FAKE_UUID +
+                      '/transfers/', 'get', query=query)])
+
+    def test_delete_snapmirror(self):
+
+        response_list = [fake_client.SNAPMIRROR_GET_ITER_RESPONSE_REST,
+                         fake_client.JOB_RESPONSE_REST,
+                         fake_client.JOB_SUCCESSFUL_REST]
+
+        self.mock_object(self.client, 'send_request',
+                         side_effect=copy.deepcopy(response_list))
+
+        self.client.delete_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        query_uuid = {}
+        query_uuid['source.path'] = (fake_client.SM_SOURCE_VSERVER + ':' +
+                                     fake_client.SM_SOURCE_VOLUME)
+        query_uuid['destination.path'] = (fake_client.SM_DEST_VSERVER + ':' +
+                                          fake_client.SM_DEST_VOLUME)
+        query_uuid['fields'] = 'uuid'
+
+        query_delete = {"destination_only": "true"}
+        self.client.send_request.assert_has_calls([
+            mock.call('/snapmirror/relationships/', 'get', query=query_uuid),
+            mock.call('/snapmirror/relationships/' + fake_client.FAKE_UUID,
+                      'delete', query=query_delete)])
+
+    def test_delete_snapmirror_timeout(self):
+        # when a timeout happens, an exception is thrown by send_request
+        api_error = netapp_api.NaRetryableError()
+        self.mock_object(self.client, 'send_request',
+                         side_effect=api_error)
+
+        self.assertRaises(netapp_api.NaRetryableError,
+                          self.client.delete_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+
+    @ddt.data('async', 'sync')
+    def test_resume_snapmirror(self, snapmirror_policy):
+        snapmirror_response = copy.deepcopy(
+            fake_client.SNAPMIRROR_GET_ITER_RESPONSE_REST)
+        snapmirror_response['records'][0]['policy'] = {
+            'type': snapmirror_policy}
+
+        if snapmirror_policy == 'async':
+            snapmirror_response['state'] = 'snapmirrored'
+        elif snapmirror_policy == 'sync':
+            snapmirror_response['state'] = 'in_sync'
+
+        response_list = [snapmirror_response,
+                         fake_client.JOB_RESPONSE_REST,
+                         snapmirror_response]
+
+        self.mock_object(self.client, 'send_request',
+                         side_effect=copy.deepcopy(response_list))
+
+        self.client.resync_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        query_uuid = {}
+        query_uuid['source.path'] = (fake_client.SM_SOURCE_VSERVER + ':' +
+                                     fake_client.SM_SOURCE_VOLUME)
+        query_uuid['destination.path'] = (fake_client.SM_DEST_VSERVER + ':' +
+                                          fake_client.SM_DEST_VOLUME)
+        query_uuid['fields'] = 'uuid,policy.type'
+
+        body_resync = {}
+        if snapmirror_policy == 'async':
+            body_resync['state'] = 'snapmirrored'
+        elif snapmirror_policy == 'sync':
+            body_resync['state'] = 'in_sync'
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/snapmirror/relationships/', 'get', query=query_uuid),
+            mock.call('/snapmirror/relationships/' + fake_client.FAKE_UUID,
+                      'patch', body=body_resync)])
+
+    def test_resume_snapmirror_not_found(self):
+        query_uuid = {}
+        query_uuid['source.path'] = (fake_client.SM_SOURCE_VSERVER + ':' +
+                                     fake_client.SM_SOURCE_VOLUME)
+        query_uuid['destination.path'] = (fake_client.SM_DEST_VSERVER + ':' +
+                                          fake_client.SM_DEST_VOLUME)
+        query_uuid['fields'] = 'uuid,policy.type'
+
+        self.mock_object(
+            self.client, 'send_request',
+            return_value={'records': []})
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.resume_snapmirror,
+            fake_client.SM_SOURCE_VSERVER,
+            fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER,
+            fake_client.SM_DEST_VOLUME)
+
+        self.client.send_request.assert_called_once_with(
+            '/snapmirror/relationships/', 'get', query=query_uuid)
+
+    def test_resume_snapmirror_api_error(self):
+        query_resume = {}
+        query_resume['source.path'] = (fake_client.SM_SOURCE_VSERVER + ':' +
+                                       fake_client.SM_SOURCE_VOLUME)
+        query_resume['destination.path'] = (fake_client.SM_DEST_VSERVER + ':' +
+                                            fake_client.SM_DEST_VOLUME)
+
+        query_uuid = copy.deepcopy(query_resume)
+        query_uuid['fields'] = 'uuid,policy.type'
+
+        api_error = netapp_api.NaApiError(code=0)
+        self.mock_object(
+            self.client, 'send_request',
+            side_effect=[fake_client.SNAPMIRROR_GET_ITER_RESPONSE_REST,
+                         api_error])
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.resume_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+
+    @ddt.data(True, False)
+    def test_release_snapmirror(self, relationship_info_only):
+
+        response_list = [fake_client.SNAPMIRROR_GET_ITER_RESPONSE_REST,
+                         fake_client.JOB_RESPONSE_REST,
+                         fake_client.JOB_SUCCESSFUL_REST]
+
+        self.mock_object(self.client, 'send_request',
+                         side_effect=copy.deepcopy(response_list))
+
+        self.client.release_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            relationship_info_only)
+
+        query_uuid = {}
+        query_uuid['list_destinations_only'] = 'true'
+        query_uuid['source.path'] = (fake_client.SM_SOURCE_VSERVER + ':' +
+                                     fake_client.SM_SOURCE_VOLUME)
+        query_uuid['destination.path'] = (fake_client.SM_DEST_VSERVER + ':' +
+                                          fake_client.SM_DEST_VOLUME)
+        query_uuid['fields'] = 'uuid'
+
+        query_release = {}
+        if relationship_info_only:
+            # release WITHOUT removing related snapshots
+            query_release['source_info_only'] = 'true'
+        else:
+            # release and REMOVING all related snapshots
+            query_release['source_only'] = 'true'
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/snapmirror/relationships/', 'get', query=query_uuid),
+            mock.call('/snapmirror/relationships/' + fake_client.FAKE_UUID,
+                      'delete', query=query_release)])
+
+    def test_release_snapmirror_timeout(self):
+        # when a timeout happens, an exception is thrown by send_request
+        api_error = netapp_api.NaRetryableError()
+        self.mock_object(self.client, 'send_request',
+                         side_effect=api_error)
+
+        self.assertRaises(netapp_api.NaRetryableError,
+                          self.client.release_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+
+    @ddt.data('async', 'sync')
+    def test_resync_snapmirror(self, snapmirror_policy):
+
+        snapmirror_response = copy.deepcopy(
+            fake_client.SNAPMIRROR_GET_ITER_RESPONSE_REST)
+        snapmirror_response['records'][0]['policy'] = {
+            'type': snapmirror_policy}
+
+        if snapmirror_policy == 'async':
+            snapmirror_response['state'] = 'snapmirrored'
+        elif snapmirror_policy == 'sync':
+            snapmirror_response['state'] = 'in_sync'
+
+        response_list = [snapmirror_response,
+                         fake_client.JOB_RESPONSE_REST,
+                         snapmirror_response]
+
+        self.mock_object(self.client, 'send_request',
+                         side_effect=copy.deepcopy(response_list))
+
+        self.client.resync_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        query_uuid = {}
+        query_uuid['source.path'] = (fake_client.SM_SOURCE_VSERVER + ':' +
+                                     fake_client.SM_SOURCE_VOLUME)
+        query_uuid['destination.path'] = (fake_client.SM_DEST_VSERVER + ':' +
+                                          fake_client.SM_DEST_VOLUME)
+        query_uuid['fields'] = 'uuid,policy.type'
+
+        body_resync = {}
+        if snapmirror_policy == 'async':
+            body_resync['state'] = 'snapmirrored'
+        elif snapmirror_policy == 'sync':
+            body_resync['state'] = 'in_sync'
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/snapmirror/relationships/', 'get', query=query_uuid),
+            mock.call('/snapmirror/relationships/' + fake_client.FAKE_UUID,
+                      'patch', body=body_resync)])
+
+    def test_resync_snapmirror_timeout(self):
+        api_error = netapp_api.NaRetryableError()
+        self.mock_object(self.client, 'resume_snapmirror',
+                         side_effect=api_error)
+
+        self.assertRaises(netapp_api.NaRetryableError,
+                          self.client.resync_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+
+    def test_quiesce_snapmirror(self):
+
+        expected_job = {
+            'operation-id': None,
+            'status': None,
+            'jobid': fake_client.FAKE_UUID,
+            'error-code': None,
+            'error-message': None,
+            'relationship-uuid': fake_client.FAKE_UUID,
+        }
+
+        mock_set_snapmirror_state = self.mock_object(
+            self.client,
+            '_set_snapmirror_state',
+            return_value=expected_job)
+
+        result = self.client.quiesce_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        mock_set_snapmirror_state.assert_called_once_with(
+            'paused',
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        self.assertEqual(expected_job, result)
+
+    def test_break_snapmirror(self):
+        snapmirror_response = copy.deepcopy(
+            fake_client.SNAPMIRROR_GET_ITER_RESPONSE_REST)
+
+        snapmirror_response['state'] = 'broken_off'
+        response_list = [snapmirror_response]
+
+        self.mock_object(self.client, 'send_request',
+                         side_effect=copy.deepcopy(response_list))
+
+        expected_job = {
+            'operation-id': None,
+            'status': None,
+            'jobid': fake_client.FAKE_UUID,
+            'error-code': None,
+            'error-message': None,
+            'relationship-uuid': fake_client.FAKE_UUID,
+        }
+
+        mock_set_snapmirror_state = self.mock_object(
+            self.client,
+            '_set_snapmirror_state',
+            return_value=expected_job)
+
+        self.client.break_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        mock_set_snapmirror_state.assert_called_once_with(
+            'broken-off',
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+    def test_break_snapmirror_not_found(self):
+        self.mock_object(
+            self.client, 'send_request',
+            return_value={'records': []})
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client.break_snapmirror,
+            fake_client.SM_SOURCE_VSERVER,
+            fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER,
+            fake_client.SM_DEST_VOLUME)
+
+    def test_break_snapmirror_timeout(self):
+        # when a timeout happens, an exception is thrown by send_request
+        api_error = netapp_api.NaRetryableError()
+        self.mock_object(self.client, 'send_request',
+                         side_effect=api_error)
+
+        self.assertRaises(netapp_api.NaRetryableError,
+                          self.client.break_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+
+    def test_update_snapmirror(self):
+
+        snapmirrors = fake_client.REST_GET_SNAPMIRRORS_RESPONSE
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'get_snapmirrors',
+                         return_value=snapmirrors)
+
+        self.client.update_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/snapmirror/relationships/' +
+                      snapmirrors[0]['uuid'] + '/transfers/', 'post',
+                      wait_on_accepted=False)])
+
+    def test_update_snapmirror_no_records(self):
+
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'get_snapmirrors',
+                         return_value=[])
+
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          self.client.update_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+
+        self.client.send_request.assert_not_called()
+
+    def test_update_snapmirror_exception(self):
+
+        snapmirrors = fake_client.REST_GET_SNAPMIRRORS_RESPONSE
+        api_error = netapp_api.NaApiError(
+            code=netapp_api.REST_UPDATE_SNAPMIRROR_FAILED)
+        self.mock_object(self.client, 'send_request',
+                         side_effect=api_error)
+        self.mock_object(self.client, 'get_snapmirrors',
+                         return_value=snapmirrors)
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.update_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/snapmirror/relationships/' +
+                      snapmirrors[0]['uuid'] + '/transfers/', 'post',
+                      wait_on_accepted=False)])
+
+    def test_mount_flexvol(self):
+        volumes = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST
+        self.mock_object(self.client, 'send_request',
+                         side_effect=[volumes, None])
+
+        fake_path = '/fake_path'
+        fake_vol_name = volumes['records'][0]['name']
+
+        body = {
+            'nas.path': fake_path
+        }
+        query = {
+            'name': fake_vol_name
+        }
+
+        self.client.mount_flexvol(fake_client.VOLUME_NAME,
+                                  junction_path=fake_path)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/storage/volumes', 'patch', body=body, query=query)])
+
+    def test_mount_flexvol_default_junction_path(self):
+        volumes = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST
+        self.mock_object(self.client, 'send_request',
+                         side_effect=[volumes, None])
+
+        fake_vol_name = volumes['records'][0]['name']
+        body = {
+            'nas.path': '/' + fake_client.VOLUME_NAME
+        }
+        query = {
+            'name': fake_vol_name
+        }
+
+        self.client.mount_flexvol(fake_client.VOLUME_NAME)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('/storage/volumes', 'patch', body=body, query=query)])
