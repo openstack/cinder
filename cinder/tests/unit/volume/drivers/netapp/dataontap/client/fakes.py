@@ -826,7 +826,7 @@ VOLUME_GET_ITER_SSC_RESPONSE_STR = """
       <snapshot-policy>default</snapshot-policy>
     </volume-snapshot-attributes>
     <volume-language-attributes>
-      <language-code>en_US</language-code>
+      <language-code>c.utf_8</language-code>
     </volume-language-attributes>
 </volume-attributes>
 """ % {
@@ -876,7 +876,7 @@ VOLUME_GET_ITER_SSC_RESPONSE_STR_FLEXGROUP = """
       <snapshot-policy>default</snapshot-policy>
     </volume-snapshot-attributes>
     <volume-language-attributes>
-      <language-code>en_US</language-code>
+      <language-code>c.utf_8</language-code>
     </volume-language-attributes>
 </volume-attributes>
 """ % {
@@ -903,7 +903,7 @@ VOLUME_INFO_SSC = {
     'junction-path': '/%s' % VOLUME_NAMES[0],
     'aggregate': VOLUME_AGGREGATE_NAMES[0],
     'space-guarantee-enabled': True,
-    'language': 'en_US',
+    'language': 'c.utf_8',
     'percentage-snapshot-reserve': '5',
     'snapshot-policy': 'default',
     'type': 'rw',
@@ -919,7 +919,7 @@ VOLUME_INFO_SSC_FLEXGROUP = {
     'junction-path': '/%s' % VOLUME_NAMES[0],
     'aggregate': [VOLUME_AGGREGATE_NAMES[0]],
     'space-guarantee-enabled': True,
-    'language': 'en_US',
+    'language': 'c.utf_8',
     'percentage-snapshot-reserve': '5',
     'snapshot-policy': 'default',
     'type': 'rw',
@@ -1019,7 +1019,7 @@ VOLUME_GET_ITER_ENCRYPTION_SSC_RESPONSE = etree.XML("""
           <snapshot-policy>default</snapshot-policy>
         </volume-snapshot-attributes>
         <volume-language-attributes>
-          <language-code>en_US</language-code>
+          <language-code>c.utf_8</language-code>
         </volume-language-attributes>
       </volume-attributes>
     </attributes-list>
@@ -1581,3 +1581,121 @@ GET_FILE_COPY_STATUS_RESPONSE = etree.XML("""
 DESTROY_FILE_COPY_RESPONSE = etree.XML("""
     <results status="passed" />
 """)
+
+VOLUME_GET_ITER_RESPONSE_LIST_REST = [
+    {
+        "uuid": "2407b637-119c-11ec-a4fb-00a0b89c9a78",
+        "name": VOLUME_NAMES[0],
+        "state": "online",
+        "style": "flexvol",
+        "is_svm_root": False,
+        "type": "rw",
+        "error_state": {
+            "is_inconsistent": False
+        },
+        "_links": {
+            "self": {
+                "href": "/api/storage/volumes/2407b637-119c-11ec-a4fb"
+            }
+        }
+    },
+    {
+        "uuid": "2c190609-d51c-11eb-b83a",
+        "name": VOLUME_NAMES[1],
+        "state": "online",
+        "style": "flexvol",
+        "is_svm_root": False,
+        "type": "rw",
+        "error_state": {
+            "is_inconsistent": False
+        },
+        "_links": {
+            "self": {
+                "href": "/api/storage/volumes/2c190609-d51c-11eb-b83a"
+            }
+        }
+    }
+]
+
+VOLUME_GET_ITER_RESPONSE_REST_PAGE = {
+    "records": [
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+    ],
+    "num_records": 10,
+    "_links": {
+        "self": {
+            "href": "/api/storage/volumes?fields=name&max_records=2"
+        },
+        "next": {
+            "href": "/api/storage/volumes?"
+            f"start.uuid={VOLUME_GET_ITER_RESPONSE_LIST_REST[0]['uuid']}"
+            "&fields=name&max_records=2"
+        }
+    }
+}
+
+VOLUME_GET_ITER_RESPONSE_REST_LAST_PAGE = {
+    "records": [
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+        VOLUME_GET_ITER_RESPONSE_LIST_REST[0],
+    ],
+    "num_records": 8,
+}
+
+INVALID_GET_ITER_RESPONSE_NO_RECORDS_REST = {
+    "num_records": 1,
+}
+
+INVALID_GET_ITER_RESPONSE_NO_NUM_RECORDS_REST = {
+    "records": [],
+}
+
+NO_RECORDS_RESPONSE_REST = {
+    "records": [],
+    "num_records": 0,
+    "_links": {
+        "self": {
+            "href": "/api/cluster/nodes"
+        }
+    }
+}
+
+ERROR_RESPONSE_REST = {
+    "error": {
+        "code": 1100,
+        "message": "fake error",
+    }
+}
+
+FAKE_ACTION_ENDPOINT = '/fake_endpoint'
+FAKE_BASE_ENDPOINT = '/fake_api'
+FAKE_HEADERS = {'header': 'fake_header'}
+FAKE_BODY = {'body': 'fake_body'}
+FAKE_HTTP_QUERY = {'type': 'fake_type'}
+FAKE_FORMATTED_HTTP_QUERY = '?type=fake_type'
+
+JOB_RESPONSE_REST = {
+    "job": {
+        "uuid": "uuid-12345",
+        "_links": {
+            "self": {
+                "href": "/api/cluster/jobs/uuid-12345"
+            }
+        }
+    }
+}

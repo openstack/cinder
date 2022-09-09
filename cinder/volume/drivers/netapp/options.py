@@ -50,14 +50,34 @@ netapp_connection_opts = [
     cfg.IntOpt('netapp_server_port',
                help=('The TCP port to use for communication with the storage '
                      'system or proxy server. If not specified, Data ONTAP '
-                     'drivers will use 80 for HTTP and 443 for HTTPS.')), ]
+                     'drivers will use 80 for HTTP and 443 for HTTPS.')),
+    cfg.BoolOpt('netapp_use_legacy_client',
+                default=True,
+                help=('Select which ONTAP client to use for retrieving and '
+                      'modifying data on the storage. The legacy client '
+                      'relies on ZAPI calls. If set to False, the new REST '
+                      'client is used, which runs REST calls if supported, '
+                      'otherwise falls back to the equivalent ZAPI call.')),
+    cfg.IntOpt('netapp_async_rest_timeout',
+               min=60,
+               default=60,  # One minute
+               help='The maximum time in seconds to wait for completing a '
+                    'REST asynchronous operation.'), ]
 
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',
                default='http',
                choices=['http', 'https'],
                help=('The transport protocol used when communicating with '
-                     'the storage system or proxy server.')), ]
+                     'the storage system or proxy server.')),
+    cfg.StrOpt('netapp_ssl_cert_path',
+               help=("The path to a CA_BUNDLE file or directory with "
+                     "certificates of trusted CA. If set to a directory, it "
+                     "must have been processed using the c_rehash utility "
+                     "supplied with OpenSSL. If not informed, it will use the "
+                     "Mozilla's carefully curated collection of Root "
+                     "Certificates for validating the trustworthiness of SSL "
+                     "certificates. Only applies with new REST client.")), ]
 
 netapp_basicauth_opts = [
     cfg.StrOpt('netapp_login',

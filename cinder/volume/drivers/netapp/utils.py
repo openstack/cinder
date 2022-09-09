@@ -184,6 +184,13 @@ def trace_filter_func_api(all_args):
     return re.match(API_TRACE_PATTERN, api_name) is not None
 
 
+def trace_filter_func_rest_api(all_args):
+    url = all_args.get('url')
+    if url is None:
+        return True
+    return re.match(API_TRACE_PATTERN, url) is not None
+
+
 def round_down(value, precision='0.00'):
     return float(decimal.Decimal(str(value)).quantize(
         decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))

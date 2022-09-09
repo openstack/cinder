@@ -21,6 +21,7 @@ from cinder import exception
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
+from cinder.volume.drivers.netapp.dataontap.client import client_cmode_rest
 from cinder.volume.drivers.netapp.dataontap.utils import utils
 
 CONF = cfg.CONF
@@ -33,6 +34,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         super(NetAppCDOTDataMotionTestCase, self).setUp()
         self.backend = 'backend1'
         self.mock_cmode_client = self.mock_object(client_cmode, 'Client')
+        self.mock_cmode_rest_client = self.mock_object(
+            client_cmode_rest, 'RestClient')
         self.config = fakes.get_fake_cmode_config(self.backend)
         CONF.set_override('volume_backend_name', self.backend,
                           group=self.backend)
@@ -47,6 +50,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         CONF.set_override('netapp_server_port', 8866,
                           group=self.backend)
         CONF.set_override('netapp_api_trace_pattern', "fake_regex",
+                          group=self.backend)
+        CONF.set_override('netapp_ssl_cert_path', 'fake_ca',
                           group=self.backend)
 
     def test_get_backend_configuration(self):
@@ -81,18 +86,31 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                           utils.get_backend_configuration,
                           self.backend)
 
-    def test_get_client_for_backend(self):
+    @ddt.data(True, False)
+    def test_get_client_for_backend(self, use_legacy):
+        self.config.netapp_use_legacy_client = use_legacy
         self.mock_object(utils, 'get_backend_configuration',
                          return_value=self.config)
 
         utils.get_client_for_backend(self.backend)
 
-        self.mock_cmode_client.assert_called_once_with(
-            hostname='fake_hostname', password='fake_password',
-            username='fake_user', transport_type='https', port=8866,
-            trace=mock.ANY, vserver=None, api_trace_pattern="fake_regex")
+        if use_legacy:
+            self.mock_cmode_client.assert_called_once_with(
+                hostname='fake_hostname', password='fake_password',
+                username='fake_user', transport_type='https', port=8866,
+                trace=mock.ANY, vserver=None, api_trace_pattern="fake_regex")
+            self.mock_cmode_rest_client.assert_not_called()
+        else:
+            self.mock_cmode_rest_client.assert_called_once_with(
+                hostname='fake_hostname', password='fake_password',
+                username='fake_user', transport_type='https', port=8866,
+                trace=mock.ANY, vserver=None, api_trace_pattern="fake_regex",
+                ssl_cert_path='fake_ca', async_rest_timeout=60)
+            self.mock_cmode_client.assert_not_called()
 
-    def test_get_client_for_backend_with_vserver(self):
+    @ddt.data(True, False)
+    def test_get_client_for_backend_with_vserver(self, use_legacy):
+        self.config.netapp_use_legacy_client = use_legacy
         self.mock_object(utils, 'get_backend_configuration',
                          return_value=self.config)
 
@@ -101,11 +119,21 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
 
         utils.get_client_for_backend(self.backend)
 
-        self.mock_cmode_client.assert_called_once_with(
-            hostname='fake_hostname', password='fake_password',
-            username='fake_user', transport_type='https', port=8866,
-            trace=mock.ANY, vserver='fake_vserver',
-            api_trace_pattern="fake_regex")
+        if use_legacy:
+            self.mock_cmode_client.assert_called_once_with(
+                hostname='fake_hostname', password='fake_password',
+                username='fake_user', transport_type='https', port=8866,
+                trace=mock.ANY, vserver='fake_vserver',
+                api_trace_pattern="fake_regex")
+            self.mock_cmode_rest_client.assert_not_called()
+        else:
+            self.mock_cmode_rest_client.assert_called_once_with(
+                hostname='fake_hostname', password='fake_password',
+                username='fake_user', transport_type='https', port=8866,
+                trace=mock.ANY, vserver='fake_vserver',
+                api_trace_pattern="fake_regex", ssl_cert_path='fake_ca',
+                async_rest_timeout = 60)
+            self.mock_cmode_client.assert_not_called()
 
 
 @ddt.ddt
