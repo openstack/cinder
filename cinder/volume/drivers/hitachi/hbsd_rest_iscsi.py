@@ -116,13 +116,9 @@ class HBSDRESTISCSI(rest.HBSDREST):
         """Connect the specified HBA with the specified port."""
         self.client.add_hba_iscsi(port, gid, hba_ids)
 
-    def set_target_mode(self, port, gid, connector):
+    def set_target_mode(self, port, gid):
         """Configure the iSCSI target to meet the environment."""
-        if connector.get('os_type', None) == 'aix':
-            host_mode = 'AIX'
-        else:
-            host_mode = 'LINUX/IRIX'
-        body = {'hostMode': host_mode,
+        body = {'hostMode': 'LINUX/IRIX',
                 'hostModeOptions': [_ISCSI_HMO_REPORT_FULL_PORTAL]}
         if self.conf.hitachi_rest_disable_io_wait:
             body['hostModeOptions'].append(_ISCSI_HMO_DISABLE_IO)
@@ -203,6 +199,12 @@ class HBSDRESTISCSI(rest.HBSDREST):
             else:
                 not_found_count += 1
         return not_found_count
+
+    def initialize_connection(self, volume, connector, is_snapshot=False):
+        """Initialize connection between the server and the volume."""
+        conn_info, map_info = super(HBSDRESTISCSI, self).initialize_connection(
+            volume, connector, is_snapshot)
+        return conn_info
 
     def get_properties_iscsi(self, targets, multipath):
         """Return iSCSI-specific server-LDEV connection info."""

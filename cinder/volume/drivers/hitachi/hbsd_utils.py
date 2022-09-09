@@ -25,7 +25,7 @@ from oslo_utils import units
 
 from cinder import exception
 
-VERSION = '2.2.2'
+VERSION = '2.2.3'
 CI_WIKI_NAME = 'Hitachi_VSP_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
@@ -184,11 +184,33 @@ class HBSDMsg(enum.Enum):
                '%(volume_type)s)',
         'suffix': WARNING_SUFFIX,
     }
+    HOST_GROUP_NUMBER_IS_MAXIMUM = {
+        'msg_id': 335,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Failed to create the host group because the host group '
+               'maximum of the port is exceeded. (port: %(port)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    WWN_NUMBER_IS_MAXIMUM = {
+        'msg_id': 336,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Failed to add the wwns to the host group port because the '
+               'WWN maximum of the port is exceeded. '
+               '(port: %(port)s, WWN: %(wwn)s)',
+        'suffix': WARNING_SUFFIX,
+    }
     INVALID_PORT = {
         'msg_id': 339,
         'loglevel': base_logging.WARNING,
         'msg': 'Port %(port)s will not be used because its settings are '
                'invalid. (%(additional_info)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    INVALID_PORT_BY_ZONE_MANAGER = {
+        'msg_id': 340,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Port %(port)s will not be used because it is not considered '
+               'to be active by the Fibre Channel Zone Manager.',
         'suffix': WARNING_SUFFIX,
     }
     STORAGE_COMMAND_FAILED = {
@@ -427,6 +449,36 @@ class HBSDMsg(enum.Enum):
                '%(group_type)s, volume: %(volume)s, snapshot: %(snapshot)s)',
         'suffix': ERROR_SUFFIX,
     }
+    NO_ACTIVE_WWN = {
+        'msg_id': 747,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to initialize volume connection because no active WWN '
+               'was found for the connector. (WWN: %(wwn)s, volume: %(volume)s'
+               ')',
+        'suffix': ERROR_SUFFIX,
+    }
+    NO_PORT_WITH_ACTIVE_WWN = {
+        'msg_id': 748,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to initialize volume connection because no port with '
+               'an active WWN was found. (%(port_wwns)s, volume: %(volume)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    ZONE_MANAGER_IS_NOT_AVAILABLE = {
+        'msg_id': 749,
+        'loglevel': base_logging.ERROR,
+        'msg': 'The Fibre Channel Zone Manager is not available. The Fibre '
+               'Channel Zone Manager must be up and running when '
+               'port_scheduler parameter is set to True.',
+        'suffix': ERROR_SUFFIX,
+    }
+    HOST_GROUP_OR_WWN_IS_NOT_AVAILABLE = {
+        'msg_id': 750,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to initialize volume connection because no available '
+               'resource of host group or wwn was found. (ports: %(ports)s)',
+        'suffix': ERROR_SUFFIX,
+    }
 
     def __init__(self, error_info):
         """Initialize Enum attributes."""
@@ -512,6 +564,12 @@ def safe_get_message_id(errobj):
     if not errobj:
         return ''
     return errobj.get('messageId', '')
+
+
+def safe_get_message(errobj):
+    if not errobj:
+        return ''
+    return errobj.get('message', '')
 
 
 def is_shared_connection(volume, connector):

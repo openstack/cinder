@@ -70,6 +70,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         2.2.0 - Add maintenance parameters.
         2.2.1 - Make the parameters name variable for supporting OEM storages.
         2.2.2 - Add Target Port Assignment.
+        2.2.3 - Add port scheduler.
 
     """
 
@@ -86,6 +87,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         super(HBSDFCDriver, self).__init__(*args, **kwargs)
 
         self.configuration.append_config_values(common.COMMON_VOLUME_OPTS)
+        self.configuration.append_config_values(common.COMMON_PORT_OPTS)
         self.configuration.append_config_values(rest_fc.FC_VOLUME_OPTS)
         os.environ['LANG'] = 'C'
         self.common = self._init_common(self.configuration, kwargs.get('db'))
@@ -101,6 +103,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
               ['driver_ssl_cert_verify', 'driver_ssl_cert_path',
                'san_api_port', ]))
         return (common.COMMON_VOLUME_OPTS +
+                common.COMMON_PORT_OPTS +
                 rest.REST_VOLUME_OPTS +
                 rest_fc.FC_VOLUME_OPTS +
                 additional_opts)

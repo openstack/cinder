@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Hitachi driver: Add a feature ``Port Scheduler``. This feature is enabled
+    when specifying ``True`` for the parameter ``hitachi_port_scheduler``.
+    When this feature is enabled and an attach request is received, the active
+    WWNs that are obtained by Fibre Channel Zone Manager will be distributed
+    and registered to the host groups of each port of the storage system.
+    To use this feature, specify ``True`` for both parameters
+    ``hitachi_group_request`` and ``hitachi_rest_name_only_discovery``.
+    If you specify ``False`` or use default value for the
+    ``hitachi_rest_name_only_discovery``, it will take a long time to attach
+    volume, by seeking the host group for all specified ports.
+    This feature is supported on Fibre Channel only.

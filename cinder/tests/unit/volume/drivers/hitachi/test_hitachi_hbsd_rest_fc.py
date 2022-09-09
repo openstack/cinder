@@ -52,7 +52,7 @@ CONFIG_MAP = {
     'port_id': 'CL1-A',
     'host_grp_name': 'HBSD-0123456789abcdef',
     'host_mode': 'LINUX/IRIX',
-    'host_wwn': '0123456789abcdef',
+    'host_wwn': ['0123456789abcdef', '0123456789abcdeg'],
     'target_wwn': '1111111123456789',
     'user_id': 'user',
     'user_pass': 'password',
@@ -64,21 +64,28 @@ CONFIG_MAP = {
 # Dummy response for FC zoning device mapping
 DEVICE_MAP = {
     'fabric_name': {
-        'initiator_port_wwn_list': [CONFIG_MAP['host_wwn']],
+        'initiator_port_wwn_list': [CONFIG_MAP['host_wwn'][0]],
         'target_port_wwn_list': [CONFIG_MAP['target_wwn']]}}
 
 DEFAULT_CONNECTOR = {
     'host': 'host',
     'ip': CONFIG_MAP['my_ip'],
-    'wwpns': [CONFIG_MAP['host_wwn']],
+    'wwpns': [CONFIG_MAP['host_wwn'][0]],
     'multipath': False,
 }
 
-DEFAULT_CONNECTOR_AIX = {
-    'os_type': 'aix',
+DEVICE_MAP_MULTI_WWN = {
+    'fabric_name': {
+        'initiator_port_wwn_list': [
+            CONFIG_MAP['host_wwn'][0],
+            CONFIG_MAP['host_wwn'][1]
+        ],
+        'target_port_wwn_list': [CONFIG_MAP['target_wwn']]}}
+
+DEFAULT_CONNECTOR_MULTI_WWN = {
     'host': 'host',
     'ip': CONFIG_MAP['my_ip'],
-    'wwpns': [CONFIG_MAP['host_wwn']],
+    'wwpns': [CONFIG_MAP['host_wwn'][0], CONFIG_MAP['host_wwn'][1]],
     'multipath': False,
 }
 
@@ -170,7 +177,7 @@ GET_HOST_WWNS_RESULT = {
     "data": [
         {
             "hostGroupNumber": 0,
-            "hostWwn": CONFIG_MAP['host_wwn'],
+            "hostWwn": CONFIG_MAP['host_wwn'][0],
         },
     ],
 }
@@ -329,10 +336,10 @@ def _brick_get_connector_properties(multipath=False, enforce_multipath=False):
     return DEFAULT_CONNECTOR
 
 
-def _brick_get_connector_properties_aix(
+def _brick_get_connector_properties_multi_wwn(
         multipath=False, enforce_multipath=False):
     """Return a predefined connector object."""
-    return DEFAULT_CONNECTOR_AIX
+    return DEFAULT_CONNECTOR_MULTI_WWN
 
 
 def reduce_retrying_time(func):
@@ -380,6 +387,14 @@ class FakeLookupService():
     def get_device_mapping_from_network(self, initiator_wwns, target_wwns):
         """Return predefined FC zoning mapping."""
         return DEVICE_MAP
+
+
+class FakeLookupServiceMultiWwn():
+    """Dummy FC zoning mapping lookup service class."""
+
+    def get_device_mapping_from_network(self, initiator_wwns, target_wwns):
+        """Return predefined FC zoning mapping."""
+        return DEVICE_MAP_MULTI_WWN
 
 
 class FakeResponse():
@@ -449,6 +464,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.configuration.hitachi_copy_speed = 3
         self.configuration.hitachi_copy_check_interval = 3
         self.configuration.hitachi_async_copy_check_interval = 10
+        self.configuration.hitachi_port_scheduler = False
 
         self.configuration.san_login = CONFIG_MAP['user_id']
         self.configuration.san_password = CONFIG_MAP['user_pass']
@@ -599,18 +615,22 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(
         volume_utils, 'brick_get_connector_properties',
-        side_effect=_brick_get_connector_properties_aix)
-    def test_do_setup_create_hg_aix(
+        side_effect=_brick_get_connector_properties_multi_wwn)
+    def test_do_setup_create_hg_port_scheduler(
             self, brick_get_connector_properties, request):
-        """Normal case: The host group not exists in AIX."""
+        """Normal case: The host group not exists with port scheduler."""
         drv = hbsd_fc.HBSDFCDriver(
             configuration=self.configuration)
         self._setup_config()
+        self.configuration.hitachi_port_scheduler = True
+        self.configuration.hitachi_zoning_request = True
+        drv.common._lookup_service = FakeLookupServiceMultiWwn()
         request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
                                FakeResponse(200, GET_PORTS_RESULT),
                                FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -619,9 +639,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
             {CONFIG_MAP['port_id']: CONFIG_MAP['target_wwn']},
             drv.common.storage_info['wwns'])
         self.assertEqual(1, brick_get_connector_properties.call_count)
-        self.assertEqual(8, request.call_count)
-        kargs1 = request.call_args_list[6][1]
-        self.assertEqual('AIX', kargs1['json']['hostMode'])
+        self.assertEqual(9, request.call_count)
         # stop the Loopingcall within the do_setup treatment
         self.driver.common.client.keep_session_loop.stop()
         self.driver.common.client.keep_session_loop.wait()
@@ -1180,6 +1198,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         _get_oslo_driver_opts.return_value = []
         ret = self.driver.get_driver_options()
         actual = (hbsd_common.COMMON_VOLUME_OPTS +
+                  hbsd_common.COMMON_PORT_OPTS +
                   hbsd_rest.REST_VOLUME_OPTS +
                   hbsd_rest_fc.FC_VOLUME_OPTS)
         self.assertEqual(actual, ret)

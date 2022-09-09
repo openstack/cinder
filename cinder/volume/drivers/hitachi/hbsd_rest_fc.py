@@ -16,10 +16,12 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 
 from cinder import exception
 from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hbsd_rest as rest
+from cinder.volume.drivers.hitachi import hbsd_rest_api as rest_api
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.zonemanager import utils as fczm_utils
 
@@ -33,6 +35,8 @@ FC_VOLUME_OPTS = [
 ]
 
 _FC_HMO_DISABLE_IO = 91
+
+_MSG_EXCEED_HOST_GROUP_MAX = "could not find empty Host group ID for adding."
 
 LOG = logging.getLogger(__name__)
 MSG = utils.HBSDMsg
@@ -69,10 +73,22 @@ class HBSDRESTFC(rest.HBSDREST):
             if port not in set(target_ports + compute_target_ports):
                 continue
             secure_fc_port = True
+            can_port_schedule = True
+            if hasattr(
+                    self.conf,
+                    self.driver_info['param_prefix'] + '_port_scheduler'):
+                port_scheduler_param = self.conf.hitachi_port_scheduler
+            else:
+                port_scheduler_param = False
             if (port_data['portType'] not in ['FIBRE', 'FCoE'] or
                     not port_data['lunSecuritySetting']):
                 secure_fc_port = False
-            if not secure_fc_port:
+            elif (port in set(target_ports + compute_target_ports) and
+                  port_scheduler_param and not (
+                      port_data.get('fabricMode') and
+                      port_data.get('portConnection') == 'PtoP')):
+                can_port_schedule = False
+            if not secure_fc_port or not can_port_schedule:
                 utils.output_log(
                     MSG.INVALID_PORT, port=port,
                     additional_info='portType: %s, lunSecuritySetting: %s, '
@@ -84,10 +100,11 @@ class HBSDRESTFC(rest.HBSDREST):
             if not secure_fc_port:
                 continue
             wwn = port_data.get('wwn')
-            if target_ports and port in target_ports:
+            if target_ports and port in target_ports and can_port_schedule:
                 available_ports.append(port)
                 self.storage_info['wwns'][port] = wwn
-            if compute_target_ports and port in compute_target_ports:
+            if (compute_target_ports and port in compute_target_ports and
+                    can_port_schedule):
                 available_compute_ports.append(port)
                 self.storage_info['wwns'][port] = wwn
 
@@ -136,20 +153,21 @@ class HBSDRESTFC(rest.HBSDREST):
             try:
                 self.client.add_hba_wwn(port, gid, wwn, no_log=True)
                 registered_wwns.append(wwn)
-            except exception.VolumeDriverException:
+            except exception.VolumeDriverException as ex:
                 utils.output_log(MSG.ADD_HBA_WWN_FAILED, port=port, gid=gid,
                                  wwn=wwn)
+                if (self.get_port_scheduler_param() and
+                        utils.safe_get_err_code(ex.kwargs.get('errobj'))
+                        == rest_api.EXCEED_WWN_MAX):
+                    raise ex
         if not registered_wwns:
             msg = utils.output_log(MSG.NO_HBA_WWN_ADDED_TO_HOST_GRP, port=port,
                                    gid=gid)
             self.raise_error(msg)
 
-    def set_target_mode(self, port, gid, connector):
+    def set_target_mode(self, port, gid):
         """Configure the host group to meet the environment."""
-        if connector.get('os_type', None) == 'aix':
-            body = {'hostMode': 'AIX'}
-        else:
-            body = {'hostMode': 'LINUX/IRIX'}
+        body = {'hostMode': 'LINUX/IRIX'}
         if self.conf.hitachi_rest_disable_io_wait:
             body['hostModeOptions'] = [_FC_HMO_DISABLE_IO]
         if self.conf.hitachi_host_mode_options:
@@ -240,16 +258,34 @@ class HBSDRESTFC(rest.HBSDREST):
                 pass
             else:
                 not_found_count += 1
+
+        if self.get_port_scheduler_param():
+            """
+            When port scheduler feature is enabled,
+            it is OK to find any mapped port. so:
+            - return 0, if any mapped port is found
+            - return port count, if no mapped port is found.
+            It is no case with both not_found_count and len(target_ports) are
+            zero, bcz it must be failed in param checker if any target ports
+            are not defined.
+            """
+            return (not_found_count if not_found_count == len(target_ports)
+                    else 0)
+
         return not_found_count
 
     def initialize_connection(self, volume, connector, is_snapshot=False):
         """Initialize connection between the server and the volume."""
-        conn_info = super(HBSDRESTFC, self).initialize_connection(
+        conn_info, map_info = super(HBSDRESTFC, self).initialize_connection(
             volume, connector, is_snapshot)
         if self.conf.hitachi_zoning_request:
-            init_targ_map = utils.build_initiator_target_map(
-                connector, conn_info['data']['target_wwn'],
-                self._lookup_service)
+            if (self.get_port_scheduler_param() and
+                    not self.is_controller(connector)):
+                init_targ_map = map_info
+            else:
+                init_targ_map = utils.build_initiator_target_map(
+                    connector, conn_info['data']['target_wwn'],
+                    self._lookup_service)
             if init_targ_map:
                 conn_info['data']['initiator_target_map'] = init_targ_map
             fczm_utils.add_fc_zone(conn_info)
@@ -284,3 +320,115 @@ class HBSDRESTFC(rest.HBSDREST):
             for hostgroup in hostgroups:
                 wwpns.update(self._get_wwpns(port, hostgroup))
         fake_connector['wwpns'] = list(wwpns)
+
+    def set_device_map(self, targets, hba_ids, volume):
+        active_hba_ids = []
+        target_wwns = []
+        active_target_wwns = []
+        vol_id = volume['id'] if volume and 'id' in volume.keys() else ""
+
+        if not self.get_port_scheduler_param():
+            return None, hba_ids
+
+        for port in targets['info'].keys():
+            target_wwns.append(self.storage_info['wwns'][port])
+
+        devmap = self._lookup_service.get_device_mapping_from_network(
+            hba_ids, target_wwns)
+
+        for fabric_name in devmap.keys():
+            active_hba_ids.extend(
+                devmap[fabric_name]['initiator_port_wwn_list'])
+            active_target_wwns.extend(
+                devmap[fabric_name]['target_port_wwn_list'])
+
+        active_hba_ids = list(set(active_hba_ids))
+        if not active_hba_ids:
+            msg = utils.output_log(MSG.NO_ACTIVE_WWN, wwn=', '.join(hba_ids),
+                                   volume=vol_id)
+            self.raise_error(msg)
+
+        active_target_wwns = list(set(active_target_wwns))
+        if not active_target_wwns:
+            port_wwns = ""
+            for port in targets['info'].keys():
+                if port_wwns:
+                    port_wwns += ", "
+                port_wwns += ("port, WWN: " + port +
+                              ", " + self.storage_info['wwns'][port])
+            msg = utils.output_log(
+                MSG.NO_PORT_WITH_ACTIVE_WWN, port_wwns=port_wwns,
+                volume=vol_id)
+            self.raise_error(msg)
+
+        return devmap, active_hba_ids
+
+    def build_wwpn_groups(self, wwpns, connector):
+        count = 1
+        return ([wwpns[i:i + count] for i in range(0, len(wwpns), count)])
+
+    def _create_target_to_any_port(
+            self, targets, ports, connector, hba_ids, fabric_name):
+        for port in ports:
+            index = self.get_port_index_to_be_used(ports, fabric_name)
+            try:
+                self.create_target(
+                    targets, ports[index], connector, hba_ids)
+                return
+            except exception.VolumeDriverException as ex:
+                if ((utils.safe_get_message_id(ex.kwargs.get('errobj'))
+                        == rest_api.MSGID_SPECIFIED_OBJECT_DOES_NOT_EXIST)
+                    or (_MSG_EXCEED_HOST_GROUP_MAX
+                        in utils.safe_get_message(ex.kwargs.get('errobj')))):
+                    utils.output_log(
+                        MSG.HOST_GROUP_NUMBER_IS_MAXIMUM, port=ports[index])
+                elif (utils.safe_get_err_code(ex.kwargs.get('errobj'))
+                        == rest_api.EXCEED_WWN_MAX):
+                    utils.output_log(
+                        MSG.WWN_NUMBER_IS_MAXIMUM, port=ports[index],
+                        wwn=", ". join(hba_ids))
+                else:
+                    raise ex
+
+        msg = utils.output_log(
+            MSG.HOST_GROUP_OR_WWN_IS_NOT_AVAILABLE, ports=', '.join(ports))
+        self.raise_error(msg)
+
+    def create_target_by_port_scheduler(
+            self, devmap, targets, connector, volume):
+        available_ports = []
+        active_ports = []
+
+        if not devmap:
+            msg = utils.output_log(MSG.ZONE_MANAGER_IS_NOT_AVAILABLE)
+            self.raise_error(msg)
+        for fabric_name in devmap.keys():
+            available_ports = []
+            active_ports = []
+            active_initiator_wwns = devmap[
+                fabric_name]['initiator_port_wwn_list']
+            wwpn_groups = self.build_wwpn_groups(
+                active_initiator_wwns, connector)
+            for port, wwn in self.storage_info['wwns'].items():
+                if wwn in devmap[fabric_name]['target_port_wwn_list']:
+                    available_ports.append(port)
+            target_ports = self.get_target_ports(connector)
+            filter_ports = self.filter_target_ports(target_ports, volume)
+            for port in target_ports:
+                if port in available_ports and port in filter_ports:
+                    active_ports.append(port)
+                elif port not in available_ports and port in filter_ports:
+                    utils.output_log(
+                        MSG.INVALID_PORT_BY_ZONE_MANAGER, port=port)
+            for wwpns in wwpn_groups:
+                try:
+                    self._create_target_to_any_port(
+                        targets, active_ports, connector, wwpns, fabric_name)
+                except exception.VolumeDriverException:
+                    with excutils.save_and_reraise_exception():
+                        self.clean_mapping_targets(targets)
+
+    def set_target_map_info(self, targets, hba_ids, port):
+        for hba_id in hba_ids:
+            target_map = {hba_id: [self.storage_info['wwns'][port]]}
+            targets['target_map'].update(target_map)

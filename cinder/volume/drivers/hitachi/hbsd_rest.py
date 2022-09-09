@@ -568,7 +568,7 @@ class HBSDREST(common.HBSDCommon):
         if (self.find_targets_from_storage(
                 targets, connector, target_ports) and
                 self.conf.hitachi_group_create):
-            self.create_mapping_targets(targets, connector)
+            self.create_mapping_targets(targets, connector, volume)
 
         self.require_target_existed(targets)
 
@@ -644,7 +644,7 @@ class HBSDREST(common.HBSDCommon):
                 {'port': port, 'gid': gid})
         return result
 
-    def _clean_mapping_targets(self, targets):
+    def clean_mapping_targets(self, targets):
         """Delete the empty host group without LU."""
         deleted_targets = []
         for target in targets['list']:
@@ -681,7 +681,7 @@ class HBSDREST(common.HBSDCommon):
         self.unmap_ldev(unmap_targets, ldev)
 
         if self.conf.hitachi_group_delete:
-            deleted_targets = self._clean_mapping_targets(unmap_targets)
+            deleted_targets = self.clean_mapping_targets(unmap_targets)
         return deleted_targets
 
     def find_all_mapped_targets_from_storage(self, targets, ldev):
