@@ -649,7 +649,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         raise NotImplementedError()
 
     def _copy_from_img_service(self, context, volume, image_service,
-                               image_id):
+                               image_id, use_copyoffload_tool=False):
         raise NotImplementedError()
 
     def clone_image(self, context, volume,
@@ -689,10 +689,15 @@ class NetAppNfsDriver(driver.ManageableVD,
                 cloned = self._direct_nfs_clone(volume, image_location,
                                                 image_id)
 
-            # Try to use the copy offload tool
-            if not cloned and col_path and major == 1 and minor >= 20:
-                cloned = self._copy_from_img_service(context, volume,
-                                                     image_service, image_id)
+            # Try to use the deprecated copy offload tool or file copy.
+            if not cloned:
+                # We will use copy offload tool if the copy offload tool
+                # path exists and the version is greater than or equal to
+                # 1.20
+                use_tool = bool(col_path) and (major == 1 and minor >= 20)
+                cloned = self._copy_from_img_service(
+                    context, volume, image_service, image_id,
+                    use_copyoffload_tool=use_tool)
 
             if cloned:
                 self._do_qos_for_volume(volume, extra_specs)

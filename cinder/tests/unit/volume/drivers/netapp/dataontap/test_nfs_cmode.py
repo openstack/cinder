@@ -923,7 +923,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._construct_image_nfs_url = mock.Mock(return_value=["nfs://1"])
         drv._check_get_nfs_path_segs = mock.Mock(
             return_value=("test:test", "dr"))
-        drv._get_ip_verify_on_cluster = mock.Mock(return_value="192.128.1.1")
+        drv._get_ip_verify_on_cluster = mock.Mock(return_value=("192.128.1.1",
+                                                                "vserver"))
         drv._get_mount_point_for_share = mock.Mock(return_value='mnt_point')
         drv._check_share_can_hold_size = mock.Mock()
         # Raise error as if the copyoffload file can not be found
@@ -936,9 +937,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         drv._discover_file_till_timeout.assert_not_called()
 
-    @mock.patch.object(image_utils, 'qemu_img_info')
+    @ddt.data(True, False)
     def test_copy_from_img_service_raw_copyoffload_workflow_success(
-            self, mock_qemu_img_info):
+            self, use_tool):
         drv = self.driver
         volume = {'id': 'vol_id', 'name': 'name', 'size': 1,
                   'host': 'openstack@nfscmode#ip1:/mnt_point'}
@@ -951,16 +952,18 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         drv._check_get_nfs_path_segs =\
             mock.Mock(return_value=('ip1', '/openstack'))
-        drv._get_ip_verify_on_cluster = mock.Mock(return_value='ip1')
+        drv._get_ip_verify_on_cluster = mock.Mock(return_value=('ip1',
+                                                                'vserver'))
         drv._get_host_ip = mock.Mock(return_value='ip2')
         drv._get_export_path = mock.Mock(return_value='/exp_path')
         drv._get_provider_location = mock.Mock(return_value='share')
         drv._execute = mock.Mock()
+        drv._copy_file = mock.Mock()
         drv._get_mount_point_for_share = mock.Mock(return_value='mnt_point')
         drv._discover_file_till_timeout = mock.Mock(return_value=True)
         img_inf = mock.Mock()
         img_inf.file_format = 'raw'
-        mock_qemu_img_info.return_value = img_inf
+        image_utils.qemu_img_info.return_value = img_inf
         drv._check_share_can_hold_size = mock.Mock()
         drv._move_nfs_file = mock.Mock(return_value=True)
         drv._delete_file_at_path = mock.Mock()
@@ -968,13 +971,19 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._post_clone_image = mock.Mock()
 
         retval = drv._copy_from_img_service(
-            context, volume, image_service, image_id)
+            context, volume, image_service, image_id,
+            use_copyoffload_tool=use_tool)
 
         self.assertTrue(retval)
         drv._get_ip_verify_on_cluster.assert_any_call('ip1')
         drv._check_share_can_hold_size.assert_called_with(
             'ip1:/mnt_point', 1)
-        self.assertEqual(1, drv._execute.call_count)
+        if use_tool:
+            self.assertEqual(1, drv._execute.call_count)
+            self.assertEqual(0, drv._copy_file.call_count)
+        else:
+            self.assertEqual(1, drv._copy_file.call_count)
+            self.assertEqual(0, drv._execute.call_count)
 
     @mock.patch.object(image_utils, 'convert_image')
     @mock.patch.object(image_utils, 'qemu_img_info')
@@ -1006,7 +1015,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             mock.Mock(return_value=('203.0.113.122', '/openstack'))
         )
 
-        drv._get_ip_verify_on_cluster = mock.Mock(return_value='203.0.113.122')
+        drv._get_ip_verify_on_cluster = mock.Mock(
+            return_value=('203.0.113.122', 'vserver'))
         drv._execute = mock.Mock()
         drv._execute_as_root = False
         drv._get_mount_point_for_share = mock.Mock(
@@ -1053,7 +1063,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                   'host': 'openstack@nfscmode#192.128.1.1:/exp_path'}
         image_id = 'image_id'
         cache_result = [('ip1:/openstack', 'img-cache-imgid')]
-        drv._get_ip_verify_on_cluster = mock.Mock(return_value='ip1')
+        drv._get_ip_verify_on_cluster = mock.Mock(return_value=('ip1',
+                                                                'vserver'))
         drv._execute = mock.Mock()
         drv._register_image_in_cache = mock.Mock()
         drv._post_clone_image = mock.Mock()
@@ -1240,25 +1251,29 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     @ddt.unpack
     def test_get_source_ip_and_path(self, share, ip):
         self.driver._get_ip_verify_on_cluster = mock.Mock(
-            return_value=ip)
+            return_value=(ip, fake.VSERVER_NAME))
 
-        src_ip, src_path = self.driver._get_source_ip_and_path(
-            share, fake.IMAGE_FILE_ID)
+        src_ip, src_vserver, src_share, src_path = (
+            self.driver._get_source_ip_and_path(
+                share, fake.IMAGE_FILE_ID))
 
         self.assertEqual(ip, src_ip)
+        self.assertEqual(fake.VSERVER_NAME, src_vserver)
+        self.assertEqual(fake.EXPORT_PATH, src_share)
         assert_path = fake.EXPORT_PATH + '/' + fake.IMAGE_FILE_ID
         self.assertEqual(assert_path, src_path)
         self.driver._get_ip_verify_on_cluster.assert_called_once_with(ip)
 
     def test_get_destination_ip_and_path(self):
         self.driver._get_ip_verify_on_cluster = mock.Mock(
-            return_value=fake.SHARE_IP)
+            return_value=(fake.SHARE_IP, fake.VSERVER_NAME))
         mock_extract_host = self.mock_object(volume_utils, 'extract_host')
         mock_extract_host.return_value = fake.NFS_SHARE
 
-        dest_ip, dest_path = self.driver._get_destination_ip_and_path(
-            fake.VOLUME)
+        dest_ip, dest_vserver, dest_path = (
+            self.driver._get_destination_ip_and_path(fake.VOLUME))
 
+        self.assertEqual(fake.VSERVER_NAME, dest_vserver)
         self.assertEqual(fake.SHARE_IP, dest_ip)
         assert_path = fake.EXPORT_PATH + '/' + fake.LUN_NAME
         self.assertEqual(assert_path, dest_path)
@@ -1308,7 +1323,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.driver._is_flexgroup.assert_called_once_with(host=volume['host'])
         mock_clone_file.assert_called_once_with()
 
-    def test_clone_image_copyoffload_from_img_service(self):
+    @ddt.data(True, False)
+    def test_clone_image_from_img_service(self, use_tool):
         drv = self.driver
         context = object()
         volume = {'id': 'vol_id', 'name': 'name',
@@ -1329,6 +1345,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._copy_from_img_service = mock.Mock(return_value=True)
         drv._is_flexgroup = mock.Mock(return_value=False)
         drv._is_flexgroup_clone_file_supported = mock.Mock(return_value=True)
+        if not use_tool:
+            drv.configuration.netapp_copyoffload_tool_path = None
 
         retval = drv.clone_image(
             context, volume, image_location, image_meta, image_service)
@@ -1337,7 +1355,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             {'provider_location': '192.128.1.1:/mnt_point',
              'bootable': True}, True))
         drv._copy_from_img_service.assert_called_once_with(
-            context, volume, image_service, image_id)
+            context, volume, image_service, image_id,
+            use_copyoffload_tool=use_tool)
 
     def test_clone_image_copyoffload_failure(self):
         mock_log = self.mock_object(nfs_cmode, 'LOG')
@@ -1364,35 +1383,57 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertEqual(retval, ({'bootable': False,
                                    'provider_location': None}, False))
         drv._copy_from_img_service.assert_called_once_with(
-            context, volume, image_service, image_id)
+            context, volume, image_service, image_id,
+            use_copyoffload_tool=True)
         mock_log.info.assert_not_called()
 
-    def test_copy_from_remote_cache(self):
+    @ddt.data(True, False)
+    def test_copy_from_remote_cache(self, use_tool):
         source_ip = '192.0.1.1'
         source_path = '/openstack/img-cache-imgid'
+        source_vserver = 'fake_vserver'
+        source_share = 'vol_fake'
         cache_copy = ('192.0.1.1:/openstack', fake.IMAGE_FILE_ID)
+        dest_vserver = 'fake_dest_vserver'
         dest_path = fake.EXPORT_PATH + '/' + fake.VOLUME['name']
         self.driver._execute = mock.Mock()
+        self.driver._copy_file = mock.Mock()
         self.driver._get_source_ip_and_path = mock.Mock(
-            return_value=(source_ip, source_path))
+            return_value=(
+                source_ip, source_vserver, source_share, source_path))
         self.driver._get_destination_ip_and_path = mock.Mock(
-            return_value=(fake.SHARE_IP, dest_path))
+            return_value=(fake.SHARE_IP, dest_vserver, dest_path))
         self.driver._register_image_in_cache = mock.Mock()
+        ctxt = mock.Mock()
+        vol_fields = {'id': fake.VOLUME_ID, 'name': fake.VOLUME_NAME}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
 
         self.driver._copy_from_remote_cache(
-            fake.VOLUME, fake.IMAGE_FILE_ID, cache_copy)
+            fake_vol, fake.IMAGE_FILE_ID, cache_copy,
+            use_copyoffload_tool=use_tool)
 
-        self.driver._execute.assert_called_once_with(
-            'copyoffload_tool_path', source_ip, fake.SHARE_IP,
-            source_path, dest_path, run_as_root=False, check_exit_code=0)
+        if use_tool:
+            self.driver._execute.assert_called_once_with(
+                'copyoffload_tool_path', source_ip, fake.SHARE_IP,
+                source_path, dest_path, run_as_root=False, check_exit_code=0)
+            self.driver._copy_file.assert_not_called()
+        else:
+            dest_share_path = dest_path.rsplit("/", 1)[0]
+            self.driver._copy_file.assert_called_once_with(
+                fake.IMAGE_FILE_ID, fake.IMAGE_FILE_ID, source_share,
+                source_vserver, dest_share_path, dest_vserver,
+                dest_backend_name=self.driver.backend_name,
+                dest_file_name=fake_vol.name)
+            self.driver._execute.assert_not_called()
         self.driver._get_source_ip_and_path.assert_called_once_with(
             cache_copy[0], fake.IMAGE_FILE_ID)
         self.driver._get_destination_ip_and_path.assert_called_once_with(
-            fake.VOLUME)
+            fake_vol)
         self.driver._register_image_in_cache.assert_called_once_with(
-            fake.VOLUME, fake.IMAGE_FILE_ID)
+            fake_vol, fake.IMAGE_FILE_ID)
 
-    def test_copy_from_cache_workflow_remote_location(self):
+    @ddt.data(True, False)
+    def test_copy_from_cache_workflow_remote_location(self, use_tool):
         cache_result = [('ip1:/openstack', fake.IMAGE_FILE_ID),
                         ('ip2:/openstack', fake.IMAGE_FILE_ID),
                         ('ip3:/openstack', fake.IMAGE_FILE_ID)]
@@ -1400,29 +1441,20 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             cache_result[0], False])
         self.driver._copy_from_remote_cache = mock.Mock()
         self.driver._post_clone_image = mock.Mock()
+        if not use_tool:
+            self.driver.configuration.netapp_copyoffload_tool_path = None
 
         copied = self.driver._copy_from_cache(
             fake.VOLUME, fake.IMAGE_FILE_ID, cache_result)
 
         self.assertTrue(copied)
-        self.driver._copy_from_remote_cache.assert_called_once_with(
-            fake.VOLUME, fake.IMAGE_FILE_ID, cache_result[0])
-
-    def test_copy_from_cache_workflow_remote_location_no_copyoffload(self):
-        cache_result = [('ip1:/openstack', fake.IMAGE_FILE_ID),
-                        ('ip2:/openstack', fake.IMAGE_FILE_ID),
-                        ('ip3:/openstack', fake.IMAGE_FILE_ID)]
-        self.driver._find_image_location = mock.Mock(return_value=[
-            cache_result[0], False])
-        self.driver._copy_from_remote_cache = mock.Mock()
-        self.driver._post_clone_image = mock.Mock()
-        self.driver.configuration.netapp_copyoffload_tool_path = None
-
-        copied = self.driver._copy_from_cache(
-            fake.VOLUME, fake.IMAGE_FILE_ID, cache_result)
-
-        self.assertFalse(copied)
-        self.driver._copy_from_remote_cache.assert_not_called()
+        if use_tool:
+            self.driver._copy_from_remote_cache.assert_called_once_with(
+                fake.VOLUME, fake.IMAGE_FILE_ID, cache_result[0])
+        else:
+            self.driver._copy_from_remote_cache.assert_called_once_with(
+                fake.VOLUME, fake.IMAGE_FILE_ID, cache_result[0],
+                use_copyoffload_tool=False)
 
     def test_copy_from_cache_workflow_local_location(self):
         local_share = '/share'
@@ -1455,20 +1487,28 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         self.assertFalse(copied)
 
-    def test_copy_from_cache_workflow_exception(self):
+    @ddt.data(True, False)
+    def test_copy_from_cache_workflow_exception(self, use_tool):
         cache_result = [('ip1:/openstack', fake.IMAGE_FILE_ID)]
         self.driver._find_image_location = mock.Mock(return_value=[
             cache_result[0], False])
         self.driver._copy_from_remote_cache = mock.Mock(
             side_effect=Exception)
         self.driver._post_clone_image = mock.Mock()
+        if not use_tool:
+            self.driver.configuration.netapp_copyoffload_tool_path = None
 
         copied = self.driver._copy_from_cache(
             fake.VOLUME, fake.IMAGE_FILE_ID, cache_result)
 
         self.assertFalse(copied)
-        self.driver._copy_from_remote_cache.assert_called_once_with(
-            fake.VOLUME, fake.IMAGE_FILE_ID, cache_result[0])
+        if use_tool:
+            self.driver._copy_from_remote_cache.assert_called_once_with(
+                fake.VOLUME, fake.IMAGE_FILE_ID, cache_result[0])
+        else:
+            self.driver._copy_from_remote_cache.assert_called_once_with(
+                fake.VOLUME, fake.IMAGE_FILE_ID, cache_result[0],
+                use_copyoffload_tool=False)
         self.assertFalse(self.driver._post_clone_image.called)
 
     @ddt.data({'secondary_id': 'dev0', 'configured_targets': ['dev1']},
@@ -1901,21 +1941,15 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             return_value=fake_job_status)
         mock_cancel_file_copy = self.mock_object(
             self.driver, '_cancel_file_copy')
-        ctxt = mock.Mock()
-        vol_fields = {
-            'id': fake.VOLUME_ID,
-            'name': fake.VOLUME_NAME,
-            'status': fields.VolumeStatus.AVAILABLE
-        }
-        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
 
         result = self.driver._copy_file(
-            fake_vol, fake.POOL_NAME, fake.VSERVER_NAME, fake.DEST_POOL_NAME,
-            fake.DEST_VSERVER_NAME, dest_file_name=fake.VOLUME_NAME,
+            fake.VOLUME_NAME, fake.VOLUME_ID, fake.POOL_NAME,
+            fake.VSERVER_NAME, fake.DEST_POOL_NAME, fake.DEST_VSERVER_NAME,
+            dest_file_name=fake.VOLUME_NAME,
             dest_backend_name=fake.DEST_BACKEND_NAME, cancel_on_error=True)
 
         mock_start_file_copy.assert_called_with(
-            fake_vol.name, fake.DEST_POOL_NAME,
+            fake.VOLUME_NAME, fake.DEST_POOL_NAME,
             src_ontap_volume=fake.POOL_NAME,
             dest_file_name=fake.VOLUME_NAME)
         mock_get_file_copy_status.assert_called_with(fake.JOB_UUID)
@@ -1942,29 +1976,23 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             return_value=fake_job_status)
         mock_cancel_file_copy = self.mock_object(
             self.driver, '_cancel_file_copy')
-        ctxt = mock.Mock()
-        vol_fields = {
-            'id': fake.VOLUME_ID,
-            'name': fake.VOLUME_NAME,
-            'status': fields.VolumeStatus.AVAILABLE
-        }
-        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
 
         self.assertRaises(copy_exception,
                           self.driver._copy_file,
-                          fake_vol, fake.POOL_NAME, fake.VSERVER_NAME,
-                          fake.DEST_POOL_NAME, fake.DEST_VSERVER_NAME,
+                          fake.VOLUME_NAME, fake.VOLUME_ID, fake.POOL_NAME,
+                          fake.VSERVER_NAME, fake.DEST_POOL_NAME,
+                          fake.DEST_VSERVER_NAME,
                           dest_file_name=fake.VOLUME_NAME,
                           dest_backend_name=fake.DEST_BACKEND_NAME,
                           cancel_on_error=True)
 
         mock_start_file_copy.assert_called_with(
-            fake_vol.name, fake.DEST_POOL_NAME,
+            fake.VOLUME_NAME, fake.DEST_POOL_NAME,
             src_ontap_volume=fake.POOL_NAME,
             dest_file_name=fake.VOLUME_NAME)
         mock_get_file_copy_status.assert_called_with(fake.JOB_UUID)
         mock_cancel_file_copy.assert_called_once_with(
-            fake.JOB_UUID, fake_vol, fake.DEST_POOL_NAME,
+            fake.JOB_UUID, fake.VOLUME_NAME, fake.DEST_POOL_NAME,
             dest_backend_name=fake.DEST_BACKEND_NAME)
 
     def test_migrate_volume_to_vserver(self):
@@ -1983,9 +2011,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake.DEST_VSERVER_NAME, fake.DEST_BACKEND_NAME)
 
         mock_copy_file.assert_called_once_with(
-            fake_vol, fake.EXPORT_PATH[1:], fake.VSERVER_NAME,
-            fake.DEST_EXPORT_PATH[1:], fake.DEST_VSERVER_NAME,
-            dest_backend_name=fake.DEST_BACKEND_NAME,
+            fake_vol.name, fake_vol.id, fake.EXPORT_PATH[1:],
+            fake.VSERVER_NAME, fake.DEST_EXPORT_PATH[1:],
+            fake.DEST_VSERVER_NAME, dest_backend_name=fake.DEST_BACKEND_NAME,
             cancel_on_error=True)
         mock_create_vserver_peer.assert_called_once_with(
             fake.VSERVER_NAME, fake.BACKEND_NAME, fake.DEST_VSERVER_NAME,
@@ -2050,9 +2078,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake.VSERVER_NAME, fake.BACKEND_NAME, fake.DEST_VSERVER_NAME,
             ['file_copy'])
         mock_copy_file.assert_called_once_with(
-            fake_vol, fake.EXPORT_PATH[1:], fake.VSERVER_NAME,
-            fake.DEST_EXPORT_PATH[1:], fake.DEST_VSERVER_NAME,
-            dest_backend_name=fake.DEST_BACKEND_NAME,
+            fake_vol.name, fake_vol.id, fake.EXPORT_PATH[1:],
+            fake.VSERVER_NAME, fake.DEST_EXPORT_PATH[1:],
+            fake.DEST_VSERVER_NAME, dest_backend_name=fake.DEST_BACKEND_NAME,
             cancel_on_error=True)
         mock_finish_volume_migration.assert_not_called()
 
@@ -2083,9 +2111,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake.VSERVER_NAME, fake.BACKEND_NAME, fake.DEST_VSERVER_NAME,
             ['file_copy'])
         mock_copy_file.assert_called_once_with(
-            fake_vol, fake.EXPORT_PATH[1:], fake.VSERVER_NAME,
-            fake.DEST_EXPORT_PATH[1:], fake.DEST_VSERVER_NAME,
-            dest_backend_name=fake.DEST_BACKEND_NAME,
+            fake_vol.name, fake_vol.id, fake.EXPORT_PATH[1:],
+            fake.VSERVER_NAME, fake.DEST_EXPORT_PATH[1:],
+            fake.DEST_VSERVER_NAME, dest_backend_name=fake.DEST_BACKEND_NAME,
             cancel_on_error=True)
         mock_finish_volume_migration.assert_not_called()
 
@@ -2104,8 +2132,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                                                       fake.DEST_BACKEND_NAME)
 
         mock_copy_file.assert_called_once_with(
-            fake_vol, fake.EXPORT_PATH[1:], fake.VSERVER_NAME,
-            fake.DEST_EXPORT_PATH[1:], fake.VSERVER_NAME,
+            fake_vol.name, fake_vol.id, fake.EXPORT_PATH[1:],
+            fake.VSERVER_NAME, fake.DEST_EXPORT_PATH[1:], fake.VSERVER_NAME,
             dest_backend_name=fake.DEST_BACKEND_NAME,
             cancel_on_error=True)
         mock_finish_volume_migration.assert_called_once_with(
@@ -2132,8 +2160,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake.DEST_BACKEND_NAME)
 
         mock_copy_file.assert_called_once_with(
-            fake_vol, fake.EXPORT_PATH[1:], fake.VSERVER_NAME,
-            fake.DEST_EXPORT_PATH[1:], fake.VSERVER_NAME,
+            fake_vol.name, fake_vol.id, fake.EXPORT_PATH[1:],
+            fake.VSERVER_NAME, fake.DEST_EXPORT_PATH[1:], fake.VSERVER_NAME,
             dest_backend_name=fake.DEST_BACKEND_NAME,
             cancel_on_error=True)
         mock_finish_volume_migration.assert_not_called()
@@ -2158,8 +2186,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake.DEST_BACKEND_NAME)
 
         mock_copy_file.assert_called_once_with(
-            fake_vol, fake.EXPORT_PATH[1:], fake.VSERVER_NAME,
-            fake.DEST_EXPORT_PATH[1:], fake.VSERVER_NAME,
+            fake_vol.name, fake_vol.id, fake.EXPORT_PATH[1:],
+            fake.VSERVER_NAME, fake.DEST_EXPORT_PATH[1:], fake.VSERVER_NAME,
             dest_backend_name=fake.DEST_BACKEND_NAME,
             cancel_on_error=True)
         mock_finish_volume_migration.assert_not_called()
