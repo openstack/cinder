@@ -1338,15 +1338,19 @@ class RestClient(object):
 
         self._lun_update_by_path(path, body)
 
-    def _get_lun_by_path(self, path):
+    def _get_lun_by_path(self, path, fields=None):
         query = {'name': path}
+
+        if fields:
+            query['fields'] = fields
+
         response = self.send_request('/storage/luns', 'get', query=query)
         records = response.get('records', [])
 
         return records
 
-    def _get_first_lun_by_path(self, path):
-        records = self._get_lun_by_path(path)
+    def _get_first_lun_by_path(self, path, fields=None):
+        records = self._get_lun_by_path(path, fields=fields)
         if len(records) == 0:
             return None
 
@@ -2282,8 +2286,214 @@ class RestClient(object):
 
     def mount_flexvol(self, flexvol_name, junction_path=None):
         """Mounts a volume on a junction path."""
-
         query = {'name': flexvol_name}
         body = {'nas.path': (
             junction_path if junction_path else '/%s' % flexvol_name)}
         self.send_request('/storage/volumes', 'patch', query=query, body=body)
+
+    def get_cluster_name(self):
+        """Gets cluster name."""
+        query = {'fields': 'name'}
+
+        response = self.send_request('/cluster', 'get', query=query,
+                                     enable_tunneling=False)
+
+        return response['name']
+
+    def get_vserver_peers(self, vserver_name=None, peer_vserver_name=None):
+        """Gets one or more Vserver peer relationships."""
+        query = {
+            'fields': 'svm.name,state,peer.svm.name,peer.cluster.name,'
+                      'applications'
+        }
+
+        if peer_vserver_name:
+            query['name'] = peer_vserver_name
+        if vserver_name:
+            query['svm.name'] = vserver_name
+
+        response = self.send_request('/svm/peers', 'get', query=query,
+                                     enable_tunneling=False)
+        records = response.get('records', [])
+
+        vserver_peers = []
+        for vserver_info in records:
+            vserver_peer = {
+                'vserver': vserver_info['svm']['name'],
+                'peer-vserver': vserver_info['peer']['svm']['name'],
+                'peer-state': vserver_info['state'],
+                'peer-cluster': vserver_info['peer']['cluster']['name'],
+                'applications': vserver_info['applications'],
+            }
+            vserver_peers.append(vserver_peer)
+
+        return vserver_peers
+
+    def create_vserver_peer(self, vserver_name, peer_vserver_name,
+                            vserver_peer_application=None):
+        """Creates a Vserver peer relationship."""
+        # default peering application to `snapmirror` if none is specified.
+        if not vserver_peer_application:
+            vserver_peer_application = ['snapmirror']
+
+        body = {
+            'svm.name': vserver_name,
+            'name': peer_vserver_name,
+            'applications': vserver_peer_application
+        }
+
+        self.send_request('/svm/peers', 'post', body=body,
+                          enable_tunneling=False)
+
+    def start_lun_move(self, lun_name, dest_ontap_volume,
+                       src_ontap_volume=None, dest_lun_name=None):
+        """Starts a lun move operation between ONTAP volumes."""
+        if dest_lun_name is None:
+            dest_lun_name = lun_name
+        if src_ontap_volume is None:
+            src_ontap_volume = dest_ontap_volume
+
+        src_path = f'/vol/{src_ontap_volume}/{lun_name}'
+        dest_path = f'/vol/{dest_ontap_volume}/{dest_lun_name}'
+        body = {'name': dest_path}
+        self._lun_update_by_path(src_path, body)
+
+        return dest_path
+
+    def get_lun_move_status(self, dest_path):
+        """Get lun move job status from a given dest_path."""
+        lun = self._get_first_lun_by_path(
+            dest_path, fields='movement.progress')
+
+        if not lun:
+            return None
+
+        move_progress = lun['movement']['progress']
+        move_status = {
+            'job-status': move_progress['state'],
+            'last-failure-reason': (move_progress
+                                    .get('failure', {})
+                                    .get('message', None))
+        }
+
+        return move_status
+
+    def start_lun_copy(self, lun_name, dest_ontap_volume, dest_vserver,
+                       src_ontap_volume=None, src_vserver=None,
+                       dest_lun_name=None):
+        """Starts a lun copy operation between ONTAP volumes."""
+        if src_ontap_volume is None:
+            src_ontap_volume = dest_ontap_volume
+        if src_vserver is None:
+            src_vserver = dest_vserver
+        if dest_lun_name is None:
+            dest_lun_name = lun_name
+
+        src_path = f'/vol/{src_ontap_volume}/{lun_name}'
+        dest_path = f'/vol/{dest_ontap_volume}/{dest_lun_name}'
+
+        body = {
+            'name': dest_path,
+            'copy.source.name': src_path,
+            'svm.name': dest_vserver
+        }
+
+        self.send_request('/storage/luns', 'post', body=body,
+                          enable_tunneling=False)
+
+        return dest_path
+
+    def get_lun_copy_status(self, dest_path):
+        """Get lun copy job status from a given dest_path."""
+        lun = self._get_first_lun_by_path(
+            dest_path, fields='copy.source.progress')
+
+        if not lun:
+            return None
+
+        copy_progress = lun['copy']['source']['progress']
+        copy_status = {
+            'job-status': copy_progress['state'],
+            'last-failure-reason': (copy_progress
+                                    .get('failure', {})
+                                    .get('message', None))
+        }
+
+        return copy_status
+
+    def cancel_lun_copy(self, dest_path):
+        """Cancel an in-progress lun copy by deleting the lun."""
+        query = {
+            'name': dest_path,
+            'svm.name': self.vserver
+        }
+
+        try:
+            self.send_request('/storage/luns/', 'delete', query=query)
+        except netapp_api.NaApiError as e:
+            msg = (_('Could not cancel lun copy by deleting lun at %s. %s'))
+            raise na_utils.NetAppDriverException(msg % (dest_path, e))
+
+    def start_file_copy(self, file_name, dest_ontap_volume,
+                        src_ontap_volume=None,
+                        dest_file_name=None):
+        """Starts a file copy operation between ONTAP volumes."""
+        if src_ontap_volume is None:
+            src_ontap_volume = dest_ontap_volume
+        if dest_file_name is None:
+            dest_file_name = file_name
+
+        source_vol = self._get_volume_by_args(src_ontap_volume)
+
+        dest_vol = source_vol
+        if dest_ontap_volume != src_ontap_volume:
+            dest_vol = self._get_volume_by_args(dest_ontap_volume)
+
+        body = {
+            'files_to_copy': [
+                {
+                    'source': {
+                        'path': f'{src_ontap_volume}/{file_name}',
+                        'volume': {
+                            'uuid': source_vol['uuid']
+                        }
+                    },
+                    'destination': {
+                        'path': f'{dest_ontap_volume}/{dest_file_name}',
+                        'volume': {
+                            'uuid': dest_vol['uuid']
+                        }
+                    }
+                }
+            ]
+        }
+
+        result = self.send_request('/storage/file/copy', 'post', body=body,
+                                   enable_tunneling=False)
+        return result['job']['uuid']
+
+    def get_file_copy_status(self, job_uuid):
+        """Get file copy job status from a given job's UUID."""
+        # TODO(rfluisa): Select only the fields that are needed here.
+        query = {}
+        query['fields'] = '*'
+
+        result = self.send_request(
+            f'/cluster/jobs/{job_uuid}', 'get', query=query,
+            enable_tunneling=False)
+
+        if not result or not result.get('state', None):
+            return None
+
+        state = result.get('state')
+        if state == 'success':
+            state = 'complete'
+        elif state == 'failure':
+            state = 'destroyed'
+
+        copy_status = {
+            'job-status': state,
+            'last-failure-reason': result.get('error', {}).get('message', None)
+        }
+
+        return copy_status

@@ -2994,3 +2994,67 @@ JOB_ERROR_REST = {
     "start_time": "2022-02-18T20:08:03+00:00",
     "end_time": "2022-02-18T20:08:04+00:00",
 }
+
+GET_CLUSTER_NAME_RESPONSE_REST = {
+    "name": CLUSTER_NAME,
+    "uuid": "fake-cluster-uuid"
+}
+
+GET_VSERVER_PEERS_RECORDS_REST = [
+    {
+        "_links": {
+            "self": {
+                "href": "/api/resourcelink"
+            }
+        },
+        "applications": [
+            "snapmirror",
+            "lun_copy"
+        ],
+        "name": CLUSTER_NAME,
+        "peer": {
+            "cluster": {
+                "_links": {
+                    "self": {
+                        "href": "/api/resourcelink"
+                    }
+                },
+                "name": REMOTE_CLUSTER_NAME,
+                "uuid": "fake-cluster-uuid-2"
+            },
+            "svm": {
+                "_links": {
+                    "self": {
+                        "href": "/api/resourcelink"
+                    }
+                },
+                "name": VSERVER_NAME_2,
+                "uuid": "fake-svm-uuid-2"
+            }
+        },
+        "state": "peered",
+        "svm": {
+            "_links": {
+                "self": {
+                    "href": "/api/resourcelink"
+                }
+            },
+            "name": VSERVER_NAME,
+            "uuid": "fake-svm-uuid"
+        },
+        "uuid": "fake-cluster-uuid"
+    }
+]
+
+GET_VSERVER_PEERS_RESPONSE_REST = {
+    "_links": {
+        "next": {
+            "href": "/api/resourcelink"
+        },
+        "self": {
+            "href": "/api/resourcelink"
+        }
+    },
+    "num_records": 1,
+    "records": GET_VSERVER_PEERS_RECORDS_REST
+}
