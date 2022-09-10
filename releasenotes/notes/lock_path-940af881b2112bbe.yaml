@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    os-brick file lock location can be specified independently of the Cinder
+    service lock location using ``lock_path`` in the ``[os_brick]``
+    configuration section.  Useful for HCI deployments and when running Cinder
+    and Glance with Cinder backend on the same host.
+upgrade:
+  - |
+    On HCI deployments and when running Cinder and Glance with Cinder backend
+    on the same host an os-brick shared location can be configured using the
+    ``lock_path`` in the ``[os_brick]`` configuration section.
