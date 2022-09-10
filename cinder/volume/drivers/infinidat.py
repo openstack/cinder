@@ -657,7 +657,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             return      # snapshot not found
         snapshot.safe_delete()
 
-    def _asssert_volume_not_mapped(self, volume):
+    def _assert_volume_not_mapped(self, volume):
         # copy is not atomic so we can't clone while the volume is mapped
         infinidat_volume = self._get_infinidat_volume(volume)
         if len(infinidat_volume.get_logical_units()) == 0:
@@ -683,7 +683,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         * copy data from source to new volume
         * unmap both volumes
         """
-        self._asssert_volume_not_mapped(src_vref)
+        self._assert_volume_not_mapped(src_vref)
         infinidat_volume = self._create_volume(volume)
         try:
             src_ctx = self._device_connect_context(src_vref)
