@@ -17,7 +17,6 @@ from oslo_utils import importutils
 
 from cinder import context
 from cinder import db
-from cinder.db.sqlalchemy import api as sqla_db
 from cinder.objects import fields
 from cinder.objects import volume_attachment
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
@@ -186,13 +185,12 @@ class AttachmentManagerTestCase(test.TestCase):
 
         @mock.patch('cinder.objects.VolumeAttachment.get_by_id',
                     side_effect=[attachment1, attachment2])
-        @mock.patch.object(sqla_db, 'volume_admin_metadata_delete')
-        @mock.patch.object(sqla_db, 'volume_detached')
         @mock.patch.object(self.context, 'elevated')
+        @mock.patch.object(self.manager, '_notify_about_volume_usage')
         @mock.patch.object(self.manager, '_connection_terminate')
         @mock.patch.object(self.manager.driver, 'remove_export')
-        def _test(mock_rm_export, mock_con_term, mock_elevated,
-                  mock_db_detached, mock_db_meta_delete, mock_get_attachment):
+        def _test(mock_rm_export, mock_con_term, mock_notify, mock_elevated,
+                  mock_get_attachment):
             mock_elevated.return_value = self.context
             mock_con_term.return_value = False
 
@@ -202,8 +200,11 @@ class AttachmentManagerTestCase(test.TestCase):
 
             self.manager.attachment_delete(self.context, attachment1.id, vref)
 
-            mock_db_detached.assert_not_called()
-            mock_db_meta_delete.assert_not_called()
+            mock_elevated.assert_called_once_with()
+            mock_notify.assert_called_once_with(self.context, vref,
+                                                "detach.start")
+            mock_con_term.assert_called_once_with(self.context, vref,
+                                                  attachment1)
             mock_rm_export.assert_called_once_with(self.context, vref)
 
             # test more than 1 attachment. This should skip
@@ -211,15 +212,20 @@ class AttachmentManagerTestCase(test.TestCase):
             mock_con_term.return_value = True
             vref.volume_attachment.objects.append(attachment2)
 
+            mock_elevated.reset_mock()
+            mock_notify.reset_mock()
+            mock_con_term.reset_mock()
             mock_rm_export.reset_mock()
-            mock_db_detached.reset_mock()
-            mock_db_meta_delete.reset_mock()
 
             self.manager.attachment_delete(self.context, attachment2.id, vref)
 
+            mock_elevated.assert_not_called()
+            mock_notify.assert_called_once_with(self.context, vref,
+                                                "detach.start")
+            mock_con_term.assert_called_once_with(self.context, vref,
+                                                  attachment2)
             mock_rm_export.assert_not_called()
-            mock_db_detached.assert_not_called()
-            mock_db_meta_delete.assert_not_called()
+
         _test()
 
     def test_connection_terminate_no_connector_force_false(self):

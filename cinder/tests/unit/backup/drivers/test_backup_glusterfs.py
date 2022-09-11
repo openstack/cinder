@@ -83,7 +83,7 @@ class BackupGlusterfsShareTestCase(test.TestCase):
         path = driver._init_backup_repo_path()
 
         self.assertEqual(FAKE_BACKUP_PATH, path)
-        utils.get_root_helper.called_once()
+        utils.get_root_helper.assert_called_once_with()
         mock_remotefsclient.mount.assert_called_once_with(FAKE_BACKUP_SHARE)
         mock_remotefsclient.get_mount_point.assert_called_once_with(
             FAKE_BACKUP_SHARE)

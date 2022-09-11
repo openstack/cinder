@@ -916,8 +916,8 @@ class BackupTestCase(BaseBackupTest):
         mock_open.assert_not_called()
         backup_service.backup.assert_called_once_with(
             backup, device_path)
-        mock_finish.called_once_with(self.ctxt, backup, volume,
-                                     mock.sentinel.backup_update)
+        mock_finish.assert_called_once_with(self.ctxt, backup, volume,
+                                            mock.sentinel.backup_update)
 
     @mock.patch('cinder.backup.manager.BackupManager._start_backup')
     @ddt.data((fields.SnapshotStatus.BACKING_UP, 'available'),

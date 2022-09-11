@@ -1771,6 +1771,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         image_location = 'someImageLocationStr'
         image_id = fakes.IMAGE_ID
         image_meta = mock.MagicMock()
+        volume_id = str(uuid.uuid4())
+        self.mock_cache.get_entry.return_value = {'volume_id': volume_id}
         volume = fake_volume.fake_volume_obj(self.ctxt, size=1,
                                              host='foo@bar#pool')
         self.mock_driver.clone_image.return_value = (None, False)
@@ -1794,6 +1796,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                 image_id,
                 image_meta,
                 self.mock_image_service)
+            mock_handle_bootable.assert_not_called()
         else:
             mock_create_from_src.side_effect = NotImplementedError(
                 'Driver does not support clone')
@@ -1807,16 +1810,13 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             mock_create_from_img_dl.assert_called_once()
             self.assertEqual(mock_create_from_img_dl.return_value,
                              model_update)
+            mock_handle_bootable.assert_called_once_with(self.ctxt, volume,
+                                                         image_id=image_id,
+                                                         image_meta=image_meta)
 
         # Ensure cloning was attempted and that it failed
-        mock_create_from_src.assert_called_once()
-        with mock.patch(
-                'cinder.volume.flows.manager.create_volume.'
-                'CreateVolumeFromSpecTask') as volume_manager:
-            (volume_manager.CreateVolumeFromSpecTask.
-             _create_from_image_cache_or_download.called_once())
-            (volume_manager.CreateVolumeFromSpecTask.
-             _create_from_image_cache.called_once())
+        mock_create_from_src.assert_called_once_with(self.ctxt, volume,
+                                                     volume_id)
 
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'

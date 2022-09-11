@@ -770,6 +770,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                 src_encryption_key_id=None, new_encryption_key_id=None)
             mock_delete_snapshot.assert_called_once_with(
                 mock_obj_snap.return_value)
+            mock_obj_snap.return_value.destroy.assert_called_once_with()
         else:
             self.assertFalse(mock_create_snapshot.called)
 

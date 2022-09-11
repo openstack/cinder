@@ -2910,8 +2910,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.volume.detach_volume(self.context, volume.id, attachment.id)
         self.volume.delete_volume(self.context, volume)
 
-    @mock.patch('cinder.volume.rpcapi.VolumeAPI.extend_volume')
-    def test_extend_volume_with_volume_type(self, mock_rpc_extend):
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.extend_volume')
+    def test_extend_volume_with_volume_type(self, mock_scheduler_extend):
         elevated = context.get_admin_context()
         project_id = self.context.project_id
         db.volume_type_create(elevated, {'name': 'type', 'extra_specs': {}})
@@ -2929,7 +2929,13 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         db.volume_update(self.context, volume.id, {'status': 'available'})
 
         volume_api._extend(self.context, volume, 200)
-        mock_rpc_extend.called_once_with(self.context, volume, 200, mock.ANY)
+        mock_scheduler_extend.assert_called_once_with(
+            self.context, volume, 200, mock.ANY,
+            {
+                'volume_properties': volume,
+                'volume_type': vol_type,
+                'volume_id': volume.id
+            })
 
         try:
             usage = db.quota_usage_get(elevated, project_id, 'gigabytes_type')

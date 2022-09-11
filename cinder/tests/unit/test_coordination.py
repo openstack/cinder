@@ -139,7 +139,7 @@ class CoordinatorTestCase(test.TestCase):
         mock_glob.assert_called_once_with(
             '/data/cinder-attachment_update-UUID-*')
         self.assertEqual(2, mock_remove.call_count)
-        mock_remove.has_calls(
+        mock_remove.assert_has_calls(
             [mock.call('/data/cinder-attachment_update-UUID-1'),
              mock.call('/data/cinder-attachment_update-UUID-2')])
 
@@ -157,7 +157,7 @@ class CoordinatorTestCase(test.TestCase):
         mock_glob.assert_called_once_with(
             '/data/cinder-attachment_update-UUID-*')
         self.assertEqual(2, mock_remove.call_count)
-        mock_remove.has_calls(
+        mock_remove.assert_has_calls(
             [mock.call('/data/cinder-attachment_update-UUID-1'),
              mock.call('/data/cinder-attachment_update-UUID-2')])
         mock_log.assert_not_called()
@@ -177,7 +177,7 @@ class CoordinatorTestCase(test.TestCase):
         mock_glob.assert_called_once_with(
             '/data/cinder-attachment_update-UUID-*')
         self.assertEqual(2, mock_remove.call_count)
-        mock_remove.has_calls(
+        mock_remove.assert_has_calls(
             [mock.call('/data/cinder-attachment_update-UUID-1'),
              mock.call('/data/cinder-attachment_update-UUID-2')])
         self.assertEqual(1, mock_log.call_count)

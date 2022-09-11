@@ -1128,7 +1128,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         utils.get_backend_configuration.assert_called_once_with(
             dataontap_fakes.DEST_BACKEND_NAME)
-        utils.get_client_for_backend.has_calls(
+        utils.get_client_for_backend.assert_has_calls(
             [mock.call(dataontap_fakes.DEST_BACKEND_NAME),
              mock.call(dataontap_fakes.BACKEND_NAME)])
         self.mock_src_client.get_cluster_name.assert_called()
@@ -1190,7 +1190,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         utils.get_backend_configuration.assert_called_once_with(
             dataontap_fakes.DEST_BACKEND_NAME)
-        utils.get_client_for_backend.has_calls(
+        utils.get_client_for_backend.assert_has_calls(
             [mock.call(dataontap_fakes.DEST_BACKEND_NAME),
              mock.call(dataontap_fakes.BACKEND_NAME)])
         self.mock_src_client.get_cluster_name.assert_called()
@@ -1240,7 +1240,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         else:
             utils.get_backend_configuration.assert_called_once_with(
                 dest_backend_name)
-            utils.get_client_for_backend.has_calls(
+            utils.get_client_for_backend.assert_has_calls(
                 [mock.call(dest_backend_name),
                  mock.call(dataontap_fakes.BACKEND_NAME)])
             self.mock_src_client.get_cluster_name.assert_called()
@@ -1281,7 +1281,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         utils.get_backend_configuration.assert_called_once_with(
             dataontap_fakes.DEST_BACKEND_NAME)
-        utils.get_client_for_backend.has_calls(
+        utils.get_client_for_backend.assert_has_calls(
             [mock.call(dataontap_fakes.DEST_BACKEND_NAME),
              mock.call(dataontap_fakes.BACKEND_NAME)])
         self.mock_src_client.get_cluster_name.assert_called()
