@@ -14,11 +14,13 @@
 #    under the License.
 """Unit tests for INFINIDAT InfiniBox volume driver."""
 
+import copy
 import functools
 import platform
 import socket
 from unittest import mock
 
+import ddt
 from oslo_utils import units
 
 from cinder import exception
@@ -122,6 +124,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self._mock_volume.has_children.return_value = False
         self._mock_volume.get_logical_units.return_value = []
         self._mock_volume.create_snapshot.return_value = self._mock_volume
+        self._mock_snapshot = mock.Mock()
         self._mock_host = mock.Mock()
         self._mock_host.get_luns.return_value = []
         self._mock_host.map_volume().get_lun.return_value = TEST_LUN
@@ -157,6 +160,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         raise FakeInfinisdkException()
 
 
+@ddt.ddt
 class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     def _generate_mock_object_metadata(self, cinder_object):
         return {"system": "openstack",
@@ -596,6 +600,29 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         # make sure we actually detached the host mapping
         self._mock_host.unmap_volume.assert_called_once()
         self._mock_host.safe_delete.assert_called_once()
+
+    def test_snapshot_revert_use_temp_snapshot(self):
+        result = self.driver.snapshot_revert_use_temp_snapshot()
+        self.assertFalse(result)
+
+    @ddt.data((1, 1), (1, 2))
+    @ddt.unpack
+    def test_revert_to_snapshot_resize(self, volume_size, snapshot_size):
+        volume = copy.deepcopy(test_volume)
+        snapshot = copy.deepcopy(test_snapshot)
+        snapshot.volume.size = snapshot_size
+        self._system.volumes.safe_get.side_effect = [self._mock_snapshot,
+                                                     self._mock_volume,
+                                                     self._mock_volume]
+        self._mock_volume.get_size.side_effect = [volume_size * units.Gi,
+                                                  volume_size * units.Gi]
+        self.driver.revert_to_snapshot(None, volume, snapshot)
+        self._mock_volume.restore.assert_called_once_with(self._mock_snapshot)
+        if volume_size == snapshot_size:
+            self._mock_volume.resize.assert_not_called()
+        else:
+            delta = (snapshot_size - volume_size) * units.Gi
+            self._mock_volume.resize.assert_called_with(delta)
 
 
 class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
