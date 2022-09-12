@@ -2497,3 +2497,25 @@ class RestClient(object):
         }
 
         return copy_status
+
+    def rename_file(self, orig_file_name, new_file_name):
+        """Rename a volume file."""
+        LOG.debug("Renaming the file %(original)s to %(new)s.",
+                  {'original': orig_file_name, 'new': new_file_name})
+
+        unique_volume = self._get_volume_by_args(
+            vol_name=orig_file_name.split('/')[2])
+
+        # Get the relative path
+        orig_file_name = '/'.join(orig_file_name.split('/')[3:])
+        new_file_name = '/'.join(new_file_name.split('/')[3:])
+
+        # Path requires "%2E" to represent "." and "%2F" to represent "/".
+        orig_file_name = orig_file_name.replace('.', '%2E').replace('/', '%2F')
+        new_file_name = new_file_name.replace('.', '%2E').replace('/', '%2F')
+
+        body = {'path': new_file_name}
+
+        self.send_request(
+            f'/storage/volumes/{unique_volume["uuid"]}/files/{orig_file_name}',
+            'patch', body=body)
