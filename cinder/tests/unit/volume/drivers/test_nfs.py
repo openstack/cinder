@@ -50,13 +50,14 @@ class RemoteFsDriverTestCase(test.TestCase):
     def setUp(self):
         super(RemoteFsDriverTestCase, self).setUp()
         self._driver = remotefs.RemoteFSDriver()
-        self.configuration = mock.Mock(conf.Configuration)
-        self.configuration.append_config_values(mock.ANY)
-        self.configuration.nas_secure_file_permissions = 'false'
-        self.configuration.nas_secure_file_operations = 'false'
-        self.configuration.nfs_snapshot_support = True
-        self.configuration.max_over_subscription_ratio = 1.0
-        self.configuration.reserved_percentage = 5
+        self.configuration = conf.Configuration(None)
+        self.configuration.append_config_values(nfs.nfs_opts)
+        self.configuration.append_config_values(remotefs.nas_opts)
+        self.override_config('nas_secure_file_permissions', 'false')
+        self.override_config('nas_secure_file_operations', 'false')
+        self.override_config('nfs_snapshot_support', True)
+        self.override_config('max_over_subscription_ratio', 1.0)
+        self.override_config('reserved_percentage', 5)
         self._driver = remotefs.RemoteFSDriver(
             configuration=self.configuration)
         mock_exc = mock.patch.object(self._driver, '_execute')
@@ -92,14 +93,14 @@ class RemoteFsDriverTestCase(test.TestCase):
     @mock.patch.object(remotefs, 'LOG')
     def test_set_rw_permissions_with_secure_file_permissions(self, LOG):
         self._driver._mounted_shares = [self.TEST_EXPORT]
-        self.configuration.nas_secure_file_permissions = 'true'
+        self.override_config('nas_secure_file_permissions', 'true')
         self._driver._set_rw_permissions(self.TEST_FILE_NAME)
 
         self.assertFalse(LOG.warning.called)
 
     @mock.patch.object(remotefs, 'LOG')
     def test_set_rw_permissions_without_secure_file_permissions(self, LOG):
-        self.configuration.nas_secure_file_permissions = 'false'
+        self.override_config('nas_secure_file_permissions', 'false')
         self._driver._set_rw_permissions(self.TEST_FILE_NAME)
 
         self.assertTrue(LOG.warning.called)
@@ -290,7 +291,7 @@ class RemoteFsDriverTestCase(test.TestCase):
         operations. This test verifies the settings when secure.
         """
         drv = self._driver
-        self.configuration.nas_secure_file_operations = 'true'
+        self.override_config('nas_secure_file_operations', 'true')
         ret_flag = drv.secure_file_operations_enabled()
         self.assertTrue(ret_flag)
 
@@ -301,7 +302,7 @@ class RemoteFsDriverTestCase(test.TestCase):
         operations. This test verifies the settings when not secure.
         """
         drv = self._driver
-        self.configuration.nas_secure_file_operations = 'false'
+        self.override_config('nas_secure_file_operations', 'false')
         ret_flag = drv.secure_file_operations_enabled()
         self.assertFalse(ret_flag)
 
@@ -454,23 +455,24 @@ class NfsDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(NfsDriverTestCase, self).setUp()
-        self.configuration = mock.Mock(conf.Configuration)
-        self.configuration.append_config_values(mock.ANY)
-        self.configuration.max_over_subscription_ratio = 1.0
-        self.configuration.reserved_percentage = 5
-        self.configuration.nfs_shares_config = None
-        self.configuration.nfs_sparsed_volumes = True
-        self.configuration.nfs_reserved_percentage = 5.0
-        self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
-        self.configuration.nfs_mount_options = None
-        self.configuration.nfs_mount_attempts = 3
-        self.configuration.nfs_qcow2_volumes = False
-        self.configuration.nas_secure_file_permissions = 'false'
-        self.configuration.nas_secure_file_operations = 'false'
-        self.configuration.nas_host = None
-        self.configuration.nas_share_path = None
-        self.configuration.nas_mount_options = None
-        self.configuration.volume_dd_blocksize = '1M'
+        self.configuration = conf.Configuration(None)
+        self.configuration.append_config_values(nfs.nfs_opts)
+        self.configuration.append_config_values(remotefs.nas_opts)
+        self.override_config('max_over_subscription_ratio', 1.0)
+        self.override_config('reserved_percentage', 5)
+        self.override_config('nfs_shares_config', None)
+        self.override_config('nfs_sparsed_volumes', True)
+        self.override_config('reserved_percentage', 5.0)
+        self.override_config('nfs_mount_point_base', self.TEST_MNT_POINT_BASE)
+        self.override_config('nfs_mount_options', None)
+        self.override_config('nfs_mount_attempts', 3)
+        self.override_config('nfs_qcow2_volumes', False)
+        self.override_config('nas_secure_file_permissions', 'false')
+        self.override_config('nas_secure_file_operations', 'false')
+        self.override_config('nas_host', None)
+        self.override_config('nas_share_path', None)
+        self.override_config('nas_mount_options', None)
+        self.override_config('volume_dd_blocksize', '1M')
 
         self.mock_object(volume_utils, 'get_max_over_subscription_ratio',
                          return_value=1)
@@ -491,7 +493,7 @@ class NfsDriverTestCase(test.TestCase):
     @ddt.data(NFS_CONFIG1, NFS_CONFIG2, NFS_CONFIG3, NFS_CONFIG4)
     def test_local_path(self, nfs_config):
         """local_path common use case."""
-        self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
+        self.override_config('nfs_mount_point_base', self.TEST_MNT_POINT_BASE)
         self._set_driver(extra_confs=nfs_config)
         drv = self._driver
 
@@ -535,7 +537,7 @@ class NfsDriverTestCase(test.TestCase):
         self._set_driver()
         drv = self._driver
 
-        self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
+        self.override_config('nfs_mount_point_base', self.TEST_MNT_POINT_BASE)
 
         self.assertEqual('/mnt/test/2f4f60214cf43c595666dd815f0360a4',
                          drv._get_mount_point_for_share(self.TEST_NFS_EXPORT1))
@@ -543,8 +545,8 @@ class NfsDriverTestCase(test.TestCase):
     def test_get_mount_point_for_share_given_extra_slash_in_state_path(self):
         """_get_mount_point_for_share should calculate correct value."""
         # This test gets called with the extra slash
-        self.configuration.nfs_mount_point_base = (
-            self.TEST_MNT_POINT_BASE_EXTRA_SLASH)
+        self.override_config('nfs_mount_point_base',
+                             self.TEST_MNT_POINT_BASE_EXTRA_SLASH)
 
         # The driver gets called with the correct configuration and removes
         # the extra slash
@@ -796,10 +798,8 @@ class NfsDriverTestCase(test.TestCase):
     def test_create_nonsparsed_volume(self, mock_save):
         self._set_driver()
         drv = self._driver
-        self.configuration.nfs_sparsed_volumes = False
-        volume = self._simple_volume()
-
         self.override_config('nfs_sparsed_volumes', False)
+        volume = self._simple_volume()
 
         with mock.patch.object(
                 drv, '_create_regular_file') as mock_create_regular_file:
@@ -916,7 +916,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_get_volume_stats_with_non_zero_reserved_percentage(self):
         """get_volume_stats must fill the correct values."""
-        self.configuration.reserved_percentage = 10.0
+        self.override_config('reserved_percentage', 10.0)
         drv = nfs.NfsDriver(configuration=self.configuration)
 
         drv._mounted_shares = [self.TEST_NFS_EXPORT1, self.TEST_NFS_EXPORT2]
@@ -1508,7 +1508,7 @@ class NfsDriverTestCase(test.TestCase):
         self._set_driver()
         drv = self._driver
         volume = self._simple_volume()
-        self.configuration.nfs_snapshot_support = True
+        self.override_config('nfs_snapshot_support', True)
         fake_snap = fake_snapshot.fake_snapshot_obj(self.context)
         fake_snap.volume = volume
         vol_dir = os.path.join(self.TEST_MNT_POINT_BASE,
