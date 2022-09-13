@@ -34,7 +34,7 @@ class TestVolumeDriver(test.TestCase):
     def setUp(self):
         super(TestVolumeDriver, self).setUp()
         self.driver = fake_driver.FakeFibreChannelDriver()
-        brcd_fc_zone_driver.BrcdFCZoneDriver = mock.Mock()
+        self.mock_object(brcd_fc_zone_driver, 'BrcdFCZoneDriver')
         self.addCleanup(self._cleanup)
 
     def _cleanup(self):

@@ -43,7 +43,6 @@ _active_cfg_default = {
 _activate = True
 _zone_name = 'openstack10008c7cff523b0120240002ac000a50'
 _target_ns_map = {'100000051e55a100': ['20240002ac000a50']}
-_zoning_status = {'mode': 'basis', 'session': 'none'}
 _initiator_ns_map = {'100000051e55a100': ['10008c7cff523b01']}
 _zone_map_to_add = {'openstack10008c7cff523b0120240002ac000a50': (
     ['10:00:8c:7c:ff:52:3b:01', '20:24:00:02:ac:00:0a:50'])}
@@ -102,10 +101,12 @@ class CiscoFcZoneDriverBaseTest(object):
 class TestCiscoFcZoneDriver(CiscoFcZoneDriverBaseTest, test.TestCase):
 
     def setUp(self):
+        global GlobalVars
+        GlobalVars = GlobalVarsClass()
+
         super(TestCiscoFcZoneDriver, self).setUp()
         # setup config for normal flow
         self.setup_driver(self.setup_config(True, 1))
-        GlobalVars._zone_state = []
 
     def setup_driver(self, config):
         self.driver = importutils.import_object(
@@ -145,6 +146,7 @@ class TestCiscoFcZoneDriver(CiscoFcZoneDriverBaseTest, test.TestCase):
         self.setup_driver(self.setup_config(True, 1))
         get_zoning_status_mock.return_value = {'mode': 'basis',
                                                'session': 'none'}
+
         get_active_zone_set_mock.return_value = _active_cfg_default
         self.driver.add_connection('CISCO_FAB_1', _initiator_target_map)
         self.assertIn(_zone_name, GlobalVars._zone_state)
@@ -206,7 +208,7 @@ class FakeCiscoFCZoneClientCLI(object):
         return _target_ns_map
 
     def get_zoning_status(self):
-        return _zoning_status
+        return GlobalVars._zoning_status
 
     def close_connection(self):
         pass
@@ -234,12 +236,9 @@ class FakeCiscoFCSanLookupService(object):
         return device_map
 
 
-class GlobalVars(object):
-    global _active_cfg
-    _active_cfg = {}
-    global _zone_state
-    _zone_state = list()
-    global _is_normal_test
-    _is_normal_test = True
-    global _zoning_status
-    _zoning_status = {}
+class GlobalVarsClass(object):
+    def __init__(self):
+        self. _active_cfg = {}
+        self._zone_state = list()
+        self._is_normal_test = True
+        self._zoning_status = {}
