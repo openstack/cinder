@@ -1152,7 +1152,7 @@ class TestCinderManageCmd(test.TestCase):
         script_name = 'cinder-manage'
         sys.argv = [script_name, 'cluster', 'remove', 'abinary', 'acluster']
 
-        cinder_manage.CONF = cfg.ConfigOpts()
+        self.mock_object(cinder_manage, 'CONF', cfg.ConfigOpts())
         cinder_manage.main()
 
         expected_argument = (['cluster_name'],
@@ -1183,7 +1183,7 @@ class TestCinderManageCmd(test.TestCase):
 
     def test_main_missing_action(self):
         sys.argv = ['cinder-manage', 'backup']
-        cinder_manage.CONF = cfg.ConfigOpts()
+        self.mock_object(cinder_manage, 'CONF', cfg.ConfigOpts())
 
         stdout = io.StringIO()
         with mock.patch('sys.stdout', new=stdout):
