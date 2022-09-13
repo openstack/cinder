@@ -323,6 +323,9 @@ class FakeConfiguration(object):
         self.filter_function = None
         self.goodness_function = None
         self.san_is_local = False
+        self.initiator_check = False
+        self.powermax_service_level = None
+        self.vmax_workload = None
         if replication_device:
             self.replication_device = replication_device
         for key, value in kwargs.items():

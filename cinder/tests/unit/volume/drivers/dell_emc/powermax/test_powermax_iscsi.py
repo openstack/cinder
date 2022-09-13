@@ -31,21 +31,22 @@ class PowerMaxISCSITest(test.TestCase):
     def setUp(self):
         self.data = tpd.PowerMaxData()
         super(PowerMaxISCSITest, self).setUp()
-        volume_utils.get_max_over_subscription_ratio = mock.Mock()
+        self.mock_object(volume_utils, 'get_max_over_subscription_ratio')
         configuration = tpfo.FakeConfiguration(
             None, 'ISCSITests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             powermax_array=self.data.array, powermax_srp='SRP_1',
             san_password='smc', san_api_port=8443,
             powermax_port_groups=[self.data.port_group_name_i])
-        rest.PowerMaxRest._establish_rest_session = mock.Mock(
-            return_value=tpfo.FakeRequestsSession())
+        self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
+                         return_value=tpfo.FakeRequestsSession())
         driver = iscsi.PowerMaxISCSIDriver(configuration=configuration)
         self.driver = driver
         self.common = self.driver.common
         self.masking = self.common.masking
         self.utils = self.common.utils
-        self.utils.get_volumetype_extra_specs = (
-            mock.Mock(return_value=self.data.vol_type_extra_specs))
+        self.mock_object(
+            self.utils, 'get_volumetype_extra_specs',
+            return_value=deepcopy(self.data.vol_type_extra_specs))
 
     def test_create_volume(self):
         with mock.patch.object(self.common, 'create_volume') as mock_create:
