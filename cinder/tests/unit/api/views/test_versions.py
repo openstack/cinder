@@ -83,11 +83,12 @@ class ViewBuilderTestCase(test.TestCase):
                          '_build_links',
                          return_value=FAKE_LINKS)
 
-        result = self._get_builder().build_versions(FAKE_VERSIONS)
+        fake_versions = copy.deepcopy(FAKE_VERSIONS)
+        result = self._get_builder().build_versions(fake_versions)
         result_no_slash = self._get_builder_no_slash().build_versions(
-            FAKE_VERSIONS)
+            fake_versions)
 
-        expected = {'versions': list(FAKE_VERSIONS.values())}
+        expected = {'versions': list(fake_versions.values())}
         expected['versions'][0]['links'] = FAKE_LINKS
 
         self.assertEqual(expected, result)
