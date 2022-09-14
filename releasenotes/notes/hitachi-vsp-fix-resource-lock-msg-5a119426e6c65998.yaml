@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Hitachi driver `bug #1989176
+    <https://bugs.launchpad.net/cinder/+bug/1989176>`_:
+    Fixed Hitachi driver to output a message for resource lock correctly.

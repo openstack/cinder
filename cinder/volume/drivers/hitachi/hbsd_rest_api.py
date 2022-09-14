@@ -377,7 +377,7 @@ class RestApiClient():
                         message, errobj=errobj)
                 return False, rsp_body, errobj
             else:
-                LOG.debug("The resource group to which the operation object ",
+                LOG.debug("The resource group to which the operation object "
                           "belongs is being locked by other software.")
                 return True, rsp_body, errobj
 
