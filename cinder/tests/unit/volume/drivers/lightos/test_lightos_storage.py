@@ -44,6 +44,17 @@ FAKE_LIGHTOS_CLUSTER_NODES: Dict[str, List] = {
          "nvmeEndpoint": "192.168.75.12:4420"}
     ]
 }
+IPV6_LIST = ['::192:168:75:10', '::192:168:75:11', '::192:168:75:12']
+FAKE_LIGHTOS_CLUSTER_NODES_IPV6: Dict[str, List] = {
+    "nodes": [
+        {"UUID": "926e6df8-73e1-11ec-a624-000000000001",
+         "nvmeEndpoint": "[{}]:4420".format(IPV6_LIST[0])},
+        {"UUID": "926e6df8-73e1-11ec-a624-000000000002",
+         "nvmeEndpoint": "[{}]:4420".format(IPV6_LIST[1])},
+        {"UUID": "926e6df8-73e1-11ec-a624-000000000003",
+         "nvmeEndpoint": "[{}]:4420".format(IPV6_LIST[2])}
+    ]
+}
 
 FAKE_LIGHTOS_CLUSTER_INFO: Dict[str, str] = {
     'UUID': "926e6df8-73e1-11ec-a624-07ba3880f6cc",
@@ -694,6 +705,38 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
 
+    def test_initialize_connection_ipv6(self):
+        def side_effect(cmd, timeout, **kwargs):
+            if cmd == "get_nodes":
+                return (httpstatus.OK, FAKE_LIGHTOS_CLUSTER_NODES_IPV6)
+            else:
+                return cluster_send_cmd(cmd, timeout, **kwargs)
+        cluster_send_cmd = deepcopy(self.driver.cluster.send_cmd)
+        self.driver.cluster.send_cmd = side_effect
+        InitialConnectorMock.nqn = "hostnqn1"
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+        connection_props = (
+            self.driver.initialize_connection(volume,
+                                              get_connector_properties()))
+        self.assertIn('driver_volume_type', connection_props)
+        self.assertEqual('lightos', connection_props['driver_volume_type'])
+        self.assertEqual(FAKE_LIGHTOS_CLUSTER_INFO['subsystemNQN'],
+                         connection_props['data']['subsysnqn'])
+        self.assertEqual(
+            self.db.data['projects']['default']['volumes'][0]['UUID'],
+            connection_props['data']['uuid'])
+        for connection in connection_props['data']['lightos_nodes']:
+            self.assertIn(connection, IPV6_LIST)
+
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
     def test_initialize_connection_no_hostnqn_should_fail(self):
         InitialConnectorMock.nqn = ""
         InitialConnectorMock.found_discovery_client = True
@@ -786,6 +829,18 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         self.driver.do_setup(None)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.check_for_setup_error)
+
+    def test_check_ip_format(self):
+        InitialConnectorMock.nqn = ""
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        host = "1.1.1.1"
+        port = 8009
+        endpoint = self.driver.cluster._format_endpoint(host, port)
+        self.assertEqual("1.1.1.1:8009", endpoint)
+        host = "::1111"
+        endpoint = self.driver.cluster._format_endpoint(host, port)
+        self.assertEqual("[::1111]:8009", endpoint)
 
     def test_check_for_setup_error_no_dsc_should_succeed(self):
         InitialConnectorMock.nqn = "hostnqn1"
