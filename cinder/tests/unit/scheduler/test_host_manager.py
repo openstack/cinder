@@ -1029,7 +1029,7 @@ class HostManagerTestCase(test.TestCase):
              "free": 18.01,
              "allocated": 2.0,
              "provisioned": 2.0,
-             "virtual_free": 37.02,
+             "virtual_free": 36.02,
              "reported_at": 40000},
             {"name_to_id": 'host1@backend1',
              "type": "backend",
@@ -1037,7 +1037,7 @@ class HostManagerTestCase(test.TestCase):
              "free": 46.02,
              "allocated": 4.0,
              "provisioned": 4.0,
-             "virtual_free": 64.03,
+             "virtual_free": 63.03,
              "reported_at": 40000}]
 
         expected2 = [
@@ -1055,7 +1055,7 @@ class HostManagerTestCase(test.TestCase):
              "free": 46.02,
              "allocated": 4.0,
              "provisioned": 4.0,
-             "virtual_free": 95.04,
+             "virtual_free": 94.04,
              "reported_at": 40000}]
 
         def sort_func(data):
