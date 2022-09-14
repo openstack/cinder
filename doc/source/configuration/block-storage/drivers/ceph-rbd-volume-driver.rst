@@ -162,3 +162,67 @@ refer to the `Ceph documentation
 Note that with the RBD driver in cinder you need to configure the pool
 replication option in image mode. For instance, if your pool is named
 ``volumes``, the command would be: ``rbd mirror pool enable volumes image``.
+
+RBD QoS
+~~~~~~~~~~~~~
+
+Currently, the Cinder RBD driver supports the following QoS options compatible
+with Ceph Octopus release and above:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Cinder Value
+     - Ceph Mapping
+   * - ``total_iops_sec``
+     - ``rbd_qos_iops_limit``
+   * -
+     -
+   * - ``read_iops_sec``
+     - ``rbd_qos_read_iops_limit``
+   * -
+     -
+   * - ``write_iops_sec``
+     - ``rbd_qos_write_iops_limit``
+   * -
+     -
+   * - ``total_bytes_sec``
+     - ``rbd_qos_bps_limit``
+   * -
+     -
+   * - ``read_bytes_sec``
+     - ``rbd_qos_read_bps_limit``
+   * -
+     -
+   * - ``write_bytes_sec``
+     - ``rbd_qos_write_bps_limit``
+   * -
+     -
+   * - ``total_iops_sec_max``
+     - ``rbd_qos_bps_burst``
+   * -
+     -
+   * - ``read_iops_sec_max``
+     - ``rbd_qos_read_iops_burst``
+   * -
+     -
+   * - ``write_iops_sec_max``
+     - ``rbd_qos_write_iops_burst``
+   * -
+     -
+   * - ``total_bytes_sec_max``
+     - ``rbd_qos_bps_burst``
+   * -
+     -
+   * - ``read_bytes_sec_max``
+     - ``rbd_qos_read_bps_burst``
+   * -
+     -
+   * - ``write_bytes_sec_max``
+     - ``rbd_qos_write_bps_burst``
+   * -
+     -
+
+
+For more information on QoS settings you may refer to `Ceph QoS documentation
+<https://docs.ceph.com/en/latest/rbd/rbd-config-ref/#qos-settings/>`_.
