@@ -8287,9 +8287,8 @@ def cleanup_expired_messages(context):
 ###############################
 
 
-# NOTE: We don't need a transaction context manager decorator since we're using
-# the context manager directly inside
 @require_context
+@main_context_manager.writer
 def driver_initiator_data_insert_by_key(
     context,
     initiator,
@@ -8303,14 +8302,14 @@ def driver_initiator_data_insert_by_key(
     data.key = key
     data.value = value
     try:
-        # NOTE: We use a context manager since the decorator pattern requires
-        # we raise an exception or succeed, while we want to return a boolean.
-        # The context manager allows us to do manual cleanup here.
-        with main_context_manager.writer.savepoint.using(context):
-            data.save(context.session)
-        return True
+        data.save(context.session)
     except db_exc.DBDuplicateEntry:
-        return False
+        raise exception.DriverInitiatorDataExists(
+            initiator=initiator,
+            namespace=namespace,
+            key=key,
+        )
+    return data
 
 
 @require_context

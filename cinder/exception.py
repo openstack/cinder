@@ -1085,3 +1085,10 @@ class CinderAcceleratorError(CinderException):
 class SnapshotLimitReached(CinderException):
     message = _("Exceeded the configured limit of "
                 "%(set_limit)s snapshots per volume.")
+
+
+class DriverInitiatorDataExists(Duplicate):
+    message = _(
+        "Driver initiator data for initiator '%(initiator)s' and backend "
+        "'%(namespace)s' with key '%(key)s' already exists."
+    )

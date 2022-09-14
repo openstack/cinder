@@ -3354,22 +3354,35 @@ class DBAPIDriverInitiatorDataTestCase(BaseTest):
     initiator = 'iqn.1993-08.org.debian:01:222'
     namespace = 'test_ns'
 
-    def _test_insert(self, key, value, expected_result=True):
-        result = db.driver_initiator_data_insert_by_key(
-            self.ctxt, self.initiator, self.namespace, key, value)
-        self.assertEqual(expected_result, result)
+    def test_insert(self):
+        key = 'key1'
+        value = 'foo'
 
-        data = db.driver_initiator_data_get(self.ctxt, self.initiator,
-                                            self.namespace)
+        db.driver_initiator_data_insert_by_key(
+            self.ctxt, self.initiator, self.namespace, key, value,
+        )
+        data = db.driver_initiator_data_get(
+            self.ctxt, self.initiator, self.namespace,
+        )
         self.assertEqual(data[0].key, key)
         self.assertEqual(data[0].value, value)
 
-    def test_insert(self):
-        self._test_insert('key1', 'foo')
-
     def test_insert_already_exists(self):
-        self._test_insert('key2', 'bar')
-        self._test_insert('key2', 'bar', expected_result=False)
+        key = 'key1'
+        value = 'foo'
+
+        db.driver_initiator_data_insert_by_key(
+            self.ctxt, self.initiator, self.namespace, key, value,
+        )
+        self.assertRaises(
+            exception.DriverInitiatorDataExists,
+            db.driver_initiator_data_insert_by_key,
+            self.ctxt,
+            self.initiator,
+            self.namespace,
+            key,
+            value,
+        )
 
 
 @ddt.ddt

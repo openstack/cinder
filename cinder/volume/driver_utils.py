@@ -54,13 +54,16 @@ class VolumeDriverUtils(object):
         if saved successfully return True.
         """
         try:
-            return self._db.driver_initiator_data_insert_by_key(
+            self._db.driver_initiator_data_insert_by_key(
                 self._get_context(ctxt),
                 initiator,
                 self._data_namespace,
                 key,
                 value
             )
+            return True
+        except exception.DriverInitiatorDataExists:
+            return False
         except exception.CinderException:
             LOG.exception("Failed to insert initiator data for"
                           " initiator %(initiator)s and backend"
