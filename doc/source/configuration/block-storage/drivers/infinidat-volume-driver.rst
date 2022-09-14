@@ -23,6 +23,8 @@ Supported operations
 * Create consistency group from consistency group or consistency group
   snapshot.
 * Revert a volume to a snapshot.
+* Manage and unmanage volumes and snapshots.
+* List manageable volumes and snapshots.
 
 External package installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
