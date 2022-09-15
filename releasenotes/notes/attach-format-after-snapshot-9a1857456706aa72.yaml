@@ -1,0 +1,7 @@
+fixes:
+  - |
+    NFS driver `bug #1989514`_: When creating a snapshot of an attached volume,
+    the volume attachment format was not updated in its connection_info and
+    could have resulted in an unbootable guest. This has been fixed.
+
+    .. _bug #1989514: https://bugs.launchpad.net/cinder/+bug/1989514

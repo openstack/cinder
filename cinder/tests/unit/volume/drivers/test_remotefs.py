@@ -363,11 +363,13 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                 self.context, connection_info=conn_info)
             snapshot.volume.volume_attachment.objects.append(attachment)
             mock_save = self.mock_object(attachment, 'save')
+            mock_vol_save = self.mock_object(snapshot.volume, 'save')
 
             # After the snapshot the connection info should change the name of
             # the file
             expected = copy.deepcopy(attachment.connection_info)
             expected['name'] = snapshot.volume.name + '.' + snapshot.id
+            expected['format'] = 'qcow2'
         else:
             expected_method_called = '_do_create_snapshot'
 
@@ -386,6 +388,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
         if volume_in_use:
             mock_save.assert_called_once()
+            # We should have updated the volume format after the snapshot
+            mock_vol_save.assert_called_once()
             changed_fields = attachment.cinder_obj_get_changes()
             self.assertEqual(expected, changed_fields['connection_info'])
 

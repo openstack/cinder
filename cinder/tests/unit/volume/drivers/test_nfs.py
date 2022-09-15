@@ -1066,17 +1066,19 @@ class NfsDriverTestCase(test.TestCase):
         if file_format:
             volume.admin_metadata = {'format': file_format}
         mock_get.return_value = volume
-        path = 'path'
+        local_vol_dir = 'dir'
         newSize = volume['size'] + 1
 
         with mock.patch.object(image_utils, 'resize_image') as resize:
-            with mock.patch.object(drv, 'local_path', return_value=path):
+            with mock.patch.object(drv, '_local_volume_dir',
+                                   return_value=local_vol_dir):
                 with mock.patch.object(drv, '_is_share_eligible',
                                        return_value=True):
                     with mock.patch.object(drv, '_is_file_size_equal',
                                            return_value=True):
                         drv.extend_volume(volume, newSize)
 
+                        path = os.path.join(local_vol_dir, volume.name)
                         resize.assert_called_once_with(path, newSize,
                                                        run_as_root=True,
                                                        file_format=file_format)
