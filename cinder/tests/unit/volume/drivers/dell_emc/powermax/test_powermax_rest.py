@@ -2544,3 +2544,69 @@ class PowerMaxRestTest(test.TestCase):
                 self.data.array, self.data.device_id,
                 self.data.test_snapshot_snap_name)
             self.assertEqual('0', snap_id)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group_list')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group_rep',
+        side_effect=[{'rdf': False}, None])
+    def test_get_or_rename_storage_group_rep(
+            self, mock_sg_rep, mock_sg_list):
+        # Success - no need for rename
+        rep_info = self.rest.get_or_rename_storage_group_rep(
+            self.data.array, self.data.storagegroup_name_f,
+            self.data.extra_specs)
+        mock_sg_list.assert_not_called()
+        self.assertIsNotNone(rep_info)
+
+        # Fail - cannot find sg but no filter set
+        rep_info = self.rest.get_or_rename_storage_group_rep(
+            self.data.array, self.data.storagegroup_name_f,
+            self.data.extra_specs)
+        mock_sg_list.assert_not_called()
+        self.assertIsNone(rep_info)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, '_rename_storage_group')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group_list',
+        return_value=({'storageGroupId': ['user-name+uuid']}))
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group_rep',
+        side_effect=[None, ({'rdf': False}), ({'rdf': False})])
+    def test_get_or_rename_storage_group_rep_exists(
+            self, mock_sg_rep, mock_sg_list, mock_rename):
+        sg_filter = '<like>uuid'
+        rep_info = self.rest.get_or_rename_storage_group_rep(
+            self.data.array, self.data.storagegroup_name_f,
+            self.data.extra_specs, sg_filter=sg_filter)
+        mock_sg_list.assert_called_once_with(
+            self.data.array,
+            params={'storageGroupId': sg_filter})
+        group_list_return = {'storageGroupId': ['user-name+uuid']}
+        mock_rename.assert_called_once_with(
+            self.data.array,
+            group_list_return['storageGroupId'][0],
+            self.data.storagegroup_name_f,
+            self.data.extra_specs)
+        self.assertIsNotNone(rep_info)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, '_rename_storage_group')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group_list',
+        return_value=({'storageGroupId': ['user-name+uuid']}))
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group_rep',
+        side_effect=[None, None])
+    def test_get_or_rename_storage_group_rep_does_not_exist(
+            self, mock_sg_rep, mock_sg_list, mock_rename):
+        sg_filter = '<like>uuid'
+        rep_info = self.rest.get_or_rename_storage_group_rep(
+            self.data.array, self.data.storagegroup_name_f,
+            self.data.extra_specs, sg_filter=sg_filter)
+        mock_sg_list.assert_called_once_with(
+            self.data.array,
+            params={'storageGroupId': sg_filter})
+        mock_rename.assert_not_called()
+        self.assertIsNone(rep_info)

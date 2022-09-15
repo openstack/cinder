@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    PowerMax driver `bug #1936848
+    <https://bugs.launchpad.net/cinder/+bug/1936848>`_: Fixed
+    Generic Volume Group error where the name has been changed
+    in OpenStack and is not reflected on the corresponding storage
+    group on the PowerMax.

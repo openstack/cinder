@@ -216,6 +216,9 @@ REVERT_SS_EXC = 'Link must be fully copied for this operation to proceed'
 IS_TRUE = ['<is> True', 'True', 'true', True]
 IS_FALSE = ['<is> False', 'False', 'false', False]
 
+# <like> filter
+LIKE_FILTER = '<like>'
+
 
 class PowerMaxUtils(object):
     """Utility class for Rest based PowerMax volume drivers.
