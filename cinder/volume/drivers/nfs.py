@@ -392,18 +392,22 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
             raise exception.ExtendVolumeError(reason='Insufficient space to'
                                               ' extend volume %s to %sG'
                                               % (volume.id, new_size))
-        path = self.local_path(volume)
+        # Use the active image file because this volume might have snapshot(s).
+        active_file = self.get_active_image_from_info(volume)
+        active_file_path = os.path.join(self._local_volume_dir(volume),
+                                        active_file)
         LOG.info('Resizing file to %sG...', new_size)
         file_format = None
         admin_metadata = objects.Volume.get_by_id(
             context.get_admin_context(), volume.id).admin_metadata
+
         if admin_metadata and 'format' in admin_metadata:
             file_format = admin_metadata['format']
-        image_utils.resize_image(path, new_size,
+        image_utils.resize_image(active_file_path, new_size,
                                  run_as_root=self._execute_as_root,
                                  file_format=file_format)
         if file_format == 'qcow2' and not self._is_file_size_equal(
-                path, new_size):
+                active_file_path, new_size):
             raise exception.ExtendVolumeError(
                 reason='Resizing image file failed.')
 
