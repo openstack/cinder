@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #1982078
+    <https://bugs.launchpad.net/cinder/+bug/1982078>`_:
+    Fixed the default portset value during driver
+    initialization.
