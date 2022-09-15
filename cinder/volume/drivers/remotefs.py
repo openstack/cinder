@@ -1721,9 +1721,18 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             self._create_snapshot_online(snapshot,
                                          backing_filename,
                                          new_snap_path)
+            # Update the format for the volume and the connection_info. The
+            # connection_info needs to reflect the current volume format in
+            # order for Nova to create the disk device correctly whenever the
+            # instance is stopped/started or rebooted.
+            new_format = 'qcow2'
+            snapshot.volume.admin_metadata['format'] = new_format
+            with snapshot.volume.obj_as_admin():
+                snapshot.volume.save()
             # Update reference in the only attachment (no multi-attach support)
             attachment = snapshot.volume.volume_attachment[0]
             attachment.connection_info['name'] = active
+            attachment.connection_info['format'] = new_format
             # Let OVO know it has been updated
             attachment.connection_info = attachment.connection_info
             attachment.save()
