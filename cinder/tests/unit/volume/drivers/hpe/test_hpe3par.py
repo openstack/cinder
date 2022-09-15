@@ -26,6 +26,7 @@ from oslo_utils import uuidutils
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
+from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.hpe \
@@ -319,6 +320,14 @@ class HPE3PARBaseDriver(test.TestCase):
                         'display_name': 'display-name',
                         'display_description': 'description',
                         'volume_name': 'name'}
+
+    snapshot_obj = fake_snapshot.fake_snapshot_obj(
+        context.get_admin_context(),
+        name=SNAPSHOT_NAME,
+        id=SNAPSHOT_ID,
+        display_name='Foo Snapshot',
+        volume_size=2,
+        volume_id=VOLUME_ID_SNAP)
 
     wwn = ["123456789012345", "123456789054321"]
 
@@ -4843,6 +4852,113 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             self.assertRaises(exception.SnapshotIsBusy,
                               self.driver.unmanage_snapshot,
                               snapshot=snapshot)
+
+    def _test_get_manageable(self, cinder_list, expected_output, vol_name,
+                             attached=False, snap_name=None):
+        # common test function for:
+        # [a] get_manageable_volumes
+        # [b] get_manageable_snapshots
+
+        mock_client = self.setup_driver()
+
+        mock_client.getVolumes.return_value = {
+            'members': [
+                {'name': vol_name,
+                 'sizeMiB': 2048,
+                 'userCPG': 'OpenStackCPG'}]}
+
+        if attached:
+            mock_client.getVLUN.return_value = {
+                'hostname': 'cssosbe02-b04',
+            }
+        else:
+            mock_client.getVLUN.side_effect = hpeexceptions.HTTPNotFound
+
+        if snap_name:
+            mock_client.getSnapshotsOfVolume.return_value = [snap_name]
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            common = self.driver._login()
+            if snap_name:
+                actual_output = common.get_manageable_snapshots(
+                    cinder_list, None, 1000, 0, ['size'], ['asc'])
+            else:
+                actual_output = self.driver.get_manageable_volumes(
+                    cinder_list, None, 1000, 0, ['size'], ['asc'])
+
+            expected_calls = []
+            expected_calls.append(mock.call.getVolumes())
+            if attached:
+                expected_calls.append(mock.call.getVLUN(vol_name))
+            if snap_name:
+                expected_calls.append(
+                    mock.call.getSnapshotsOfVolume('OpenStackCPG', vol_name))
+
+            mock_client.assert_has_calls(expected_calls)
+            self.assertEqual(expected_output, actual_output)
+
+    # (i) volume already managed
+    # (ii) volume currently not managed; but attached to some other host
+    # (iii) volume currently not managed
+    @ddt.data({'cinder_vol': [HPE3PARBaseDriver.volume],
+               'vol_name': 'osv-0DM4qZEVSKON-DXN-NwVpw',
+               'safe': False,
+               'reason': 'Volume already managed',
+               'cinder_id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'},
+              {'cinder_vol': [],
+               'vol_name': 'volume_2',
+               'safe': False,
+               'reason': 'Volume attached to host cssosbe02-b04',
+               'cinder_id': None,
+               'attached': True},
+              {'cinder_vol': [],
+               'vol_name': 'volume_2',
+               'safe': True,
+               'reason': None,
+               'cinder_id': None})
+    @ddt.unpack
+    def test_get_manageable_volumes(self, cinder_vol, vol_name, safe, reason,
+                                    cinder_id, attached=False):
+        expected_output = [
+            {'reference': {'name': vol_name},
+             'size': 2,
+             'safe_to_manage': safe,
+             'reason_not_safe': reason,
+             'cinder_id': cinder_id}
+        ]
+        self._test_get_manageable(cinder_vol, expected_output, vol_name,
+                                  attached)
+
+    # (i) snapshot already managed
+    # (ii) snapshot currently not managed
+    @ddt.data({'cinder_snapshot': [HPE3PARBaseDriver.snapshot_obj],
+               'snap_name': 'oss-L4I73ONuTci9Fd4ceij-MQ',
+               'vol_name': 'osv-CX7Ilh.dQ2.XdNpmqW408A',
+               'safe': False,
+               'reason': 'Snapshot already managed',
+               'cinder_id': '2f823bdc-e36e-4dc8-bd15-de1c7a28ff31'},
+              {'cinder_snapshot': [],
+               'snap_name': 'snap_2',
+               'vol_name': 'volume_2',
+               'safe': True,
+               'reason': None,
+               'cinder_id': None})
+    @ddt.unpack
+    def test_get_manageable_snapshots(self, cinder_snapshot, snap_name,
+                                      vol_name, safe, reason, cinder_id):
+        expected_output = [
+            {'reference': {'name': snap_name},
+             'size': 2,
+             'safe_to_manage': safe,
+             'reason_not_safe': reason,
+             'cinder_id': cinder_id,
+             'source_reference': {'name': vol_name}}
+        ]
+        self._test_get_manageable(cinder_snapshot, expected_output, vol_name,
+                                  False, snap_name)
 
     @ddt.data(True, False)
     def test__safe_hostname(self, in_shared):
