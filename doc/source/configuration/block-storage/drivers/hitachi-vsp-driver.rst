@@ -89,17 +89,31 @@ Set up Hitachi storage
 You need to specify settings as described below for storage systems. For
 details about each setting, see the user's guide of the storage systems.
 
-#. User accounts
+Common resources:
 
-   Create a storage device account belonging to the Administrator User Group.
+- ``All resources``
+    The name of any storage resource, such as a DP pool or a host group,
+    cannot contain any whitespace characters or else it will be unusable
+    by the driver.
 
-#. DP Pool
+- ``User accounts``
+    Create a storage device account belonging to the Administrator User Group.
 
-   Create a DP pool that is used by the driver.
+- ``DP Pool``
+    Create a DP pool that is used by the driver.
 
-#. Ports
+- ``Resource group``
+    If using a new resource group for exclusive use by an OpenStack system,
+    create a new resource group, and assign the necessary resources, such as
+    LDEVs, port, and host group (iSCSI target) to the created resource.
 
-   Enable Port Security for the ports used by the driver.
+- ``Ports``
+    Enable Port Security for the ports used by the driver.
+
+If you use iSCSI:
+
+- ``Ports``
+    Assign an IP address and a TCP port number to the port.
 
 Set up Hitachi storage volume driver
 ------------------------------------
@@ -140,7 +154,7 @@ This table shows configuration options for Hitachi block storage driver.
 
    cinder.volume.drivers.hitachi.hbsd_common
    cinder.volume.drivers.hitachi.hbsd_rest
-   cinder.volume.drivers.hitachi.hbsd_fc
+   cinder.volume.drivers.hitachi.hbsd_rest_fc
 
 Required options
 ----------------
@@ -159,4 +173,3 @@ Required options
 
 - ``hitachi_pool``
     Pool number or pool name of the DP pool.
-
