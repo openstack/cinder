@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp ONTAP `bug #1958245
+    <https://bugs.launchpad.net/cinder/+bug/1958245>`_: In an ONTAP
+    flexgroup replication environment, snapmirror creation would
+    succeed but a driver bug caused an error message to be logged
+    for the cinder-volume service. The issue has been corrected in
+    this release.
