@@ -86,8 +86,8 @@ class DPLCommand(object):
                   'Accept': 'application/cdmi-container',
                   'x-cdmi-specification-version': '1.0.2'}
         # base64 encode the username and password
-        auth = base64.encodestring('%s:%s'
-                                   % (self.username,
+        auth = base64.encodebytes('%s:%s'
+                                  % (self.username,
                                       self.password)).replace('\n', '')
         header['Authorization'] = 'Basic %s' % auth
 
