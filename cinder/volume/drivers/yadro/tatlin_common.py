@@ -145,7 +145,6 @@ class TatlinCommonVolumeDriver(driver.VolumeDriver, object):
         LOG.info('Tatlin driver version: %s', self.VERSION)
 
         self.tatlin_api = self._get_tatlin_client()
-        self.ctx = context
         self.MAX_ALLOWED_RESOURCES = self.configuration.max_resource_count
         self._max_pool_resource_count = \
             self.configuration.pool_max_resource_count
@@ -294,7 +293,7 @@ class TatlinCommonVolumeDriver(driver.VolumeDriver, object):
         props = brick_get_connector_properties(
             self._use_multipath,
             self._enforce_multipath)
-
+        ctx = cinder_context.get_admin_context()
         LOG.debug('Volume %s Connection properties %s',
                   volume.name_id, props)
         dest_attach_info = None
@@ -304,7 +303,7 @@ class TatlinCommonVolumeDriver(driver.VolumeDriver, object):
 
         try:
             src_attach_info, volume_src = self._attach_volume(
-                self.ctx, src_vol, props)
+                ctx, src_vol, props)
             LOG.debug('Source attach info: %s volume: %s',
                       src_attach_info, volume_src)
 
@@ -314,13 +313,13 @@ class TatlinCommonVolumeDriver(driver.VolumeDriver, object):
 
         try:
             dest_attach_info, volume_dest = self._attach_volume(
-                self.ctx, volume, props)
+                ctx, volume, props)
             LOG.debug('Dst attach info: %s volume: %s',
                       dest_attach_info, volume_dest)
 
         except Exception as e:
             LOG.error('Unable to attach dst volume due to %s', e)
-            self._detach_volume(self.ctx, src_attach_info, src_vol, props)
+            self._detach_volume(ctx, src_attach_info, src_vol, props)
             raise
 
         try:
@@ -339,9 +338,9 @@ class TatlinCommonVolumeDriver(driver.VolumeDriver, object):
             raise
         finally:
             try:
-                self._detach_volume(self.ctx, src_attach_info, src_vol, props)
+                self._detach_volume(ctx, src_attach_info, src_vol, props)
             finally:
-                self._detach_volume(self.ctx, dest_attach_info, volume, props)
+                self._detach_volume(ctx, dest_attach_info, volume, props)
 
     @volume_utils.trace
     def _attach_volume(self, context, volume, properties, remote=False):
@@ -436,8 +435,10 @@ class TatlinCommonVolumeDriver(driver.VolumeDriver, object):
         return len(attachments) > 1
 
     def _create_temp_volume_for_snapshot(self, snapshot):
+        ctx = cinder_context.RequestContext(user_id=snapshot.user_id,
+                                            project_id=snapshot.project_id)
         return self._create_temp_volume(
-            self.ctx,
+            ctx,
             snapshot.volume,
             {
                 'name_id': snapshot.id,
