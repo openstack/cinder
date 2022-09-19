@@ -714,6 +714,36 @@ class VolumeManager(manager.CleanableManager,
             resource.host = volume_utils.append_host(self.host, pool)
             resource.save()
 
+    def _propagate_volume_scheduler_hints(self, context, volume):
+        """Ensure metadata hints are propagated to referenced volumes."""
+        hints = volume_utils.get_scheduler_hints_from_volume(volume)
+        if not hints:
+            return
+
+        LOG.debug("Found hints for %(volume)s - %(hints)s",
+                  {'volume': volume.id, 'hints': hints})
+        for hint_key in hints:
+            for vol_id in hints[hint_key]:
+                try:
+                    meta_vol = objects.Volume.get_by_id(context, vol_id)
+                    # Because pep8 length issues
+                    vut = volume_utils
+                    meta_vol_hints = vut.get_scheduler_hints_from_volume(
+                        meta_vol
+                    )
+                    meta_vol_hints.setdefault(hint_key, [])
+                    if volume.id not in meta_vol_hints[hint_key]:
+                        meta_vol_hints[hint_key].append(volume.id)
+
+                    md = vut.set_scheduler_hints_to_volume_metadata(
+                        meta_vol_hints, meta_vol.metadata
+                    )
+                    meta_vol.metadata = md
+                    meta_vol.save()
+                except Exception:
+                    LOG.exception("Failed to set scheduler hints.",
+                                  resource=meta_vol)
+
     @objects.Volume.set_workers
     def create_volume(self, context, volume, request_spec=None,
                       filter_properties=None,
@@ -821,6 +851,10 @@ class VolumeManager(manager.CleanableManager,
         # backend.
         volume.service_uuid = self.service_uuid
         volume.save()
+
+        # propagate any scheduler hint affinity/anti-affinity metadata to
+        # other volumes.
+        self._propagate_volume_scheduler_hints(context, volume)
 
         LOG.info("Created volume successfully.", resource=volume)
         return volume.id
