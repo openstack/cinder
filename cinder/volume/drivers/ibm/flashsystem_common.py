@@ -23,7 +23,6 @@ Limitations:
 """
 
 import re
-import string
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -189,7 +188,7 @@ class FlashSystemDriver(san.SanDriver,
                                         for char in invalid_ch_in_host}
             host_name = host_name.translate(unicode_host_name_filter)
         elif isinstance(host_name, str):
-            string_host_name_filter = string.maketrans(
+            string_host_name_filter = bytes.maketrans(
                 invalid_ch_in_host, '-' * len(invalid_ch_in_host))
             host_name = host_name.translate(string_host_name_filter)
         else:
