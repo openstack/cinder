@@ -1175,13 +1175,12 @@ class NVMEoFAdapter(CommonAdapter):
         """
 
         portals, nqn = self._get_nvme_targets()
+        target_portals = [(portal, 4420, "tcp") for portal in portals]
         return {
             "driver_volume_type": self.driver_volume_type,
             "data": {
-                "target_portal": portals[0],
-                "nqn": nqn,
-                "target_port": 4420,
-                "transport_type": "tcp",
+                "portals": target_portals,
+                "target_nqn": nqn,
                 "volume_nguid": volume_identifier,
                 "discard": True,
             },
