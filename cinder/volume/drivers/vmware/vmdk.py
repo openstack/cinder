@@ -205,6 +205,10 @@ vmdk_opts = [
                 'a volume lives on.  This also enables managing capacity '
                 'for each datastore by cinder.  '
                 ),
+    cfg.BoolOpt('vmware_sap_update_provider_info',
+                default=False,
+                help='This prevents the driver from traversing all volumes '
+                'associated with a backend to ensure the pool is correct'),
     cfg.StrOpt('allow_pulling_images_from_url',
                default=True,
                help='Allow VMware to pull images directly from Swift. '
@@ -2507,6 +2511,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         We don't care about snapshots, they just use the volume's provider_id.
         """
         LOG.info("HOST {} : volumes {}".format(self.host, len(volumes)))
+        if not self.configuration.vmware_sap_update_provider_info:
+            LOG.info("Not updating provider information")
+            return [], None
+
         if self.configuration.vmware_datastores_as_pools:
             LOG.info("vmware_datastores_as_pools is enabled. "
                      "Checking host entries for volumes and snapshots.")
