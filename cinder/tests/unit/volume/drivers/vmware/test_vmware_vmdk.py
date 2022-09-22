@@ -264,7 +264,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertEqual(4657, stats["pools"][0]['free_capacity_gb'])
         self.assertEqual('up', stats["pools"][0]['pool_state'])
         self.assertEqual('up', stats["backend_state"])
-        self.assertFalse(stats["pools"][0]['Multiattach'])
+        self.assertFalse(stats["pools"][0]['multiattach'])
         self.assertEqual(vmdk.LOCATION_DRIVER_NAME + ":fake-service",
                          stats['location_info'])
 

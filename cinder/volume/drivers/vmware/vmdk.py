@@ -534,7 +534,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         'max_over_subscription_ratio': (
                             max_over_subscription_ratio),
                         'reserved_percentage': reserved_percentage,
-                        'Multiattach': False,
+                        'multiattach': False,
                         'datastore_type': summary.type,
                         'location_url': summary.url,
                         'location_info': location_info,
