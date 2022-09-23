@@ -532,4 +532,6 @@ following meanings:
 3.70
 ----
 
-Add the ability to transfer encrypted volumes and their snapshots.
+Add the ability to transfer encrypted volumes and their snapshots. The feature
+removes a prior restriction on transferring encrypted volumes. Otherwise, the
+API request and response schema are unchanged.
