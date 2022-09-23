@@ -317,9 +317,9 @@ class VolumeAPI(rpc.RPCAPI):
                    new_volume=new_volume,
                    volume_status=original_volume_status)
 
-    def update_migrated_volume_capacity(self, ctxt, volume, host=None,
+    def update_migrated_volume_capacity(self, ctxt, volume, host,
                                         decrement=False):
-        cctxt = self._get_cctxt(volume.service_topic_queue)
+        cctxt = self._get_cctxt(host)
         cctxt.cast(ctxt, 'update_migrated_volume_capacity',
                    volume=volume,
                    host=host,
