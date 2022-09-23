@@ -6,3 +6,7 @@ features:
     is blocked due to the inability to transfer ownership of the volume's
     encryption key. With microverson 3.70, ownership of the encryption key is
     transferred when the volume is transferred.
+
+    When transferring an encrypted volume, its snapshots must also be
+    transferred. Attempts to transfer an encrypted volume without transferring
+    its snapshots are disallowed.
