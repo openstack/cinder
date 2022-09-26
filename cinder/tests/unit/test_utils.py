@@ -1207,7 +1207,7 @@ class TestCalculateVirtualFree(test.TestCase):
                          factors['provisioned_ratio'])
 
 
-class Comparable(utils.ComparableMixin):
+class Comparable(api_utils.ComparableMixin):
     def __init__(self, value):
         self.value = value
 

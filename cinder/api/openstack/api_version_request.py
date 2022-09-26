@@ -16,10 +16,10 @@
 
 import re
 
+from cinder.api import api_utils
 from cinder.api.openstack import versioned_method
 from cinder import exception
 from cinder.i18n import _
-from cinder import utils
 
 # Define the minimum and maximum version of the API across all of the
 # REST API. The format of the version is:
@@ -178,7 +178,7 @@ def max_api_version():
     return APIVersionRequest(_MAX_API_VERSION)
 
 
-class APIVersionRequest(utils.ComparableMixin):
+class APIVersionRequest(api_utils.ComparableMixin):
     """This class represents an API Version Request.
 
     This class includes convenience methods for manipulation
