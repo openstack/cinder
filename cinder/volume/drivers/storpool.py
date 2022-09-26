@@ -314,51 +314,6 @@ class StorPoolDriver(driver.VolumeDriver):
             'pools': pools
         }
 
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        req_id = context.request_id
-        volname = self._attach.volumeName(volume['id'])
-        name = self._attach.volsnapName(volume['id'], req_id)
-        try:
-            self._attach.api().snapshotCreate(volname, {'name': name})
-        except spapi.ApiError as e:
-            raise self._backendException(e)
-        self._attach.add(req_id, {
-            'volume': name,
-            'type': 'copy-from',
-            'id': req_id,
-            'rights': 1,
-            'volsnap': True
-        })
-        try:
-            return super(StorPoolDriver, self).copy_volume_to_image(
-                context, volume, image_service, image_meta)
-        finally:
-            self._attach.remove(req_id)
-            try:
-                self._attach.api().snapshotDelete(name)
-            except spapi.ApiError as e:
-                LOG.error(
-                    'Could not remove the temp snapshot %(name)s for '
-                    '%(vol)s: %(err)s',
-                    {'name': name, 'vol': volname, 'err': e})
-
-    def copy_image_to_volume(self, context, volume, image_service, image_id,
-                             disable_sparse=False):
-        req_id = context.request_id
-        name = self._attach.volumeName(volume['id'])
-        self._attach.add(req_id, {
-            'volume': name,
-            'type': 'copy-to',
-            'id': req_id,
-            'rights': 2
-        })
-        try:
-            return super(StorPoolDriver, self).copy_image_to_volume(
-                context, volume, image_service, image_id,
-                disable_sparse=disable_sparse)
-        finally:
-            self._attach.remove(req_id)
-
     def extend_volume(self, volume, new_size):
         size = int(new_size) * units.Gi
         name = self._attach.volumeName(volume['id'])
