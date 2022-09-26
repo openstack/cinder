@@ -31,7 +31,7 @@ from cinder import context as cinder_context
 from cinder import exception
 from cinder import objects
 from cinder.scheduler import filters
-from cinder import utils
+from cinder.scheduler import sched_utils
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
@@ -439,7 +439,7 @@ class PoolState(BackendState):
                 'thick_provisioning_support', False)
 
             self.max_over_subscription_ratio = (
-                utils.calculate_max_over_subscription_ratio(
+                sched_utils.calculate_max_over_subscription_ratio(
                     capability, CONF.max_over_subscription_ratio))
 
             self.multiattach = capability.get('multiattach', False)
@@ -902,11 +902,11 @@ class HostManager(object):
         allocated = pool["allocated_capacity_gb"]
         provisioned = pool["provisioned_capacity_gb"]
         reserved = pool["reserved_percentage"]
-        ratio = utils.calculate_max_over_subscription_ratio(
+        ratio = sched_utils.calculate_max_over_subscription_ratio(
             pool, CONF.max_over_subscription_ratio)
         support = pool["thin_provisioning_support"]
 
-        virtual_free = utils.calculate_virtual_free_capacity(
+        virtual_free = sched_utils.calculate_virtual_free_capacity(
             total,
             free,
             provisioned,

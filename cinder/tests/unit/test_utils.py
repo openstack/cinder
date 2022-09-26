@@ -26,6 +26,7 @@ import cinder
 from cinder.api import api_utils
 from cinder import context
 from cinder import exception
+from cinder.scheduler import sched_utils
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 from cinder import utils
@@ -1093,7 +1094,7 @@ class TestCalculateVirtualFree(test.TestCase):
                      'thick_provisioning_support': thick_support,
                      'reserved_percentage': 5}
 
-        free_capacity = utils.calculate_virtual_free_capacity(
+        free_capacity = sched_utils.calculate_virtual_free_capacity(
             host_stat['total_capacity_gb'],
             host_stat['free_capacity_gb'],
             host_stat['provisioned_capacity_gb'],
@@ -1170,7 +1171,7 @@ class TestCalculateVirtualFree(test.TestCase):
                      'thick_provisioning_support': thick_support,
                      'reserved_percentage': reserved_percentage}
 
-        factors = utils.calculate_capacity_factors(
+        factors = sched_utils.calculate_capacity_factors(
             host_stat['total_capacity_gb'],
             host_stat['free_capacity_gb'],
             host_stat['provisioned_capacity_gb'],
@@ -1441,7 +1442,7 @@ class TestAutoMaxOversubscriptionRatio(test.TestCase):
     def test_calculate_max_over_subscription_ratio(
             self, data, expected_result, global_max_over_subscription_ratio):
 
-        result = utils.calculate_max_over_subscription_ratio(
+        result = sched_utils.calculate_max_over_subscription_ratio(
             data, global_max_over_subscription_ratio)
         # Just for sake of testing we reduce the float precision
         if result is not None:

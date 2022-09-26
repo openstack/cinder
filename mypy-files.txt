@@ -34,6 +34,7 @@ cinder/scheduler/host_manager.py
 cinder/scheduler/manager.py
 cinder/scheduler/rpcapi.py
 cinder/scheduler/scheduler_options.py
+cinder/scheduler/sched_utils.py
 cinder/scheduler/weights/__init__.py
 cinder/scheduler/weights/capacity.py
 cinder/scheduler/weights/chance.py
