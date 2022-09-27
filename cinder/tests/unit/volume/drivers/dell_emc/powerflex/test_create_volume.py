@@ -82,27 +82,10 @@ class TestCreateVolume(powerflex.TestPowerFlexDriver):
         """Valid create volume parameters"""
         self.driver.create_volume(self.volume)
 
-    def test_create_volume_non_8_gran_with_off_round_parameter(self):
-        self.driver.configuration.powerflex_round_volume_capacity = False
-        self.volume.size = 14
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_volume, self.volume)
-
     def test_create_volume_non_8_gran(self):
-        self.driver.configuration.powerflex_round_volume_capacity = True
         self.volume.size = 14
         model_update = self.driver.create_volume(self.volume)
-        self.assertEqual(self.volume.size, 14)
-        self.assertFalse(model_update.get('size', False))
-
-    def test_create_volume_rest_client(self):
-        self.driver.configuration.powerflex_round_volume_capacity = True
-        self.driver.primary_client.create_volume = mock.Mock()
-        self.volume.size = 12
-        self.driver.create_volume(self.volume)
-        self.driver.primary_client.create_volume.assert_called_with(
-            self.PROT_DOMAIN_NAME, self.STORAGE_POOL_NAME, self.volume.id,
-            self.volume.size, 'ThinProvisioned', 'None')
+        self.assertEqual(16, model_update['size'])
 
     def test_create_volume_badstatus_response(self):
         self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
