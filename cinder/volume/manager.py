@@ -2890,8 +2890,8 @@ class VolumeManager(manager.CleanableManager,
             if thin_factors['virtual_free_capacity'] <= 0:
                 # The pool has no free space left or has been
                 # overcommited past what is allowed.
-                LOG.error("Pool(%(pool_name)s is overcommited!!",
-                          {'pool_name': pool['pool_name']})
+                LOG.info("Pool(%(pool_name)s is overcommited!!",
+                         {'pool_name': pool['pool_name']})
                 pool['pool_state'] = 'down'
                 pool['pool_state_reason'] = (
                     'Volume manager marked pool down for being'
@@ -2914,8 +2914,8 @@ class VolumeManager(manager.CleanableManager,
             if thick_factors['virtual_free_capacity'] <= 0:
                 # The pool has no free space left or has been
                 # overcommited past what is allowed.
-                LOG.error("Pool(%(pool_name)s is overcommited!!",
-                          {'pool_name': pool['pool_name']})
+                LOG.info("Pool(%(pool_name)s is overcommited!!",
+                         {'pool_name': pool['pool_name']})
                 pool['pool_state'] = 'down'
                 pool['pool_state_reason'] = (
                     'Volume manager marked pool down for being'
