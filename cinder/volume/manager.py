@@ -2883,7 +2883,7 @@ class VolumeManager(manager.CleanableManager,
                 pool['free_capacity_gb'],
                 pool['allocated_capacity_gb'],
                 True,
-                max_over_subscription_ratio,
+                float(max_over_subscription_ratio),
                 pool['reserved_percentage'],
                 True
             )
