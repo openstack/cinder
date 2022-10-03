@@ -19,6 +19,7 @@ import math
 import os
 import tempfile
 import time
+import types
 from unittest import mock
 from unittest.mock import call
 import uuid
@@ -176,14 +177,14 @@ class MockDriverConfig(object):
 @ddt.ddt
 class RBDTestCase(test.TestCase):
 
-    @staticmethod
-    def _make_configuration(conf_in=None):
+    @classmethod
+    def _make_configuration(cls, conf_in=None):
         cfg = mock.Mock(spec=conf.Configuration)
         cfg.image_conversion_dir = None
         cfg.rbd_cluster_name = 'nondefault'
         cfg.rbd_pool = 'rbd'
         cfg.rbd_ceph_conf = '/etc/ceph/my_ceph.conf'
-        cfg.rbd_secret_uuid = None
+        cfg.rbd_secret_uuid = '5fe62cc7-0392-4a32-8466-081ce0ea970f'
         cfg.rbd_user = 'cinder'
         cfg.volume_backend_name = None
         cfg.volume_dd_blocksize = '1M'
@@ -193,11 +194,21 @@ class RBDTestCase(test.TestCase):
         cfg.backup_use_temp_snapshot = False
         cfg.enable_deferred_deletion = False
 
+        # Because the mocked conf doesn't actually have an underlying oslo conf
+        # it doesn't have the set_default method, so we use a fake one.
+        cfg.set_default = types.MethodType(cls._set_default, cfg)
+
         if conf_in is not None:
             for k in conf_in:
                 setattr(cfg, k, conf_in[k])
 
         return cfg
+
+    @staticmethod
+    def _set_default(cfg, name, value, group=None):
+        # Ignore the group for now
+        if not getattr(cfg, name):
+            setattr(cfg, name, value)
 
     @staticmethod
     def _make_drv(conf_in):
@@ -337,8 +348,11 @@ class RBDTestCase(test.TestCase):
 
     def test_do_setup_replication_disabled(self):
         with mock.patch.object(self.driver.configuration, 'safe_get',
-                               return_value=None):
+                               return_value=None), \
+                mock.patch.object(self.driver,
+                                  '_set_default_secret_uuid') as mock_secret:
             self.driver.do_setup(self.context)
+            mock_secret.assert_called_once_with()
             self.assertFalse(self.driver._is_replication_enabled)
             self.assertEqual([], self.driver._replication_targets)
             self.assertEqual([], self.driver._target_names)
@@ -347,6 +361,36 @@ class RBDTestCase(test.TestCase):
                               'user': self.cfg.rbd_user,
                               'secret_uuid': self.cfg.rbd_secret_uuid},
                              self.driver._active_config)
+
+    @ddt.data('', None)
+    @mock.patch.object(driver.RBDDriver, '_get_fsid')
+    def test__set_default_secret_uuid_missing(self, secret_uuid, mock_fsid):
+        # Clear the current values
+        self.cfg.rbd_secret_uuid = secret_uuid
+        self.driver._active_config['secret_uuid'] = secret_uuid
+        # Fake fsid value returned by the cluster
+        fsid = str(uuid.uuid4())
+        mock_fsid.return_value = fsid
+
+        self.driver._set_default_secret_uuid()
+
+        mock_fsid.assert_called_once_with()
+        self.assertEqual(fsid, self.driver._active_config['secret_uuid'])
+        self.assertEqual(fsid, self.cfg.rbd_secret_uuid)
+
+    @mock.patch.object(driver.RBDDriver, '_get_fsid')
+    def test__set_default_secret_uuid_present(self, mock_fsid):
+        # Set secret_uuid like _get_target_config does on do_setup
+        secret_uuid = self.cfg.rbd_secret_uuid
+        self.driver._active_config['secret_uuid'] = secret_uuid
+        # Fake fsid value returned by the cluster (should not be callled)
+        mock_fsid.return_value = str(uuid.uuid4())
+        self.driver._set_default_secret_uuid()
+        mock_fsid.assert_not_called()
+        # Values must not have changed
+        self.assertEqual(secret_uuid,
+                         self.driver._active_config['secret_uuid'])
+        self.assertEqual(secret_uuid, self.cfg.rbd_secret_uuid)
 
     def test_do_setup_replication(self):
         cfg = [{'backend_id': 'secondary-backend',
@@ -1983,7 +2027,8 @@ class RBDTestCase(test.TestCase):
 
         self.driver._active_config = {'name': 'secondary_id',
                                       'user': 'foo',
-                                      'conf': 'bar'}
+                                      'conf': 'bar',
+                                      'secret_uuid': self.cfg.rbd_secret_uuid}
         expected = {
             'driver_volume_type': 'rbd',
             'data': {

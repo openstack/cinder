@@ -81,7 +81,7 @@ RBD_OPTS = [
                      'dependency from volume to snapshot'),
     cfg.StrOpt('rbd_secret_uuid',
                help='The libvirt uuid of the secret for the rbd_user '
-                    'volumes'),
+                    'volumes. Defaults to the cluster FSID.'),
     cfg.IntOpt('rbd_max_clone_depth',
                default=5,
                help='Maximum number of nested volume clones that are '
@@ -424,6 +424,17 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         """Performs initialization steps that could raise exceptions."""
         self._do_setup_replication()
         self._active_config = self._get_target_config(self._active_backend_id)
+        self._set_default_secret_uuid()
+
+    def _set_default_secret_uuid(self):
+        # Set secret_uuid to the cluster FSID if missing, should only happen
+        # with the primary/default configuration
+        if not self._active_config['secret_uuid']:
+            # self._active_config must be set before this call
+            fsid = self._get_fsid()
+            self._active_config['secret_uuid'] = fsid
+            LOG.info('Secret UUID defaulting to cluster FSID: %s', fsid)
+            self.configuration.set_default('rbd_secret_uuid', fsid)
 
     def _do_setup_replication(self) -> None:
         replication_devices = self.configuration.safe_get(
@@ -1719,6 +1730,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         self._active_backend_id = secondary_id
         self._active_config = remote
+        self._set_default_secret_uuid()
         LOG.info('RBD driver failover completion completed.')
 
     def failover_host(self,
