@@ -2876,7 +2876,7 @@ class VolumeManager(manager.CleanableManager,
         if thin:
             max_over_subscription_ratio = pool.get(
                 'max_over_subscription_ratio',
-                self.configuration.max_over_subscription_ratio
+                float(self.configuration.max_over_subscription_ratio)
             )
             thin_factors = utils.calculate_capacity_factors(
                 pool['total_capacity_gb'],
