@@ -776,8 +776,6 @@ class Acs5000CommonDriver(san.SanDriver,
                     pool_data['capacity']) / units.Gi
                 free_capacity_gb = float(
                     pool_data['free_capacity']) / units.Gi
-                allocated_capacity_gb = float(
-                    pool_data['used_capacity']) / units.Gi
                 total_volumes = None
                 if 'total_volumes' in pool_data.keys():
                     total_volumes = int(pool_data['total_volumes'])
@@ -788,7 +786,6 @@ class Acs5000CommonDriver(san.SanDriver,
                     'pool_name': pool_data['name'],
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
-                    'allocated_capacity_gb': allocated_capacity_gb,
                     'compression_support': True,
                     'reserved_percentage':
                         self.configuration.reserved_percentage,
