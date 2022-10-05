@@ -528,7 +528,7 @@ class VolumeManager(manager.CleanableManager,
     def recount_host_stats(self, context):
         self._count_host_stats(context, export_volumes=False)
 
-    @coordination.synchronized('volume-stats')
+    @coordination.synchronized('volume-stats-{self.host}')
     def _count_host_stats(self, context, export_volumes=False):
         """Recount the number of volumes and allocated capacity."""
         ctxt = context.elevated()
@@ -2923,7 +2923,7 @@ class VolumeManager(manager.CleanableManager,
                     ' provisioning'
                 )
 
-    @coordination.synchronized('volume-stats')
+    @coordination.synchronized('volume-stats-{self.host}')
     def _append_volume_stats(self, vol_stats) -> None:
         pools = vol_stats.get('pools', None)
         if pools:
