@@ -102,60 +102,106 @@ class DatastoreSelector(object):
         return {k: v for k, v in datastores.items()
                 if vim_util.get_moref_value(k) in hub_ids}
 
-    def is_host_in_buildup_cluster(self, host_ref, cache=None):
-        host_cluster = self._vops._get_parent(host_ref,
-                                              "ClusterComputeResource")
-        if cache is not None and host_cluster.value in cache:
-            return cache[host_cluster.value]
+    def is_host_in_buildup_cluster(self, host_ref, host_cluster_ref=None,
+                                   cluster_cache=None):
+        """Check if a host is in a cluster marked as in buildup
 
-        attrs = self._vops.get_cluster_custom_attributes(host_cluster)
-        LOG.debug("attrs {}".format(attrs))
+        :param host_ref: a ManagedObjectReference to HostSystem
+        :param host_cluster_ref: (optional) ManagedObjectReference to
+                             ClusterComputeResource pointing to the cluster of
+                             the given host. Will be fetched if not given.
+        :param cluster_cache: (optional) dict from ManagedObjectReference value
+                              to dict (property name, property value) for
+                              ClusterComputeResource objects. Can be set if the
+                              required properties for
+                              get_cluster_custom_attributes() were prefetched
+                              for multiple clusters.
+        """
+        if cluster_cache is None:
+            cluster_cache = {}
+
+        if host_cluster_ref is None:
+            host_cluster_ref = self._vops._get_parent(host_ref,
+                                                      "ClusterComputeResource")
+
+        host_cluster_value = vim_util.get_moref_value(host_cluster_ref)
+
+        attrs = self._vops.get_cluster_custom_attributes(
+            host_cluster_ref, props=cluster_cache.get(host_cluster_value))
+        LOG.debug("Cluster %s custom attributes: %s",
+                  host_cluster_value, attrs)
+
+        if not attrs or 'buildup' not in attrs:
+            return False
 
         def bool_from_str(bool_str):
-            if bool_str.lower() == "true":
-                return True
-            else:
-                return False
+            return bool_str.lower() == "true"
 
-        result = (attrs and 'buildup' in attrs and
-                  bool_from_str(attrs['buildup']['value']))
-        if cache is not None:
-            cache[host_cluster.value] = result
-        return result
+        return bool_from_str(attrs['buildup']['value'])
 
     def _is_host_usable(self, host_ref, host_prop_map=None):
+        """Check a host's connectionState and inMaintenanceMode properties
+
+        :param host_ref: a ManagedObjectReference to HostSystem
+        :param host_prop_map: (optional) a dict from ManagedObjectReference
+                              value to a dict (property name, property value).
+                              Can be set if the required properties were
+                              prefetched for multiple hosts.
+        :return: boolean if the host is usable
+        """
         if host_prop_map is None:
             host_prop_map = {}
+
         props = host_prop_map.get(host_ref.value)
         if props is None:
             props = self._get_host_properties(host_ref)
             host_prop_map[host_ref.value] = props
 
-        runtime = props.get('runtime')
-        parent = props.get('parent')
-        if runtime and parent:
-            return (runtime.connectionState == 'connected' and
-                    not runtime.inMaintenanceMode)
-        else:
+        connection_state = props.get('runtime.connectionState')
+        in_maintenance = props.get('runtime.inMaintenanceMode')
+        if None in (connection_state, in_maintenance):
             return False
 
+        return (connection_state == 'connected' and
+                not in_maintenance)
+
     def _filter_hosts(self, hosts):
-        """Filter out any hosts that are in a cluster marked buildup."""
+        """Filter out hosts in buildup cluster or otherwise unusable"""
+        if not hosts:
+            return []
+
+        if isinstance(hosts, Iterable):
+            # prefetch host properties
+            host_properties = ['runtime.connectionState',
+                               'runtime.inMaintenanceMode', 'parent']
+            host_prop_map = self._get_properties_for_morefs(
+                'HostSystem', hosts, host_properties)
+
+            # prefetch cluster properties
+            host_cluster_refs = set(
+                h_props['parent'] for h_props in host_prop_map.values()
+                if h_props.get('parent'))
+            cluster_prop_map = self._get_properties_for_morefs(
+                'ClusterComputeResource', list(host_cluster_refs),
+                ['availableField', 'customValue'])
+        else:
+            host_prop_map = cluster_prop_map = None
+            hosts = [hosts]
 
         valid_hosts = []
-        cache = {}
-        if hosts:
-            if isinstance(hosts, Iterable):
-                host_prop_map = {}
-                for host in hosts:
-                    if (not self.is_host_in_buildup_cluster(host, cache)
-                            and self._is_host_usable(
-                                host, host_prop_map=host_prop_map)):
-                        valid_hosts.append(host)
-            else:
-                if (not self.is_host_in_buildup_cluster(hosts, cache)
-                        and self._is_host_usable(host)):
-                    valid_hosts.append(hosts)
+        for host in hosts:
+            host_ref_value = vim_util.get_moref_value(host)
+            host_props = host_prop_map.get(host_ref_value, {})
+            host_cluster_ref = host_props.get('parent')
+            if self.is_host_in_buildup_cluster(
+                    host, host_cluster_ref=host_cluster_ref,
+                    cluster_cache=cluster_prop_map):
+                continue
+
+            if not self._is_host_usable(host, host_prop_map=host_prop_map):
+                continue
+
+            valid_hosts.append(host)
 
         return valid_hosts
 
@@ -285,11 +331,13 @@ class DatastoreSelector(object):
         return (host, resource_pool, summary)
 
     def _get_host_properties(self, host_ref):
+        properties = ['runtime.connectionState', 'runtime.inMaintenanceMode',
+                      'parent']
         retrieve_result = self._session.invoke_api(vim_util,
                                                    'get_object_properties',
                                                    self._session.vim,
                                                    host_ref,
-                                                   ['runtime', 'parent'])
+                                                   properties)
 
         if retrieve_result:
             return self._get_object_properties(retrieve_result[0])

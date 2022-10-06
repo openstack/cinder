@@ -2011,32 +2011,49 @@ class VMwareVolumeOps(object):
 
         return host_refs
 
-    def get_cluster_custom_attributes(self, cluster):
-        retrieve_fields = self._session.invoke_api(vim_util,
-                                                   'get_object_property',
-                                                   self._session.vim,
-                                                   cluster,
-                                                   'availableField')
-        if retrieve_fields:
-            custom_fields = {}
-            for field in retrieve_fields:
-                for v in field[1]:
-                    custom_fields[v.key] = v.name
+    def get_cluster_custom_attributes(self, cluster, props=None):
+        """Retrieve custom attributes for the given cluster
 
-            retrieve_result = self._session.invoke_api(vim_util,
-                                                       'get_object_property',
-                                                       self._session.vim,
-                                                       cluster,
-                                                       'customValue')
-            if retrieve_result:
-                custom_attributes = {}
-                for val in retrieve_result:
-                    for i in val[1]:
-                        custom_attributes[custom_fields[i.key]] = {
-                            "value": i.value, 'id': i.key
-                        }
+        props can be a dictionary of pre-fetched properties for this cluster.
+        We need availableField and customValue here. If they are missing, we
+        fetch them.
+        """
+        if props is None:
+            props = {}
 
-                return custom_attributes
+        if 'availableField' not in props:
+            props['availableField'] = \
+                self._session.invoke_api(vim_util,
+                                         'get_object_property',
+                                         self._session.vim,
+                                         cluster,
+                                         'availableField')
+        if not props['availableField']:
+            return
+
+        if 'customValue' not in props:
+            props['customValue'] = \
+                self._session.invoke_api(vim_util,
+                                         'get_object_property',
+                                         self._session.vim,
+                                         cluster,
+                                         'customValue')
+        if not props['customValue']:
+            return
+
+        custom_fields = {}
+        for field in props['availableField']:
+            for v in field[1]:
+                custom_fields[v.key] = v.name
+
+        custom_attributes = {}
+        for val in props['customValue']:
+            for i in val[1]:
+                custom_attributes[custom_fields[i.key]] = {
+                    "value": i.value, 'id': i.key
+                }
+
+        return custom_attributes
 
     def get_entity_by_inventory_path(self, path):
         """Returns the managed object identified by the given inventory path.

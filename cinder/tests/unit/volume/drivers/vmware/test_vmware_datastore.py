@@ -250,10 +250,9 @@ class DatastoreTest(test.TestCase):
                 in_maintenance = False
             else:
                 in_maintenance = True
-            runtime = mock.Mock(spec=['connectionState', 'inMaintenanceMode'])
-            runtime.connectionState = 'connected'
-            runtime.inMaintenanceMode = in_maintenance
-            return {'parent': cluster_ref, 'runtime': runtime}
+            return {'parent': cluster_ref,
+                    'runtime.connectionState': 'connected',
+                    'runtime.inMaintenanceMode': in_maintenance}
 
         get_host_props.side_effect = mock_get_host_properties
 
@@ -305,18 +304,23 @@ class DatastoreTest(test.TestCase):
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_get_datastores')
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
+                '_filter_hosts')
+    @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_filter_datastores')
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_select_best_datastore')
     def test_select_datastore(
-            self, select_best_datastore, filter_datastores, get_datastores,
-            get_profile_id, is_buildup, is_usable):
+            self, select_best_datastore, filter_datastores, filter_hosts,
+            get_datastores, get_profile_id, is_buildup, is_usable):
 
         profile_id = mock.sentinel.profile_id
         get_profile_id.return_value = profile_id
 
         datastores = mock.sentinel.datastores
         get_datastores.return_value = datastores
+
+        filtered_hosts = mock.sentinel.filtered_hosts
+        filter_hosts.return_value = filtered_hosts
 
         filtered_datastores = mock.sentinel.filtered_datastores
         filter_datastores.return_value = filtered_datastores
@@ -340,11 +344,12 @@ class DatastoreTest(test.TestCase):
         self.assertEqual(best_datastore,
                          self._ds_sel.select_datastore(req, hosts))
         get_datastores.assert_called_once_with()
+        filter_hosts.assert_called_once_with(hosts)
         filter_datastores.assert_called_once_with(
             datastores, size_bytes, profile_id, anti_affinity_ds, aff_ds_types,
-            valid_host_refs=hosts)
-        select_best_datastore.assert_called_once_with(filtered_datastores,
-                                                      valid_host_refs=hosts)
+            valid_host_refs=filtered_hosts)
+        select_best_datastore.assert_called_once_with(
+            filtered_datastores, valid_host_refs=filtered_hosts)
 
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 'get_profile_id')
