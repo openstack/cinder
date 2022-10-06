@@ -294,6 +294,33 @@ class DatastoreSelector(object):
         if retrieve_result:
             return self._get_object_properties(retrieve_result[0])
 
+    def _get_properties_for_morefs(self, type_, morefs, properties):
+        """Fetch properties for the given morefs of type type_
+
+        :param type_: a ManagedObject type
+        :param morefs: a list of ManagedObjectReference for the given type_
+        :param properties: a list of strings defining the properties to fetch
+        :returns: a dict of ManagedObjectReference values mapped to a dict of
+                  (property name, property value)
+        """
+        obj_prop_map = {}
+
+        result = \
+            self._session.invoke_api(
+                vim_util,
+                "get_properties_for_a_collection_of_objects",
+                self._session.vim,
+                type_, morefs,
+                properties)
+        with vim_util.WithRetrieval(self._session.vim, result) as objects:
+            for obj in objects:
+                props = self._get_object_properties(obj)
+
+                obj_prop_map[vim_util.get_moref_value(obj.obj)] = {
+                    prop: props.get(prop) for prop in properties}
+
+        return obj_prop_map
+
     def _get_resource_pool(self, cluster_ref):
         return self._session.invoke_api(vim_util,
                                         'get_object_property',
