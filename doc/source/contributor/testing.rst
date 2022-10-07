@@ -91,8 +91,10 @@ Tempest Tests
 Tempest tests in the Cinder tree are "plugged in" to the normal tempest test
 execution. To ensure the Cinder tests are picked up when running tempest, run::
 
+
     cd /opt/stack/tempest
-    tox -e all-plugin
+    tox -e venv-tempest -- pip install (path to the cinder-tempest-plugin directory)
+    tox -e all
 
 More information about tempest can be found in the `Tempest Documentation
 <https://docs.openstack.org/tempest/latest/>`_.
