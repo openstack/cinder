@@ -1318,7 +1318,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             raise exception.InvalidSnapshot(reason=msg)
         else:
             if is_template:
-                self._delete_snapshot_template_format(snapshot)
+                try:
+                    self._delete_snapshot_template_format(snapshot)
+                except vmdk_exceptions.TemplateNotFoundException:
+                    # Just raise a warning and move on like the snap
+                    # was deleted.  If it's not there, it's already gone.
+                    LOG.warning("Failed to find template for snapshot %s",
+                                snapshot.id)
             else:
                 self.volumeops.delete_snapshot(backing, snapshot.name)
 
