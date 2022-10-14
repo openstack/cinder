@@ -536,13 +536,13 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
 
         self._stats = data
 
-    @coordination.synchronized('{self.driver_prefix}-{volume[id]}')
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def create_volume(self, volume):
         """Apply locking to the create volume operation."""
 
         return super(NfsDriver, self).create_volume(volume)
 
-    @coordination.synchronized('{self.driver_prefix}-{volume[id]}')
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def delete_volume(self, volume):
         """Deletes a logical volume."""
 
