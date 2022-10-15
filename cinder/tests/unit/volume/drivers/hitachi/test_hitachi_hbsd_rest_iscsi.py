@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2021, Hitachi, Ltd.
+# Copyright (C) 2020, 2022, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -51,6 +51,7 @@ CONFIG_MAP = {
     'target_iscsi_name': 'iqn.hbsd-test-target',
     'user_id': 'user',
     'user_pass': 'password',
+    'pool_name': 'test_pool',
     'ipv4Address': '111.22.333.44',
     'tcpPort': '5555',
     'auth_user': 'auth_user',
@@ -213,10 +214,17 @@ GET_LDEV_RESULT_PAIR = {
     "status": "NML",
 }
 
-GET_POOL_RESULT = {
-    "availableVolumeCapacity": 480144,
-    "totalPoolCapacity": 507780,
-    "totalLocatedCapacity": 71453172,
+GET_POOLS_RESULT = {
+    "data": [
+        {
+            "poolId": 30,
+            "poolName": CONFIG_MAP['pool_name'],
+            "availableVolumeCapacity": 480144,
+            "totalPoolCapacity": 507780,
+            "totalLocatedCapacity": 71453172,
+            "virtualVolumeCapacityRate": -1,
+        },
+    ],
 }
 
 GET_SNAPSHOTS_RESULT = {
@@ -322,7 +330,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.configuration.driver_ssl_cert_verify = False
 
         self.configuration.hitachi_storage_id = CONFIG_MAP['serial']
-        self.configuration.hitachi_pool = "30"
+        self.configuration.hitachi_pool = ['30']
         self.configuration.hitachi_snap_pool = None
         self.configuration.hitachi_ldev_range = "0-1"
         self.configuration.hitachi_target_ports = [CONFIG_MAP['port_id']]
@@ -502,7 +510,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     def test__update_volume_stats(
             self, request, get_filter_function, get_goodness_function):
-        request.return_value = FakeResponse(200, GET_POOL_RESULT)
+        request.return_value = FakeResponse(200, GET_POOLS_RESULT)
         get_filter_function.return_value = None
         get_goodness_function.return_value = None
         self.driver._update_volume_stats()
@@ -515,6 +523,9 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     def test_create_volume(self, request):
         request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
         ret = self.driver.create_volume(fake_volume.fake_volume_obj(self.ctxt))
         self.assertEqual('1', ret['provider_location'])
         self.assertEqual(2, request.call_count)
@@ -535,6 +546,9 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT)]
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
         ret = self.driver.create_snapshot(TEST_SNAPSHOT[0])
         self.assertEqual('1', ret['provider_location'])
         self.assertEqual(4, request.call_count)
@@ -555,6 +569,9 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
         vol = self.driver.create_cloned_volume(TEST_VOLUME[0], TEST_VOLUME[1])
         self.assertEqual('1', vol['provider_location'])
         self.assertEqual(5, request.call_count)
@@ -566,6 +583,9 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
         vol = self.driver.create_volume_from_snapshot(
             TEST_VOLUME[0], TEST_SNAPSHOT[0])
         self.assertEqual('1', vol['provider_location'])
@@ -812,6 +832,9 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
         ret = self.driver.create_group_from_src(
             self.ctxt, TEST_GROUP[1], [TEST_VOLUME[1]],
             source_group=TEST_GROUP[0], source_vols=[TEST_VOLUME[0]]
@@ -828,6 +851,9 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
         ret = self.driver.create_group_from_src(
             self.ctxt, TEST_GROUP[0], [TEST_VOLUME[0]],
             group_snapshot=TEST_GROUP_SNAP[0], snapshots=[TEST_SNAPSHOT[0]]
@@ -870,6 +896,9 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT)]
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
         ret = self.driver.create_group_snapshot(
             self.ctxt, TEST_GROUP_SNAP[0], [TEST_SNAPSHOT[0]]
         )
@@ -893,6 +922,9 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(200, GET_SNAPSHOTS_RESULT_PAIR),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT)]
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
         ret = self.driver.create_group_snapshot(
             self.ctxt, TEST_GROUP_SNAP[0], [TEST_SNAPSHOT[0]]
         )

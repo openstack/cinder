@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2022, Hitachi, Ltd.
+# Copyright (C) 2021 NEC corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""Unit tests for Hitachi HBSD Driver."""
+"""Unit tests for NEC Driver."""
 
 import functools
 from unittest import mock
@@ -22,6 +22,7 @@ import requests
 from requests import models
 
 from cinder import context as cinder_context
+from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder.objects import group_snapshot as obj_group_snap
@@ -31,14 +32,12 @@ from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
-from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hbsd_common
-from cinder.volume.drivers.hitachi import hbsd_fc
 from cinder.volume.drivers.hitachi import hbsd_rest
 from cinder.volume.drivers.hitachi import hbsd_rest_api
-from cinder.volume.drivers.hitachi import hbsd_rest_fc
+from cinder.volume.drivers.nec.v import nec_v_fc
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
@@ -50,9 +49,9 @@ CONFIG_MAP = {
     'rest_server_ip_addr': '172.16.18.108',
     'rest_server_ip_port': '23451',
     'port_id': 'CL1-A',
-    'host_grp_name': 'HBSD-0123456789abcdef',
+    'host_grp_name': 'NEC-0123456789abcdef',
     'host_mode': 'LINUX/IRIX',
-    'host_wwn': ['0123456789abcdef', '0123456789abcdeg'],
+    'host_wwn': '0123456789abcdef',
     'target_wwn': '1111111123456789',
     'user_id': 'user',
     'user_pass': 'password',
@@ -64,28 +63,13 @@ CONFIG_MAP = {
 # Dummy response for FC zoning device mapping
 DEVICE_MAP = {
     'fabric_name': {
-        'initiator_port_wwn_list': [CONFIG_MAP['host_wwn'][0]],
+        'initiator_port_wwn_list': [CONFIG_MAP['host_wwn']],
         'target_port_wwn_list': [CONFIG_MAP['target_wwn']]}}
 
 DEFAULT_CONNECTOR = {
     'host': 'host',
     'ip': CONFIG_MAP['my_ip'],
-    'wwpns': [CONFIG_MAP['host_wwn'][0]],
-    'multipath': False,
-}
-
-DEVICE_MAP_MULTI_WWN = {
-    'fabric_name': {
-        'initiator_port_wwn_list': [
-            CONFIG_MAP['host_wwn'][0],
-            CONFIG_MAP['host_wwn'][1]
-        ],
-        'target_port_wwn_list': [CONFIG_MAP['target_wwn']]}}
-
-DEFAULT_CONNECTOR_MULTI_WWN = {
-    'host': 'host',
-    'ip': CONFIG_MAP['my_ip'],
-    'wwpns': [CONFIG_MAP['host_wwn'][0], CONFIG_MAP['host_wwn'][1]],
+    'wwpns': [CONFIG_MAP['host_wwn']],
     'multipath': False,
 }
 
@@ -96,7 +80,6 @@ for i in range(4):
     volume = {}
     volume['id'] = '00000000-0000-0000-0000-{0:012d}'.format(i)
     volume['name'] = 'test-volume{0:d}'.format(i)
-    volume['volume_type_id'] = '00000000-0000-0000-0000-{0:012d}'.format(i)
     if i == 3:
         volume['provider_location'] = None
     else:
@@ -107,7 +90,6 @@ for i in range(4):
     else:
         volume['status'] = 'available'
     volume = fake_volume.fake_volume_obj(CTXT, **volume)
-    volume.volume_type = fake_volume.fake_volume_type_obj(CTXT)
     TEST_VOLUME.append(volume)
 
 
@@ -177,7 +159,7 @@ GET_HOST_WWNS_RESULT = {
     "data": [
         {
             "hostGroupNumber": 0,
-            "hostWwn": CONFIG_MAP['host_wwn'][0],
+            "hostWwn": CONFIG_MAP['host_wwn'],
         },
     ],
 }
@@ -202,14 +184,14 @@ COMPLETED_FAILED_RESULT_LU_DEFINED = {
 GET_LDEV_RESULT = {
     "emulationType": "OPEN-V-CVS",
     "blockCapacity": 2097152,
-    "attributes": ["CVS", "HDP"],
+    "attributes": ["CVS", "DP"],
     "status": "NML",
 }
 
 GET_LDEV_RESULT_MAPPED = {
     "emulationType": "OPEN-V-CVS",
     "blockCapacity": 2097152,
-    "attributes": ["CVS", "HDP"],
+    "attributes": ["CVS", "DP"],
     "status": "NML",
     "ports": [
         {
@@ -224,14 +206,8 @@ GET_LDEV_RESULT_MAPPED = {
 GET_LDEV_RESULT_PAIR = {
     "emulationType": "OPEN-V-CVS",
     "blockCapacity": 2097152,
-    "attributes": ["CVS", "HDP", "HTI"],
+    "attributes": ["CVS", "DP", "SS"],
     "status": "NML",
-}
-
-GET_POOL_RESULT = {
-    "availableVolumeCapacity": 480144,
-    "totalPoolCapacity": 507780,
-    "totalLocatedCapacity": 71453172,
 }
 
 GET_SNAPSHOTS_RESULT = {
@@ -301,7 +277,7 @@ GET_HOST_GROUPS_RESULT = {
         {
             "hostGroupNumber": 0,
             "portId": CONFIG_MAP['port_id'],
-            "hostGroupName": "HBSD-test",
+            "hostGroupName": "NEC-test",
         },
     ],
 }
@@ -338,12 +314,6 @@ ERROR_RESULT = {
 def _brick_get_connector_properties(multipath=False, enforce_multipath=False):
     """Return a predefined connector object."""
     return DEFAULT_CONNECTOR
-
-
-def _brick_get_connector_properties_multi_wwn(
-        multipath=False, enforce_multipath=False):
-    """Return a predefined connector object."""
-    return DEFAULT_CONNECTOR_MULTI_WWN
 
 
 def reduce_retrying_time(func):
@@ -393,14 +363,6 @@ class FakeLookupService():
         return DEVICE_MAP
 
 
-class FakeLookupServiceMultiWwn():
-    """Dummy FC zoning mapping lookup service class."""
-
-    def get_device_mapping_from_network(self, initiator_wwns, target_wwns):
-        """Return predefined FC zoning mapping."""
-        return DEVICE_MAP_MULTI_WWN
-
-
 class FakeResponse():
 
     def __init__(self, status_code, data=None, headers=None):
@@ -414,8 +376,8 @@ class FakeResponse():
         return self.data
 
 
-class HBSDRESTFCDriverTest(test.TestCase):
-    """Unit test class for HBSD REST interface fibre channel module."""
+class VStorageRESTFCDriverTest(test.TestCase):
+    """Unit test class for NEC REST interface fibre channel module."""
 
     test_existing_ref = {'source-id': '1'}
     test_existing_ref_name = {
@@ -434,7 +396,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
             opt for opt in hbsd_common.COMMON_VOLUME_OPTS if opt.required]
         _set_required(rest_required_opts, False)
         _set_required(common_required_opts, False)
-        super(HBSDRESTFCDriverTest, self).setUp()
+        super(VStorageRESTFCDriverTest, self).setUp()
         _set_required(rest_required_opts, True)
         _set_required(common_required_opts, True)
 
@@ -449,26 +411,25 @@ class HBSDRESTFCDriverTest(test.TestCase):
 
         self.configuration.volume_backend_name = "RESTFC"
         self.configuration.volume_driver = (
-            "cinder.volume.drivers.hitachi.hbsd_fc.HBSDFCDriver")
+            "cinder.volume.drivers.nec.v.nec_v_fc.VStorageFCDriver")
         self.configuration.reserved_percentage = "0"
         self.configuration.use_multipath_for_image_xfer = False
         self.configuration.enforce_multipath_for_image_xfer = False
         self.configuration.max_over_subscription_ratio = 500.0
         self.configuration.driver_ssl_cert_verify = False
 
-        self.configuration.hitachi_storage_id = CONFIG_MAP['serial']
-        self.configuration.hitachi_pool = ["30"]
-        self.configuration.hitachi_snap_pool = None
-        self.configuration.hitachi_ldev_range = "0-1"
-        self.configuration.hitachi_target_ports = [CONFIG_MAP['port_id']]
-        self.configuration.hitachi_compute_target_ports = [
+        self.configuration.nec_v_storage_id = CONFIG_MAP['serial']
+        self.configuration.nec_v_pool = ["30"]
+        self.configuration.nec_v_snap_pool = None
+        self.configuration.nec_v_ldev_range = "0-1"
+        self.configuration.nec_v_target_ports = [CONFIG_MAP['port_id']]
+        self.configuration.nec_v_compute_target_ports = [
             CONFIG_MAP['port_id']]
-        self.configuration.hitachi_group_create = True
-        self.configuration.hitachi_group_delete = True
-        self.configuration.hitachi_copy_speed = 3
-        self.configuration.hitachi_copy_check_interval = 3
-        self.configuration.hitachi_async_copy_check_interval = 10
-        self.configuration.hitachi_port_scheduler = False
+        self.configuration.nec_v_group_create = True
+        self.configuration.nec_v_group_delete = True
+        self.configuration.nec_v_copy_speed = 3
+        self.configuration.nec_v_copy_check_interval = 3
+        self.configuration.nec_v_async_copy_check_interval = 10
 
         self.configuration.san_login = CONFIG_MAP['user_id']
         self.configuration.san_password = CONFIG_MAP['user_pass']
@@ -476,43 +437,43 @@ class HBSDRESTFCDriverTest(test.TestCase):
             'rest_server_ip_addr']
         self.configuration.san_api_port = CONFIG_MAP[
             'rest_server_ip_port']
-        self.configuration.hitachi_rest_disable_io_wait = True
-        self.configuration.hitachi_rest_tcp_keepalive = True
-        self.configuration.hitachi_discard_zero_page = True
-        self.configuration.hitachi_rest_number = "0"
-        self.configuration.hitachi_lun_timeout = hbsd_rest._LUN_TIMEOUT
-        self.configuration.hitachi_lun_retry_interval = (
+        self.configuration.nec_v_rest_disable_io_wait = True
+        self.configuration.nec_v_rest_tcp_keepalive = True
+        self.configuration.nec_v_discard_zero_page = True
+        self.configuration.nec_v_rest_number = "0"
+        self.configuration.nec_v_lun_timeout = hbsd_rest._LUN_TIMEOUT
+        self.configuration.nec_v_lun_retry_interval = (
             hbsd_rest._LUN_RETRY_INTERVAL)
-        self.configuration.hitachi_restore_timeout = hbsd_rest._RESTORE_TIMEOUT
-        self.configuration.hitachi_state_transition_timeout = (
+        self.configuration.nec_v_restore_timeout = hbsd_rest._RESTORE_TIMEOUT
+        self.configuration.nec_v_state_transition_timeout = (
             hbsd_rest._STATE_TRANSITION_TIMEOUT)
-        self.configuration.hitachi_lock_timeout = hbsd_rest_api._LOCK_TIMEOUT
-        self.configuration.hitachi_rest_timeout = hbsd_rest_api._REST_TIMEOUT
-        self.configuration.hitachi_extend_timeout = (
+        self.configuration.nec_v_lock_timeout = hbsd_rest_api._LOCK_TIMEOUT
+        self.configuration.nec_v_rest_timeout = hbsd_rest_api._REST_TIMEOUT
+        self.configuration.nec_v_extend_timeout = (
             hbsd_rest_api._EXTEND_TIMEOUT)
-        self.configuration.hitachi_exec_retry_interval = (
+        self.configuration.nec_v_exec_retry_interval = (
             hbsd_rest_api._EXEC_RETRY_INTERVAL)
-        self.configuration.hitachi_rest_connect_timeout = (
+        self.configuration.nec_v_rest_connect_timeout = (
             hbsd_rest_api._DEFAULT_CONNECT_TIMEOUT)
-        self.configuration.hitachi_rest_job_api_response_timeout = (
+        self.configuration.nec_v_rest_job_api_response_timeout = (
             hbsd_rest_api._JOB_API_RESPONSE_TIMEOUT)
-        self.configuration.hitachi_rest_get_api_response_timeout = (
+        self.configuration.nec_v_rest_get_api_response_timeout = (
             hbsd_rest_api._GET_API_RESPONSE_TIMEOUT)
-        self.configuration.hitachi_rest_server_busy_timeout = (
+        self.configuration.nec_v_rest_server_busy_timeout = (
             hbsd_rest_api._REST_SERVER_BUSY_TIMEOUT)
-        self.configuration.hitachi_rest_keep_session_loop_interval = (
+        self.configuration.nec_v_rest_keep_session_loop_interval = (
             hbsd_rest_api._KEEP_SESSION_LOOP_INTERVAL)
-        self.configuration.hitachi_rest_another_ldev_mapped_retry_timeout = (
+        self.configuration.nec_v_rest_another_ldev_mapped_retry_timeout = (
             hbsd_rest_api._ANOTHER_LDEV_MAPPED_RETRY_TIMEOUT)
-        self.configuration.hitachi_rest_tcp_keepidle = (
+        self.configuration.nec_v_rest_tcp_keepidle = (
             hbsd_rest_api._TCP_KEEPIDLE)
-        self.configuration.hitachi_rest_tcp_keepintvl = (
+        self.configuration.nec_v_rest_tcp_keepintvl = (
             hbsd_rest_api._TCP_KEEPINTVL)
-        self.configuration.hitachi_rest_tcp_keepcnt = (
+        self.configuration.nec_v_rest_tcp_keepcnt = (
             hbsd_rest_api._TCP_KEEPCNT)
-        self.configuration.hitachi_host_mode_options = []
+        self.configuration.nec_v_host_mode_options = []
 
-        self.configuration.hitachi_zoning_request = False
+        self.configuration.nec_v_zoning_request = False
 
         self.configuration.san_thin_provision = True
         self.configuration.san_private_key = ''
@@ -547,8 +508,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
     def _setup_driver(
             self, brick_get_connector_properties=None, request=None):
         """Set up the driver environment."""
-        self.driver = hbsd_fc.HBSDFCDriver(
-            configuration=self.configuration)
+        self.driver = nec_v_fc.VStorageFCDriver(
+            configuration=self.configuration, db=db)
         request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
                                FakeResponse(200, GET_PORTS_RESULT),
                                FakeResponse(200, GET_HOST_WWNS_RESULT)]
@@ -565,7 +526,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
 
     def tearDown(self):
         self.client = None
-        super(HBSDRESTFCDriverTest, self).tearDown()
+        super(VStorageRESTFCDriverTest, self).tearDown()
 
     # API test cases
     @mock.patch.object(requests.Session, "request")
@@ -573,8 +534,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
         volume_utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     def test_do_setup(self, brick_get_connector_properties, request):
-        drv = hbsd_fc.HBSDFCDriver(
-            configuration=self.configuration)
+        drv = nec_v_fc.VStorageFCDriver(
+            configuration=self.configuration, db=db)
         self._setup_config()
         request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
                                FakeResponse(200, GET_PORTS_RESULT),
@@ -595,8 +556,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
         side_effect=_brick_get_connector_properties)
     def test_do_setup_create_hg(self, brick_get_connector_properties, request):
         """Normal case: The host group not exists."""
-        drv = hbsd_fc.HBSDFCDriver(
-            configuration=self.configuration)
+        drv = nec_v_fc.VStorageFCDriver(
+            configuration=self.configuration, db=db)
         self._setup_config()
         request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
                                FakeResponse(200, GET_PORTS_RESULT),
@@ -619,42 +580,10 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(
         volume_utils, 'brick_get_connector_properties',
-        side_effect=_brick_get_connector_properties_multi_wwn)
-    def test_do_setup_create_hg_port_scheduler(
-            self, brick_get_connector_properties, request):
-        """Normal case: The host group not exists with port scheduler."""
-        drv = hbsd_fc.HBSDFCDriver(
-            configuration=self.configuration)
-        self._setup_config()
-        self.configuration.hitachi_port_scheduler = True
-        self.configuration.hitachi_zoning_request = True
-        drv.common._lookup_service = FakeLookupServiceMultiWwn()
-        request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
-                               FakeResponse(200, GET_PORTS_RESULT),
-                               FakeResponse(200, NOTFOUND_RESULT),
-                               FakeResponse(200, NOTFOUND_RESULT),
-                               FakeResponse(200, NOTFOUND_RESULT),
-                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
-                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
-                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
-                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
-        drv.do_setup(None)
-        self.assertEqual(
-            {CONFIG_MAP['port_id']: CONFIG_MAP['target_wwn']},
-            drv.common.storage_info['wwns'])
-        self.assertEqual(1, brick_get_connector_properties.call_count)
-        self.assertEqual(9, request.call_count)
-        # stop the Loopingcall within the do_setup treatment
-        self.driver.common.client.keep_session_loop.stop()
-        self.driver.common.client.keep_session_loop.wait()
-
-    @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(
-        volume_utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     def test_do_setup_pool_name(self, brick_get_connector_properties, request):
         """Normal case: Specify a pool name instead of pool id"""
-        drv = hbsd_fc.HBSDFCDriver(
+        drv = nec_v_fc.VStorageFCDriver(
             configuration=self.configuration)
         self._setup_config()
         tmp_pool = self.configuration.hitachi_pool
@@ -687,12 +616,9 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @reduce_retrying_time
     @mock.patch.object(requests.Session, "request")
     def test_create_volume_timeout(self, request):
-        self.driver.common.conf.hitachi_rest_timeout = 0
-        self.driver.common.conf.hitachi_exec_retry_interval = 0
         request.return_value = FakeResponse(
             500, ERROR_RESULT,
             headers={'Content-Type': 'json'})
-
         self.driver.common._stats = {}
         self.driver.common._stats['pools'] = [
             {'location_info': {'pool_id': 30}}]
@@ -723,8 +649,6 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(7, request.call_count)
 
     @reduce_retrying_time
-    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
-                new=test_utils.ZeroIntervalLoopingCall)
     @mock.patch.object(requests.Session, "request")
     def test_delete_volume_busy_timeout(self, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
@@ -748,14 +672,15 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(driver.FibreChannelDriver, "get_goodness_function")
     @mock.patch.object(driver.FibreChannelDriver, "get_filter_function")
     @mock.patch.object(requests.Session, "request")
-    def test_get_volume_stats(
+    def test__update_volume_stats(
             self, request, get_filter_function, get_goodness_function):
         request.return_value = FakeResponse(200, GET_POOLS_RESULT)
         get_filter_function.return_value = None
         get_goodness_function.return_value = None
-        stats = self.driver.get_volume_stats(True)
-        self.assertEqual('Hitachi', stats['vendor_name'])
-        self.assertTrue(stats["pools"][0]['multiattach'])
+        self.driver._update_volume_stats()
+        self.assertEqual(
+            'NEC', self.driver._stats['vendor_name'])
+        self.assertTrue(self.driver._stats["pools"][0]['multiattach'])
         self.assertEqual(1, request.call_count)
         self.assertEqual(1, get_filter_function.call_count)
         self.assertEqual(1, get_goodness_function.call_count)
@@ -830,13 +755,9 @@ class HBSDRESTFCDriverTest(test.TestCase):
 
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
-    def test_initialize_connection(
-            self, get_volume_type_extra_specs, request, add_fc_zone):
+    def test_initialize_connection(self, request, add_fc_zone):
         self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
-        extra_specs = {"hbsd:target_ports": "CL1-A"}
-        get_volume_type_extra_specs.return_value = extra_specs
         request.side_effect = [FakeResponse(200, GET_HOST_WWNS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         ret = self.driver.initialize_connection(
@@ -844,20 +765,15 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         self.assertEqual([CONFIG_MAP['target_wwn']], ret['data']['target_wwn'])
         self.assertEqual(1, ret['data']['target_lun'])
-        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(2, request.call_count)
         self.assertEqual(1, add_fc_zone.call_count)
 
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
-    def test_initialize_connection_already_mapped(
-            self, get_volume_type_extra_specs, request, add_fc_zone):
+    def test_initialize_connection_already_mapped(self, request, add_fc_zone):
         """Normal case: ldev have already mapped."""
         self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
-        extra_specs = {"hbsd:target_ports": "CL1-A"}
-        get_volume_type_extra_specs.return_value = extra_specs
         request.side_effect = [
             FakeResponse(200, GET_HOST_WWNS_RESULT),
             FakeResponse(202, COMPLETED_FAILED_RESULT_LU_DEFINED),
@@ -868,20 +784,15 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         self.assertEqual([CONFIG_MAP['target_wwn']], ret['data']['target_wwn'])
         self.assertEqual(1, ret['data']['target_lun'])
-        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(3, request.call_count)
         self.assertEqual(1, add_fc_zone.call_count)
 
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
-    def test_initialize_connection_shared_target(
-            self, get_volume_type_extra_specs, request, add_fc_zone):
+    def test_initialize_connection_shared_target(self, request, add_fc_zone):
         """Normal case: A target shared with other systems."""
         self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
-        extra_specs = {"hbsd:target_ports": "CL1-A"}
-        get_volume_type_extra_specs.return_value = extra_specs
         request.side_effect = [FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(200, GET_HOST_GROUPS_RESULT),
@@ -892,7 +803,6 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         self.assertEqual([CONFIG_MAP['target_wwn']], ret['data']['target_wwn'])
         self.assertEqual(1, ret['data']['target_lun'])
-        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(5, request.call_count)
         self.assertEqual(1, add_fc_zone.call_count)
 
@@ -1044,7 +954,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
             TEST_SNAPSHOT[0])
 
     def test_retype(self):
-        new_specs = {'hbsd:test': 'test'}
+        new_specs = {'nec:test': 'test'}
         new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
         diff = {}
         host = {}
@@ -1223,13 +1133,3 @@ class HBSDRESTFCDriverTest(test.TestCase):
             [{'id': TEST_SNAPSHOT[0]['id'], 'status': 'deleted'}]
         )
         self.assertTupleEqual(actual, ret)
-
-    @mock.patch.object(hbsd_fc.HBSDFCDriver, "_get_oslo_driver_opts")
-    def test_get_driver_options(self, _get_oslo_driver_opts):
-        _get_oslo_driver_opts.return_value = []
-        ret = self.driver.get_driver_options()
-        actual = (hbsd_common.COMMON_VOLUME_OPTS +
-                  hbsd_common.COMMON_PORT_OPTS +
-                  hbsd_rest.REST_VOLUME_OPTS +
-                  hbsd_rest_fc.FC_VOLUME_OPTS)
-        self.assertEqual(actual, ret)
