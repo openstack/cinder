@@ -1,0 +1,11 @@
+{
+    "backup": {
+        "container": null,
+        "description": "Test backup",
+        "name": "backup001",
+        "volume_id": "0aa67a0c-7339-4be6-b5d5-2afe21ca270c",
+        "incremental": false,
+        "snapshot_id": null,
+        "force": false
+    }
+}

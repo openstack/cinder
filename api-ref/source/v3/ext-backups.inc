@@ -303,7 +303,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/backup-create-request.json
+.. literalinclude:: ./samples/backups/backup-create-request.json
    :language: javascript
 
 Response Parameters
@@ -320,7 +320,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/backup-create-response.json
+.. literalinclude:: ./samples/backups/backup-create-response.json
    :language: javascript
 
 Update a backup
