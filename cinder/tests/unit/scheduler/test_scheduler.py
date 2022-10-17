@@ -596,12 +596,33 @@ class SchedulerManagerTestCase(test.TestCase):
         volume = fake_volume.fake_db_volume()
         mock_volume_get.return_value = volume
         mock_host.return_value = 'cinder-backup'
-        backup = fake_backup.fake_backup_obj(self.context)
+        backup = fake_backup.fake_backup_obj(self.context, host=None)
 
         self.manager.create_backup(self.context, backup=backup)
 
         mock_save.assert_called_once()
         mock_host.assert_called_once_with(volume)
+        mock_volume_get.assert_called_once_with(self.context, backup.volume_id)
+        mock_create.assert_called_once_with(self.context, backup)
+
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
+    @mock.patch('cinder.objects.backup.Backup.save')
+    @mock.patch('cinder.scheduler.driver.Scheduler.get_backup_host')
+    @mock.patch('cinder.db.volume_get')
+    def test_create_backup_with_host(self, mock_volume_get,
+                                     mock_host, mock_save, mock_create):
+        volume = fake_volume.fake_db_volume()
+        mock_volume_get.return_value = volume
+        mock_host.return_value = 'cinder-backup'
+        backup = fake_backup.fake_backup_obj(self.context, host='testhost')
+
+        self.manager.create_backup(self.context, backup=backup)
+
+        # With the ready-made host, we should skip
+        #  looking up and updating the host:
+        mock_save.assert_not_called()
+        mock_host.assert_not_called()
+
         mock_volume_get.assert_called_once_with(self.context, backup.volume_id)
         mock_create.assert_called_once_with(self.context, backup)
 
@@ -617,7 +638,7 @@ class SchedulerManagerTestCase(test.TestCase):
         mock_volume_get.return_value = volume
         mock_host.side_effect = exception.ServiceNotFound(
             service_id='cinder-volume')
-        backup = fake_backup.fake_backup_obj(self.context)
+        backup = fake_backup.fake_backup_obj(self.context, host=None)
 
         self.manager.create_backup(self.context, backup=backup)
 

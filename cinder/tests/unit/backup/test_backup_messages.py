@@ -256,7 +256,8 @@ class BackupUserMessagesTest(test.TestCase):
         manager = sch_manager.SchedulerManager()
         fake_context = mock.MagicMock()
         fake_backup = mock.MagicMock(id=fake.BACKUP_ID,
-                                     volume_id=fake.VOLUME_ID)
+                                     volume_id=fake.VOLUME_ID,
+                                     host=None)
         mock_get_vol.return_value = mock.MagicMock()
         exception.ServiceNotFound(service_id='cinder-backup')
         mock_get_backup_host.side_effect = exception.ServiceNotFound(

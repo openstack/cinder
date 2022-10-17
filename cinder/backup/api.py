@@ -272,6 +272,7 @@ class API(base.Base):
         # Find the latest backup and use it as the parent backup to do an
         # incremental backup.
         latest_backup = None
+        latest_host = None
         if incremental:
             backups = objects.BackupList.get_all_by_volume(
                 context, volume_id, volume['project_id'],
@@ -312,6 +313,11 @@ class API(base.Base):
         if latest_backup:
             parent = latest_backup
             parent_id = latest_backup.id
+            if 'posix' in latest_backup.service:
+                # The posix driver needs to schedule incremental backups
+                #  on the same host as the last backup, otherwise there's
+                #  nothing to base the incremental backup on.
+                latest_host = latest_backup.host
             if latest_backup['status'] != fields.BackupStatus.AVAILABLE:
                 QUOTAS.rollback(context, reservations)
                 msg = _('No backups available to do an incremental backup.')
@@ -342,6 +348,7 @@ class API(base.Base):
             'snapshot_id': snapshot_id,
             'data_timestamp': data_timestamp,
             'parent': parent,
+            'host': latest_host,
             'metadata': metadata or {}
         }
         try:

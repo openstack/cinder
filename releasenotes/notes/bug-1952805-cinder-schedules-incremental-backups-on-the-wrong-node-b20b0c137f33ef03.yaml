@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1952805 <https://bugs.launchpad.net/cinder/+bug/1952805>`_: Fixed
+    the cinder-backup posix driver's behavior with multiple backup
+    hosts. Previously cinder-backup would frequently schedule incremental
+    backups on the wrong host and immediately fail.
