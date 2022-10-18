@@ -13,8 +13,6 @@ Cinder Specific Commandments
   datetime.now().
 - [C303] Ensure that there are no 'print()' statements are used in code that
   should be using LOG calls.
-- [C306] timeutils.strtime() must not be used (deprecated).
-- [C308] timeutils.isotime() must not be used (deprecated).
 - [C309] Unit tests should not perform logging.
 - [C310] Check for improper use of logging format arguments.
 - [C311] Check for proper naming and usage in option registration.
