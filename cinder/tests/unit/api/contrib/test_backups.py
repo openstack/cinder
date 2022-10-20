@@ -909,8 +909,8 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        self.assertEqual('Invalid backup: The parent backup must be '
-                         'available for incremental backup.',
+        self.assertEqual('Invalid backup: No backups available to '
+                         'do an incremental backup.',
                          res_dict['badRequest']['message'])
 
         backup.destroy()
