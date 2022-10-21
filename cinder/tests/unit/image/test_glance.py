@@ -24,7 +24,6 @@ import glanceclient.exc
 from keystoneauth1.loading import session as ks_session
 from keystoneauth1 import session
 from oslo_config import cfg
-import six
 
 from cinder import context
 from cinder import exception
@@ -815,8 +814,8 @@ class TestGlanceImageService(test.TestCase):
         image_id = 'fake-image-uuid'
         e = self.assertRaises(exception.ImageDownloadFailed, service.download,
                               self.context, image_id)
-        self.assertIn('image contains no data', six.text_type(e))
-        self.assertIn(image_id, six.text_type(e))
+        self.assertIn('image contains no data', str(e))
+        self.assertIn(image_id, str(e))
 
     def test_client_forbidden_converts_to_imagenotauthed(self):
         class MyGlanceStubClient(glance_stubs.StubGlanceClient):
@@ -926,7 +925,7 @@ class TestGlanceImageService(test.TestCase):
         self.assertRaises(exception.ImageNotFound, service.download,
                           self.context, image_id, writer)
 
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
     @mock.patch('shutil.copyfileobj')
     @mock.patch('cinder.image.glance.get_api_servers',
                 return_value=itertools.cycle([(False, 'localhost:9292')]))
@@ -941,7 +940,7 @@ class TestGlanceImageService(test.TestCase):
         mock_copyfileobj.assert_called_once_with(mock.ANY, writer)
         mock_open.assert_called_once_with('/tmp/test', 'rb')
 
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
     @mock.patch('shutil.copyfileobj')
     @mock.patch('cinder.image.glance.get_api_servers',
                 return_value=itertools.cycle([(False, 'localhost:9292')]))
