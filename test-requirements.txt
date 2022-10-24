@@ -20,3 +20,6 @@ testtools>=2.4.0 # MIT
 doc8>=0.8.1 # Apache-2.0
 mypy>=0.981 # MIT
 moto>=2.2.5 # Apache-2.0
+
+git+https://github.com/sapcc/os-brick.git@stable/2023.1-m3#egg=os-brick
+git+https://github.com/sapcc/oslo.vmware.git@stable/2023.1-m3#egg=oslo.vmware

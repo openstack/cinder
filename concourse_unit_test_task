@@ -1,9 +1,8 @@
 export DEBIAN_FRONTEND=noninteractive && \
-export UPPER_CONSTRAINTS_FILE=https://raw.githubusercontent.com/sapcc/requirements/stable/queens-m3/upper-constraints.txt && \
 apt-get update && \
-apt-get install -y build-essential python-pip python-dev python3-dev git libpcre++-dev gettext libpq-dev && \
+apt-get install -y build-essential python3-pip python3-dev git libpcre++-dev gettext libpq-dev qemu-utils && \
 pip install -U pip && \
-pip install tox "six>=1.14.0" && \
-git clone -b stable/queens-m3 --single-branch https://github.com/sapcc/cinder.git --depth=1 && \
-cd cinder && \
-tox -e py27,py3,pep8
+pip install tox && \
+cd source && \
+export TOX_CONSTRAINTS_FILE=https://raw.githubusercontent.com/sapcc/requirements/stable/2023.1-m3/upper-constraints.txt && \
+tox -e pep8,py3
