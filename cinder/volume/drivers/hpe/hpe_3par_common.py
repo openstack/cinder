@@ -301,6 +301,8 @@ class HPE3PARCommon(object):
         4.0.16 - In multi host env, fix multi-detach operation. Bug #1958122
         4.0.17 - Added get_manageable_volumes and get_manageable_snapshots.
                  Bug #1819903
+        4.0.18 - During conversion of volume to base volume,
+                 error out if it has child snapshot(s). Bug #1994521
         4.0.19 - Update code to work with new WSAPI (of 2023). Bug #2015746
 
 
@@ -3149,6 +3151,21 @@ class HPE3PARCommon(object):
 
             compression = self.get_compression_policy(
                 type_info['hpe3par_keys'])
+
+            # If volume (osv-) has snapshot, while converting the volume
+            # to base volume (omv-), snapshot cannot be transferred to
+            # new base volume (omv-) i.e it remain with volume (osv-).
+            # So error out for such volume.
+            snap_list = self.client.getVolumeSnapshots(volume_name)
+            if snap_list:
+                snap_str = ",".join(snap_list)
+                msg = (_("Volume %(name)s has dependent snapshots: %(snap)s."
+                         " Either flatten or remove the dependent snapshots:"
+                         " %(snap)s for the conversion of volume %(name)s to"
+                         " succeed." % {'name': volume_name,
+                                        'snap': snap_str}))
+                raise exception.VolumeIsBusy(message=msg)
+
             # Create a physical copy of the volume
             task_id = self._copy_volume(volume_name, temp_vol_name,
                                         cpg, cpg, type_info['tpvv'],
@@ -3172,16 +3189,18 @@ class HPE3PARCommon(object):
             comment = self._get_3par_vol_comment(volume_name)
             if comment:
                 self.client.modifyVolume(temp_vol_name, {'comment': comment})
-            LOG.debug('Volume rename completed: convert_to_base_volume: '
-                      'id=%s.', volume['id'])
+                LOG.debug('Assigned the comment: convert_to_base_volume: '
+                          'id=%s.', volume['id'])
 
-            # Delete source volume after the copy is complete
+            # Delete source volume (osv-) after the copy is complete
             self.client.deleteVolume(volume_name)
             LOG.debug('Delete src volume completed: convert_to_base_volume: '
                       'id=%s.', volume['id'])
 
-            # Rename the new volume to the original name
+            # Rename the new volume (omv-) to the original name (osv-)
             self.client.modifyVolume(temp_vol_name, {'newName': volume_name})
+            LOG.debug('Volume rename completed: convert_to_base_volume: '
+                      'id=%s.', volume['id'])
 
             LOG.info('Completed: convert_to_base_volume: '
                      'id=%s.', volume['id'])
