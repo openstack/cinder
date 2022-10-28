@@ -1672,12 +1672,32 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             expected_name=("cinder-pod::consisgroup-%s-cinder" % fake.GROUP_ID)
         ),
         dict(
+            repl_types=['trisync'],
+            id=fake.GROUP_ID,
+            expected_name=("cinder-pod::consisgroup-%s-cinder" % fake.GROUP_ID)
+        ),
+        dict(
+            repl_types=[None, 'trisync'],
+            id=fake.GROUP_ID,
+            expected_name=("cinder-pod::consisgroup-%s-cinder" % fake.GROUP_ID)
+        ),
+        dict(
             repl_types=['sync', 'async'],
             id=fake.GROUP_ID,
             expected_name=("cinder-pod::consisgroup-%s-cinder" % fake.GROUP_ID)
         ),
         dict(
             repl_types=[None, 'sync', 'async'],
+            id=fake.GROUP_ID,
+            expected_name=("cinder-pod::consisgroup-%s-cinder" % fake.GROUP_ID)
+        ),
+        dict(
+            repl_types=['trisync', 'sync', 'async'],
+            id=fake.GROUP_ID,
+            expected_name=("cinder-pod::consisgroup-%s-cinder" % fake.GROUP_ID)
+        ),
+        dict(
+            repl_types=[None, 'trisync', 'sync', 'async'],
             id=fake.GROUP_ID,
             expected_name=("cinder-pod::consisgroup-%s-cinder" % fake.GROUP_ID)
         ),
@@ -2616,6 +2636,21 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             expected_add_to_group=False,
             expected_remove_from_pgroup=False,
         ),
+        # Turn on trisync rep
+        dict(
+            current_spec={
+                'replication_enabled': '<is> false',
+            },
+            new_spec={
+                'replication_type': '<in> trisync',
+                'replication_enabled': '<is> true',
+            },
+            expected_model_update=None,
+            # cannot retype via fast path to/from sync rep
+            expected_did_retype=False,
+            expected_add_to_group=False,
+            expected_remove_from_pgroup=False,
+        ),
         # Turn off sync rep
         dict(
             current_spec={
@@ -2624,6 +2659,22 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             },
             new_spec={
                 'replication_type': '<in> sync',
+                'replication_enabled': '<is> false',
+            },
+            expected_model_update=None,
+            # cannot retype via fast path to/from sync rep
+            expected_did_retype=False,
+            expected_add_to_group=False,
+            expected_remove_from_pgroup=False,
+        ),
+        # Turn off trisync rep
+        dict(
+            current_spec={
+                'replication_type': '<in> trisync',
+                'replication_enabled': '<is> true',
+            },
+            new_spec={
+                'replication_type': '<in> trisync',
                 'replication_enabled': '<is> false',
             },
             expected_model_update=None,
@@ -2648,6 +2699,22 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             expected_add_to_group=False,
             expected_remove_from_pgroup=False,
         ),
+        # Change from async to trisync rep
+        dict(
+            current_spec={
+                'replication_type': '<in> async',
+                'replication_enabled': '<is> true',
+            },
+            new_spec={
+                'replication_type': '<in> trisync',
+                'replication_enabled': '<is> true',
+            },
+            expected_model_update=None,
+            # cannot retype via fast path to/from sync rep
+            expected_did_retype=False,
+            expected_add_to_group=False,
+            expected_remove_from_pgroup=False,
+        ),
         # Change from sync to async rep
         dict(
             current_spec={
@@ -2662,6 +2729,52 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             # cannot retype via fast path to/from sync rep
             expected_did_retype=False,
             expected_add_to_group=False,
+            expected_remove_from_pgroup=False,
+        ),
+        # Change from trisync to async rep
+        dict(
+            current_spec={
+                'replication_type': '<in> trisync',
+                'replication_enabled': '<is> true',
+            },
+            new_spec={
+                'replication_type': '<in> async',
+                'replication_enabled': '<is> true',
+            },
+            expected_model_update=None,
+            # cannot retype via fast path to/from trisync rep
+            expected_did_retype=False,
+            expected_add_to_group=False,
+            expected_remove_from_pgroup=False,
+        ),
+        # Change from trisync to sync rep
+        dict(
+            current_spec={
+                'replication_type': '<in> trisync',
+                'replication_enabled': '<is> true',
+            },
+            new_spec={
+                'replication_type': '<in> sync',
+                'replication_enabled': '<is> true',
+            },
+            expected_model_update=None,
+            expected_did_retype=True,
+            expected_add_to_group=False,
+            expected_remove_from_pgroup=True,
+        ),
+        # Change from sync to trisync rep
+        dict(
+            current_spec={
+                'replication_type': '<in> sync',
+                'replication_enabled': '<is> true',
+            },
+            new_spec={
+                'replication_type': '<in> trisync',
+                'replication_enabled': '<is> true',
+            },
+            expected_model_update=None,
+            expected_did_retype=True,
+            expected_add_to_group=True,
             expected_remove_from_pgroup=False,
         ),
     )
@@ -2691,15 +2804,17 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertEqual(expected_did_retype, did_retype)
         self.assertEqual(expected_model_update, model_update)
         if expected_add_to_group:
-            self.array.set_pgroup.assert_called_once_with(
-                self.driver._replication_pg_name,
-                addvollist=[vol_name]
-            )
+            if "trisync" not in new_type.extra_specs["replication_type"]:
+                self.array.set_pgroup.assert_called_once_with(
+                    self.driver._replication_pg_name,
+                    addvollist=[vol_name]
+                )
         if expected_remove_from_pgroup:
-            self.array.set_pgroup.assert_called_once_with(
-                self.driver._replication_pg_name,
-                remvollist=[vol_name]
-            )
+            if "trisync" not in current_spec["replication_type"]:
+                self.array.set_pgroup.assert_called_once_with(
+                    self.driver._replication_pg_name,
+                    remvollist=[vol_name]
+                )
 
     @ddt.data(
         dict(
@@ -2715,6 +2830,13 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 'replication_enabled': '<is> true',
             },
             expected_repl_type='sync'
+        ),
+        dict(
+            specs={
+                'replication_type': '<in> trisync',
+                'replication_enabled': '<is> true',
+            },
+            expected_repl_type='trisync'
         ),
         dict(
             specs={

@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Pure Storage driver: Added support for 3-site replication, aka trisync. Requires two
+    replication devices to be created, one async and one sync, plus the addition of new
+    parameters ``pure_trisync_enabled`` and ``pure_trisync_pg_name``.
