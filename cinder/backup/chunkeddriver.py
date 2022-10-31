@@ -780,6 +780,16 @@ class BackupRestoreHandle(object, metaclass=abc.ABCMeta):
         return
 
     def finish_restore(self):
+        # SAP
+        # hacking into VmdkWriteHandle to set the correct file size.
+        # VMDKs are stream optimized, being smaller than the actual
+        # volume. Setting the correct vmdk_size in VmdkWriteHandle
+        # allows it to properly validate the upload progress,
+        # otherwise the restore would fail with 'incomplete transfer'.
+        if hasattr(self._volume_file, '_vmdk_size'):
+            file_size = sum([s.length for s in self._segments])
+            self._volume_file._vmdk_size = file_size
+
         for segment in self._segments:
             LOG.debug('restoring object. backup: %(backup_id)s, '
                       'container: %(container)s, object name: '
