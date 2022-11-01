@@ -444,9 +444,9 @@ class DatastoreSelector(object):
 
         datastores = self._get_datastores()
         # We don't want to use hosts in buildup
-        LOG.debug("FILTER hosts start {}".format(hosts))
+        LOG.debug("FILTER hosts start {}", hosts)
         valid_hosts = self._filter_hosts(hosts)
-        LOG.debug("FILTERED hosts valid {}".format(valid_hosts))
+        LOG.debug("FILTERED hosts valid {}", valid_hosts)
         datastores = self._filter_datastores(datastores,
                                              size_bytes,
                                              profile_id,

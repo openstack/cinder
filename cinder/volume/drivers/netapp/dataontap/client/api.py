@@ -20,6 +20,7 @@
 Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
 import random
+import ssl
 
 from eventlet import greenthread
 from eventlet import semaphore
@@ -28,7 +29,6 @@ from oslo_log import log as logging
 from oslo_utils import netutils
 import six
 from six.moves import urllib
-import ssl
 
 from cinder import exception
 from cinder.i18n import _

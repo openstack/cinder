@@ -18,12 +18,12 @@ RPC server and client for communicating with other VMDK drivers directly.
 This is the gateway which allows us gathering VMWare related information from
 other hosts and perform cross vCenter operations.
 """
+import oslo_messaging as messaging
+from oslo_vmware import vim_util
+
 from cinder import rpc
 from cinder.volume.rpcapi import VolumeAPI
 from cinder.volume import volume_utils
-from oslo_vmware import vim_util
-
-import oslo_messaging as messaging
 
 
 class VmdkDriverRemoteApi(rpc.RPCAPI):

@@ -4857,7 +4857,7 @@ class VolumeManager(manager.CleanableManager,
         try:
             (backup_device, is_snapshot) = (
                 self.driver.get_backup_device(ctxt, backup))
-        except Exception as ex:
+        except Exception:
             if async_call:
                 LOG.exception("Failed to get backup device. "
                               "Calling backup continue_backup to cleanup")
@@ -4881,7 +4881,7 @@ class VolumeManager(manager.CleanableManager,
         if async_call:
             # we have to use an rpc call back to the backup manager to
             # continue the backup
-            LOG.info("Calling backup continue_backup for: {}".format(backup))
+            LOG.info("Calling backup continue_backup for: {}", backup)
             rpcapi = backup_rpcapi.BackupAPI()
             rpcapi.continue_backup(ctxt, backup, backup_device)
         else:

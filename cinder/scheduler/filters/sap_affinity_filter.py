@@ -130,9 +130,7 @@ class SAPDifferentBackendFilter(SAPBackendFilter):
         if not backend_fqdn:
             # The datastore being filtered doesn't have a custom fqdn set
             # Don't filter it out.
-            LOG.debug("Datastore {} has no fqdn".format(
-                backend_datastore
-            ))
+            LOG.debug("Datastore {} has no fqdn", backend_datastore)
             return True
 
         # extract the datastore from the host entries from
@@ -144,9 +142,8 @@ class SAPDifferentBackendFilter(SAPBackendFilter):
             volume_fqdn = self._get_backend_fqdn(volume_datastore)
             if volume_fqdn:
                 if volume_fqdn == backend_fqdn:
-                    LOG.debug("Volume FQDN matches {}".format(
-                        backend_fqdn
-                    ), resource=vol)
+                    LOG.debug("Volume FQDN matches {}",
+                              backend_fqdn, resource=vol)
                     return False
 
         return True
@@ -175,9 +172,7 @@ class SAPSameBackendFilter(SAPBackendFilter):
         if not backend_fqdn:
             # The datastore being filtered doesn't have a custom fqdn set
             # Don't filter it out.
-            LOG.debug("Datastore {} has no fqdn".format(
-                backend_datastore
-            ))
+            LOG.debug("Datastore {} has no fqdn", backend_datastore)
             return True
 
         # If the result is a list of volumes, then we have to
@@ -190,9 +185,8 @@ class SAPSameBackendFilter(SAPBackendFilter):
             volume_fqdn = self._get_backend_fqdn(volume_datastore)
             if volume_fqdn:
                 if volume_fqdn == backend_fqdn:
-                    LOG.debug("Volume FQDN matches {}".format(
-                        backend_fqdn
-                    ), resource=vol)
+                    LOG.debug("Volume FQDN matches {}",
+                              backend_fqdn, resource=vol)
                     return True
 
         return False

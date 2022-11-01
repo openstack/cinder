@@ -12,12 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from unittest import mock
 
-from cinder.tests.unit import test
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.volume.drivers.vmware import remote as vmware_remote
-
-import mock
 
 
 class VmdkDriverRemoteApiTest(test.RPCAPITestCase):

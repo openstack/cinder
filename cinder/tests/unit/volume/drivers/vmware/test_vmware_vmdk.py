@@ -167,21 +167,6 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         get_profile_id_by_name.assert_called_once_with(session,
                                                        self.STORAGE_PROFILE)
 
-    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
-    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
-    def test_get_storage_profile_id(
-            self, get_profile_id_by_name, session, get_storage_profile):
-        get_storage_profile.return_value = 'gold'
-        profile_id = mock.sentinel.profile_id
-        get_profile_id_by_name.return_value = mock.Mock(uniqueId=profile_id)
-
-        self._driver._storage_policy_enabled = True
-        volume = self._create_volume_dict()
-        self.assertEqual(profile_id,
-                         self._driver._get_storage_profile_id(volume))
-        get_storage_profile.assert_called_once_with(volume)
-        get_profile_id_by_name.assert_called_once_with(session, 'gold')
-
     @mock.patch.object(VMDK_DRIVER, 'session')
     def test_get_volume_stats_no_pools(self, session):
         retr_result_mock = mock.Mock(spec=['objects'])

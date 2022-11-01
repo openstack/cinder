@@ -12,8 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import time
-
-import mock
+from unittest import mock
 
 from cinder.tests.unit.scheduler import fakes
 from cinder.tests.unit.scheduler.test_host_filters \

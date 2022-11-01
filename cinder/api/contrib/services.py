@@ -160,7 +160,7 @@ class ServiceController(wsgi.Controller):
                                                      mv.REPLICATION_CLUSTER)
         self._volume_api_proxy(self.volume_api.recount_host_stats, context,
                                host)
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     def _log_params_binaries_services(self, context, body):
         """Get binaries and services referred by given log set/get request."""
