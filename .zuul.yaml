@@ -131,16 +131,7 @@
 - job:
     name: cinder-plugin-ceph-tempest
     parent: devstack-plugin-ceph-tempest-py3
-    roles:
-      - zuul: opendev.org/openstack/cinderlib
-      - zuul: opendev.org/openstack/cinder-tempest-plugin
-    run: playbooks/tempest-and-cinderlib-run.yaml
-    post-run: playbooks/post-cinderlib.yaml
-    required-projects:
-      - opendev.org/openstack/cinderlib
     vars:
-      zuul_additional_subunit_dirs:
-        - "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
       devstack_local_conf:
         test-config:
           $TEMPEST_CONFIG:
