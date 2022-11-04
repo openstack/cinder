@@ -55,6 +55,7 @@ Block Storage API V3 (CURRENT)
 .. include:: ext-backups.inc
 .. include:: ext-backups-actions-v3.inc
 .. include:: capabilities-v3.inc
+.. include:: clusters.inc
 .. include:: consistencygroups-v3.inc
 .. include:: os-cgsnapshots-v3.inc
 .. include:: os-services.inc

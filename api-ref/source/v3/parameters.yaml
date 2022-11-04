@@ -31,6 +31,12 @@ cgsnapshot_id_path:
   in: path
   required: true
   type: string
+cluster_name_path:
+  description: |
+    The name of the cluster.
+  in: path
+  required: true
+  type: string
 consistencygroup_id_path:
   description: |
     The ID of the consistency group.
@@ -65,6 +71,19 @@ hostname:
   description: |
     The name of the host that hosts the storage back
     end.
+  in: path
+  required: true
+  type: string
+init_at:
+  description: |
+    The date and time when the resource was initiated.
+
+        The date and time stamp format is `ISO 8601
+        <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+        ::
+
+           CCYY-MM-DDThh:mm:ss±hh:mm
   in: path
   required: true
   type: string
@@ -188,12 +207,6 @@ all-tenants:
   in: query
   required: false
   type: string
-binary_query:
-  description: |
-    Filter the service list result by binary name of the service.
-  in: query
-  required: false
-  type: string
 bootable_query:
   description: |
     Filters results by bootable status. Default=None.
@@ -206,6 +219,63 @@ cascade:
   in: query
   required: false
   type: boolean
+cluster_active_backend_id_query:
+  description: |
+    Filter the cluster list result by the ID of the active backend.
+  in: query
+  required: false
+  type: string
+cluster_binary_query:
+  description: |
+    Filter the cluster list result by binary name of the clustered services.
+    One of ``cinder-api``, ``cinder-scheduler``, ``cinder-volume``
+    or ``cinder-backup``.
+  in: query
+  required: false
+  type: string
+cluster_disabled_query:
+  description: |
+    Filter the cluster list result by status.
+  in: query
+  required: false
+  type: boolean
+cluster_frozen_query:
+  description: |
+    Filter the cluster list result by whether it's frozen.
+  in: query
+  required: false
+  type: boolean
+cluster_is_up_query:
+  description: |
+    Filter the cluster list result by state.
+  in: query
+  required: false
+  type: boolean
+cluster_name_query:
+  description: |
+    Filter the cluster list result by cluster name.
+  in: query
+  required: false
+  type: string
+cluster_num_down_hosts_query:
+  description: |
+    Filter the cluster list result by number of down hosts.
+  in: query
+  required: false
+  type: integer
+cluster_num_hosts_query:
+  description: |
+    Filter the cluster list result by number of hosts.
+  in: query
+  required: false
+  type: integer
+cluster_replication_status_query:
+  description: |
+    Filter the cluster list result by replication status. One of: ``enabled``,
+    ``disabled``.
+  in: query
+  required: false
+  type: string
 detail:
   description: |
     Indicates whether to show pool details or only
@@ -386,6 +456,12 @@ offset_transfer:
 resource:
   description: |
     Filter for resource name.
+  in: query
+  required: false
+  type: string
+service_binary_query:
+  description: |
+    Filter the service list result by binary name of the service.
   in: query
   required: false
   type: string
@@ -786,6 +862,31 @@ cipher:
   in: body
   required: false
   type: string
+cluster:
+  description: |
+    A cluster object.
+  in: body
+  required: true
+  type: object
+cluster_active_backend_id:
+  description: |
+    The ID of active storage backend. Only in ``cinder-volume`` service.
+  in: body
+  required: false
+  type: string
+  min_version: 3.26
+cluster_binary:
+  description: |
+    The binary name of the services in the cluster.
+  in: body
+  required: false
+  type: string
+cluster_binary_resp:
+  description: |
+    The binary name of the services in the cluster.
+  in: body
+  required: true
+  type: string
 cluster_cvol:
   description: |
     The cluster name. Only in ``cinder-volume`` service.
@@ -793,6 +894,31 @@ cluster_cvol:
   required: false
   type: string
   min_version: 3.7
+cluster_frozen:
+  description: |
+    Whether the cluster is frozen or not.
+  in: body
+  required: false
+  type: boolean
+  min_version: 3.26
+cluster_last_heartbeat:
+  description: |
+    The last periodic heartbeat received.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+
+    The ``±hh:mm`` value, if included, is the time zone as an offset
+    from UTC.
+  in: body
+  required: true
+  type: string
 cluster_mutex:
   description: |
     The OpenStack Block Storage cluster where the resource resides.  Optional
@@ -800,13 +926,55 @@ cluster_mutex:
   in: body
   required: false
   type: string
-cluster_name:
+cluster_name_required:
   description: |
-    The cluster name of volume backend.
+    The name to identify the service cluster.
+  in: body
+  required: true
+  type: string
+cluster_name_resp:
+  description: |
+    The name of the service cluster.
+  in: body
+  required: true
+  type: string
+cluster_num_down_hosts:
+  description: |
+    The number of down hosts in the cluster.
+  in: body
+  required: true
+  type: integer
+cluster_num_hosts:
+  description: |
+    The number of hosts in the cluster.
+  in: body
+  required: true
+  type: integer
+cluster_replication_status:
+  description: |
+    The cluster replication status. Only included in responses if configured.
+    One of: ``enabled`` or ``disabled``.
   in: body
   required: false
   type: string
-  min_version: 3.61
+cluster_state:
+  description: |
+    The state of the cluster. One of ``up`` or ``down``.
+  in: body
+  required: true
+  type: string
+cluster_status:
+  description: |
+    The status of the cluster. One of ``enabled`` or ``disabled``.
+  in: body
+  required: true
+  type: string
+clusters:
+  description: |
+    A list of cluster objects.
+  in: body
+  required: true
+  type: array
 connection_info:
   description: |
     The connection info used for server to connect the volume.
@@ -979,6 +1147,12 @@ deleted_at:
   in: body
   required: true
   type: string
+dependents:
+  description: |
+    Show the dependencies cluster.
+  in: body
+  requered: false
+  type: string
 description:
   description: |
     The backup description or null.
@@ -1094,6 +1268,13 @@ description_volume_type_required:
   in: body
   required: true
   type: string
+desired_capacity:
+  description: |
+    Show and set the desired capacity of cluster.
+  in: body
+  requered: true
+  type: string
+  min_version: 3.7
 destination_project_id:
   description: |
     Records the destination project_id after volume transfer.
@@ -1116,13 +1297,13 @@ disabled:
   type: boolean
 disabled_reason_body:
   description: |
-    The reason for disabling a service.
+    The reason for disabling a resource.
   in: body
   required: false
   type: string
 disabled_reason_body_req:
   description: |
-    The reason for disabling a service.
+    The reason for disabling a resource.
   in: body
   required: true
   type: string
@@ -1148,6 +1329,12 @@ disk_format_upload:
 display_name:
   description: |
     The name of volume backend capabilities.
+  in: body
+  required: true
+  type: string
+domain:
+  description: |
+    show de domain in use for the cluster.
   in: body
   required: true
   type: string
@@ -1605,6 +1792,12 @@ keys:
   in: body
   required: true
   type: array
+last_heartbeat:
+  description: |
+    Find the operational latency between this server/cluster and the other members of the replica set.
+  in: body
+  required: false
+  type: string
 levels:
   description: |
     The current log level that queried.
@@ -1704,6 +1897,12 @@ manageable-volumes:
   in: body
   required: true
   type: list
+max_size:
+  description: |
+    The maximum total size for the cluster.
+  in: body
+  required: true
+  type: integer
 maxTotalBackupGigabytes:
   description: |
     The maximum total amount of backups, in gibibytes
@@ -1909,11 +2108,23 @@ migration_status:
   in: body
   required: false
   type: string
+min_size:
+  description: |
+    The maximum total size for the cluster.
+  in: body
+  required: true
+  type: integer
 mountpoint:
   description: |
     The attaching mount point.
   in: body
   required: true
+  type: string
+multiattach:
+  description: |
+    Enable creating multiattach volumes
+  in: body
+  required: false
   type: string
 multiattach_req:
   description: |
@@ -2065,6 +2276,24 @@ no_snapshots:
   required: false
   min_version: 3.55
   type: boolean
+nodes:
+  description: |
+    A list of the UUIDs of node objects which are members of the current cluster.
+  in: body
+  required: false
+  type: string
+num_down_hosts:
+  description: |
+    A list of the hosts innoperates
+  in: body
+  required: false
+  type: integer
+num_hosts:
+  description: |
+    List of all hosts.
+  in: body
+  required: false
+  type: integer
 object_count:
   description: |
     The number of objects in the backup.
@@ -2285,6 +2514,12 @@ per_volume_gigabytes_usage:
   in: body
   required: true
   type: object
+policies:
+  description: |
+    A list of UUIDs of the policies attached to current cluster.
+  in: body
+  required: false
+  type: string
 pool_name:
   description: |
     The name of the storage pool.
@@ -2305,6 +2540,22 @@ prefix:
     log levels will be retrieved.
   in: body
   required: false
+  type: string
+profile_id:
+  description: |
+    The UUID of the profile.
+  in: body
+  required: false
+  type: string
+  min_version: 3.7
+profile_name:
+  description: |
+    The name of a profile object. The name must start
+    with an ASCII letter and can contain ASCII letters,
+    digits, underscores, periods, and hyphens and its
+    length must be less than 255
+  in: body
+  required: true
   type: string
 project:
   description: |
@@ -2836,6 +3087,12 @@ specs:
   in: body
   required: true
   type: object
+state:
+  description: |
+    The ''state'' of the cluster. One for "up" or "down".
+  in: body
+  required: true
+  type: string
 status:
   description: |
     The ``status`` of the consistency group snapshot.
@@ -2879,6 +3136,13 @@ status_group_snap:
   in: body
   required: true
   type: string
+status_reason:
+  description: |
+    The string representation of the reason why the object
+    has transited to its current status.
+  in: body
+  required: false
+  type: string
 status_snap:
   description: |
     The status for the snapshot.
@@ -2906,6 +3170,14 @@ summary_metadata:
   required: true
   type: object
   min_version: 3.36
+timeout:
+  descripition: |
+    The default timeout value (in seconds)
+    of cluster operations.
+  in: body
+  required: false
+  type: integer
+  min_version: 3.7
 total_capacity:
   description: |
     The total capacity for the back-end volume, in
@@ -3139,6 +3411,13 @@ volume_backend_name:
   in: body
   required: true
   type: string
+volume_cluster_name:
+  description: |
+    The cluster name of volume backend.
+  in: body
+  required: false
+  type: string
+  min_version: 3.61
 volume_id:
   description: |
     The UUID of the volume.
