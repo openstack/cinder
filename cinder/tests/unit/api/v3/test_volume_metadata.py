@@ -38,10 +38,6 @@ from cinder.volume import api as volume_api
 CONF = cfg.CONF
 
 
-def return_create_volume_metadata_max(context, volume_id, metadata, delete):
-    return stub_max_volume_metadata()
-
-
 def return_create_volume_metadata(context, volume_id, metadata,
                                   delete, meta_type):
     return stub_volume_metadata()
@@ -96,13 +92,6 @@ def stub_volume_metadata_insensitive():
         "key3": "value3",
         "KEY4": "value4",
     }
-    return metadata
-
-
-def stub_max_volume_metadata():
-    metadata = {"metadata": {}}
-    for num in range(CONF.quota_metadata_items):
-        metadata['metadata']['key%i' % num] = "blah"
     return metadata
 
 
