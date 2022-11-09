@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1996049 <https://bugs.launchpad.net/cinder/+bug/1996049>`_: Fixed bug
+    where backup was not set to error on failure when volume did not exist.
