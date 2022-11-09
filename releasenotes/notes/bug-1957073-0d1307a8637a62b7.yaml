@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    RBD Driver `bug #1957073
+    <https://bugs.launchpad.net/cinder/+bug/1957073>`_: Fixed snapshot deletion
+    failure when its volume doesn't exist.
