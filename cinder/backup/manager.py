@@ -416,10 +416,15 @@ class BackupManager(manager.SchedulerDependentManager):
                     snapshot.status = fields.SnapshotStatus.AVAILABLE
                     snapshot.save()
                 else:
-                    self.db.volume_update(
-                        context, volume_id,
-                        {'status': previous_status,
-                         'previous_status': 'error_backing-up'})
+                    try:
+                        self.db.volume_update(
+                            context, volume_id,
+                            {'status': previous_status,
+                             'previous_status': 'error_backing-up'})
+                    except exception.VolumeNotFound:
+                        # If the volume was deleted we cannot update its
+                        # status but we still want to set the backup to error.
+                        pass
                 volume_utils.update_backup_error(backup, str(err))
 
     def _start_backup(self, context, backup, volume):
