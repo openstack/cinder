@@ -18,8 +18,6 @@ Schema for V3 volume type access API.
 
 """
 
-from cinder.api.validation import parameter_types
-
 add_project_access = {
     'type': 'object',
     'properties': {
@@ -27,7 +25,8 @@ add_project_access = {
         'addProjectAccess': {
             'type': 'object',
             'properties': {
-                'project': parameter_types.uuid,
+                'project': {'type': 'string',
+                            'minLength': 1, 'maxLength': 255},
             },
             'required': ['project'],
             'additionalProperties': False,
@@ -45,7 +44,8 @@ remove_project_access = {
         'removeProjectAccess': {
             'type': 'object',
             'properties': {
-                'project': parameter_types.uuid,
+                'project': {'type': 'string',
+                            'minLength': 1, 'maxLength': 255},
             },
             'required': ['project'],
             'additionalProperties': False,
