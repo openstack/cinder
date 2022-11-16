@@ -18,5 +18,5 @@ SQLAlchemy-Utils>=0.37.8 # BSD License
 testtools>=2.4.0 # MIT
 
 doc8>=0.8.1 # Apache-2.0
-mypy>=0.960 # MIT
+mypy>=0.981 # MIT
 moto>=2.2.5 # Apache-2.0
