@@ -44,7 +44,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
-from cinder import utils
+from cinder.objects import snapshot as snapshot_obj
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import datastore as hub
@@ -1215,10 +1215,21 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return self._get_volume_group_folder(
             dc, volume.project_id, snapshot=True)
 
-    def _create_snapshot_template_format(self, snapshot, backing):
+    @volume_utils.trace
+    def _create_snapshot_template_format(self, snapshot, backing,
+                                         backend=None):
         volume = snapshot.volume
         folder = self._get_snapshot_group_folder(volume, backing)
-        datastore = self.volumeops.get_datastore(backing)
+        if backend:
+            # Create the snapshot on the datastore described in
+            # backend making this snapshot independent from the volume
+            datastore_name = volume_utils.extract_host(backend, 'pool')
+            (host_ref,
+             resource_pool,
+             summary) = self.ds_sel.select_datastore_by_name(datastore_name)
+            datastore = summary.datastore
+        else:
+            datastore = self.volumeops.get_datastore(backing)
 
         if self._in_use(volume):
             tmp_backing = self._create_temp_backing_from_attached_vmdk(
@@ -1247,6 +1258,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         :param snapshot: Snapshot object
         """
+        backend = None
+        key = snapshot_obj.SAP_HIDDEN_BACKEND_KEY
+        if ('metadata' in snapshot and snapshot['metadata'] and
+                key in snapshot['metadata']):
+            backend = snapshot['metadata'][key]
 
         volume = snapshot['volume']
         snapshot_format = self.configuration.vmware_snapshot_format
@@ -1269,7 +1285,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                            snapshot['display_description'])
         else:
             model_update = self._create_snapshot_template_format(
-                snapshot, backing)
+                snapshot, backing, backend=backend)
 
         LOG.info("Successfully created snapshot: %s.", snapshot['name'])
         return model_update

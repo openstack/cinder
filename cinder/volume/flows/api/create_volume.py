@@ -28,6 +28,7 @@ from cinder.i18n import _
 from cinder.image import glance
 from cinder import objects
 from cinder.objects import fields
+from cinder.objects import snapshot as snapshot_obj
 from cinder.policies import volumes as policy
 from cinder import quota
 from cinder import quota_utils
@@ -840,6 +841,26 @@ class VolumeCastTask(flow_utils.CinderTask):
             # service with the desired backend information.
             snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
             request_spec['resource_backend'] = snapshot.volume.resource_backend
+            # SAP only force the same backend, not the same pool
+            # if we are allowing snapshots to live on pools other than
+            # the source volume.
+            if CONF.sap_allow_independent_snapshots:
+                # First see if the host was saved in metadata, because the
+                # source volume is allowed to be migrated off of it's original
+                # shard.
+                # If not, then use the volume's host entry.
+                snap_host_key = snapshot_obj.SAP_HIDDEN_BACKEND_KEY
+                snap_host = snapshot.metadata.get(snap_host_key)
+                if snap_host:
+                    # we need to use the host entry saved in the snapshot
+                    # metadata as the source volume can be migrated to a
+                    # different shard.
+                    backend = volume_utils.extract_host(snap_host)
+                else:
+                    backend = volume_utils.extract_host(
+                        snapshot.volume.resource_backend
+                    )
+                request_spec['resource_backend'] = backend
         elif source_volid:
             source_volume_ref = objects.Volume.get_by_id(context, source_volid)
             request_spec['resource_backend'] = (

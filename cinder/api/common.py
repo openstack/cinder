@@ -61,6 +61,8 @@ ATTRIBUTE_CONVERTERS = {'name~': 'display_name~',
 
 METADATA_TYPES = enum.Enum('METADATA_TYPES', 'user image')
 
+SAP_HIDDEN_METADATA_KEY = "__cinder_internal"
+
 
 def get_pagination_params(params: dict,
                           max_limit: Optional[int] = None) -> tuple:
