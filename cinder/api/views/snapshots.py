@@ -39,6 +39,13 @@ class ViewBuilder(common.ViewBuilder):
         """Generic, non-detailed view of a snapshot."""
         if isinstance(snapshot.metadata, dict):
             metadata = snapshot.metadata
+            # SAP we don't show the backend here because it's
+            # custom for our deployment with independent snaps
+            # for the vmware vmdk driver
+            del_key = common.SAP_HIDDEN_METADATA_KEY
+            delete_keys = [key for key in metadata if key.startswith(del_key)]
+            for key in delete_keys:
+                del metadata[key]
         else:
             metadata = {}
 

@@ -16,6 +16,7 @@ from oslo_config import cfg
 from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
+from cinder.api import common
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -27,6 +28,8 @@ from cinder.volume import volume_types
 
 
 CONF = cfg.CONF
+
+SAP_HIDDEN_BACKEND_KEY = common.SAP_HIDDEN_METADATA_KEY + "_backend"
 
 
 @base.CinderObjectRegistry.register

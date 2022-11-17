@@ -422,7 +422,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                 'name': name,
                 'display_description': description,
                 'volume_size': volume['size'],
-                'provider_location': provider_location
+                'provider_location': provider_location,
+                'metadata': {},
                 }
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -569,7 +570,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.get_backing.assert_called_once_with(snapshot['volume_name'],
                                                  snapshot['volume']['id'])
         create_snapshot_template_format.assert_called_once_with(
-            snapshot, backing)
+            snapshot, backing, backend=None)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_get_template_by_inv_path(self, vops):

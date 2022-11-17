@@ -44,6 +44,7 @@ from cinder.message import api as mess_api
 from cinder.message import message_field
 from cinder import objects
 from cinder.objects import fields
+from cinder.objects import snapshot as snapshot_obj
 from cinder import quota
 from cinder import rpc
 from cinder.scheduler.flows import create_volume
@@ -62,6 +63,10 @@ scheduler_manager_opts = [
                min=1,
                help='Maximum time in seconds to wait for the driver to '
                     'report as ready'),
+    cfg.BoolOpt('sap_allow_independent_snapshots',
+                default=False,
+                help='Allow cinder to schedule snapshot creations on pools '
+                     'other than the source volume pool.'),
 ]
 
 CONF = cfg.CONF
@@ -239,19 +244,33 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         """
         self._wait_for_scheduler()
 
+        if CONF.sap_allow_independent_snapshots:
+            # We allow snapshots to be created on a pool
+            # separate from the volume's pool.
+            backend = vol_utils.extract_host(volume['host'])
+
         try:
             tgt_backend = self.driver.backend_passes_filters(
                 ctxt, backend, request_spec, filter_properties)
             tgt_backend.consume_from_volume(
                 {'size': request_spec['volume_properties']['size']})
+            LOG.info("Snapshot picked backend_id is '%s'",
+                     tgt_backend.backend_id)
         except exception.NoValidBackend as ex:
             self._set_snapshot_state_and_notify('create_snapshot',
                                                 snapshot,
                                                 fields.SnapshotStatus.ERROR,
                                                 ctxt, ex, request_spec)
         else:
-            volume_rpcapi.VolumeAPI().create_snapshot(ctxt, volume,
-                                                      snapshot)
+            if CONF.sap_allow_independent_snapshots:
+                # Set this in the metadata of the snap
+                key = snapshot_obj.SAP_HIDDEN_BACKEND_KEY
+                if snapshot.metadata:
+                    snapshot.metadata[key] = tgt_backend.backend_id
+                else:
+                    snapshot.metadata = {key: tgt_backend.backend_id}
+                snapshot.save()
+            volume_rpcapi.VolumeAPI().create_snapshot(ctxt, volume, snapshot)
 
     def _do_cleanup(self, ctxt, vo_resource):
         # We can only receive cleanup requests for volumes, but we check anyway

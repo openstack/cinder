@@ -761,6 +761,14 @@ class VolumeCastTask(flow_utils.CinderTask):
             # service with the desired backend information.
             snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
             request_spec['resource_backend'] = snapshot.volume.resource_backend
+            # SAP only force the same backend, not the same pool
+            # if we are allowing snapshots to live on pools other than
+            # the source volume.
+            if CONF.sap_allow_independent_snapshots:
+                backend = volume_utils.extract_host(
+                    snapshot.volume.resource_backend
+                )
+                request_spec['resource_backend'] = backend
         elif source_volid:
             source_volume_ref = objects.Volume.get_by_id(context, source_volid)
             request_spec['resource_backend'] = (
