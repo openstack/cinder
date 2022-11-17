@@ -32,6 +32,11 @@
             timeout: 5400
             irrelevant-files: *functional-irrelevant-files
         - cinder-plugin-ceph-tempest:
+            # Since wallaby is EM, we need to fetch os-brick
+            # from source and not released version.
+            required-projects:
+            - name: opendev.org/openstack/os-brick
+              override-branch: stable/wallaby
             irrelevant-files: &gate-irrelevant-files
               - ^(test-|)requirements.txt$
               - ^lower-constraints.txt$
@@ -50,6 +55,9 @@
               - ^tox.ini$
         - cinder-plugin-ceph-tempest-mn-aa:
             voting: false
+            required-projects:
+            - name: opendev.org/openstack/os-brick
+              override-branch: stable/wallaby
             irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-plugin-lvm-lio-barbican:
             irrelevant-files: *gate-irrelevant-files
@@ -79,6 +87,9 @@
         - cinder-grenade-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - cinder-plugin-ceph-tempest:
+            required-projects:
+            - name: opendev.org/openstack/os-brick
+              override-branch: stable/wallaby
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
