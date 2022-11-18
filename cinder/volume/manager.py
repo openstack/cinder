@@ -3252,13 +3252,13 @@ class VolumeManager(manager.CleanableManager,
 
     def _get_my_volumes_summary(
             self,
-            ctxt: context.RequestContext) -> objects.VolumeList:
+            ctxt: context.RequestContext) -> tuple:
         filters = self._get_cluster_or_host_filters()
         return objects.VolumeList.get_volume_summary(ctxt, False, filters)
 
     def _get_my_snapshots_summary(
             self,
-            ctxt: context.RequestContext) -> objects.SnapshotList:
+            ctxt: context.RequestContext) -> tuple:
         filters = self._get_cluster_or_host_filters()
         return objects.SnapshotList.get_snapshot_summary(ctxt, False, filters)
 
