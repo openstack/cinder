@@ -333,10 +333,10 @@ class TestCase(testtools.TestCase):
     def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""
 
-        # Kill any services
+        # Stop any services (this stops RPC handlers)
         for x in self._services:
             try:
-                x.kill()
+                x.stop()
             except Exception:
                 pass
 
