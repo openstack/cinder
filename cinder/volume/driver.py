@@ -52,16 +52,19 @@ volume_opts = [
                help='The percentage of backend capacity is reserved'),
     cfg.StrOpt('target_prefix',
                default='iqn.2010-10.org.openstack:',
-               help='Prefix for iSCSI volumes'),
+               help='Prefix for iSCSI/NVMEoF volumes'),
     cfg.StrOpt('target_ip_address',
                default='$my_ip',
-               help='The IP address that the iSCSI daemon is listening on'),
+               help='The IP address that the iSCSI/NVMEoF daemon is '
+                    'listening on'),
     cfg.ListOpt('iscsi_secondary_ip_addresses',
                 default=[],
-                help='The list of secondary IP addresses of the iSCSI daemon'),
+                help='The list of secondary IP addresses of the '
+                     'iSCSI/NVMEoF daemon'),
     cfg.PortOpt('target_port',
                 default=3260,
-                help='The port that the iSCSI daemon is listening on'),
+                help='The port that the iSCSI/NVMEoF daemon is listening '
+                     'on'),
     cfg.IntOpt('num_volume_device_scan_tries',
                default=3,
                help='The maximum number of times to rescan targets'
