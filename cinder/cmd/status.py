@@ -15,6 +15,8 @@
 
 """CLI interface for cinder status commands."""
 
+from __future__ import annotations
+
 import os
 import sys
 
@@ -49,10 +51,11 @@ REMOVED_DRVRS = [
 ]
 
 
-def _get_enabled_drivers():
+def _get_enabled_drivers() -> list[str]:
     """Returns a list of volume_driver entries"""
     volume_drivers = []
     if CONF.enabled_backends:
+        backend: str
         for backend in filter(None, CONF.enabled_backends):
             # Each backend group needs to be registered first
             CONF.register_opts(volume_manager.volume_backend_opts,
@@ -70,11 +73,11 @@ class Checks(uc.UpgradeCommands):
         super(Checks, self).__init__(*args, **kwargs)
         self.context = context.get_admin_context()
 
-    def _file_exists(self, path):
+    def _file_exists(self, path: str) -> bool:
         """Helper for mocking check of os.path.exists."""
         return os.path.exists(path)
 
-    def _check_backup_module(self):
+    def _check_backup_module(self) -> uc.Result:
         """Checks for the use of backup driver module paths.
 
         The use of backup modules for setting backup_driver was deprecated and
@@ -96,7 +99,7 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
-    def _check_policy_file(self):
+    def _check_policy_file(self) -> uc.Result:
         """Checks if a policy.json file is present.
 
         With the switch to policy-in-code, policy files should be policy.yaml
@@ -145,7 +148,7 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
-    def _check_periodic_interval(self):
+    def _check_periodic_interval(self) -> uc.Result:
         """Checks for non-default use of periodic_interval.
 
         Some new configuration options have been introduced to supplement
@@ -167,7 +170,7 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
-    def _check_nested_quota(self):
+    def _check_nested_quota(self) -> uc.Result:
         """Checks for the use of the nested quota driver.
 
         The NestedDbQuotaDriver is deprecated in the Train release and is
@@ -185,7 +188,7 @@ class Checks(uc.UpgradeCommands):
                 'and is removed in Wallaby release.')
         return uc.Result(SUCCESS)
 
-    def _check_legacy_windows_config(self):
+    def _check_legacy_windows_config(self) -> uc.Result:
         """Checks to ensure that the Windows driver path is properly updated.
 
         The WindowsDriver was renamed in the Queens release to
@@ -209,7 +212,7 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
-    def _check_removed_drivers(self):
+    def _check_removed_drivers(self) -> uc.Result:
         """Checks to ensure that no removed drivers are configured.
 
         Checks start with drivers removed in the Stein release.
@@ -239,7 +242,7 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
-    def _check_service_uuid(self):
+    def _check_service_uuid(self) -> uc.Result:
         try:
             db.service_get_by_uuid(self.context, None)
         except exception.ServiceNotFound:

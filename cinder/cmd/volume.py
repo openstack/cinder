@@ -38,7 +38,9 @@ else:
 # https://github.com/eventlet/eventlet/issues/592
 import __original_module_threading as orig_threading  # pylint: disable=E0401
 import threading # noqa
-orig_threading.current_thread.__globals__['_active'] = threading._active
+orig_threading.current_thread.__globals__['_active'] = \
+    threading._active  # type: ignore
+import typing
 
 import os_brick
 from oslo_config import cfg
@@ -46,6 +48,8 @@ from oslo_log import log as logging
 from oslo_privsep import priv_context
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
+if typing.TYPE_CHECKING:
+    import oslo_service
 
 # Need to register global_opts
 from cinder.common import config  # noqa
@@ -88,7 +92,8 @@ LOG = None
 service_started = False
 
 
-def _launch_service(launcher, backend):
+def _launch_service(launcher: 'oslo_service.ProcessLauncher',
+                    backend: str) -> None:
     CONF.register_opt(host_opt, group=backend)
     backend_host = getattr(CONF, backend).backend_host
     host = "%s@%s" % (backend_host or CONF.host, backend)
@@ -103,6 +108,7 @@ def _launch_service(launcher, backend):
                                         coordination=True,
                                         cluster=cluster)
     except Exception:
+        assert LOG is not None
         LOG.exception('Volume service %s failed to start.', host)
     else:
         # Dispose of the whole DB connection pool here before
@@ -113,18 +119,19 @@ def _launch_service(launcher, backend):
         _notify_service_started()
 
 
-def _ensure_service_started():
+def _ensure_service_started() -> None:
     if not service_started:
+        assert LOG is not None
         LOG.error('No volume service(s) started successfully, terminating.')
         sys.exit(1)
 
 
-def _notify_service_started():
+def _notify_service_started() -> None:
     global service_started
     service_started = True
 
 
-def _launch_services_win32():
+def _launch_services_win32() -> None:
     if CONF.backend_name and CONF.backend_name not in CONF.enabled_backends:
         msg = _('The explicitly passed backend name "%(backend_name)s" is not '
                 'among the enabled backends: %(enabled_backends)s.')
@@ -144,6 +151,7 @@ def _launch_services_win32():
         # and constructing the service object within the child process.
         launcher = service.WindowsProcessLauncher()
         py_script_re = re.compile(r'.*\.py\w?$')
+        backend: str
         for backend in filter(None, CONF.enabled_backends):
             cmd = sys.argv + ['--backend_name=%s' % backend]
             # Recent setuptools versions will trim '-script.py' and '.exe'
@@ -158,9 +166,10 @@ def _launch_services_win32():
     launcher.wait()
 
 
-def _launch_services_posix():
+def _launch_services_posix() -> None:
     launcher = service.get_launcher()
 
+    backend: str
     for backend in filter(None, CONF.enabled_backends):
         _launch_service(launcher, backend)
 
@@ -169,7 +178,7 @@ def _launch_services_posix():
     launcher.wait()
 
 
-def main():
+def main() -> None:
     objects.register_all()
     gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project='cinder',

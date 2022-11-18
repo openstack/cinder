@@ -27,7 +27,8 @@ eventlet.monkey_patch()
 # https://github.com/eventlet/eventlet/issues/592
 import __original_module_threading as orig_threading  # pylint: disable=E0401
 import threading # noqa
-orig_threading.current_thread.__globals__['_active'] = threading._active
+orig_threading.current_thread.__globals__['_active'] = \
+    threading._active  # type: ignore
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -47,7 +48,7 @@ from cinder import version
 CONF = cfg.CONF
 
 
-def main():
+def main() -> None:
     objects.register_all()
     gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project='cinder',
