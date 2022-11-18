@@ -28,7 +28,7 @@ class CGSnapshot(base.CinderPersistentObject, base.CinderObject,
     # Version 1.1: Added from_group_snapshot
     VERSION = '1.1'
 
-    OPTIONAL_FIELDS = ['consistencygroup', 'snapshots']
+    OPTIONAL_FIELDS = ('consistencygroup', 'snapshots')
 
     # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {

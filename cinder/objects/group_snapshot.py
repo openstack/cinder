@@ -26,7 +26,7 @@ class GroupSnapshot(base.CinderPersistentObject, base.CinderObject,
                     base.CinderObjectDictCompat, base.ClusteredObject):
     VERSION = '1.0'
 
-    OPTIONAL_FIELDS = ['group', 'snapshots']
+    OPTIONAL_FIELDS = ('group', 'snapshots')
 
     # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {

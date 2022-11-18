@@ -32,7 +32,7 @@ class Group(base.CinderPersistentObject, base.CinderObject,
     # Version 1.2: Added replication_status
     VERSION = '1.2'
 
-    OPTIONAL_FIELDS = ['volumes', 'volume_types', 'group_snapshots']
+    OPTIONAL_FIELDS = ('volumes', 'volume_types', 'group_snapshots')
 
     # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
