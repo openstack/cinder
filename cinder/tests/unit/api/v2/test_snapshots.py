@@ -528,7 +528,7 @@ class SnapshotApiTest(test.TestCase):
 
     @mock.patch.object(db, 'snapshot_get_all_by_project')
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
-    def test_list_snpashots_with_wrong_limit_and_offset(self,
+    def test_list_snapshots_with_wrong_limit_and_offset(self,
                                                         mock_metadata_get,
                                                         mock_snapshot_get_all):
         """Test list with negative and non numeric limit and offset."""
