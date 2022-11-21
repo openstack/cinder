@@ -136,7 +136,7 @@ storwize_svc_opts = [
     cfg.StrOpt('storwize_portset',
                default=None,
                help='Specifies the name of the portset in which '
-                    'host to be created.'),
+                    'the host is to be created.'),
     cfg.StrOpt('storwize_svc_src_child_pool',
                default=None,
                help='Specifies the name of the source child pool in which '
