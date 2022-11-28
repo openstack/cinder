@@ -3316,6 +3316,17 @@ class RBDTestCase(test.TestCase):
             {'provider_location':
              "{\"saved_features\":%s}" % image_features}, ret)
 
+    @common_mocks
+    def test_enable_multiattach_no_features(self):
+        image = self.mock_proxy.return_value.__enter__.return_value
+        image.features.return_value = 0
+
+        ret = self.driver._enable_multiattach(self.volume_a)
+
+        image.update_features.assert_not_called()
+
+        self.assertEqual({'provider_location': '{"saved_features":0}'}, ret)
+
     @ddt.data(MULTIATTACH_FULL_FEATURES, MULTIATTACH_REDUCED_FEATURES)
     @common_mocks
     def test_disable_multiattach(self, features):
@@ -3326,6 +3337,18 @@ class RBDTestCase(test.TestCase):
 
         image.update_features.assert_called_once_with(
             self.driver.MULTIATTACH_EXCLUSIONS & features, True)
+
+        self.assertEqual({'provider_location': None}, ret)
+
+    @common_mocks
+    def test_disable_multiattach_no_features(self):
+        image = self.mock_proxy.return_value.__enter__.return_value
+        self.volume_a.provider_location = '{"saved_features": 0}'
+        image.features.return_value = 0
+
+        ret = self.driver._disable_multiattach(self.volume_a)
+
+        image.update_features.assert_not_called()
 
         self.assertEqual({'provider_location': None}, ret)
 

@@ -965,7 +965,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         with RBDVolumeProxy(self, vol_name) as image:
             image_features = image.features()
             change_features = self.MULTIATTACH_EXCLUSIONS & image_features
-            image.update_features(change_features, False)
+            if change_features != 0:
+                image.update_features(change_features, False)
 
         return {'provider_location':
                 self._dumps({'saved_features': image_features})}
@@ -977,7 +978,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 provider_location = json.loads(volume.provider_location)
                 image_features = provider_location['saved_features']
                 change_features = self.MULTIATTACH_EXCLUSIONS & image_features
-                image.update_features(change_features, True)
+                if change_features != 0:
+                    image.update_features(change_features, True)
             except IndexError:
                 msg = "Could not find saved image features."
                 raise RBDDriverException(reason=msg)
