@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    IET iSCSI target removed. IET iSCSI target was deprecated in the V release.
