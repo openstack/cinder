@@ -199,6 +199,10 @@ class S3BackupDriver(chunkeddriver.ChunkedBackupDriver):
             'config': Config(**config_args)}
         if CONF.backup_s3_verify_ssl:
             conn_args['verify'] = CONF.backup_s3_ca_cert_file
+
+            if CONF.backup_s3_ca_cert_file is None:
+                LOG.warning('backup_s3_verify_ssl is True but no cert file '
+                            'was provided')
         else:
             conn_args['verify'] = False
         self.conn = boto3.client('s3', **conn_args)
