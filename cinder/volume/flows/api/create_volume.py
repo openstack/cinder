@@ -771,8 +771,13 @@ class VolumeCastTask(flow_utils.CinderTask):
                 request_spec['resource_backend'] = backend
         elif source_volid:
             source_volume_ref = objects.Volume.get_by_id(context, source_volid)
-            request_spec['resource_backend'] = (
-                source_volume_ref.resource_backend)
+            if CONF.sap_allow_independent_clone:
+                backend = volume_utils.extract_host(
+                    source_volume_ref.resource_backend
+                )
+            else:
+                backend = source_volume_ref.resource_backend
+            request_spec['resource_backend'] = backend
 
         self.scheduler_rpcapi.create_volume(
             context,
