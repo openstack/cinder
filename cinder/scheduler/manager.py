@@ -67,6 +67,10 @@ scheduler_manager_opts = [
                 default=False,
                 help='Allow cinder to schedule snapshot creations on pools '
                      'other than the source volume pool.'),
+    cfg.BoolOpt('sap_allow_independent_clone',
+                default=False,
+                help='Allow cinder to schedule a clone volume on a pool '
+                     'other than the source volume pool.'),
 ]
 
 CONF = cfg.CONF
