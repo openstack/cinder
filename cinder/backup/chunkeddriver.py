@@ -875,7 +875,9 @@ class BackupRestoreHandle(object, metaclass=abc.ABCMeta):
                 return
         self._object_readers[obj_name].close()
         del self._object_readers[obj_name]
-        LOG.debug("Cleared reader for object %s", segment.obj['name'])
+        # See hint about https://github.com/eventlet/eventlet/issues/432
+        # at the top why not to log here. May be fixed in oslo.log 5.0.1
+        # LOG.debug("Cleared reader for object %s", segment.obj['name'])
 
     def add_object(self, metadata_object):
         """Merges a backup chunk over the self._segments list.
