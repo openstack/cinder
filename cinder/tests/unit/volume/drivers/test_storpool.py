@@ -356,15 +356,18 @@ class StorPoolTestCase(test.TestCase):
                                                  'available')
         self.assertDictEqual({'_name_id': '1'}, res)
 
-        # Failure: a volume with the original volume's name already exists
-        res = self.driver.update_migrated_volume(None, {'id': '1'},
-                                                 {'id': '2', '_name_id': '1'},
-                                                 'available')
-        self.assertDictEqual({'_name_id': '1'}, res)
-
         # Success: rename the migrated volume to match the original
         res = self.driver.update_migrated_volume(None, {'id': '3'},
                                                  {'id': '2', '_name_id': '3'},
+                                                 'available')
+        self.assertDictEqual({'_name_id': None}, res)
+        self.assertCountEqual([volumeName('1'), volumeName('3')],
+                              volumes.keys())
+        self.assertVolumeNames(('1', '3',))
+
+        # Success: swap volume names with an existing volume
+        res = self.driver.update_migrated_volume(None, {'id': '1'},
+                                                 {'id': '3', '_name_id': '1'},
                                                  'available')
         self.assertDictEqual({'_name_id': None}, res)
         self.assertCountEqual([volumeName('1'), volumeName('3')],

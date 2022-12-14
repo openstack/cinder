@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    StorPool driver `bug #2002995
+    <https://bugs.launchpad.net/cinder/+bug/2002995>`_: When retyping a
+    volume on a StorPool backend to a different volume type also on that
+    StorPool backend but using a different StorPool template, occasionally
+    the retype operation would fail or the old volume could be left attached
+    to a StorPool client. This issue has been fixed in this release.
