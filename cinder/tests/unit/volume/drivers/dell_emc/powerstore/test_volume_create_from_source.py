@@ -19,6 +19,7 @@ from cinder import exception
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import powerstore
+from cinder.volume.drivers.dell_emc.powerstore import client
 
 
 class TestVolumeCreateFromSource(powerstore.TestPowerStoreDriver):
@@ -114,3 +115,26 @@ class TestVolumeCreateFromSource(powerstore.TestPowerStoreDriver):
             self.source_volume
         )
         self.assertIn("Failed to extend PowerStore volume", error.msg)
+
+    @mock.patch("requests.request")
+    def test_create_snapshot_limit_reached(self, mock_create_snap_limit):
+        snapshot_limit_reached_response = {
+            'errorCode': 0,
+            'message': 'messages',
+            'messages': [
+                {
+                    'code': client.TOO_MANY_SNAPS_ERROR,
+                }
+            ]
+        }
+        mock_create_snap_limit.return_value = powerstore.MockResponse(
+            snapshot_limit_reached_response, rc=400)
+        error = self.assertRaises(
+            exception.SnapshotLimitReached,
+            self.driver.adapter.create_volume_from_source,
+            self.volume,
+            self.source_volume
+        )
+        self.assertIn(
+            "Exceeded the configured limit of 32 snapshots per volume.",
+            error.msg)
