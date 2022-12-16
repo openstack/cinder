@@ -351,8 +351,7 @@ class CinderPersistentObject(object):
         return self.conditional_update(values, expected_status, filters)
 
     def conditional_update(self, values, expected_values=None, filters=(),
-                           save_all=False, session=None, reflect_changes=True,
-                           order=None):
+                           save_all=False, reflect_changes=True, order=None):
         """Compare-and-swap update.
 
         A conditional object update that, unlike normal update, will SAVE the
@@ -406,7 +405,6 @@ class CinderPersistentObject(object):
         :param filters: Iterable with additional filters
         :param save_all: Object may have changes that are not in the DB, this
                          will say whether we want those changes saved as well.
-        :param session: Session to use for the update
         :param reflect_changes: If we want changes made in the database to be
                                 reflected in the versioned object.  This may
                                 mean in some cases that we have to reload the
