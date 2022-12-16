@@ -560,8 +560,8 @@ class BackupManager(manager.SchedulerDependentManager):
                                   {'status': previous_status,
                                    'previous_status': 'backing-up'})
 
-        # _run_backup method above updated the status for the backup, so it
-        # will reflect latest status, even if it is deleted
+        # continue_backup method above updated the status for the backup, so
+        # it will reflect latest status, even if it is deleted
         completion_msg = 'finished'
         if backup.status in (fields.BackupStatus.DELETING,
                              fields.BackupStatus.DELETED):
