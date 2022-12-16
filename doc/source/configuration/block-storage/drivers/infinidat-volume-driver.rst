@@ -25,6 +25,7 @@ Supported operations
 * Revert a volume to a snapshot.
 * Manage and unmanage volumes and snapshots.
 * List manageable volumes and snapshots.
+* Attach a volume to multiple instances at once (multi-attach).
 
 External package installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
