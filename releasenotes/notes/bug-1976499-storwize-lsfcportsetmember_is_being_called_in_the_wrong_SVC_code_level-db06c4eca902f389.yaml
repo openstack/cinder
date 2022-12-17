@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #1976499
+    <https://bugs.launchpad.net/cinder/+bug/1976499>`_:
+    Setting correct SVC Code level for lsfcportsetmember
+    call.
