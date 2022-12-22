@@ -1,4 +1,6 @@
 - project:
+    vars:
+      ensure_tox_version: '<4'
     templates:
       - openstack-python3-xena-jobs
       - openstack-python3-xena-jobs-arm64
