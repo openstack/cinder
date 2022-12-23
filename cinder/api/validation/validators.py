@@ -398,6 +398,14 @@ def _validate_key_size(param_value):
     return True
 
 
+@jsonschema.FormatChecker.cls_checks('mysql_text')
+def _validate_mysql_text(param_value):
+    length = len(param_value.encode('utf8'))
+    if length > 65535:
+        return False
+    return True
+
+
 class FormatChecker(jsonschema.FormatChecker):
     """A FormatChecker can output the message from cause exception
 

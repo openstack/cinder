@@ -220,6 +220,44 @@ class VolumeImageMetadataTest(test.TestCase):
         self.assertEqual(fake_image_metadata,
                          jsonutils.loads(res.body)["metadata"])
 
+        # Test for value > 255
+        body = {"os-set_image_metadata": {
+            "metadata": {"key": "v" * 260}}
+        }
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, fake.VOLUME_ID))
+        req.method = "POST"
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers["content-type"] = "application/json"
+        fake_get.return_value = {}
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+        self.assertEqual(HTTPStatus.OK, res.status_int)
+
+        # This is a weird one ... take a supplementary unicode
+        # char that requires 4 bytes, which will give us a short
+        # string in terms of character count, but a long string
+        # in terms of bytes, and make this string be exactly
+        # 65535 bytes in length.  This should be OK.
+        char4bytes = "\N{CJK UNIFIED IDEOGRAPH-29D98}"
+        self.assertEqual(1, len(char4bytes))
+        self.assertEqual(4, len(char4bytes.encode('utf-8')))
+        str65535bytes = char4bytes * 16383 + '123'
+        self.assertLess(len(str65535bytes), 65535)
+        self.assertEqual(65535, len(str65535bytes.encode('utf-8')))
+        body = {"os-set_image_metadata": {
+            "metadata": {"key": str65535bytes}}
+        }
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, fake.VOLUME_ID))
+        req.method = "POST"
+        req.body = jsonutils.dump_as_bytes(body)
+        req.headers["content-type"] = "application/json"
+        fake_get.return_value = {}
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+        self.assertEqual(HTTPStatus.OK, res.status_int)
+
     @mock.patch('cinder.objects.Volume.get_by_id')
     def test_create_image_metadata_policy_not_authorized(self, fake_get):
         rules = {
@@ -323,11 +361,34 @@ class VolumeImageMetadataTest(test.TestCase):
                           self.controller.create, req, fake.VOLUME_ID,
                           body=data)
 
-        # Test for long value
+        # Test for very long value
         data = {"os-set_image_metadata": {
-            "metadata": {"key": "v" * 260}}
+            "metadata": {"key": "v" * 65550}}
         }
         req.body = jsonutils.dump_as_bytes(data)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, fake.VOLUME_ID,
+                          body=data)
+
+        # Test for very long utf8 value
+        data = {"os-set_image_metadata": {
+            "metadata": {"key": "á" * 32775}}
+        }
+        req.body = jsonutils.dump_as_bytes(data)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, fake.VOLUME_ID,
+                          body=data)
+
+        # Test a short unicode string that actually exceeds
+        # the allowed byte count
+        char4bytes = "\N{CJK UNIFIED IDEOGRAPH-29D98}"
+        str65536bytes = char4bytes * 16384
+        self.assertEqual(65536, len(str65536bytes.encode('utf-8')))
+        self.assertLess(len(str65536bytes), 65535)
+        body = {"os-set_image_metadata": {
+            "metadata": {"key": str65536bytes}}
+        }
+        req.body = jsonutils.dump_as_bytes(body)
         self.assertRaises(exception.ValidationError,
                           self.controller.create, req, fake.VOLUME_ID,
                           body=data)
