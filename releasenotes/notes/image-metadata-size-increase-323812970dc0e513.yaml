@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1988942 <https://bugs.launchpad.net/cinder/+bug/1988942>`_: Increased
+    size of volume image metadata values accepted by the Block Storage API.
+    Volume image metadata values were limited to 255 characters but Glance
+    allows up to 65535 bytes. This change does not affect the database
+    tables which already allow up to 65535 bytes for image metadata values.
