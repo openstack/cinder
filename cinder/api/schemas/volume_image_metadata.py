@@ -27,7 +27,7 @@ set_image_metadata = {
         'os-set_image_metadata': {
             'type': 'object',
             'properties': {
-                'metadata': parameter_types.extra_specs,
+                'metadata': parameter_types.image_metadata,
             },
             'required': ['metadata'],
             'additionalProperties': False,
