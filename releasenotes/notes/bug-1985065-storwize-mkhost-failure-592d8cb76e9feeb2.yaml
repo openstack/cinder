@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #1985065
+    <https://bugs.launchpad.net/cinder/+bug/1985065>`_:
+    Fixed to collect all the IP addresses for all the storage
+    nodes given in lsip command response as volume of any iogrp
+    should be available to the storage nodes in default scenario.

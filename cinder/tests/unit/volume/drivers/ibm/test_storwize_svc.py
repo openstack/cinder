@@ -4995,6 +4995,66 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
 
     @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'lsip')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_node_info')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_system_info')
+    def test_storwize_add_iscsi_ip_address(self, get_system_info,
+                                           get_node_info, lsip):
+        helper = self.driver._master_backend_helpers
+        helper.state = {'storage_nodes': {}, 'enabled_protocols': set(),
+                        'compression_enabled': False, 'available_iogrps': [],
+                        'system_name': None, 'system_id': None,
+                        'code_level': None}
+        get_system_info.return_value = {'code_level': (8, 5, 0, 0),
+                                        'topology': 'standard',
+                                        'system_name': 'storwize-svc-sim',
+                                        'system_id': '0123456789ABCDEF'}
+
+        get_node_info.return_value = {'1': {'id': '1', 'name': 'node1',
+                                            'IO_group': 0,
+                                            'iscsi_name': 'test_iscsi1',
+                                            'site_id': '1',
+                                            'site_name': 'site1',
+                                            'ipv4': [],
+                                            'ipv6': [],
+                                            'IP_address': [],
+                                            'WWPN': [],
+                                            'enabled_protocols': [],
+                                            'status': 'online'},
+                                      '2': {'id': '2', 'name': 'node2',
+                                            'IO_group': 1,
+                                            'iscsi_name': 'test_iscsi2',
+                                            'site_id': '1',
+                                            'site_name': 'site1',
+                                            'ipv4': [],
+                                            'ipv6': [],
+                                            'IP_address': [],
+                                            'WWPN': [],
+                                            'enabled_protocols': [],
+                                            'status': 'online'}}
+
+        lsip.return_value = [{'node_id': '1', 'IP_address': '1.1.1.1'},
+                             {'node_id': '2', 'IP_address': '2.2.2.2'}]
+
+        # Initially the storage_nodes will be empty
+        self.assertEqual(helper.state["storage_nodes"], {})
+
+        # _update_storwize_state will update the code_level
+        # and node info. After that it will call add_iscsi_ip_addrs to
+        # update the IP_address for the corresponding node_id in storage_nodes
+        self.driver._update_storwize_state(helper.state, helper)
+
+        # Now, IPs of both the node_id in storage_nodes is updated correctly
+        # Which means add_iscsi_ip_addrs was successful.
+        self.assertNotEqual(helper.state["storage_nodes"], {})
+        self.assertEqual(helper.state["storage_nodes"]['1']['IP_address'],
+                         ['1.1.1.1'])
+        self.assertEqual(helper.state["storage_nodes"]['2']['IP_address'],
+                         ['2.2.2.2'])
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
                        'mkhost')
     def test_storwize_create_host_with_portset(self, mkhost):
         self.driver.do_setup(self.ctxt)
