@@ -6,7 +6,7 @@ The NetApp unified driver is a Block Storage driver that supports
 multiple storage families and protocols. Currently, the only storage
 family supported by this driver is the clustered Data ONTAP. The
 storage protocol refers to the protocol used to initiate data storage and
-access operations on those storage systems like iSCSI and NFS. The NetApp
+access operations on those storage systems like NVMe, iSCSI and NFS. The NetApp
 unified driver can be configured to provision and manage OpenStack volumes
 on a given storage family using a specified storage protocol.
 
@@ -44,7 +44,7 @@ NetApp clustered Data ONTAP storage family
 The NetApp clustered Data ONTAP storage family represents a
 configuration group which provides Compute instances access to
 clustered Data ONTAP storage systems. At present it can be configured in
-Block Storage to work with iSCSI and NFS storage protocols.
+Block Storage to work with NVme, iSCSI and NFS storage protocols.
 
 NetApp iSCSI configuration for clustered Data ONTAP
 ---------------------------------------------------
@@ -100,6 +100,66 @@ setting the ``volume_driver``, ``netapp_storage_family`` and
 
    The driver supports iSCSI CHAP uni-directional authentication.
    To enable it, set the ``use_chap_auth`` option to ``True``.
+
+.. tip::
+
+   For more information on these options and other deployment and
+   operational scenarios, visit the `NetApp OpenStack website
+   <http://netapp.io/openstack/>`_.
+
+NetApp NVMe/TCP configuration for clustered Data ONTAP
+------------------------------------------------------
+
+The NetApp NVMe/TCP configuration for clustered Data ONTAP is an interface
+from OpenStack to clustered Data ONTAP storage systems. It provisions
+and manages the SAN block storage entity, which is a NetApp namespace that
+can be accessed using the NVMe/TCP protocol.
+
+The NVMe/TCP configuration for clustered Data ONTAP is a direct interface
+from Block Storage to the clustered Data ONTAP instance and as
+such does not require additional management software to achieve the
+desired functionality. It uses NetApp APIs to interact with the
+clustered Data ONTAP instance.
+
+**Configuration options**
+
+Configure the volume driver, storage family, and storage protocol to the
+NetApp unified driver, clustered Data ONTAP, and NVMe respectively by
+setting the ``volume_driver``, ``netapp_storage_family`` and
+``netapp_storage_protocol`` options in the ``cinder.conf`` file as follows:
+
+.. code-block:: ini
+
+   volume_driver = cinder.volume.drivers.netapp.common.NetAppDriver
+   netapp_storage_family = ontap_cluster
+   netapp_storage_protocol = nvme
+   netapp_vserver = openstack-vserver
+   netapp_server_hostname = myhostname
+   netapp_server_port = port
+   netapp_login = username
+   netapp_password = password
+
+.. note::
+
+   To use the NVMe/TCP protocol, you must override the default value of
+   ``netapp_storage_protocol`` with ``nvme``.
+   Note that this is not the same value that is reported by the driver
+   to the scheduler as `storage_protocol`, which is always
+   ``NVMe`` (case sensitive).
+
+.. note::
+
+   If you specify an account in the ``netapp_login`` that only has
+   virtual storage server (Vserver) administration privileges (rather
+   than cluster-wide administration privileges), some advanced features
+   of the NetApp unified driver will not work and you may see warnings
+   in the Block Storage logs.
+
+.. note::
+
+   The driver only supports the minimal Cinder driver features: create/delete
+   volume and snapshots, extend volume, attack/detach volume, create volume
+   from volume and create volume from image/snapshot.
 
 .. tip::
 

@@ -71,6 +71,8 @@ FAKE_NA_SERVER_API_1_20.set_api_version(1, 20)
 VOLUME_VSERVER_NAME = 'fake_vserver'
 VOLUME_NAMES = ('volume1', 'volume2')
 VOLUME_NAME = 'volume1'
+NAMESPACE_NAME = '/vol/vol1/namespace1'
+HOST_NQN = 'nqn.1992-01.example.com:host'
 DEST_VOLUME_NAME = 'volume-dest'
 LUN_NAME = 'fake-lun-name'
 DEST_LUN_NAME = 'new-fake-lun-name'
@@ -3057,4 +3059,92 @@ GET_VSERVER_PEERS_RESPONSE_REST = {
     },
     "num_records": 1,
     "records": GET_VSERVER_PEERS_RECORDS_REST
+}
+
+GET_NAMESPACE_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "fake_uuid1",
+            "svm": {
+                "name": "fake_vserver1"
+            },
+            "name": "/vol/fake_vol_001/test",
+            "location": {
+                "volume": {
+                    "name": "fake_vol_001"
+                }
+            },
+            "os_type": "linux",
+            "space": {
+                "block_size": 9999,
+                "size": 999999,
+                "guarantee": {
+                    "requested": True
+                }
+            },
+        },
+        {
+            "uuid": "fake_uuid2",
+            "svm": {
+                "name": "fake_vserver2"
+            },
+            "name": "/vol/fake_vol_002/test",
+            "location": {
+                "volume": {
+                    "name": "fake_vol_002"
+                }
+            },
+            "os_type": "linux",
+            "space": {
+                "block_size": 8888,
+                "size": 8888888,
+                "guarantee": {
+                    "requested": True
+                }
+            },
+        }
+    ],
+    "num_records": 2,
+}
+
+SUBSYSTEM = 'openstack-fake_subsystem'
+TARGET_NQN = 'nqn.1992-01.example.com:target'
+GET_SUBSYSTEM_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "fake_uuid1",
+            "name": SUBSYSTEM,
+            "os_type": "linux",
+            "target_nqn": TARGET_NQN,
+        }
+    ],
+    "num_records": 1,
+}
+
+GET_SUBSYSTEM_MAP_RESPONSE_REST = {
+    "records": [
+        {
+            "namespace": {
+                "uuid": FAKE_UUID,
+            },
+            "subsystem": {
+                "name": SUBSYSTEM
+            },
+            "svm": {
+                "name": VSERVER_NAME
+            },
+        },
+    ],
+    "num_records": 1,
+}
+
+GET_INTERFACES_NVME_REST = {
+    'records': [
+        {
+            "ip": {
+                "address": "10.10.10.10",
+            }
+        }
+    ],
+    'num_records': 1
 }

@@ -39,7 +39,8 @@ NETAPP_UNIFIED_DRIVER_REGISTRY = {
     {
         'iscsi': DATAONTAP_PATH + '.iscsi_cmode.NetAppCmodeISCSIDriver',
         'nfs': DATAONTAP_PATH + '.nfs_cmode.NetAppCmodeNfsDriver',
-        'fc': DATAONTAP_PATH + '.fc_cmode.NetAppCmodeFibreChannelDriver'
+        'fc': DATAONTAP_PATH + '.fc_cmode.NetAppCmodeFibreChannelDriver',
+        'nvme': DATAONTAP_PATH + '.nvme_cmode.NetAppCmodeNVMeDriver'
     }}
 
 

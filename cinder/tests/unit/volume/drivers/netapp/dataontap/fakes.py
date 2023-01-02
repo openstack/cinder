@@ -22,7 +22,9 @@ from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 VOLUME_ID = 'f10d1a84-9b7b-427e-8fec-63c48b509a56'
 LUN_ID = 'ee6b4cc7-477b-4016-aa0c-7127b4e3af86'
 LUN_HANDLE = 'fake_lun_handle'
+NAMESPACE_HANDLE = 'fake_namespace_handle'
 LUN_NAME = 'lun1'
+NAMESPACE_NAME = 'namespace1'
 LUN_SIZE = 3
 LUN_TABLE = {LUN_NAME: None}
 SIZE = 1024
@@ -40,6 +42,7 @@ AGGREGATE = 'aggr1'
 FLEXVOL = 'openstack-flexvol'
 NFS_FILE_PATH = 'nfsvol'
 PATH = '/vol/%s/%s' % (POOL_NAME, LUN_NAME)
+PATH_NAMESPACE = '/vol/%s/%s' % (POOL_NAME, NAMESPACE_NAME)
 IMAGE_FILE_ID = 'img-cache-imgid'
 PROVIDER_LOCATION = 'fake_provider_location'
 NFS_HOST = 'nfs-host1'
@@ -65,8 +68,21 @@ LUN_METADATA = {
     'Qtree': None,
     'Volume': POOL_NAME,
 }
+NAMESPACE_METADATA = {
+    'OsType': None,
+    'Path': PATH_NAMESPACE,
+    'Qtree': None,
+    'Volume': POOL_NAME,
+}
 VOLUME = {
     'name': LUN_NAME,
+    'size': SIZE,
+    'id': VOLUME_ID,
+    'host': HOST_STRING,
+    'attach_status': DETACHED,
+}
+NAMESPACE_VOLUME = {
+    'name': NAMESPACE_NAME,
     'size': SIZE,
     'id': VOLUME_ID,
     'host': HOST_STRING,
@@ -349,6 +365,8 @@ VOLUME_PATH = '/vol/%s/%s' % (NETAPP_VOLUME, VOLUME_NAME)
 MOUNT_PATH = '168.10.16.11:/' + VOLUME_ID
 SNAPSHOT_NAME = 'fake_snapshot_name'
 SNAPSHOT_LUN_HANDLE = 'fake_snapshot_lun_handle'
+SNAPSHOT_NAMESPACE_HANDLE = 'fake_snapshot_namespace_handle'
+
 SNAPSHOT_MOUNT = '/fake/mount/path'
 
 SNAPSHOT = {
@@ -367,6 +385,21 @@ SNAPSHOT_VOLUME = {
 }
 
 LUN_WITH_METADATA = {
+    'handle': 'vserver_fake:/vol/fake_flexvol/volume-fake-uuid',
+    'name': 'volume-fake-uuid',
+    'size': 20971520,
+    'metadata': {
+        'Vserver': 'vserver_fake',
+        'Volume': 'fake_flexvol',
+        'Qtree': None,
+        'Path': '/vol/fake_flexvol/volume-fake-uuid',
+        'OsType': 'linux',
+        'SpaceReserved': 'false',
+        'UUID': 'fake-uuid'
+    }
+}
+
+NAMESPACE_WITH_METADATA = {
     'handle': 'vserver_fake:/vol/fake_flexvol/volume-fake-uuid',
     'name': 'volume-fake-uuid',
     'size': 20971520,
@@ -723,6 +756,7 @@ test_volume.state = {
 test_volume.qos = {'qos_policy_group': None}
 test_volume.host = 'fakehost@backbackend#fakepool'
 test_volume.name = 'fakename'
+test_volume.size = SIZE
 
 
 class test_snapshot(object):
@@ -975,3 +1009,6 @@ ADAPTIVE_QOS_POLICY_GROUP_INFO_REST = {
 }
 
 REST_FIELDS = 'uuid,name,style'
+SUBSYSTEM = 'openstack-fake-subsystem'
+HOST_NQN = 'nqn.1992-01.example.com:string'
+TARGET_NQN = 'nqn.1992-01.example.com:target'

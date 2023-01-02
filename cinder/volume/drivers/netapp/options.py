@@ -39,7 +39,7 @@ netapp_proxy_opts = [
                      'the only valid value is ontap_cluster for using '
                      'clustered Data ONTAP.')),
     cfg.StrOpt('netapp_storage_protocol',
-               choices=['iscsi', 'fc', 'nfs'],
+               choices=['iscsi', 'fc', 'nfs', 'nvme'],
                help=('The storage protocol to be used on the data path with '
                      'the storage system.')), ]
 
@@ -158,6 +158,10 @@ netapp_san_opts = [
                help=('This option defines the type of operating system that'
                      ' will access a LUN exported from Data ONTAP; it is'
                      ' assigned to the LUN at the time it is created.')),
+    cfg.StrOpt('netapp_namespace_ostype',
+               help=('This option defines the type of operating system that'
+                     ' will access a namespace exported from Data ONTAP; it is'
+                     ' assigned to the namespace at the time it is created.')),
     cfg.StrOpt('netapp_host_type',
                help=('This option defines the type of operating system for'
                      ' all initiators that can access a LUN. This information'
