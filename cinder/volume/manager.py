@@ -2984,9 +2984,15 @@ class VolumeManager(manager.CleanableManager,
 
         if orig_volume_status == 'in-use':
             nova_api = compute.API()
+            # If instance_uuid field is None on attachment, it means the
+            # request is coming from glance and not nova
             instance_uuids = [attachment.instance_uuid
-                              for attachment in attachments]
-            nova_api.extend_volume(context, instance_uuids, volume.id)
+                              for attachment in attachments
+                              if attachment.instance_uuid]
+            # If we are using glance cinder store, we should not send any
+            # external events to nova
+            if instance_uuids:
+                nova_api.extend_volume(context, instance_uuids, volume.id)
 
         pool = volume_utils.extract_host(volume.host, 'pool')
         if pool is None:
