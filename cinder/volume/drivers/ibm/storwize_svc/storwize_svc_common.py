@@ -6492,6 +6492,11 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             data['replication_enabled'] = self._replica_enabled
             data['replication_targets'] = self._get_replication_targets()
             data['consistent_group_replication_enabled'] = True
+            remote_data = dict()
+            remote_data['pools'] = [self._build_pool_stats(pool, target=True)
+                                    for pool in
+                                    [self._replica_target.get('pool_name')]]
+            self._aux_backend_helpers.stats = remote_data
 
         if self._helpers.is_system_topology_hyperswap(self._state):
             data['replication_enabled'] = True
@@ -6506,12 +6511,19 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         self._stats = data
 
-    def _build_pool_stats(self, pool):
+    def _build_pool_stats(self, pool, target=False):
         """Build pool status"""
         QoS_support = True
         pool_stats = {}
         is_dr_pool = False
-        pool_data = self._helpers.get_pool_attrs(pool)
+        if target:
+            pool_data = self._aux_backend_helpers.get_pool_attrs(pool)
+            system_id = self._aux_state['system_id']
+            compression_enabled = self._aux_state['compression_enabled']
+        else:
+            pool_data = self._helpers.get_pool_attrs(pool)
+            system_id = self._state['system_id']
+            compression_enabled = self._state['compression_enabled']
         if pool_data:
             easy_tier = pool_data['easy_tier'] in ['on', 'auto']
             total_capacity_gb = float(pool_data['capacity']) / units.Gi
@@ -6528,7 +6540,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             over_sub_ratio = self.configuration.safe_get(
                 'max_over_subscription_ratio')
             location_info = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %
-                             {'sys_id': self._state['system_id'],
+                             {'sys_id': system_id,
                               'pool': pool_data['name']})
             multiattach = (self.configuration.
                            storwize_svc_multihostmap_enabled)
@@ -6546,7 +6558,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 'free_capacity_gb': free_capacity_gb,
                 'allocated_capacity_gb': allocated_capacity_gb,
                 'provisioned_capacity_gb': provisioned_capacity_gb,
-                'compression_support': self._state['compression_enabled'],
+                'compression_support': compression_enabled,
                 'reserved_percentage':
                     self.configuration.reserved_percentage,
                 'QoS_support': QoS_support,
