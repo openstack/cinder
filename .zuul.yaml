@@ -82,6 +82,8 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage-ubuntu-focal:
             irrelevant-files: *gate-irrelevant-files
+        - cinder-tox-py311:
+            voting: false
     gate:
       jobs:
         - cinder-grenade-mn-sub-volbak:
@@ -348,3 +350,12 @@
           $TEMPEST_CONFIG:
             volume:
               build_timeout: 900
+
+- job:
+    # copied from cinderlib
+    name: cinder-tox-py311
+    parent: openstack-tox
+    nodeset: ubuntu-jammy
+    vars:
+        tox_envlist: py311
+        python_version: '3.11'
