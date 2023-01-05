@@ -586,6 +586,64 @@ class StorwizeSSH(object):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Failed to delete volumegroup.')
 
+    def lsvolumegroupsnapshot(self, params):
+        """Return volumegroup-snapshot attributes.
+
+        Return None if it doesn't exists
+        """
+
+        ssh_cmd = ['svcinfo', 'lsvolumegroupsnapshot']
+        if "id" in params:
+            ssh_cmd.append(params["id"])
+        elif "name" and "volumegroup" in params:
+            ssh_cmd.extend(['-snapshot', params["name"], '-volumegroup',
+                            params["volumegroup"]])
+        # Add delimiter to parse the output
+        ssh_cmd.extend(['-delim', ':'])
+        out, err = self._ssh(ssh_cmd, check_exit_code=False)
+        if not err:
+            if not out:
+                return None
+            # Parse the lsvolumegroupsnapshot output
+            output = out.split('\n')
+            attributes = output[0].split(":")
+            attribute_values = output[1].split(":")
+            attrs = {key: val for key, val in zip(attributes,
+                                                  attribute_values)}
+            return attrs
+        # CMMVC5804E implies volumegroup-snapshot or volumegroup specified
+        # does not exist in the SVC storage.
+        if 'CMMVC5804E' in err:
+            return None
+        msg = (_('CLI Exception output:\n command: %(cmd)s\n '
+                 'stdout: %(out)s\n stderr: %(err)s.') %
+               {'cmd': ssh_cmd,
+                'out': out,
+                'err': err})
+        LOG.error(msg)
+        raise exception.VolumeBackendAPIException(data=msg)
+
+    def addsnapshot(self, params):
+        ssh_cmd = ['svctask', 'addsnapshot', '-ignorelegacy']
+        if "volumegroup" in params:
+            ssh_cmd.extend(['-volumegroup', params["volumegroup"]])
+        if "name" in params:
+            ssh_cmd.extend(['-name', params["name"]])
+        try:
+            return self.run_ssh_check_created(ssh_cmd)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception('Failed to create volumegroup snapshot.')
+
+    def rmsnapshot(self, params):
+        ssh_cmd = ['svctask', 'rmsnapshot']
+        if "id" in params:
+            ssh_cmd.extend(['-snapshotid', params["id"]])
+        elif "name" and "volumegroup" in params:
+            ssh_cmd.extend(['-snapshot', params["name"], '-volumegroup',
+                            params["volumegroup"]])
+        self.run_ssh_assert_no_output(ssh_cmd)
+
     def mkvdisk(self, name, size, units, pool, opts, params):
         ssh_cmd = ['svctask', 'mkvdisk', '-name', '"%s"' % name, '-mdiskgrp',
                    '"%s"' % pool, '-iogrp', six.text_type(opts['iogrp']),
@@ -2844,6 +2902,21 @@ class StorwizeHelpers(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
+    def create_volumegroup_snapshot(self, params):
+        self.ssh.addsnapshot(params)
+
+    def is_volumegroup_snapshot_exists(self, params):
+        """Check if volumegroup snapshot exists."""
+        attrs = self.ssh.lsvolumegroupsnapshot(params)
+        return attrs is not None
+
+    def delete_volumegroup_snapshot(self, params):
+        """Delete volumegroup snapshot"""
+        if not self.is_volumegroup_snapshot_exists(params):
+            LOG.info('Tried to delete non-existent volumegroup snapshot.')
+            return
+        self.ssh.rmsnapshot(params)
+
     def get_partnership_info(self, system_name):
         partnership = self.ssh.lspartnership(system_name)
         return partnership[0] if len(partnership) > 0 else None
@@ -3794,6 +3867,16 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             volume.metadata = dict()
         volume.metadata['Volume Group Name'] = volumegroup_name
         volume.save()
+
+    def _update_volumegroup_snapshot_properties(self, ctxt, snapshot,
+                                                group_snapshot=None):
+        volumegroup_snapshot_name = (
+            self._get_volumegroup_snapshot_name(group_snapshot)
+            if group_snapshot else "")
+        if not snapshot.metadata:
+            snapshot.metadata = dict()
+        snapshot.metadata['snapshot_name'] = volumegroup_snapshot_name
+        snapshot.save()
 
     def create_volume(self, volume):
         LOG.debug('enter: create_volume: volume %s', volume['name'])
@@ -6080,6 +6163,13 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         vg = storwize_const.VG_PREFIX
         return vg + group_id[0:4] + '-' + group_id[-5:]
 
+    @staticmethod
+    def _get_volumegroup_snapshot_name(group_snapshot, grp_snapshot_id=None):
+        group_snapshot_id = (
+            group_snapshot.id if group_snapshot else grp_snapshot_id)
+        vg_snapshot = storwize_const.VG_SNAPSHOT_PREFIX
+        return vg_snapshot + group_snapshot_id
+
     # Add CG capability to generic volume groups
     def create_group(self, context, group):
         """Creates a group.
@@ -6443,27 +6533,57 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         :param snapshots: a list of Snapshot objects in the group_snapshot.
         :returns: model_update, snapshots_model_update
         """
-        if (not volume_utils.is_group_a_cg_snapshot_type(group_snapshot) and
-                not volume_utils.is_group_a_type
+
+        if (volume_utils.is_group_a_cg_snapshot_type(group_snapshot) or
+                volume_utils.is_group_a_type
                 (group_snapshot, "consistent_group_replication_enabled")
-                and not volume_utils.is_group_a_type(
+                or volume_utils.is_group_a_type(
                 group_snapshot, "hyperswap_group_enabled")):
+            # Use group_snapshot id as cg name
+            cg_name = 'cg_snap-' + group_snapshot.id
+            # Create new cg as cg_snapshot
+            self._helpers.create_fc_consistgrp(cg_name)
+
+            timeout = self.configuration.storwize_svc_flashcopy_timeout
+
+            model_update, snapshots_model = (
+                self._helpers.run_consistgrp_snapshots(cg_name,
+                                                       snapshots,
+                                                       self._state,
+                                                       self.configuration,
+                                                       timeout))
+        elif volume_utils.is_group_a_type(
+                group_snapshot, "volume_group_enabled"):
+            try:
+                self._helpers.check_codelevel_for_volumegroup(
+                    self._state['code_level'])
+                params = dict()
+                # Use group_snapshot id as volumegroup name
+                volumegroup_snapshot_name = (
+                    self._get_volumegroup_snapshot_name(group_snapshot))
+                params["name"] = volumegroup_snapshot_name
+                volumegroup_name = self._get_volumegroup_name(
+                    None, grp_id=group_snapshot.group_id)
+                params["volumegroup"] = volumegroup_name
+                model_update = {'status': fields.GroupSnapshotStatus.AVAILABLE}
+                snapshots_model = []
+                self._helpers.create_volumegroup_snapshot(params)
+            except exception.VolumeBackendAPIException as err:
+                model_update['status'] = fields.GroupSnapshotStatus.ERROR
+                LOG.error("Failed to create VolumeGroup Snapshot. "
+                          "Exception: %s.", err)
+            for snapshot in snapshots:
+                self._update_volumegroup_snapshot_properties(
+                    context, snapshot, group_snapshot)
+                snapshots_model.append(
+                    {'id': snapshot['id'],
+                     'status': model_update['status'],
+                     'replication_status': fields.ReplicationStatus.NOT_CAPABLE
+                     })
+        else:
             # we'll rely on the generic group implementation if it is not a
-            # consistency group request.
+            # consistency group/volumegroup request.
             raise NotImplementedError()
-        # Use group_snapshot id as cg name
-        cg_name = 'cg_snap-' + group_snapshot.id
-        # Create new cg as cg_snapshot
-        self._helpers.create_fc_consistgrp(cg_name)
-
-        timeout = self.configuration.storwize_svc_flashcopy_timeout
-
-        model_update, snapshots_model = (
-            self._helpers.run_consistgrp_snapshots(cg_name,
-                                                   snapshots,
-                                                   self._state,
-                                                   self.configuration,
-                                                   timeout))
 
         return model_update, snapshots_model
 
@@ -6476,19 +6596,52 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         :returns: model_update, snapshots_model_update
         """
 
-        if (not volume_utils.is_group_a_cg_snapshot_type(group_snapshot) and
-                not volume_utils.is_group_a_type(
+        if (volume_utils.is_group_a_cg_snapshot_type(group_snapshot) or
+                volume_utils.is_group_a_type(
                 group_snapshot, "hyperswap_group_enabled")):
+
+            cgsnapshot_id = group_snapshot.id
+            cg_name = 'cg_snap-' + cgsnapshot_id
+
+            model_update, snapshots_model = (
+                self._helpers.delete_consistgrp_snapshots(cg_name,
+                                                          snapshots))
+        elif volume_utils.is_group_a_type(
+                group_snapshot, "volume_group_enabled"):
+            try:
+                self._helpers.check_codelevel_for_volumegroup(
+                    self._state['code_level'])
+                params = dict()
+                volumegroup_snapshot_name = (
+                    self._get_volumegroup_snapshot_name(group_snapshot))
+                params["name"] = volumegroup_snapshot_name
+                volumegroup_name = self._get_volumegroup_name(
+                    None, grp_id=group_snapshot.group_id)
+                params["volumegroup"] = volumegroup_name
+                model_update = {'status': fields.GroupSnapshotStatus.DELETED}
+                snapshots_model = []
+                self._helpers.delete_volumegroup_snapshot(params)
+                for snapshot in snapshots:
+                    self._update_volumegroup_snapshot_properties(
+                        context, snapshot)
+                    snapshots_model.append(
+                        {'id': snapshot['id'],
+                         'status': fields.GroupSnapshotStatus.DELETED})
+            except exception.VolumeBackendAPIException as err:
+                model_update['status'] = (
+                    fields.GroupSnapshotStatus.ERROR_DELETING)
+                for snapshot in snapshots:
+                    snapshots_model.append(
+                        {'id': snapshot['id'],
+                         'status': fields.GroupSnapshotStatus.ERROR_DELETING})
+                LOG.error("Failed to delete the volume_group_snapshot %(snap) "
+                          "with Exception: %(exception)s.",
+                          {'snap': group_snapshot.group_id, 'exception': err})
+
+        else:
             # we'll rely on the generic group implementation if it is not a
-            # consistency group request.
+            # consistency group/volumegroup request.
             raise NotImplementedError()
-
-        cgsnapshot_id = group_snapshot.id
-        cg_name = 'cg_snap-' + cgsnapshot_id
-
-        model_update, snapshots_model = (
-            self._helpers.delete_consistgrp_snapshots(cg_name,
-                                                      snapshots))
 
         return model_update, snapshots_model
 

@@ -82,6 +82,7 @@ class StorwizeSVCManagementSimulator(object):
         self._partnershipcandidate_list = {}
         self._rcconsistgrp_list = {}
         self._volumegroup_list = {}
+        self._volumegroup_snapshot_list = {}
         self._system_list = {'storwize-svc-sim': {'id': '0123456789ABCDEF',
                                                   'name': 'storwize-svc-sim'},
                              'aux-svc-sim': {'id': 'ABCDEF0123456789',
@@ -377,7 +378,8 @@ class StorwizeSVCManagementSimulator(object):
             'removehostmappings',
             'removefcmaps',
             'removercrelationships',
-            'novolumegroup'
+            'novolumegroup',
+            'ignorelegacy'
         ]
         one_param_args = [
             'chapsecret',
@@ -418,7 +420,8 @@ class StorwizeSVCManagementSimulator(object):
             'pool',
             'site',
             'buffersize',
-            'volumegroup'
+            'volumegroup',
+            'snapshot'
         ]
         no_or_one_param_args = [
             'autoexpand',
@@ -2650,6 +2653,108 @@ port_speed!N/A
             return self._errors['CMMVC5701E']
         volumegroup_name = kwargs['obj'].strip('\'\"')
         del self._volumegroup_list[volumegroup_name]
+        return ('', '')
+
+    def _cmd_addsnapshot(self, **kwargs):
+        # Create a Volumegroup snapshot
+        volumegroup_snapshot_info = {}
+        volumegroup_snapshot_info['id'] = self._find_unused_id(
+            self._volumegroup_snapshot_list)
+        volumegroup_name = kwargs['volumegroup']
+        if 'name' in kwargs:
+            volumegroup_snapshot_info['name'] = kwargs["name"].strip('\'\"')
+        else:
+            volumegroup_snapshot_info['name'] = (
+                'vg_snap-' + volumegroup_snapshot_info['id'])
+        volumegroup_snapshot_info['volume_group_id'] = (
+            self._volumegroup_list[volumegroup_name]['id'])
+        volumegroup_snapshot_info['volume_group_name'] = volumegroup_name
+        volumegroup_snapshot_info['time'] = ''
+        volumegroup_snapshot_info['state'] = 'active'
+        volumegroup_snapshot_info['matches_group'] = 'yes'
+        volumegroup_snapshot_info['parent_uid'] = (
+            self._volumegroup_list[volumegroup_name]['uid'])
+        volumegroup_snapshot_info['expiration_time'] = ''
+        volumegroup_snapshot_info['protection_provisioned_capacity'] = '1.00GB'
+        volumegroup_snapshot_info['protection_written_capacity'] = '0.75MB'
+        volumegroup_snapshot_info['operation_start_time'] = ''
+        volumegroup_snapshot_info['operation_completion_estimate'] = ''
+        volumegroup_snapshot_info['owner_id'] = ''
+        volumegroup_snapshot_info['owner_name'] = ''
+        volumegroup_snapshot_info['auto_snapshot'] = 'no'
+        self._volumegroup_snapshot_list[volumegroup_snapshot_info['name']] = (
+            volumegroup_snapshot_info)
+        return ('Snapshot, id [' + volumegroup_snapshot_info['id'] +
+                '], successfully created or triggered', '')
+
+    def _cmd_lsvolumegroupsnapshot(self, **kwargs):
+        # List the volume group snapshot
+        rows = []
+        rows.append(['id', 'name', 'volume_group_id', 'volume_group_name',
+                     'time', 'state', 'matches_group', 'parent_uid',
+                     'expiration_time', 'protection_provisioned_capacity',
+                     'protection_written_capacity', 'operation_start_time',
+                     'operation_completion_estimate', 'owner_id',
+                     'owner_name', 'auto_snapshot'])
+        if 'snapshot' and 'volumegroup' not in kwargs:
+            found = False
+            for volumegroup_snapshot in sorted(
+                    self._volumegroup_snapshot_list.keys()):
+                volumegroup_snapshot_info = self._volumegroup_snapshot_list[
+                    volumegroup_snapshot]
+                if 'filtervalue' not in kwargs:
+                    rows.append(
+                        [volumegroup_snapshot_info['id'],
+                         volumegroup_snapshot_info['name'],
+                         volumegroup_snapshot_info['volume_group_id'],
+                         volumegroup_snapshot_info['volume_group_name'],
+                         '', 'active', 'yes',
+                         volumegroup_snapshot_info['parent_uid'], '', '1.00GB',
+                         '0.75MB', '', '', '', '', 'no'])
+                    found = True
+            if found:
+                return self._print_info_cmd(rows=rows, **kwargs)
+            else:
+                return ('', '')
+        else:
+            volumegroup_snapshot_info = kwargs['snapshot'].strip('\'\"')
+            if volumegroup_snapshot_info not in (
+                    self._volumegroup_snapshot_list):
+                return self._errors['CMMVC5804E']
+            volumegroup_snapshot_info = self._volumegroup_snapshot_list[
+                volumegroup_snapshot_info]
+            rows.append(
+                [volumegroup_snapshot_info['id'],
+                 volumegroup_snapshot_info['name'],
+                 volumegroup_snapshot_info['volume_group_id'],
+                 volumegroup_snapshot_info['volume_group_name'],
+                 volumegroup_snapshot_info['time'],
+                 volumegroup_snapshot_info['state'],
+                 volumegroup_snapshot_info['matches_group'],
+                 volumegroup_snapshot_info['parent_uid'],
+                 volumegroup_snapshot_info['expiration_time'],
+                 volumegroup_snapshot_info['protection_provisioned_capacity'],
+                 volumegroup_snapshot_info['protection_written_capacity'],
+                 volumegroup_snapshot_info['operation_start_time'],
+                 volumegroup_snapshot_info['operation_completion_estimate'],
+                 volumegroup_snapshot_info['owner_id'],
+                 volumegroup_snapshot_info['owner_name'],
+                 volumegroup_snapshot_info['auto_snapshot']])
+
+            if 'delim' in kwargs:
+                for index in range(len(rows)):
+                    rows[index] = kwargs['delim'].join(rows[index])
+            return ('%s' % '\n'.join(rows), '')
+
+    def _cmd_rmsnapshot(self, **kwargs):
+        # Delete a Volume Group snapshot
+        if 'snapshot' and 'volumegroup' not in kwargs:
+            return self._errors['CMMVC5701E']
+
+        volumegroup_snapshot_name = kwargs['snapshot'].strip('\'\"')
+        if volumegroup_snapshot_name not in self._volumegroup_snapshot_list:
+            return self._errors['CMMVC9755E']
+        del self._volumegroup_snapshot_list[volumegroup_snapshot_name]
         return ('', '')
 
     def _cmd_mkrcconsistgrp(self, **kwargs):
@@ -5563,6 +5668,31 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                          "CG created failed")
         return grp
 
+    def _create_volumegroup_type_and_volumegroup(self, vol_type_ref,
+                                                 is_pool=None,
+                                                 is_io_grp=None):
+        # Create volumegroup type
+        volumegroup_spec = {'volume_group_enabled': '<is> True'}
+        if is_pool:
+            volumegroup_spec.update({'volume_group_pool': is_pool})
+        if is_io_grp:
+            volumegroup_spec.update({'volume_group_iogrp': is_io_grp})
+
+        volumegroup_type_ref = group_types.create(self.ctxt,
+                                                  'volumegroup_type',
+                                                  volumegroup_spec)
+        volumegroup_type = objects.GroupType.get_by_id(
+            self.ctxt, volumegroup_type_ref['id'])
+
+        # Create volumegroup
+        volumegroup = testutils.create_group(
+            self.ctxt, group_type_id=volumegroup_type.id,
+            volume_type_ids=[vol_type_ref['id']])
+
+        model_update = self.driver.create_group(self.ctxt, volumegroup)
+        return (volumegroup_type_ref, volumegroup_type,
+                volumegroup, model_update)
+
     def _create_group_snapshot_in_db(self, group_id, **kwargs):
         group_snapshot = testutils.create_group_snapshot(self.ctxt,
                                                          group_id=group_id,
@@ -7205,6 +7335,139 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.assertTrue(delete_volumegroup.called)
             self.assertEqual(fields.GroupStatus.DELETED,
                              model_update[0]['status'])
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_system_info')
+    def test_storwize_create_and_delete_volumegroup_snapshot(
+            self, get_system_info):
+        """Test creation and deletion of volumegroup snapshot"""
+        fake_system_info = {'code_level': (8, 5, 1, 0),
+                            'system_name': 'storwize-svc-sim',
+                            'system_id': '0123456789ABCDEF'}
+        get_system_info.return_value = fake_system_info
+        self.driver.do_setup(None)
+
+        # Create volume
+        vol_type_ref = volume_types.create(self.ctxt, 'non_rep_type', {})
+        vol_type = objects.VolumeType.get_by_id(self.ctxt,
+                                                vol_type_ref['id'])
+        volume = self._generate_vol_info(vol_type)
+        self.driver.create_volume(volume)
+
+        # Create volumegroup type and volumegroup
+        (volumegroup_type_ref, volumegroup_type, volumegroup,
+            model_update) = self._create_volumegroup_type_and_volumegroup(
+                vol_type_ref)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+
+        # Add volumes to volumegroup
+        add_vols = [volume]
+        remove_vols = [volume]
+        (model_update, add_volumes_update, remove_volumes_update) = (
+            self.driver.update_group(self.ctxt, volumegroup, add_vols, []))
+
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+
+        # Create group-snapshot
+        group_snapshot, snapshots = self._create_group_snapshot_in_db(
+            volumegroup.id, group_type_id=volumegroup_type_ref.id)
+
+        model_update, snapshots_model = (
+            self.driver.create_group_snapshot(self.ctxt, group_snapshot,
+                                              snapshots))
+        self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
+                         model_update['status'])
+
+        for snapshot in snapshots_model:
+            self.assertEqual(fields.SnapshotStatus.AVAILABLE,
+                             snapshot['status'])
+
+        # Validating the snapshot_name property value
+        # from metadata of the snapshot
+        groupsnapshot_name = self.driver._get_volumegroup_snapshot_name(
+            group_snapshot)
+        for snapshot in snapshots:
+            self.assertEqual(groupsnapshot_name,
+                             snapshot.metadata['snapshot_name'])
+
+        # Delete group-snapshot
+        model_update, snapshots_model = self.driver.delete_group_snapshot(
+            self.ctxt, group_snapshot, snapshots)
+        self.assertEqual(fields.GroupSnapshotStatus.DELETED,
+                         model_update['status'])
+
+        for snapshot in snapshots_model:
+            self.assertEqual(fields.SnapshotStatus.DELETED,
+                             snapshot['status'])
+
+        # Remove the volumes from volumegroup
+        (model_update, add_volumes_update,
+            remove_volumes_update) = self.driver.update_group(
+                self.ctxt, volumegroup, [], remove_vols)
+
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+
+        # Delete Volume Group
+        model_update = self.driver.delete_group(self.ctxt, volumegroup,
+                                                [])
+        self.assertEqual(fields.GroupStatus.DELETED,
+                         model_update[0]['status'])
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_system_info')
+    @mock.patch.object(cinder.volume.volume_utils,
+                       'is_group_a_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'create_volumegroup_snapshot')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_volumegroup_snapshot')
+    def test_storwize_create_and_delete_volumegroup_snapshot_calls(
+            self, delete_volumegroup_snapshot,
+            create_volumegroup_snapshot, is_grp_a_cg_snapshot_type,
+            vg_type, get_system_info):
+        """Test creation and deletion of volumegroup snapshot"""
+        fake_system_info = {'code_level': (8, 5, 1, 0),
+                            'system_name': 'storwize-svc-sim',
+                            'system_id': '0123456789ABCDEF'}
+        get_system_info.return_value = fake_system_info
+        self.driver.do_setup(None)
+
+        # Mocking volume-group-enabled spec as true
+        is_grp_a_cg_snapshot_type.side_effect = [False, False, False]
+        vg_type.side_effect = [False, False, True, False, True,
+                               False, False, True, False, False, True]
+
+        # Create volume group
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=fake.GROUP_TYPE_ID,
+                                       volume_type_ids=[type_ref['id']])
+
+        # Create volume group snapshot
+        group_snapshot, snapshots = self._create_group_snapshot_in_db(
+            group.id)
+
+        model_update, snapshots_model = (
+            self.driver.create_group_snapshot(self.ctxt, group_snapshot,
+                                              snapshots))
+        self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
+                         model_update['status'])
+        self.assertTrue(create_volumegroup_snapshot.called)
+
+        # Delete volume group snapshot
+        model_update, snapshots_model = (
+            self.driver.delete_group_snapshot(self.ctxt, group_snapshot,
+                                              snapshots))
+        self.assertEqual(fields.GroupSnapshotStatus.DELETED,
+                         model_update['status'])
+        self.assertTrue(delete_volumegroup_snapshot.called)
+
+        # Delete volume group
+        self.driver.delete_group(self.ctxt, group, [])
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'create_rccg')

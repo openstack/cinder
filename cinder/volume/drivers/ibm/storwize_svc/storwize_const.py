@@ -50,6 +50,7 @@ RCCG_PREFIX = 'rccg-'
 HYPERCG_PREFIX = 'hycg-'
 
 VG_PREFIX = 'vg-'
+VG_SNAPSHOT_PREFIX = 'vg_snap-'
 
 # remote mirror copy status
 REP_CONSIS_SYNC = 'consistent_synchronized'
