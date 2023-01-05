@@ -577,6 +577,20 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                     alarm_info['info.description']
                                 )
 
+                # Add any custom attributes associated with the datastore
+                custom_attributes = {}
+                if "custom_attributes" in datastore:
+                    custom_attributes = datastore['custom_attributes']
+
+                    # A datastore can be marked as draining in vcenter
+                    # in which case we want to mark it down.
+                    if 'cinder_state' in custom_attributes:
+                        cinder_pool_state = custom_attributes['cinder_state']
+                        if (cinder_pool_state and
+                                cinder_pool_state.lower() == 'drain'):
+                            pool_state = 'down'
+                            pool_down_reason = 'Datastore marked as draining'
+
                 pool = {'pool_name': summary.name,
                         'total_capacity_gb': round(
                             summary.capacity / units.Gi),
@@ -595,12 +609,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         'connection_capabilities': connection_capabilities,
                         'backend_state': backend_state,
                         'pool_state': pool_state,
-                        'pool_down_reason': pool_down_reason
+                        'pool_down_reason': pool_down_reason,
+                        'custom_attributes': custom_attributes,
                         }
-
-                # Add any custom attributes associated with the datastore
-                if "custom_attributes" in datastore:
-                    pool['custom_attributes'] = datastore['custom_attributes']
 
                 pools.append(pool)
             data['pools'] = pools
