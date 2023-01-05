@@ -23,8 +23,6 @@ from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
-from cinder.tests.unit.volume.drivers.ceph \
-    import fake_rbd_iscsi_client as fake_client
 import cinder.volume.drivers.ceph.rbd_iscsi as driver
 
 # This is used to collect raised exceptions so that tests may check what was
@@ -42,12 +40,6 @@ class RBDISCSITestCase(test.TestCase):
         super(RBDISCSITestCase, self).setUp()
 
         self.context = context.get_admin_context()
-
-        # bogus access to prevent pep8 violation
-        # from the import of fake_client.
-        # fake_client must be imported to create the fake
-        # rbd_iscsi_client system module
-        fake_client.rbdclient
 
         self.fake_target_iqn = 'iqn.2019-01.com.suse.iscsi-gw:iscsi-igw'
         self.fake_valid_response = {'status': '200'}
@@ -96,30 +88,19 @@ class RBDISCSITestCase(test.TestCase):
         config.rbd_iscsi_api_url = 'http://fake.com:5000'
         return config
 
-    @mock.patch(
-        'rbd_iscsi_client.client.RBDISCSIClient',
-        spec=True,
-    )
-    def setup_mock_client(self, _m_client, config=None, mock_conf=None):
-        _m_client = _m_client.return_value
-
-        # Configure the base constants, defaults etc...
-        if mock_conf:
-            _m_client.configure_mock(**mock_conf)
-
-        if config is None:
-            config = self.setup_configuration()
-
-        self.driver = driver.RBDISCSIDriver(configuration=config)
-        self.driver.set_initialized()
-        return _m_client
-
-    @mock.patch('rbd_iscsi_client.version', '0.1.0')
-    def test_unsupported_client_version(self):
-        self.setup_mock_client()
-        with mock.patch('cinder.volume.drivers.rbd.RBDDriver.do_setup'):
-            self.assertRaises(exception.InvalidInput,
-                              self.driver.do_setup, None)
+    @mock.patch('cinder.volume.drivers.rbd.RBDDriver.do_setup',
+                new=mock.MagicMock())
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.client')
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.rbd_iscsi_client')
+    def test_unsupported_client_version(self, m_rbd_iscsi_client, m_client):
+        m_rbd_iscsi_client.version = '0.1.0'
+        m_client.version = '0.1.0'
+        drv = driver.RBDISCSIDriver(configuration=self.setup_configuration())
+        drv.set_initialized()
+        self.assertRaisesRegex(exception.InvalidInput,
+                               'version',
+                               drv.do_setup,
+                               None)
 
     @ddt.data({'user': None, 'password': 'foo',
                'url': 'http://fake.com:5000', 'iqn': None},
@@ -133,40 +114,55 @@ class RBDISCSITestCase(test.TestCase):
                'url': 'fake', 'iqn': None},
               )
     @ddt.unpack
-    def test_min_config(self, user, password, url, iqn):
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.client')
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.rbd_iscsi_client')
+    def test_min_config(self, m_rbd_iscsi_client, m_client,
+                        user, password, url, iqn):
         config = self.setup_configuration()
         config.rbd_iscsi_api_user = user
         config.rbd_iscsi_api_password = password
         config.rbd_iscsi_api_url = url
         config.rbd_iscsi_target_iqn = iqn
-        self.setup_mock_client(config=config)
+
+        drv = driver.RBDISCSIDriver(configuration=config)
+        drv.set_initialized()
 
         with mock.patch('cinder.volume.drivers.rbd.RBDDriver'
                         '.check_for_setup_error'):
             self.assertRaises(exception.InvalidConfigurationValue,
-                              self.driver.check_for_setup_error)
+                              drv.check_for_setup_error)
 
     @ddt.data({'response': None},
               {'response': {'nothing': 'nothing'}},
               {'response': {'status': '300'}})
     @ddt.unpack
-    def test_do_setup(self, response):
-        mock_conf = {
-            'get_api.return_value': (response, None)}
-        mock_client = self.setup_mock_client(mock_conf=mock_conf)
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.RBDISCSIDriver.'
+                '_create_client')
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.client')
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.rbd_iscsi_client')
+    def test_do_setup(self, m_rbd_iscsi_client, m_client, m_create_client,
+                      response):
+        m_create_client.return_value.get_api.return_value = (response, None)
+        m_client.version = '3.0.0'
+        m_rbd_iscsi_client.version = '3.0.0'
 
-        with mock.patch('cinder.volume.drivers.rbd.RBDDriver.do_setup'), \
-            mock.patch.object(driver.RBDISCSIDriver,
-                              '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
+        drv = driver.RBDISCSIDriver(configuration=self.setup_configuration())
+        drv.set_initialized()
+
+        with mock.patch('cinder.volume.drivers.rbd.RBDDriver.do_setup'):
             self.assertRaises(exception.InvalidConfigurationValue,
-                              self.driver.do_setup, None)
+                              drv.do_setup, None)
 
-    @mock.patch('rbd_iscsi_client.version', "0.1.4")
-    def test_unsupported_version(self):
-        self.setup_mock_client()
-        self.assertRaises(exception.InvalidInput,
-                          self.driver._create_client)
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.client')
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.rbd_iscsi_client')
+    def test_unsupported_version(self, m_rbd_iscsi_client, m_client):
+        m_rbd_iscsi_client.version = '0.1.4'
+        drv = driver.RBDISCSIDriver(configuration=self.setup_configuration())
+        drv.set_initialized()
+
+        self.assertRaisesRegex(exception.InvalidInput,
+                               'Invalid rbd_iscsi_client version found',
+                               drv._create_client)
 
     @ddt.data({'status': '200',
                'target_iqn': 'iqn.2019-01.com.suse.iscsi-gw:iscsi-igw',
@@ -176,9 +172,19 @@ class RBDISCSITestCase(test.TestCase):
                'clients': None}
               )
     @ddt.unpack
-    def test__get_clients(self, status, target_iqn, clients):
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.RBDISCSIDriver.'
+                '_create_client')
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.client')
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.rbd_iscsi_client')
+    def test__get_clients(self, m_rbd_iscsi_client, m_client, m_create_client,
+                          status, target_iqn, clients):
+        m_create_client.return_value.get_api.return_value = (
+            self.fake_valid_response, None)
         config = self.setup_configuration()
         config.rbd_iscsi_target_iqn = target_iqn
+
+        drv = driver.RBDISCSIDriver(configuration=config)
+        drv.set_initialized()
 
         response = self.fake_clients['response']
         response['status'] = status
@@ -186,25 +192,20 @@ class RBDISCSITestCase(test.TestCase):
             response['content-location'].replace('XX_REPLACE_ME', target_iqn))
 
         body = self.fake_clients['body']
-        mock_conf = {
-            'get_clients.return_value': (response, body),
-            'get_api.return_value': (self.fake_valid_response, None)
-        }
-        mock_client = self.setup_mock_client(mock_conf=mock_conf,
-                                             config=config)
 
-        with mock.patch('cinder.volume.drivers.rbd.RBDDriver.do_setup'), \
-            mock.patch.object(driver.RBDISCSIDriver,
-                              '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            self.driver.do_setup(None)
+        m_create_client.return_value.get_clients.return_value = (response,
+                                                                 body)
+
+        with mock.patch('cinder.volume.drivers.rbd.RBDDriver.do_setup'):
+            drv.do_setup(None)
             if status == '200':
-                actual_response = self.driver._get_clients()
+                actual_response = drv._get_clients()
                 self.assertEqual(actual_response, body)
             else:
                 # we expect an exception
-                self.assertRaises(exception.VolumeBackendAPIException,
-                                  self.driver._get_clients)
+                self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                                       'Failed to get_clients()',
+                                       drv._get_clients)
 
     @ddt.data({'status': '200',
                'body': {'created': 'someday',
@@ -215,9 +216,19 @@ class RBDISCSITestCase(test.TestCase):
               {'status': '300',
                'body': None})
     @ddt.unpack
-    def test__get_config(self, status, body):
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.RBDISCSIDriver.'
+                '_create_client')
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.client')
+    @mock.patch('cinder.volume.drivers.ceph.rbd_iscsi.rbd_iscsi_client')
+    def test__get_config(self, m_rbd_iscsi_client, m_client, m_create_client,
+                         status, body):
+        m_create_client.return_value.get_api.return_value = (
+            self.fake_valid_response, None)
         config = self.setup_configuration()
         config.rbd_iscsi_target_iqn = self.fake_target_iqn
+
+        drv = driver.RBDISCSIDriver(configuration=config)
+        drv.set_initialized()
 
         response = self.fake_clients['response']
         response['status'] = status
@@ -225,22 +236,15 @@ class RBDISCSITestCase(test.TestCase):
             response['content-location'].replace('XX_REPLACE_ME',
                                                  self.fake_target_iqn))
 
-        mock_conf = {
-            'get_config.return_value': (response, body),
-            'get_api.return_value': (self.fake_valid_response, None)
-        }
-        mock_client = self.setup_mock_client(mock_conf=mock_conf,
-                                             config=config)
+        m_create_client.return_value.get_config.return_value = (response, body)
 
-        with mock.patch('cinder.volume.drivers.rbd.RBDDriver.do_setup'), \
-            mock.patch.object(driver.RBDISCSIDriver,
-                              '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            self.driver.do_setup(None)
+        with mock.patch('cinder.volume.drivers.rbd.RBDDriver.do_setup'):
+            drv.do_setup(None)
             if status == '200':
-                actual_response = self.driver._get_config()
+                actual_response = drv._get_config()
                 self.assertEqual(body, actual_response)
             else:
                 # we expect an exception
-                self.assertRaises(exception.VolumeBackendAPIException,
-                                  self.driver._get_config)
+                self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                                       'Failed to get_config()',
+                                       drv._get_config)
