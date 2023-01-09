@@ -895,45 +895,48 @@ port_speed!N/A
         rows = [None] * 17
         rows[0] = ['id', 'node_id', 'node_name', 'IP_address', 'mask',
                    'gateway', 'IP_address_6', 'prefix_6', 'gateway_6', 'MAC',
-                   'duplex', 'state', 'speed', 'failover', 'link_state']
+                   'duplex', 'state', 'speed', 'failover', 'link_state',
+                   'host']
         rows[1] = ['1', '1', 'node1', ip_addr1, '255.255.255.0',
                    gw, '', '', '', '01:23:45:67:89:00', 'Full',
-                   'online', '1Gb/s', 'no', 'active']
+                   'online', '1Gb/s', 'no', 'active', 'yes']
         rows[2] = ['1', '1', 'node1', '', '', '', '', '', '',
-                   '01:23:45:67:89:00', 'Full', 'online', '1Gb/s', 'yes', '']
+                   '01:23:45:67:89:00', 'Full', 'online', '1Gb/s', 'yes', '',
+                   '']
         rows[3] = ['2', '1', 'node1', ip_addr3, '255.255.255.0',
                    gw, '', '', '', '01:23:45:67:89:01', 'Full',
-                   'configured', '1Gb/s', 'no', 'active']
+                   'configured', '1Gb/s', 'no', 'active', 'yes']
         rows[4] = ['2', '1', 'node1', '', '', '', '', '', '',
                    '01:23:45:67:89:01', 'Full', 'unconfigured', '1Gb/s',
-                   'yes', 'inactive']
+                   'yes', 'inactive', 'no']
         rows[5] = ['3', '1', 'node1', '', '', '', '', '', '', '', '',
-                   'unconfigured', '', 'no', '']
+                   'unconfigured', '', 'no', '', '']
         rows[6] = ['3', '1', 'node1', '', '', '', '', '', '', '', '',
-                   'unconfigured', '', 'yes', '']
+                   'unconfigured', '', 'yes', '', '']
         rows[7] = ['4', '1', 'node1', '', '', '', '', '', '', '', '',
-                   'unconfigured', '', 'no', '']
+                   'unconfigured', '', 'no', '', '']
         rows[8] = ['4', '1', 'node1', '', '', '', '', '', '', '', '',
-                   'unconfigured', '', 'yes', '']
+                   'unconfigured', '', 'yes', '', 'no']
         rows[9] = ['1', '2', 'node2', ip_addr2, '255.255.255.0',
                    gw, '', '', '', '01:23:45:67:89:02', 'Full',
-                   'online', '1Gb/s', 'no', '']
+                   'online', '1Gb/s', 'no', '', '']
         rows[10] = ['1', '2', 'node2', '', '', '', '', '', '',
-                    '01:23:45:67:89:02', 'Full', 'online', '1Gb/s', 'yes', '']
+                    '01:23:45:67:89:02', 'Full', 'online', '1Gb/s', 'yes', '',
+                    'no']
         rows[11] = ['2', '2', 'node2', ip_addr4, '255.255.255.0',
                     gw, '', '', '', '01:23:45:67:89:03', 'Full',
-                    'configured', '1Gb/s', 'no', 'inactive']
+                    'configured', '1Gb/s', 'no', 'inactive', '']
         rows[12] = ['2', '2', 'node2', '', '', '', '', '', '',
                     '01:23:45:67:89:03', 'Full', 'unconfigured', '1Gb/s',
-                    'yes', '']
+                    'yes', '', '']
         rows[13] = ['3', '2', 'node2', '', '', '', '', '', '', '', '',
-                    'unconfigured', '', 'no', '']
+                    'unconfigured', '', 'no', '', '']
         rows[14] = ['3', '2', 'node2', '', '', '', '', '', '', '', '',
-                    'unconfigured', '', 'yes', '']
+                    'unconfigured', '', 'yes', '', '']
         rows[15] = ['4', '2', 'node2', '', '', '', '', '', '', '', '',
-                    'unconfigured', '', 'no', '']
+                    'unconfigured', '', 'no', '', '']
         rows[16] = ['4', '2', 'node2', '', '', '', '', '', '', '', '',
-                    'unconfigured', '', 'yes', '']
+                    'unconfigured', '', 'yes', '', '']
 
         if self._next_cmd_error['lsportip'] == 'header_mismatch':
             rows[0].pop(2)
@@ -15721,3 +15724,20 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             self.assertEqual(model_update['metadata']['Mirroring State'],
                              expected_mirroring_state)
         self.driver.delete_volume(volume)
+
+    def test_lsportip(self):
+        self.driver.do_setup(None)
+        storage_nodes = self.driver._master_state['storage_nodes']
+        no_of_portips_added_in_storage_nodes = len(storage_nodes.keys())
+        portips = self.sim._cmd_lsportip()[0]
+        portips_list = portips.split('\n')
+        portip_with_host_yes = []
+        if len(portips_list) > 1:
+            for portip in portips_list[1:]:
+                portip_details_list = portip.split(' ')
+                host = portip_details_list.pop()
+                if host == 'yes':
+                    portip_with_host_yes.append(portip)
+        no_of_portips_with_host_yes = len(portip_with_host_yes)
+        self.assertEqual(no_of_portips_added_in_storage_nodes,
+                         no_of_portips_with_host_yes)
