@@ -5,11 +5,11 @@ IBM Spectrum Virtualize family volume driver
 The volume management driver for Spectrum Virtualize family offers various
 block storage services. It provides OpenStack Compute instances with access
 to IBM Spectrum Virtualize family storage products. These products include the
-IBM SAN Volume Controller and IBM FlashSystem family members built with IBM
+SAN Volume Controller, Storwize and FlashSystem family members built with IBM
 Spectrum Virtualize (including FlashSystem 5xxx, 7xxx, 9xxx).
 
 For specific product publications, see `IBM Documentation
-<www.ibm.com/docs/en>`_.
+<https://www.ibm.com/docs/en>`_.
 
 .. note::
    IBM Spectrum Virtualize family is formerly known as IBM Storwize.
