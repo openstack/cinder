@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    LVM nvmet target `bug #1964391
+    <https://bugs.launchpad.net/cinder/+bug/1964391>`_: Fixed temporary
+    disconnection of all volumes from all hosts when creating and removing
+    volume exports.
+
+  - |
+    LVM nvmet target `bug #1964394
+    <https://bugs.launchpad.net/cinder/+bug/1964394>`_: Fixed annoying kernel
+    log message when exporting a volume.
