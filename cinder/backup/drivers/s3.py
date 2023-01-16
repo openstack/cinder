@@ -60,9 +60,7 @@
                                   Ceilometer when backing up the volume to the
                                   S3 backend storage. (default: True)
 :backup_compression_algorithm: Compression algorithm to use for volume
-                               backups. Supported options are:
-                               None (to disable), zlib, bz2
-                               and zstd. (default: zlib)
+                               backups.
 """
 
 import base64
