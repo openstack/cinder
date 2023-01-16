@@ -134,7 +134,10 @@ class MockAPI(object):
             volumes[name]['size'] = data['size']
 
         if 'rename' in data and data['rename'] != name:
-            volumes[data['rename']] = volumes[name]
+            new_name = data['rename']
+            volumes[new_name] = volumes[name]
+            if volumes[new_name]['name'] == name:
+                volumes[new_name]['name'] = new_name
             del volumes[name]
 
 
@@ -258,6 +261,8 @@ class StorPoolTestCase(test.TestCase):
     def assertVolumeNames(self, names):
         self.assertListEqual(sorted([volumeName(n) for n in names]),
                              sorted(volumes.keys()))
+        self.assertListEqual(sorted([volumeName(n) for n in names]),
+                             sorted(data['name'] for data in volumes.values()))
 
     @mock_volume_types
     def test_create_delete_volume(self):
