@@ -710,14 +710,118 @@ def build_or_str(elements: Union[None, str, Iterable[str]],
     return elements
 
 
+def calculate_capacity_factors(total_capacity: float,
+                               free_capacity: float,
+                               provisioned_capacity: float,
+                               thin_provisioning_support: bool,
+                               max_over_subscription_ratio: float,
+                               reserved_percentage: int,
+                               thin: bool) -> dict:
+    """Create the various capacity factors of the a particular backend.
+
+    Based off of definition of terms
+    cinder-specs/specs/queens/provisioning-improvements.html
+    Description of factors calculated where units of gb are Gibibytes.
+    reserved_capacity - The amount of space reserved from the total_capacity
+    as reported by the backend.
+    total_reserved_available_capacity - The total capacity minus reserved
+    capacity
+    total_available_capacity - The total capacity available to cinder
+    calculated from total_reserved_available_capacity (for thick) OR
+    for thin total_reserved_available_capacity max_over_subscription_ratio
+    calculated_free_capacity - total_available_capacity - provisioned_capacity
+    virtual_free_capacity - The calculated free capacity available to cinder
+    to allocate new storage.
+    For thin: calculated_free_capacity
+    For thick: the reported free_capacity can be less than the calculated
+    capacity, so we use free_capacity - reserved_capacity.
+
+    free_percent - the percentage of the virtual_free_capacity and
+    total_available_capacity is left over
+    provisioned_ratio - The ratio of provisioned storage to
+    total_available_capacity
+
+    :param total_capacity: The reported total capacity in the backend.
+    :type total_capacity: float
+    :param free_capacity: The free space/capacity as reported by the backend.
+    :type free_capacity: float
+    :param provisioned_capacity: as reported by backend or volume manager from
+        allocated_capacity_gb
+    :type provisioned_capacity: float
+    :param thin_provisioning_support: Is thin provisioning supported?
+    :type thin_provisioning_support: bool
+    :param max_over_subscription_ratio: as reported by the backend
+    :type max_over_subscription_ratio: float
+    :param reserved_percentage: the % amount to reserve as unavailable. 0-100
+    :type reserved_percentage: int, 0-100
+    :param thin: calculate based on thin provisioning if enabled by
+        thin_provisioning_support
+    :type thin: bool
+    :return: A dictionary of all of the capacity factors.
+    :rtype: dict
+
+    """
+
+    total = float(total_capacity)
+    reserved = float(reserved_percentage) / 100
+    reserved_capacity = math.floor(total * reserved)
+    total_reserved_available = total - reserved_capacity
+
+    if thin and thin_provisioning_support:
+        total_available_capacity = (
+            total_reserved_available * max_over_subscription_ratio
+        )
+        calculated_free = total_available_capacity - provisioned_capacity
+        virtual_free = calculated_free
+        provisioned_type = 'thin'
+    else:
+        # Calculate how much free space is left after taking into
+        # account the reserved space.
+        total_available_capacity = total_reserved_available
+        calculated_free = total_available_capacity - provisioned_capacity
+        virtual_free = calculated_free
+        if free_capacity < calculated_free:
+            virtual_free = free_capacity
+
+        provisioned_type = 'thick'
+
+    if total_available_capacity:
+        provisioned_ratio = provisioned_capacity / total_available_capacity
+        free_percent = (virtual_free / total_available_capacity) * 100
+    else:
+        provisioned_ratio = 0
+        free_percent = 0
+
+    def _limit(x):
+        """Limit our floating points to 2 decimal places."""
+        return round(x, 2)
+
+    return {
+        "total_capacity": total,
+        "free_capacity": free_capacity,
+        "reserved_capacity": reserved_capacity,
+        "total_reserved_available_capacity": _limit(total_reserved_available),
+        "max_over_subscription_ratio": (
+            max_over_subscription_ratio if provisioned_type == 'thin' else None
+        ),
+        "total_available_capacity": _limit(total_available_capacity),
+        "provisioned_capacity": provisioned_capacity,
+        "calculated_free_capacity": _limit(calculated_free),
+        "virtual_free_capacity": _limit(virtual_free),
+        "free_percent": _limit(free_percent),
+        "provisioned_ratio": _limit(provisioned_ratio),
+        "provisioned_type": provisioned_type
+    }
+
+
 def calculate_virtual_free_capacity(total_capacity: float,
                                     free_capacity: float,
                                     provisioned_capacity: float,
                                     thin_provisioning_support: bool,
                                     max_over_subscription_ratio: float,
-                                    reserved_percentage: float,
+                                    reserved_percentage: int,
                                     thin: bool) -> float:
-    """Calculate the virtual free capacity based on thin provisioning support.
+    """Calculate the virtual free capacity based on multiple factors.
 
     :param total_capacity:  total_capacity_gb of a host_state or pool.
     :param free_capacity:   free_capacity_gb of a host_state or pool.
@@ -733,18 +837,16 @@ def calculate_virtual_free_capacity(total_capacity: float,
     :returns: the calculated virtual free capacity.
     """
 
-    total = float(total_capacity)
-    reserved = float(reserved_percentage) / 100
-
-    if thin and thin_provisioning_support:
-        free = (total * max_over_subscription_ratio
-                - provisioned_capacity
-                - math.floor(total * reserved))
-    else:
-        # Calculate how much free space is left after taking into
-        # account the reserved space.
-        free = free_capacity - math.floor(total * reserved)
-    return free
+    factors = calculate_capacity_factors(
+        total_capacity,
+        free_capacity,
+        provisioned_capacity,
+        thin_provisioning_support,
+        max_over_subscription_ratio,
+        reserved_percentage,
+        thin
+    )
+    return factors["virtual_free_capacity"]
 
 
 def calculate_max_over_subscription_ratio(
