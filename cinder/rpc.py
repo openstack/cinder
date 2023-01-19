@@ -148,10 +148,9 @@ def get_client(target,
     if TRANSPORT is None:
         raise AssertionError('RPC transport is not initialized.')
     serializer = RequestContextSerializer(serializer)
-    return messaging.RPCClient(TRANSPORT,
-                               target,
-                               version_cap=version_cap,
-                               serializer=serializer)
+    return messaging.get_rpc_client(
+        TRANSPORT, target, version_cap=version_cap,
+        serializer=serializer)
 
 
 def get_server(target,
