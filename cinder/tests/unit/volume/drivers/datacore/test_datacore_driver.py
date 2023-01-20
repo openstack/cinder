@@ -355,7 +355,7 @@ class DataCoreVolumeDriverTestCase(object):
                                            'get_volume_type')
         get_volume_type.return_value = volume_type
         volume = self.volume_a
-        volume['volume_type_id'] = 'volume_type_id'
+        volume['volume_type_id'] = fake_constants.VOLUME_TYPE_ID
         result = driver.create_volume(volume)
         self.assertIn('provider_location', result)
         self.assertEqual(virtual_disk.Id, result['provider_location'])
@@ -381,7 +381,7 @@ class DataCoreVolumeDriverTestCase(object):
                                            'get_volume_type')
         get_volume_type.return_value = volume_type
         volume = self.volume_a
-        volume['volume_type_id'] = 'volume_type_id'
+        volume['volume_type_id'] = fake_constants.VOLUME_TYPE_ID
         result = driver.create_volume(volume)
         self.assertIn('provider_location', result)
         self.assertEqual(virtual_disk.Id, result['provider_location'])
@@ -405,7 +405,7 @@ class DataCoreVolumeDriverTestCase(object):
                                            'get_volume_type')
         get_volume_type.return_value = volume_type
         volume = self.volume_a
-        volume['volume_type_id'] = 'volume_type_id'
+        volume['volume_type_id'] = fake_constants.VOLUME_TYPE_ID
         result = driver.create_volume(volume)
         self.assertIn('provider_location', result)
         self.assertEqual(virtual_disk.Id, result['provider_location'])
@@ -441,7 +441,7 @@ class DataCoreVolumeDriverTestCase(object):
                                            'get_volume_type')
         get_volume_type.return_value = volume_type
         volume = self.volume_a
-        volume['volume_type_id'] = 'volume_type_id'
+        volume['volume_type_id'] = fake_constants.VOLUME_TYPE_ID
         self.assertRaises(cinder_exception.VolumeDriverException,
                           driver.create_volume,
                           volume)
@@ -463,7 +463,7 @@ class DataCoreVolumeDriverTestCase(object):
                                            'get_volume_type')
         get_volume_type.return_value = volume_type
         volume = self.volume_a
-        volume['volume_type_id'] = 'volume_type_id'
+        volume['volume_type_id'] = fake_constants.VOLUME_TYPE_ID
         self.assertRaises(cinder_exception.VolumeDriverException,
                           driver.create_volume,
                           volume)
