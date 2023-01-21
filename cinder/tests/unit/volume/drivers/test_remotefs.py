@@ -744,9 +744,6 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             'volume_type_id': src_vref.volume_type_id,
             'encryption_key_id': None,
         }
-        snap_args_deletion = snap_args_creation.copy()
-        snap_args_deletion["status"] = fields.SnapshotStatus.DELETED
-        snap_args_deletion["deleted"] = True
 
         mock_obj_snap.return_value = mock.Mock()
         mock_obj_snap.return_value.create = mock.Mock()
@@ -771,7 +768,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             mock_copy_volume_from_snapshot.assert_called_once_with(
                 mock_obj_snap.return_value, volume_ref, volume['size'],
                 src_encryption_key_id=None, new_encryption_key_id=None)
-            mock_delete_snapshot.called_once_with(snap_args_deletion)
+            mock_delete_snapshot.assert_called_once_with(
+                mock_obj_snap.return_value)
         else:
             self.assertFalse(mock_create_snapshot.called)
 

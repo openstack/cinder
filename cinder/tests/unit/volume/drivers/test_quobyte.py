@@ -388,7 +388,7 @@ class QuobyteDriverTestCase(test.TestCase):
 
             mock_execute.assert_has_calls(
                 [mount_call], any_order=False)
-            mock_validate.called_once_with(self.TEST_MNT_POINT)
+            mock_validate.assert_called_once_with(self.TEST_MNT_POINT)
 
     def test_mount_quobyte_already_mounted_detected_seen_in_proc_mount(self):
         with mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
