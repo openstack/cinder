@@ -639,6 +639,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 copied = True
             elif (cache_copy and
                   self.configuration.netapp_copyoffload_tool_path):
+                volume['provider_location'] = volume_utils.extract_host(
+                    volume['host'], level='pool')
                 LOG.debug("Trying copy from cache using copy offload.")
                 self._copy_from_remote_cache(volume, image_id, cache_copy)
                 copied = True
