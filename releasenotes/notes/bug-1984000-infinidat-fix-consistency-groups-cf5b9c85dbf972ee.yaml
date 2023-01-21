@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Infinidat Driver `bug #1984000
+    <https://bugs.launchpad.net/cinder/+bug/1984000>`_:
+    Fixed Infinidat driver to take into account the group
+    identifier property when creating a new volume and
+    add the volume to the consistency group.

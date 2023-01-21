@@ -59,15 +59,19 @@ TEST_SNAPSHOT_SOURCE_ID = 67890
 TEST_SNAPSHOT_METADATA = {'cinder_id': fake.SNAPSHOT_ID}
 
 test_volume = mock.Mock(id=fake.VOLUME_ID, name_id=fake.VOLUME_ID, size=1,
-                        volume_type_id=fake.VOLUME_TYPE_ID,
+                        volume_type_id=fake.VOLUME_TYPE_ID, group_id=None,
                         multiattach=False, volume_attachment=None)
 test_volume2 = mock.Mock(id=fake.VOLUME2_ID, name_id=fake.VOLUME2_ID, size=1,
-                         volume_type_id=fake.VOLUME_TYPE_ID,
+                         volume_type_id=None, group_id=None,
                          multiattach=False, volume_attachment=None)
-test_snapshot = mock.Mock(id=fake.SNAPSHOT_ID, volume=test_volume,
-                          volume_id=test_volume.id)
-test_clone = mock.Mock(id=fake.VOLUME4_ID, size=1, multiattach=False,
-                       volume_attachment=None)
+test_volume3 = mock.Mock(id=fake.VOLUME3_ID, name_id=fake.VOLUME3_ID, size=1,
+                         volume_type_id=fake.VOLUME_TYPE_ID,
+                         group_id=fake.GROUP_ID, multiattach=True,
+                         volume_attachment=None)
+test_snapshot = mock.Mock(id=fake.SNAPSHOT_ID, volume=test_volume)
+test_clone = mock.Mock(id=fake.VOLUME4_ID, name_id=fake.VOLUME4_ID, size=1,
+                       volume_type_id=fake.VOLUME_TYPE_ID, group_id=None,
+                       multiattach=False, volume_attachment=None)
 test_group = mock.Mock(id=fake.GROUP_ID)
 test_snapgroup = mock.Mock(id=fake.GROUP_SNAPSHOT_ID, group=test_group)
 test_connector = dict(wwpns=[TEST_WWN_1],
@@ -145,6 +149,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self._mock_volume.get_all_metadata.return_value = {}
         self._mock_volume.create_snapshot.return_value = self._mock_volume
         self._mock_snapshot = mock.Mock()
+        self._mock_snapshot.get_parent.return_value = self._mock_volume
         self._mock_host = mock.Mock()
         self._mock_host.get_luns.return_value = []
         self._mock_host.map_volume().get_lun.return_value = TEST_LUN
@@ -389,6 +394,22 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
             self._system.volumes.create.call_args[1]
         )
 
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.volume_utils.group_get_by_id')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_volume_within_group(self, *mocks):
+        self.driver.create_volume(test_volume3)
+        self._mock_group.add_member.assert_called_once()
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.volume_utils.group_get_by_id')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_create_volume_within_no_cg_group(self, *mocks):
+        self.driver.create_volume(test_volume3)
+        self._mock_group.add_member.assert_not_called()
+
     def test_delete_volume(self):
         self.driver.delete_volume(test_volume)
 
@@ -518,6 +539,13 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.driver.create_group(None, test_group)
 
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_create_generic_group(self, *mocks):
+        self.assertRaises(NotImplementedError,
+                          self.driver.create_group,
+                          None, test_group)
+
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_create_group_metadata(self, *mocks):
         self.driver.create_group(None, test_group)
@@ -543,6 +571,13 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.driver.delete_group(None, test_group, [test_volume])
 
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_delete_generic_group(self, *mocks):
+        self.assertRaises(NotImplementedError,
+                          self.driver.delete_group,
+                          None, test_group, [test_volume])
+
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_delete_group_doesnt_exist(self, *mocks):
         self._system.cons_groups.safe_get.return_value = None
@@ -561,6 +596,13 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     def test_update_group_add_and_remove(self, *mocks):
         self.driver.update_group(None, test_group,
                                  [test_volume], [test_volume])
+
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_update_generic_group_add_and_remove(self, *mocks):
+        self.assertRaises(NotImplementedError,
+                          self.driver.update_group,
+                          None, test_group, [test_volume], [test_volume])
 
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
@@ -583,6 +625,23 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                                           test_snapgroup, [test_snapshot],
                                           None, None)
 
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_create_genericgroup_from_src_snaps(self, *mocks):
+        self.assertRaises(NotImplementedError,
+                          self.driver.create_group_from_src,
+                          None, test_group, [test_volume],
+                          test_snapgroup, [test_snapshot],
+                          None, None)
+
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_group_from_empty_sources(self, *mocks):
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_group_from_src,
+                          None, test_group, [test_volume],
+                          None, None, None, None)
+
     @mock.patch("cinder.volume.volume_utils.copy_volume")
     @mock.patch("cinder.volume.volume_utils.brick_get_connector")
     @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
@@ -599,13 +658,20 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                 return_value=True)
     def test_create_group_snap(self, *mocks):
         mock_snapgroup = mock.Mock()
-        mock_snapgroup.get_members.return_value = [self._mock_volume]
-        self._mock_volume.get_parent.return_value = self._mock_volume
-        self._mock_volume.get_name.return_value = ''
+        mock_snapgroup.get_members.return_value = [self._mock_snapshot,
+                                                   self._mock_snapshot]
+        self._mock_volume.get_name.side_effect = [fake.VOLUME_NAME,
+                                                  fake.VOLUME2_NAME]
         self._mock_group.create_snapshot.return_value = mock_snapgroup
-        self.driver.create_group_snapshot(None,
-                                          test_snapgroup,
-                                          [test_snapshot])
+        self.driver.create_group_snapshot(None, test_snapgroup,
+                                          [test_snapshot, test_snapshot])
+
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_create_generic_group_snap(self, *mocks):
+        self.assertRaises(NotImplementedError,
+                          self.driver.create_group_snapshot,
+                          None, test_snapgroup, [test_snapshot])
 
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
@@ -621,6 +687,13 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.driver.delete_group_snapshot(None,
                                           test_snapgroup,
                                           [test_snapshot])
+
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=False)
+    def test_delete_generic_group_snap(self, *mocks):
+        self.assertRaises(NotImplementedError,
+                          self.driver.delete_group_snapshot,
+                          None, test_snapgroup, [test_snapshot])
 
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
@@ -1258,8 +1331,7 @@ class InfiniboxDriverTestCaseQoS(InfiniboxDriverTestCaseBase):
                                                 'consumer': 'back-end',
                                                 'specs': {'maxIOPS': 1000,
                                                           'maxBWS': 10000}}}
-        test_volume = mock.Mock(id=1, size=1, volume_type_id=None)
-        self.driver.create_volume(test_volume)
+        self.driver.create_volume(test_volume2)
         self._system.qos_policies.create.assert_not_called()
         self._mock_qos_policy.assign_entity.assert_not_called()
 
