@@ -31,6 +31,12 @@ def upgrade(migrate_engine):
     if not hasattr(quota_usages.c, 'race_preventer'):
         quota_usages.create_column(Column('race_preventer', Boolean,
                                           nullable=True))
+    # SAP drop the existing constraint
+    unique_SAP = constraint.UniqueConstraint(
+        'project_id', 'resource', 'deleted',
+        table=quota_usages)
+    unique_SAP.drop(engine=migrate_engine)
+
     unique = constraint.UniqueConstraint(
         'project_id', 'resource', 'race_preventer',
         table=quota_usages)
