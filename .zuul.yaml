@@ -5,7 +5,11 @@
       - publish-openstack-docs-pti
       - periodic-stable-jobs
       - check-requirements
-      - integrated-gate-storage
+      # NOTE: we no longer run the integrated-gate-storage template
+      # because it includes grenade.  The other jobs in the template,
+      # tempest-integrated-storage and openstacksdk-functional-devstack
+      # are configured explicitly below.
+      # - integrated-gate-storage
       - release-notes-jobs-python3
     check:
       jobs:
@@ -61,8 +65,6 @@
             irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-plugin-lvm-lio-barbican:
             irrelevant-files: *gate-irrelevant-files
-        - cinder-grenade-mn-sub-volbak:
-            irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-lvm-multibackend:
             voting: false
             irrelevant-files: *gate-irrelevant-files
@@ -73,8 +75,6 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
-        - grenade:
-            irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
         - openstacksdk-functional-devstack:
@@ -84,16 +84,12 @@
             irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
-        - cinder-grenade-mn-sub-volbak:
-            irrelevant-files: *gate-irrelevant-files
         - cinder-plugin-ceph-tempest:
             required-projects:
             - name: opendev.org/openstack/os-brick
               override-branch: stable/wallaby
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
-            irrelevant-files: *gate-irrelevant-files
-        - grenade:
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
@@ -107,6 +103,10 @@
         - tempest-cinder-v2-api:
             irrelevant-files: *gate-irrelevant-files
         - cinder-multibackend-matrix-migration:
+            irrelevant-files: *gate-irrelevant-files
+        - grenade:
+            irrelevant-files: *gate-irrelevant-files
+        - cinder-grenade-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - cinder-grenade-mn-sub-volschbak:
             irrelevant-files: *gate-irrelevant-files
