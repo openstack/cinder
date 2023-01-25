@@ -918,6 +918,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         data['queue_depth'] = perf_info['queue_depth']
 
         #  Replication
+        data["replication_capability"] = self._get_replication_capability()
         data["replication_enabled"] = self._is_replication_enabled
         repl_types = []
         if self._is_replication_enabled:
@@ -929,6 +930,39 @@ class PureBaseVolumeDriver(san.SanDriver):
         data["replication_targets"] = [array.backend_id for array
                                        in self._replication_target_arrays]
         self._stats = data
+
+    def _get_replication_capability(self):
+        """Discovered connected arrays status for replication"""
+        connections = self._get_current_array().list_array_connections()
+        is_sync, is_async, is_trisync = False, False, False
+        for conn in connections:
+            # If connection status is connected, we can have
+            # either sync or async replication
+            if conn["status"] == "connected":
+                # check for async replication
+                if conn["type"] == "async-replication":
+                    is_async = True
+                # check for sync replication
+                elif conn["type"] == "sync-replication":
+                    is_sync = True
+            # If we've connections for both sync and async
+            # replication, we can set trisync replication
+            # and exit the loop
+            if is_sync and is_async:
+                is_trisync = True
+                break
+        # Check if it is a trisync replication
+        if is_trisync:
+            replication_type = "trisync"
+        # If replication is not trisync, it will be either
+        # sync or async
+        elif is_sync:
+            replication_type = "sync"
+        elif is_async:
+            replication_type = "async"
+        else:
+            replication_type = None
+        return replication_type
 
     def _get_provisioned_space(self):
         """Sum up provisioned size of all volumes on array"""
