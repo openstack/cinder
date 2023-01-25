@@ -5,8 +5,16 @@
       - publish-openstack-docs-pti
       - periodic-stable-jobs
       - check-requirements
-      - integrated-gate
-      - integrated-gate-storage
+      # NOTE: we no longer run the integrated-gate template because it
+      # includes neutron-grenade.  The only other job in the template
+      # that applies to non-eol branches, tempest-full, is configured
+      # explicitly below.
+      # - integrated-gate
+      # NOTE: we no longer run the integrated-gate-storage template
+      # because it includes grenade.  The other jobs in the template,
+      # tempest-integrated-storage and openstacksdk-functional-devstack
+      # are configured explicitly below.
+      # - integrated-gate-storage
       - release-notes-jobs-python3
     check:
       jobs:
@@ -51,15 +59,11 @@
             irrelevant-files: *functional-irrelevant-files
         - cinder-tempest-plugin-lvm-lio-barbican:
             irrelevant-files: *gate-irrelevant-files
-        - cinder-grenade-mn-sub-volbak:
-            irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-lvm-multibackend:
             voting: false
             irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-nfs-tempest-full:
             voting: false
-            irrelevant-files: *gate-irrelevant-files
-        - grenade:
             irrelevant-files: *gate-irrelevant-files
         - tempest-slow-py3:
             irrelevant-files: *gate-irrelevant-files
@@ -67,21 +71,23 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
-        - grenade-py3:
+        - openstacksdk-functional-devstack:
+            required-projects:
+            - name: opendev.org/openstack/openstacksdk
+              override-branch: stable/train
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
-        - cinder-grenade-mn-sub-volbak:
-            irrelevant-files: *gate-irrelevant-files
-        - grenade:
-            irrelevant-files: *gate-irrelevant-files
         - tempest-full:
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
-        - grenade-py3:
+        - openstacksdk-functional-devstack:
+            required-projects:
+            - name: opendev.org/openstack/openstacksdk
+              override-branch: stable/train
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
@@ -90,6 +96,14 @@
         - tempest-cinder-v2-api:
             irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-multibackend-matrix:
+            irrelevant-files: *gate-irrelevant-files
+        - grenade:
+            irrelevant-files: *gate-irrelevant-files
+        - grenade-py3:
+            irrelevant-files: *gate-irrelevant-files
+        - neutron-grenade:
+            irrelevant-files: *gate-irrelevant-files
+        - cinder-grenade-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - cinder-grenade-mn-sub-volschbak:
             irrelevant-files: *gate-irrelevant-files
