@@ -1,0 +1,33 @@
+---
+upgrade:
+  - |
+    This release introduces a new configuration option,
+    ``vmdk_allowed_types``, that specifies the list of VMDK image
+    subformats that Cinder will allow.  The default setting allows
+    only the 'streamOptimized' and 'monolithicSparse' subformats,
+    which do not use named extents.
+security:
+  - |
+    This release introduces a new configuration option,
+    ``vmdk_allowed_types``, that specifies the list of VMDK image
+    subformats that Cinder will allow in order to prevent exposure
+    of host information by modifying the named extents in a VMDK
+    image.  The default setting allows only the 'streamOptimized'
+    and 'monolithicSparse' subformats, which do not use named extents.
+  - |
+    As part of the fix for `Bug #1996188
+    <https://bugs.launchpad.net/cinder/+bug/1996188>`_, cinder is now more
+    strict in checking that the ``disk_format`` recorded for an image (as
+    revealed by the Image Service API image-show response) matches what
+    cinder detects when it downloads the image.  Thus, some requests to
+    create a volume from a source image that had previously succeeded may
+    fail with an ``ImageUnacceptable`` error.
+fixes:
+  - |
+    `Bug #1996188 <https://bugs.launchpad.net/cinder/+bug/1996188>`_:
+    Fixed issue where a VMDK image file whose createType allowed named
+    extents could expose host information.  This change introduces a new
+    configuration option, ``vmdk_allowed_types``, that specifies the list
+    of VMDK image subformats that Cinder will allow.  The default
+    setting allows only the 'streamOptimized' and 'monolithicSparse'
+    subformats.
