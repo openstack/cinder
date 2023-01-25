@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    `Bug #1978020 <https://bugs.launchpad.net/cinder/+bug/1978020>`_: Fixed
+    uploading a volume to a Cinder-backed Glance image; if a store name is set
+    in the volume type's extra specs, it must also be sent to Glance as part of
+    the new image location URI.
+    Please note that while the `image_service:store_id` extra spec is
+    validated when it is set for the volume type, it is not validated later;
+    it is the operator's responsibility to make sure that the Glance store is
+    not renamed or removed or that the volume types are updated accordingly.
