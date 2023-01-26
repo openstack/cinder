@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import unittest
 from unittest import mock
 
 import ddt
@@ -207,11 +208,50 @@ class TestPrivsep(test.TestCase):
                           nvmet._nvmet_setup_failure, mock.sentinel.message)
         mock_log.assert_called_once_with(mock.sentinel.message)
 
+    @mock.patch.object(nvmet, '_privsep_setup')
+    def test_privsep_setup(self, mock_setup):
+        args = [mock.sentinel.arg1, mock.sentinel.arg2]
+        kwargs = {'kwarg1': mock.sentinel.kwarg1}
+
+        res = nvmet.privsep_setup('MyClass', err_func=None, *args, **kwargs)
+
+        mock_setup.assert_called_once_with('MyClass', *args, **kwargs)
+        self.assertEqual(mock_setup.return_value, res)
+
+    @mock.patch.object(nvmet, '_privsep_setup')
+    def test_privsep_setup_err_func_as_arg_none(self, mock_setup):
+        exc = exception.CinderException('ouch')
+        mock_setup.side_effect = exc
+        args = [mock.sentinel.arg1, mock.sentinel.arg2, None]
+        kwargs = {'kwarg1': mock.sentinel.kwarg1}
+
+        # NOTE: testtools.TestCase were Cinder's tests inherit from masks the
+        # unittest's assertRaises that supports context manager usage, so we
+        # address it directly.
+        with unittest.TestCase.assertRaises(self,
+                                            exception.CinderException) as cm:
+            nvmet.privsep_setup('MyClass', *args, **kwargs)
+
+        self.assertEqual(exc, cm.exception)
+        mock_setup.assert_called_once_with('MyClass', *args[:-1], **kwargs)
+
+    @mock.patch.object(nvmet, '_privsep_setup')
+    def test_privsep_setup_err_func_as_arg(self, mock_setup):
+        def err_func(msg):
+            raise exception.VolumeDriverException()
+
+        mock_setup.side_effect = exception.CinderException('ouch')
+        args = [mock.sentinel.arg1, mock.sentinel.arg2, err_func]
+
+        self.assertRaises(exception.VolumeDriverException,
+                          nvmet.privsep_setup, 'MyClass', *args)
+        mock_setup.assert_called_once_with('MyClass', *args[:-1])
+
     # We mock the privsep context mode to fake that we are not the client
     @mock.patch('cinder.privsep.sys_admin_pctxt.client_mode', False)
     @mock.patch.object(nvmet, 'deserialize_params')
     @mock.patch.object(nvmet.nvmet, 'MyClass')
-    def test_privsep_setup(self, mock_class, mock_deserialize):
+    def test__privsep_setup(self, mock_class, mock_deserialize):
         args = (1, 2, 3)
         kwargs = {'4': 5, '6': 7}
         deserialized_args = (11, 22, 33)
@@ -224,11 +264,12 @@ class TestPrivsep(test.TestCase):
         mock_deserialize.return_value = (deserialized_args,
                                          deserialized_kwargs)
 
-        nvmet.privsep_setup('MyClass', *args, **kwargs)
+        res = nvmet._privsep_setup('MyClass', *args, **kwargs)
 
         mock_deserialize.assert_called_once_with(args, kwargs)
         mock_class.setup.assert_called_once_with(*expected_args,
                                                  **expected_kwargs)
+        self.assertEqual(mock_class.setup.return_value, res)
 
     # We mock the privsep context mode to fake that we are not the client
     @mock.patch('cinder.privsep.sys_admin_pctxt.client_mode', False)
@@ -271,8 +312,14 @@ class TestNvmetClasses(test.TestCase):
 
     @mock.patch.object(nvmet, 'privsep_setup')
     def test_subsystem_setup(self, mock_setup):
+        nvmet.Subsystem.setup(mock.sentinel.t, mock.sentinel.err_func)
+        mock_setup.assert_called_once_with('Subsystem', mock.sentinel.t,
+                                           mock.sentinel.err_func)
+
+    @mock.patch.object(nvmet, 'privsep_setup')
+    def test_subsystem_setup_no_err_func(self, mock_setup):
         nvmet.Subsystem.setup(mock.sentinel.t)
-        mock_setup.assert_called_once_with('Subsystem', mock.sentinel.t)
+        mock_setup.assert_called_once_with('Subsystem', mock.sentinel.t, None)
 
     @mock.patch.object(nvmet, 'serialize')
     @mock.patch.object(nvmet, 'do_privsep_call')
@@ -293,10 +340,20 @@ class TestNvmetClasses(test.TestCase):
     @mock.patch.object(nvmet, 'serialize')
     @mock.patch.object(nvmet, 'privsep_setup')
     def test_port_setup(self, mock_setup, mock_serialize):
+        nvmet.Port.setup(mock.sentinel.root, mock.sentinel.n,
+                         mock.sentinel.err_func)
+        mock_serialize.assert_called_once_with(mock.sentinel.root)
+        mock_setup.assert_called_once_with('Port', mock_serialize.return_value,
+                                           mock.sentinel.n,
+                                           mock.sentinel.err_func)
+
+    @mock.patch.object(nvmet, 'serialize')
+    @mock.patch.object(nvmet, 'privsep_setup')
+    def test_port_setup_no_err_func(self, mock_setup, mock_serialize):
         nvmet.Port.setup(mock.sentinel.root, mock.sentinel.n)
         mock_serialize.assert_called_once_with(mock.sentinel.root)
         mock_setup.assert_called_once_with('Port', mock_serialize.return_value,
-                                           mock.sentinel.n)
+                                           mock.sentinel.n, None)
 
     @mock.patch.object(nvmet, 'serialize')
     @mock.patch.object(nvmet, 'do_privsep_call')

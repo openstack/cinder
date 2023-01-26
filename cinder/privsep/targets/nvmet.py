@@ -139,7 +139,7 @@ def do_privsep_call(instance, method_name, *args, **kwargs):
 
 
 @privsep.sys_admin_pctxt.entrypoint
-def privsep_setup(cls_name, *args, **kwargs):
+def _privsep_setup(cls_name, *args, **kwargs):
     """Special privsep method for nvmet setup method calls.
 
     The setup method is a special case because it's a class method (which
@@ -152,7 +152,23 @@ def privsep_setup(cls_name, *args, **kwargs):
     cls = getattr(nvmet, cls_name)
     args, kwargs = deserialize_params(args, kwargs)
     kwargs['err_func'] = _nvmet_setup_failure
-    cls.setup(*args, **kwargs)
+    return cls.setup(*args, **kwargs)
+
+
+def privsep_setup(cls_name, *args, **kwargs):
+    """Wrapper for _privsep_setup that accepts err_func argument."""
+    # err_func parameter hardcoded in _privsep_setup as it cannot be serialized
+    if 'err_func' in kwargs:
+        err_func = kwargs.pop('err_func')
+    else:  # positional is always last argument of the args tuple
+        err_func = args[-1]
+        args = args[:-1]
+    try:
+        return _privsep_setup(cls_name, *args, **kwargs)
+    except exception.CinderException as exc:
+        if not err_func:
+            raise
+        err_func(exc.msg)
 
 
 ###################
@@ -177,8 +193,8 @@ class Subsystem(nvmet.Subsystem):
         super().__init__(nqn=nqn, mode=mode)
 
     @classmethod
-    def setup(cls, t):
-        privsep_setup(cls.__name__, t)
+    def setup(cls, t, err_func=None):
+        privsep_setup(cls.__name__, t, err_func)
 
     def delete(self):
         do_privsep_call(serialize(self), 'delete')
@@ -189,8 +205,8 @@ class Port(nvmet.Port):
         super().__init__(portid=portid, mode=mode)
 
     @classmethod
-    def setup(cls, root, n):
-        privsep_setup(cls.__name__, serialize(root), n)
+    def setup(cls, root, n, err_func=None):
+        privsep_setup(cls.__name__, serialize(root), n, err_func)
 
     def add_subsystem(self, nqn):
         do_privsep_call(serialize(self), 'add_subsystem', nqn)
