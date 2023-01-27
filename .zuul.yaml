@@ -286,7 +286,8 @@
         * legacy-tempest-dsvm-lvm-multibackend
     timeout: 10800
     required-projects:
-      - opendev.org/openstack/cinder-tempest-plugin
+      - name: opendev.org/openstack/cinder-tempest-plugin
+        override-checkout: 1.7.0
     vars:
       tox_envlist: all
       tempest_test_regex: '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario)|(^cinder_tempest_plugin))'
