@@ -62,11 +62,11 @@ def get_backend_configuration(backend_name):
     return config
 
 
-def get_client_for_backend(backend_name, vserver_name=None):
+def get_client_for_backend(backend_name, vserver_name=None, force_rest=False):
     """Get a cDOT API client for a specific backend."""
 
     config = get_backend_configuration(backend_name)
-    if config.netapp_use_legacy_client:
+    if config.netapp_use_legacy_client and not force_rest:
         client = client_cmode.Client(
             transport_type=config.netapp_transport_type,
             username=config.netapp_login,

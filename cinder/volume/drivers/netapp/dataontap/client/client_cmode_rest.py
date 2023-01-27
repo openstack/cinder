@@ -2519,3 +2519,276 @@ class RestClient(object):
         self.send_request(
             f'/storage/volumes/{unique_volume["uuid"]}/files/{orig_file_name}',
             'patch', body=body)
+
+    def get_namespace_list(self):
+        """Gets the list of namespaces on filer.
+
+        Gets the namespaces from cluster with vserver.
+        """
+
+        query = {
+            'svm.name': self.vserver,
+            'fields': 'svm.name,location.volume.name,space.size,'
+                      'location.qtree.name,name,os_type,'
+                      'space.guarantee.requested,uuid'
+        }
+
+        response = self.send_request(
+            '/storage/namespaces/', 'get', query=query)
+
+        namespace_list = []
+        for namespace in response.get('records', []):
+            namespace_info = {}
+            namespace_info['Vserver'] = namespace['svm']['name']
+            namespace_info['Volume'] = namespace['location']['volume']['name']
+            namespace_info['Size'] = namespace['space']['size']
+            namespace_info['Qtree'] = (
+                namespace['location'].get('qtree', {}).get('name', ''))
+            namespace_info['Path'] = namespace['name']
+            namespace_info['OsType'] = namespace['os_type']
+            namespace_info['SpaceReserved'] = (
+                namespace['space']['guarantee']['requested'])
+            namespace_info['UUID'] = namespace['uuid']
+
+            namespace_list.append(namespace_info)
+
+        return namespace_list
+
+    def create_namespace(self, volume_name, namespace_name, size, metadata):
+        """Issues API request for creating namespace on volume."""
+
+        path = f'/vol/{volume_name}/{namespace_name}'
+        initial_size = size
+
+        body = {
+            'name': path,
+            'space.size': str(initial_size),
+            'os_type': metadata['OsType'],
+        }
+
+        try:
+            self.send_request('/storage/namespaces', 'post', body=body)
+        except netapp_api.NaApiError as ex:
+            with excutils.save_and_reraise_exception():
+                LOG.error('Error provisioning volume %(namespace_name)s on '
+                          '%(volume_name)s. Details: %(ex)s',
+                          {
+                              'namespace_name': namespace_name,
+                              'volume_name': volume_name,
+                              'ex': ex,
+                          })
+
+    def destroy_namespace(self, path, force=True):
+        """Destroys the namespace at the path."""
+        query = {
+            'name': path,
+            'svm': self.vserver
+        }
+
+        if force:
+            query['allow_delete_while_mapped'] = 'true'
+
+        self.send_request('/storage/namespaces', 'delete', query=query)
+
+    def clone_namespace(self, volume, name, new_name):
+        """Clones namespace on vserver."""
+        LOG.debug('Cloning namespace - volume: %(volume)s, name: %(name)s, '
+                  'new_name: %(new_name)s',
+                  {
+                      'volume': volume,
+                      'name': name,
+                      'new_name': new_name,
+                  })
+
+        source_path = f'/vol/{volume}/{name}'
+        body = {
+            'svm': {
+                'name': self.vserver
+            },
+            'name': f'/vol/{volume}/{new_name}',
+            'clone': {
+                'source': {
+                    'name': source_path,
+                }
+            }
+        }
+        self.send_request('/storage/namespaces', 'post', body=body)
+
+    def get_namespace_by_args(self, **namespace_info_args):
+        """Retrieves namespace with specified args."""
+
+        query = {
+            'fields': 'svm.name,location.volume.name,space.size,'
+                      'location.qtree.name,name,os_type,'
+                      'space.guarantee.requested,uuid,space.block_size'
+        }
+
+        if namespace_info_args:
+            if 'vserver' in namespace_info_args:
+                query['svm.name'] = namespace_info_args['vserver']
+            if 'path' in namespace_info_args:
+                query['name'] = namespace_info_args['path']
+            if 'uuid' in namespace_info_args:
+                query['uuid'] = namespace_info_args['uuid']
+
+        response = self.send_request('/storage/namespaces', 'get', query=query)
+
+        namespace_list = []
+        for namespace in response.get('records', []):
+            namespace_info = {}
+            namespace_info['Vserver'] = namespace['svm']['name']
+            namespace_info['Volume'] = namespace['location']['volume']['name']
+            namespace_info['Size'] = namespace['space']['size']
+            namespace_info['Qtree'] = (
+                namespace['location'].get('qtree', {}).get('name', ''))
+            namespace_info['Path'] = namespace['name']
+            namespace_info['OsType'] = namespace['os_type']
+            namespace_info['SpaceReserved'] = (
+                namespace['space']['guarantee']['requested'])
+            namespace_info['UUID'] = namespace['uuid']
+            namespace_info['BlockSize'] = namespace['space']['block_size']
+
+            namespace_list.append(namespace_info)
+
+        return namespace_list
+
+    def namespace_resize(self, path, new_size_bytes):
+        """Resize the namespace."""
+        seg = path.split("/")
+        LOG.info('Resizing namespace %s to new size.', seg[-1])
+
+        body = {'space.size': new_size_bytes}
+        query = {'name': path}
+        self.send_request('/storage/namespaces', 'patch', body=body,
+                          query=query)
+
+    def get_namespace_sizes_by_volume(self, volume_name):
+        """"Gets the list of namespace and their sizes from a given volume."""
+
+        query = {
+            'location.volume.name': volume_name,
+            'fields': 'space.size,name'
+        }
+        response = self.send_request('/storage/namespaces', 'get', query=query)
+
+        namespaces = []
+        for namespace_info in response.get('records', []):
+            namespaces.append({
+                'path': namespace_info.get('name', ''),
+                'size': float(namespace_info.get('space', {}).get('size', 0))
+            })
+
+        return namespaces
+
+    def get_subsystem_by_host(self, host_nqn):
+        """Get subsystem exactly matching the initiator host."""
+        query = {
+            'svm.name': self.vserver,
+            'hosts.nqn': host_nqn,
+            'fields': 'name,os_type',
+            'name': f'{na_utils.OPENSTACK_PREFIX}*',
+        }
+        response = self.send_request('/protocols/nvme/subsystems', 'get',
+                                     query=query)
+
+        records = response.get('records', [])
+
+        return [{'name': subsystem['name'], 'os_type': subsystem['os_type']}
+                for subsystem in records]
+
+    def create_subsystem(self, subsystem_name, os_type, host_nqn):
+        """Creates subsystem with specified args."""
+        body = {
+            'svm.name': self.vserver,
+            'name': subsystem_name,
+            'os_type': os_type,
+            'hosts': [{'nqn': host_nqn}]
+        }
+        self.send_request('/protocols/nvme/subsystems', 'post', body=body)
+
+    def get_namespace_map(self, path):
+        """Gets the namespace map using its path."""
+        query = {
+            'namespace.name': path,
+            'fields': 'subsystem.name,namespace.uuid,svm.name',
+        }
+        response = self.send_request('/protocols/nvme/subsystem-maps',
+                                     'get',
+                                     query=query)
+
+        records = response.get('records', [])
+        map_list = []
+        for map in records:
+            map_subsystem = {}
+            map_subsystem['subsystem'] = map['subsystem']['name']
+            map_subsystem['uuid'] = map['namespace']['uuid']
+            map_subsystem['vserver'] = map['svm']['name']
+
+            map_list.append(map_subsystem)
+
+        return map_list
+
+    def map_namespace(self, path, subsystem_name):
+        """Maps namespace to the host nqn and returns namespace uuid."""
+
+        body_post = {
+            'namespace.name': path,
+            'subsystem.name': subsystem_name
+        }
+        try:
+            result = self.send_request('/protocols/nvme/subsystem-maps',
+                                       'post',
+                                       body=body_post,
+                                       query={'return_records': 'true'})
+            records = result.get('records')
+            namespace_uuid = records[0]['namespace']['uuid']
+            return namespace_uuid
+        except netapp_api.NaApiError as e:
+            code = e.code
+            message = e.message
+            LOG.warning('Error mapping namespace. Code :%(code)s, Message: '
+                        '%(message)s', {'code': code, 'message': message})
+            raise
+
+    def get_nvme_subsystem_nqn(self, subsystem):
+        """Returns target subsystem nqn."""
+        query = {
+            'fields': 'target_nqn',
+            'name': subsystem,
+            'svm.name': self.vserver
+        }
+        response = self.send_request(
+            '/protocols/nvme/subsystems', 'get', query=query)
+
+        records = response.get('records', [])
+        if records:
+            return records[0]['target_nqn']
+
+        LOG.debug('No %(subsystem)s NVMe subsystem found for vserver '
+                  '%(vserver)s',
+                  {'subsystem': subsystem, 'vserver': self.vserver})
+        return None
+
+    def get_nvme_target_portals(self):
+        """Gets the NVMe target portal details."""
+        query = {
+            'services': 'data_nvme_tcp',
+            'fields': 'ip.address',
+            'enabled': 'true',
+        }
+
+        response = self.send_request('/network/ip/interfaces', 'get',
+                                     query=query)
+
+        interfaces = response.get('records', [])
+        return [record['ip']['address'] for record in interfaces]
+
+    def unmap_namespace(self, path, subsystem):
+        """Unmaps a namespace from given subsystem."""
+
+        query = {
+            'subsystem.name': subsystem,
+            'namespace.name': path
+        }
+        self.send_request('/protocols/nvme/subsystem-maps', 'delete',
+                          query=query)

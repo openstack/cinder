@@ -3707,3 +3707,399 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'patch', body=body)
         self.client._get_volume_by_args.assert_called_once_with(
             vol_name=fake_client.VOLUME_NAMES[0])
+
+    def test_get_namespace_list(self):
+        response = fake_client.GET_NAMESPACE_RESPONSE_REST
+
+        fake_query = {
+            'svm.name': 'fake_vserver',
+            'fields': 'svm.name,location.volume.name,space.size,'
+                      'location.qtree.name,name,os_type,'
+                      'space.guarantee.requested,uuid'
+        }
+
+        expected_result = [
+            {
+                'Vserver': 'fake_vserver1',
+                'Volume': 'fake_vol_001',
+                'Size': 999999,
+                'Qtree': '',
+                'Path': '/vol/fake_vol_001/test',
+                'OsType': 'linux',
+                'SpaceReserved': True,
+                'UUID': 'fake_uuid1'
+            },
+            {
+                'Vserver': 'fake_vserver2',
+                'Volume': 'fake_vol_002',
+                'Size': 8888888,
+                'Qtree': '',
+                'Path': '/vol/fake_vol_002/test',
+                'OsType': 'linux',
+                'SpaceReserved': True,
+                'UUID': 'fake_uuid2'
+            },
+        ]
+
+        self.mock_object(self.client, 'send_request', return_value=response)
+
+        result = self.client.get_namespace_list()
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces/', 'get', query=fake_query)
+        self.assertEqual(expected_result, result)
+
+    def test_get_namespace_list_no_response(self):
+        response = fake_client.NO_RECORDS_RESPONSE_REST
+        fake_query = {
+            'svm.name': 'fake_vserver',
+            'fields': 'svm.name,location.volume.name,space.size,'
+                      'location.qtree.name,name,os_type,'
+                      'space.guarantee.requested,uuid'
+        }
+
+        self.mock_object(self.client, 'send_request', return_value=response)
+
+        result = self.client.get_namespace_list()
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces/', 'get', query=fake_query)
+        self.assertEqual([], result)
+
+    def test_destroy_namespace(self):
+
+        fake_query = {
+            'name': '/vol/fake_vol_001/test',
+            'svm': 'fake_vserver'
+        }
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.destroy_namespace('/vol/fake_vol_001/test', force=False)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'delete', query=fake_query)
+
+    def test_destroy_namespace_force_true(self):
+
+        fake_query = {
+            'name': '/vol/fake_vol_001/test',
+            'svm': 'fake_vserver',
+            'allow_delete_while_mapped': 'true'
+        }
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.destroy_namespace('/vol/fake_vol_001/test', force=True)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'delete', query=fake_query)
+
+    def test_clone_namespace(self):
+
+        fake_body = {
+            'svm': {
+                'name': 'fake_vserver'
+            },
+            'name': '/vol/fake_volume/fake_new_name',
+            'clone': {
+                'source': {
+                    'name': '/vol/fake_volume/fake_name',
+                }
+            }
+        }
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.clone_namespace('fake_volume',
+                                    'fake_name',
+                                    'fake_new_name')
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'post', body=fake_body)
+
+    def test_get_namespace_by_args(self):
+        response = fake_client.GET_NAMESPACE_RESPONSE_REST
+
+        lun_info_args = {
+            'vserver': fake.VSERVER_NAME,
+            'path': fake.LUN_PATH,
+            'uuid': fake.UUID1}
+
+        fake_query = {
+            'fields': 'svm.name,location.volume.name,space.size,'
+                      'location.qtree.name,name,os_type,'
+                      'space.guarantee.requested,uuid,space.block_size',
+            'svm.name': fake.VSERVER_NAME,
+            'name': fake.LUN_PATH,
+            'uuid': fake.UUID1,
+        }
+
+        expected_result = [
+            {
+                'Vserver': 'fake_vserver1',
+                'Volume': 'fake_vol_001',
+                'Size': 999999,
+                'Qtree': '',
+                'Path': '/vol/fake_vol_001/test',
+                'OsType': 'linux',
+                'SpaceReserved': True,
+                'UUID': 'fake_uuid1',
+                'BlockSize': 9999
+            },
+            {
+                'Vserver': 'fake_vserver2',
+                'Volume': 'fake_vol_002',
+                'Size': 8888888,
+                'Qtree': '',
+                'Path': '/vol/fake_vol_002/test',
+                'OsType': 'linux',
+                'SpaceReserved': True,
+                'UUID': 'fake_uuid2',
+                'BlockSize': 8888
+            },
+        ]
+
+        self.mock_object(self.client, 'send_request', return_value=response)
+
+        result = self.client.get_namespace_by_args(**lun_info_args)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'get', query=fake_query)
+        self.assertEqual(expected_result, result)
+
+    def test_get_namespace_by_args_no_response(self):
+        response = fake_client.NO_RECORDS_RESPONSE_REST
+
+        lun_info_args = {
+            'vserver': fake.VSERVER_NAME,
+            'path': fake.LUN_PATH,
+            'uuid': fake.UUID1}
+
+        fake_query = {
+            'fields': 'svm.name,location.volume.name,space.size,'
+                      'location.qtree.name,name,os_type,'
+                      'space.guarantee.requested,uuid,space.block_size',
+            'svm.name': fake.VSERVER_NAME,
+            'name': fake.LUN_PATH,
+            'uuid': fake.UUID1,
+        }
+
+        self.mock_object(self.client, 'send_request', return_value=response)
+
+        result = self.client.get_namespace_by_args(**lun_info_args)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'get', query=fake_query)
+        self.assertEqual([], result)
+
+    def test_namespace_resize(self):
+        fake_body = {'space.size': 9999}
+        fake_query = {'name': fake.LUN_PATH}
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.namespace_resize(fake.LUN_PATH, 9999)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'patch', body=fake_body, query=fake_query)
+
+    def test_get_namespace_sizes_by_volume(self):
+        response = fake_client.GET_NAMESPACE_RESPONSE_REST
+
+        fake_query = {
+            'location.volume.name': 'fake_volume',
+            'fields': 'space.size,name'
+        }
+
+        expected_result = [
+            {
+                'path': '/vol/fake_vol_001/test',
+                'size': 999999,
+            },
+            {
+                'path': '/vol/fake_vol_002/test',
+                'size': 8888888,
+            },
+        ]
+
+        self.mock_object(self.client, 'send_request', return_value=response)
+
+        result = self.client.get_namespace_sizes_by_volume('fake_volume')
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'get', query=fake_query)
+        self.assertEqual(expected_result, result)
+
+    def test_get_namespace_sizes_by_volume_no_response(self):
+        response = fake_client.NO_RECORDS_RESPONSE_REST
+
+        fake_query = {
+            'location.volume.name': 'fake_volume',
+            'fields': 'space.size,name'
+        }
+
+        self.mock_object(self.client, 'send_request', return_value=response)
+
+        result = self.client.get_namespace_sizes_by_volume('fake_volume')
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'get', query=fake_query)
+        self.assertEqual([], result)
+
+    def test_create_namespace(self):
+        """Issues API request for creating namespace on volume."""
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_namespace(
+            fake_client.VOLUME_NAME, fake_client.NAMESPACE_NAME,
+            fake_client.VOLUME_SIZE_TOTAL, {'OsType': 'linux'})
+
+        path = f'/vol/{fake_client.VOLUME_NAME}/{fake_client.NAMESPACE_NAME}'
+        body = {
+            'name': path,
+            'space.size': str(fake_client.VOLUME_SIZE_TOTAL),
+            'os_type': 'linux',
+        }
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'post', body=body)
+
+    def test_create_namespace_error(self):
+        api_error = netapp_api.NaApiError(code=0)
+        self.mock_object(self.client, 'send_request', side_effect=api_error)
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.create_namespace,
+            fake_client.VOLUME_NAME, fake_client.NAMESPACE_NAME,
+            fake_client.VOLUME_SIZE_TOTAL, {'OsType': 'linux'})
+
+    def test_get_subsystem_by_host(self):
+        response = fake_client.GET_SUBSYSTEM_RESPONSE_REST
+        self.mock_object(self.client, 'send_request',
+                         return_value=response)
+
+        res = self.client.get_subsystem_by_host(fake_client.HOST_NQN)
+
+        expected_res = [
+            {'name': fake_client.SUBSYSTEM, 'os_type': 'linux'}]
+        self.assertEqual(expected_res, res)
+        query = {
+            'svm.name': self.client.vserver,
+            'hosts.nqn': fake_client.HOST_NQN,
+            'fields': 'name,os_type',
+            'name': 'openstack-*',
+        }
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nvme/subsystems', 'get', query=query)
+
+    def test_create_subsystem(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_subsystem(fake_client.SUBSYSTEM, 'linux',
+                                     fake_client.HOST_NQN)
+
+        body = {
+            'svm.name': self.client.vserver,
+            'name': fake_client.SUBSYSTEM,
+            'os_type': 'linux',
+            'hosts': [{'nqn': fake_client.HOST_NQN}]
+        }
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nvme/subsystems', 'post', body=body)
+
+    def test_get_namespace_map(self):
+        response = fake_client.GET_SUBSYSTEM_MAP_RESPONSE_REST
+        self.mock_object(self.client, 'send_request',
+                         return_value=response)
+
+        res = self.client.get_namespace_map(fake_client.NAMESPACE_NAME)
+
+        expected_res = [
+            {'subsystem': fake_client.SUBSYSTEM,
+             'uuid': fake_client.FAKE_UUID,
+             'vserver': fake_client.VSERVER_NAME}]
+        self.assertEqual(expected_res, res)
+        query = {
+            'namespace.name': fake_client.NAMESPACE_NAME,
+            'fields': 'subsystem.name,namespace.uuid,svm.name',
+        }
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nvme/subsystem-maps', 'get', query=query)
+
+    def test_map_namespace(self):
+        response = fake_client.GET_SUBSYSTEM_MAP_RESPONSE_REST
+        self.mock_object(self.client, 'send_request',
+                         return_value=response)
+
+        res = self.client.map_namespace(fake_client.NAMESPACE_NAME,
+                                        fake_client.SUBSYSTEM)
+
+        self.assertEqual(fake_client.FAKE_UUID, res)
+        body = {
+            'namespace.name': fake_client.NAMESPACE_NAME,
+            'subsystem.name': fake_client.SUBSYSTEM
+        }
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nvme/subsystem-maps', 'post', body=body,
+            query={'return_records': 'true'})
+
+    def test_map_namespace_error(self):
+        api_error = netapp_api.NaApiError(code=0)
+        self.mock_object(self.client, 'send_request', side_effect=api_error)
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.map_namespace,
+            fake_client.VOLUME_NAME, fake_client.SUBSYSTEM)
+
+    @ddt.data(
+        {'response': fake_client.GET_SUBSYSTEM_RESPONSE_REST,
+         'expected': fake_client.TARGET_NQN},
+        {'response': fake_client.NO_RECORDS_RESPONSE_REST,
+         'expected': None})
+    @ddt.unpack
+    def test_get_nvme_subsystem_nqn(self, response, expected):
+        self.mock_object(self.client, 'send_request',
+                         return_value=response)
+
+        res = self.client.get_nvme_subsystem_nqn(fake_client.SUBSYSTEM)
+
+        self.assertEqual(expected, res)
+        query = {
+            'fields': 'target_nqn',
+            'name': fake_client.SUBSYSTEM,
+            'svm.name': self.client.vserver
+        }
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nvme/subsystems', 'get', query=query)
+
+    def test_get_nvme_target_portals(self):
+        response = fake_client.GET_INTERFACES_NVME_REST
+        self.mock_object(self.client, 'send_request',
+                         return_value=response)
+
+        res = self.client.get_nvme_target_portals()
+
+        expected = ["10.10.10.10"]
+        self.assertEqual(expected, res)
+        query = {
+            'services': 'data_nvme_tcp',
+            'fields': 'ip.address',
+            'enabled': 'true',
+        }
+        self.client.send_request.assert_called_once_with(
+            '/network/ip/interfaces', 'get', query=query)
+
+    def test_unmap_namespace(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.unmap_namespace(fake_client.NAMESPACE_NAME,
+                                    fake_client.SUBSYSTEM)
+
+        query = {
+            'subsystem.name': fake_client.SUBSYSTEM,
+            'namespace.name': fake_client.NAMESPACE_NAME,
+        }
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nvme/subsystem-maps', 'delete', query=query)
