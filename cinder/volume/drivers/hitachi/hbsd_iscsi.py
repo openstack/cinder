@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2021, Hitachi, Ltd.
+# Copyright (C) 2020, 2022, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -71,6 +71,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         2.2.1 - Make the parameters name variable for supporting OEM storages.
         2.2.2 - Add Target Port Assignment.
         2.2.3 - Add port scheduler.
+        2.3.0 - Support multi pool.
 
     """
 
@@ -144,9 +145,10 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         """Return properties, capabilities and current states of the driver."""
         data = self.common.update_volume_stats()
         if 'pools' in data:
-            data["pools"][0]["filter_function"] = self.get_filter_function()
-            data["pools"][0]["goodness_function"] = (
-                self.get_goodness_function())
+            for pool in data['pools']:
+                pool["filter_function"] = self.get_filter_function()
+                pool["goodness_function"] = (
+                    self.get_goodness_function())
         self._stats = data
 
     @volume_utils.trace

@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2021, Hitachi, Ltd.
+# Copyright (C) 2020, 2022, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -48,10 +48,10 @@ COMMON_VOLUME_OPTS = [
         'hitachi_storage_id',
         default=None,
         help='Product number of the storage system.'),
-    cfg.StrOpt(
+    cfg.ListOpt(
         'hitachi_pool',
-        default=None,
-        help='Pool number or pool name of the DP pool.'),
+        default=[],
+        help='Pool number[s] or pool name[s] of the DP pool.'),
     cfg.StrOpt(
         'hitachi_snap_pool',
         default=None,
@@ -165,7 +165,17 @@ class HBSDCommon():
         ]
         self.port_index = {}
 
-    def create_ldev(self, size):
+    def get_pool_id_of_volume(self, volume):
+        pools = self._stats['pools']
+        if len(pools) == 1:
+            return pools[0]['location_info']['pool_id']
+        pool_name = volume_utils.extract_host(volume['host'], 'pool')
+        for pool in pools:
+            if pool['pool_name'] == pool_name:
+                return pool['location_info']['pool_id']
+        return None
+
+    def create_ldev(self, size, pool_id):
         """Create an LDEV and return its LDEV number."""
         raise NotImplementedError()
 
@@ -175,8 +185,9 @@ class HBSDCommon():
 
     def create_volume(self, volume):
         """Create a volume and return its properties."""
+        pool_id = self.get_pool_id_of_volume(volume)
         try:
-            ldev = self.create_ldev(volume['size'])
+            ldev = self.create_ldev(volume['size'], pool_id)
         except Exception:
             with excutils.save_and_reraise_exception():
                 utils.output_log(MSG.CREATE_LDEV_FAILED)
@@ -193,15 +204,16 @@ class HBSDCommon():
         """Create a copy pair on the storage."""
         raise NotImplementedError()
 
-    def _copy_on_storage(self, pvol, size, is_snapshot=False):
+    def _copy_on_storage(
+            self, pvol, size, pool_id, is_snapshot=False):
         """Create a copy of the specified LDEV on the storage."""
         ldev_info = self.get_ldev_info(['status', 'attributes'], pvol)
         if ldev_info['status'] != 'NML':
             msg = utils.output_log(MSG.INVALID_LDEV_STATUS_FOR_COPY, ldev=pvol)
             self.raise_error(msg)
-        svol = self.create_ldev(size)
+        svol = self.create_ldev(size, pool_id)
         try:
-            self.create_pair_on_storage(pvol, svol, is_snapshot)
+            self.create_pair_on_storage(pvol, svol, is_snapshot=is_snapshot)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
@@ -221,7 +233,8 @@ class HBSDCommon():
             self.raise_error(msg)
 
         size = volume['size']
-        new_ldev = self._copy_on_storage(ldev, size)
+        pool_id = self.get_pool_id_of_volume(volume)
+        new_ldev = self._copy_on_storage(ldev, size, pool_id)
         self.modify_ldev_name(new_ldev, volume['id'].replace("-", ""))
 
         return {
@@ -309,7 +322,9 @@ class HBSDCommon():
                 type='volume', id=src_vref['id'])
             self.raise_error(msg)
         size = snapshot['volume_size']
-        new_ldev = self._copy_on_storage(ldev, size, True)
+        pool_id = self.get_pool_id_of_volume(snapshot['volume'])
+        new_ldev = self._copy_on_storage(
+            ldev, size, pool_id, is_snapshot=True)
         return {
             'provider_location': str(new_ldev),
         }
@@ -330,9 +345,50 @@ class HBSDCommon():
             else:
                 raise ex
 
-    def get_pool_info(self):
+    def get_pool_info(self, pool_id, result=None):
         """Return the total and free capacity of the storage pool."""
         raise NotImplementedError()
+
+    def get_pool_infos(self, pool_ids):
+        """Return the total and free capacity of the storage pools."""
+        raise NotImplementedError()
+
+    def _create_single_pool_data(self, pool_id, pool_name, cap_data):
+        location_info = {
+            'storage_id': self.conf.hitachi_storage_id,
+            'pool_id': pool_id,
+            'snap_pool_id': self.storage_info['snap_pool_id'],
+            'ldev_range': self.storage_info['ldev_range']}
+        single_pool = {}
+        single_pool.update(dict(
+            pool_name=pool_name,
+            reserved_percentage=self.conf.safe_get('reserved_percentage'),
+            QoS_support=False,
+            thick_provisioning_support=False,
+            multiattach=True,
+            consistencygroup_support=True,
+            consistent_group_snapshot_enabled=True,
+            location_info=location_info
+        ))
+        if cap_data is None:
+            single_pool.update(dict(
+                provisioned_capacity_gb=0,
+                backend_state='down'))
+            utils.output_log(MSG.POOL_INFO_RETRIEVAL_FAILED, pool=pool_name)
+            return single_pool
+        total_capacity, free_capacity, provisioned_capacity = cap_data
+        single_pool.update(dict(
+            total_capacity_gb=total_capacity,
+            free_capacity_gb=free_capacity,
+            provisioned_capacity_gb=provisioned_capacity,
+            max_over_subscription_ratio=(
+                volume_utils.get_max_over_subscription_ratio(
+                    self.conf.safe_get('max_over_subscription_ratio'),
+                    True)),
+            thin_provisioning_support=True
+        ))
+        single_pool.update(dict(backend_state='up'))
+        return single_pool
 
     def update_volume_stats(self):
         """Update properties, capabilities and current states of the driver."""
@@ -346,42 +402,15 @@ class HBSDCommon():
             'storage_protocol': self.storage_info['protocol'],
             'pools': [],
         }
-        single_pool = {}
-        single_pool.update(dict(
-            pool_name=data['volume_backend_name'],
-            reserved_percentage=self.conf.safe_get('reserved_percentage'),
-            QoS_support=False,
-            thick_provisioning_support=False,
-            multiattach=True,
-            consistencygroup_support=True,
-            consistent_group_snapshot_enabled=True
-        ))
-        try:
-            (total_capacity, free_capacity,
-             provisioned_capacity) = self.get_pool_info()
-        except exception.VolumeDriverException:
-            single_pool.update(dict(
-                provisioned_capacity_gb=0,
-                backend_state='down'))
-            data["pools"].append(single_pool)
-            LOG.debug("Updating volume status. (%s)", data)
-            utils.output_log(
-                MSG.POOL_INFO_RETRIEVAL_FAILED,
-                pool=self.conf.hitachi_pool)
-            return data
-        single_pool.update(dict(
-            total_capacity_gb=total_capacity,
-            free_capacity_gb=free_capacity,
-            provisioned_capacity_gb=provisioned_capacity,
-            max_over_subscription_ratio=(
-                volume_utils.get_max_over_subscription_ratio(
-                    self.conf.safe_get('max_over_subscription_ratio'),
-                    True)),
-            thin_provisioning_support=True
-        ))
-        single_pool.update(dict(backend_state='up'))
-        data["pools"].append(single_pool)
+        for pool_id, pool_name, cap_data in zip(
+                self.storage_info['pool_id'], self.conf.hitachi_pool,
+                self.get_pool_infos(self.storage_info['pool_id'])):
+            single_pool = self._create_single_pool_data(
+                pool_id, pool_name if len(self.conf.hitachi_pool) > 1 else
+                data['volume_backend_name'], cap_data)
+            data['pools'].append(single_pool)
         LOG.debug("Updating volume status. (%s)", data)
+        self._stats = data
         return data
 
     def discard_zero_page(self, volume):
@@ -531,6 +560,12 @@ class HBSDCommon():
         for opt in self._required_common_opts:
             if not self.conf.safe_get(opt):
                 msg = utils.output_log(MSG.INVALID_PARAMETER, param=opt)
+                self.raise_error(msg)
+        for pool in self.conf.hitachi_pool:
+            if len(pool) == 0:
+                msg = utils.output_log(
+                    MSG.INVALID_PARAMETER,
+                    param=self.driver_info['param_prefix'] + '_pool')
                 self.raise_error(msg)
         if self.storage_info['protocol'] == 'FC':
             self.check_param_fc()

@@ -180,7 +180,7 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
         self.configuration.driver_ssl_cert_verify = False
 
         self.configuration.nec_v_storage_id = CONFIG_MAP['serial']
-        self.configuration.nec_v_pool = "30"
+        self.configuration.nec_v_pool = ["30"]
         self.configuration.nec_v_snap_pool = None
         self.configuration.nec_v_ldev_range = "0-1"
         self.configuration.nec_v_target_ports = [CONFIG_MAP['port_id']]
@@ -398,6 +398,9 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     def test_create_volume(self, request):
         request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
         ret = self.driver.create_volume(fake_volume.fake_volume_obj(self.ctxt))
         self.assertEqual('1', ret['provider_location'])
         self.assertEqual(2, request.call_count)

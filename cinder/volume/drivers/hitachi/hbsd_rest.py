@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2021, Hitachi, Ltd.
+# Copyright (C) 2020, 2022, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -274,11 +274,11 @@ class HBSDREST(common.HBSDCommon):
         if self.client is not None:
             self.client.enter_keep_session()
 
-    def _create_ldev_on_storage(self, size):
+    def _create_ldev_on_storage(self, size, pool_id):
         """Create an LDEV on the storage system."""
         body = {
             'byteFormatCapacity': '%sG' % size,
-            'poolId': self.storage_info['pool_id'],
+            'poolId': pool_id,
             'isParallelExecutionEnabled': True,
         }
         if self.storage_info['ldev_range']:
@@ -287,9 +287,9 @@ class HBSDREST(common.HBSDCommon):
             body['endLdevId'] = max_ldev
         return self.client.add_ldev(body, no_log=True)
 
-    def create_ldev(self, size):
+    def create_ldev(self, size, pool_id):
         """Create an LDEV of the specified size and the specified type."""
-        ldev = self._create_ldev_on_storage(size)
+        ldev = self._create_ldev_on_storage(size, pool_id=pool_id)
         LOG.debug('Created logical device. (LDEV: %s)', ldev)
         return ldev
 
@@ -307,6 +307,12 @@ class HBSDREST(common.HBSDCommon):
         self.client.delete_ldev(
             ldev,
             timeout_message=(MSG.LDEV_DELETION_WAIT_TIMEOUT, {'ldev': ldev}))
+
+    def _get_snap_pool_id(self, pvol):
+        return (
+            self.storage_info['snap_pool_id']
+            if self.storage_info['snap_pool_id'] is not None
+            else self.get_ldev_info(['poolId'], pvol)['poolId'])
 
     def _get_copy_pair_status(self, ldev):
         """Return the status of the volume in a copy pair."""
@@ -353,7 +359,7 @@ class HBSDREST(common.HBSDCommon):
         }
         try:
             body = {"snapshotGroupName": snapshot_name,
-                    "snapshotPoolId": self.storage_info['snap_pool_id'],
+                    "snapshotPoolId": self._get_snap_pool_id(pvol),
                     "pvolLdevId": pvol,
                     "svolLdevId": svol,
                     "autoSplit": True,
@@ -394,7 +400,7 @@ class HBSDREST(common.HBSDCommon):
             else:
                 pace = 'faster'
             body = {"snapshotGroupName": snapshot_name,
-                    "snapshotPoolId": self.storage_info['snap_pool_id'],
+                    "snapshotPoolId": self._get_snap_pool_id(pvol),
                     "pvolLdevId": pvol,
                     "svolLdevId": svol,
                     "isClone": True,
@@ -697,22 +703,40 @@ class HBSDREST(common.HBSDCommon):
                                '%sG' % (new_size - old_size)}}
         self.client.extend_ldev(ldev, body)
 
-    def get_pool_info(self):
+    def get_pool_info(self, pool_id, result=None):
         """Return the total and free capacity of the storage pool."""
-        result = self.client.get_pool(
-            self.storage_info['pool_id'],
-            ignore_message_id=[rest_api.MSGID_SPECIFIED_OBJECT_DOES_NOT_EXIST])
+        if result is None:
+            result = self.client.get_pool(
+                pool_id, ignore_message_id=[
+                    rest_api.MSGID_SPECIFIED_OBJECT_DOES_NOT_EXIST])
 
-        if 'errorSource' in result:
-            msg = utils.output_log(MSG.POOL_NOT_FOUND,
-                                   pool=self.storage_info['pool_id'])
-            self.raise_error(msg)
+            if 'errorSource' in result:
+                msg = utils.output_log(MSG.POOL_NOT_FOUND, pool=pool_id)
+                self.raise_error(msg)
 
-        tp_cap = result['totalPoolCapacity'] / units.Ki
-        ta_cap = result['availableVolumeCapacity'] / units.Ki
-        tl_cap = result['totalLocatedCapacity'] / units.Ki
-
+        tp_cap = result['totalPoolCapacity'] // units.Ki
+        ta_cap = result['availableVolumeCapacity'] // units.Ki
+        tl_cap = result['totalLocatedCapacity'] // units.Ki
         return tp_cap, ta_cap, tl_cap
+
+    def get_pool_infos(self, pool_ids):
+        """Return the total and free capacity of the storage pools."""
+        result = []
+        try:
+            result = self.client.get_pools()
+        except exception.VolumeDriverException:
+            utils.output_log(MSG.POOL_INFO_RETRIEVAL_FAILED, pool='all')
+        pool_infos = []
+        for pool_id in pool_ids:
+            for pool_data in result:
+                if pool_data['poolId'] == pool_id:
+                    cap_data = self.get_pool_info(pool_id, pool_data)
+                    break
+            else:
+                utils.output_log(MSG.POOL_NOT_FOUND, pool=pool_id)
+                cap_data = None
+            pool_infos.append(cap_data)
+        return pool_infos
 
     def discard_zero_page(self, volume):
         """Return the volume's no-data pages to the storage pool."""
@@ -805,40 +829,34 @@ class HBSDREST(common.HBSDCommon):
         _check_ldev_size(ldev_info, ldev, existing_ref)
         return ldev_info['blockCapacity'] / utils.GIGABYTE_PER_BLOCK_SIZE
 
-    def _get_pool_id(self, name):
+    def _get_pool_id(self, pool_list, pool_name_or_id):
         """Get the pool id from specified name."""
-        pool_list = self.client.get_pools()
-        for pool_data in pool_list:
-            if pool_data['poolName'] == name:
+        if pool_name_or_id.isdigit():
+            return int(pool_name_or_id)
+        if pool_list['pool_list'] is None:
+            pool_list['pool_list'] = self.client.get_pools()
+        for pool_data in pool_list['pool_list']:
+            if pool_data['poolName'] == pool_name_or_id:
                 return pool_data['poolId']
-        return None
+        msg = utils.output_log(MSG.POOL_NOT_FOUND, pool=pool_name_or_id)
+        self.raise_error(msg)
 
     def check_pool_id(self):
         """Check the pool id of hitachi_pool and hitachi_snap_pool."""
-        pool = self.conf.hitachi_pool
-        if pool is not None:
-            if pool.isdigit():
-                self.storage_info['pool_id'] = int(pool)
-            else:
-                self.storage_info['pool_id'] = self._get_pool_id(pool)
-        if self.storage_info['pool_id'] is None:
-            msg = utils.output_log(
-                MSG.POOL_NOT_FOUND, pool=self.conf.hitachi_pool)
-            self.raise_error(msg)
+        pool_id_list = []
+        pool_list = {'pool_list': None}
+
+        for pool in self.conf.hitachi_pool:
+            pool_id_list.append(self._get_pool_id(pool_list, pool))
 
         snap_pool = self.conf.hitachi_snap_pool
         if snap_pool is not None:
-            if snap_pool.isdigit():
-                self.storage_info['snap_pool_id'] = int(snap_pool)
-            else:
-                self.storage_info['snap_pool_id'] = (
-                    self._get_pool_id(snap_pool))
-                if self.storage_info['snap_pool_id'] is None:
-                    msg = utils.output_log(MSG.POOL_NOT_FOUND,
-                                           pool=self.conf.hitachi_snap_pool)
-                    self.raise_error(msg)
-        else:
-            self.storage_info['snap_pool_id'] = self.storage_info['pool_id']
+            self.storage_info['snap_pool_id'] = self._get_pool_id(
+                pool_list, snap_pool)
+        elif len(pool_id_list) == 1:
+            self.storage_info['snap_pool_id'] = pool_id_list[0]
+
+        self.storage_info['pool_id'] = pool_id_list
 
     def _to_hostgroup(self, port, gid):
         """Get a host group name from host group ID."""
@@ -1070,8 +1088,8 @@ class HBSDREST(common.HBSDCommon):
             for pair in pairs:
                 try:
                     body = {"snapshotGroupName": snapshotgroup_name,
-                            "snapshotPoolId":
-                                self.storage_info['snap_pool_id'],
+                            "snapshotPoolId": self._get_snap_pool_id(
+                                pair['pvol']),
                             "pvolLdevId": pair['pvol'],
                             "svolLdevId": pair['svol'],
                             "isConsistencyGroup": True,
@@ -1117,7 +1135,8 @@ class HBSDREST(common.HBSDCommon):
                         type='volume', id=snapshot.volume_id)
                     self.raise_error(msg)
                 size = snapshot.volume_size
-                pair['svol'] = self.create_ldev(size)
+                pool_id = self.get_pool_id_of_volume(snapshot.volume)
+                pair['svol'] = self.create_ldev(size, pool_id)
             except Exception as exc:
                 pair['msg'] = utils.get_exception_msg(exc)
             raise loopingcall.LoopingCallDone(pair)

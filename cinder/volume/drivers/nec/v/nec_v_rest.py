@@ -27,10 +27,10 @@ COMMON_VOLUME_OPTS = [
         'nec_v_storage_id',
         default=None,
         help='Product number of the storage system.'),
-    cfg.StrOpt(
+    cfg.ListOpt(
         'nec_v_pool',
-        default=None,
-        help='Pool number or pool name of the DP pool.'),
+        default=[],
+        help='Pool number[s] or pool name[s] of the DP pool.'),
     cfg.StrOpt(
         'nec_v_snap_pool',
         default=None,
