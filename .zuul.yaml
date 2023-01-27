@@ -22,7 +22,7 @@
               - ^cinder/tests/unit.*$
               - ^doc/.*$
               - ^releasenotes/.*$
-        - openstack-tox-functional-py39:
+        - openstack-tox-functional-py310:
             irrelevant-files: *functional-irrelevant-files
         - cinder-rally-task:
             voting: false
