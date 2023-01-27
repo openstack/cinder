@@ -638,9 +638,10 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         volume_id = backup.volume_id
         volume = self.db.volume_get(context, volume_id)
         try:
-            host = self.driver.get_backup_host(volume)
-            backup.host = host
-            backup.save()
+            if not backup.host:
+                host = self.driver.get_backup_host(volume)
+                backup.host = host
+                backup.save()
             self.backup_api.create_backup(context, backup)
         except exception.ServiceNotFound:
             self.db.volume_update(context, volume_id,

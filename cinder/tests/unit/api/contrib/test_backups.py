@@ -708,6 +708,100 @@ class BackupsAPITestCase(test.TestCase):
         backup.destroy()
         volume.destroy()
 
+    # Test default behavior for backup host
+    def test_create_incremental_backup(self):
+        volume = utils.create_volume(self.context, size=5, status='in-use')
+        parent_backup = utils.create_backup(
+            self.context, volume.id,
+            status=fields.BackupStatus.AVAILABLE,
+            size=1,
+            availability_zone='az1',
+            host='parenthost',
+            parent=None)
+        backup = utils.create_backup(self.context, volume.id,
+                                     status=fields.BackupStatus.AVAILABLE,
+                                     size=1, availability_zone='az1',
+                                     host='testhost')
+        body = {"backup": {"name": "nightly001",
+                           "description":
+                           "Nightly Backup 03-Sep-2012",
+                           "volume_id": volume.id,
+                           "container": "nightlybackups",
+                           "force": True,
+                           "incremental": True,
+                           }
+                }
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+
+        with mock.patch.object(
+                cinder.objects.backup.Backup,
+                '_from_db_object',
+                wraps=cinder.objects.backup.Backup._from_db_object
+        ) as mocked_from_db_object:
+            res = req.get_response(fakes.wsgi_app(
+                fake_auth_context=self.user_context))
+
+            res_dict = jsonutils.loads(res.body)
+
+            self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
+            self.assertIn('id', res_dict['backup'])
+
+            args = mocked_from_db_object.call_args.args
+
+            # Host should not be set yet
+            self.assertIsNone(args[1]['host'])
+
+        parent_backup.destroy()
+        backup.destroy()
+        volume.destroy()
+
+    # Test behavior for backup host w/posix backend
+    #  (see https://bugs.launchpad.net/cinder/+bug/1952805)
+    def test_create_incremental_backup_posix(self):
+        volume = utils.create_volume(self.context, size=5, status='in-use')
+        parent_backup = utils.create_backup(
+            self.context, volume.id,
+            status=fields.BackupStatus.AVAILABLE,
+            size=1, availability_zone='az1',
+            host='parenthost',
+            service='cinder.backup.drivers.posix.PosixBackupDriver'
+        )
+        body = {"backup": {"name": "nightly001",
+                           "description":
+                           "Nightly Backup 03-Sep-2012",
+                           "volume_id": volume.id,
+                           "container": "nightlybackups",
+                           "force": True,
+                           "incremental": True,
+                           }
+                }
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+
+        with mock.patch.object(
+                cinder.objects.backup.Backup,
+                '_from_db_object',
+                wraps=cinder.objects.backup.Backup._from_db_object
+        ) as mocked_from_db_object:
+            res = req.get_response(fakes.wsgi_app(
+                fake_auth_context=self.user_context))
+
+            res_dict = jsonutils.loads(res.body)
+
+            self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
+            self.assertIn('id', res_dict['backup'])
+
+            args = mocked_from_db_object.call_args.args
+            self.assertEqual('parenthost', args[1]['host'])
+
+        parent_backup.destroy()
+        volume.destroy()
+
     def test_create_backup_snapshot_json(self):
         volume = utils.create_volume(self.context, size=5, status='available')
 

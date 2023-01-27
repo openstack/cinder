@@ -217,6 +217,7 @@ def fake_backup(id, **kwargs):
               'temp_volume_id': None,
               'temp_snapshot_id': None,
               'snapshot_id': None,
+              'service': 'cinder.fake.backup.service',
               'data_timestamp': None,
               'restore_volume_id': None,
               'backup_metadata': {}}
