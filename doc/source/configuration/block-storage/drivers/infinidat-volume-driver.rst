@@ -26,6 +26,7 @@ Supported operations
 * Manage and unmanage volumes and snapshots.
 * List manageable volumes and snapshots.
 * Attach a volume to multiple instances at once (multi-attach).
+* Host and storage assisted volume migration.
 
 External package installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

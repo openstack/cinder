@@ -128,10 +128,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         1.11 - fixed generic volume migration
         1.12 - fixed volume multi-attach
         1.13 - fixed consistency groups feature
+        1.14 - added storage assisted volume migration
 
     """
 
-    VERSION = '1.13'
+    VERSION = '1.14'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "INFINIDAT_CI"
@@ -573,6 +574,10 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     def get_volume_stats(self, refresh=False):
         if self._volume_stats is None or refresh:
             pool = self._get_infinidat_pool()
+            location_info = '%(driver)s:%(serial)s:%(pool)s' % {
+                'driver': self.__class__.__name__,
+                'serial': self._system.get_serial(),
+                'pool': self.configuration.infinidat_pool_name}
             free_capacity_bytes = (pool.get_free_physical_capacity() /
                                    capacity.byte)
             physical_capacity_bytes = (pool.get_physical_capacity() /
@@ -587,6 +592,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                                       vendor_name=VENDOR_NAME,
                                       driver_version=self.VERSION,
                                       storage_protocol=self._protocol,
+                                      location_info=location_info,
                                       consistencygroup_support=False,
                                       total_capacity_gb=total_capacity_gb,
                                       free_capacity_gb=free_capacity_gb,
@@ -1325,3 +1331,44 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                       new_volume_name, volume_name, error)
             return model_update
         return {'_name_id': None, 'provider_location': None}
+
+    @infinisdk_to_cinder_exceptions
+    def migrate_volume(self, ctxt, volume, host):
+        """Migrate a volume within the same InfiniBox system."""
+        LOG.debug('Starting volume migration for volume %s to host %s',
+                  volume.name, host)
+        if not (host and 'capabilities' in host):
+            LOG.error('No capabilities found for host %s', host)
+            return False, None
+        capabilities = host['capabilities']
+        if not (capabilities and 'location_info' in capabilities):
+            LOG.error('No location info found for host %s', host)
+            return False, None
+        location = capabilities['location_info']
+        try:
+            driver, serial, pool = location.split(':')
+            serial = int(serial)
+        except (AttributeError, ValueError) as error:
+            LOG.error('Invalid location info %s found for host %s: %s',
+                      location, host, error)
+            return False, None
+        if driver != self.__class__.__name__:
+            LOG.debug('Unsupported storage driver %s found for host %s',
+                      driver, host)
+            return False, None
+        if serial != self._system.get_serial():
+            LOG.error('Unable to migrate volume %s to remote host %s',
+                      volume.name, host)
+            return False, None
+        infinidat_volume = self._get_infinidat_volume(volume)
+        if pool == infinidat_volume.get_pool_name():
+            LOG.debug('Volume %s already migrated to pool %s',
+                      volume.name, pool)
+            return True, None
+        infinidat_pool = self._system.pools.safe_get(name=pool)
+        if infinidat_pool is None:
+            LOG.error('Destination pool %s not found on host %s', pool, host)
+            return False, None
+        infinidat_volume.move_pool(infinidat_pool)
+        LOG.info('Migrated volume %s to pool %s', volume.name, pool)
+        return True, None

@@ -52,11 +52,16 @@ TEST_TARGET_PORTAL4 = '{}:{}'.format(TEST_IP_ADDRESS4, TEST_ISCSI_TCP_PORT2)
 TEST_FC_PROTOCOL = 'fc'
 TEST_ISCSI_PROTOCOL = 'iscsi'
 TEST_VOLUME_SOURCE_NAME = 'test-volume'
+TEST_VOLUME_TYPE = 'MASTER'
 TEST_VOLUME_SOURCE_ID = 12345
 TEST_VOLUME_METADATA = {'cinder_id': fake.VOLUME_ID}
 TEST_SNAPSHOT_SOURCE_NAME = 'test-snapshot'
 TEST_SNAPSHOT_SOURCE_ID = 67890
 TEST_SNAPSHOT_METADATA = {'cinder_id': fake.SNAPSHOT_ID}
+TEST_POOL_NAME = 'pool'
+TEST_POOL_NAME2 = 'pool2'
+TEST_SYSTEM_SERIAL = 123
+TEST_SYSTEM_SERIAL2 = 456
 
 test_volume = mock.Mock(id=fake.VOLUME_ID, name_id=fake.VOLUME_ID, size=1,
                         volume_type_id=fake.VOLUME_TYPE_ID, group_id=None,
@@ -113,7 +118,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
                              configuration.SHARED_CONF_GROUP)
         self.override_config('san_password', 'password',
                              configuration.SHARED_CONF_GROUP)
-        self.override_config('infinidat_pool_name', 'pool')
+        self.override_config('infinidat_pool_name', TEST_POOL_NAME)
         self.driver = infinidat.InfiniboxVolumeDriver(
             configuration=self.configuration)
         self._system = self._infinibox_mock()
@@ -139,9 +144,8 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self._mock_new_volume = mock.Mock()
         self._mock_volume.get_id.return_value = TEST_VOLUME_SOURCE_ID
         self._mock_volume.get_name.return_value = TEST_VOLUME_SOURCE_NAME
-        self._mock_volume.get_type.return_value = 'MASTER'
-        self._mock_volume.get_pool_name.return_value = (
-            self.configuration.infinidat_pool_name)
+        self._mock_volume.get_type.return_value = TEST_VOLUME_TYPE
+        self._mock_volume.get_pool_name.return_value = TEST_POOL_NAME
         self._mock_volume.get_size.return_value = 1 * units.Gi
         self._mock_volume.has_children.return_value = False
         self._mock_volume.get_qos_policy.return_value = None
@@ -180,6 +184,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         result.components.nodes.get_all.return_value = []
         result.qos_policies.create.return_value = self._mock_qos_policy
         result.qos_policies.safe_get.return_value = None
+        result.get_serial.return_value = TEST_SYSTEM_SERIAL
         return result
 
     def _raise_infinisdk(self, *args, **kwargs):
@@ -797,7 +802,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
     def test_manage_existing_invalid_pool(self, *mocks):
         existing_ref = {'source-name': TEST_VOLUME_SOURCE_NAME}
-        self._mock_volume.get_pool_name.return_value = 'invalid'
+        self._mock_volume.get_pool_name.return_value = TEST_POOL_NAME2
         self.assertRaises(exception.InvalidConfigurationValue,
                           self.driver.manage_existing,
                           test_volume, existing_ref)
@@ -913,7 +918,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
     def test_manage_existing_snapshot_invalid_pool(self, *mocks):
         existing_ref = {'source-name': TEST_SNAPSHOT_SOURCE_NAME}
-        self._mock_volume.get_pool_name.return_value = 'invalid'
+        self._mock_volume.get_pool_name.return_value = TEST_POOL_NAME2
         self.assertRaises(exception.InvalidConfigurationValue,
                           self.driver.manage_existing_snapshot,
                           test_snapshot, existing_ref)
@@ -1048,6 +1053,72 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         set_metadata.assert_called_once_with(self._mock_new_volume,
                                              test_volume)
         self.assertEqual(0, self._log.error.call_count)
+
+    @ddt.data(None, {})
+    def test_migrate_volume_no_host(self, host):
+        expected = False, None
+        update = self.driver.migrate_volume(None, test_volume, host)
+        self.assertEqual(expected, update)
+
+    @ddt.data(None, {})
+    def test_migrate_volume_no_capabilities(self, capabilities):
+        expected = False, None
+        host = {'capabilities': capabilities}
+        update = self.driver.migrate_volume(None, test_volume, host)
+        self.assertEqual(expected, update)
+
+    @ddt.data(None, 123, 'location')
+    def test_migrate_volume_invalid_location_info(self, location_info):
+        expected = False, None
+        capabilities = {'location_info': location_info}
+        host = {'capabilities': capabilities}
+        update = self.driver.migrate_volume(None, test_volume, host)
+        self.assertEqual(expected, update)
+
+    def test_migrate_volume_invalid_driver(self):
+        expected = False, None
+        location_info = 'vendor:0:/path'
+        capabilities = {'location_info': location_info}
+        host = {'capabilities': capabilities}
+        update = self.driver.migrate_volume(None, test_volume, host)
+        self.assertEqual(expected, update)
+
+    def test_migrate_volume_invalid_serial(self):
+        expected = False, None
+        location_info = '%s:%s:%s' % (self.driver.__class__.__name__,
+                                      TEST_SYSTEM_SERIAL2, TEST_POOL_NAME2)
+        capabilities = {'location_info': location_info}
+        host = {'capabilities': capabilities}
+        update = self.driver.migrate_volume(None, test_volume, host)
+        self.assertEqual(expected, update)
+
+    def test_migrate_volume_same_pool(self):
+        expected = True, None
+        location_info = '%s:%s:%s' % (self.driver.__class__.__name__,
+                                      TEST_SYSTEM_SERIAL, TEST_POOL_NAME)
+        capabilities = {'location_info': location_info}
+        host = {'capabilities': capabilities}
+        update = self.driver.migrate_volume(None, test_volume, host)
+        self.assertEqual(expected, update)
+
+    def test_migrate_volume_no_pool(self):
+        expected = False, None
+        self._system.pools.safe_get.return_value = None
+        location_info = '%s:%s:%s' % (self.driver.__class__.__name__,
+                                      TEST_SYSTEM_SERIAL, TEST_POOL_NAME2)
+        capabilities = {'location_info': location_info}
+        host = {'capabilities': capabilities}
+        update = self.driver.migrate_volume(None, test_volume, host)
+        self.assertEqual(expected, update)
+
+    def test_migrate_volume(self):
+        expected = True, None
+        location_info = '%s:%s:%s' % (self.driver.__class__.__name__,
+                                      TEST_SYSTEM_SERIAL, TEST_POOL_NAME2)
+        capabilities = {'location_info': location_info}
+        host = {'capabilities': capabilities}
+        update = self.driver.migrate_volume(None, test_volume, host)
+        self.assertEqual(expected, update)
 
 
 @ddt.ddt

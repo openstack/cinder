@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Infinidat: Added support for storage assisted volume migration
+    within a same InfiniBox host (iSCSI and FC).
