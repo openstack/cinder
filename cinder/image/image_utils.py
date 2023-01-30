@@ -108,7 +108,6 @@ QEMU_IMG_FORMAT_MAP = {
 QEMU_IMG_FORMAT_MAP_INV = {v: k for k, v in QEMU_IMG_FORMAT_MAP.items()}
 
 QEMU_IMG_VERSION = None
-QEMU_IMG_MIN_CONVERT_LUKS_VERSION = '2.10'
 
 COMPRESSIBLE_IMAGE_FORMATS = ('qcow2',)
 
@@ -276,7 +275,6 @@ def _get_qemu_convert_cmd(src: str,
     # NOTE(lyarwood): When converting to LUKS add the cipher spec if present
     # and create a secret for the passphrase, written to a temp file
     if out_format == 'luks':
-        check_qemu_img_version(QEMU_IMG_MIN_CONVERT_LUKS_VERSION)
         if cipher_spec:
             cmd += ('-o', 'cipher-alg=%s,cipher-mode=%s,ivgen-alg=%s' %
                     (cipher_spec['cipher_alg'], cipher_spec['cipher_mode'],
