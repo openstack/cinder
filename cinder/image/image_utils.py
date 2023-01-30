@@ -108,7 +108,6 @@ QEMU_IMG_FORMAT_MAP = {
 QEMU_IMG_FORMAT_MAP_INV = {v: k for k, v in QEMU_IMG_FORMAT_MAP.items()}
 
 QEMU_IMG_VERSION = None
-QEMU_IMG_MIN_FORCE_SHARE_VERSION = [2, 10, 0]
 QEMU_IMG_MIN_CONVERT_LUKS_VERSION = '2.10'
 
 COMPRESSIBLE_IMAGE_FORMATS = ('qcow2',)
@@ -146,12 +145,7 @@ def qemu_img_info(path: str,
     """Return an object containing the parsed output from qemu-img info."""
     cmd = ['env', 'LC_ALL=C', 'qemu-img', 'info', '--output=json']
     if force_share:
-        if qemu_img_supports_force_share():
-            cmd.append('--force-share')
-        else:
-            msg = _("qemu-img --force-share requested, but "
-                    "qemu-img does not support this parameter")
-            LOG.warning(msg)
+        cmd.append('--force-share')
     cmd.append(path)
 
     if os.name == 'nt':
@@ -183,14 +177,6 @@ def get_qemu_img_version() -> Optional[list[int]]:
         return None
     QEMU_IMG_VERSION = _get_version_from_string(version.groups()[0])
     return QEMU_IMG_VERSION
-
-
-def qemu_img_supports_force_share() -> bool:
-    ver = get_qemu_img_version()
-    if ver is None:
-        return False
-    else:
-        return ver >= QEMU_IMG_MIN_FORCE_SHARE_VERSION
 
 
 def _get_qemu_convert_luks_cmd(src: str,
