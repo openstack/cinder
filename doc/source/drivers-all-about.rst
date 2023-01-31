@@ -57,6 +57,33 @@ can impact the drivers in two ways:
   CI system will detect this and alert the driver maintainer that there
   is a problem.
 
+New Driver CI Requirements
+--------------------------
+
+When adding a new driver, the following requirements are made of the driver
+and its associated 3rd Party CI system:
+
+* CI_WIKI_NAME correct in driver properties
+
+* CI wiki page exists under https://wiki.openstack.org/wiki/ThirdPartySystems
+
+* Email ping to contact in wiki page receives a pong
+
+* Recheck trigger functioning correctly
+
+* CI is responding on the new driver patch
+
+* CI is responding on other cinder patches
+
+* CI is responding on os-brick patches
+
+* CI runs all cinder-tempest-plugin tests
+
+* CI result is accessible
+
+Failure of any one of these requirements will preclude a new driver from being
+accepted into the Cinder project.
+
 Driver Compliance
 -----------------
 
