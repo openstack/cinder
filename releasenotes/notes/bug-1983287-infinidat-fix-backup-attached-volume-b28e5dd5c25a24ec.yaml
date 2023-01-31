@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Infinidat Driver `bug #1983287
+    <https://bugs.launchpad.net/cinder/+bug/1983287>`_:
+    Fixed Infinidat driver to allow backup of an attached volume.
