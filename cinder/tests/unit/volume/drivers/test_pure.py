@@ -747,6 +747,8 @@ class PureBaseSharedDriverTestCase(PureDriverTestCase):
         super(PureBaseSharedDriverTestCase, self).setUp()
         self.driver = pure.PureBaseVolumeDriver(configuration=self.mock_config)
         self.driver._array = self.array
+        self.mock_object(self.driver, '_get_current_array',
+                         return_value=self.array)
         self.driver._replication_pod_name = 'cinder-pod'
         self.driver._replication_pg_name = 'cinder-group'
         self.purestorage_module.FlashArray.side_effect = None
@@ -818,6 +820,24 @@ class PureBaseSharedDriverTestCase(PureDriverTestCase):
         group_snap.group_id = group.id
 
         return group_snap, group_snap_name
+
+
+class PureBaseVolumeDriverGetCurrentArrayTestCase(PureDriverTestCase):
+    def setUp(self):
+        super(PureBaseVolumeDriverGetCurrentArrayTestCase, self).setUp()
+        self.driver = pure.PureBaseVolumeDriver(configuration=self.mock_config)
+        self.driver._array = self.array
+        self.driver._replication_pod_name = 'cinder-pod'
+        self.driver._replication_pg_name = 'cinder-group'
+        self.purestorage_module.FlashArray.side_effect = None
+
+    def test_get_current_array(self):
+        self.driver._is_active_cluster_enabled = True
+        self.array.array_id = '47966b2d-a1ed-4144-8cae-6332794562b8'
+        self.array.get_pod.return_value = CINDER_POD
+        self.driver._active_cluster_target_arrays = [self.array]
+        self.driver._get_current_array()
+        self.array.get_pod.assert_called_with('cinder-pod')
 
 
 @ddt.ddt(testNameFormat=ddt.TestNameFormat.INDEX_ONLY)
@@ -983,6 +1003,15 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         retention = mock.MagicMock()
         mock_generate_replication_retention.return_value = retention
         self._setup_mocks_for_replication()
+        self.mock_config.safe_get.return_value = [
+            {
+                "backend_id": "foo",
+                "managed_backend_name": None,
+                "san_ip": "1.2.3.4",
+                "api_token": "abc123",
+                "type": "sync",
+            }
+        ]
         self.async_array2.get.return_value = GET_ARRAY_SECONDARY
         self.array.get.return_value = GET_ARRAY_PRIMARY
         self.purestorage_module.FlashArray.side_effect = [self.array,
@@ -990,12 +1019,9 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver._storage_protocol = 'iSCSI'
         self.driver.do_setup(None)
         self.assertEqual(self.array, self.driver._array)
-        self.assertEqual(1, len(self.driver._replication_target_arrays))
-        self.assertEqual(self.async_array2,
-                         self.driver._replication_target_arrays[0])
         calls = [
             mock.call(self.array, [self.async_array2], 'cinder-group',
-                      REPLICATION_INTERVAL_IN_SEC, retention)
+                      3600, retention)
         ]
         mock_setup_repl_pgroups.assert_has_calls(calls)
 
@@ -1028,11 +1054,6 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver._storage_protocol = 'iSCSI'
         self.driver.do_setup(None)
         self.assertEqual(self.array, self.driver._array)
-
-        mock_setup_repl_pgroups.assert_has_calls([
-            mock.call(self.array, [mock_sync_target], 'cinder-group',
-                      REPLICATION_INTERVAL_IN_SEC, retention),
-        ])
         mock_setup_pods.assert_has_calls([
             mock.call(self.array, [mock_sync_target], 'cinder-pod')
         ])
@@ -1768,6 +1789,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         model_update = self.driver.create_consistencygroup(None, cgroup)
 
         expected_name = "consisgroup-" + cgroup.id + "-cinder"
+        self.driver._get_current_array.assert_called()
         self.array.create_pgroup.assert_called_with(expected_name)
         self.assertEqual({'status': 'available'}, model_update)
 
@@ -3525,6 +3547,8 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         self.mock_config.use_chap_auth = False
         self.driver = pure.PureISCSIDriver(configuration=self.mock_config)
         self.driver._array = self.array
+        self.mock_object(self.driver, '_get_current_array',
+                         return_value=self.array)
         self.driver._storage_protocol = 'iSCSI'
         self.mock_utils = mock.Mock()
         self.driver.driver_utils = self.mock_utils
@@ -4027,6 +4051,8 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver = pure.PureFCDriver(configuration=self.mock_config)
         self.driver._storage_protocol = "FC"
         self.driver._array = self.array
+        self.mock_object(self.driver, '_get_current_array',
+                         return_value=self.array)
         self.driver._lookup_service = mock.Mock()
 
     def test_get_host(self):
@@ -4567,6 +4593,8 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
         super(PureNVMEDriverTestCase, self).setUp()
         self.driver = pure.PureNVMEDriver(configuration=self.mock_config)
         self.driver._array = self.array
+        self.mock_object(self.driver, '_get_current_array',
+                         return_value=self.array)
         self.driver._storage_protocol = 'NVMe-RoCE'
         self.mock_utils = mock.Mock()
         self.driver.transport_type = "rdma"

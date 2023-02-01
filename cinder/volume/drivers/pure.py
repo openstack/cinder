@@ -305,27 +305,32 @@ class PureBaseVolumeDriver(san.SanDriver):
                 uniform = strutils.bool_from_string(
                     replication_device.get("uniform", False))
 
-                target_array = self._get_flasharray(
-                    san_ip,
-                    api_token,
-                    verify_https=verify_https,
-                    ssl_cert_path=ssl_cert_path
-                )
+                try:
+                    target_array = self._get_flasharray(
+                        san_ip,
+                        api_token,
+                        verify_https=verify_https,
+                        ssl_cert_path=ssl_cert_path
+                    )
 
-                target_array_info = target_array.get()
-                target_array.array_name = target_array_info["array_name"]
-                target_array.array_id = target_array_info["id"]
-                target_array.replication_type = repl_type
-                target_array.backend_id = backend_id
-                target_array.uniform = uniform
+                    target_array_info = target_array.get()
+                    target_array.array_name = target_array_info["array_name"]
+                    target_array.array_id = target_array_info["id"]
+                    target_array.replication_type = repl_type
+                    target_array.backend_id = backend_id
+                    target_array.uniform = uniform
 
-                LOG.info("Added secondary array: backend_id='%s', name='%s',"
-                         " id='%s', type='%s', uniform='%s'",
-                         target_array.backend_id,
-                         target_array.array_name,
-                         target_array.array_id,
-                         target_array.replication_type,
-                         target_array.uniform)
+                    LOG.info("Added secondary array: backend_id='%s',"
+                             " name='%s', id='%s', type='%s', uniform='%s'",
+                             target_array.backend_id,
+                             target_array.array_name,
+                             target_array.array_id,
+                             target_array.replication_type,
+                             target_array.uniform)
+                except purestorage.PureError as err:
+                    LOG.warning("Failed to set up secondary array with "
+                                "message: %(msg)s", {"msg": err.reason})
+                    continue
 
                 self._replication_target_arrays.append(target_array)
                 if repl_type == REPLICATION_TYPE_SYNC:
@@ -385,32 +390,37 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         # Raises PureDriverException if unable to connect and PureHTTPError
         # if unable to authenticate.
-        self._array = self._get_flasharray(
-            self.configuration.san_ip,
-            api_token=self.configuration.pure_api_token,
-            verify_https=self.configuration.driver_ssl_cert_verify,
-            ssl_cert_path=self.configuration.driver_ssl_cert_path
-        )
+        try:
+            self._array = self._get_flasharray(
+                self.configuration.san_ip,
+                api_token=self.configuration.pure_api_token,
+                verify_https=self.configuration.driver_ssl_cert_verify,
+                ssl_cert_path=self.configuration.driver_ssl_cert_path
+            )
 
-        array_info = self._array.get()
-        if version.parse(array_info["version"]) < version.parse(
-            '5.3.0'
-        ):
-            msg = _("FlashArray Purity version less than 5.3.0 unsupported."
-                    " Please upgrade your backend to a supported version.")
-            raise PureDriverException(msg)
+            array_info = self._array.get()
+            if version.parse(array_info["version"]) < version.parse(
+                '5.3.0'
+            ):
+                msg = _("FlashArray Purity version less than 5.3.0 "
+                        "unsupported. Please upgrade your backend to "
+                        "a supported version.")
+                raise PureDriverException(msg)
 
-        self._array.array_name = array_info["array_name"]
-        self._array.array_id = array_info["id"]
-        self._array.replication_type = None
-        self._array.backend_id = self._backend_name
-        self._array.preferred = True
-        self._array.uniform = True
+            self._array.array_name = array_info["array_name"]
+            self._array.array_id = array_info["id"]
+            self._array.replication_type = None
+            self._array.backend_id = self._backend_name
+            self._array.preferred = True
+            self._array.uniform = True
 
-        LOG.info("Primary array: backend_id='%s', name='%s', id='%s'",
-                 self.configuration.config_group,
-                 self._array.array_name,
-                 self._array.array_id)
+            LOG.info("Primary array: backend_id='%s', name='%s', id='%s'",
+                     self.configuration.config_group,
+                     self._array.array_name,
+                     self._array.array_id)
+        except purestorage.PureError as err:
+            LOG.warning("self.do_setup failed to set up primary array with"
+                        " message: %(msg)s", {"msg": err.reason})
 
         self.do_setup_replication()
 
@@ -422,7 +432,8 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         # If we have failed over at some point we need to adjust our current
         # array based on the one that we have failed over to
-        if (self._active_backend_id is not None and
+        if (self._array is not None and
+                self._active_backend_id is not None and
                 self._active_backend_id != self._array.backend_id):
             for secondary_array in self._replication_target_arrays:
                 if secondary_array.backend_id == self._active_backend_id:
@@ -505,7 +516,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
                 # Only set this up on sync rep arrays
                 self._setup_replicated_pods(
-                    self._get_current_array(),
+                    self._get_current_array(True),
                     self._active_cluster_target_arrays,
                     self._replication_pod_name
                 )
@@ -513,7 +524,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             # Even if the array is configured for sync rep set it
             # up to handle async too
             self._setup_replicated_pgroups(
-                self._get_current_array(),
+                self._get_current_array(True),
                 self._replication_target_arrays,
                 self._replication_pg_name,
                 self._replication_interval,
@@ -644,7 +655,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         except purestorage.PureError as err:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed to add volume %s to pgroup, removing volume",
-                          err)
+                          err.reason)
                 array.destroy_volume(purity_vol_name)
                 array.eradicate_volume(purity_vol_name)
 
@@ -2705,7 +2716,29 @@ class PureBaseVolumeDriver(san.SanDriver):
         wwn = '3624a9370' + volume_info['serial']
         return wwn.lower()
 
-    def _get_current_array(self):
+    def _get_current_array(self, init=False):
+        if not init and self._is_active_cluster_enabled:
+            for target_array in self._active_cluster_target_arrays:
+                try:
+                    LOG.info("Checking target array %s...",
+                             target_array.array_name)
+                    status_ok = False
+                    pod_info = target_array.get_pod(self._replication_pod_name)
+                    for pod_array in pod_info['arrays']:
+                        if pod_array['array_id'] == target_array.array_id:
+                            if pod_array['status'] == 'online':
+                                status_ok = True
+                            break
+                    if not status_ok:
+                        LOG.warning("Target array is offline. Volume "
+                                    "replication in unknown state. Check "
+                                    "replication links and array state.")
+                except purestorage.PureError as err:
+                    LOG.warning("self.get_pod failed with"
+                                " message: %(msg)s", {"msg": err})
+                    raise purestorage.PureError('No functional arrays '
+                                                'available')
+
         return self._array
 
     def _set_current_array(self, array):
@@ -2991,7 +3024,13 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         target_luns = []
         target_wwns = []
         for array in target_arrays:
-            connection = self._connect(array, pure_vol_name, connector)
+            try:
+                connection = self._connect(array, pure_vol_name, connector)
+            except purestorage.PureError as err:
+                # Swallow any exception, just warn and continue
+                LOG.warning("self._connect failed with"
+                            " message: %(msg)s", {"msg": err.reason})
+                continue
             array_wwns = self._get_array_wwns(array)
             for wwn in array_wwns:
                 target_wwns.append(wwn)
