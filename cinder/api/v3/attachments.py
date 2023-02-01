@@ -16,6 +16,7 @@ from http import HTTPStatus
 from oslo_log import log as logging
 import webob
 
+from cinder import action_track
 from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import microversions as mv
@@ -203,14 +204,26 @@ class AttachmentsController(wsgi.Controller):
             _msg = _("Volume needs to be migrated before attaching to this "
                      "instance")
             LOG.exception(_msg)
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                volume_ref, _msg, loglevel=logging.ERROR
+            )
             raise webob.exc.HTTPNotAcceptable(explanation=_msg)
         except exception.CinderException as ex:
             err_msg = _(
                 "Unable to create attachment for volume (%s).") % ex.msg
             LOG.exception(err_msg)
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                volume_ref, err_msg, loglevel=logging.ERROR
+            )
         except Exception:
             err_msg = _("Unable to create attachment for volume.")
             LOG.exception(err_msg)
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                volume_ref, err_msg, loglevel=logging.ERROR
+            )
         finally:
             if err_msg:
                 raise webob.exc.HTTPInternalServerError(explanation=err_msg)
@@ -263,14 +276,26 @@ class AttachmentsController(wsgi.Controller):
             _msg = _("Volume needs to be migrated before attaching to this "
                      "instance")
             LOG.exception(_msg)
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                attachment_ref, _msg, loglevel=logging.ERROR
+            )
             raise webob.exc.HTTPNotAcceptable(explanation=_msg)
         except exception.CinderException as ex:
             err_msg = (
                 _("Unable to update attachment.(%s).") % ex.msg)
             LOG.exception(err_msg)
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                attachment_ref, err_msg, loglevel=logging.ERROR
+            )
         except Exception:
             err_msg = _("Unable to update the attachment.")
             LOG.exception(err_msg)
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                attachment_ref, err_msg, loglevel=logging.ERROR
+            )
         finally:
             if err_msg:
                 raise webob.exc.HTTPInternalServerError(explanation=err_msg)
@@ -312,6 +337,10 @@ class AttachmentsController(wsgi.Controller):
         attachment_ref.save()
         volume_ref.update({'status': 'in-use', 'attach_status': 'attached'})
         volume_ref.save()
+        action_track.track(
+            context, action_track.ACTION_VOLUME_ATTACH,
+            volume_ref, "Volume attachment completed!"
+        )
         volume_utils.notify_about_volume_usage(context, volume_ref,
                                                "attach.end")
 
