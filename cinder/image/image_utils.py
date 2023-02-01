@@ -69,6 +69,15 @@ image_opts = [
     cfg.IntOpt('image_conversion_address_space_limit',
                default=1,
                help='Address space limit in gigabytes to convert the image'),
+    cfg.ListOpt('vmdk_allowed_types',
+                default=['streamOptimized', 'monolithicSparse'],
+                help='A list of strings describing the VMDK createType '
+                'subformats that are allowed.  We recommend that you only '
+                'include single-file-with-sparse-header variants to avoid '
+                'potential host file exposure when processing named extents '
+                'when an image is converted to raw format as it is written '
+                'to a volume.  If this list is empty, no VMDK images are '
+                'allowed.'),
 ]
 
 CONF = cfg.CONF
@@ -390,7 +399,34 @@ def _convert_image(prefix, source, dest, out_format,
 def convert_image(source, dest, out_format, out_subformat=None,
                   src_format=None, run_as_root=True, throttle=None,
                   cipher_spec=None, passphrase_file=None,
-                  compress=False, src_passphrase_file=None):
+                  compress=False, src_passphrase_file=None,
+                  image_id=None, data=None):
+    """Convert image to other format.
+
+    NOTE: If the qemu-img convert command fails and this function raises an
+    exception, a non-empty dest file may be left in the filesystem.
+    It is the responsibility of the caller to decide what to do with this file.
+
+    :param source: source filename
+    :param dest: destination filename
+    :param out_format: output image format of qemu-img
+    :param out_subformat: output image subformat
+    :param src_format: source image format (use image_utils.fixup_disk_format()
+           to translate from a Glance format to one recognizable by qemu_img)
+    :param run_as_root: run qemu-img as root
+    :param throttle: a cinder.throttling.Throttle object, or None
+    :param cipher_spec: encryption details
+    :param passphrase_file: filename containing luks passphrase
+    :param compress: compress w/ qemu-img when possible (best effort)
+    :param src_passphrase_file: filename containing source volume's
+                                luks passphrase
+    :param image_id: the image ID if this is a Glance image, or None
+    :param data: a imageutils.QemuImgInfo object from this image, or None
+    :raises ImageUnacceptable: when the image fails some format checks
+    :raises ProcessExecutionError: when something goes wrong during conversion
+    """
+    check_image_format(source, src_format, image_id, data, run_as_root)
+
     if not throttle:
         throttle = throttling.Throttle.get_default()
     with throttle.subcommand(source, dest) as throttle_cmd:
@@ -569,6 +605,98 @@ def get_qemu_data(image_id, has_meta, disk_format_raw, dest, run_as_root,
     return data
 
 
+def check_vmdk_image(image_id, data):
+    """Check some rules about VMDK images.
+
+    Make sure the VMDK subformat (the "createType" in vmware docs)
+    is one that we allow as determined by the 'vmdk_allowed_types'
+    configuration option.  The default set includes only types that
+    do not reference files outside the VMDK file, which can otherwise
+    be used in exploits to expose host information.
+
+    :param image_id: the image id
+    :param data: an imageutils.QemuImgInfo object
+    :raises ImageUnacceptable: when the VMDK createType is not in the
+                               allowed list
+    """
+    allowed_types = CONF.vmdk_allowed_types
+
+    if not len(allowed_types):
+        msg = _('Image is a VMDK, but no VMDK createType is allowed')
+        raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
+
+    try:
+        create_type = data.format_specific['data']['create-type']
+    except KeyError:
+        msg = _('Unable to determine VMDK createType')
+        raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
+    except TypeError:
+        msg = _('Unable to determine VMDK createType as no format-specific '
+                'information is available')
+        raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
+
+    if create_type not in allowed_types:
+        LOG.warning('Refusing to process VMDK file with createType of %r '
+                    'which is not in allowed set of: %s', create_type,
+                    ','.join(allowed_types))
+        msg = _('Invalid VMDK create-type specified')
+        raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
+
+
+def check_image_format(source,
+                       src_format=None,
+                       image_id=None,
+                       data=None,
+                       run_as_root=True):
+    """Do some image format checks.
+
+    Verifies that the src_format matches what qemu-img thinks the image
+    format is, and does some vmdk subformat checks.  See Bug #1996188.
+
+    - Does not check for a qcow2 backing file.
+    - Will make a call out to qemu_img if data is None.
+
+    :param source: filename of the image to check
+    :param src_format: source image format recognized by qemu_img, or None
+    :param image_id: the image ID if this is a Glance image, or None
+    :param data: a imageutils.QemuImgInfo object from this image, or None
+    :param run_as_root: when 'data' is None, call 'qemu-img info' as root
+    :raises ImageUnacceptable: when the image fails some format checks
+    :raises ProcessExecutionError: if 'qemu-img info' fails
+    """
+    if image_id is None:
+        image_id = 'internal image'
+    if data is None:
+        data = qemu_img_info(source, run_as_root=run_as_root)
+
+    if data.file_format is None:
+        raise exception.ImageUnacceptable(
+            reason=_("'qemu-img info' parsing failed."),
+            image_id=image_id)
+
+    if src_format is not None:
+        if src_format.lower() == 'ami':
+            # qemu-img doesn't recognize AMI format; see change Icde4c0f936ce.
+            # We also use lower() here (though nowhere else) to be consistent
+            # with that change.
+            pass
+        elif data.file_format != src_format:
+            LOG.debug("Rejecting image %(image_id)s due to format mismatch. "
+                      "src_format: '%(src)s', but qemu-img info reports: "
+                      "'%(qemu)s'",
+                      {'image_id': image_id,
+                       'src': src_format,
+                       'qemu': data.file_format})
+            msg = _("The image format was claimed to be '%(src)s' but the "
+                    "image data appears to be in a different format.")
+            raise exception.ImageUnacceptable(
+                image_id=image_id,
+                reason=(msg % {'src': src_format}))
+
+    if data.file_format == 'vmdk':
+        check_vmdk_image(image_id, data)
+
+
 def fetch_verify_image(context, image_service, image_id, dest,
                        user_id=None, project_id=None, size=None,
                        run_as_root=True):
@@ -585,7 +713,10 @@ def fetch_verify_image(context, image_service, image_id, dest,
         data = get_qemu_data(image_id, has_meta, format_raw,
                              dest, run_as_root)
         # We can only really do verification of the image if we have
-        # qemu data to use
+        # qemu data to use.
+        # NOTE: We won't have data if qemu_img is not installed *and* the
+        # disk_format recorded in Glance is raw (otherwise an ImageUnacceptable
+        # would have been raised already).  So this isn't as bad as it looks.
         if data is not None:
             fmt = data.file_format
             if fmt is None:
@@ -605,6 +736,11 @@ def fetch_verify_image(context, image_service, image_id, dest,
             # generate an unusable image.
             if size is not None:
                 check_virtual_size(data.virtual_size, size, image_id)
+
+            # a VMDK can have a backing file, but we have to check for
+            # it differently
+            if fmt == 'vmdk':
+                check_vmdk_image(image_id, data)
 
 
 def fetch_to_vhd(context, image_service,
@@ -652,6 +788,10 @@ def fetch_to_volume_format(context, image_service,
             format_raw = True if image_meta['disk_format'] == 'raw' else False
         except TypeError:
             format_raw = False
+
+        # Probe using the empty tmp file to see if qemu-img is available.
+        # If it's not, and the disk_format recorded in Glance is not 'raw',
+        # this will raise ImageUnacceptable
         data = get_qemu_data(image_id, has_meta, format_raw,
                              tmp, run_as_root)
         if data is None:
@@ -663,6 +803,21 @@ def fetch_to_volume_format(context, image_service,
             tmp = tmp_image
         else:
             fetch(context, image_service, image_id, tmp, user_id, project_id)
+
+        # NOTE(ZhengMa): This is used to do image decompression on image
+        # downloading with 'compressed' container_format. It is a
+        # transparent level between original image downloaded from
+        # Glance and Cinder image service. So the source file path is
+        # the same with destination file path.
+        if image_meta.get('container_format') == 'compressed':
+            LOG.debug("Found image with compressed container format")
+            if not accelerator.is_gzip_compressed(tmp):
+                raise exception.ImageUnacceptable(
+                    image_id=image_id,
+                    reason=_("Unsupported compressed image format found. "
+                             "Only gzip is supported currently"))
+            accel = accelerator.ImageAccel(tmp, tmp)
+            accel.decompress_img(run_as_root=run_as_root)
 
         if is_xenserver_format(image_meta):
             replace_xenserver_image_with_coalesced_vhd(tmp)
@@ -699,21 +854,6 @@ def fetch_to_volume_format(context, image_service,
                 reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
                 % {'fmt': fmt, 'backing_file': backing_file, })
 
-        # NOTE(ZhengMa): This is used to do image decompression on image
-        # downloading with 'compressed' container_format. It is a
-        # transparent level between original image downloaded from
-        # Glance and Cinder image service. So the source file path is
-        # the same with destination file path.
-        if image_meta.get('container_format') == 'compressed':
-            LOG.debug("Found image with compressed container format")
-            if not accelerator.is_gzip_compressed(tmp):
-                raise exception.ImageUnacceptable(
-                    image_id=image_id,
-                    reason=_("Unsupported compressed image format found. "
-                             "Only gzip is supported currently"))
-            accel = accelerator.ImageAccel(tmp, tmp)
-            accel.decompress_img(run_as_root=run_as_root)
-
         # NOTE(jdg): I'm using qemu-img convert to write
         # to the volume regardless if it *needs* conversion or not
         # TODO(avishay): We can speed this up by checking if the image is raw
@@ -721,13 +861,21 @@ def fetch_to_volume_format(context, image_service,
         # check via 'qemu-img info' that what we copied was in fact a raw
         # image and not a different format with a backing file, which may be
         # malicious.
+        # FIXME: revisit the above 2 comments.  We already have an exception
+        # above for RAW format images when qemu-img is not available, and I'm
+        # pretty sure that the backing file exploit only happens when
+        # converting from some format that supports a backing file TO raw ...
+        # a bit-for-bit copy of a qcow2 with backing file will copy the backing
+        # file *reference* but not its *content*.
         disk_format = fixup_disk_format(image_meta['disk_format'])
         LOG.debug("%s was %s, converting to %s", image_id, fmt, volume_format)
 
         convert_image(tmp, dest, volume_format,
                       out_subformat=volume_subformat,
                       src_format=disk_format,
-                      run_as_root=run_as_root)
+                      run_as_root=run_as_root,
+                      image_id=image_id,
+                      data=data)
 
 
 def _validate_file_format(image_data, expected_format):
@@ -784,7 +932,9 @@ def upload_volume(context, image_service, image_meta, volume_path,
         out_format = fixup_disk_format(image_meta['disk_format'])
         convert_image(volume_path, tmp, out_format,
                       run_as_root=run_as_root,
-                      compress=compress)
+                      compress=compress,
+                      image_id=image_id,
+                      data=data)
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)
         if data.file_format != out_format:

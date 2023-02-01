@@ -19,6 +19,7 @@ from unittest import mock
 import cryptography
 import ddt
 from oslo_concurrency import processutils
+from oslo_utils import imageutils
 from oslo_utils import units
 
 from cinder import exception
@@ -173,7 +174,8 @@ class TestConvertImage(test.TestCase):
         source = mock.sentinel.source
         dest = mock.sentinel.dest
         out_format = mock.sentinel.out_format
-        mock_info.side_effect = ValueError
+        mock_info.return_value.file_format = 'qcow2'
+        mock_info.return_value.virtual_size = 1048576
         throttle = throttling.Throttle(prefix=['cgcmd'])
 
         with mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
@@ -181,7 +183,8 @@ class TestConvertImage(test.TestCase):
             output = image_utils.convert_image(source, dest, out_format,
                                                throttle=throttle)
 
-            mock_info.assert_called_once_with(source, run_as_root=True)
+            my_call = mock.call(source, run_as_root=True)
+            mock_info.assert_has_calls([my_call, my_call])
             self.assertIsNone(output)
             mock_exec.assert_called_once_with('cgcmd', 'qemu-img', 'convert',
                                               '-O', out_format, '-t', 'none',
@@ -237,7 +240,6 @@ class TestConvertImage(test.TestCase):
         dest = mock.sentinel.dest
         out_format = mock.sentinel.out_format
         out_subformat = 'fake_subformat'
-        mock_info.side_effect = ValueError
 
         output = image_utils.convert_image(source, dest, out_format,
                                            out_subformat=out_subformat)
@@ -338,7 +340,6 @@ class TestConvertImage(test.TestCase):
         mock_conf.image_conversion_dir = 'fakedir'
         dest = [mock_conf.image_conversion_dir]
         out_format = mock.sentinel.out_format
-        mock_info.side_effect = ValueError
         mock_exec.side_effect = processutils.ProcessExecutionError(
             stderr='No space left on device')
         self.assertRaises(processutils.ProcessExecutionError,
@@ -781,7 +782,9 @@ class TestUploadVolume(test.TestCase):
                                              temp_file,
                                              output_format,
                                              run_as_root=True,
-                                             compress=do_compress)
+                                             compress=do_compress,
+                                             image_id=image_meta['id'],
+                                             data=data)
         mock_info.assert_called_with(temp_file, run_as_root=True)
         self.assertEqual(2, mock_info.call_count)
         mock_open.assert_called_once_with(temp_file, 'rb')
@@ -870,7 +873,9 @@ class TestUploadVolume(test.TestCase):
                                              temp_file,
                                              'raw',
                                              compress=True,
-                                             run_as_root=True)
+                                             run_as_root=True,
+                                             image_id=image_meta['id'],
+                                             data=data)
         mock_info.assert_called_with(temp_file, run_as_root=True)
         self.assertEqual(2, mock_info.call_count)
         mock_open.assert_called_once_with(temp_file, 'rb')
@@ -961,7 +966,9 @@ class TestUploadVolume(test.TestCase):
                                              temp_file,
                                              'raw',
                                              compress=True,
-                                             run_as_root=True)
+                                             run_as_root=True,
+                                             image_id=image_meta['id'],
+                                             data=data)
         mock_info.assert_called_with(temp_file, run_as_root=True)
         self.assertEqual(2, mock_info.call_count)
         mock_open.assert_called_once_with(temp_file, 'rb')
@@ -998,7 +1005,9 @@ class TestUploadVolume(test.TestCase):
                                              temp_file,
                                              mock.sentinel.disk_format,
                                              run_as_root=True,
-                                             compress=True)
+                                             compress=True,
+                                             image_id=image_meta['id'],
+                                             data=data)
         mock_info.assert_called_with(temp_file, run_as_root=True)
         self.assertEqual(2, mock_info.call_count)
         self.assertFalse(image_service.update.called)
@@ -1157,8 +1166,10 @@ class TestFetchToVolumeFormat(test.TestCase):
         out_subformat = None
         blocksize = mock.sentinel.blocksize
 
+        disk_format = 'raw'
+
         data = mock_info.return_value
-        data.file_format = volume_format
+        data.file_format = disk_format
         data.backing_file = None
         data.virtual_size = 1234
         tmp = mock_temp.return_value.__enter__.return_value
@@ -1180,7 +1191,9 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              out_subformat=out_subformat,
                                              run_as_root=True,
-                                             src_format='raw')
+                                             src_format=disk_format,
+                                             image_id=image_id,
+                                             data=data)
 
     @mock.patch('cinder.image.image_utils.check_virtual_size')
     @mock.patch('cinder.image.image_utils.check_available_space')
@@ -1198,7 +1211,9 @@ class TestFetchToVolumeFormat(test.TestCase):
                     mock_is_xen, mock_repl_xen, mock_copy, mock_convert,
                     mock_check_space, mock_check_size):
         ctxt = mock.sentinel.context
-        image_service = FakeImageService()
+        disk_format = 'ploop'
+        qemu_img_format = image_utils.QEMU_IMG_FORMAT_MAP[disk_format]
+        image_service = FakeImageService(disk_format=disk_format)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
@@ -1210,7 +1225,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         run_as_root = mock.sentinel.run_as_root
 
         data = mock_info.return_value
-        data.file_format = volume_format
+        data.file_format = qemu_img_format
         data.backing_file = None
         data.virtual_size = 1234
         tmp = mock_temp.return_value.__enter__.return_value
@@ -1233,7 +1248,9 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              out_subformat=out_subformat,
                                              run_as_root=run_as_root,
-                                             src_format='raw')
+                                             src_format=qemu_img_format,
+                                             image_id=image_id,
+                                             data=data)
         mock_check_size.assert_called_once_with(data.virtual_size,
                                                 size, image_id)
 
@@ -1264,12 +1281,14 @@ class TestFetchToVolumeFormat(test.TestCase):
         size = 4321
         run_as_root = mock.sentinel.run_as_root
 
+        disk_format = 'vhd'
+
         data = mock_info.return_value
-        data.file_format = volume_format
+        data.file_format = image_utils.QEMU_IMG_FORMAT_MAP[disk_format]
         data.backing_file = None
         data.virtual_size = 1234
         tmp = mock_temp.return_value.__enter__.return_value
-        image_service = FakeImageService(disk_format='vhd')
+        image_service = FakeImageService(disk_format=disk_format)
         expect_format = 'vpc'
 
         output = image_utils.fetch_to_volume_format(
@@ -1290,7 +1309,9 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              out_subformat=out_subformat,
                                              run_as_root=run_as_root,
-                                             src_format=expect_format)
+                                             src_format=expect_format,
+                                             image_id=image_id,
+                                             data=data)
 
     @mock.patch('cinder.image.image_utils.check_virtual_size')
     @mock.patch('cinder.image.image_utils.check_available_space')
@@ -1317,12 +1338,14 @@ class TestFetchToVolumeFormat(test.TestCase):
         size = 4321
         run_as_root = mock.sentinel.run_as_root
 
+        disk_format = 'iso'
+
         data = mock_info.return_value
-        data.file_format = volume_format
+        data.file_format = image_utils.QEMU_IMG_FORMAT_MAP[disk_format]
         data.backing_file = None
         data.virtual_size = 1234
         tmp = mock_temp.return_value.__enter__.return_value
-        image_service = FakeImageService(disk_format='iso')
+        image_service = FakeImageService(disk_format=disk_format)
         expect_format = 'raw'
 
         output = image_utils.fetch_to_volume_format(
@@ -1342,7 +1365,9 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              out_subformat=out_subformat,
                                              run_as_root=run_as_root,
-                                             src_format=expect_format)
+                                             src_format=expect_format,
+                                             image_id=image_id,
+                                             data=data)
 
     @mock.patch('cinder.image.image_utils.check_available_space',
                 new=mock.Mock())
@@ -1361,7 +1386,9 @@ class TestFetchToVolumeFormat(test.TestCase):
                               mock_copy, mock_convert):
         ctxt = mock.sentinel.context
         ctxt.user_id = mock.sentinel.user_id
-        image_service = FakeImageService()
+        disk_format = 'ploop'
+        qemu_img_format = image_utils.QEMU_IMG_FORMAT_MAP[disk_format]
+        image_service = FakeImageService(disk_format=disk_format)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
@@ -1369,7 +1396,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         blocksize = mock.sentinel.blocksize
 
         data = mock_info.return_value
-        data.file_format = volume_format
+        data.file_format = qemu_img_format
         data.backing_file = None
         data.virtual_size = 1234
         tmp = mock.sentinel.tmp
@@ -1397,7 +1424,9 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              out_subformat=out_subformat,
                                              run_as_root=True,
-                                             src_format='raw')
+                                             src_format=qemu_img_format,
+                                             image_id=image_id,
+                                             data=data)
 
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
@@ -1708,7 +1737,9 @@ class TestFetchToVolumeFormat(test.TestCase):
                               mock_copy, mock_convert, mock_check_space,
                               mock_check_size):
         ctxt = mock.sentinel.context
-        image_service = FakeImageService()
+        disk_format = 'vhd'
+        qemu_img_format = image_utils.QEMU_IMG_FORMAT_MAP[disk_format]
+        image_service = FakeImageService(disk_format=disk_format)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
@@ -1719,7 +1750,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         run_as_root = mock.sentinel.run_as_root
 
         data = mock_info.return_value
-        data.file_format = volume_format
+        data.file_format = qemu_img_format
         data.backing_file = None
         data.virtual_size = 1234
         tmp = mock_temp.return_value.__enter__.return_value
@@ -1742,7 +1773,9 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              out_subformat=None,
                                              run_as_root=run_as_root,
-                                             src_format='raw')
+                                             src_format=qemu_img_format,
+                                             image_id=image_id,
+                                             data=data)
 
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info',
@@ -1868,7 +1901,9 @@ class TestFetchToVolumeFormat(test.TestCase):
 
         ctxt = mock.sentinel.context
         ctxt.user_id = mock.sentinel.user_id
-        image_service = FakeImageService()
+        disk_format = 'ploop'
+        qemu_img_format = image_utils.QEMU_IMG_FORMAT_MAP[disk_format]
+        image_service = FakeImageService(disk_format=disk_format)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
@@ -1876,7 +1911,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         blocksize = mock.sentinel.blocksize
 
         data = mock_info.return_value
-        data.file_format = volume_format
+        data.file_format = qemu_img_format
         data.backing_file = None
         data.virtual_size = 1234
         tmp = mock_temp.return_value.__enter__.return_value
@@ -1901,7 +1936,9 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              out_subformat=out_subformat,
                                              run_as_root=True,
-                                             src_format='raw')
+                                             src_format=qemu_img_format,
+                                             image_id=image_id,
+                                             data=data)
         mock_engine.decompress_img.assert_called()
 
 
@@ -2206,3 +2243,300 @@ class TestImageUtils(test.TestCase):
                           image_utils.decode_cipher,
                           'aes',
                           256)
+
+
+@ddt.ddt(testNameFormat=ddt.TestNameFormat.INDEX_ONLY)
+class TestVmdkImageChecks(test.TestCase):
+    def setUp(self):
+        super(TestVmdkImageChecks, self).setUp()
+        # Test data from:
+        # $ qemu-img create -f vmdk fake.vmdk 1M -o subformat=monolithicSparse
+        # $ qemu-img info -f vmdk --output=json fake.vmdk
+        #
+        # What qemu-img calls the "subformat" is called the "createType" in
+        # vmware-speak and it's found at "/format-specific/data/create-type".
+        qemu_img_info = '''
+        {
+            "virtual-size": 1048576,
+            "filename": "fake.vmdk",
+            "cluster-size": 65536,
+            "format": "vmdk",
+            "actual-size": 12288,
+            "format-specific": {
+                "type": "vmdk",
+                "data": {
+                    "cid": 1200165687,
+                    "parent-cid": 4294967295,
+                    "create-type": "monolithicSparse",
+                    "extents": [
+                        {
+                            "virtual-size": 1048576,
+                            "filename": "fake.vmdk",
+                            "cluster-size": 65536,
+                            "format": ""
+                        }
+                    ]
+                }
+            },
+            "dirty-flag": false
+        }'''
+        self.qdata = imageutils.QemuImgInfo(qemu_img_info, format='json')
+        self.qdata_data = self.qdata.format_specific['data']
+        # we will populate this in each test
+        self.qdata_data["create-type"] = None
+
+    @ddt.data('monolithicSparse', 'streamOptimized')
+    def test_check_vmdk_image_default_config(self, subformat):
+        # none of these should raise
+        self.qdata_data["create-type"] = subformat
+        image_utils.check_vmdk_image(fake.IMAGE_ID, self.qdata)
+
+    @ddt.data('monolithicFlat', 'twoGbMaxExtentFlat')
+    def test_check_vmdk_image_negative_default_config(self, subformat):
+        self.qdata_data["create-type"] = subformat
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.check_vmdk_image,
+                          fake.IMAGE_ID,
+                          self.qdata)
+
+    def test_check_vmdk_image_handles_missing_info(self):
+        expected = 'Unable to determine VMDK createType'
+        # remove create-type
+        del(self.qdata_data['create-type'])
+        iue = self.assertRaises(exception.ImageUnacceptable,
+                                image_utils.check_vmdk_image,
+                                fake.IMAGE_ID,
+                                self.qdata)
+        self.assertIn(expected, str(iue))
+
+        # remove entire data section
+        del(self.qdata_data)
+        iue = self.assertRaises(exception.ImageUnacceptable,
+                                image_utils.check_vmdk_image,
+                                fake.IMAGE_ID,
+                                self.qdata)
+        self.assertIn(expected, str(iue))
+
+        # oslo.utils.imageutils guarantees that format_specific is
+        # defined, so let's see what happens when it's empty
+        self.qdata.format_specific = None
+        iue = self.assertRaises(exception.ImageUnacceptable,
+                                image_utils.check_vmdk_image,
+                                fake.IMAGE_ID,
+                                self.qdata)
+        self.assertIn('no format-specific information is available', str(iue))
+
+    def test_check_vmdk_image_positive(self):
+        allowed = 'twoGbMaxExtentFlat'
+        self.flags(vmdk_allowed_types=['garbage', allowed])
+        self.qdata_data["create-type"] = allowed
+        image_utils.check_vmdk_image(fake.IMAGE_ID, self.qdata)
+
+    @ddt.data('monolithicSparse', 'streamOptimized')
+    def test_check_vmdk_image_negative(self, subformat):
+        allow_list = ['vmfs', 'filler']
+        self.assertNotIn(subformat, allow_list)
+        self.flags(vmdk_allowed_types=allow_list)
+        self.qdata_data["create-type"] = subformat
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.check_vmdk_image,
+                          fake.IMAGE_ID,
+                          self.qdata)
+
+    @ddt.data('monolithicSparse', 'streamOptimized', 'twoGbMaxExtentFlat')
+    def test_check_vmdk_image_negative_empty_list(self, subformat):
+        # anything should raise
+        allow_list = []
+        self.flags(vmdk_allowed_types=allow_list)
+        self.qdata_data["create-type"] = subformat
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.check_vmdk_image,
+                          fake.IMAGE_ID,
+                          self.qdata)
+
+    # OK, now that we know the function works properly, let's make sure
+    # it's called in all the situations where Bug #1996188 indicates that
+    # we need this check
+
+    @mock.patch('cinder.image.image_utils.check_vmdk_image')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.fileutils')
+    @mock.patch('cinder.image.image_utils.fetch')
+    def test_vmdk_subformat_checked_fetch_verify_image(
+            self, mock_fetch, mock_fileutils, mock_info, mock_check):
+        ctxt = mock.sentinel.context
+        image_service = mock.Mock()
+        image_id = mock.sentinel.image_id
+        dest = mock.sentinel.dest
+        mock_info.return_value = self.qdata
+        mock_check.side_effect = exception.ImageUnacceptable(
+            image_id=image_id, reason='mock check')
+
+        iue = self.assertRaises(exception.ImageUnacceptable,
+                                image_utils.fetch_verify_image,
+                                ctxt, image_service, image_id, dest)
+        self.assertIn('mock check', str(iue))
+        mock_check.assert_called_with(image_id, self.qdata)
+
+    @mock.patch('cinder.image.image_utils.check_vmdk_image')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.get_qemu_data')
+    def test_vmdk_subformat_checked_fetch_to_volume_format(
+            self, mock_qdata, mock_info, mock_check):
+        ctxt = mock.sentinel.context
+        image_service = mock.Mock()
+        image_meta = {'disk_format': 'vmdk'}
+        image_service.show.return_value = image_meta
+        image_id = mock.sentinel.image_id
+        dest = mock.sentinel.dest
+        volume_format = mock.sentinel.volume_format
+        blocksize = 1024
+        self.flags(allow_compression_on_image_upload=False)
+        mock_qdata.return_value = self.qdata
+        mock_info.return_value = self.qdata
+        mock_check.side_effect = exception.ImageUnacceptable(
+            image_id=image_id, reason='mock check')
+
+        iue = self.assertRaises(exception.ImageUnacceptable,
+                                image_utils.fetch_to_volume_format,
+                                ctxt,
+                                image_service,
+                                image_id,
+                                dest,
+                                volume_format,
+                                blocksize)
+        self.assertIn('mock check', str(iue))
+        mock_check.assert_called_with(image_id, self.qdata)
+
+    @mock.patch('cinder.image.image_utils.check_vmdk_image')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_vmdk_subformat_checked_upload_volume(
+            self, mock_info, mock_check):
+        ctxt = mock.sentinel.context
+        image_service = mock.Mock()
+        image_meta = {'disk_format': 'vmdk'}
+        image_id = mock.sentinel.image_id
+        image_meta['id'] = image_id
+        self.flags(allow_compression_on_image_upload=False)
+        mock_info.return_value = self.qdata
+        mock_check.side_effect = exception.ImageUnacceptable(
+            image_id=image_id, reason='mock check')
+
+        iue = self.assertRaises(exception.ImageUnacceptable,
+                                image_utils.upload_volume,
+                                ctxt,
+                                image_service,
+                                image_meta,
+                                volume_path=mock.sentinel.volume_path,
+                                volume_format=mock.sentinel.volume_format)
+        self.assertIn('mock check', str(iue))
+        mock_check.assert_called_with(image_id, self.qdata)
+
+    @mock.patch('cinder.image.image_utils.check_vmdk_image')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_vmdk_checked_convert_image_no_src_format(
+            self, mock_info, mock_check):
+        source = mock.sentinel.source
+        dest = mock.sentinel.dest
+        out_format = mock.sentinel.out_format
+        mock_info.return_value = self.qdata
+        image_id = 'internal image'
+        mock_check.side_effect = exception.ImageUnacceptable(
+            image_id=image_id, reason='mock check')
+
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.convert_image,
+                          source, dest, out_format)
+        mock_check.assert_called_with(image_id, self.qdata)
+
+
+@ddt.ddt(testNameFormat=ddt.TestNameFormat.INDEX_ONLY)
+class TestImageFormatCheck(test.TestCase):
+    def setUp(self):
+        super(TestImageFormatCheck, self).setUp()
+        qemu_img_info = '''
+        {
+            "virtual-size": 1048576,
+            "filename": "whatever.img",
+            "cluster-size": 65536,
+            "format": "qcow2",
+            "actual-size": 200704,
+            "format-specific": {
+                "type": "qcow2",
+                "data": {
+                    "compat": "1.1",
+                    "compression-type": "zlib",
+                    "lazy-refcounts": false,
+                    "refcount-bits": 16,
+                    "corrupt": false,
+                    "extended-l2": false
+                }
+            },
+            "dirty-flag": false
+        }'''
+        self.qdata = imageutils.QemuImgInfo(qemu_img_info, format='json')
+
+    @mock.patch('cinder.image.image_utils.check_vmdk_image')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_check_image_format_defaults(self, mock_info, mock_vmdk):
+        """Doesn't blow up when only the mandatory arg is passed."""
+        src = mock.sentinel.src
+        mock_info.return_value = self.qdata
+        expected_image_id = 'internal image'
+
+        # empty file_format should raise
+        self.qdata.file_format = None
+        iue = self.assertRaises(exception.ImageUnacceptable,
+                                image_utils.check_image_format,
+                                src)
+        self.assertIn(expected_image_id, str(iue))
+        mock_info.assert_called_with(src, run_as_root=True)
+
+        # a VMDK should trigger an additional check
+        mock_info.reset_mock()
+        self.qdata.file_format = 'vmdk'
+        image_utils.check_image_format(src)
+        mock_vmdk.assert_called_with(expected_image_id, self.qdata)
+
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_check_image_format_uses_passed_data(self, mock_info):
+        src = mock.sentinel.src
+        image_utils.check_image_format(src, data=self.qdata)
+        mock_info.assert_not_called()
+
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_check_image_format_mismatch(self, mock_info):
+        src = mock.sentinel.src
+        mock_info.return_value = self.qdata
+        self.qdata.file_format = 'fake_format'
+
+        src_format = 'qcow2'
+        iue = self.assertRaises(exception.ImageUnacceptable,
+                                image_utils.check_image_format,
+                                src,
+                                src_format=src_format)
+        self.assertIn(src_format, str(iue))
+        self.assertIn('different format', str(iue))
+
+    @ddt.data('AMI', 'ami')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_check_image_format_AMI(self, ami, mock_info):
+        """Mismatch OK in this case, see change Icde4c0f936ce."""
+        src = mock.sentinel.src
+        mock_info.return_value = self.qdata
+        self.qdata.file_format = 'raw'
+
+        src_format = ami
+        image_utils.check_image_format(src, src_format=src_format)
+
+    @mock.patch('cinder.image.image_utils._convert_image')
+    @mock.patch('cinder.image.image_utils.check_image_format')
+    def test_check_image_format_called_by_convert_image(
+            self, mock_check, mock__convert):
+        """Make sure the function we've been testing is actually called."""
+        src = mock.sentinel.src
+        dest = mock.sentinel.dest
+        out_fmt = mock.sentinel.out_fmt
+
+        image_utils.convert_image(src, dest, out_fmt)
+        mock_check.assert_called_once_with(src, None, None, None, True)
