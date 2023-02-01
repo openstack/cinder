@@ -83,6 +83,10 @@ PURE_OPTS = [
     cfg.StrOpt("pure_replication_pg_name", default="cinder-group",
                help="Pure Protection Group name to use for async replication "
                     "(will be created if it does not exist)."),
+    cfg.StrOpt("pure_trisync_pg_name", default="cinder-trisync",
+               help="Pure Protection Group name to use for trisync "
+                    "replication leg inside the sync replication pod "
+                    "(will be created if it does not exist)."),
     cfg.StrOpt("pure_replication_pod_name", default="cinder-pod",
                help="Pure Pod name to use for sync replication "
                     "(will be created if it does not exist)."),
@@ -117,8 +121,13 @@ PURE_OPTS = [
                      "deletion in Cinder. Data will NOT be recoverable after "
                      "a delete with this set to True! When disabled, volumes "
                      "and snapshots will go into pending eradication state "
-                     "and can be recovered."
-                )
+                     "and can be recovered."),
+    cfg.BoolOpt("pure_trisync_enabled",
+                default=False,
+                help="When enabled and two replication devices are provided, "
+                     "one each of types sync and async, this will enable "
+                     "the ability to create a volume that is sync replicated "
+                     "to one array and async replicated to a separate array.")
 ]
 
 CONF = cfg.CONF
@@ -129,7 +138,12 @@ GENERATED_NAME = re.compile(r".*-[a-f0-9]{32}-cinder$")
 
 REPLICATION_TYPE_SYNC = "sync"
 REPLICATION_TYPE_ASYNC = "async"
-REPLICATION_TYPES = [REPLICATION_TYPE_SYNC, REPLICATION_TYPE_ASYNC]
+REPLICATION_TYPE_TRISYNC = "trisync"
+REPLICATION_TYPES = [
+    REPLICATION_TYPE_SYNC,
+    REPLICATION_TYPE_ASYNC,
+    REPLICATION_TYPE_TRISYNC
+]
 
 CHAP_SECRET_KEY = "PURE_TARGET_CHAP_SECRET"
 
@@ -224,7 +238,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._replication_target_arrays = []
         self._active_cluster_target_arrays = []
         self._uniform_active_cluster_target_arrays = []
+        self._trisync_pg_name = None
         self._replication_pg_name = None
+        self._trisync_name = None
         self._replication_pod_name = None
         self._replication_interval = None
         self._replication_retention_short_term = None
@@ -233,6 +249,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._async_replication_retention_policy = None
         self._is_replication_enabled = False
         self._is_active_cluster_enabled = False
+        self._is_trisync_enabled = False
         self._active_backend_id = kwargs.get('active_backend_id', None)
         self._failed_over_primary_array = None
         self._user_agent = '%(base)s %(class)s/%(version)s (%(platform)s)' % {
@@ -248,10 +265,13 @@ class PureBaseVolumeDriver(san.SanDriver):
             'san_ip', 'driver_ssl_cert_verify', 'driver_ssl_cert_path',
             'use_chap_auth', 'replication_device', 'reserved_percentage',
             'max_over_subscription_ratio', 'pure_nvme_transport',
-            'pure_nvme_cidr_list', 'pure_nvme_cidr')
+            'pure_nvme_cidr_list', 'pure_nvme_cidr',
+            'pure_trisync_enabled', 'pure_trisync_pg_name')
         return PURE_OPTS + additional_opts
 
     def parse_replication_configs(self):
+        self._trisync_pg_name = (
+            self.configuration.pure_trisync_pg_name)
         self._replication_pg_name = (
             self.configuration.pure_replication_pg_name)
         self._replication_pod_name = (
@@ -394,6 +414,12 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         self.do_setup_replication()
 
+        if self.configuration.pure_trisync_enabled:
+            # If trisync is enabled check that we have only 1 sync and 1 async
+            # replication device set up and that the async target is not the
+            # same as any of the sync targets.
+            self.do_setup_trisync()
+
         # If we have failed over at some point we need to adjust our current
         # array based on the one that we have failed over to
         if (self._active_backend_id is not None and
@@ -402,6 +428,70 @@ class PureBaseVolumeDriver(san.SanDriver):
                 if secondary_array.backend_id == self._active_backend_id:
                     self._swap_replication_state(self._array, secondary_array)
                     break
+
+    def do_setup_trisync(self):
+        repl_device = {}
+        async_target = []
+        count = 0
+        replication_devices = self.configuration.safe_get(
+            'replication_device')
+        if not replication_devices or len(replication_devices) != 2:
+            LOG.error("Unable to configure TriSync Replication. Incorrect "
+                      "number of replication devices enabled. "
+                      "Only 2 are supported.")
+        else:
+            for replication_device in replication_devices:
+                san_ip = replication_device["san_ip"]
+                api_token = replication_device["api_token"]
+                repl_type = replication_device.get(
+                    "type", REPLICATION_TYPE_ASYNC)
+                repl_device[count] = {
+                    "rep_type": repl_type,
+                    "token": api_token,
+                    "san_ip": san_ip,
+                }
+                count += 1
+            if (repl_device[0]["rep_type"] == repl_device[1]["rep_type"]) or (
+                    (repl_device[0]["token"] == repl_device[1]["token"])
+            ):
+                LOG.error("Replication devices provided must be one each "
+                          "of sync and async and targets must be different "
+                          "to enable TriSync Replication.")
+                return
+            for replication_device in replication_devices:
+                repl_type = replication_device.get(
+                    "type", REPLICATION_TYPE_ASYNC)
+                if repl_type == "async":
+                    san_ip = replication_device["san_ip"]
+                    api_token = replication_device["api_token"]
+                    verify_https = strutils.bool_from_string(
+                        replication_device.get("ssl_cert_verify", False))
+                    ssl_cert_path = replication_device.get(
+                        "ssl_cert_path", None)
+                    target_array = self._get_flasharray(
+                        san_ip,
+                        api_token,
+                        verify_https=verify_https,
+                        ssl_cert_path=ssl_cert_path
+                    )
+                    trisync_async_info = target_array.get()
+                    target_array.array_name = trisync_async_info[
+                        "array_name"
+                    ]
+
+                    async_target.append(target_array)
+
+            self._trisync_name = self._replication_pod_name + \
+                "::" + \
+                self._trisync_pg_name
+            self._is_trisync_enabled = True
+            self._setup_replicated_pgroups(
+                self._get_current_array(),
+                async_target,
+                self._trisync_name,
+                self._replication_interval,
+                self._async_replication_retention_policy
+            )
 
     def do_setup_replication(self):
         replication_devices = self.configuration.safe_get(
@@ -544,9 +634,12 @@ class PureBaseVolumeDriver(san.SanDriver):
         # it wont be set in the cinder DB until we return from create_volume
         volume.provider_id = purity_vol_name
         async_enabled = False
+        trisync_enabled = False
         try:
             self._add_to_group_if_needed(volume, purity_vol_name)
             async_enabled = self._enable_async_replication_if_needed(
+                array, volume)
+            trisync_enabled = self._enable_trisync_replication_if_needed(
                 array, volume)
         except purestorage.PureError as err:
             with excutils.save_and_reraise_exception():
@@ -556,7 +649,8 @@ class PureBaseVolumeDriver(san.SanDriver):
                 array.eradicate_volume(purity_vol_name)
 
         repl_status = fields.ReplicationStatus.DISABLED
-        if self._is_vol_in_pod(purity_vol_name) or async_enabled:
+        if (self._is_vol_in_pod(purity_vol_name) or
+                (async_enabled or trisync_enabled)):
             repl_status = fields.ReplicationStatus.ENABLED
 
         if not volume.metadata:
@@ -585,6 +679,44 @@ class PureBaseVolumeDriver(san.SanDriver):
             self._enable_async_replication(array, volume)
             return True
         return False
+
+    def _enable_trisync_replication_if_needed(self, array, volume):
+        repl_type = self._get_replication_type_from_vol_type(
+            volume.volume_type)
+        if (self.configuration.pure_trisync_enabled and
+                repl_type == REPLICATION_TYPE_TRISYNC):
+            self._enable_trisync_replication(array, volume)
+            return True
+        return False
+
+    def _enable_trisync_replication(self, array, volume):
+        """Add volume to sync-replicated protection group"""
+        try:
+            array.set_pgroup(self._trisync_name,
+                             addvollist=[self._get_vol_name(volume)])
+        except purestorage.PureHTTPError as err:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if (err.code == 400 and
+                        ERR_MSG_ALREADY_BELONGS in err.text):
+                    # Happens if the volume already added to PG.
+                    ctxt.reraise = False
+                    LOG.warning("Adding Volume to sync-replicated "
+                                "Protection Group failed with message: %s",
+                                err.text)
+
+    def _disable_trisync_replication(self, array, volume):
+        """Remove volume from sync-replicated protection group"""
+        try:
+            array.set_pgroup(self._trisync_name,
+                             remvollist=[self._get_vol_name(volume)])
+        except purestorage.PureHTTPError as err:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if (err.code == 400 and
+                        ERR_MSG_NOT_EXIST in err.text):
+                    ctxt.reraise = False
+                    LOG.warning("Removing Volume from sync-replicated "
+                                "Protection Group failed with message: %s",
+                                err.text)
 
     def _enable_async_replication(self, array, volume):
         """Add volume to replicated protection group."""
@@ -924,6 +1056,8 @@ class PureBaseVolumeDriver(san.SanDriver):
             repl_types = [REPLICATION_TYPE_ASYNC]
         if self._is_active_cluster_enabled:
             repl_types.append(REPLICATION_TYPE_SYNC)
+        if self._is_trisync_enabled:
+            repl_types.append(REPLICATION_TYPE_TRISYNC)
         data["replication_type"] = repl_types
         data["replication_count"] = len(self._replication_target_arrays)
         data["replication_targets"] = [array.backend_id for array
@@ -1028,6 +1162,14 @@ class PureBaseVolumeDriver(san.SanDriver):
                     group,
                     cloned_vol_name
                 )
+                repl_type = self._get_replication_type_from_vol_type(
+                    source_vol.volume_type)
+                if (self.configuration.pure_trisync_enabled and
+                        repl_type == REPLICATION_TYPE_TRISYNC):
+                    self._enable_trisync_replication(current_array, cloned_vol)
+                    LOG.info('Trisync replication set for new cloned '
+                             'volume %s', cloned_vol_name)
+
         finally:
             self._delete_pgsnapshot(tmp_pgsnap_name)
         return vol_models
@@ -1652,6 +1794,8 @@ class PureBaseVolumeDriver(san.SanDriver):
                     return REPLICATION_TYPE_ASYNC
                 elif replication_type_spec == "<in> sync":
                     return REPLICATION_TYPE_SYNC
+                elif replication_type_spec == "<in> trisync":
+                    return REPLICATION_TYPE_TRISYNC
             else:
                 # if no type was specified but replication is enabled assume
                 # that async replication is enabled
@@ -1719,7 +1863,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         repl_type = self._get_replication_type_from_vol_type(
             volume.volume_type)
-        if repl_type == REPLICATION_TYPE_SYNC:
+        if repl_type in [REPLICATION_TYPE_SYNC, REPLICATION_TYPE_TRISYNC]:
             base_name = self._replication_pod_name + "::" + base_name
 
         return base_name + "-cinder"
@@ -1747,7 +1891,10 @@ class PureBaseVolumeDriver(san.SanDriver):
         # if so, we need to use a group name accounting for the ActiveCluster
         # pod.
         base_name = ""
-        if REPLICATION_TYPE_SYNC in self._group_potential_repl_types(pgroup):
+        if ((REPLICATION_TYPE_SYNC in
+                self._group_potential_repl_types(pgroup)) or
+                (REPLICATION_TYPE_TRISYNC in
+                    self._group_potential_repl_types(pgroup))):
             base_name = self._replication_pod_name + "::"
 
         return "%(base)sconsisgroup-%(id)s-cinder" % {
@@ -1780,6 +1927,8 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     @staticmethod
     def _get_pgroup_vol_snap_name(pg_name, pgsnap_suffix, volume_name):
+        if "::" in volume_name:
+            volume_name = volume_name.split("::")[1]
         return "%(pgroup_name)s.%(pgsnap_suffix)s.%(volume_name)s" % {
             'pgroup_name': pg_name,
             'pgsnap_suffix': pgsnap_suffix,
@@ -1794,10 +1943,12 @@ class PureBaseVolumeDriver(san.SanDriver):
             group_snap = snapshot.group_snapshot
         elif snapshot.cgsnapshot:
             group_snap = snapshot.cgsnapshot
-
+        volume_name = self._get_vol_name(snapshot.volume)
+        if "::" in volume_name:
+            volume_name = volume_name.split("::")[1]
         pg_vol_snap_name = "%(group_snap)s.%(volume_name)s" % {
             'group_snap': self._get_pgroup_snap_name(group_snap),
-            'volume_name': self._get_vol_name(snapshot.volume)
+            'volume_name': volume_name
         }
         return pg_vol_snap_name
 
@@ -1887,7 +2038,8 @@ class PureBaseVolumeDriver(san.SanDriver):
                 model_update = {
                     "replication_status": fields.ReplicationStatus.DISABLED
                 }
-            elif prev_repl_type == REPLICATION_TYPE_SYNC:
+            elif prev_repl_type in [REPLICATION_TYPE_SYNC,
+                                    REPLICATION_TYPE_TRISYNC]:
                 # We can't pull a volume out of a stretched pod, indicate
                 # to the volume manager that we need to use a migration instead
                 return False, None
@@ -1899,16 +2051,39 @@ class PureBaseVolumeDriver(san.SanDriver):
                 model_update = {
                     "replication_status": fields.ReplicationStatus.ENABLED
                 }
-            elif new_repl_type == REPLICATION_TYPE_SYNC:
+            elif new_repl_type in [REPLICATION_TYPE_SYNC,
+                                   REPLICATION_TYPE_TRISYNC]:
                 # We can't add a volume to a stretched pod, they must be
                 # created in one, indicate to the volume manager that it
                 # should do a migration.
                 return False, None
-        elif (previous_vol_replicated and new_vol_replicated
-                and (prev_repl_type != new_repl_type)):
-            # We can't move a volume in or out of a pod, indicate to the
-            #  manager that it should do a migration for this retype
-            return False, None
+        elif previous_vol_replicated and new_vol_replicated:
+            if prev_repl_type == REPLICATION_TYPE_ASYNC:
+                if new_repl_type in [REPLICATION_TYPE_SYNC,
+                                     REPLICATION_TYPE_TRISYNC]:
+                    # We can't add a volume to a stretched pod, they must be
+                    # created in one, indicate to the volume manager that it
+                    # should do a migration.
+                    return False, None
+            if prev_repl_type == REPLICATION_TYPE_SYNC:
+                if new_repl_type == REPLICATION_TYPE_ASYNC:
+                    # We can't move a volume in or out of a pod, indicate to
+                    # the manager that it should do a migration for this retype
+                    return False, None
+                elif new_repl_type == REPLICATION_TYPE_TRISYNC:
+                    # Add to trisync protection group
+                    self._enable_trisync_replication(self._get_current_array(),
+                                                     volume)
+            if prev_repl_type == REPLICATION_TYPE_TRISYNC:
+                if new_repl_type == REPLICATION_TYPE_ASYNC:
+                    # We can't move a volume in or out of a pod, indicate to
+                    # the manager that it should do a migration for this retype
+                    return False, None
+                elif new_repl_type == REPLICATION_TYPE_SYNC:
+                    # Remove from trisync protection group
+                    self._disable_trisync_replication(
+                        self._get_current_array(), volume
+                    )
 
         # If we are moving to a volume type with QoS settings then
         # make sure the volume gets the correct new QoS settings.
@@ -2241,6 +2416,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         # Wait until "Target Group" setting propagates to target_array.
         pgroup_name_on_target = self._get_pgroup_name_on_target(
             primary.array_name, pg_name)
+
+        if self._is_trisync_enabled:
+            pgroup_name_on_target = pg_name.replace("::", ":")
 
         for target_array in secondaries:
             self._wait_until_target_group_setting_propagates(

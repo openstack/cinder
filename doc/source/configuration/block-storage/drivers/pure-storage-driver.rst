@@ -273,11 +273,17 @@ connections should be made to both upon attaching.
 Note that more than one ``replication_device`` line can be added to allow for
 multi-target device replication.
 
+To enable 3-site replication, ie. a volume that is synchronously replicated to
+one array and also asynchronously replicated to another then you must supply
+two, and only two, ``replication_device`` lines, where one has ``type`` of
+``sync`` and one where ``type`` is ``async``. Additionally, the parameter
+``pure_trisync_enabled`` must be set ``True``.
+
 A volume is only replicated if the volume is of a volume-type that has
 the extra spec ``replication_enabled`` set to ``<is> True``. You can optionally
 specify the ``replication_type`` key to specify ``<in> sync`` or ``<in> async``
-to choose the type of replication for that volume. If not specified it will
-default to ``async``.
+or ``<in> trisync`` to choose the type of replication for that volume. If not
+specified it will default to ``async``.
 
 To create a volume type that specifies replication to remote back ends with
 async replication:
