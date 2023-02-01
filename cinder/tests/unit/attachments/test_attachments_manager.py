@@ -237,12 +237,13 @@ class AttachmentManagerTestCase(test.TestCase):
         # does not have a connector will not call the driver and return None
         # if the force flag is False.
         attachment = mock.MagicMock(connector={})
+        volume = mock.MagicMock()
         with mock.patch.object(self.manager.driver, '_initialized',
                                create=True, new=True):
             with mock.patch.object(self.manager.driver,
                                    'terminate_connection') as term_conn:
                 has_shared_connection = self.manager._connection_terminate(
-                    self.context, mock.sentinel.volume, attachment)
+                    self.context, volume, attachment)
                 self.assertIsNone(has_shared_connection)
                 term_conn.assert_not_called()
 

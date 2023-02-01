@@ -500,8 +500,9 @@ class VolumeAttachDetachTestCase(base.BaseVolumeTestCase):
                           self.context,
                           volume_id)
 
-    @mock.patch('cinder.volume.manager.LOG', mock.Mock())
-    def test_initialize_connection(self):
+    @mock.patch.object(cinder.action_track.LOG, "log")
+    @mock.patch.object(cinder.volume.manager.LOG, "log")
+    def test_initialize_connection(self, _mock_manager, _mock_track):
         volume = mock.Mock(save=mock.Mock(side_effect=Exception))
         with mock.patch.object(self.volume, 'driver') as driver_mock:
             self.assertRaises(exception.ExportFailure,

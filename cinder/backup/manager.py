@@ -45,6 +45,7 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
+from cinder import action_track
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import exception
@@ -59,6 +60,7 @@ from cinder import quota
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import volume_utils
+
 
 LOG = logging.getLogger(__name__)
 
@@ -333,6 +335,7 @@ class BackupManager(manager.SchedulerDependentManager):
         if backup.temp_snapshot_id:
             self._delete_temp_snapshot(ctxt, backup)
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_BACKUP)
     @utils.limit_operations
     def create_backup(self, context, backup):
         """Create volume backups using configured backup service."""
@@ -356,7 +359,10 @@ class BackupManager(manager.SchedulerDependentManager):
                            'volume: %(volume_id)s.'
                            % {'backup_id': backup.id,
                               'volume_id': volume_id})
-        LOG.info(log_message)
+        action_track.track(
+            context, action_track.ACTION_VOLUME_BACKUP,
+            volume, log_message
+        )
 
         self._notify_about_backup_usage(context, backup, "create.start")
 
@@ -448,8 +454,14 @@ class BackupManager(manager.SchedulerDependentManager):
         # This is an async call to the volume manager.  We will get a
         # callback from the volume manager to continue once it's done.
         LOG.info("Call Volume Manager to get_backup_device for %s", backup)
+        action_track.track(
+            context, action_track.ACTION_VOLUME_BACKUP,
+            volume, "calling volume_rpcapi.get_backup_device()"
+        )
         self.volume_rpcapi.get_backup_device(context, backup, volume)
 
+    @volume_utils.trace
+    @action_track.track_decorator(action_track.ACTION_VOLUME_BACKUP)
     def continue_backup(self, context, backup, backup_device):
         """This is the callback from the volume manager to continue."""
         message_created = False
@@ -466,6 +478,10 @@ class BackupManager(manager.SchedulerDependentManager):
 
         updates = {}
         try:
+            action_track.track(
+                context, action_track.ACTION_VOLUME_BACKUP,
+                volume, "_attach_device()"
+            )
             try:
                 attach_info = self._attach_device(context,
                                                   backup_device.device_obj,
@@ -480,6 +496,10 @@ class BackupManager(manager.SchedulerDependentManager):
                             detail=message_field.Detail.ATTACH_ERROR)
 
             try:
+                action_track.track(
+                    context, action_track.ACTION_VOLUME_BACKUP,
+                    volume, "call backup_service.backup()"
+                )
                 device_path = attach_info['device']['path']
                 if (isinstance(device_path, str) and
                         not os.path.isdir(device_path)):
@@ -543,8 +563,14 @@ class BackupManager(manager.SchedulerDependentManager):
                             detail=
                             message_field.Detail.BACKUP_CREATE_CLEANUP_ERROR)
 
+        action_track.track(
+            context, action_track.ACTION_VOLUME_BACKUP,
+            volume, "finish backup!"
+        )
         self._finish_backup(context, backup, volume, updates)
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_BACKUP)
+    @volume_utils.trace
     def _finish_backup(self, context, backup, volume, updates):
         volume_id = backup.volume_id
         snapshot_id = backup.snapshot_id
@@ -582,6 +608,11 @@ class BackupManager(manager.SchedulerDependentManager):
                 parent_backup.num_dependent_backups += 1
                 parent_backup.save()
         LOG.info('Create backup %s. backup: %s.', completion_msg, backup.id)
+        action_track.track(
+            context, action_track.ACTION_VOLUME_BACKUP,
+            volume,
+            f'Create backup {completion_msg}. backup: {backup.id}.'
+        )
         self._notify_about_backup_usage(context, backup, "create.end")
 
     def _is_our_backup(self, backup):
@@ -606,6 +637,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
         return False
 
+    @action_track.track_decorator(action_track.ACTION_BACKUP_RESTORE)
     @utils.limit_operations
     def restore_backup(self, context, backup, volume_id, volume_is_new):
         """Restore volume backups from configured backup service.
@@ -619,9 +651,13 @@ class BackupManager(manager.SchedulerDependentManager):
         context.message_resource_id = backup.id
         context.message_resource_type = message_field.Resource.VOLUME_BACKUP
         context.message_action = message_field.Action.BACKUP_RESTORE
-        LOG.info('Restore backup started, backup: %(backup_id)s '
-                 'volume: %(volume_id)s.',
-                 {'backup_id': backup.id, 'volume_id': volume_id})
+        msg = ('Restore backup started, backup: %(backup_id)s '
+               'volume: %(volume_id)s.' %
+               {'backup_id': backup.id, 'volume_id': volume_id})
+        action_track.track(
+            context, action_track.ACTION_BACKUP_RESTORE,
+            backup, msg
+        )
 
         volume = objects.Volume.get_by_id(context, volume_id)
         self._notify_about_backup_usage(context, backup, "restore.start")
@@ -666,13 +702,17 @@ class BackupManager(manager.SchedulerDependentManager):
             raise exception.InvalidBackup(reason=err)
 
         if volume['size'] > backup['size']:
-            LOG.info('Volume: %(vol_id)s, size: %(vol_size)d is '
-                     'larger than backup: %(backup_id)s, '
-                     'size: %(backup_size)d, continuing with restore.',
-                     {'vol_id': volume['id'],
-                      'vol_size': volume['size'],
-                      'backup_id': backup['id'],
-                      'backup_size': backup['size']})
+            msg = ('Volume: %(vol_id)s, size: %(vol_size)d is '
+                   'larger than backup: %(backup_id)s, '
+                   'size: %(backup_size)d, continuing with restore.' %
+                   {'vol_id': volume['id'],
+                    'vol_size': volume['size'],
+                    'backup_id': backup['id'],
+                    'backup_size': backup['size']})
+            action_track.track(
+                context, action_track.ACTION_BACKUP_RESTORE,
+                backup, msg
+            )
 
         if not self._is_our_backup(backup):
             err = _('Restore backup aborted, the backup service currently'
@@ -693,6 +733,10 @@ class BackupManager(manager.SchedulerDependentManager):
             self._run_restore(context, backup, volume, volume_is_new)
         except exception.BackupRestoreCancel:
             canceled = True
+            action_track.track(
+                context, action_track.ACTION_BACKUP_RESTORE,
+                backup, "restore was cancelled", loglevel=logging.ERROR
+            )
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(
@@ -725,23 +769,35 @@ class BackupManager(manager.SchedulerDependentManager):
         volume.save()
         backup.status = fields.BackupStatus.AVAILABLE
         backup.save()
-        LOG.info('%(result)s restoring backup %(backup_id)s to volume '
-                 '%(volume_id)s.',
-                 {'result': 'Canceled' if canceled else 'Finished',
-                  'backup_id': backup.id,
-                  'volume_id': volume_id})
+        msg = ('%(result)s restoring backup %(backup_id)s to volume '
+               '%(volume_id)s.' %
+               {'result': 'Canceled' if canceled else 'Finished',
+                'backup_id': backup.id,
+                'volume_id': volume_id})
         self._notify_about_backup_usage(context, backup, "restore.end")
+        action_track.track(
+            context, action_track.ACTION_BACKUP_RESTORE,
+            backup, msg
+        )
 
     def _run_restore(self, context, backup, volume, volume_is_new):
         message_created = False
         orig_key_id = volume.encryption_key_id
         backup_service = self.service(context)
+        action_track.track(
+            context, action_track.ACTION_BACKUP_RESTORE,
+            backup, "_run_restore called"
+        )
 
         properties = volume_utils.brick_get_connector_properties(
             CONF.use_multipath_for_image_xfer, enforce_multipath=False)
         secure_enabled = (
             self.volume_rpcapi.secure_file_operations_enabled(context,
                                                               volume))
+        action_track.track(
+            context, action_track.ACTION_BACKUP_RESTORE,
+            backup, "_attach_device"
+        )
         try:
             attach_info = self._attach_device(context, volume, properties)
         except Exception:
@@ -753,6 +809,10 @@ class BackupManager(manager.SchedulerDependentManager):
         # NOTE(geguileo): Not all I/O disk operations properly do greenthread
         # context switching and may end up blocking the greenthread, so we go
         # with native threads proxy-wrapping the device file object.
+        action_track.track(
+            context, action_track.ACTION_BACKUP_RESTORE,
+            backup, "call backup_service.restore"
+        )
         try:
             device_path = attach_info['device']['path']
             open_mode = 'rb+' if os.name == 'nt' else 'wb'
@@ -777,9 +837,14 @@ class BackupManager(manager.SchedulerDependentManager):
         except exception.BackupRestoreCancel:
             raise
         except Exception:
-            LOG.exception('Restoring backup %(backup_id)s to volume '
-                          '%(volume_id)s failed.', {'backup_id': backup.id,
-                                                    'volume_id': volume.id})
+            msg = ('Restoring backup %(backup_id)s to volume '
+                   '%(volume_id)s failed.' %
+                   {'backup_id': backup.id, 'volume_id': volume.id})
+            LOG.exception(msg)
+            action_track.track(
+                context, action_track.ACTION_BACKUP_RESTORE,
+                backup, msg, loglevel=logging.ERROR
+            )
             # We set message_create to True before creating the
             # message because if the message create call fails
             # and is catched by the base/outer exception handler
@@ -842,6 +907,7 @@ class BackupManager(manager.SchedulerDependentManager):
                       'matches encryption key ID in backup %(backup_id)s.',
                       {'volume_id': volume.id, 'backup_id': backup.id})
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_BACKUP_DELETE)
     def delete_backup(self, context, backup):
         """Delete volume backup from configured backup service."""
         LOG.info('Delete backup started, backup: %s.', backup.id)
@@ -859,6 +925,10 @@ class BackupManager(manager.SchedulerDependentManager):
                 % {'expected_status': expected_status,
                    'actual_status': actual_status}
             volume_utils.update_backup_error(backup, err)
+            action_track.track(
+                context, action_track.ACTION_VOLUME_BACKUP_DELETE,
+                backup, err, loglevel=logging.ERROR
+            )
             self.message_api.create_from_request_context(
                 context,
                 detail=message_field.Detail.BACKUP_INVALID_STATE)
@@ -868,6 +938,10 @@ class BackupManager(manager.SchedulerDependentManager):
             err = _('Delete backup is aborted due to backup service is down.')
             status = fields.BackupStatus.ERROR_DELETING
             volume_utils.update_backup_error(backup, err, status)
+            action_track.track(
+                context, action_track.ACTION_VOLUME_BACKUP_DELETE,
+                backup, err, loglevel=logging.ERROR
+            )
             self.message_api.create_from_request_context(
                 context,
                 detail=message_field.Detail.BACKUP_SERVICE_DOWN)
@@ -881,6 +955,10 @@ class BackupManager(manager.SchedulerDependentManager):
                 % {'configured_service': self.driver_name,
                    'backup_service': backup.service}
             volume_utils.update_backup_error(backup, err)
+            action_track.track(
+                context, action_track.ACTION_VOLUME_BACKUP_DELETE,
+                backup, err, loglevel=logging.ERROR
+            )
             raise exception.InvalidBackup(reason=err)
 
         if backup.service:
@@ -890,6 +968,10 @@ class BackupManager(manager.SchedulerDependentManager):
             except Exception as err:
                 with excutils.save_and_reraise_exception():
                     volume_utils.update_backup_error(backup, str(err))
+                    action_track.track(
+                        context, action_track.ACTION_VOLUME_BACKUP_DELETE,
+                        backup, str(err), loglevel=logging.ERROR
+                    )
                     self.message_api.create_from_request_context(
                         context,
                         detail=message_field.Detail.BACKUP_DELETE_DRIVER_ERROR)
@@ -928,7 +1010,11 @@ class BackupManager(manager.SchedulerDependentManager):
             QUOTAS.commit(context, reservations,
                           project_id=backup.project_id)
 
-        LOG.info('Delete backup finished, backup %s deleted.', backup.id)
+        msg = ('Delete backup finished, backup %s deleted.' % backup.id)
+        action_track.track(
+            context, action_track.ACTION_VOLUME_BACKUP_DELETE,
+            backup, msg
+        )
         self._notify_about_backup_usage(context, backup, "delete.end")
 
     def _notify_about_backup_usage(self,
@@ -1090,6 +1176,9 @@ class BackupManager(manager.SchedulerDependentManager):
             LOG.info('Import record id %s metadata from driver '
                      'finished.', backup.id)
 
+    @action_track.track_decorator(
+        action_track.ACTION_VOLUME_BACKUP_RESET_STATUS
+    )
     def reset_status(self, context, backup, status):
         """Reset volume backup status.
 
@@ -1156,15 +1245,24 @@ class BackupManager(manager.SchedulerDependentManager):
             return self._connect_device(conn)
         except Exception:
             with excutils.save_and_reraise_exception():
+                action_track.track(
+                    context, action_track.ACTION_VOLUME_BACKUP,
+                    volume, "Failed volume_rpcapi.initialize_connection",
+                    loglevel=logging.ERROR
+                )
                 try:
                     self.volume_rpcapi.terminate_connection(context, volume,
                                                             properties,
                                                             force=True)
                 except Exception:
-                    LOG.warning("Failed to terminate the connection "
-                                "of volume %(volume_id)s, but it is "
-                                "acceptable.",
-                                {'volume_id': volume.id})
+                    msg = ("Failed to terminate the connection "
+                           "of volume %(volume_id)s, but it is "
+                           "acceptable." %
+                           {'volume_id': volume.id})
+                    action_track.track(
+                        context, action_track.ACTION_VOLUME_BACKUP,
+                        volume, msg
+                    )
 
     def _attach_snapshot(self, ctxt, snapshot, properties):
         """Attach a snapshot."""

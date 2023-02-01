@@ -32,6 +32,7 @@ from oslo_utils import timeutils
 from oslo_utils import versionutils
 import webob
 
+from cinder import action_track
 from cinder.api import common
 from cinder.common import constants
 from cinder import compute
@@ -248,6 +249,7 @@ class API(base.Base):
             filter_properties["different_host"] = hint.split(',')
         return filter_properties
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_CREATE)
     def create(self,
                context: context.RequestContext,
                size: Union[str, int],
@@ -400,6 +402,10 @@ class API(base.Base):
                                                  create_what,
                                                  sched_rpcapi,
                                                  volume_rpcapi)
+            action_track.track(
+                context, action_track.ACTION_VOLUME_CREATE,
+                None, "taskflow get_flow() created"
+            )
         except Exception:
             msg = _('Failed to create api volume flow.')
             LOG.exception(msg)
@@ -417,8 +423,10 @@ class API(base.Base):
                 if flow_engine.storage.fetch('refresh_az'):
                     self.list_availability_zones(enable_cache=True,
                                                  refresh_cache=True)
-                LOG.info("Create volume request issued successfully.",
-                         resource=vref)
+                action_track.track(
+                    context, action_track.ACTION_VOLUME_CREATE,
+                    vref, "create volume request issued successfully"
+                )
                 return vref
             except exception.InvalidAvailabilityZone:
                 with excutils.save_and_reraise_exception():
@@ -452,6 +460,7 @@ class API(base.Base):
 
         self.volume_rpcapi.revert_to_snapshot(context, volume, snapshot)
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_DELETE)
     def delete(self,
                context: context.RequestContext,
                volume: objects.Volume,
@@ -789,6 +798,7 @@ class API(base.Base):
         LOG.info("Get all snapshots completed successfully.")
         return snapshots
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_RESERVE)
     def reserve_volume(self,
                        context: context.RequestContext,
                        volume: objects.Volume) -> None:
@@ -804,11 +814,12 @@ class API(base.Base):
             msg = _('Volume status must be %(expected)s to reserve, but the '
                     'status is %(current)s.') % {'expected': expected_status,
                                                  'current': volume.status}
-            LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        LOG.info("Reserve volume completed successfully.",
-                 resource=volume)
+        action_track.track(
+            context, action_track.ACTION_VOLUME_ATTACH,
+            volume, "Reserve volume completed successfully."
+        )
 
     def unreserve_volume(self,
                          context: context.RequestContext,
@@ -864,6 +875,7 @@ class API(base.Base):
         LOG.info("Roll detaching of volume completed successfully.",
                  resource=volume)
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_ATTACH)
     def attach(self,
                context: context.RequestContext,
                volume: objects.Volume,
@@ -888,16 +900,23 @@ class API(base.Base):
             raise exception.InvalidVolumeAttachMode(mode=mode,
                                                     volume_id=volume.id)
 
+        action_track.track(
+            context, action_track.ACTION_VOLUME_ATTACH,
+            volume, "calling volume_rpc_api.attach_volume"
+        )
         attach_results = self.volume_rpcapi.attach_volume(context,
                                                           volume,
                                                           instance_uuid,
                                                           host_name,
                                                           mountpoint,
                                                           mode)
-        LOG.info("Attach volume completed successfully.",
-                 resource=volume)
+        action_track.track(
+            context, action_track.ACTION_VOLUME_ATTACH,
+            volume, "Attach volume completed successfully."
+        )
         return attach_results
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_DETACH)
     def detach(self,
                context: context.RequestContext,
                volume: objects.Volume,
@@ -918,6 +937,7 @@ class API(base.Base):
                  resource=volume)
         return detach_results
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_MIGRATE)
     def migrate_volume_by_connector(self, ctxt, volume, connector,
                                     lock_volume):
         if not connector:
@@ -941,9 +961,11 @@ class API(base.Base):
                 ctxt, connector, request_spec, volume.size,
                 filter_properties=filter_properties)
         except exception.NoValidBackend:
-            LOG.error("The connector was rejected by the backend. Could not "
-                      "find another backend compatible with the connector %s.",
-                      connector)
+            msg = ("The connector was rejected by the backend. Could not "
+                   "find another backend compatible with the connector %s."
+                   % connector)
+            action_track.track(ctxt, action_track.ACTION_VOLUME_MIGRATE,
+                               volume, msg, loglevel=logging.ERROR)
             return None
         backend = host_manager.BackendState(host=dest['host'],
                                             cluster_name=dest['cluster_name'],
@@ -978,6 +1000,10 @@ class API(base.Base):
                   'maintenance')],
                 else_=volume.model.status)
 
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_MIGRATE,
+            volume, "updating volume migration_status to 'starting'"
+        )
         result = volume.conditional_update(updates, expected, filters)
 
         if not result:
@@ -988,7 +1014,10 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        LOG.debug("Invoking migrate_volume to host=%s", dest['host'])
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_MIGRATE,
+            volume, f"calling volume_rpcapi.migrate_volume to {dest['host']}"
+        )
         self.volume_rpcapi.migrate_volume(ctxt, volume, backend,
                                           force_host_copy=False,
                                           wait_for_completion=False)
@@ -1308,6 +1337,7 @@ class API(base.Base):
                    'encryption_key_id': volume['encryption_key_id']}
         return options
 
+    @action_track.track_decorator(action_track.ACTION_SNAPSHOT_CREATE)
     def create_snapshot(
             self,
             context: context.RequestContext,
@@ -1321,10 +1351,9 @@ class API(base.Base):
         result = self._create_snapshot(context, volume, name, description,
                                        False, metadata, cgsnapshot_id,
                                        group_snapshot_id, allow_in_use)
-        LOG.info("Snapshot create request issued successfully.",
-                 resource=result)
         return result
 
+    @action_track.track_decorator(action_track.ACTION_SNAPSHOT_CREATE)
     def create_snapshot_force(
             self,
             context: context.RequestContext,
@@ -1334,10 +1363,9 @@ class API(base.Base):
             metadata: Optional[dict[str, Any]] = None) -> objects.Snapshot:
         result = self._create_snapshot(context, volume, name, description,
                                        True, metadata)
-        LOG.info("Snapshot force create request issued successfully.",
-                 resource=result)
         return result
 
+    @action_track.track_decorator(action_track.ACTION_SNAPSHOT_DELETE)
     def delete_snapshot(self,
                         context: context.RequestContext,
                         snapshot: objects.Snapshot,
@@ -1369,8 +1397,6 @@ class API(base.Base):
             raise exception.InvalidSnapshot(reason=msg)
 
         self.volume_rpcapi.delete_snapshot(context, snapshot, unmanage_only)
-        LOG.info("Snapshot delete request issued successfully.",
-                 resource=snapshot)
 
     def update_snapshot(self,
                         context: context.RequestContext,
@@ -1801,6 +1827,7 @@ class API(base.Base):
                           target_obj=volume)
         self._extend(context, volume, new_size, attached=True)
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_MIGRATE)
     def migrate_volume(self,
                        context: context.RequestContext,
                        volume: objects.Volume,
@@ -1976,6 +2003,7 @@ class API(base.Base):
                  "completed successfully.",
                  resource=volume)
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_RETYPE)
     def retype(self,
                context: context.RequestContext,
                volume: objects.Volume,
@@ -2522,6 +2550,10 @@ class API(base.Base):
         # NOTE(jdg): Reserved is a special case, we're avoiding allowing
         # creation of other new reserves/attachments while in this state
         # so we avoid contention issues with shared connections
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_ATTACH,
+            vref, "called",
+        )
 
         # Multiattach of bootable volumes is a special case with it's own
         # policy, check that here right off the bat
@@ -2568,6 +2600,10 @@ class API(base.Base):
                        {'vol_id': vref.id,
                         'statuses': utils.build_or_str(expected['status']),
                         'current': vref.status})
+                action_track.track(
+                    ctxt, action_track.ACTION_VOLUME_ATTACH,
+                    vref, msg, loglevel=logging.ERROR
+                )
                 raise exception.InvalidVolume(reason=msg)
 
         values = {'volume_id': vref.id,
@@ -2575,6 +2611,10 @@ class API(base.Base):
                   'attach_status': 'reserved',
                   'instance_uuid': instance_uuid}
         db_ref = self.db.volume_attach(ctxt.elevated(), values)
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_ATTACH,
+            vref, "attach_status changed to reserved",
+        )
         return objects.VolumeAttachment.get_by_id(ctxt, db_ref['id'])
 
     def attachment_create(
@@ -2587,6 +2627,10 @@ class API(base.Base):
         """Create an attachment record for the specified volume."""
         ctxt.authorize(attachment_policy.CREATE_POLICY, target_obj=volume_ref)
         connection_info = {}
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_ATTACH,
+            volume_ref, "attachment_create called"
+        )
         if "error" in volume_ref.status:
             msg = ('Volume attachments can not be created if the volume '
                    'is in an error state. '
@@ -2594,13 +2638,20 @@ class API(base.Base):
                    '%(volume_status)s ') % {
                        'volume_id': volume_ref.id,
                        'volume_status': volume_ref.status}
-            LOG.error(msg)
+            action_track.track(
+                ctxt, action_track.ACTION_VOLUME_ATTACH,
+                volume_ref, msg, loglevel=logging.ERROR
+            )
             raise exception.InvalidVolume(reason=msg)
         attachment_ref = self._attachment_reserve(ctxt,
                                                   volume_ref,
                                                   instance_uuid)
         if connector:
             try:
+                action_track.track(
+                    ctxt, action_track.ACTION_VOLUME_ATTACH,
+                    volume_ref, "calling volume_rpc_api.attachment_update"
+                )
                 connection_info = (
                     self.volume_rpcapi.attachment_update(ctxt,
                                                          volume_ref,
@@ -2608,6 +2659,12 @@ class API(base.Base):
                                                          attachment_ref.id))
             except Exception:
                 with excutils.save_and_reraise_exception():
+                    action_track.track(
+                        ctxt, action_track.ACTION_VOLUME_ATTACH,
+                        volume_ref,
+                        "attachment_update failed, deleting attachment record",
+                        loglevel=logging.ERROR
+                    )
                     self.attachment_delete(ctxt, attachment_ref)
 
         attachment_ref.connection_info = connection_info
@@ -2629,6 +2686,10 @@ class API(base.Base):
             attachment_ref.attach_mode = attach_mode
 
         attachment_ref.save()
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_ATTACH,
+            volume_ref, "attachment_create done"
+        )
         return attachment_ref
 
     @coordination.synchronized(
@@ -2654,6 +2715,10 @@ class API(base.Base):
         ctxt.authorize(attachment_policy.UPDATE_POLICY,
                        target_obj=attachment_ref)
         volume_ref = objects.Volume.get_by_id(ctxt, attachment_ref.volume_id)
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_ATTACH,
+            volume_ref, "called"
+        )
         if "error" in volume_ref.status:
             msg = ('Volume attachments can not be updated if the volume '
                    'is in an error state. The Volume %(volume_id)s '
@@ -2661,6 +2726,10 @@ class API(base.Base):
                        'volume_id': volume_ref.id,
                        'volume_status': volume_ref.status}
             LOG.error(msg)
+            action_track.track(
+                ctxt, action_track.ACTION_VOLUME_ATTACH,
+                volume_ref, msg, loglevel=logging.ERROR
+            )
             raise exception.InvalidVolume(reason=msg)
 
         if (len(volume_ref.volume_attachment) > 1 and
@@ -2682,8 +2751,16 @@ class API(base.Base):
 
                 msg = _('duplicate connectors detected on volume '
                         '%(vol)s') % {'vol': volume_ref.id}
-
+                action_track.track(
+                    ctxt, action_track.ACTION_VOLUME_ATTACH,
+                    volume_ref, msg, loglevel=logging.ERROR
+                )
                 raise exception.InvalidVolume(reason=msg)
+
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_ATTACH,
+            volume_ref, "calling volume_rpcapi.attachment_update"
+        )
         connection_info = (
             self.volume_rpcapi.attachment_update(ctxt,
                                                  volume_ref,
@@ -2691,6 +2768,10 @@ class API(base.Base):
                                                  attachment_ref.id))
         attachment_ref.connection_info = connection_info
         attachment_ref.save()
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_ATTACH,
+            volume_ref, "Complete"
+        )
         return attachment_ref
 
     def attachment_deletion_allowed(self,
@@ -2778,6 +2859,10 @@ class API(base.Base):
         self.attachment_deletion_allowed(ctxt, attachment)
 
         volume = attachment.volume
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_DETACH,
+            volume, "called"
+        )
 
         if attachment.attach_status == fields.VolumeAttachStatus.RESERVED:
             volume_utils.notify_about_volume_usage(ctxt,
@@ -2785,6 +2870,10 @@ class API(base.Base):
         else:
             # Generate the detach.start notification on the volume service to
             # include the host doing the operation.
+            action_track.track(
+                ctxt, action_track.ACTION_VOLUME_DETACH,
+                volume, "call volume_rpcapi.attachment_delete"
+            )
             self.volume_rpcapi.attachment_delete(ctxt, attachment.id, volume)
 
         # Trigger attachments lazy load (missing since volume was loaded in the
@@ -2799,6 +2888,10 @@ class API(base.Base):
         # #1937084, and doing the notification there with the finish here leads
         # to bug #1916980.
         volume_utils.notify_about_volume_usage(ctxt, volume, "detach.end")
+        action_track.track(
+            ctxt, action_track.ACTION_VOLUME_DETACH,
+            volume, "Completed"
+        )
         return volume.volume_attachment
 
     def reimage(self, context, volume, image_id, reimage_reserved=False):

@@ -12,6 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 from http import HTTPStatus
+import logging
 
 from castellan import key_manager
 from oslo_config import cfg
@@ -19,6 +20,7 @@ import oslo_messaging as messaging
 from oslo_utils import strutils
 import webob
 
+from cinder import action_track
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
@@ -77,11 +79,20 @@ class VolumeActionsController(wsgi.Controller):
                 msg = _("Error attaching volume - %(err_type)s: "
                         "%(err_msg)s") % {
                     'err_type': error.exc_type, 'err_msg': error.value}
+                action_track.track(
+                    context, action_track.ACTION_VOLUME_ATTACH,
+                    volume, msg, loglevel=logging.ERROR
+                )
                 raise webob.exc.HTTPBadRequest(explanation=msg)
             else:
                 # There are also few cases where attach call could fail due to
                 # db or volume driver errors. These errors shouldn't be exposed
                 # to the user and in such cases it should raise 500 error.
+                action_track.track(
+                    context, action_track.ACTION_VOLUME_ATTACH,
+                    volume, f"Attach failed because {error}",
+                    loglevel=logging.ERROR
+                )
                 raise
 
     @wsgi.response(HTTPStatus.ACCEPTED)
@@ -159,20 +170,40 @@ class VolumeActionsController(wsgi.Controller):
         volume = self.volume_api.get(context, id)
         connector = body['os-initialize_connection']['connector']
         try:
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                volume, "Call initialize_connection",
+            )
             info = self.volume_api.initialize_connection(context,
                                                          volume,
                                                          connector)
         except exception.InvalidInput as err:
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                volume, "Invalid Input", loglevel=logging.ERROR
+            )
             raise webob.exc.HTTPBadRequest(
                 explanation=err.msg)
         except exception.ConnectorRejected:
             msg = _("Volume needs to be migrated before attaching to this "
                     "instance")
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                volume, msg
+            )
             raise webob.exc.HTTPNotAcceptable(explanation=msg)
         except exception.VolumeBackendAPIException:
             msg = _("Unable to fetch connection information from backend.")
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                volume, msg, loglevel=logging.ERROR
+            )
             raise webob.exc.HTTPInternalServerError(explanation=msg)
         except messaging.RemoteError as error:
+            action_track.track(
+                context, action_track.ACTION_VOLUME_ATTACH,
+                volume, f"Failed because {error}", loglevel=logging.ERROR
+            )
             if error.exc_type == 'InvalidInput':
                 raise exception.InvalidInput(reason=error.value)
             raise
