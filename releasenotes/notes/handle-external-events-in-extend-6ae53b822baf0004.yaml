@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    `bug #2000724
+    <https://bugs.launchpad.net/cinder/+bug/2000724>`_:
+    Handled the case when glance is calling online extend
+    and externals events were being sent to nova.
+    Now Cinder will only send external events when the volume,
+    to be extended, is attached to a nova instance.

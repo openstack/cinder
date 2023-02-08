@@ -2838,7 +2838,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                     detail=message_field.Detail.DRIVER_FAILED_EXTEND)
 
     @mock.patch('cinder.compute.API')
-    def _test_extend_volume_manager_successful(self, volume, nova_api):
+    def _test_extend_volume_manager_successful(self, volume, nova_api,
+                                               attached_to_glance=False):
         """Test volume can be extended at the manager level."""
         def fake_extend(volume, new_size):
             volume['size'] = new_size
@@ -2866,8 +2867,11 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                     instance_uuids = [
                         attachment.instance_uuid
                         for attachment in volume.volume_attachment]
-                    nova_extend_volume.assert_called_with(
-                        self.context, instance_uuids, volume.id)
+                    if attached_to_glance:
+                        nova_extend_volume.assert_not_called()
+                    else:
+                        nova_extend_volume.assert_called_with(
+                            self.context, instance_uuids, volume.id)
 
     def test_extend_volume_manager_available_fails_with_exception(self):
         volume = tests_utils.create_volume(self.context, size=2,
@@ -2910,6 +2914,22 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                            'fake-host', 'vdb')
         volume.refresh()
         self._test_extend_volume_manager_successful(volume)
+        self.volume.detach_volume(self.context, volume.id, attachment.id)
+        self.volume.delete_volume(self.context, volume)
+
+    def test_extend_volume_manager_in_use_glance_store(self):
+        volume = tests_utils.create_volume(self.context, size=2,
+                                           status='creating', host=CONF.host)
+        self.volume.create_volume(self.context, volume)
+        instance_uuid = None
+        attachment = db.volume_attach(self.context,
+                                      {'volume_id': volume.id,
+                                       'attached_host': 'fake-host'})
+        db.volume_attached(self.context, attachment.id, instance_uuid,
+                           'fake-host', 'vdb')
+        volume.refresh()
+        self._test_extend_volume_manager_successful(volume,
+                                                    attached_to_glance=True)
         self.volume.detach_volume(self.context, volume.id, attachment.id)
         self.volume.delete_volume(self.context, volume)
 
