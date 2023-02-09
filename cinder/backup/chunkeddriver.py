@@ -786,9 +786,11 @@ class BackupRestoreHandle(object, metaclass=abc.ABCMeta):
         # volume. Setting the correct vmdk_size in VmdkWriteHandle
         # allows it to properly validate the upload progress,
         # otherwise the restore would fail with 'incomplete transfer'.
-        if hasattr(self._volume_file, '_vmdk_size'):
+        if hasattr(self._volume_file, 'set_size'):
             file_size = sum([s.length for s in self._segments])
-            self._volume_file._vmdk_size = file_size
+            LOG.debug("Setting vmdk contents size to %s for restore",
+                      file_size)
+            self._volume_file.set_size(file_size)
 
         for segment in self._segments:
             LOG.debug('restoring object. backup: %(backup_id)s, '
@@ -819,6 +821,12 @@ class BackupRestoreHandle(object, metaclass=abc.ABCMeta):
             # Restoring a backup to a volume can take some time. Yield so other
             # threads can run, allowing for among other things the service
             # status to be updated
+            if hasattr(self._volume_file, '_get_progress'):
+                LOG.debug("progress? %(progress)s '%(volume_file)s'",
+                          {
+                              'progress': self._volume_file._get_progress(),
+                              'volume_file': str(self._volume_file)
+                          })
             eventlet.sleep(0)
 
     def _read_segment(self, segment):
