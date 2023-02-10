@@ -172,7 +172,7 @@ storwize_svc_opts = [
                      'storage during delete of the volume on primary storage '
                      'or moving the primary volume from mirror to non-mirror '
                      'with replication enabled. This option is valid for '
-                     'Spectrum Virtualize Family.'),
+                     'Storage Virtualize Family.'),
 ]
 
 CONF = cfg.CONF

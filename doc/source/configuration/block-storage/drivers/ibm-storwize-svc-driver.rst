@@ -1,24 +1,24 @@
 ============================================
-IBM Spectrum Virtualize family volume driver
+IBM Storage Virtualize family volume driver
 ============================================
 
-The volume management driver for Spectrum Virtualize family offers various
+The volume management driver for Storage Virtualize family offers various
 block storage services. It provides OpenStack Compute instances with access
-to IBM Spectrum Virtualize family storage products. These products include the
+to IBM Storage Virtualize family storage products. These products include the
 SAN Volume Controller, Storwize and FlashSystem family members built with IBM
-Spectrum Virtualize (including FlashSystem 5xxx, 7xxx, 9xxx).
+Storage Virtualize (including FlashSystem 5xxx, 7xxx, 9xxx).
 
 For specific product publications, see `IBM Documentation
-<https://www.ibm.com/docs/en>`_.
+<https://www.ibm.com/docs>`_.
 
 .. note::
-   IBM Spectrum Virtualize family is formerly known as IBM Storwize.
+   IBM Storage Virtualize family is formerly known as IBM Storwize.
    As a result, the product code contains 'Storwize' terminology and prefixes.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
 
-The IBM Spectrum Virtualize family volume driver supports the following block
+The IBM Storage Virtualize family volume driver supports the following block
 storage service volume operations:
 
 -  Create, list, delete, attach (map), and detach (unmap) volumes.
@@ -40,17 +40,17 @@ storage service volume operations:
 -  Enable, disable replication group.
 -  Failover, failback replication group.
 
-Configure the Spectrum Virtualize family system
+Configure the Storage Virtualize family system
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Network configuration
 ---------------------
 
-The Spectrum Virtualize family system must be configured for iSCSI, Fibre
+The Storage Virtualize family system must be configured for iSCSI, Fibre
 Channel, or both.
 
-If using iSCSI, each Spectrum Virtualize family node should have at least
-one iSCSI IP address. The Spectrum Virtualize family driver uses an iSCSI IP
+If using iSCSI, each Storage Virtualize family node should have at least
+one iSCSI IP address. The Storage Virtualize family driver uses an iSCSI IP
 address associated with the volume's preferred node (if available) to
 attach the volume to the instance, otherwise it uses the first available
 iSCSI IP address of the system. The driver obtains the iSCSI IP address
@@ -60,9 +60,9 @@ IP addresses directly to the driver.
 .. note::
 
    If using iSCSI, ensure that the compute nodes have iSCSI network
-   access to the Spectrum Virtualize family system.
+   access to the Storage Virtualize family system.
 
-If using Fibre Channel (FC), each Spectrum Virtualize family node should
+If using Fibre Channel (FC), each Storage Virtualize family node should
 have at least one WWPN port configured. The driver uses all available
 WWPNs to attach the volume to the instance. The driver obtains the
 WWPNs directly from the storage system. You do not need to provide
@@ -71,14 +71,14 @@ these WWPNs directly to the driver.
 .. note::
 
    If using FC, ensure that the compute nodes have FC connectivity to
-   the Spectrum Virtualize family system.
+   the Storage Virtualize family system.
 
 iSCSI CHAP authentication
 -------------------------
 
 If using iSCSI for data access and the
 ``storwize_svc_iscsi_chap_enabled`` is set to ``True``, the driver will
-associate randomly-generated CHAP secrets with all hosts on the Spectrum
+associate randomly-generated CHAP secrets with all hosts on the Storage
 Virtualize family. The compute nodes use these secrets when creating
 iSCSI connections.
 
@@ -102,7 +102,7 @@ iSCSI connections.
 Configure storage pools
 -----------------------
 
-The IBM Spectrum Virtualize family driver can allocate volumes in multiple
+The IBM Storage Virtualize family driver can allocate volumes in multiple
 pools. The pools should be created in advance and be provided to the driver
 using the ``storwize_svc_volpool_name`` configuration flag in the form
 of a comma-separated list.
@@ -111,9 +111,9 @@ For the complete list of configuration flags, see :ref:`config_flags`.
 Configure user authentication for the driver
 --------------------------------------------
 
-The driver requires access to the Spectrum Virtualize family system
+The driver requires access to the Storage Virtualize family system
 management interface. The driver communicates with the management using
-SSH. The driver should be provided with the Spectrum Virtualize family
+SSH. The driver should be provided with the Storage Virtualize family
 management IP using the ``san_ip`` flag, and the management port should
 be provided by the ``san_ssh_port`` flag. By default, the port value is
 configured to be port 22 (SSH). Also, you can set the secondary
@@ -124,7 +124,7 @@ management IP using the ``storwize_san_secondary_ip`` flag.
    Make sure the compute node running the cinder-volume management
    driver has SSH network access to the storage system.
 
-To allow the driver to communicate with the Spectrum Virtualize family
+To allow the driver to communicate with the Storage Virtualize family
 system, you must provide the driver with a user on the storage system.
 The driver has two authentication methods: password-based authentication
 and SSH key pair authentication. The user should have an Administrator
@@ -135,21 +135,21 @@ be stored in a secure manner.
 
 .. note::
 
-   When creating a new user on the Spectrum Virtualize family system, make sure
+   When creating a new user on the Storage Virtualize family system, make sure
    the user belongs to the Administrator group or to another group that
    has an Administrator role.
 
 If using password authentication, assign a password to the user on the
-Spectrum Virtualize family system. The driver configuration flags for the user
+Storage Virtualize family system. The driver configuration flags for the user
 and password are ``san_login`` and ``san_password``, respectively.
 
 If you are using the SSH key pair authentication, create SSH private and
 public keys using the instructions below or by any other method.
 Associate the public key with the user by uploading the public key:
-select the :guilabel:`choose file` option in the Spectrum Virtualize family
+select the :guilabel:`choose file` option in the Storage Virtualize family
 management GUI under :guilabel:`SSH public key`. Alternatively, you may
 associate the SSH public key using the command-line interface; details can
-be found in the Spectrum Virtualize family documentation. The private key
+be found in the Storage Virtualize family documentation. The private key
 should be provided to the driver using the ``san_private_key`` configuration
 flag.
 
@@ -171,20 +171,20 @@ The command also prompts for a pass phrase, which should be empty.
 
 The private key file should be provided to the driver using the
 ``san_private_key`` configuration flag. The public key should be
-uploaded to the Spectrum Virtualize family system using the storage
+uploaded to the Storage Virtualize family system using the storage
 management GUI or command-line interface.
 
 .. note::
 
    Ensure that Cinder has read permissions on the private key file.
 
-Configure the Spectrum Virtualize family driver
+Configure the Storage Virtualize family driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Enable the Spectrum Virtualize family driver
+Enable the Storage Virtualize family driver
 --------------------------------------------
 
-Set the volume driver to the Spectrum Virtualize family driver by setting
+Set the volume driver to the Storage Virtualize family driver by setting
 the ``volume_driver`` option in the ``cinder.conf`` file as follows:
 
 iSCSI:
@@ -237,14 +237,14 @@ target volume.
 
 .. _config_flags:
 
-Spectrum Virtualize family driver options in cinder.conf
+Storage Virtualize family driver options in cinder.conf
 --------------------------------------------------------
 
 The following options specify default values for all volumes. Some can
 be over-ridden using volume types, which are described below.
 
 .. note::
-   IBM Spectrum Virtualize family is formerly known as IBM Storwize.
+   IBM Storage Virtualize family is formerly known as IBM Storwize.
    As a result, the product code contains 'Storwize' terminology and prefixes.
 
 .. include:: ../../tables/cinder-storwize.inc
@@ -259,14 +259,14 @@ Note the following:
   ``storwize_svc_vol_rsize`` flag defines the initial physical
   allocation percentage for thin-provisioned volumes, or if set to
   ``-1``, the driver creates full allocated volumes. More details about
-  the available options are available in the Spectrum Virtualize family
+  the available options are available in the Storage Virtualize family
   documentation.
 
 
 Placement with volume types
 ---------------------------
 
-The IBM Spectrum Virtualize family exposes capabilities that can be added to
+The IBM Storage Virtualize family exposes capabilities that can be added to
 the ``extra specs`` of volume types, and used by the filter
 scheduler to determine placement of new volumes. Make sure to prefix
 these keys with ``capabilities:`` to indicate that the scheduler should
@@ -274,7 +274,7 @@ use them. The following ``extra specs`` are supported:
 
 -  ``capabilities:volume_backend_name`` - Specify a specific back-end
    where the volume should be created. The back-end name is a
-   concatenation of the name of the Spectrum Virtualize family storage system
+   concatenation of the name of the Storage Virtualize family storage system
    as shown in ``lssystem``, an underscore, and the name of the pool (mdisk
    group). For example:
 
@@ -320,13 +320,13 @@ use them. The following ``extra specs`` are supported:
 Configure per-volume creation options
 -------------------------------------
 
-Volume types can also be used to pass options to the IBM Spectrum Virtualize
+Volume types can also be used to pass options to the IBM Storage Virtualize
 family driver, which over-ride the default values set in the configuration
 file. Contrary to the previous examples where the ``capabilities`` scope
 was used to pass parameters to the Cinder scheduler, options can be
-passed to the Spectrum Virtualize family driver with the ``drivers`` scope.
+passed to the Storage Virtualize family driver with the ``drivers`` scope.
 
-The following ``extra specs`` keys are supported by the Spectrum Virtualize
+The following ``extra specs`` keys are supported by the Storage Virtualize
 family driver:
 
 - rsize
@@ -398,12 +398,12 @@ Volume types can be used, for example, to provide users with different
 QOS
 ---
 
-The Spectrum Virtualize family driver provides QOS support for storage volumes
+The Storage Virtualize family driver provides QOS support for storage volumes
 by controlling the I/O amount. QOS is enabled by editing the
 ``etc/cinder/cinder.conf`` file and setting the
 ``storwize_svc_allow_tenant_qos`` to ``True``.
 
-There are three ways to set the Spectrum Virtualize family ``IOThrotting``
+There are three ways to set the Storage Virtualize family ``IOThrotting``
 parameter for storage volumes:
 
 -  Add the ``qos:IOThrottling`` key into a QOS specification and
@@ -419,14 +419,14 @@ parameter for storage volumes:
    If you are changing a volume type with QOS to a new volume type
    without QOS, the QOS configuration settings will be removed.
 
-Operational notes for the Spectrum Virtualize family driver
+Operational notes for the Storage Virtualize family driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Migrate volumes
 ---------------
 
 In the context of OpenStack block storage's volume migration feature,
-the IBM Spectrum Virtualize family driver enables the storage's virtualization
+the IBM Storage Virtualize family driver enables the storage's virtualization
 technology. When migrating a volume from one pool to another, the volume
 will appear in the destination pool almost immediately, while the
 storage moves the data in the background.
@@ -442,7 +442,7 @@ storage moves the data in the background.
 Extend volumes
 --------------
 
-The IBM Spectrum Virtualize family driver allows for extending a volume's
+The IBM Storage Virtualize family driver allows for extending a volume's
 size, but only for volumes without snapshots.
 
 Snapshots and clones
@@ -459,7 +459,7 @@ complete.
 Volume retype
 -------------
 
-The IBM Spectrum Virtualize family driver enables you to modify volume types.
+The IBM Storage Virtualize family driver enables you to modify volume types.
 When you modify volume types, you can also change these extra specs properties:
 
 -  rsize
@@ -496,7 +496,7 @@ When you modify volume types, you can also change these extra specs properties:
 
 .. note::
 
-   To change the ``iogrp`` property, IBM Spectrum Virtualize family firmware version
+   To change the ``iogrp`` property, IBM Storage Virtualize family firmware version
    6.4.0 or later is required.
 
 Replication operation
@@ -554,7 +554,7 @@ default as the ``backend_id``:
    from the replication target volume to the primary one on the
    storage back end manually, and do the failback only after the
    synchronization is done since the synchronization may take a long time.
-   If the synchronization is not done manually, Spectrum Virtualize family block storage
+   If the synchronization is not done manually, Storage Virtualize family block storage
    service driver will perform the synchronization and do the failback
    after the synchronization is finished.
 
@@ -606,7 +606,7 @@ HyperSwap Volumes
 
 A HyperSwap volume is created with a volume-type that has the extra spec
 ``drivers:volume_topology`` set to ``hyperswap``.
-To support HyperSwap volumes, IBM Spectrum Virtualize family firmware version
+To support HyperSwap volumes, IBM Storage Virtualize family firmware version
 7.6.0 or later is required.
 Add the following to the back-end configuration to specify the host preferred
 site for HyperSwap volume.
@@ -624,9 +624,9 @@ iSCSI:
    storwize_preferred_host_site = site1:iqn.1993-08.org.debian:01:eac5ccc1aaa&iqn.1993-08.org.debian:01:be53b7e236be,
                                   site2:iqn.1993-08.org.debian:01:eac5ccc1bbb&iqn.1993-08.org.debian:01:abcdefg9876w
 
-The site1 and site2 are names of the two host sites used in Spectrum
+The site1 and site2 are names of the two host sites used in Storage
 Virtualize family storage systems. The WWPNs and IQNs are the connectors
-used for host mapping in the Spectrum Virtualize family.
+used for host mapping in the Storage Virtualize family.
 
 .. code-block:: console
 

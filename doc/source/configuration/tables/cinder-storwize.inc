@@ -1,6 +1,6 @@
 .. _cinder-storwize:
 
-.. list-table:: Description of IBM Spectrum Virtualize Family driver configuration options
+.. list-table:: Description of IBM Storage Virtualize family driver configuration options
    :header-rows: 1
    :class: config-ref-table
 
@@ -29,7 +29,7 @@
    * - ``storwize_svc_allow_tenant_qos`` = ``False``
      - (Boolean) Allow tenants to specify QoS on create.
    * - ``storwize_svc_flashcopy_rate`` = ``50``
-     - (Integer) Specifies the Spectrum Virtualize Family FlashCopy copy rate to be used when creating a full volume copy. The default is rate is 50, and the valid rates are 1-100.
+     - (Integer) Specifies the Storage Virtualize family FlashCopy copy rate to be used when creating a full volume copy. The default is rate is 50, and the valid rates are 1-100.
    * - ``storwize_svc_clean_rate`` = ``50``
      - (Integer) Specifies the Storwize cleaning rate for the mapping. The default rate is 50, and the valid rates are 0-150.
    * - ``storwize_svc_flashcopy_timeout`` = ``120``
