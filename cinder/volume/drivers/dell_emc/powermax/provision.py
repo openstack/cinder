@@ -476,7 +476,17 @@ class PowerMaxProvision(object):
                 srp_capacity['subscribed_total_tb'] * units.Ki)
             array_reserve_percent = srp_details['reserved_cap_percent']
         except KeyError:
-            pass
+            try:
+                srp_capacity = srp_details['fba_srp_capacity']
+                effective_capacity = srp_capacity['effective']
+                total_capacity_gb = effective_capacity['total_tb'] * units.Ki
+                remaining_capacity_gb = (
+                    effective_capacity['free_tb'] * units.Ki)
+                array_reserve_percent = srp_details['reserved_cap_percent']
+                subscribed_capacity_gb = (
+                    effective_capacity['used_tb'] * units.Ki)
+            except KeyError:
+                pass
 
         return (total_capacity_gb, remaining_capacity_gb,
                 subscribed_capacity_gb, array_reserve_percent)

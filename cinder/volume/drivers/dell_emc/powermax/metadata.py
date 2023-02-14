@@ -133,7 +133,8 @@ class PowerMaxVolumeMetadata(object):
         self.version_dict['serial_number'] = serial_number
         array_info_dict = self.rest.get_array_detail(serial_number)
         self.version_dict['storage_firmware_version'] = (
-            array_info_dict['ucode'])
+            array_info_dict.get(
+                'ucode', array_info_dict.get('microcode')))
         self.version_dict['storage_model'] = array_info_dict['model']
         self.version_dict['powermax_cinder_driver_version'] = (
             self.powermax_driver_version)

@@ -45,6 +45,7 @@ TRUNCATE_27 = 27
 UCODE_5978_ELMSR = 221
 UCODE_5978_HICKORY = 660
 UCODE_5978 = 5978
+UCODE_6079 = 6079
 UPPER_HOST_CHARS = 16
 UPPER_PORT_GROUP_CHARS = 12
 
@@ -140,7 +141,8 @@ PORT_GROUP_LABEL = 'port_group_label'
 # Array Models, Service Levels & Workloads
 VMAX_HYBRID_MODELS = ['VMAX100K', 'VMAX200K', 'VMAX400K']
 VMAX_AFA_MODELS = ['VMAX250F', 'VMAX450F', 'VMAX850F', 'VMAX950F']
-PMAX_MODELS = ['PowerMax_2000', 'PowerMax_8000']
+PMAX_MODELS = ['PowerMax_2000', 'PowerMax_8000', 'PowerMax_8500',
+               'PowerMax_2500']
 
 HYBRID_SLS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Optimized',
               'None', 'NONE']
@@ -2124,3 +2126,14 @@ class PowerMaxUtils(object):
         :returns: str
         """
         return in_value if isinstance(in_value, str) else str(in_value)
+
+    @staticmethod
+    def ode_capable(in_value):
+        """Check if online device expansion capable
+
+        :param in_value: microcode
+        :returns: Boolean
+        """
+        return ((int(in_value[0]) == UCODE_5978 and
+                int(in_value[2]) > UCODE_5978_ELMSR) or
+                (int(in_value[0]) > UCODE_5978))

@@ -36,8 +36,10 @@ LOG = logging.getLogger(__name__)
 SLOPROVISIONING = 'sloprovisioning'
 REPLICATION = 'replication'
 SYSTEM = 'system'
-U4V_VERSION = '92'
-MIN_U4P_VERSION = '9.2.0.0'
+U4P_100_VERSION = '100'
+MIN_U4P_100_VERSION = '10.0.0.0'
+U4P_92_VERSION = '92'
+MIN_U4P_92_VERSION = '9.2.0.0'
 UCODE_5978 = '5978'
 retry_exc_tuple = (exception.VolumeBackendAPIException,)
 u4p_failover_max_wait = 120
@@ -59,6 +61,11 @@ CREATED = 'created'
 SUCCEEDED = 'succeeded'
 CREATE_VOL_STRING = "Creating new Volumes"
 POPULATE_SG_LIST = "Populating Storage Group(s) with volumes"
+
+# Sequence of beta microcode (in order)
+DEV_CODE = 'x'
+TEST_CODE = 't'
+QUAL_CODE = 'v'
 
 
 class PowerMaxRest(object):
@@ -85,6 +92,7 @@ class PowerMaxRest(object):
         self.ucode_major_level = None
         self.ucode_minor_level = None
         self.is_snap_id = False
+        self.u4p_version = None
 
     def set_rest_credentials(self, array_info):
         """Given the array record set the rest server credentials.
@@ -100,12 +108,18 @@ class PowerMaxRest(object):
         self.base_uri = ("https://%(ip_port)s/univmax/restapi" % {
             'ip_port': ip_port})
         self.session = self._establish_rest_session()
+
+    def set_residuals(self, serial_number):
+        """Set ucode and snapid information.
+
+        :param serial_number: the array serial number
+        """
         self.ucode_major_level, self.ucode_minor_level = (
-            self.get_major_minor_ucode(array_info['SerialNumber']))
+            self.get_major_minor_ucode(serial_number))
         self.is_snap_id = self._is_snapid_enabled()
 
     def set_u4p_failover_config(self, failover_info):
-        """Set the environment failover Unisphere targets and configuration..
+        """Set the environment failover Unisphere targets and configuration.
 
         :param failover_info: failover target record
         """
@@ -372,7 +386,7 @@ class PowerMaxRest(object):
                   rc -- int, status -- string, task -- list of dicts
         """
         complete, rc, status, result, task = False, 0, None, None, None
-        job_url = "/%s/system/job/%s" % (U4V_VERSION, job_id)
+        job_url = "/%s/system/job/%s" % (self.u4p_version, job_id)
         job = self.get_request(job_url, 'job')
         if job:
             status = job['status']
@@ -448,8 +462,7 @@ class PowerMaxRest(object):
 
         return target_uri
 
-    @staticmethod
-    def _build_uri_legacy_args(*args, **kwargs):
+    def _build_uri_legacy_args(self, *args, **kwargs):
         """Build the target URI using legacy args & kwargs.
 
         Expected format:
@@ -458,7 +471,7 @@ class PowerMaxRest(object):
             arg[2]: the resource type e.g. 'maskingview' -- str
             kwarg resource_name: the name of a specific resource -- str
             kwarg private: if endpoint is private -- bool
-            kwarg version: U4V REST endpoint version -- int/str
+            kwarg version: U4P REST endpoint version -- int/str
             kwarg no_version: if endpoint should be versionless -- bool
 
         :param args: input args -- see above
@@ -470,7 +483,7 @@ class PowerMaxRest(object):
         # Extract keyword args following legacy _build_uri() format
         resource_name = kwargs.get('resource_name')
         private = kwargs.get('private')
-        version = kwargs.get('version', U4V_VERSION)
+        version = kwargs.get('version', self.u4p_version)
         if kwargs.get('no_version'):
             version = None
 
@@ -489,8 +502,7 @@ class PowerMaxRest(object):
 
         return target_uri
 
-    @staticmethod
-    def _build_uri_kwargs(**kwargs):
+    def _build_uri_kwargs(self, **kwargs):
         """Build the target URI using kwargs.
 
         Expected kwargs:
@@ -517,7 +529,7 @@ class PowerMaxRest(object):
         :param kwargs: input keyword args -- see above
         :return: target URI -- str
         """
-        version = kwargs.get('version', U4V_VERSION)
+        version = kwargs.get('version', self.u4p_version)
         if kwargs.get('no_version'):
             version = None
 
@@ -607,7 +619,7 @@ class PowerMaxRest(object):
 
     def get_resource(self, array, category, resource_type,
                      resource_name=None, params=None, private=False,
-                     version=U4V_VERSION):
+                     version=None):
         """Get resource details from array.
 
         :param array: the array serial number
@@ -621,7 +633,7 @@ class PowerMaxRest(object):
         """
         target_uri = self.build_uri(
             array, category, resource_type, resource_name=resource_name,
-            private=private, version=version)
+            private=private, version=self.u4p_version)
         return self.get_request(target_uri, resource_type, params)
 
     def create_resource(self, array, category, resource_type, payload,
@@ -645,7 +657,7 @@ class PowerMaxRest(object):
         return status_code, message
 
     def modify_resource(
-            self, array, category, resource_type, payload, version=U4V_VERSION,
+            self, array, category, resource_type, payload, version=None,
             resource_name=None, private=False):
         """Modify a resource.
 
@@ -660,7 +672,7 @@ class PowerMaxRest(object):
         """
         target_uri = self.build_uri(
             array, category, resource_type, resource_name=resource_name,
-            private=private, version=version)
+            private=private, version=self.u4p_version)
         status_code, message = self.request(target_uri, PUT,
                                             request_object=payload)
         operation = 'modify %(res)s resource' % {'res': resource_type}
@@ -695,7 +707,7 @@ class PowerMaxRest(object):
 
         :returns arrays -- list
         """
-        target_uri = '/%s/sloprovisioning/symmetrix' % U4V_VERSION
+        target_uri = '/%s/sloprovisioning/symmetrix' % self.u4p_version
         array_details = self.get_request(target_uri, 'sloprovisioning')
         if not array_details:
             LOG.error("Could not get array details from Unisphere instance.")
@@ -708,7 +720,7 @@ class PowerMaxRest(object):
         :param array: the array serial number
         :returns: array_details -- dict or None
         """
-        target_uri = '/%s/system/symmetrix/%s' % (U4V_VERSION, array)
+        target_uri = '/%s/system/symmetrix/%s' % (self.u4p_version, array)
         array_details = self.get_request(target_uri, 'system')
         if not array_details:
             LOG.error("Cannot connect to array %(array)s.",
@@ -721,7 +733,8 @@ class PowerMaxRest(object):
         :param array: the array serial number
         :returns: tag list -- list or empty list
         """
-        target_uri = '/%s/system/tag?array_id=%s' % (U4V_VERSION, array)
+        target_uri = '/%s/system/tag?array_id=%s' % (
+            self.u4p_version, array)
         array_tags = self.get_request(target_uri, 'system')
         return array_tags.get('tag_name')
 
@@ -734,7 +747,8 @@ class PowerMaxRest(object):
         is_next_gen = False
         array_details = self.get_array_detail(array)
         if array_details:
-            ucode_version = array_details['ucode'].split('.')[0]
+            ucode = array_details.get('ucode', array_details.get('microcode'))
+            ucode_version = ucode.split('.')[0] if ucode else None
             if ucode_version >= UCODE_5978:
                 is_next_gen = True
         return is_next_gen
@@ -749,7 +763,7 @@ class PowerMaxRest(object):
         if response and response.get('version'):
             version = response['version']
             version_list = version.split('.')
-            major_version = version_list[0][1] + version_list[1]
+            major_version = version_list[0][1:] + version_list[1]
         return version, major_version
 
     def get_unisphere_version(self):
@@ -757,12 +771,8 @@ class PowerMaxRest(object):
 
         :returns: version dict
         """
-        post_90_endpoint = '/version'
-        pre_91_endpoint = '/system/version'
-
-        status_code, version_dict = self.request(post_90_endpoint, GET)
-        if status_code is not STATUS_200:
-            status_code, version_dict = self.request(pre_91_endpoint, GET)
+        version_endpoint = '/version'
+        status_code, version_dict = self.request(version_endpoint, GET)
 
         if not version_dict:
             LOG.error("Unisphere version info not found.")
@@ -844,7 +854,8 @@ class PowerMaxRest(object):
         if system_info and system_info.get('model'):
             array_model = system_info.get('model')
         if system_info:
-            ucode_version = system_info['ucode'].split('.')[0]
+            ucode = system_info.get('ucode', system_info.get('microcode'))
+            ucode_version = ucode.split('.')[0]
             if ucode_version >= UCODE_5978:
                 is_next_gen = True
         return array_model, is_next_gen
@@ -858,7 +869,8 @@ class PowerMaxRest(object):
         ucode_version = None
         system_info = self.get_array_detail(array)
         if system_info:
-            ucode_version = system_info['ucode']
+            ucode_version = system_info.get(
+                'ucode', system_info.get('microcode'))
         return ucode_version
 
     def is_compression_capable(self, array):
@@ -869,7 +881,7 @@ class PowerMaxRest(object):
         """
         is_compression_capable = False
         target_uri = ("/%s/sloprovisioning/symmetrix?compressionCapable=true"
-                      % U4V_VERSION)
+                      % self.u4p_version)
         status_code, message = self.request(target_uri, GET)
         self.check_status_code_success(
             "Check if compression enabled", status_code, message)
@@ -1018,7 +1030,7 @@ class PowerMaxRest(object):
         return storagegroup_name
 
     def modify_storage_group(self, array, storagegroup, payload,
-                             version=U4V_VERSION):
+                             version=None):
         """Modify a storage group (PUT operation).
 
         :param version: the uv4 version
@@ -1028,8 +1040,8 @@ class PowerMaxRest(object):
         :returns: status_code -- int, message -- string, server response
         """
         return self.modify_resource(
-            array, SLOPROVISIONING, 'storagegroup', payload, version,
-            resource_name=storagegroup)
+            array, SLOPROVISIONING, 'storagegroup', payload,
+            self.u4p_version, resource_name=storagegroup)
 
     def modify_storage_array(self, array, payload):
         """Modify a storage array (PUT operation).
@@ -1038,7 +1050,8 @@ class PowerMaxRest(object):
         :param payload: the request payload
         :returns: status_code -- int, message -- string, server response
         """
-        target_uri = '/%s/sloprovisioning/symmetrix/%s' % (U4V_VERSION, array)
+        target_uri = '/%s/sloprovisioning/symmetrix/%s' % (
+            self.u4p_version, array)
         status_code, message = self.request(target_uri, PUT,
                                             request_object=payload)
         operation = 'modify %(res)s resource' % {'res': 'symmetrix'}
@@ -1417,13 +1430,8 @@ class PowerMaxRest(object):
         :returns: volume dict
         :raises: VolumeBackendAPIException
         """
-        if not device_id:
-            LOG.warning('No device id supplied to get_volume.')
-            return dict()
-        version = self.get_uni_version()[1]
         volume_dict = self.get_resource(
-            array, SLOPROVISIONING, 'volume', resource_name=device_id,
-            version=version)
+            array, SLOPROVISIONING, 'volume', resource_name=device_id)
         if not volume_dict:
             exception_message = (_("Volume %(deviceID)s not found.")
                                  % {'deviceID': device_id})
@@ -1570,7 +1578,8 @@ class PowerMaxRest(object):
             raise exception.VolumeBackendAPIException(exception_message)
 
         if ((self.ucode_major_level >= utils.UCODE_5978)
-                and (self.ucode_minor_level > utils.UCODE_5978_ELMSR)):
+                and (self.ucode_minor_level > utils.UCODE_5978_ELMSR) or (
+                self.ucode_major_level >= utils.UCODE_6079)):
             # Use Rapid TDEV Deallocation to delete after ELMSR
             try:
                 self.delete_resource(array, SLOPROVISIONING,
@@ -1807,13 +1816,23 @@ class PowerMaxRest(object):
         :param ip_address: the ip address associated with the port -- str
         :returns: physical director:port -- str
         """
+        if self.u4p_version == U4P_100_VERSION:
+            target_key = 'iscsi_endpoint'
+        elif self.u4p_version == U4P_92_VERSION:
+            target_key = 'iscsi_target'
+        else:
+            msg = (_(
+                "Unable to determine the target_key for version %(ver)s." % {
+                    'ver': self.u4p_version}
+            ))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(message=msg)
         director_id = virtual_port.split(':')[0]
-        params = {'ip_list': ip_address, 'iscsi_target': False}
+        params = {'ip_list': ip_address, target_key: False}
         target_uri = self.build_uri(
             category=SYSTEM, resource_level='symmetrix',
             resource_level_id=array_id, resource_type='director',
             resource_type_id=director_id, resource='port')
-
         port_info = self.get_request(
             target_uri, 'port IP interface', params)
         if not port_info:
@@ -2110,7 +2129,7 @@ class PowerMaxRest(object):
         """
         array_capabilities = None
         target_uri = ("/%s/replication/capabilities/symmetrix"
-                      % U4V_VERSION)
+                      % self.u4p_version)
         capabilities = self.get_request(
             target_uri, 'replication capabilities')
         if capabilities:
@@ -3449,19 +3468,25 @@ class PowerMaxRest(object):
         :returns: unisphere_meets_min_req -- boolean
         """
         running_version, major_version = self.get_uni_version()
-        minimum_version = MIN_U4P_VERSION
+        if major_version == U4P_100_VERSION:
+            self.u4p_version = U4P_100_VERSION
+            minimum_version = MIN_U4P_100_VERSION
+        elif major_version:
+            self.u4p_version = U4P_92_VERSION
+            minimum_version = MIN_U4P_92_VERSION
         unisphere_meets_min_req = False
 
         if running_version and (running_version[0].isalpha()):
             # remove leading letter
-            if running_version.lower()[0] == 'v':
+            if running_version.lower()[0] == QUAL_CODE:
                 version = running_version[1:]
                 unisphere_meets_min_req = (
                     self.utils.version_meet_req(version, minimum_version))
-            elif running_version.lower()[0] == 't':
+            elif running_version.lower()[0] == TEST_CODE or (
+                    running_version.lower()[0] == DEV_CODE):
                 LOG.warning("%(version)s This is not a official release of "
                             "Unisphere.", {'version': running_version})
-                return major_version >= U4V_VERSION
+                return int(major_version) >= int(self.u4p_version)
 
         if unisphere_meets_min_req:
             LOG.info("Unisphere version %(running_version)s meets minimum "
@@ -3522,7 +3547,8 @@ class PowerMaxRest(object):
         ucode_minor_level = 0
 
         if array_details:
-            split_ucode_level = array_details['ucode'].split('.')
+            ucode = array_details.get('ucode', array_details.get('microcode'))
+            split_ucode_level = ucode.split('.')
             ucode_level = [int(level) for level in split_ucode_level]
             ucode_major_level = ucode_level[0]
             ucode_minor_level = ucode_level[1]
@@ -3534,21 +3560,5 @@ class PowerMaxRest(object):
         :returns: boolean
         """
         return (self.ucode_major_level >= utils.UCODE_5978 and
-                self.ucode_minor_level >= utils.UCODE_5978_HICKORY)
-
-    def _rename_storage_group(
-            self, array, old_name, new_name, extra_specs):
-        """Rename the storage group.
-
-        :param array: the array serial number
-        :param old_name: the original name
-        :param new_name: the new name
-        :param extra_specs: the extra specifications
-        """
-        payload = {"editStorageGroupActionParam": {
-            "renameStorageGroupParam": {
-                "new_storage_Group_name": new_name}}}
-        status_code, job = self.modify_storage_group(
-            array, old_name, payload)
-        self.wait_for_job(
-            'Rename storage group', status_code, job, extra_specs)
+                self.ucode_minor_level >= utils.UCODE_5978_HICKORY) or (
+                    self.ucode_major_level >= utils.UCODE_6079)
