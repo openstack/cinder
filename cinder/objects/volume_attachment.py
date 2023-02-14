@@ -33,7 +33,7 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
     # Version 1.3: Added the connector attribute.
     VERSION = '1.3'
 
-    OPTIONAL_FIELDS = ['volume']
+    OPTIONAL_FIELDS = ('volume',)
     obj_extra_fields = ['project_id', 'volume_host']
 
     # NOTE: When adding a field obj_make_compatible needs to be updated

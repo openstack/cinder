@@ -27,7 +27,7 @@ class GroupType(base.CinderPersistentObject, base.CinderObject,
     # Version 1.0: Initial version
     VERSION = '1.0'
 
-    OPTIONAL_FIELDS = ['group_specs', 'projects']
+    OPTIONAL_FIELDS = ('group_specs', 'projects')
 
     # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {

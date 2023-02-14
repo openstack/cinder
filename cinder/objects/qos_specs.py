@@ -33,7 +33,7 @@ class QualityOfServiceSpecs(base.CinderPersistentObject,
     #   1.0: Initial version
     VERSION = "1.0"
 
-    OPTIONAL_FIELDS = ['volume_types']
+    OPTIONAL_FIELDS = ('volume_types',)
 
     # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {

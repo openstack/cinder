@@ -246,7 +246,7 @@ class CinderPersistentObject(object):
 
     This adds the fields that we use in common for all persistent objects.
     """
-    OPTIONAL_FIELDS = []
+    OPTIONAL_FIELDS = ()
 
     Not = db.Not
     Case = db.Case
