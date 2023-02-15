@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family driver: Added `storwize_volume_group`
+    parameter in the cinder configuration to support volume group
+    feature.

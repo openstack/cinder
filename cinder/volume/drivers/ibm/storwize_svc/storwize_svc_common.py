@@ -173,6 +173,10 @@ storwize_svc_opts = [
                      'or moving the primary volume from mirror to non-mirror '
                      'with replication enabled. This option is valid for '
                      'Storage Virtualize Family.'),
+    cfg.BoolOpt('storwize_volume_group',
+                default=False,
+                help='Parameter to enable or disable Volume Group'
+                     '(True/False)'),
 ]
 
 CONF = cfg.CONF
@@ -3410,9 +3414,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         2.1 - Added replication V2 support to the global/metro mirror
               mode
         2.1.1 - Update replication to version 2.1
+        2.1.2 - Added support volume_group (Flash copy)
     """
 
-    VERSION = "2.1.1"
+    VERSION = "2.1.2"
     VDISKCOPYOPS_INTERVAL = 600
     DEFAULT_GR_SLEEP = random.randint(20, 500) / 100.0
 
@@ -6283,16 +6288,49 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     model_update = {'status': fields.GroupStatus.ERROR}
                     return model_update
 
+        storwize_volume_group = self.configuration.safe_get(
+            'storwize_volume_group')
+        LOG.info('CONFIG:value of storwize_volume_group'
+                 ' is %s', storwize_volume_group)
+
         if volume_utils.is_group_a_type(group, "volume_group_enabled"):
-            try:
-                self._helpers.check_codelevel_for_volumegroup(
-                    self._state['code_level'])
-                volumegroup_name = self._get_volumegroup_name(group)
-                self._helpers.create_volumegroup(volumegroup_name)
-            except exception.VolumeBackendAPIException as err:
-                LOG.error("Failed to create volume group %(volumegroup)s. "
-                          "Exception: %(exception)s.",
-                          {'volumegroup': volumegroup_name, 'exception': err})
+            if storwize_volume_group:
+                try:
+                    self._helpers.check_codelevel_for_volumegroup(
+                        self._state['code_level'])
+                    for vol_type_id in group.volume_type_ids:
+                        replication_type = self._get_volume_replicated_type(
+                            context, None, vol_type_id)
+                        if replication_type:
+                            # An unsupported configuration
+                            LOG.error('Unable to create group: '
+                                      'volume_group_enabled group with '
+                                      'replication volume type is '
+                                      'not supported.')
+                            model_update = {'status': fields.GroupStatus.ERROR}
+                            return model_update
+                        opts = self._get_vdisk_params(vol_type_id)
+                        if opts['volume_topology']:
+                            # An unsupported configuration
+                            LOG.error('Unable to create group: '
+                                      'volume_group_enabled group with a '
+                                      'hyperswap volume type is '
+                                      'not supported.')
+                            model_update = {'status': fields.GroupStatus.ERROR}
+                            return model_update
+                    volumegroup_name = self._get_volumegroup_name(group)
+                    self._helpers.create_volumegroup(volumegroup_name)
+                except exception.VolumeBackendAPIException as err:
+                    LOG.error("Failed to create volume group %(volumegroup)s. "
+                              "Exception: %(exception)s.",
+                              {'volumegroup': volumegroup_name,
+                                  'exception': err})
+                    model_update = {'status': fields.GroupStatus.ERROR}
+                    return model_update
+            else:
+                LOG.error('Unable to create group: Error creating volume group'
+                          ' with storwize_volume_group value set to False'
+                          ' in the configuration.')
                 model_update = {'status': fields.GroupStatus.ERROR}
                 return model_update
 
