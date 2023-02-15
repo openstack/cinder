@@ -7,7 +7,7 @@ with access to IBM FlashSystems.
 
 This driver is to be used with IBM FlashSystem 840/900 systems only.
 For any other FlashSystem storage systems (including 5xxx, 7xxx, and 9xxx
-platforms) see the :doc:`IBM Spectrum Virtualize family volume driver
+platforms) see the :doc:`IBM Storage Virtualize family volume driver
 documentation <ibm-storwize-svc-driver>`.
 
 Supported operations
