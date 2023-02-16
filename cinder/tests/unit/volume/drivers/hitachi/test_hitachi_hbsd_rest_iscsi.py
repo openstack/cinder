@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2022, Hitachi, Ltd.
+# Copyright (C) 2020, 2023, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -190,6 +190,7 @@ GET_LDEV_RESULT = {
     "blockCapacity": 2097152,
     "attributes": ["CVS", "HDP"],
     "status": "NML",
+    "poolId": 30,
 }
 
 GET_LDEV_RESULT_MAPPED = {
@@ -783,14 +784,39 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
             self.driver.unmanage_snapshot,
             TEST_SNAPSHOT[0])
 
-    def test_retype(self):
+    @mock.patch.object(requests.Session, "request")
+    def test_retype(self, request):
+        request.return_value = FakeResponse(200, GET_LDEV_RESULT)
         new_specs = {'hbsd:test': 'test'}
         new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
         diff = {}
-        host = {}
+        host = {
+            'capabilities': {
+                'location_info': {
+                    'pool_id': 30,
+                },
+            },
+        }
         ret = self.driver.retype(
             self.ctxt, TEST_VOLUME[0], new_type_ref, diff, host)
-        self.assertFalse(ret)
+        self.assertEqual(1, request.call_count)
+        self.assertTrue(ret)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_migrate_volume(self, request):
+        request.return_value = FakeResponse(200, GET_LDEV_RESULT)
+        host = {
+            'capabilities': {
+                'location_info': {
+                    'storage_id': CONFIG_MAP['serial'],
+                    'pool_id': 30,
+                },
+            },
+        }
+        ret = self.driver.migrate_volume(self.ctxt, TEST_VOLUME[0], host)
+        self.assertEqual(2, request.call_count)
+        actual = (True, None)
+        self.assertTupleEqual(actual, ret)
 
     def test_backup_use_temp_snapshot(self):
         self.assertTrue(self.driver.backup_use_temp_snapshot())

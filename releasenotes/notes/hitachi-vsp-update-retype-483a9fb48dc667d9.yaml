@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Hitachi driver: Update retype to different pool and support storage
+    assisted migration.
+    Storage assisted migration feature is also used when retype a volume,
+    which doesn't have any snapshots, to different pool.

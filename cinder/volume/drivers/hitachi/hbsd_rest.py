@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2022, Hitachi, Ltd.
+# Copyright (C) 2020, 2023, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -26,6 +26,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.objects import fields
+from cinder.objects import SnapshotList
 from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hbsd_common as common
 from cinder.volume.drivers.hitachi import hbsd_rest_api as rest_api
@@ -274,7 +275,7 @@ class HBSDREST(common.HBSDCommon):
         if self.client is not None:
             self.client.enter_keep_session()
 
-    def _create_ldev_on_storage(self, size, pool_id):
+    def _create_ldev_on_storage(self, size, pool_id, ldev_range):
         """Create an LDEV on the storage system."""
         body = {
             'byteFormatCapacity': '%sG' % size,
@@ -287,9 +288,9 @@ class HBSDREST(common.HBSDCommon):
             body['endLdevId'] = max_ldev
         return self.client.add_ldev(body, no_log=True)
 
-    def create_ldev(self, size, pool_id):
+    def create_ldev(self, size, pool_id, ldev_range):
         """Create an LDEV of the specified size and the specified type."""
-        ldev = self._create_ldev_on_storage(size, pool_id=pool_id)
+        ldev = self._create_ldev_on_storage(size, pool_id, ldev_range)
         LOG.debug('Created logical device. (LDEV: %s)', ldev)
         return ldev
 
@@ -386,7 +387,7 @@ class HBSDREST(common.HBSDCommon):
                     utils.output_log(
                         MSG.DELETE_PAIR_FAILED, pvol=pvol, svol=svol)
 
-    def _create_clone_pair(self, pvol, svol):
+    def _create_clone_pair(self, pvol, svol, snap_pool_id):
         """Create a clone copy pair on the storage."""
         snapshot_name = '%(prefix)s%(svol)s' % {
             'prefix': self.driver_info['driver_prefix'] + '-clone',
@@ -428,12 +429,13 @@ class HBSDREST(common.HBSDCommon):
                     utils.output_log(
                         MSG.DELETE_PAIR_FAILED, pvol=pvol, svol=svol)
 
-    def create_pair_on_storage(self, pvol, svol, is_snapshot=False):
+    def create_pair_on_storage(
+            self, pvol, svol, snap_pool_id, is_snapshot=False):
         """Create a copy pair on the storage."""
         if is_snapshot:
             self._create_snap_pair(pvol, svol)
         else:
-            self._create_clone_pair(pvol, svol)
+            self._create_clone_pair(pvol, svol, snap_pool_id)
 
     def get_ldev_info(self, keys, ldev, **kwargs):
         """Return a dictionary of LDEV-related items."""
@@ -1136,7 +1138,8 @@ class HBSDREST(common.HBSDCommon):
                     self.raise_error(msg)
                 size = snapshot.volume_size
                 pool_id = self.get_pool_id_of_volume(snapshot.volume)
-                pair['svol'] = self.create_ldev(size, pool_id)
+                ldev_range = self.storage_info['ldev_range']
+                pair['svol'] = self.create_ldev(size, pool_id, ldev_range)
             except Exception as exc:
                 pair['msg'] = utils.get_exception_msg(exc)
             raise loopingcall.LoopingCallDone(pair)
@@ -1191,3 +1194,121 @@ class HBSDREST(common.HBSDCommon):
             return self._create_cgsnapshot(context, group_snapshot, snapshots)
         else:
             return self._create_non_cgsnapshot(group_snapshot, snapshots)
+
+    def migrate_volume(self, volume, host, new_type=None):
+        """Migrate the specified volume."""
+        attachments = volume.volume_attachment
+        if attachments:
+            return False, None
+
+        pvol = utils.get_ldev(volume)
+        if pvol is None:
+            msg = utils.output_log(
+                MSG.INVALID_LDEV_FOR_VOLUME_COPY, type='volume', id=volume.id)
+            self.raise_error(msg)
+
+        pair_info = self.get_pair_info(pvol)
+        if pair_info:
+            if pair_info['pvol'] == pvol:
+                svols = []
+                copy_methods = []
+                svol_statuses = []
+                for svol_info in pair_info['svol_info']:
+                    svols.append(str(svol_info['ldev']))
+                    copy_methods.append(utils.THIN)
+                    svol_statuses.append(svol_info['status'])
+                if svols:
+                    pair_info = ['(%s, %s, %s, %s)' %
+                                 (pvol, svol, copy_method, status)
+                                 for svol, copy_method, status in
+                                 zip(svols, copy_methods, svol_statuses)]
+                    msg = utils.output_log(
+                        MSG.MIGRATE_VOLUME_FAILED,
+                        volume=volume.id, ldev=pvol,
+                        pair_info=', '.join(pair_info))
+                    self.raise_error(msg)
+            else:
+                svol_info = pair_info['svol_info'][0]
+                if svol_info['is_psus'] and svol_info['status'] != 'PSUP':
+                    return False, None
+                else:
+                    pair_info = '(%s, %s, %s, %s)' % (
+                        pair_info['pvol'], svol_info['ldev'],
+                        utils.THIN, svol_info['status'])
+                    msg = utils.output_log(
+                        MSG.MIGRATE_VOLUME_FAILED,
+                        volume=volume.id, ldev=svol_info['ldev'],
+                        pair_info=pair_info)
+                    self.raise_error(msg)
+
+        old_storage_id = self.conf.hitachi_storage_id
+        new_storage_id = (
+            host['capabilities']['location_info'].get('storage_id'))
+        if new_type is None:
+            old_pool_id = self.get_ldev_info(['poolId'], pvol)['poolId']
+        new_pool_id = host['capabilities']['location_info'].get('pool_id')
+
+        if old_storage_id != new_storage_id:
+            return False, None
+
+        ldev_range = host['capabilities']['location_info'].get('ldev_range')
+        if (new_type or old_pool_id != new_pool_id or
+                (ldev_range and
+                 (pvol < ldev_range[0] or ldev_range[1] < pvol))):
+
+            snap_pool_id = host['capabilities']['location_info'].get(
+                'snap_pool_id')
+            ldev_range = host['capabilities']['location_info'].get(
+                'ldev_range')
+            svol = self.copy_on_storage(
+                pvol, volume.size, new_pool_id, snap_pool_id, ldev_range,
+                is_snapshot=False, sync=True)
+            self.modify_ldev_name(svol, volume['id'].replace("-", ""))
+
+            try:
+                self.delete_ldev(pvol)
+            except exception.VolumeDriverException:
+                utils.output_log(MSG.DELETE_LDEV_FAILED, ldev=pvol)
+
+            return True, {
+                'provider_location': str(svol),
+            }
+
+        return True, None
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Retype the specified volume."""
+
+        def _check_specs_diff(diff):
+            for specs_key, specs_val in diff.items():
+                for diff_key, diff_val in specs_val.items():
+                    if diff_val[0] != diff_val[1]:
+                        return False
+            return True
+
+        ldev = utils.get_ldev(volume)
+        if ldev is None:
+            msg = utils.output_log(
+                MSG.INVALID_LDEV_FOR_VOLUME_COPY, type='volume',
+                id=volume['id'])
+            self.raise_error(msg)
+        ldev_info = self.get_ldev_info(
+            ['poolId'], ldev)
+        old_pool_id = ldev_info['poolId']
+        new_pool_id = host['capabilities']['location_info'].get('pool_id')
+        if not _check_specs_diff(diff) or new_pool_id != old_pool_id:
+            snaps = SnapshotList.get_all_for_volume(ctxt, volume.id)
+            if not snaps:
+                return self.migrate_volume(volume, host, new_type)
+            return False
+
+        return True
+
+    def wait_copy_completion(self, pvol, svol):
+        """Wait until copy is completed."""
+        self._wait_copy_pair_status(svol, set([SMPL, PSUE]))
+        status = self._get_copy_pair_status(svol)
+        if status == PSUE:
+            msg = utils.output_log(
+                MSG.VOLUME_COPY_FAILED, pvol=pvol, svol=svol)
+            self.raise_error(msg)

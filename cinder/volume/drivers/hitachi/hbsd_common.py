@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2022, Hitachi, Ltd.
+# Copyright (C) 2020, 2023, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -175,7 +175,7 @@ class HBSDCommon():
                 return pool['location_info']['pool_id']
         return None
 
-    def create_ldev(self, size, pool_id):
+    def create_ldev(self, size, pool_id, ldev_range):
         """Create an LDEV and return its LDEV number."""
         raise NotImplementedError()
 
@@ -186,8 +186,9 @@ class HBSDCommon():
     def create_volume(self, volume):
         """Create a volume and return its properties."""
         pool_id = self.get_pool_id_of_volume(volume)
+        ldev_range = self.storage_info['ldev_range']
         try:
-            ldev = self.create_ldev(volume['size'], pool_id)
+            ldev = self.create_ldev(volume['size'], pool_id, ldev_range)
         except Exception:
             with excutils.save_and_reraise_exception():
                 utils.output_log(MSG.CREATE_LDEV_FAILED)
@@ -200,20 +201,29 @@ class HBSDCommon():
         """Return a dictionary of LDEV-related items."""
         raise NotImplementedError()
 
-    def create_pair_on_storage(self, pvol, svol, is_snapshot=False):
+    def create_pair_on_storage(
+            self, pvol, svol, snap_pool_id, is_snapshot=False):
         """Create a copy pair on the storage."""
         raise NotImplementedError()
 
-    def _copy_on_storage(
-            self, pvol, size, pool_id, is_snapshot=False):
+    def wait_copy_completion(self, pvol, svol):
+        """Wait until copy is completed."""
+        raise NotImplementedError()
+
+    def copy_on_storage(
+            self, pvol, size, pool_id, snap_pool_id, ldev_range,
+            is_snapshot=False, sync=False):
         """Create a copy of the specified LDEV on the storage."""
         ldev_info = self.get_ldev_info(['status', 'attributes'], pvol)
         if ldev_info['status'] != 'NML':
             msg = utils.output_log(MSG.INVALID_LDEV_STATUS_FOR_COPY, ldev=pvol)
             self.raise_error(msg)
-        svol = self.create_ldev(size, pool_id)
+        svol = self.create_ldev(size, pool_id, ldev_range)
         try:
-            self.create_pair_on_storage(pvol, svol, is_snapshot=is_snapshot)
+            self.create_pair_on_storage(
+                pvol, svol, snap_pool_id, is_snapshot=is_snapshot)
+            if sync:
+                self.wait_copy_completion(pvol, svol)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
@@ -234,7 +244,10 @@ class HBSDCommon():
 
         size = volume['size']
         pool_id = self.get_pool_id_of_volume(volume)
-        new_ldev = self._copy_on_storage(ldev, size, pool_id)
+        snap_pool_id = self.storage_info['snap_pool_id']
+        ldev_range = self.storage_info['ldev_range']
+        new_ldev = self.copy_on_storage(
+            ldev, size, pool_id, snap_pool_id, ldev_range)
         self.modify_ldev_name(new_ldev, volume['id'].replace("-", ""))
 
         return {
@@ -323,8 +336,10 @@ class HBSDCommon():
             self.raise_error(msg)
         size = snapshot['volume_size']
         pool_id = self.get_pool_id_of_volume(snapshot['volume'])
-        new_ldev = self._copy_on_storage(
-            ldev, size, pool_id, is_snapshot=True)
+        snap_pool_id = self.storage_info['snap_pool_id']
+        ldev_range = self.storage_info['ldev_range']
+        new_ldev = self.copy_on_storage(
+            ldev, size, pool_id, snap_pool_id, ldev_range, is_snapshot=True)
         return {
             'provider_location': str(new_ldev),
         }
@@ -947,7 +962,12 @@ class HBSDCommon():
             MSG.SNAPSHOT_UNMANAGE_FAILED, snapshot_id=snapshot['id'])
         raise NotImplementedError()
 
-    def retype(self):
+    def migrate_volume(self, volume, host):
+        """Migrate the specified volume."""
+        return False
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Retype the specified volume."""
         return False
 
     def has_snap_pair(self, pvol, svol):
