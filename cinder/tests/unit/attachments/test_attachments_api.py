@@ -12,12 +12,14 @@
 
 from unittest import mock
 
+from cinder.compute import nova
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
 from cinder.volume import api as volume_api
@@ -78,10 +80,13 @@ class AttachmentManagerTestCase(test.TestCase):
                                                             attachment.id)
         self.assertEqual(connection_info, new_attachment.connection_info)
 
+    @mock.patch.object(volume_api.API, 'attachment_deletion_allowed')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_delete')
     def test_attachment_delete_reserved(self,
-                                        mock_rpc_attachment_delete):
+                                        mock_rpc_attachment_delete,
+                                        mock_allowed):
         """Test attachment_delete with reserved."""
+        mock_allowed.return_value = None
         volume_params = {'status': 'available'}
 
         vref = tests_utils.create_volume(self.context, **volume_params)
@@ -94,18 +99,22 @@ class AttachmentManagerTestCase(test.TestCase):
         self.assertEqual(vref.id, aref.volume_id)
         self.volume_api.attachment_delete(self.context,
                                           aobj)
+        mock_allowed.assert_called_once_with(self.context, aobj)
 
         # Since it's just reserved and never finalized, we should never make an
         # rpc call
         mock_rpc_attachment_delete.assert_not_called()
 
+    @mock.patch.object(volume_api.API, 'attachment_deletion_allowed')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_delete')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update')
     def test_attachment_create_update_and_delete(
             self,
             mock_rpc_attachment_update,
-            mock_rpc_attachment_delete):
+            mock_rpc_attachment_delete,
+            mock_allowed):
         """Test attachment_delete."""
+        mock_allowed.return_value = None
         volume_params = {'status': 'available'}
         connection_info = {'fake_key': 'fake_value',
                            'fake_key2': ['fake_value1', 'fake_value2']}
@@ -142,6 +151,7 @@ class AttachmentManagerTestCase(test.TestCase):
         self.volume_api.attachment_delete(self.context,
                                           aref)
 
+        mock_allowed.assert_called_once_with(self.context, aref)
         mock_rpc_attachment_delete.assert_called_once_with(self.context,
                                                            aref.id,
                                                            mock.ANY)
@@ -173,10 +183,13 @@ class AttachmentManagerTestCase(test.TestCase):
                                         vref.id)
         self.assertEqual(2, len(vref.volume_attachment))
 
+    @mock.patch.object(volume_api.API, 'attachment_deletion_allowed')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update')
     def test_attachment_create_reserve_delete(
             self,
-            mock_rpc_attachment_update):
+            mock_rpc_attachment_update,
+            mock_allowed):
+        mock_allowed.return_value = None
         volume_params = {'status': 'available'}
         connector = {
             "initiator": "iqn.1993-08.org.debian:01:cad181614cec",
@@ -211,12 +224,15 @@ class AttachmentManagerTestCase(test.TestCase):
         # attachments reserve
         self.volume_api.attachment_delete(self.context,
                                           aref)
+        mock_allowed.assert_called_once_with(self.context, aref)
         vref = objects.Volume.get_by_id(self.context,
                                         vref.id)
         self.assertEqual('reserved', vref.status)
 
-    def test_reserve_reserve_delete(self):
+    @mock.patch.object(volume_api.API, 'attachment_deletion_allowed')
+    def test_reserve_reserve_delete(self, mock_allowed):
         """Test that we keep reserved status across multiple reserves."""
+        mock_allowed.return_value = None
         volume_params = {'status': 'available'}
 
         vref = tests_utils.create_volume(self.context, **volume_params)
@@ -235,6 +251,7 @@ class AttachmentManagerTestCase(test.TestCase):
         self.assertEqual('reserved', vref.status)
         self.volume_api.attachment_delete(self.context,
                                           aref)
+        mock_allowed.assert_called_once_with(self.context, aref)
         vref = objects.Volume.get_by_id(self.context,
                                         vref.id)
         self.assertEqual('reserved', vref.status)
@@ -344,3 +361,169 @@ class AttachmentManagerTestCase(test.TestCase):
                           self.context,
                           vref,
                           fake.UUID1)
+
+    def _get_attachment(self, with_instance_id=True):
+        volume = fake_volume.fake_volume_obj(self.context, id=fake.VOLUME_ID)
+        volume.volume_attachment = objects.VolumeAttachmentList()
+        attachment = fake_volume.volume_attachment_ovo(
+            self.context,
+            volume_id=fake.VOLUME_ID,
+            instance_uuid=fake.INSTANCE_ID if with_instance_id else None,
+            connection_info='{"a": 1}')
+        attachment.volume = volume
+        return attachment
+
+    @mock.patch('cinder.compute.nova.API.get_server_volume')
+    def test_attachment_deletion_allowed_service_call(self, mock_get_server):
+        """Service calls are never redirected."""
+        self.context.service_roles = ['reader', 'service']
+        attachment = self._get_attachment()
+        self.volume_api.attachment_deletion_allowed(self.context, attachment)
+        mock_get_server.assert_not_called()
+
+    @mock.patch('cinder.compute.nova.API.get_server_volume')
+    def test_attachment_deletion_allowed_service_call_different_service_name(
+            self, mock_get_server):
+        """Service calls are never redirected and role can be different.
+
+        In this test we support 2 different service roles, the standard service
+        and a custom one called captain_awesome, and passing the custom one
+        works as expected.
+        """
+        self.override_config('service_token_roles',
+                             ['service', 'captain_awesome'],
+                             group='keystone_authtoken')
+
+        self.context.service_roles = ['reader', 'captain_awesome']
+        attachment = self._get_attachment()
+        self.volume_api.attachment_deletion_allowed(self.context, attachment)
+        mock_get_server.assert_not_called()
+
+    @mock.patch('cinder.compute.nova.API.get_server_volume')
+    def test_attachment_deletion_allowed_no_instance(self, mock_get_server):
+        """Attachments with no instance id are never redirected."""
+        attachment = self._get_attachment(with_instance_id=False)
+        self.volume_api.attachment_deletion_allowed(self.context, attachment)
+        mock_get_server.assert_not_called()
+
+    @mock.patch('cinder.compute.nova.API.get_server_volume')
+    def test_attachment_deletion_allowed_no_conn_info(self, mock_get_server):
+        """Attachments with no connection information are never redirected."""
+        attachment = self._get_attachment(with_instance_id=False)
+        attachment.connection_info = None
+        self.volume_api.attachment_deletion_allowed(self.context, attachment)
+
+        mock_get_server.assert_not_called()
+
+    def test_attachment_deletion_allowed_no_attachment(self):
+        """For users don't allow operation with no attachment reference."""
+        self.assertRaises(exception.ConflictNovaUsingAttachment,
+                          self.volume_api.attachment_deletion_allowed,
+                          self.context, None)
+
+    @mock.patch('cinder.objects.VolumeAttachment.get_by_id',
+                side_effect=exception.VolumeAttachmentNotFound())
+    def test_attachment_deletion_allowed_attachment_id_not_found(self,
+                                                                 mock_get):
+        """For users don't allow if attachment cannot be found."""
+        attachment = self._get_attachment(with_instance_id=False)
+        attachment.connection_info = None
+        self.assertRaises(exception.ConflictNovaUsingAttachment,
+                          self.volume_api.attachment_deletion_allowed,
+                          self.context, fake.ATTACHMENT_ID)
+        mock_get.assert_called_once_with(self.context, fake.ATTACHMENT_ID)
+
+    def test_attachment_deletion_allowed_volume_no_attachments(self):
+        """For users allow if volume has no attachments."""
+        volume = tests_utils.create_volume(self.context)
+        self.volume_api.attachment_deletion_allowed(self.context, None, volume)
+
+    def test_attachment_deletion_allowed_multiple_attachment(self):
+        """For users don't allow if volume has multiple attachments."""
+        attachment = self._get_attachment()
+        volume = attachment.volume
+        volume.volume_attachment = objects.VolumeAttachmentList(
+            objects=[attachment, attachment])
+        self.assertRaises(exception.ConflictNovaUsingAttachment,
+                          self.volume_api.attachment_deletion_allowed,
+                          self.context, None, volume)
+
+    @mock.patch('cinder.compute.nova.API.get_server_volume')
+    def test_attachment_deletion_allowed_vm_not_found(self, mock_get_server):
+        """Don't reject if instance doesn't exist"""
+        mock_get_server.side_effect = nova.API.NotFound(404)
+        attachment = self._get_attachment()
+        self.volume_api.attachment_deletion_allowed(self.context, attachment)
+
+        mock_get_server.assert_called_once_with(self.context, fake.INSTANCE_ID,
+                                                fake.VOLUME_ID)
+
+    @mock.patch('cinder.compute.nova.API.get_server_volume')
+    def test_attachment_deletion_allowed_attachment_from_volume(
+            self, mock_get_server):
+        """Don't reject if instance doesn't exist"""
+        mock_get_server.side_effect = nova.API.NotFound(404)
+        attachment = self._get_attachment()
+        volume = attachment.volume
+        volume.volume_attachment = objects.VolumeAttachmentList(
+            objects=[attachment])
+        self.volume_api.attachment_deletion_allowed(self.context, None, volume)
+
+        mock_get_server.assert_called_once_with(self.context, fake.INSTANCE_ID,
+                                                volume.id)
+
+    @mock.patch('cinder.objects.VolumeAttachment.get_by_id')
+    def test_attachment_deletion_allowed_mismatched_volume_and_attach_id(
+            self, mock_get_attatchment):
+        """Reject if volume and attachment don't match."""
+        attachment = self._get_attachment()
+        volume = attachment.volume
+        volume.volume_attachment = objects.VolumeAttachmentList(
+            objects=[attachment])
+        attachment2 = self._get_attachment()
+        attachment2.volume_id = attachment.volume.id = fake.VOLUME2_ID
+        self.assertRaises(exception.InvalidInput,
+                          self.volume_api.attachment_deletion_allowed,
+                          self.context, attachment2.id, volume)
+        mock_get_attatchment.assert_called_once_with(self.context,
+                                                     attachment2.id)
+
+    @mock.patch('cinder.objects.VolumeAttachment.get_by_id')
+    @mock.patch('cinder.compute.nova.API.get_server_volume')
+    def test_attachment_deletion_allowed_not_found_attachment_id(
+            self, mock_get_server, mock_get_attachment):
+        """Don't reject if instance doesn't exist"""
+        mock_get_server.side_effect = nova.API.NotFound(404)
+        mock_get_attachment.return_value = self._get_attachment()
+
+        self.volume_api.attachment_deletion_allowed(self.context,
+                                                    fake.ATTACHMENT_ID)
+
+        mock_get_attachment.assert_called_once_with(self.context,
+                                                    fake.ATTACHMENT_ID)
+
+        mock_get_server.assert_called_once_with(self.context, fake.INSTANCE_ID,
+                                                fake.VOLUME_ID)
+
+    @mock.patch('cinder.compute.nova.API.get_server_volume')
+    def test_attachment_deletion_allowed_mismatch_id(self, mock_get_server):
+        """Don't reject if attachment id on nova doesn't match"""
+        mock_get_server.return_value.attachment_id = fake.ATTACHMENT2_ID
+        attachment = self._get_attachment()
+        self.volume_api.attachment_deletion_allowed(self.context, attachment)
+
+        mock_get_server.assert_called_once_with(self.context, fake.INSTANCE_ID,
+                                                fake.VOLUME_ID)
+
+    @mock.patch('cinder.compute.nova.API.get_server_volume')
+    def test_attachment_deletion_allowed_user_call_fails(self,
+                                                         mock_get_server):
+        """Fail user calls"""
+        attachment = self._get_attachment()
+        mock_get_server.return_value.attachment_id = attachment.id
+        self.assertRaises(exception.ConflictNovaUsingAttachment,
+                          self.volume_api.attachment_deletion_allowed,
+                          self.context, attachment)
+
+        mock_get_server.assert_called_once_with(self.context, fake.INSTANCE_ID,
+                                                fake.VOLUME_ID)

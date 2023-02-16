@@ -33,6 +33,7 @@ import webob
 
 from cinder.api import common
 from cinder.common import constants
+from cinder import compute
 from cinder import context
 from cinder import coordination
 from cinder import db
@@ -860,11 +861,14 @@ class API(base.Base):
                attachment_id: str) -> None:
         context.authorize(vol_action_policy.DETACH_POLICY,
                           target_obj=volume)
+        self.attachment_deletion_allowed(context, attachment_id, volume)
+
         if volume['status'] == 'maintenance':
             LOG.info('Unable to detach volume, '
                      'because it is in maintenance.', resource=volume)
             msg = _("The volume cannot be detached in maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
+
         detach_results = self.volume_rpcapi.detach_volume(context, volume,
                                                           attachment_id)
         LOG.info("Detach volume completed successfully.",
@@ -891,6 +895,19 @@ class API(base.Base):
                  resource=volume)
         return init_results
 
+    @staticmethod
+    def is_service_request(ctxt: 'context.RequestContext') -> bool:
+        """Check if a request is coming from a service
+
+        A request is coming from a service if it has a service token and the
+        service user has one of the roles configured in the
+        `service_token_roles` configuration option in the
+        `[keystone_authtoken]` section (defaults to `service`).
+        """
+        roles = ctxt.service_roles
+        service_roles = set(CONF.keystone_authtoken.service_token_roles)
+        return bool(roles and service_roles.intersection(roles))
+
     def terminate_connection(self,
                              context: context.RequestContext,
                              volume: objects.Volume,
@@ -898,6 +915,8 @@ class API(base.Base):
                              force: bool = False) -> None:
         context.authorize(vol_action_policy.TERMINATE_POLICY,
                           target_obj=volume)
+        self.attachment_deletion_allowed(context, None, volume)
+
         self.volume_rpcapi.terminate_connection(context,
                                                 volume,
                                                 connector,
@@ -2520,11 +2539,90 @@ class API(base.Base):
         attachment_ref.save()
         return attachment_ref
 
+    def attachment_deletion_allowed(self,
+                                    ctxt: context.RequestContext,
+                                    attachment_or_attachment_id,
+                                    volume=None):
+        """Check if deleting an attachment is allowed (Bug #2004555)
+
+        Allowed is based on the REST API policy, the status of the attachment,
+        where it is used, and who is making the request.
+
+        Deleting an attachment on the Cinder side while leaving the volume
+        connected to the nova host results in leftover devices that can lead to
+        data leaks/corruption.
+
+        OS-Brick may have code to detect it, but in some cases it is detected
+        after it has already been exposed, so it's better to prevent users from
+        being able to intentionally triggering the issue.
+        """
+        # It's ok to delete an attachment if the request comes from a service
+        if self.is_service_request(ctxt):
+            return
+
+        if not attachment_or_attachment_id and volume:
+            if not volume.volume_attachment:
+                return
+            if len(volume.volume_attachment) == 1:
+                attachment_or_attachment_id = volume.volume_attachment[0]
+
+        if isinstance(attachment_or_attachment_id, str):
+            try:
+                attachment = objects.VolumeAttachment.get_by_id(
+                    ctxt, attachment_or_attachment_id)
+            except exception.VolumeAttachmentNotFound:
+                attachment = None
+        else:
+            attachment = attachment_or_attachment_id
+
+        if attachment:
+            if volume:
+                if volume.id != attachment.volume_id:
+                    raise exception.InvalidInput(
+                        reason='Mismatched volume and attachment')
+
+            server_id = attachment.instance_uuid
+            # It's ok to delete if it's not connected to a vm.
+            if not server_id or not attachment.connection_info:
+                return
+
+            volume = volume or attachment.volume
+            nova = compute.API()
+            LOG.info('Attachment connected to vm %s, checking data on nova',
+                     server_id)
+            # If nova is down the client raises 503 and we report that
+            try:
+                nova_volume = nova.get_server_volume(ctxt, server_id,
+                                                     volume.id)
+            except nova.NotFound:
+                LOG.warning('Instance or volume not found on Nova, deleting '
+                            'attachment locally, which may leave leftover '
+                            'devices on Nova compute')
+                return
+
+            if nova_volume.attachment_id != attachment.id:
+                LOG.warning('Mismatch! Nova has different attachment id (%s) '
+                            'for the volume, deleting attachment locally. '
+                            'May leave leftover devices in a compute node',
+                            nova_volume.attachment_id)
+                return
+        else:
+            server_id = ''
+
+        LOG.error('Detected user call to delete in-use attachment. Call must '
+                  'come from the nova service and nova must be configured to '
+                  'send the service token. Bug #2004555')
+        raise exception.ConflictNovaUsingAttachment(instance_id=server_id)
+
     def attachment_delete(self,
                           ctxt: context.RequestContext,
                           attachment) -> objects.VolumeAttachmentList:
+        # Check if policy allows user to delete attachment
         ctxt.authorize(attachment_policy.DELETE_POLICY,
                        target_obj=attachment)
+
+        self.attachment_deletion_allowed(ctxt, attachment)
+
         volume = attachment.volume
 
         if attachment.attach_status == fields.VolumeAttachStatus.RESERVED:

@@ -133,6 +133,7 @@ def novaclient(context, privileged_user=False, timeout=None, api_version=None):
 
 class API(base.Base):
     """API for interacting with novaclient."""
+    NotFound = nova_exceptions.NotFound
 
     def __init__(self):
         self.message_api = message_api.API()
@@ -237,3 +238,9 @@ class API(base.Base):
                 resource_uuid=volume_id,
                 detail=message_field.Detail.NOTIFY_COMPUTE_SERVICE_FAILED)
         return result
+
+    @staticmethod
+    def get_server_volume(context, server_id, volume_id):
+        # Use microversion that includes attachment_id
+        nova = novaclient(context, api_version='2.89')
+        return nova.volumes.get_server_volume(server_id, volume_id)
