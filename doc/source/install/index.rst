@@ -35,6 +35,13 @@ Adding Cinder to your OpenStack Environment
 
 The following links describe how to install the Cinder Block Storage Service:
 
+.. warning::
+
+   For security reasons **Service Tokens must to be configured** in OpenStack
+   for Cinder to operate securely.  Pay close attention to the :doc:`specific
+   section describing it: <../configuration/block-storage/service-token>`. See
+   https://bugs.launchpad.net/nova/+bug/2004555 for details.
+
 .. toctree::
 
    get-started-block-storage
