@@ -159,6 +159,8 @@ class AttachmentsAPITestCase(test.TestCase):
     @ddt.data('reserved', 'attached')
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'attachment_delete')
     def test_delete_attachment(self, status, mock_delete):
+        self.patch('cinder.volume.api.API.attachment_deletion_allowed',
+                   return_value=None)
         volume1 = self._create_volume(display_name='fake_volume_1',
                                       project_id=fake.PROJECT_ID)
         attachment = self._create_attachment(

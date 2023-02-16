@@ -6,6 +6,7 @@ Cinder Service Configuration
    :maxdepth: 1
 
    block-storage/block-storage-overview.rst
+   block-storage/service-token.rst
    block-storage/volume-drivers.rst
    block-storage/backup-drivers.rst
    block-storage/schedulers.rst
@@ -15,9 +16,15 @@ Cinder Service Configuration
    block-storage/policy-config-HOWTO.rst
    block-storage/fc-zoning.rst
    block-storage/volume-encryption.rst
-   block-storage/service-token.rst
    block-storage/config-options.rst
    block-storage/samples/index.rst
+
+.. warning::
+
+   For security reasons **Service Tokens must to be configured** in OpenStack
+   for Cinder to operate securely.  Pay close attention to the :doc:`specific
+   section describing it: <block-storage/service-token>`. See
+   https://bugs.launchpad.net/nova/+bug/2004555 for details.
 
 .. note::
 
