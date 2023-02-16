@@ -62,6 +62,9 @@ class AttachmentsPolicyTest(base.BasePolicyTest):
 
         self.api_path = '/v3/%s/attachments' % (self.project_id)
         self.api_version = mv.NEW_ATTACH
+        self.mock_is_service = self.patch(
+            'cinder.volume.api.API.is_service_request',
+            return_value=True)
 
     def _initialize_connection(self, volume, connector):
         return {'data': connector}

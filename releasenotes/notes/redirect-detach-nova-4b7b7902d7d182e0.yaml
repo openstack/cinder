@@ -1,0 +1,43 @@
+---
+critical:
+  - |
+    Detaching volumes will fail if Nova is not `configured to send service
+    tokens <https://docs.openstack.org/cinder/latest/configuration/block-storage/service-token.html>`_,
+    please read the upgrade section for more information. (`Bug #2004555
+    <https://bugs.launchpad.net/cinder/+bug/2004555>`_).
+upgrade:
+  - |
+    Nova must be `configured to send service tokens
+    <https://docs.openstack.org/cinder/latest/configuration/block-storage/service-token.html>`_
+    **and** cinder must be configured to recognize at least one of the roles
+    that the nova service user has been assigned in keystone. By default,
+    cinder will recognize the ``service`` role, so if the nova service user
+    is assigned a differently named role in your cloud, you must adjust your
+    cinder configuration file (``service_token_roles`` configuration option
+    in the ``keystone_authtoken`` section). If nova and cinder are not
+    configured correctly in this regard, detaching volumes will no longer
+    work (`Bug #2004555 <https://bugs.launchpad.net/cinder/+bug/2004555>`_).
+security:
+  - |
+    As part of the fix for `Bug #2004555
+    <https://bugs.launchpad.net/cinder/+bug/2004555>`_, cinder now rejects
+    user attachment delete requests for attachments that are being used by nova
+    instances to ensure that no leftover devices are produced on the compute
+    nodes which could be used to access another project's volumes.  Terminate
+    connection, detach, and force detach volume actions (calls that are not
+    usually made by users directly) are, in most cases, not allowed for users.
+fixes:
+  - |
+    `Bug #2004555 <https://bugs.launchpad.net/cinder/+bug/2004555>`_: Fixed
+    issue where a user manually deleting an attachment, calling terminate
+    connection, detach, or force detach, for a volume that is still used by a
+    nova instance resulted in leftover devices on the compute node. These
+    operations will now fail when it is believed to be a problem.
+issues:
+  - |
+    For security reasons (`Bug #2004555
+    <https://bugs.launchpad.net/cinder/+bug/2004555>`_) manually deleting an
+    attachment, manually doing the ``os-terminate_connection``, ``os-detach``
+    or ``os-force_detach`` actions will no longer be allowed in most cases
+    unless the request is coming from another OpenStack service on behalf of a
+    user.
