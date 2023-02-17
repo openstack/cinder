@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1910767 <https://bugs.launchpad.net/cinder/+bug/1910767>`_: Fixed
+    the calculation of the allocated capacity for the volume manager.
+    The fix takes into account all volumes that have a host setting, not just
+    volumes with a status of 'in-use' or 'available'.
