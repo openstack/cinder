@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Pure Storage driver: Added replication capability to backend pool information.
+    Response will be ```async```, ```sync``` or```trisync```. ```sync``` implies
+    support for ```async``` and ```trisync``` implies support for ```sync``` and ```async```.

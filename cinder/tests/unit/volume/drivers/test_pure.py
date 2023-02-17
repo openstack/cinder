@@ -4300,12 +4300,61 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
         actual_ratio = self.driver._get_thin_provisioning(provisioned, used)
         self.assertEqual(expected_ratio, actual_ratio)
 
+    @ddt.data(
+        dict(
+            connections=[
+                {'status': 'connected', 'type': 'sync-replication'},
+            ],
+            expected='sync'),
+        dict(
+            connections=[
+                {'status': 'connected', 'type': 'async-replication'}
+            ],
+            expected='async'),
+        dict(
+            connections=[
+                {'status': 'connected', 'type': 'async-replication'},
+                {'status': 'connected', 'type': 'sync-replication'},
+                {'status': 'connected', 'type': 'async-replication'}
+            ],
+            expected='trisync'),
+        dict(
+            connections=[
+                {'status': 'connected', 'type': 'async-replication'},
+                {'status': 'connected', 'type': 'async-replication'}
+            ],
+            expected='async'),
+        dict(
+            connections=[
+                {'status': 'connected', 'type': 'sync-replication'},
+                {'status': 'connected', 'type': 'sync-replication'}
+            ],
+            expected='sync'),
+        dict(
+            connections=[
+                {'status': 'connected', 'type': 'sync-replication'},
+                {'status': 'connected', 'type': 'async-replication'}
+            ],
+            expected='trisync'),
+        dict(
+            connections=[
+                {'status': 'connecting', 'type': 'sync-replication'}
+            ],
+            expected=None))
+    @ddt.unpack
+    def test_get_replication_capability(self, connections, expected):
+        self.array.list_array_connections.return_value = connections
+        connection_status = self.driver._get_replication_capability()
+        self.assertEqual(expected, connection_status)
+
+    @mock.patch(BASE_DRIVER_OBJ + '._get_replication_capability')
     @mock.patch(BASE_DRIVER_OBJ + '.get_goodness_function')
     @mock.patch(BASE_DRIVER_OBJ + '.get_filter_function')
     @mock.patch(BASE_DRIVER_OBJ + '._get_provisioned_space')
     @mock.patch(BASE_DRIVER_OBJ + '._get_thin_provisioning')
     def test_get_volume_stats(self, mock_get_thin_provisioning, mock_get_space,
-                              mock_get_filter, mock_get_goodness):
+                              mock_get_filter, mock_get_goodness,
+                              mock_get_replication_capability):
         filter_function = 'capabilities.total_volumes < 10'
         goodness_function = '90'
         num_hosts = 20
@@ -4320,6 +4369,7 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
         mock_get_space.return_value = (PROVISIONED_CAPACITY * units.Gi, 100)
         mock_get_filter.return_value = filter_function
         mock_get_goodness.return_value = goodness_function
+        mock_get_replication_capability.return_value = 'sync'
         mock_get_thin_provisioning.return_value = (PROVISIONED_CAPACITY /
                                                    USED_SPACE)
 
@@ -4351,6 +4401,7 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
             'usec_per_read_op': PERF_INFO['usec_per_read_op'],
             'usec_per_write_op': PERF_INFO['usec_per_write_op'],
             'queue_depth': PERF_INFO['queue_depth'],
+            'replication_capability': 'sync',
             'replication_enabled': False,
             'replication_type': [],
             'replication_count': 0,
