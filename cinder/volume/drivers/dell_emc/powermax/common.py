@@ -1424,6 +1424,7 @@ class PowerMaxCommon(object):
                 'reserved_percentage': 0,
                 'replication_enabled': self.replication_enabled,
                 'replication_targets': self.replication_targets,
+                'sparse_copy_volume': True,
                 'pools': pools}
 
         return data

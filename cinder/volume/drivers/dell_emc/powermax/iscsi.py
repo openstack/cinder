@@ -136,9 +136,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Use of snap id instead of generation (bp powermax-snapset-ids)
               - Support for Failover Abilities (bp/powermax-failover-abilities)
         4.4.0 - Early check for status of port
+        4.4.1 - Report trim/discard support
     """
 
-    VERSION = "4.4.0"
+    VERSION = "4.4.1"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerMAX_CI"
@@ -421,6 +422,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         properties['target_discovered'] = True
         properties['target_lun'] = host_lun_id
         properties['volume_id'] = volume.id
+        properties['discard'] = True
 
         if self.configuration.safe_get('use_chap_auth'):
             LOG.info("Chap authentication enabled.")

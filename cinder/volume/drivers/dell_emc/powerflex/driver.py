@@ -94,9 +94,10 @@ class PowerFlexDriver(driver.VolumeDriver):
           3.5.5 - Rebrand VxFlex OS to PowerFlex.
           3.5.6 - Fix for Bug #1897598 when volume can be migrated without
                   conversion of its type.
+          3.5.7 - Report trim/discard support.
     """
 
-    VERSION = "3.5.6"
+    VERSION = "3.5.7"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerFlex_CI"
 
@@ -839,7 +840,14 @@ class PowerFlexDriver(driver.VolumeDriver):
         self._get_client().remove_volume(snapshot.provider_id)
 
     def initialize_connection(self, volume, connector, **kwargs):
-        return self._initialize_connection(volume, connector, volume.size)
+        res = self._initialize_connection(volume, connector, volume.size)
+
+        # TODO: Should probably be enabled for SSDs as well
+        # It is recommended not to trim volumes that contain snapshots as the
+        # logical capacity may not shrink.
+        if self.provisioning_type == 'thin' and not len(volume.snapshots):
+            res['data']['discard'] = True
+        return res
 
     def _initialize_connection(self, vol_or_snap, connector, vol_size):
         """Initialize connection and return connection info.
@@ -1026,6 +1034,8 @@ class PowerFlexDriver(driver.VolumeDriver):
                      "prov": backend_provisioned_capacity,
                  })
         stats["pools"] = pools
+        # TODO: Should probably be enabled for SSDs as well
+        stats['sparse_copy_volume'] = self.provisioning_type == 'thin'
         self._stats = stats
 
     def _query_pool_stats(self, domain_name, pool_name):
