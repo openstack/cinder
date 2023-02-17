@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Hitachi driver: Additionally support following storages,
+    Hitachi VSP E590, Hitachi VSP E790 and Hitachi VSP E1090.
