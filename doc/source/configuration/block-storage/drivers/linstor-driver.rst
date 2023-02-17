@@ -4,6 +4,16 @@ LINSTOR driver
 
 The LINSTOR driver allows Cinder to use DRBD/LINSTOR instances.
 
+External package installation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The driver requires the ``python-linstor`` package for communication with the
+LINSTOR Controller. Install the package from PYPI using the following command:
+
+.. code-block:: console
+
+   $ python -m pip install python-linstor
+
 Configuration
 ~~~~~~~~~~~~~
 
