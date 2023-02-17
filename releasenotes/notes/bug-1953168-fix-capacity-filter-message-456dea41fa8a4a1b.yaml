@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1953168 <https://bugs.launchpad.net/cinder/+bug/1953168>`_: Fixed
+    missing parameter in the capacity filter log message.
