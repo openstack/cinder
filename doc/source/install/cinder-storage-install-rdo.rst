@@ -21,8 +21,8 @@ storage node, you must prepare the storage device.
 
      .. end
 
-   * Start the LVM metadata service and configure it to start when the
-     system boots:
+   * This is not required for CentOS 8 or later, which comes with a
+     version of LVM that does not use the lvmetad service:
 
      .. code-block:: console
 
