@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2022, Hitachi, Ltd.
+# Copyright (C) 2020, 2023, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -72,6 +72,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         2.2.2 - Add Target Port Assignment.
         2.2.3 - Add port scheduler.
         2.3.0 - Support multi pool.
+        2.3.1 - Update retype and support storage assisted migration.
 
     """
 
@@ -246,7 +247,12 @@ class HBSDFCDriver(driver.FibreChannelDriver):
     @volume_utils.trace
     def retype(self, ctxt, volume, new_type, diff, host):
         """Retype the specified volume."""
-        return self.common.retype()
+        return self.common.retype(ctxt, volume, new_type, diff, host)
+
+    @volume_utils.trace
+    def migrate_volume(self, ctxt, volume, host):
+        """Migrate the specified volume."""
+        return self.common.migrate_volume(volume, host)
 
     def backup_use_temp_snapshot(self):
         return True

@@ -1,4 +1,4 @@
-# Copyright (C) 2021 NEC corporation
+# Copyright (C) 2021, 2023, NEC corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -186,6 +186,7 @@ GET_LDEV_RESULT = {
     "blockCapacity": 2097152,
     "attributes": ["CVS", "DP"],
     "status": "NML",
+    "poolId": 30,
 }
 
 GET_LDEV_RESULT_MAPPED = {
@@ -953,14 +954,23 @@ class VStorageRESTFCDriverTest(test.TestCase):
             self.driver.unmanage_snapshot,
             TEST_SNAPSHOT[0])
 
-    def test_retype(self):
+    @mock.patch.object(requests.Session, "request")
+    def test_retype(self, request):
+        request.return_value = FakeResponse(200, GET_LDEV_RESULT)
         new_specs = {'nec:test': 'test'}
         new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
         diff = {}
-        host = {}
+        host = {
+            'capabilities': {
+                'location_info': {
+                    'pool_id': 30,
+                },
+            },
+        }
         ret = self.driver.retype(
             self.ctxt, TEST_VOLUME[0], new_type_ref, diff, host)
-        self.assertFalse(ret)
+        self.assertEqual(1, request.call_count)
+        self.assertTrue(ret)
 
     def test_backup_use_temp_snapshot(self):
         self.assertTrue(self.driver.backup_use_temp_snapshot())

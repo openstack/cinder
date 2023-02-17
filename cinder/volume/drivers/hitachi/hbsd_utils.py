@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2022, Hitachi, Ltd.
+# Copyright (C) 2020, 2023, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -25,7 +25,7 @@ from oslo_utils import units
 
 from cinder import exception
 
-VERSION = '2.3.0'
+VERSION = '2.3.1'
 CI_WIKI_NAME = 'Hitachi_VSP_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
@@ -42,6 +42,9 @@ PAIR_ATTR = 'HTI'
 GIGABYTE_PER_BLOCK_SIZE = units.Gi / 512
 
 NORMAL_LDEV_TYPE = 'Normal'
+
+FULL = 'Full copy'
+THIN = 'Thin copy'
 
 INFO_SUFFIX = 'I'
 WARNING_SUFFIX = 'W'
@@ -477,6 +480,14 @@ class HBSDMsg(enum.Enum):
         'loglevel': base_logging.ERROR,
         'msg': 'Failed to initialize volume connection because no available '
                'resource of host group or wwn was found. (ports: %(ports)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    MIGRATE_VOLUME_FAILED = {
+        'msg_id': 760,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to migrate a volume. The volume is in a copy pair that '
+               'cannot be deleted. (volume: %(volume)s, LDEV: %(ldev)s, '
+               '(P-VOL, S-VOL, copy method, status): %(pair_info)s)',
         'suffix': ERROR_SUFFIX,
     }
 
