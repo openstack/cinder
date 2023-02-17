@@ -167,6 +167,8 @@
       configure_swap_size: 4096
       zuul_additional_subunit_dirs:
         - "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
+      devstack_localrc:
+        CEPH_MIN_CLIENT_VERSION: "mimic"
       devstack_local_conf:
         test-config:
           $TEMPEST_CONFIG:
