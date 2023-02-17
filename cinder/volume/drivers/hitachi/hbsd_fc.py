@@ -73,6 +73,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         2.2.3 - Add port scheduler.
         2.3.0 - Support multi pool.
         2.3.1 - Update retype and support storage assisted migration.
+        2.3.2 - Add specifies format of the names HostGroups/iSCSI Targets.
 
     """
 
@@ -90,6 +91,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
 
         self.configuration.append_config_values(common.COMMON_VOLUME_OPTS)
         self.configuration.append_config_values(common.COMMON_PORT_OPTS)
+        self.configuration.append_config_values(common.COMMON_NAME_OPTS)
         self.configuration.append_config_values(rest_fc.FC_VOLUME_OPTS)
         os.environ['LANG'] = 'C'
         self.common = self._init_common(self.configuration, kwargs.get('db'))
@@ -106,6 +108,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
                'san_api_port', ]))
         return (common.COMMON_VOLUME_OPTS +
                 common.COMMON_PORT_OPTS +
+                common.COMMON_NAME_OPTS +
                 rest.REST_VOLUME_OPTS +
                 rest_fc.FC_VOLUME_OPTS +
                 additional_opts)

@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2021, Hitachi, Ltd.
+# Copyright (C) 2020, 2023, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -90,10 +90,7 @@ class HBSDRESTISCSI(rest.HBSDREST):
 
     def create_target_to_storage(self, port, connector, hba_ids):
         """Create an iSCSI target on the specified port."""
-        target_name = '%(prefix)s-%(ip)s' % {
-            'prefix': self.driver_info['driver_prefix'],
-            'ip': connector['ip'],
-        }
+        target_name = self.create_target_name(connector)
         body = {'portId': port, 'hostGroupName': target_name}
         if hba_ids:
             body['iscsiName'] = '%(id)s%(suffix)s' % {
@@ -183,10 +180,7 @@ class HBSDRESTISCSI(rest.HBSDREST):
         for port in target_ports:
             targets['info'][port] = False
             if 'ip' in connector:
-                target_name = '%(prefix)s-%(ip)s' % {
-                    'prefix': self.driver_info['driver_prefix'],
-                    'ip': connector['ip'],
-                }
+                target_name = self.create_target_name(connector)
                 if self._set_target_info_by_name(
                         targets, port, target_name, iqn):
                     continue

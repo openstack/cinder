@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2021, Hitachi, Ltd.
+# Copyright (C) 2020, 2023, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -128,11 +128,7 @@ class HBSDRESTFC(rest.HBSDREST):
 
     def create_target_to_storage(self, port, connector, hba_ids):
         """Create a host group on the specified port."""
-        wwpns = self.get_hba_ids_from_connector(connector)
-        target_name = '%(prefix)s-%(wwpns)s' % {
-            'prefix': self.driver_info['driver_prefix'],
-            'wwpns': min(wwpns),
-        }
+        target_name = self.create_target_name(connector)
         try:
             body = {'portId': port,
                     'hostGroupName': target_name}
@@ -232,12 +228,7 @@ class HBSDRESTFC(rest.HBSDREST):
             self, targets, connector, target_ports):
         """Find mapped ports, memorize them and return unmapped port count."""
         wwpns = self.get_hba_ids_from_connector(connector)
-        target_names = [
-            '%(prefix)s-%(wwpns)s' % {
-                'prefix': self.driver_info['driver_prefix'],
-                'wwpns': min(wwpns),
-            }
-        ]
+        target_names = [self.create_target_name(connector)]
         if 'ip' in connector:
             target_names.append(
                 '%(prefix)s-%(ip)s' % {

@@ -470,6 +470,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.configuration.hitachi_copy_check_interval = 3
         self.configuration.hitachi_async_copy_check_interval = 10
         self.configuration.hitachi_port_scheduler = False
+        self.configuration.hitachi_group_name_format = None
 
         self.configuration.san_login = CONFIG_MAP['user_id']
         self.configuration.san_password = CONFIG_MAP['user_pass']
@@ -616,6 +617,54 @@ class HBSDRESTFCDriverTest(test.TestCase):
         # stop the Loopingcall within the do_setup treatment
         self.driver.common.client.keep_session_loop.stop()
         self.driver.common.client.keep_session_loop.wait()
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(
+        volume_utils, 'brick_get_connector_properties',
+        side_effect=_brick_get_connector_properties)
+    def test_do_setup_create_hg_format(
+            self, brick_get_connector_properties, request):
+        drv = hbsd_fc.HBSDFCDriver(configuration=self.configuration)
+        self._setup_config()
+        self.configuration.hitachi_group_name_format = (
+            'HBSD-{wwn}-{host}-_:.@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
+                               FakeResponse(200, GET_PORTS_RESULT),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        drv.do_setup(None)
+        self.assertEqual(
+            {CONFIG_MAP['port_id']: CONFIG_MAP['target_wwn']},
+            drv.common.storage_info['wwns'])
+        self.assertEqual(1, brick_get_connector_properties.call_count)
+        self.assertEqual(8, request.call_count)
+        # stop the Loopingcall within the do_setup treatment
+        self.driver.common.client.keep_session_loop.stop()
+        self.driver.common.client.keep_session_loop.wait()
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(
+        volume_utils, 'brick_get_connector_properties',
+        side_effect=_brick_get_connector_properties)
+    def test_do_setup_create_hg_format_error(
+            self, brick_get_connector_properties, request):
+        drv = hbsd_fc.HBSDFCDriver(configuration=self.configuration)
+        self._setup_config()
+        self.configuration.hitachi_group_name_format = '{host}-{wwn}'
+        request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
+                               FakeResponse(200, GET_PORTS_RESULT),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+
+        self.assertRaises(exception.VolumeDriverException, drv.do_setup, None)
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(
@@ -1286,6 +1335,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         ret = self.driver.get_driver_options()
         actual = (hbsd_common.COMMON_VOLUME_OPTS +
                   hbsd_common.COMMON_PORT_OPTS +
+                  hbsd_common.COMMON_NAME_OPTS +
                   hbsd_rest.REST_VOLUME_OPTS +
                   hbsd_rest_fc.FC_VOLUME_OPTS)
         self.assertEqual(actual, ret)

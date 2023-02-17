@@ -15,6 +15,7 @@
 """REST interface module for Hitachi HBSD Driver."""
 
 from collections import defaultdict
+import re
 
 from oslo_config import cfg
 from oslo_config import types
@@ -33,6 +34,9 @@ from cinder.volume.drivers.hitachi import hbsd_rest_api as rest_api
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_utils
+
+_GROUP_NAME_PROHIBITED_CHAR_PATTERN = re.compile(
+    '[^' + common.GROUP_NAME_ALLOWED_CHARS + ']')
 
 _LU_PATH_DEFINED = ('B958', '015A')
 NORMAL_STS = 'NML'
@@ -1312,3 +1316,21 @@ class HBSDREST(common.HBSDCommon):
             msg = utils.output_log(
                 MSG.VOLUME_COPY_FAILED, pvol=pvol, svol=svol)
             self.raise_error(msg)
+
+    def create_target_name(self, connector):
+        wwn = (min(self.get_hba_ids_from_connector(connector)) if
+               self.format_info['group_name_var_cnt'][
+                   common.GROUP_NAME_VAR_WWN] else '')
+        ip = (connector['ip'] if self.format_info[
+            'group_name_var_cnt'][common.GROUP_NAME_VAR_IP] else '')
+        if not self.format_info['group_name_var_cnt'][
+                common.GROUP_NAME_VAR_HOST]:
+            return self.format_info['group_name_format'].format(wwn=wwn, ip=ip)
+        host = connector['host'] if 'host' in connector else ''
+        max_host_len = (self.group_name_format['group_name_max_len'] -
+                        self.format_info['group_name_format_without_var_len'] -
+                        len(wwn) - len(ip))
+        host = _GROUP_NAME_PROHIBITED_CHAR_PATTERN.sub(
+            '_', host[:max_host_len])
+        return self.format_info['group_name_format'].format(
+            host=host, wwn=wwn, ip=ip)
