@@ -59,7 +59,7 @@ allowing a finer control of when and what quotas are fixed.
 
 **Checking if quotas and reservations are correct.**
 
-``cinder-manage quota check [-h] [--project-id PROJECT_ID] [--use-locks]``
+``cinder-manage quota check [-h] [--project-id PROJECT_ID]``
 
 Accepted arguments are:
 
@@ -68,21 +68,11 @@ Accepted arguments are:
    --project-id PROJECT_ID
                          The ID of the project where we want to sync the quotas
                          (defaults to all projects).
-   --use-locks           For precise results tables in the DB need to be
-                         locked.
 
 This command checks quotas and reservations, for a specific project (passing
 ``--project-id``) or for all projects, to see if they are out of sync.
 
 The check will also look for duplicated entries.
-
-By default it runs in the least accurate mode (where races have a higher
-chance of happening) to minimize the impact on running cinder services.  This
-means that false errors are more likely to be reported due to race conditions
-when Cinder services are running.
-
-Accurate mode is also supported, but it will lock many tables (affecting all
-tenants) and is not recommended with services that are being used.
 
 One way to use this action in combination with the sync action is to run the
 check for all projects, take note of those that are out of sync, and the sync
@@ -90,7 +80,7 @@ them one by one at intervals to allow cinder to operate semi-normally.
 
 **Fixing quotas and reservations**
 
-``cinder-manage quota sync [-h] [--project-id PROJECT_ID] [--no-locks]``
+``cinder-manage quota sync [-h] [--project-id PROJECT_ID]``
 
 Accepted arguments are:
 
@@ -99,19 +89,14 @@ Accepted arguments are:
   --project-id PROJECT_ID
                         The ID of the project where we want to sync the quotas
                         (defaults to all projects).
-  --no-locks            For less precise results, but also less intrusive.
 
 This command refreshes existing quota usage and reservation count for a
 specific project or for all projects.
 
 The refresh will also remove duplicated entries.
 
-This operation is best executed when Cinder is not running, as it requires
-locking many tables (affecting all tenants) to make sure that then sync is
-accurate.
-
-If accuracy is not our top priority, or we know that a specific project is not
-in use, we can disable the locking.
+This operation is best executed when Cinder is not running, but it can
+be run with cinder services running as well.
 
 A different transaction is used for each project's quota sync, so an action
 failure will only rollback the current project's changes.
