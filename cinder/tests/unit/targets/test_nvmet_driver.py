@@ -34,96 +34,79 @@ class TestNVMETDriver(tf.TargetDriverFixture):
                                   configuration=self.configuration)
         fake_nvmet_lib.reset_mock()
 
-    @mock.patch.object(nvmet.NVMET, 'create_nvmeof_target')
-    def test_create_export(self, mock_create_target):
-        """Test that the nvmeof class calls the nvmet method."""
-        res = self.target.create_export(mock.sentinel.ctxt,
-                                        self.testvol,
-                                        mock.sentinel.volume_path)
-        self.assertEqual(mock_create_target.return_value, res)
-        mock_create_target.assert_called_once_with(
-            self.testvol['id'],
-            self.target.configuration.target_prefix,
-            self.target.target_ip,
-            self.target.target_port,
-            self.target.nvme_transport_type,
-            self.target.nvmet_port_id,
-            self.target.nvmet_ns_id,
-            mock.sentinel.volume_path)
-
+    @mock.patch.object(nvmet.NVMET, '_get_nvme_uuid')
     @mock.patch.object(nvmet.NVMET, 'get_nvmeof_location')
     @mock.patch.object(nvmet.NVMET, '_ensure_port_exports')
     @mock.patch.object(nvmet.NVMET, '_ensure_subsystem_exists')
     @mock.patch.object(nvmet.NVMET, '_get_target_nqn')
-    def test_create_nvmeof_target(self, mock_nqn, mock_subsys, mock_port,
-                                  mock_location):
+    def test_create_export(self, mock_nqn, mock_subsys, mock_port,
+                           mock_location, mock_uuid):
         """Normal create target execution."""
         mock_nqn.return_value = mock.sentinel.nqn
+        mock_uuid.return_value = mock.sentinel.uuid
+        vol = mock.Mock()
 
-        res = self.target.create_nvmeof_target(mock.sentinel.vol_id,
-                                               mock.sentinel.target_prefix,
-                                               mock.sentinel.target_ip,
-                                               mock.sentinel.target_port,
-                                               mock.sentinel.transport_type,
-                                               mock.sentinel.port_id,
-                                               mock.sentinel.ns_id,
-                                               mock.sentinel.volume_path)
+        res = self.target.create_export(mock.sentinel.context,
+                                        vol,
+                                        mock.sentinel.volume_path)
 
         self.assertEqual({'location': mock_location.return_value, 'auth': ''},
                          res)
-        mock_nqn.assert_called_once_with(mock.sentinel.vol_id)
+        mock_nqn.assert_called_once_with(vol.id)
+        mock_uuid.assert_called_once_with(vol)
         mock_subsys.assert_called_once_with(mock.sentinel.nqn,
-                                            mock.sentinel.ns_id,
-                                            mock.sentinel.volume_path)
+                                            self.target.nvmet_ns_id,
+                                            mock.sentinel.volume_path,
+                                            mock.sentinel.uuid)
         mock_port.assert_called_once_with(mock.sentinel.nqn,
-                                          mock.sentinel.target_ip,
-                                          mock.sentinel.target_port,
-                                          mock.sentinel.transport_type,
-                                          mock.sentinel.port_id)
+                                          self.target.target_ip,
+                                          self.target.target_port,
+                                          self.target.nvme_transport_type,
+                                          self.target.nvmet_port_id)
 
         mock_location.assert_called_once_with(mock.sentinel.nqn,
-                                              mock.sentinel.target_ip,
-                                              mock.sentinel.target_port,
-                                              mock.sentinel.transport_type,
-                                              mock.sentinel.ns_id)
+                                              self.target.target_ip,
+                                              self.target.target_port,
+                                              self.target.nvme_transport_type,
+                                              self.target.nvmet_ns_id)
 
     @ddt.data((ValueError, None), (None, IndexError))
     @ddt.unpack
+    @mock.patch.object(nvmet.NVMET, '_get_nvme_uuid')
     @mock.patch.object(nvmet.NVMET, 'get_nvmeof_location')
     @mock.patch.object(nvmet.NVMET, '_ensure_port_exports')
     @mock.patch.object(nvmet.NVMET, '_ensure_subsystem_exists')
     @mock.patch.object(nvmet.NVMET, '_get_target_nqn')
-    def test_create_nvmeof_target_error(self, subsys_effect, port_effect,
-                                        mock_nqn, mock_subsys, mock_port,
-                                        mock_location):
+    def test_create_export_error(self, subsys_effect, port_effect,
+                                 mock_nqn, mock_subsys, mock_port,
+                                 mock_location, mock_uuid):
         """Failing create target executing subsystem or port creation."""
         mock_subsys.side_effect = subsys_effect
         mock_port.side_effect = port_effect
         mock_nqn.return_value = mock.sentinel.nqn
+        mock_uuid.return_value = mock.sentinel.uuid
+        vol = mock.Mock()
 
         self.assertRaises(nvmet.NVMETTargetAddError,
-                          self.target.create_nvmeof_target,
-                          mock.sentinel.vol_id,
-                          mock.sentinel.target_prefix,
-                          mock.sentinel.target_ip,
-                          mock.sentinel.target_port,
-                          mock.sentinel.transport_type,
-                          mock.sentinel.port_id,
-                          mock.sentinel.ns_id,
+                          self.target.create_export,
+                          mock.sentinel.context,
+                          vol,
                           mock.sentinel.volume_path)
 
-        mock_nqn.assert_called_once_with(mock.sentinel.vol_id)
+        mock_nqn.assert_called_once_with(vol.id)
+        mock_uuid.assert_called_once_with(vol)
         mock_subsys.assert_called_once_with(mock.sentinel.nqn,
-                                            mock.sentinel.ns_id,
-                                            mock.sentinel.volume_path)
+                                            self.target.nvmet_ns_id,
+                                            mock.sentinel.volume_path,
+                                            mock.sentinel.uuid)
         if subsys_effect:
             mock_port.assert_not_called()
         else:
             mock_port.assert_called_once_with(mock.sentinel.nqn,
-                                              mock.sentinel.target_ip,
-                                              mock.sentinel.target_port,
-                                              mock.sentinel.transport_type,
-                                              mock.sentinel.port_id)
+                                              self.target.target_ip,
+                                              self.target.target_port,
+                                              self.target.nvme_transport_type,
+                                              self.target.nvmet_port_id)
         mock_location.assert_not_called()
 
     @mock.patch.object(priv_nvmet, 'Subsystem')
@@ -131,7 +114,8 @@ class TestNVMETDriver(tf.TargetDriverFixture):
         """Skip subsystem creation if already exists."""
         nqn = 'nqn.nvme-subsystem-1-uuid'
         self.target._ensure_subsystem_exists(nqn, mock.sentinel.ns_id,
-                                             mock.sentinel.vol_path)
+                                             mock.sentinel.vol_path,
+                                             mock.sentinel.uuid)
         mock_subsys.assert_called_once_with(nqn)
         mock_subsys.setup.assert_not_called()
 
@@ -143,12 +127,14 @@ class TestNVMETDriver(tf.TargetDriverFixture):
         mock_uuid.return_value = 'uuid'
         nqn = 'nqn.nvme-subsystem-1-uuid'
         self.target._ensure_subsystem_exists(nqn, mock.sentinel.ns_id,
-                                             mock.sentinel.vol_path)
+                                             mock.sentinel.vol_path,
+                                             mock.sentinel.uuid)
         mock_subsys.assert_called_once_with(nqn)
         expected_section = {
             'allowed_hosts': [],
             'attr': {'allow_any_host': '1'},
             'namespaces': [{'device': {'nguid': 'uuid',
+                                       'uuid': mock.sentinel.uuid,
                                        'path': mock.sentinel.vol_path},
                             'enable': 1,
                             'nsid': mock.sentinel.ns_id}],
@@ -265,3 +251,8 @@ class TestNVMETDriver(tf.TargetDriverFixture):
     def test__get_target_nqn(self):
         res = self.target._get_target_nqn('volume_id')
         self.assertEqual('nqn.nvme-subsystem-1-volume_id', res)
+
+    def test__get_nvme_uuid(self):
+        vol = mock.Mock()
+        res = self.target._get_nvme_uuid(vol)
+        self.assertEqual(vol.name_id, res)

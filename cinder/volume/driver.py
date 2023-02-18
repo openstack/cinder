@@ -263,6 +263,16 @@ iser_opts = [
                help='The name of the iSER target user-land tool to use'),
 ]
 
+nvmeof_opts = [
+    cfg.IntOpt('nvmeof_conn_info_version',
+               default=1,
+               min=1, max=2,
+               help='NVMe os-brick connector has 2 different connection info '
+                    'formats, this allows some NVMe-oF drivers that use the '
+                    'original format (version 1), such as spdk and LVM-nvmet, '
+                    'to send the newer format.'),
+]
+
 nvmet_opts = [
     cfg.PortOpt('nvmet_port_id',
                 default=1,
@@ -348,11 +358,13 @@ fqdn_opts = [
 CONF = cfg.CONF
 CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(iser_opts, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(nvmeof_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(nvmet_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(scst_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(image_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(volume_opts)
 CONF.register_opts(iser_opts)
+CONF.register_opts(nvmeof_opts)
 CONF.register_opts(nvmet_opts)
 CONF.register_opts(scst_opts)
 CONF.register_opts(backup_opts)
@@ -414,6 +426,7 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         if self.configuration:
             self.configuration.append_config_values(volume_opts)
             self.configuration.append_config_values(iser_opts)
+            self.configuration.append_config_values(nvmeof_opts)
             self.configuration.append_config_values(nvmet_opts)
             self.configuration.append_config_values(scst_opts)
             self.configuration.append_config_values(backup_opts)

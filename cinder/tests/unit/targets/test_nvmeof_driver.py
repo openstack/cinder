@@ -12,6 +12,7 @@
 
 from unittest import mock
 
+import ddt
 from oslo_utils import timeutils
 
 from cinder import context
@@ -25,15 +26,11 @@ class FakeNVMeOFDriver(nvmeof.NVMeOF):
     def __init__(self, *args, **kwargs):
         super(FakeNVMeOFDriver, self).__init__(*args, **kwargs)
 
-    def create_nvmeof_target(
-            self, target_name, target_ip, target_port,
-            transport_type, ns_id, volume_path):
-        pass
-
     def delete_nvmeof_target(self, target_name):
         pass
 
 
+@ddt.ddt
 class TestNVMeOFDriver(tf.TargetDriverFixture):
 
     def setUp(self):
@@ -75,16 +72,18 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
              'created_at': timeutils.utcnow(),
              'host': 'fake_host@lvm#lvm'})
 
-    def test_initialize_connection(self):
+    @mock.patch.object(nvmeof.NVMeOF, '_get_connection_properties')
+    def test_initialize_connection(self, mock_get_conn):
         mock_connector = {'initiator': 'fake_init'}
         mock_testvol = self.testvol
         expected_return = {
             'driver_volume_type': 'nvmeof',
-            'data': self.target._get_connection_properties(mock_testvol)
+            'data': mock_get_conn.return_value
         }
         self.assertEqual(expected_return,
                          self.target.initialize_connection(mock_testvol,
                                                            mock_connector))
+        mock_get_conn.assert_called_once_with(mock_testvol)
 
     @mock.patch.object(FakeNVMeOFDriver, 'create_nvmeof_target')
     def test_create_export(self, mock_create_nvme_target):
@@ -109,7 +108,8 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
             self.testvol
         )
 
-    def test_get_connection_properties(self):
+    def test__get_connection_properties_old(self):
+        """Test connection properties with the old NVMe-oF format."""
         expected_return = {
             'target_portal': self.target_ip,
             'target_port': str(self.target_port),
@@ -120,6 +120,31 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
         }
         self.assertEqual(expected_return,
                          self.target._get_connection_properties(self.testvol))
+
+    @ddt.data(('rdma', 'RoCEv2'), ('tcp', 'tcp'))
+    @ddt.unpack
+    @mock.patch.object(nvmeof.NVMeOF, '_get_nvme_uuid')
+    def test__get_connection_properties_new(self, transport,
+                                            expected_transport, mock_uuid):
+        """Test connection properties with the new NVMe-oF format."""
+        nqn = f'ngn.{self.nvmet_subsystem_name}-{self.fake_volume_id}'
+        vol = self.testvol.copy()
+        vol['provider_location'] = self.target.get_nvmeof_location(
+            nqn, self.target_ip, self.target_port, transport, self.nvmet_ns_id)
+
+        self.configuration.nvmeof_conn_info_version = 2
+
+        expected_return = {
+            'target_nqn': nqn,
+            'vol_uuid': mock_uuid.return_value,
+            'ns_id': str(self.nvmet_ns_id),
+            'portals': [(self.target_ip,
+                         str(self.target_port),
+                         expected_transport)],
+        }
+        self.assertEqual(expected_return,
+                         self.target._get_connection_properties(vol))
+        mock_uuid.assert_called_once_with(vol)
 
     def test_validate_connector(self):
         mock_connector = {'initiator': 'fake_init'}

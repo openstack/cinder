@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    LVM nvmet target: Added support for new nvmeof connection properties
+    format (version 2). Controlled with ``nvmeof_conn_info_version``
+    configuration option.

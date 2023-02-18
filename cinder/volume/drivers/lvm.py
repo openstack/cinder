@@ -67,7 +67,7 @@ volume_opts = [
     cfg.BoolOpt('lvm_suppress_fd_warnings',
                 default=False,
                 help='Suppress leaked file descriptor warnings in LVM '
-                     'commands.')
+                     'commands.'),
 ]
 
 CONF = cfg.CONF

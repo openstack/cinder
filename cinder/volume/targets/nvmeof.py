@@ -87,27 +87,67 @@ class NVMeOF(driver.Target):
     def _get_connection_properties(self, volume):
         """Gets NVMeOF connection configuration.
 
-        :return: dictionary of the following keys:
-        :target_portal: NVMe target IP address
-        :target_port: NVMe target port
-        :nqn: NQN of the NVMe target
-        :transport_type: Network fabric being used for an
-        NVMe-over-Fabrics network
-        :ns_id: namespace id associated with the subsystem
-        """
+        For nvmeof_conn_info_version set to 1 (default) the old format will
+        be sent:
+        {
+         'target_portal': NVMe target IP address
+         'target_port': NVMe target port
+         'nqn': NQN of the NVMe target
+         'transport_type': Network fabric being used for an NVMe-oF network
+                           One of: tcp, rdma
+         'ns_id': namespace id associated with the subsystem
+        }
 
+
+        For nvmeof_conn_info_version set to 2 the new format will be sent:
+        {
+          'target_nqn': NQN of the NVMe target
+          'vol_uuid': NVMe-oF UUID of the volume. May be different than Cinder
+                      volume id and may be None if ns_id is provided.
+          'portals': [(target_address, target_port, transport_type) ... ]
+          'ns_id': namespace id associated with the subsystem, in case target
+                   doesn't provide the volume_uuid.
+        }
+        Unlike the old format the transport_type can be one of RoCEv2 and tcp
+
+        :return: dictionary with the connection properties using one of the 2
+                 existing formats depending on the nvmeof_conn_info_version
+                 configuration option.
+        """
         location = volume['provider_location']
         target_connection, nvme_transport_type, nqn, nvmet_ns_id = (
             location.split(' '))
         target_portal, target_port = target_connection.split(':')
 
+        # NVMe-oF Connection Information Version 2
+        if self.configuration.nvmeof_conn_info_version == 2:
+            uuid = self._get_nvme_uuid(volume)
+            if nvme_transport_type == 'rdma':
+                nvme_transport_type = 'RoCEv2'
+
+            return {
+                'target_nqn': nqn,
+                'vol_uuid': uuid,
+                'portals': [(target_portal, target_port, nvme_transport_type)],
+                'ns_id': nvmet_ns_id,
+            }
+
+        # NVMe-oF Connection Information Version 1
         return {
             'target_portal': target_portal,
             'target_port': target_port,
             'nqn': nqn,
             'transport_type': nvme_transport_type,
-            'ns_id': nvmet_ns_id
+            'ns_id': nvmet_ns_id,
         }
+
+    def _get_nvme_uuid(self, volume):
+        """Return the NVMe uuid of a given volume.
+
+        Targets that want to support the nvmeof_conn_info_version=2 option need
+        to override this method and return the NVMe uuid of the given volume.
+        """
+        return None
 
     def get_nvmeof_location(self, nqn, target_ip, target_port,
                             nvme_transport_type, nvmet_ns_id):
@@ -150,7 +190,6 @@ class NVMeOF(driver.Target):
                 missing='initiator')
         return True
 
-    @abc.abstractmethod
     def create_nvmeof_target(self,
                              volume_id,
                              subsystem_name,
@@ -160,6 +199,7 @@ class NVMeOF(driver.Target):
                              nvmet_port_id,
                              ns_id,
                              volume_path):
+        """Targets that don't override create_export must implement this."""
         pass
 
     @abc.abstractmethod
