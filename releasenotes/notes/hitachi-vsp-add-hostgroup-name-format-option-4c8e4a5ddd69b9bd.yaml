@@ -1,0 +1,53 @@
+---
+features:
+  - |
+    Hitachi driver:  Add a config option ``hitachi_group_name_format`` for
+    hostgroup name format.
+    When using this option, users can specify the name format of
+    host groups or iSCSI targets.
+    Rules of the format:
+
+    * Usable characters are alphanumerics, ".", "@", "_", ":", "-",
+      "{" and "}". "{" and "}" can be used only in variables.
+    * The specified value must start with ``HBSD-``.
+    * You can use the following variables:
+
+      * ``{wwn}``: FC driver only. This is replaced with the smallest
+              WWPN of the WWPNs of the connecting node.
+      * ``{ip}``: iSCSI driver only. This is replaced with the IP address of
+              the connecting node.
+      * ``{host}``: This is replaced with the host name of the connecting node.
+
+    * You can use each variable in the specified value no more than once.
+    * The specified value must include the following variables:
+
+        * FC driver: ``{wwn}``
+        * iSCSI driver: ``{ip}``
+
+    * The maximum length of a specified value is as follows:
+
+        * FC driver: 64
+        * iSCSI driver: 32
+
+    * In the length calculation, use the following values as the length of
+      each variable:
+
+      * ``{wwn}``: 16
+      * ``{ip}``: 15
+      * ``{host}``: 1
+
+    * If the specified value includes ``{host}``, the following rules apply:
+
+      * characters that are not permitted for this parameter, they are
+        replaced with ``_``.
+      * If the length of the name after variable replacement exceeds
+        the maximum length of host group (iSCSI target) names, the
+        host name is truncated so that the length of the host groups or
+        iSCSI targets do not exceed the maximum length.
+
+    If you specify this parameter, it is recommended that you specify ``True``
+    for the hitachi_group_create parameter to collect necessary
+    information automatically.
+    Examples:
+    * FC driver: ``HBSD-{host}-{wwn}``
+    * iSCSI driver: ``HBSD-{host}-{ip}``

@@ -28,6 +28,23 @@ from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
+_GROUP_NAME_FORMAT_DEFAULT_FC = utils.TARGET_PREFIX + '{wwn}'
+_GROUP_NAME_FORMAT_DEFAULT_ISCSI = utils.TARGET_PREFIX + '{ip}'
+_GROUP_NAME_MAX_LEN_FC = 64
+_GROUP_NAME_MAX_LEN_ISCSI = 32
+
+GROUP_NAME_ALLOWED_CHARS = 'a-zA-Z0-9.@_:-'
+GROUP_NAME_VAR_WWN = '{wwn}'
+GROUP_NAME_VAR_IP = '{ip}'
+GROUP_NAME_VAR_HOST = '{host}'
+
+_GROUP_NAME_VAR_WWN_LEN = 16
+_GROUP_NAME_VAR_IP_LEN = 15
+_GROUP_NAME_VAR_HOST_LEN = 1
+_GROUP_NAME_VAR_LEN = {GROUP_NAME_VAR_WWN: _GROUP_NAME_VAR_WWN_LEN,
+                       GROUP_NAME_VAR_IP: _GROUP_NAME_VAR_IP_LEN,
+                       GROUP_NAME_VAR_HOST: _GROUP_NAME_VAR_HOST_LEN}
+
 _STR_VOLUME = 'volume'
 _STR_SNAPSHOT = 'snapshot'
 
@@ -114,9 +131,38 @@ COMMON_PORT_OPTS = [
              'WWNs are registered to ports in a round-robin fashion.'),
 ]
 
+COMMON_NAME_OPTS = [
+    cfg.StrOpt(
+        'hitachi_group_name_format',
+        default=None,
+        help='Format of host groups, iSCSI targets, and server objects.'),
+]
+
+_GROUP_NAME_FORMAT = {
+    'FC': {
+        'group_name_max_len': _GROUP_NAME_MAX_LEN_FC,
+        'group_name_var_cnt': {
+            GROUP_NAME_VAR_WWN: [1],
+            GROUP_NAME_VAR_IP: [0],
+            GROUP_NAME_VAR_HOST: [0, 1],
+        },
+        'group_name_format_default': _GROUP_NAME_FORMAT_DEFAULT_FC,
+    },
+    'iSCSI': {
+        'group_name_max_len': _GROUP_NAME_MAX_LEN_ISCSI,
+        'group_name_var_cnt': {
+            GROUP_NAME_VAR_WWN: [0],
+            GROUP_NAME_VAR_IP: [1],
+            GROUP_NAME_VAR_HOST: [0, 1],
+        },
+        'group_name_format_default': _GROUP_NAME_FORMAT_DEFAULT_ISCSI,
+    }
+}
+
 CONF = cfg.CONF
 CONF.register_opts(COMMON_VOLUME_OPTS, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(COMMON_PORT_OPTS, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(COMMON_NAME_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 LOG = logging.getLogger(__name__)
 MSG = utils.HBSDMsg
@@ -159,6 +205,24 @@ class HBSDCommon():
             'wwns': {},
             'portals': {},
         }
+        self.group_name_format = _GROUP_NAME_FORMAT[driverinfo['proto']]
+        self.format_info = {
+            'group_name_format': self.group_name_format[
+                'group_name_format_default'],
+            'group_name_format_without_var_len': (
+                len(re.sub('|'.join([GROUP_NAME_VAR_WWN,
+                    GROUP_NAME_VAR_IP, GROUP_NAME_VAR_HOST]), '',
+                    self.group_name_format['group_name_format_default']))),
+            'group_name_var_cnt': {
+                GROUP_NAME_VAR_WWN: self.group_name_format[
+                    'group_name_format_default'].count(GROUP_NAME_VAR_WWN),
+                GROUP_NAME_VAR_IP: self.group_name_format[
+                    'group_name_format_default'].count(GROUP_NAME_VAR_IP),
+                GROUP_NAME_VAR_HOST: self.group_name_format[
+                    'group_name_format_default'].count(GROUP_NAME_VAR_HOST),
+            }
+        }
+
         self._required_common_opts = [
             self.driver_info['param_prefix'] + '_storage_id',
             self.driver_info['param_prefix'] + '_pool',
@@ -555,6 +619,10 @@ class HBSDCommon():
         """Check parameter values and consistency among them."""
         utils.check_opt_value(self.conf, _INHERITED_VOLUME_OPTS)
         self.check_opts(self.conf, COMMON_VOLUME_OPTS)
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_group_name_format'):
+            self.check_opts(self.conf, COMMON_NAME_OPTS)
         if self.conf.hitachi_ldev_range:
             self.storage_info['ldev_range'] = self._range2list(
                 self.driver_info['param_prefix'] + '_ldev_range')
@@ -565,6 +633,7 @@ class HBSDCommon():
                 param=self.driver_info['param_prefix'] + '_target_ports or ' +
                 self.driver_info['param_prefix'] + '_compute_target_ports')
             self.raise_error(msg)
+        self._check_param_group_name_format()
         if (self.conf.hitachi_group_delete and
                 not self.conf.hitachi_group_create):
             msg = utils.output_log(
@@ -586,6 +655,50 @@ class HBSDCommon():
             self.check_param_fc()
         if self.storage_info['protocol'] == 'iSCSI':
             self.check_param_iscsi()
+
+    def _check_param_group_name_format(self):
+        if not hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_group_name_format'):
+            return
+        if self.conf.hitachi_group_name_format is not None:
+            error_flag = False
+            if re.match(
+                    utils.TARGET_PREFIX + '(' + GROUP_NAME_VAR_WWN + '|' +
+                    GROUP_NAME_VAR_IP + '|' + GROUP_NAME_VAR_HOST + '|' + '[' +
+                    GROUP_NAME_ALLOWED_CHARS + '])+$',
+                    self.conf.hitachi_group_name_format) is None:
+                error_flag = True
+            if not error_flag:
+                for var in _GROUP_NAME_VAR_LEN:
+                    self.format_info['group_name_var_cnt'][var] = (
+                        self.conf.hitachi_group_name_format.count(var))
+                    if (self.format_info[
+                            'group_name_var_cnt'][var] not in
+                            self.group_name_format['group_name_var_cnt'][var]):
+                        error_flag = True
+                        break
+            if not error_flag:
+                group_name_var_replaced = self.conf.hitachi_group_name_format
+                for var, length in _GROUP_NAME_VAR_LEN.items():
+                    group_name_var_replaced = (
+                        group_name_var_replaced.replace(var, '_' * length))
+                if len(group_name_var_replaced) > self.group_name_format[
+                        'group_name_max_len']:
+                    error_flag = True
+            if error_flag:
+                msg = utils.output_log(
+                    MSG.INVALID_PARAMETER,
+                    param=self.driver_info['param_prefix'] +
+                    '_group_name_format')
+                raise self.raise_error(msg)
+            self.format_info['group_name_format'] = (
+                self.conf.hitachi_group_name_format)
+            self.format_info['group_name_format_without_var_len'] = (
+                len(re.sub('|'.join(
+                    [GROUP_NAME_VAR_WWN, GROUP_NAME_VAR_IP,
+                     GROUP_NAME_VAR_HOST]), '',
+                    self.format_info['group_name_format'])))
 
     def need_client_setup(self):
         """Check if the making of the communication client is necessary."""
