@@ -34,6 +34,7 @@ from sqlalchemy.engine import reflection
 
 import cinder.db.legacy_migrations
 from cinder.db import migration
+from cinder.db.sqlalchemy import api
 from cinder.db.sqlalchemy import models
 from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import utils as test_utils
@@ -58,6 +59,7 @@ class CinderModelsMigrationsSync(test_migrations.ModelsMigrationsSync):
         self.useFixture(cinder_fixtures.StandardLogging())
 
         self.engine = enginefacade.writer.get_engine()
+        self.patch(api, 'get_engine', self.get_engine)
 
     def db_sync(self, engine):
         migration.db_sync(engine=self.engine)
@@ -140,6 +142,7 @@ class MigrationsWalk(
     def setUp(self):
         super().setUp()
         self.engine = enginefacade.writer.get_engine()
+        self.patch(api, 'get_engine', lambda: self.engine)
         self.config = migration._find_alembic_conf()
         self.init_version = migration.ALEMBIC_INIT_VERSION
 
