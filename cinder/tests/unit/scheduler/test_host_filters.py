@@ -99,7 +99,7 @@ class CapacityFilterTestCase(BackendFiltersTestCase):
     def test_filter_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100,
+        filter_properties = {'size': 121,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
         host = fakes.FakeBackendState('host1',
@@ -282,7 +282,7 @@ class CapacityFilterTestCase(BackendFiltersTestCase):
     def test_filter_thin_true_passes2(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 3000,
+        filter_properties = {'size': 2400,
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
@@ -462,7 +462,7 @@ class CapacityFilterTestCase(BackendFiltersTestCase):
     def test_filter_reserved_thin_thick_true_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
-        filter_properties = {'size': 100,
+        filter_properties = {'size': 151,
                              'capabilities:thin_provisioning_support':
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
