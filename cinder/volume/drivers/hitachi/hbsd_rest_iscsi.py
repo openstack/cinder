@@ -46,20 +46,28 @@ class HBSDRESTISCSI(rest.HBSDREST):
         """Prepare for using the storage."""
         target_ports = self.conf.hitachi_target_ports
         compute_target_ports = self.conf.hitachi_compute_target_ports
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_rest_pair_target_ports'):
+            pair_target_ports = self.conf.hitachi_rest_pair_target_ports
+        else:
+            pair_target_ports = []
 
         super(HBSDRESTISCSI, self).connect_storage()
         # The port type must be ISCSI and the port attributes must contain TAR.
         params = {'portType': 'ISCSI',
                   'portAttributes': 'TAR'}
         port_list = self.client.get_ports(params=params)
-        for port in set(target_ports + compute_target_ports):
+        for port in set(target_ports + compute_target_ports +
+                        pair_target_ports):
             if port not in [port_data['portId'] for port_data in port_list]:
-                utils.output_log(
+                self.output_log(
                     MSG.INVALID_PORT, port=port, additional_info='(portType, '
                     'portAttributes): not (ISCSI, TAR)')
         for port_data in port_list:
             port = port_data['portId']
-            if port not in set(target_ports + compute_target_ports):
+            if port not in set(target_ports + compute_target_ports +
+                               pair_target_ports):
                 continue
             has_addr = True
             if not port_data['lunSecuritySetting']:
@@ -70,7 +78,7 @@ class HBSDRESTISCSI(rest.HBSDREST):
                     addr_info = (', ipv4Address: %s, tcpPort: %s' %
                                  (ipv4_addr, tcp_port))
             if not port_data['lunSecuritySetting'] or not has_addr:
-                utils.output_log(
+                self.output_log(
                     MSG.INVALID_PORT, port=port,
                     additional_info='portType: %s, lunSecuritySetting: %s%s' %
                     (port_data['portType'], port_data['lunSecuritySetting'],
@@ -82,11 +90,20 @@ class HBSDRESTISCSI(rest.HBSDREST):
             if (compute_target_ports and port in compute_target_ports and
                     has_addr):
                 self.storage_info['compute_ports'].append(port)
+            if pair_target_ports and port in pair_target_ports:
+                self.storage_info['pair_ports'].append(port)
 
         self.check_ports_info()
-        utils.output_log(MSG.SET_CONFIG_VALUE,
-                         object='port-<IP address:port> list',
-                         value=self.storage_info['portals'])
+        if pair_target_ports and not self.storage_info['pair_ports']:
+            msg = self.output_log(
+                MSG.RESOURCE_NOT_FOUND, resource="Pair target ports")
+            self.raise_error(msg)
+        self.output_log(MSG.SET_CONFIG_VALUE,
+                        object='pair_target_ports',
+                        value=self.storage_info['pair_ports'])
+        self.output_log(MSG.SET_CONFIG_VALUE,
+                        object='port-<IP address:port> list',
+                        value=self.storage_info['portals'])
 
     def create_target_to_storage(self, port, connector, hba_ids):
         """Create an iSCSI target on the specified port."""
@@ -194,11 +211,18 @@ class HBSDRESTISCSI(rest.HBSDREST):
                 not_found_count += 1
         return not_found_count
 
-    def initialize_connection(self, volume, connector, is_snapshot=False):
+    def initialize_connection(
+            self, volume, connector, is_snapshot=False, lun=None,
+            is_mirror=False):
         """Initialize connection between the server and the volume."""
         conn_info, map_info = super(HBSDRESTISCSI, self).initialize_connection(
-            volume, connector, is_snapshot)
+            volume, connector, is_snapshot, lun)
         return conn_info
+
+    def terminate_connection(self, volume, connector, is_mirror=False):
+        """Terminate connection between the server and the volume."""
+        return super(HBSDRESTISCSI, self).terminate_connection(
+            volume, connector)
 
     def get_properties_iscsi(self, targets, multipath):
         """Return iSCSI-specific server-LDEV connection info."""
@@ -213,8 +237,8 @@ class HBSDRESTISCSI(rest.HBSDREST):
                 target_info = self.client.get_host_grp(port, gid)
                 iqn = target_info.get('iscsiName') if target_info else None
                 if not iqn:
-                    msg = utils.output_log(MSG.RESOURCE_NOT_FOUND,
-                                           resource='Target IQN')
+                    msg = self.output_log(MSG.RESOURCE_NOT_FOUND,
+                                          resource='Target IQN')
                     self.raise_error(msg)
                 targets['iqns'][target] = iqn
                 LOG.debug(

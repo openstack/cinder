@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Hitachi driver:  Support Global-Active Device (GAD) volume.
+    GAD is a one of Hitachi storage fucntion uses volume replication
+    to provide a high-availability environment for hosts across storage
+    systems and sites. New properties will be added in configuration.
+    ``hbsd:topology`` sets to ``active_active_mirror_volumex`` would
+    specify a GAD volume. ``hitachi_mirror_xxx`` parameters would
+    specify a secondary storage for GAD volume.
+

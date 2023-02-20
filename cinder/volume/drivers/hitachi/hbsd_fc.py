@@ -21,6 +21,7 @@ from oslo_utils import excutils
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hbsd_common as common
+from cinder.volume.drivers.hitachi import hbsd_replication as replication
 from cinder.volume.drivers.hitachi import hbsd_rest as rest
 from cinder.volume.drivers.hitachi import hbsd_rest_fc as rest_fc
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
@@ -51,6 +52,8 @@ _DRIVER_INFO = {
     'nvol_ldev_type': utils.NVOL_LDEV_TYPE,
     'target_iqn_suffix': utils.TARGET_IQN_SUFFIX,
     'pair_attr': utils.PAIR_ATTR,
+    'mirror_attr': utils.MIRROR_ATTR,
+    'driver_impl_class': rest_fc.HBSDRESTFC,
 }
 
 
@@ -72,8 +75,9 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         2.2.2 - Add Target Port Assignment.
         2.2.3 - Add port scheduler.
         2.3.0 - Support multi pool.
-        2.3.1 - Update retype and support storage assisted migration.
-        2.3.2 - Add specifies format of the names HostGroups/iSCSI Targets.
+        2.3.1 - Add specifies format of the names HostGroups/iSCSI Targets.
+        2.3.2 - Add GAD volume support.
+        2.3.3 - Update retype and support storage assisted migration.
 
     """
 
@@ -81,6 +85,8 @@ class HBSDFCDriver(driver.FibreChannelDriver):
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = utils.CI_WIKI_NAME
+
+    driver_info = dict(_DRIVER_INFO)
 
     def __init__(self, *args, **kwargs):
         """Initialize instance variables."""
@@ -90,14 +96,25 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         super(HBSDFCDriver, self).__init__(*args, **kwargs)
 
         self.configuration.append_config_values(common.COMMON_VOLUME_OPTS)
+        self.configuration.append_config_values(common.COMMON_PAIR_OPTS)
         self.configuration.append_config_values(common.COMMON_PORT_OPTS)
         self.configuration.append_config_values(common.COMMON_NAME_OPTS)
         self.configuration.append_config_values(rest_fc.FC_VOLUME_OPTS)
+        self.configuration.append_config_values(
+            replication.COMMON_MIRROR_OPTS)
         os.environ['LANG'] = 'C'
-        self.common = self._init_common(self.configuration, kwargs.get('db'))
-
-    def _init_common(self, conf, db):
-        return rest_fc.HBSDRESTFC(conf, _DRIVER_INFO, db)
+        kwargs.setdefault('driver_info', _DRIVER_INFO)
+        self.driver_info = dict(kwargs['driver_info'])
+        self.driver_info['driver_class'] = self.__class__
+        if self.configuration.safe_get('hitachi_mirror_storage_id'):
+            self.common = replication.HBSDREPLICATION(
+                self.configuration, self.driver_info, kwargs.get('db'))
+        elif not hasattr(self, '_init_common'):
+            self.common = self.driver_info['driver_impl_class'](
+                self.configuration, self.driver_info, kwargs.get('db'))
+        else:
+            self.common = self._init_common(
+                self.configuration, kwargs.get('db'))
 
     @staticmethod
     def get_driver_options():
@@ -108,9 +125,17 @@ class HBSDFCDriver(driver.FibreChannelDriver):
                'san_api_port', ]))
         return (common.COMMON_VOLUME_OPTS +
                 common.COMMON_PORT_OPTS +
+                common.COMMON_PAIR_OPTS +
                 common.COMMON_NAME_OPTS +
                 rest.REST_VOLUME_OPTS +
+                rest.REST_PAIR_OPTS +
                 rest_fc.FC_VOLUME_OPTS +
+                replication._REP_OPTS +
+                replication.COMMON_MIRROR_OPTS +
+                replication.ISCSI_MIRROR_OPTS +
+                replication.REST_MIRROR_OPTS +
+                replication.REST_MIRROR_API_OPTS +
+                replication.REST_MIRROR_SSL_OPTS +
                 additional_opts)
 
     def check_for_setup_error(self):
@@ -187,7 +212,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
     @volume_utils.trace
     def manage_existing_get_size(self, volume, existing_ref):
         """Return the size[GB] of the specified volume."""
-        return self.common.manage_existing_get_size(existing_ref)
+        return self.common.manage_existing_get_size(volume, existing_ref)
 
     @volume_utils.trace
     def unmanage(self, volume):

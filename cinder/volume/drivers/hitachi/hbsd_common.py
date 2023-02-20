@@ -14,6 +14,7 @@
 #
 """Common module for Hitachi HBSD Driver."""
 
+import json
 import re
 
 from oslo_config import cfg
@@ -45,8 +46,8 @@ _GROUP_NAME_VAR_LEN = {GROUP_NAME_VAR_WWN: _GROUP_NAME_VAR_WWN_LEN,
                        GROUP_NAME_VAR_IP: _GROUP_NAME_VAR_IP_LEN,
                        GROUP_NAME_VAR_HOST: _GROUP_NAME_VAR_HOST_LEN}
 
-_STR_VOLUME = 'volume'
-_STR_SNAPSHOT = 'snapshot'
+STR_VOLUME = 'volume'
+STR_SNAPSHOT = 'snapshot'
 
 _INHERITED_VOLUME_OPTS = [
     'volume_backend_name',
@@ -131,6 +132,13 @@ COMMON_PORT_OPTS = [
              'WWNs are registered to ports in a round-robin fashion.'),
 ]
 
+COMMON_PAIR_OPTS = [
+    cfg.IntOpt(
+        'hitachi_pair_target_number',
+        default=0, min=0, max=99,
+        help='Pair target name of the host group or iSCSI target'),
+]
+
 COMMON_NAME_OPTS = [
     cfg.StrOpt(
         'hitachi_group_name_format',
@@ -162,13 +170,14 @@ _GROUP_NAME_FORMAT = {
 CONF = cfg.CONF
 CONF.register_opts(COMMON_VOLUME_OPTS, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(COMMON_PORT_OPTS, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(COMMON_PAIR_OPTS, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(COMMON_NAME_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 LOG = logging.getLogger(__name__)
 MSG = utils.HBSDMsg
 
 
-def _str2int(num):
+def str2int(num):
     """Convert a string into an integer."""
     if not num:
         return None
@@ -202,9 +211,11 @@ class HBSDCommon():
             'ldev_range': [],
             'controller_ports': [],
             'compute_ports': [],
+            'pair_ports': [],
             'wwns': {},
             'portals': {},
         }
+        self.storage_id = None
         self.group_name_format = _GROUP_NAME_FORMAT[driverinfo['proto']]
         self.format_info = {
             'group_name_format': self.group_name_format[
@@ -255,7 +266,7 @@ class HBSDCommon():
             ldev = self.create_ldev(volume['size'], pool_id, ldev_range)
         except Exception:
             with excutils.save_and_reraise_exception():
-                utils.output_log(MSG.CREATE_LDEV_FAILED)
+                self.output_log(MSG.CREATE_LDEV_FAILED)
         self.modify_ldev_name(ldev, volume['id'].replace("-", ""))
         return {
             'provider_location': str(ldev),
@@ -276,33 +287,33 @@ class HBSDCommon():
 
     def copy_on_storage(
             self, pvol, size, pool_id, snap_pool_id, ldev_range,
-            is_snapshot=False, sync=False):
+            is_snapshot=False, sync=False, is_rep=False):
         """Create a copy of the specified LDEV on the storage."""
         ldev_info = self.get_ldev_info(['status', 'attributes'], pvol)
         if ldev_info['status'] != 'NML':
-            msg = utils.output_log(MSG.INVALID_LDEV_STATUS_FOR_COPY, ldev=pvol)
+            msg = self.output_log(MSG.INVALID_LDEV_STATUS_FOR_COPY, ldev=pvol)
             self.raise_error(msg)
         svol = self.create_ldev(size, pool_id, ldev_range)
         try:
             self.create_pair_on_storage(
                 pvol, svol, snap_pool_id, is_snapshot=is_snapshot)
-            if sync:
+            if sync or is_rep:
                 self.wait_copy_completion(pvol, svol)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
                     self.delete_ldev(svol)
                 except exception.VolumeDriverException:
-                    utils.output_log(MSG.DELETE_LDEV_FAILED, ldev=svol)
+                    self.output_log(MSG.DELETE_LDEV_FAILED, ldev=svol)
         return svol
 
-    def create_volume_from_src(self, volume, src, src_type):
+    def create_volume_from_src(self, volume, src, src_type, is_rep=False):
         """Create a volume from a volume or snapshot and return its properties.
 
         """
-        ldev = utils.get_ldev(src)
+        ldev = self.get_ldev(src)
         if ldev is None:
-            msg = utils.output_log(
+            msg = self.output_log(
                 MSG.INVALID_LDEV_FOR_VOLUME_COPY, type=src_type, id=src['id'])
             self.raise_error(msg)
 
@@ -311,8 +322,10 @@ class HBSDCommon():
         snap_pool_id = self.storage_info['snap_pool_id']
         ldev_range = self.storage_info['ldev_range']
         new_ldev = self.copy_on_storage(
-            ldev, size, pool_id, snap_pool_id, ldev_range)
+            ldev, size, pool_id, snap_pool_id, ldev_range, is_rep=is_rep)
         self.modify_ldev_name(new_ldev, volume['id'].replace("-", ""))
+        if is_rep:
+            self.delete_pair(new_ldev)
 
         return {
             'provider_location': str(new_ldev),
@@ -320,11 +333,11 @@ class HBSDCommon():
 
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of the specified volume and return its properties."""
-        return self.create_volume_from_src(volume, src_vref, _STR_VOLUME)
+        return self.create_volume_from_src(volume, src_vref, STR_VOLUME)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot and return its properties."""
-        return self.create_volume_from_src(volume, snapshot, _STR_SNAPSHOT)
+        return self.create_volume_from_src(volume, snapshot, STR_SNAPSHOT)
 
     def delete_pair_based_on_svol(self, pvol, svol_info):
         """Disconnect all volume pairs to which the specified S-VOL belongs."""
@@ -340,7 +353,7 @@ class HBSDCommon():
         if not pair_info:
             return
         if pair_info['pvol'] == ldev:
-            utils.output_log(
+            self.output_log(
                 MSG.UNABLE_TO_DELETE_PAIR, pvol=pair_info['pvol'])
             self.raise_busy()
         else:
@@ -375,9 +388,9 @@ class HBSDCommon():
 
     def delete_volume(self, volume):
         """Delete the specified volume."""
-        ldev = utils.get_ldev(volume)
+        ldev = self.get_ldev(volume)
         if ldev is None:
-            utils.output_log(
+            self.output_log(
                 MSG.INVALID_LDEV_FOR_DELETION,
                 method='delete_volume', id=volume['id'])
             return
@@ -392,9 +405,9 @@ class HBSDCommon():
     def create_snapshot(self, snapshot):
         """Create a snapshot from a volume and return its properties."""
         src_vref = snapshot.volume
-        ldev = utils.get_ldev(src_vref)
+        ldev = self.get_ldev(src_vref)
         if ldev is None:
-            msg = utils.output_log(
+            msg = self.output_log(
                 MSG.INVALID_LDEV_FOR_VOLUME_COPY,
                 type='volume', id=src_vref['id'])
             self.raise_error(msg)
@@ -410,9 +423,9 @@ class HBSDCommon():
 
     def delete_snapshot(self, snapshot):
         """Delete the specified snapshot."""
-        ldev = utils.get_ldev(snapshot)
+        ldev = self.get_ldev(snapshot)
         if ldev is None:
-            utils.output_log(
+            self.output_log(
                 MSG.INVALID_LDEV_FOR_DELETION, method='delete_snapshot',
                 id=snapshot['id'])
             return
@@ -453,7 +466,7 @@ class HBSDCommon():
             single_pool.update(dict(
                 provisioned_capacity_gb=0,
                 backend_state='down'))
-            utils.output_log(MSG.POOL_INFO_RETRIEVAL_FAILED, pool=pool_name)
+            self.output_log(MSG.POOL_INFO_RETRIEVAL_FAILED, pool=pool_name)
             return single_pool
         total_capacity, free_capacity, provisioned_capacity = cap_data
         single_pool.update(dict(
@@ -506,14 +519,14 @@ class HBSDCommon():
 
     def extend_volume(self, volume, new_size):
         """Extend the specified volume to the specified size."""
-        ldev = utils.get_ldev(volume)
+        ldev = self.get_ldev(volume)
         if ldev is None:
-            msg = utils.output_log(MSG.INVALID_LDEV_FOR_EXTENSION,
-                                   volume_id=volume['id'])
+            msg = self.output_log(MSG.INVALID_LDEV_FOR_EXTENSION,
+                                  volume_id=volume['id'])
             self.raise_error(msg)
         if self.check_pair_svol(ldev):
-            msg = utils.output_log(MSG.INVALID_VOLUME_TYPE_FOR_EXTEND,
-                                   volume_id=volume['id'])
+            msg = self.output_log(MSG.INVALID_VOLUME_TYPE_FOR_EXTEND,
+                                  volume_id=volume['id'])
             self.raise_error(msg)
         self.delete_pair(ldev)
         self.extend_ldev(ldev, volume['size'], new_size)
@@ -532,7 +545,7 @@ class HBSDCommon():
             ldev = self.get_ldev_by_name(
                 existing_ref.get('source-name').replace('-', ''))
         elif 'source-id' in existing_ref:
-            ldev = _str2int(existing_ref.get('source-id'))
+            ldev = str2int(existing_ref.get('source-id'))
         self.check_ldev_manageability(ldev, existing_ref)
         self.modify_ldev_name(ldev, volume['id'].replace("-", ""))
         return {
@@ -543,29 +556,29 @@ class HBSDCommon():
         """Return the size[GB] of the specified LDEV."""
         raise NotImplementedError()
 
-    def manage_existing_get_size(self, existing_ref):
+    def manage_existing_get_size(self, volume, existing_ref):
         """Return the size[GB] of the specified volume."""
         ldev = None
         if 'source-name' in existing_ref:
             ldev = self.get_ldev_by_name(
                 existing_ref.get('source-name').replace("-", ""))
         elif 'source-id' in existing_ref:
-            ldev = _str2int(existing_ref.get('source-id'))
+            ldev = str2int(existing_ref.get('source-id'))
         if ldev is None:
-            msg = utils.output_log(MSG.INVALID_LDEV_FOR_MANAGE)
+            msg = self.output_log(MSG.INVALID_LDEV_FOR_MANAGE)
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref, reason=msg)
         return self.get_ldev_size_in_gigabyte(ldev, existing_ref)
 
     def unmanage(self, volume):
         """Prepare the volume for removing it from Cinder management."""
-        ldev = utils.get_ldev(volume)
+        ldev = self.get_ldev(volume)
         if ldev is None:
-            utils.output_log(MSG.INVALID_LDEV_FOR_DELETION, method='unmanage',
-                             id=volume['id'])
+            self.output_log(MSG.INVALID_LDEV_FOR_DELETION, method='unmanage',
+                            id=volume['id'])
             return
         if self.check_pair_svol(ldev):
-            utils.output_log(
+            self.output_log(
                 MSG.INVALID_LDEV_TYPE_FOR_UNMANAGE, volume_id=volume['id'],
                 volume_type=utils.NORMAL_LDEV_TYPE)
             raise exception.VolumeIsBusy(volume_name=volume['name'])
@@ -579,10 +592,10 @@ class HBSDCommon():
 
     def _range2list(self, param):
         """Analyze a 'xxx-xxx' string and return a list of two integers."""
-        values = [_str2int(value) for value in
+        values = [str2int(value) for value in
                   self.conf.safe_get(param).split('-')]
         if len(values) != 2 or None in values or values[0] > values[1]:
-            msg = utils.output_log(MSG.INVALID_PARAMETER, param=param)
+            msg = self.output_log(MSG.INVALID_PARAMETER, param=param)
             self.raise_error(msg)
         return values
 
@@ -594,31 +607,35 @@ class HBSDCommon():
             self.check_opts(self.conf, COMMON_PORT_OPTS)
             if (self.conf.hitachi_port_scheduler and
                     not self.conf.hitachi_group_create):
-                msg = utils.output_log(
+                msg = self.output_log(
                     MSG.INVALID_PARAMETER,
                     param=self.driver_info['param_prefix'] + '_port_scheduler')
                 self.raise_error(msg)
             if (self._lookup_service is None and
                     self.conf.hitachi_port_scheduler):
-                msg = utils.output_log(MSG.ZONE_MANAGER_IS_NOT_AVAILABLE)
+                msg = self.output_log(MSG.ZONE_MANAGER_IS_NOT_AVAILABLE)
                 self.raise_error(msg)
 
     def check_param_iscsi(self):
         """Check iSCSI-related parameter values and consistency among them."""
         if self.conf.use_chap_auth:
             if not self.conf.chap_username:
-                msg = utils.output_log(MSG.INVALID_PARAMETER,
-                                       param='chap_username')
+                msg = self.output_log(MSG.INVALID_PARAMETER,
+                                      param='chap_username')
                 self.raise_error(msg)
             if not self.conf.chap_password:
-                msg = utils.output_log(MSG.INVALID_PARAMETER,
-                                       param='chap_password')
+                msg = self.output_log(MSG.INVALID_PARAMETER,
+                                      param='chap_password')
                 self.raise_error(msg)
 
     def check_param(self):
         """Check parameter values and consistency among them."""
-        utils.check_opt_value(self.conf, _INHERITED_VOLUME_OPTS)
+        self.check_opt_value(self.conf, _INHERITED_VOLUME_OPTS)
         self.check_opts(self.conf, COMMON_VOLUME_OPTS)
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_pair_target_number'):
+            self.check_opts(self.conf, COMMON_PAIR_OPTS)
         if hasattr(
                 self.conf,
                 self.driver_info['param_prefix'] + '_group_name_format'):
@@ -628,7 +645,7 @@ class HBSDCommon():
                 self.driver_info['param_prefix'] + '_ldev_range')
         if (not self.conf.hitachi_target_ports and
                 not self.conf.hitachi_compute_target_ports):
-            msg = utils.output_log(
+            msg = self.output_log(
                 MSG.INVALID_PARAMETER,
                 param=self.driver_info['param_prefix'] + '_target_ports or ' +
                 self.driver_info['param_prefix'] + '_compute_target_ports')
@@ -636,18 +653,18 @@ class HBSDCommon():
         self._check_param_group_name_format()
         if (self.conf.hitachi_group_delete and
                 not self.conf.hitachi_group_create):
-            msg = utils.output_log(
+            msg = self.output_log(
                 MSG.INVALID_PARAMETER,
                 param=self.driver_info['param_prefix'] + '_group_delete or '
                 + self.driver_info['param_prefix'] + '_group_create')
             self.raise_error(msg)
         for opt in self._required_common_opts:
             if not self.conf.safe_get(opt):
-                msg = utils.output_log(MSG.INVALID_PARAMETER, param=opt)
+                msg = self.output_log(MSG.INVALID_PARAMETER, param=opt)
                 self.raise_error(msg)
         for pool in self.conf.hitachi_pool:
             if len(pool) == 0:
-                msg = utils.output_log(
+                msg = self.output_log(
                     MSG.INVALID_PARAMETER,
                     param=self.driver_info['param_prefix'] + '_pool')
                 self.raise_error(msg)
@@ -687,7 +704,7 @@ class HBSDCommon():
                         'group_name_max_len']:
                     error_flag = True
             if error_flag:
-                msg = utils.output_log(
+                msg = self.output_log(
                     MSG.INVALID_PARAMETER,
                     param=self.driver_info['param_prefix'] +
                     '_group_name_format')
@@ -719,8 +736,8 @@ class HBSDCommon():
     def connect_storage(self):
         """Prepare for using the storage."""
         self.check_pool_id()
-        utils.output_log(MSG.SET_CONFIG_VALUE, object='DP Pool ID',
-                         value=self.storage_info['pool_id'])
+        self.output_log(MSG.SET_CONFIG_VALUE, object='DP Pool ID',
+                        value=self.storage_info['pool_id'])
         self.storage_info['controller_ports'] = []
         self.storage_info['compute_ports'] = []
 
@@ -732,8 +749,8 @@ class HBSDCommon():
         """Return the HBA ID stored in the connector."""
         if self.driver_info['hba_id'] in connector:
             return connector[self.driver_info['hba_id']]
-        msg = utils.output_log(MSG.RESOURCE_NOT_FOUND,
-                               resource=self.driver_info['hba_id_type'])
+        msg = self.output_log(MSG.RESOURCE_NOT_FOUND,
+                              resource=self.driver_info['hba_id_type'])
         self.raise_error(msg)
 
     def set_device_map(self, targets, hba_ids, volume):
@@ -759,7 +776,7 @@ class HBSDCommon():
         for target_port, target_gid in targets['list']:
             if target_port == port:
                 return target_gid
-        msg = utils.output_log(MSG.NO_CONNECTED_TARGET)
+        msg = self.output_log(MSG.NO_CONNECTED_TARGET)
         self.raise_error(msg)
 
     def set_target_mode(self, port, gid):
@@ -782,7 +799,7 @@ class HBSDCommon():
         if port not in targets['info'] or not targets['info'][port]:
             target_name, gid = self.create_target_to_storage(
                 port, connector, hba_ids)
-            utils.output_log(
+            self.output_log(
                 MSG.OBJECT_CREATED,
                 object='a target',
                 details='port: %(port)s, gid: %(gid)s, target_name: '
@@ -821,14 +838,14 @@ class HBSDCommon():
                     self.create_target(
                         targets, port, connector, active_hba_ids)
                 except exception.VolumeDriverException:
-                    utils.output_log(
+                    self.output_log(
                         self.driver_info['msg_id']['target'], port=port)
 
         # When other threads created a host group at same time, need to
         # re-find targets.
         if not targets['list']:
             self.find_targets_from_storage(
-                targets, connector, targets['info'].keys())
+                targets, connector, list(targets['info'].keys()))
 
     def get_port_index_to_be_used(self, ports, network_name):
         backend_name = self.conf.safe_get('volume_backend_name')
@@ -880,21 +897,22 @@ class HBSDCommon():
         """Check if available storage ports exist."""
         if (self.conf.hitachi_target_ports and
                 not self.storage_info['controller_ports']):
-            msg = utils.output_log(MSG.RESOURCE_NOT_FOUND,
-                                   resource="Target ports")
+            msg = self.output_log(MSG.RESOURCE_NOT_FOUND,
+                                  resource="Target ports")
             self.raise_error(msg)
         if (self.conf.hitachi_compute_target_ports and
                 not self.storage_info['compute_ports']):
-            msg = utils.output_log(MSG.RESOURCE_NOT_FOUND,
-                                   resource="Compute target ports")
+            msg = self.output_log(MSG.RESOURCE_NOT_FOUND,
+                                  resource="Compute target ports")
             self.raise_error(msg)
-        utils.output_log(MSG.SET_CONFIG_VALUE, object='target port list',
-                         value=self.storage_info['controller_ports'])
-        utils.output_log(MSG.SET_CONFIG_VALUE,
-                         object='compute target port list',
-                         value=self.storage_info['compute_ports'])
+        self.output_log(MSG.SET_CONFIG_VALUE, object='target port list',
+                        value=self.storage_info['controller_ports'])
+        self.output_log(MSG.SET_CONFIG_VALUE,
+                        object='compute target port list',
+                        value=self.storage_info['compute_ports'])
 
-    def attach_ldev(self, volume, ldev, connector, is_snapshot, targets):
+    def attach_ldev(
+            self, volume, ldev, connector, is_snapshot, targets, lun=None):
         """Initialize connection between the server and the volume."""
         raise NotImplementedError()
 
@@ -952,7 +970,8 @@ class HBSDCommon():
     @coordination.synchronized(
         '{self.driver_info[driver_file_prefix]}-host-'
         '{self.conf.hitachi_storage_id}-{connector[host]}')
-    def initialize_connection(self, volume, connector, is_snapshot=False):
+    def initialize_connection(
+            self, volume, connector, is_snapshot=False, lun=None):
         """Initialize connection between the server and the volume."""
         targets = {
             'info': {},
@@ -961,14 +980,14 @@ class HBSDCommon():
             'iqns': {},
             'target_map': {},
         }
-        ldev = utils.get_ldev(volume)
+        ldev = self.get_ldev(volume)
         if ldev is None:
-            msg = utils.output_log(MSG.INVALID_LDEV_FOR_CONNECTION,
-                                   volume_id=volume['id'])
+            msg = self.output_log(MSG.INVALID_LDEV_FOR_CONNECTION,
+                                  volume_id=volume['id'])
             self.raise_error(msg)
 
         target_lun = self.attach_ldev(
-            volume, ldev, connector, is_snapshot, targets)
+            volume, ldev, connector, is_snapshot, targets, lun)
 
         return {
             'driver_volume_type': self.driver_info['volume_type'],
@@ -996,10 +1015,10 @@ class HBSDCommon():
 
     def terminate_connection(self, volume, connector):
         """Terminate connection between the server and the volume."""
-        ldev = utils.get_ldev(volume)
+        ldev = self.get_ldev(volume)
         if ldev is None:
-            utils.output_log(MSG.INVALID_LDEV_FOR_UNMAPPING,
-                             volume_id=volume['id'])
+            self.output_log(MSG.INVALID_LDEV_FOR_UNMAPPING,
+                            volume_id=volume['id'])
             return
         # If a fake connector is generated by nova when the host
         # is down, then the connector will not have a host property,
@@ -1008,7 +1027,7 @@ class HBSDCommon():
         if 'host' not in connector:
             port_hostgroup_map = self.get_port_hostgroup_map(ldev)
             if not port_hostgroup_map:
-                utils.output_log(MSG.NO_LUN, ldev=ldev)
+                self.output_log(MSG.NO_LUN, ldev=ldev)
                 return
             self.set_terminate_target(connector, port_hostgroup_map)
 
@@ -1031,21 +1050,17 @@ class HBSDCommon():
                         'data': {'target_wwn': target_wwn}}
         return inner(self, volume, connector)
 
-    def get_volume_extra_specs(self, volume):
-        if volume is None:
-            return {}
-        type_id = volume.get('volume_type_id')
-        if type_id is None:
-            return {}
-
-        return volume_types.get_volume_type_extra_specs(type_id)
-
     def filter_target_ports(self, target_ports, volume, is_snapshot=False):
         specs = self.get_volume_extra_specs(volume) if volume else None
         if not specs:
             return target_ports
         if self.driver_info.get('driver_dir_name'):
-            tps_name = self.driver_info['driver_dir_name'] + ':target_ports'
+            if getattr(self, 'is_secondary', False):
+                tps_name = self.driver_info[
+                    'driver_dir_name'] + ':remote_target_ports'
+            else:
+                tps_name = self.driver_info[
+                    'driver_dir_name'] + ':target_ports'
         else:
             return target_ports
 
@@ -1059,7 +1074,7 @@ class HBSDCommon():
             volume = volume['volume']
         for port in tpsset:
             if port not in target_ports:
-                utils.output_log(
+                self.output_log(
                     MSG.INVALID_EXTRA_SPEC_KEY_PORT,
                     port=port, target_ports_param=tps_name,
                     volume_type=volume['volume_type']['name'])
@@ -1071,7 +1086,7 @@ class HBSDCommon():
 
     def unmanage_snapshot(self, snapshot):
         """Output error message and raise NotImplementedError."""
-        utils.output_log(
+        self.output_log(
             MSG.SNAPSHOT_UNMANAGE_FAILED, snapshot_id=snapshot['id'])
         raise NotImplementedError()
 
@@ -1093,8 +1108,8 @@ class HBSDCommon():
 
     def revert_to_snapshot(self, volume, snapshot):
         """Rollback the specified snapshot."""
-        pvol = utils.get_ldev(volume)
-        svol = utils.get_ldev(snapshot)
+        pvol = self.get_ldev(volume)
+        svol = self.get_ldev(snapshot)
         if (pvol is not None and
                 svol is not None and
                 self.has_snap_pair(pvol, svol)):
@@ -1121,20 +1136,65 @@ class HBSDCommon():
     def delete_group_snapshot(self, group_snapshot, snapshots):
         raise NotImplementedError()
 
+    def output_log(self, msg_enum, **kwargs):
+        if self.storage_id is not None:
+            return utils.output_log(
+                msg_enum, storage_id=self.storage_id, **kwargs)
+        else:
+            return utils.output_log(msg_enum, **kwargs)
+
+    def get_ldev(self, obj, both=False):
+        if not obj:
+            return None
+        provider_location = obj.get('provider_location')
+        if not provider_location:
+            return None
+        if provider_location.isdigit():
+            return int(provider_location)
+        if provider_location.startswith('{'):
+            loc = json.loads(provider_location)
+            if isinstance(loc, dict):
+                if getattr(self, 'is_primary', False) or (
+                        hasattr(self, 'primary_storage_id') and not both):
+                    return None if 'pldev' not in loc else int(loc['pldev'])
+                elif getattr(self, 'is_secondary', False):
+                    return None if 'sldev' not in loc else int(loc['sldev'])
+                if hasattr(self, 'primary_storage_id'):
+                    return {key: loc.get(key) for key in ['pldev', 'sldev']}
+        return None
+
+    def check_opt_value(self, conf, names):
+        """Check if the parameter names and values are valid."""
+        for name in names:
+            try:
+                getattr(conf, name)
+            except (cfg.NoSuchOptError, cfg.ConfigFileValueError):
+                with excutils.save_and_reraise_exception():
+                    self.output_log(MSG.INVALID_PARAMETER, param=name)
+
     def check_opts(self, conf, opts):
         """Check if the specified configuration is valid."""
         names = []
         for opt in opts:
             if opt.required and not conf.safe_get(opt.name):
-                msg = utils.output_log(MSG.INVALID_PARAMETER, param=opt.name)
+                msg = self.output_log(MSG.INVALID_PARAMETER, param=opt.name)
                 self.raise_error(msg)
             names.append(opt.name)
-        utils.check_opt_value(conf, names)
+        self.check_opt_value(conf, names)
+
+    def get_volume_extra_specs(self, volume):
+        if volume is None:
+            return {}
+        type_id = volume.get('volume_type_id', None)
+        if type_id is None:
+            return {}
+
+        return volume_types.get_volume_type_extra_specs(type_id)
 
     def require_target_existed(self, targets):
         """Check if the target list includes one or more members."""
         if not targets['list']:
-            msg = utils.output_log(MSG.NO_CONNECTED_TARGET)
+            msg = self.output_log(MSG.NO_CONNECTED_TARGET)
             self.raise_error(msg)
 
     def raise_error(self, msg):

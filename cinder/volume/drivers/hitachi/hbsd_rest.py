@@ -91,6 +91,8 @@ _MAX_COPY_GROUP_NAME = 29
 _MAX_CTG_COUNT_EXCEEDED_ADD_SNAPSHOT = ('2E10', '2302')
 _MAX_PAIR_COUNT_IN_CTG_EXCEEDED_ADD_SNAPSHOT = ('2E13', '9900')
 
+_PAIR_TARGET_NAME_BODY_DEFAULT = 'pair00'
+
 REST_VOLUME_OPTS = [
     cfg.BoolOpt(
         'hitachi_rest_disable_io_wait',
@@ -190,6 +192,13 @@ REST_VOLUME_OPTS = [
         help='Host mode option for host group or iSCSI target.'),
 ]
 
+REST_PAIR_OPTS = [
+    cfg.ListOpt(
+        'hitachi_rest_pair_target_ports',
+        default=[],
+        help='Target port names for pair of the host group or iSCSI target'),
+]
+
 _REQUIRED_REST_OPTS = [
     'san_login',
     'san_password',
@@ -198,21 +207,26 @@ _REQUIRED_REST_OPTS = [
 
 CONF = cfg.CONF
 CONF.register_opts(REST_VOLUME_OPTS, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(REST_PAIR_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 LOG = logging.getLogger(__name__)
 MSG = utils.HBSDMsg
 
 
-def _is_valid_target(self, target, target_name, target_ports):
+def _is_valid_target(self, target, target_name, target_ports, is_pair):
     """Check if the specified target is valid."""
+    if is_pair:
+        return (target[:utils.PORT_ID_LENGTH] in target_ports and
+                target_name == self._PAIR_TARGET_NAME)
     return (target[:utils.PORT_ID_LENGTH] in target_ports and
-            target_name.startswith(self.driver_info['target_prefix']))
+            target_name.startswith(self.driver_info['target_prefix']) and
+            target_name != self._PAIR_TARGET_NAME)
 
 
 def _check_ldev_manageability(self, ldev_info, ldev, existing_ref):
     """Check if the LDEV meets the criteria for being managed."""
     if ldev_info['status'] != NORMAL_STS:
-        msg = utils.output_log(MSG.INVALID_LDEV_FOR_MANAGE)
+        msg = self.output_log(MSG.INVALID_LDEV_FOR_MANAGE)
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref, reason=msg)
     attributes = set(ldev_info['attributes'])
@@ -221,20 +235,20 @@ def _check_ldev_manageability(self, ldev_info, ldev, existing_ref):
             not attributes.issubset(
                 set(['CVS', self.driver_info['hdp_vol_attr'],
                      self.driver_info['hdt_vol_attr']]))):
-        msg = utils.output_log(MSG.INVALID_LDEV_ATTR_FOR_MANAGE, ldev=ldev,
-                               ldevtype=self.driver_info['nvol_ldev_type'])
+        msg = self.output_log(MSG.INVALID_LDEV_ATTR_FOR_MANAGE, ldev=ldev,
+                              ldevtype=self.driver_info['nvol_ldev_type'])
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref, reason=msg)
     if ldev_info['numOfPorts']:
-        msg = utils.output_log(MSG.INVALID_LDEV_PORT_FOR_MANAGE, ldev=ldev)
+        msg = self.output_log(MSG.INVALID_LDEV_PORT_FOR_MANAGE, ldev=ldev)
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref, reason=msg)
 
 
-def _check_ldev_size(ldev_info, ldev, existing_ref):
+def _check_ldev_size(self, ldev_info, ldev, existing_ref):
     """Hitachi storage calculates volume sizes in a block unit, 512 bytes."""
     if ldev_info['blockCapacity'] % utils.GIGABYTE_PER_BLOCK_SIZE:
-        msg = utils.output_log(MSG.INVALID_LDEV_SIZE_FOR_MANAGE, ldev=ldev)
+        msg = self.output_log(MSG.INVALID_LDEV_SIZE_FOR_MANAGE, ldev=ldev)
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref, reason=msg)
 
@@ -246,9 +260,23 @@ class HBSDREST(common.HBSDCommon):
         """Initialize instance variables."""
         super(HBSDREST, self).__init__(conf, storage_protocol, db)
         self.conf.append_config_values(REST_VOLUME_OPTS)
+        self.conf.append_config_values(REST_PAIR_OPTS)
         self.conf.append_config_values(san.san_opts)
 
         self.client = None
+
+    def do_setup(self, context):
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_pair_target_number'):
+            self._PAIR_TARGET_NAME_BODY = 'pair%02d' % (
+                self.conf.safe_get(self.driver_info['param_prefix'] +
+                                   '_pair_target_number'))
+        else:
+            self._PAIR_TARGET_NAME_BODY = _PAIR_TARGET_NAME_BODY_DEFAULT
+        self._PAIR_TARGET_NAME = (self.driver_info['target_prefix'] +
+                                  self._PAIR_TARGET_NAME_BODY)
+        super(HBSDREST, self).do_setup(context)
 
     def setup_client(self):
         """Initialize RestApiClient."""
@@ -258,6 +286,9 @@ class HBSDREST(common.HBSDCommon):
             if verify_path:
                 verify = verify_path
         self.verify = verify
+        is_rep = False
+        if self.storage_id is not None:
+            is_rep = True
         self.client = rest_api.RestApiClient(
             self.conf,
             self.conf.san_ip,
@@ -267,7 +298,8 @@ class HBSDREST(common.HBSDCommon):
             self.conf.san_password,
             self.driver_info['driver_prefix'],
             tcp_keepalive=self.conf.hitachi_rest_tcp_keepalive,
-            verify=verify)
+            verify=verify,
+            is_rep=is_rep)
         self.client.login()
 
     def need_client_setup(self):
@@ -307,7 +339,7 @@ class HBSDREST(common.HBSDCommon):
         """Delete the specified LDEV from the storage."""
         result = self.client.get_ldev(ldev)
         if result['emulationType'] == 'NOT DEFINED':
-            utils.output_log(MSG.LDEV_NOT_EXIST, ldev=ldev)
+            self.output_log(MSG.LDEV_NOT_EXIST, ldev=ldev)
             return
         self.client.delete_ldev(
             ldev,
@@ -352,7 +384,7 @@ class HBSDREST(common.HBSDCommon):
             _wait_for_copy_pair_status, timeutils.utcnow(),
             ldev, status, timeout)
         if not loop.start(interval=interval).wait():
-            msg = utils.output_log(
+            msg = self.output_log(
                 MSG.PAIR_STATUS_WAIT_TIMEOUT, svol=ldev)
             self.raise_error(msg)
 
@@ -375,7 +407,7 @@ class HBSDREST(common.HBSDCommon):
             if (utils.safe_get_err_code(ex.kwargs.get('errobj')) ==
                     rest_api.INVALID_SNAPSHOT_POOL and
                     not self.conf.hitachi_snap_pool):
-                msg = utils.output_log(
+                msg = self.output_log(
                     MSG.INVALID_PARAMETER,
                     param=self.driver_info['param_prefix'] + '_snap_pool')
                 self.raise_error(msg)
@@ -388,7 +420,7 @@ class HBSDREST(common.HBSDCommon):
                 try:
                     self._delete_pair_from_storage(pvol, svol)
                 except exception.VolumeDriverException:
-                    utils.output_log(
+                    self.output_log(
                         MSG.DELETE_PAIR_FAILED, pvol=pvol, svol=svol)
 
     def _create_clone_pair(self, pvol, svol, snap_pool_id):
@@ -417,7 +449,7 @@ class HBSDREST(common.HBSDCommon):
             if (utils.safe_get_err_code(ex.kwargs.get('errobj')) ==
                     rest_api.INVALID_SNAPSHOT_POOL and
                     not self.conf.hitachi_snap_pool):
-                msg = utils.output_log(
+                msg = self.output_log(
                     MSG.INVALID_PARAMETER,
                     param=self.driver_info['param_prefix'] + '_snap_pool')
                 self.raise_error(msg)
@@ -430,7 +462,7 @@ class HBSDREST(common.HBSDCommon):
                 try:
                     self._delete_pair_from_storage(pvol, svol)
                 except exception.VolumeDriverException:
-                    utils.output_log(
+                    self.output_log(
                         MSG.DELETE_PAIR_FAILED, pvol=pvol, svol=svol)
 
     def create_pair_on_storage(
@@ -468,7 +500,7 @@ class HBSDREST(common.HBSDCommon):
         loop = loopingcall.FixedIntervalLoopingCall(
             _wait_for_copy_pair_smpl, timeutils.utcnow(), ldev)
         if not loop.start(interval=interval).wait():
-            msg = utils.output_log(
+            msg = self.output_log(
                 MSG.PAIR_STATUS_WAIT_TIMEOUT, svol=ldev)
             self.raise_error(msg)
 
@@ -489,27 +521,65 @@ class HBSDREST(common.HBSDCommon):
                 pvol, mun, ignore_return_code=ignore_return_code)
         self._wait_copy_pair_deleting(svol)
 
+    def _get_pair_ports(self):
+        return (self.storage_info['pair_ports'] or
+                self.storage_info['controller_ports'])
+
+    def terminate_pair_connection(self, ldev):
+        targets = {
+            'list': [],
+        }
+        ldev_info = self.get_ldev_info(['status', 'attributes'], ldev)
+        if (ldev_info['status'] == NORMAL_STS and
+                self.driver_info['mirror_attr'] in ldev_info['attributes']):
+            LOG.debug(
+                'The specified LDEV has replication pair. '
+                'Therefore, unmapping operation was skipped. '
+                '(LDEV: %(ldev)s, vol_attr: %(info)s)',
+                {'ldev': ldev, 'info': ldev_info['attributes']})
+            return
+        self._find_mapped_targets_from_storage(
+            targets, ldev, self._get_pair_ports(), is_pair=True)
+        self.unmap_ldev(targets, ldev)
+
     def delete_pair_based_on_svol(self, pvol, svol_info):
         """Disconnect all volume pairs to which the specified S-VOL belongs."""
         # If the pair status does not satisfy the execution condition,
         if not (svol_info['is_psus'] or
                 _STATUS_TABLE.get(svol_info['status']) == SMPP):
-            utils.output_log(
+            self.output_log(
                 MSG.UNABLE_TO_DELETE_PAIR, pvol=pvol, svol=svol_info['ldev'])
             self.raise_busy()
 
         self._delete_pair_from_storage(pvol, svol_info['ldev'])
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_rest_pair_target_ports'):
+            self.terminate_pair_connection(svol_info['ldev'])
+            self.terminate_pair_connection(pvol)
 
     def check_param(self):
         """Check parameter values and consistency among them."""
         super(HBSDREST, self).check_param()
         self.check_opts(self.conf, REST_VOLUME_OPTS)
         self.check_opts(self.conf, san.san_opts)
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_rest_pair_target_ports'):
+            self.check_opts(self.conf, REST_PAIR_OPTS)
+            if (not self.conf.hitachi_target_ports and
+                    not self.conf.hitachi_rest_pair_target_ports):
+                msg = self.output_log(
+                    MSG.INVALID_PARAMETER,
+                    param=self.driver_info['param_prefix'] +
+                    '_target_ports or ' + self.driver_info['param_prefix'] +
+                    '_rest_pair_target_ports')
+                self.raise_error(msg)
         LOG.debug(
             'Setting ldev_range: %s', self.storage_info['ldev_range'])
         for opt in _REQUIRED_REST_OPTS:
             if not self.conf.safe_get(opt):
-                msg = utils.output_log(MSG.INVALID_PARAMETER, param=opt)
+                msg = self.output_log(MSG.INVALID_PARAMETER, param=opt)
                 self.raise_error(msg)
         if not self.conf.safe_get('san_api_port'):
             self.conf.san_api_port = _REST_DEFAULT_PORT
@@ -544,8 +614,8 @@ class HBSDREST(common.HBSDCommon):
             else:
                 lun = assigned_lun
         elif err_code == rest_api.ANOTHER_LDEV_MAPPED:
-            utils.output_log(MSG.MAP_LDEV_FAILED,
-                             ldev=ldev, port=port, id=gid, lun=lun)
+            self.output_log(MSG.MAP_LDEV_FAILED,
+                            ldev=ldev, port=port, id=gid, lun=lun)
             return None
         LOG.debug(
             'Created logical unit path to the specified logical device. '
@@ -554,12 +624,18 @@ class HBSDREST(common.HBSDCommon):
             {'ldev': ldev, 'port': port, 'gid': gid, 'lun': lun})
         return lun
 
-    def map_ldev(self, targets, ldev):
+    def map_ldev(self, targets, ldev, lun=None):
         """Create the path between the server and the LDEV and return LUN."""
-        port, gid = targets['list'][0]
-        lun = self._run_add_lun(ldev, port, gid)
-        targets['lun'][port] = True
-        for port, gid in targets['list'][1:]:
+        raise_err = False
+        if lun is not None:
+            head = 0
+            raise_err = True
+        else:
+            head = 1
+            port, gid = targets['list'][0]
+            lun = self._run_add_lun(ldev, port, gid)
+            targets['lun'][port] = True
+        for port, gid in targets['list'][head:]:
             # When multipath is configured, Nova compute expects that
             # target_lun define the same value in all storage target.
             # Therefore, it should use same value of lun in other target.
@@ -567,12 +643,19 @@ class HBSDREST(common.HBSDCommon):
                 lun2 = self._run_add_lun(ldev, port, gid, lun=lun)
                 if lun2 is not None:
                     targets['lun'][port] = True
+                    raise_err = False
             except exception.VolumeDriverException:
-                utils.output_log(MSG.MAP_LDEV_FAILED, ldev=ldev,
-                                 port=port, id=gid, lun=lun)
+                self.output_log(MSG.MAP_LDEV_FAILED, ldev=ldev,
+                                port=port, id=gid, lun=lun)
+        if raise_err:
+            msg = self.output_log(
+                MSG.CONNECT_VOLUME_FAILED,
+                ldev=ldev, reason='Failed to attach in all ports.')
+            self.raise_error(msg)
         return lun
 
-    def attach_ldev(self, volume, ldev, connector, is_snapshot, targets):
+    def attach_ldev(
+            self, volume, ldev, connector, is_snapshot, targets, lun=None):
         """Initialize connection between the server and the volume."""
         target_ports = self.get_target_ports(connector)
         target_ports = self.filter_target_ports(target_ports, volume,
@@ -587,9 +670,10 @@ class HBSDREST(common.HBSDCommon):
         targets['list'].sort()
         for port in target_ports:
             targets['lun'][port] = False
-        return int(self.map_ldev(targets, ldev))
+        return int(self.map_ldev(targets, ldev, lun))
 
-    def _find_mapped_targets_from_storage(self, targets, ldev, target_ports):
+    def _find_mapped_targets_from_storage(
+            self, targets, ldev, target_ports, is_pair=False):
         """Update port-gid list for the specified LDEV."""
         ldev_info = self.get_ldev_info(['ports'], ldev)
         if not ldev_info['ports']:
@@ -597,7 +681,7 @@ class HBSDREST(common.HBSDCommon):
         for port_info in ldev_info['ports']:
             if _is_valid_target(self, port_info['portId'],
                                 port_info['hostGroupName'],
-                                target_ports):
+                                target_ports, is_pair):
                 targets['list'].append(port_info)
 
     def _get_unmap_targets_list(self, target_list, mapped_list):
@@ -649,7 +733,7 @@ class HBSDREST(common.HBSDCommon):
             self.client.delete_host_grp(port, gid)
             result = 0
         except exception.VolumeDriverException:
-            utils.output_log(MSG.DELETE_TARGET_FAILED, port=port, id=gid)
+            self.output_log(MSG.DELETE_TARGET_FAILED, port=port, id=gid)
         else:
             LOG.debug(
                 'Deleted target. (port: %(port)s, gid: %(gid)s)',
@@ -717,7 +801,7 @@ class HBSDREST(common.HBSDCommon):
                     rest_api.MSGID_SPECIFIED_OBJECT_DOES_NOT_EXIST])
 
             if 'errorSource' in result:
-                msg = utils.output_log(MSG.POOL_NOT_FOUND, pool=pool_id)
+                msg = self.output_log(MSG.POOL_NOT_FOUND, pool=pool_id)
                 self.raise_error(msg)
 
         tp_cap = result['totalPoolCapacity'] // units.Ki
@@ -731,7 +815,7 @@ class HBSDREST(common.HBSDCommon):
         try:
             result = self.client.get_pools()
         except exception.VolumeDriverException:
-            utils.output_log(MSG.POOL_INFO_RETRIEVAL_FAILED, pool='all')
+            self.output_log(MSG.POOL_INFO_RETRIEVAL_FAILED, pool='all')
         pool_infos = []
         for pool_id in pool_ids:
             for pool_data in result:
@@ -739,7 +823,7 @@ class HBSDREST(common.HBSDCommon):
                     cap_data = self.get_pool_info(pool_id, pool_data)
                     break
             else:
-                utils.output_log(MSG.POOL_NOT_FOUND, pool=pool_id)
+                self.output_log(MSG.POOL_NOT_FOUND, pool=pool_id)
                 cap_data = None
             pool_infos.append(cap_data)
         return pool_infos
@@ -747,11 +831,11 @@ class HBSDREST(common.HBSDCommon):
     def discard_zero_page(self, volume):
         """Return the volume's no-data pages to the storage pool."""
         if self.conf.hitachi_discard_zero_page:
-            ldev = utils.get_ldev(volume)
+            ldev = self.get_ldev(volume)
             try:
                 self.client.discard_zero_page(ldev)
             except exception.VolumeDriverException:
-                utils.output_log(MSG.DISCARD_ZERO_PAGE_FAILED, ldev=ldev)
+                self.output_log(MSG.DISCARD_ZERO_PAGE_FAILED, ldev=ldev)
 
     def _get_copy_pair_info(self, ldev):
         """Return info of the copy pair."""
@@ -832,7 +916,7 @@ class HBSDREST(common.HBSDCommon):
         """Return the size[GB] of the specified LDEV."""
         ldev_info = self.get_ldev_info(
             _CHECK_LDEV_SIZE_KEYS, ldev)
-        _check_ldev_size(ldev_info, ldev, existing_ref)
+        _check_ldev_size(self, ldev_info, ldev, existing_ref)
         return ldev_info['blockCapacity'] / utils.GIGABYTE_PER_BLOCK_SIZE
 
     def _get_pool_id(self, pool_list, pool_name_or_id):
@@ -844,7 +928,7 @@ class HBSDREST(common.HBSDCommon):
         for pool_data in pool_list['pool_list']:
             if pool_data['poolName'] == pool_name_or_id:
                 return pool_data['poolId']
-        msg = utils.output_log(MSG.POOL_NOT_FOUND, pool=pool_name_or_id)
+        msg = self.output_log(MSG.POOL_NOT_FOUND, pool=pool_name_or_id)
         self.raise_error(msg)
 
     def check_pool_id(self):
@@ -942,11 +1026,11 @@ class HBSDREST(common.HBSDCommon):
                 obj_update['status'] = 'available' if isinstance(
                     exc, (exception.VolumeIsBusy,
                           exception.SnapshotIsBusy)) else 'error'
-                utils.output_log(
+                self.output_log(
                     MSG.GROUP_OBJECT_DELETE_FAILED,
                     obj='snapshot' if is_snapshot else 'volume',
                     group='group snapshot' if is_snapshot else 'group',
-                    group_id=group.id, obj_id=obj.id, ldev=utils.get_ldev(obj),
+                    group_id=group.id, obj_id=obj.id, ldev=self.get_ldev(obj),
                     reason=exc.msg)
             raise loopingcall.LoopingCallDone(obj_update)
 
@@ -977,9 +1061,9 @@ class HBSDREST(common.HBSDCommon):
         def _create_group_volume_from_src(context, volume, src, from_snapshot):
             volume_model_update = {'id': volume.id}
             try:
-                ldev = utils.get_ldev(src)
+                ldev = self.get_ldev(src)
                 if ldev is None:
-                    msg = utils.output_log(
+                    msg = self.output_log(
                         MSG.INVALID_LDEV_FOR_VOLUME_COPY,
                         type='snapshot' if from_snapshot else 'volume',
                         id=src.id)
@@ -1009,7 +1093,7 @@ class HBSDREST(common.HBSDCommon):
                     msg = volume_model_update['msg']
                 else:
                     volumes_model_update.append(volume_model_update)
-                ldev = utils.get_ldev(volume_model_update)
+                ldev = self.get_ldev(volume_model_update)
                 if ldev is not None:
                     new_ldevs.append(ldev)
             if not is_success:
@@ -1020,18 +1104,18 @@ class HBSDREST(common.HBSDCommon):
                     try:
                         self.delete_ldev(new_ldev)
                     except exception.VolumeDriverException:
-                        utils.output_log(MSG.DELETE_LDEV_FAILED, ldev=new_ldev)
+                        self.output_log(MSG.DELETE_LDEV_FAILED, ldev=new_ldev)
         return None, volumes_model_update
 
     def update_group(self, group, add_volumes=None):
         if add_volumes and volume_utils.is_group_a_cg_snapshot_type(group):
             for volume in add_volumes:
-                ldev = utils.get_ldev(volume)
+                ldev = self.get_ldev(volume)
                 if ldev is None:
-                    msg = utils.output_log(MSG.LDEV_NOT_EXIST_FOR_ADD_GROUP,
-                                           volume_id=volume.id,
-                                           group='consistency group',
-                                           group_id=group.id)
+                    msg = self.output_log(MSG.LDEV_NOT_EXIST_FOR_ADD_GROUP,
+                                          volume_id=volume.id,
+                                          group='consistency group',
+                                          group_id=group.id)
                     self.raise_error(msg)
         return None, None, None
 
@@ -1048,7 +1132,7 @@ class HBSDREST(common.HBSDCommon):
                     fields.SnapshotStatus.AVAILABLE)
             except Exception:
                 snapshot_model_update['status'] = fields.SnapshotStatus.ERROR
-                utils.output_log(
+                self.output_log(
                     MSG.GROUP_SNAPSHOT_CREATE_FAILED,
                     group=group_snapshot.group_id,
                     group_snapshot=group_snapshot.id,
@@ -1084,8 +1168,8 @@ class HBSDREST(common.HBSDCommon):
             try:
                 self._delete_pair_from_storage(pair['pvol'], pair['svol'])
             except exception.VolumeDriverException:
-                utils.output_log(MSG.DELETE_PAIR_FAILED, pvol=pair['pvol'],
-                                 svol=pair['svol'])
+                self.output_log(MSG.DELETE_PAIR_FAILED, pvol=pair['pvol'],
+                                svol=pair['svol'])
 
     def _create_ctg_snap_pair(self, pairs):
         snapshotgroup_name = self._create_ctg_snapshot_group_name(
@@ -1107,12 +1191,12 @@ class HBSDREST(common.HBSDCommon):
                          _MAX_CTG_COUNT_EXCEEDED_ADD_SNAPSHOT) or
                         (utils.safe_get_err_code(ex.kwargs.get('errobj')) ==
                          _MAX_PAIR_COUNT_IN_CTG_EXCEEDED_ADD_SNAPSHOT)):
-                        msg = utils.output_log(MSG.FAILED_CREATE_CTG_SNAPSHOT)
+                        msg = self.output_log(MSG.FAILED_CREATE_CTG_SNAPSHOT)
                         self.raise_error(msg)
                     elif (utils.safe_get_err_code(ex.kwargs.get('errobj')) ==
                             rest_api.INVALID_SNAPSHOT_POOL and
                             not self.conf.hitachi_snap_pool):
-                        msg = utils.output_log(
+                        msg = self.output_log(
                             MSG.INVALID_PARAMETER,
                             param=self.driver_info['param_prefix'] +
                             '_snap_pool')
@@ -1134,9 +1218,9 @@ class HBSDREST(common.HBSDCommon):
         def _create_cgsnapshot_volume(snapshot):
             pair = {'snapshot': snapshot}
             try:
-                pair['pvol'] = utils.get_ldev(snapshot.volume)
+                pair['pvol'] = self.get_ldev(snapshot.volume)
                 if pair['pvol'] is None:
-                    msg = utils.output_log(
+                    msg = self.output_log(
                         MSG.INVALID_LDEV_FOR_VOLUME_COPY,
                         type='volume', id=snapshot.volume_id)
                     self.raise_error(msg)
@@ -1150,9 +1234,9 @@ class HBSDREST(common.HBSDCommon):
 
         try:
             for snapshot in snapshots:
-                ldev = utils.get_ldev(snapshot.volume)
+                ldev = self.get_ldev(snapshot.volume)
                 if ldev is None:
-                    msg = utils.output_log(
+                    msg = self.output_log(
                         MSG.INVALID_LDEV_FOR_VOLUME_COPY, type='volume',
                         id=snapshot.volume_id)
                     self.raise_error(msg)
@@ -1177,7 +1261,7 @@ class HBSDREST(common.HBSDCommon):
                     try:
                         self.delete_ldev(pair['svol'])
                     except exception.VolumeDriverException:
-                        utils.output_log(
+                        self.output_log(
                             MSG.DELETE_LDEV_FAILED, ldev=pair['svol'])
             model_update = {'status': fields.GroupSnapshotStatus.ERROR}
             for snapshot in snapshots:
@@ -1199,15 +1283,87 @@ class HBSDREST(common.HBSDCommon):
         else:
             return self._create_non_cgsnapshot(group_snapshot, snapshots)
 
+    def _init_pair_targets(self, targets_info):
+        self._pair_targets = []
+        for port in targets_info.keys():
+            if not targets_info[port]:
+                continue
+            params = {'portId': port}
+            host_grp_list = self.client.get_host_grps(params)
+            gid = None
+            for host_grp_data in host_grp_list:
+                if host_grp_data['hostGroupName'] == self._PAIR_TARGET_NAME:
+                    gid = host_grp_data['hostGroupNumber']
+                    break
+            if not gid:
+                try:
+                    connector = {
+                        'ip': self._PAIR_TARGET_NAME_BODY,
+                        'wwpns': [self._PAIR_TARGET_NAME_BODY],
+                    }
+                    target_name, gid = self.create_target_to_storage(
+                        port, connector, None)
+                    LOG.debug(
+                        'Created host group for pair operation. '
+                        '(port: %(port)s, gid: %(gid)s)',
+                        {'port': port, 'gid': gid})
+                except exception.VolumeDriverException:
+                    self.output_log(MSG.CREATE_HOST_GROUP_FAILED, port=port)
+                    continue
+            self._pair_targets.append((port, gid))
+
+        if not self._pair_targets:
+            msg = self.output_log(MSG.PAIR_TARGET_FAILED)
+            self.raise_error(msg)
+        self._pair_targets.sort(reverse=True)
+        LOG.debug('Setting pair_targets: %s', self._pair_targets)
+
+    def init_cinder_hosts(self, **kwargs):
+        targets = {
+            'info': {},
+            'list': [],
+            'iqns': {},
+            'target_map': {},
+        }
+        super(HBSDREST, self).init_cinder_hosts(targets=targets)
+        if self.storage_info['pair_ports']:
+            targets['info'] = {}
+            ports = self._get_pair_ports()
+            for port in ports:
+                targets['info'][port] = True
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_rest_pair_target_ports'):
+            self._init_pair_targets(targets['info'])
+
+    def initialize_pair_connection(self, ldev):
+        port, gid = None, None
+
+        for port, gid in self._pair_targets:
+            try:
+                targets = {
+                    'info': {},
+                    'list': [(port, gid)],
+                    'lun': {},
+                }
+                return self.map_ldev(targets, ldev)
+            except exception.VolumeDriverException:
+                self.output_log(
+                    MSG.MAP_LDEV_FAILED, ldev=ldev, port=port, id=gid,
+                    lun=None)
+
+        msg = self.output_log(MSG.MAP_PAIR_TARGET_FAILED, ldev=ldev)
+        self.raise_error(msg)
+
     def migrate_volume(self, volume, host, new_type=None):
         """Migrate the specified volume."""
         attachments = volume.volume_attachment
         if attachments:
             return False, None
 
-        pvol = utils.get_ldev(volume)
+        pvol = self.get_ldev(volume)
         if pvol is None:
-            msg = utils.output_log(
+            msg = self.output_log(
                 MSG.INVALID_LDEV_FOR_VOLUME_COPY, type='volume', id=volume.id)
             self.raise_error(msg)
 
@@ -1226,7 +1382,7 @@ class HBSDREST(common.HBSDCommon):
                                  (pvol, svol, copy_method, status)
                                  for svol, copy_method, status in
                                  zip(svols, copy_methods, svol_statuses)]
-                    msg = utils.output_log(
+                    msg = self.output_log(
                         MSG.MIGRATE_VOLUME_FAILED,
                         volume=volume.id, ldev=pvol,
                         pair_info=', '.join(pair_info))
@@ -1239,7 +1395,7 @@ class HBSDREST(common.HBSDCommon):
                     pair_info = '(%s, %s, %s, %s)' % (
                         pair_info['pvol'], svol_info['ldev'],
                         utils.THIN, svol_info['status'])
-                    msg = utils.output_log(
+                    msg = self.output_log(
                         MSG.MIGRATE_VOLUME_FAILED,
                         volume=volume.id, ldev=svol_info['ldev'],
                         pair_info=pair_info)
@@ -1272,7 +1428,7 @@ class HBSDREST(common.HBSDCommon):
             try:
                 self.delete_ldev(pvol)
             except exception.VolumeDriverException:
-                utils.output_log(MSG.DELETE_LDEV_FAILED, ldev=pvol)
+                self.output_log(MSG.DELETE_LDEV_FAILED, ldev=pvol)
 
             return True, {
                 'provider_location': str(svol),
@@ -1290,9 +1446,9 @@ class HBSDREST(common.HBSDCommon):
                         return False
             return True
 
-        ldev = utils.get_ldev(volume)
+        ldev = self.get_ldev(volume)
         if ldev is None:
-            msg = utils.output_log(
+            msg = self.output_log(
                 MSG.INVALID_LDEV_FOR_VOLUME_COPY, type='volume',
                 id=volume['id'])
             self.raise_error(msg)
@@ -1313,11 +1469,13 @@ class HBSDREST(common.HBSDCommon):
         self._wait_copy_pair_status(svol, set([SMPL, PSUE]))
         status = self._get_copy_pair_status(svol)
         if status == PSUE:
-            msg = utils.output_log(
-                MSG.VOLUME_COPY_FAILED, pvol=pvol, svol=svol)
+            msg = self.output_log(MSG.VOLUME_COPY_FAILED, pvol=pvol, svol=svol)
             self.raise_error(msg)
 
     def create_target_name(self, connector):
+        if ('ip' in connector and connector['ip']
+                == self._PAIR_TARGET_NAME_BODY):
+            return self._PAIR_TARGET_NAME
         wwn = (min(self.get_hba_ids_from_connector(connector)) if
                self.format_info['group_name_var_cnt'][
                    common.GROUP_NAME_VAR_WWN] else '')

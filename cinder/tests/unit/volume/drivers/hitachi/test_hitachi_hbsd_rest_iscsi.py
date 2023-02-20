@@ -33,6 +33,7 @@ from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hbsd_common
 from cinder.volume.drivers.hitachi import hbsd_iscsi
+from cinder.volume.drivers.hitachi import hbsd_replication
 from cinder.volume.drivers.hitachi import hbsd_rest
 from cinder.volume.drivers.hitachi import hbsd_rest_api
 from cinder.volume import volume_types
@@ -252,6 +253,16 @@ GET_SNAPSHOTS_RESULT_PAIR = {
     ],
 }
 
+GET_HOST_GROUPS_RESULT_PAIR = {
+    "data": [
+        {
+            "hostGroupNumber": 1,
+            "portId": CONFIG_MAP['port_id'],
+            "hostGroupName": "HBSD-pair00",
+        },
+    ],
+}
+
 GET_LDEVS_RESULT = {
     "data": [
         {
@@ -354,7 +365,6 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.configuration.hitachi_rest_disable_io_wait = True
         self.configuration.hitachi_rest_tcp_keepalive = True
         self.configuration.hitachi_discard_zero_page = True
-        self.configuration.hitachi_rest_number = "0"
         self.configuration.hitachi_lun_timeout = hbsd_rest._LUN_TIMEOUT
         self.configuration.hitachi_lun_retry_interval = (
             hbsd_rest._LUN_RETRY_INTERVAL)
@@ -400,6 +410,21 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.configuration.ssh_min_pool_conn = '1'
         self.configuration.ssh_max_pool_conn = '5'
 
+        self.configuration.hitachi_replication_number = 0
+        self.configuration.hitachi_pair_target_number = 0
+        self.configuration.hitachi_rest_pair_target_ports = []
+        self.configuration.hitachi_quorum_disk_id = ''
+        self.configuration.hitachi_mirror_copy_speed = ''
+        self.configuration.hitachi_mirror_storage_id = ''
+        self.configuration.hitachi_mirror_pool = ''
+        self.configuration.hitachi_mirror_ldev_range = ''
+        self.configuration.hitachi_mirror_target_ports = ''
+        self.configuration.hitachi_mirror_rest_user = ''
+        self.configuration.hitachi_mirror_rest_password = ''
+        self.configuration.hitachi_mirror_rest_api_ip = ''
+        self.configuration.hitachi_set_mirror_reserve_attribute = ''
+        self.configuration.hitachi_path_group_id = ''
+
         self.configuration.safe_get = self._fake_safe_get
 
         CONF = cfg.CONF
@@ -426,7 +451,8 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(200, GET_PORTS_RESULT),
                                FakeResponse(200, GET_PORT_RESULT),
                                FakeResponse(200, GET_HOST_ISCSIS_RESULT),
-                               FakeResponse(200, GET_HOST_GROUP_RESULT)]
+                               FakeResponse(200, GET_HOST_GROUP_RESULT),
+                               FakeResponse(200, GET_HOST_GROUPS_RESULT_PAIR)]
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
         self.driver.local_path(None)
@@ -455,7 +481,8 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(200, GET_PORTS_RESULT),
                                FakeResponse(200, GET_PORT_RESULT),
                                FakeResponse(200, GET_HOST_ISCSIS_RESULT),
-                               FakeResponse(200, GET_HOST_GROUP_RESULT)]
+                               FakeResponse(200, GET_HOST_GROUP_RESULT),
+                               FakeResponse(200, GET_HOST_GROUPS_RESULT_PAIR)]
         drv.do_setup(None)
         self.assertEqual(
             {CONFIG_MAP['port_id']:
@@ -464,7 +491,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                     'port': CONFIG_MAP['tcpPort']}},
             drv.common.storage_info['portals'])
         self.assertEqual(1, brick_get_connector_properties.call_count)
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(6, request.call_count)
         # stop the Loopingcall within the do_setup treatment
         self.driver.common.client.keep_session_loop.stop()
         self.driver.common.client.keep_session_loop.wait()
@@ -485,7 +512,8 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
-                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_HOST_GROUPS_RESULT_PAIR)]
         drv.do_setup(None)
         self.assertEqual(
             {CONFIG_MAP['port_id']:
@@ -494,7 +522,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                     'port': CONFIG_MAP['tcpPort']}},
             drv.common.storage_info['portals'])
         self.assertEqual(1, brick_get_connector_properties.call_count)
-        self.assertEqual(8, request.call_count)
+        self.assertEqual(9, request.call_count)
         # stop the Loopingcall within the do_setup treatment
         self.driver.common.client.keep_session_loop.stop()
         self.driver.common.client.keep_session_loop.wait()
@@ -515,7 +543,8 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
-                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_HOST_GROUPS_RESULT_PAIR)]
         drv.do_setup(None)
         self.assertEqual(
             {CONFIG_MAP['port_id']:
@@ -524,7 +553,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                     'port': CONFIG_MAP['tcpPort']}},
             drv.common.storage_info['portals'])
         self.assertEqual(1, brick_get_connector_properties.call_count)
-        self.assertEqual(8, request.call_count)
+        self.assertEqual(9, request.call_count)
         # stop the Loopingcall within the do_setup treatment
         self.driver.common.client.keep_session_loop.stop()
         self.driver.common.client.keep_session_loop.wait()
@@ -1025,10 +1054,14 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         ret = self.driver.delete_group_snapshot(
             self.ctxt, TEST_GROUP_SNAP[0], [TEST_SNAPSHOT[0]])
-        self.assertEqual(10, request.call_count)
+        self.assertEqual(14, request.call_count)
         actual = (
             {'status': TEST_GROUP_SNAP[0]['status']},
             [{'id': TEST_SNAPSHOT[0]['id'], 'status': 'deleted'}]
@@ -1040,6 +1073,14 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         _get_oslo_driver_opts.return_value = []
         ret = self.driver.get_driver_options()
         actual = (hbsd_common.COMMON_VOLUME_OPTS +
+                  hbsd_common.COMMON_PAIR_OPTS +
                   hbsd_common.COMMON_NAME_OPTS +
-                  hbsd_rest.REST_VOLUME_OPTS)
+                  hbsd_rest.REST_VOLUME_OPTS +
+                  hbsd_rest.REST_PAIR_OPTS +
+                  hbsd_replication._REP_OPTS +
+                  hbsd_replication.COMMON_MIRROR_OPTS +
+                  hbsd_replication.ISCSI_MIRROR_OPTS +
+                  hbsd_replication.REST_MIRROR_OPTS +
+                  hbsd_replication.REST_MIRROR_API_OPTS +
+                  hbsd_replication.REST_MIRROR_SSL_OPTS)
         self.assertEqual(actual, ret)

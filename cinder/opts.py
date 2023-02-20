@@ -106,6 +106,8 @@ from cinder.volume.drivers.fusionstorage import dsware as \
     cinder_volume_drivers_fusionstorage_dsware
 from cinder.volume.drivers.hitachi import hbsd_common as \
     cinder_volume_drivers_hitachi_hbsdcommon
+from cinder.volume.drivers.hitachi import hbsd_replication as \
+    cinder_volume_drivers_hitachi_hbsdreplication
 from cinder.volume.drivers.hitachi import hbsd_rest as \
     cinder_volume_drivers_hitachi_hbsdrest
 from cinder.volume.drivers.hitachi import hbsd_rest_fc as \
@@ -291,6 +293,17 @@ def list_opts():
                 cinder_volume_drivers_datera_dateraiscsi.d_opts,
                 cinder_volume_drivers_fungible_driver.fungible_opts,
                 cinder_volume_drivers_fusionstorage_dsware.volume_opts,
+                cinder_volume_drivers_hitachi_hbsdreplication._REP_OPTS,
+                cinder_volume_drivers_hitachi_hbsdreplication.
+                COMMON_MIRROR_OPTS,
+                cinder_volume_drivers_hitachi_hbsdreplication.
+                ISCSI_MIRROR_OPTS,
+                cinder_volume_drivers_hitachi_hbsdreplication.
+                REST_MIRROR_OPTS,
+                cinder_volume_drivers_hitachi_hbsdreplication.
+                REST_MIRROR_API_OPTS,
+                cinder_volume_drivers_hitachi_hbsdreplication.
+                REST_MIRROR_SSL_OPTS,
                 cinder_volume_drivers_infortrend_raidcmd_cli_commoncli.
                 infortrend_opts,
                 cinder_volume_drivers_inspur_as13000_as13000driver.
@@ -356,8 +369,10 @@ def list_opts():
                 FJ_ETERNUS_DX_OPT_opts,
                 cinder_volume_drivers_hitachi_hbsdcommon.COMMON_VOLUME_OPTS,
                 cinder_volume_drivers_hitachi_hbsdcommon.COMMON_PORT_OPTS,
+                cinder_volume_drivers_hitachi_hbsdcommon.COMMON_PAIR_OPTS,
                 cinder_volume_drivers_hitachi_hbsdcommon.COMMON_NAME_OPTS,
                 cinder_volume_drivers_hitachi_hbsdrest.REST_VOLUME_OPTS,
+                cinder_volume_drivers_hitachi_hbsdrest.REST_PAIR_OPTS,
                 cinder_volume_drivers_hitachi_hbsdrestfc.FC_VOLUME_OPTS,
                 cinder_volume_drivers_hpe_hpe3parcommon.hpe3par_opts,
                 cinder_volume_drivers_hpe_nimble.nimble_opts,

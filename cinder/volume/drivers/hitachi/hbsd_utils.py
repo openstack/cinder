@@ -15,17 +15,17 @@
 """Utility module for Hitachi HBSD Driver."""
 
 import enum
+import functools
 import logging as base_logging
 
-from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
+from cinder import utils as cinder_utils
 
-VERSION = '2.3.2'
+VERSION = '2.3.3'
 CI_WIKI_NAME = 'Hitachi_VSP_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
@@ -38,8 +38,12 @@ HDT_VOL_ATTR = 'HDT'
 NVOL_LDEV_TYPE = 'DP-VOL'
 TARGET_IQN_SUFFIX = '.hbsd-target'
 PAIR_ATTR = 'HTI'
+MIRROR_ATTR = 'GAD'
 
 GIGABYTE_PER_BLOCK_SIZE = units.Gi / 512
+
+PRIMARY_STR = 'primary'
+SECONDARY_STR = 'secondary'
 
 NORMAL_LDEV_TYPE = 'Normal'
 
@@ -202,6 +206,20 @@ class HBSDMsg(enum.Enum):
                '(port: %(port)s, WWN: %(wwn)s)',
         'suffix': WARNING_SUFFIX,
     }
+    REPLICATION_VOLUME_OPERATION_FAILED = {
+        'msg_id': 337,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Failed to %(operation)s the %(type)s in a replication pair. '
+               '(volume: %(volume_id)s, reason: %(reason)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    SITE_INITIALIZATION_FAILED = {
+        'msg_id': 338,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Failed to initialize the driver for the %(site)s storage '
+               'system.',
+        'suffix': WARNING_SUFFIX,
+    }
     INVALID_PORT = {
         'msg_id': 339,
         'loglevel': base_logging.WARNING,
@@ -301,6 +319,19 @@ class HBSDMsg(enum.Enum):
         'msg': 'Failed to add the logical device.',
         'suffix': ERROR_SUFFIX,
     }
+    PAIR_TARGET_FAILED = {
+        'msg_id': 638,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to add the pair target.',
+        'suffix': ERROR_SUFFIX,
+    }
+    MAP_PAIR_TARGET_FAILED = {
+        'msg_id': 639,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to map a logical device to any pair targets. '
+               '(LDEV: %(ldev)s)',
+        'suffix': ERROR_SUFFIX,
+    }
     POOL_NOT_FOUND = {
         'msg_id': 640,
         'loglevel': base_logging.ERROR,
@@ -391,11 +422,18 @@ class HBSDMsg(enum.Enum):
                'This driver does not support unmanaging snapshots.',
         'suffix': ERROR_SUFFIX,
     }
+    INVALID_EXTRA_SPEC_KEY = {
+        'msg_id': 723,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to create a volume. '
+               'An invalid value is specified for the extra spec key '
+               '"%(key)s" of the volume type. (value: %(value)s)',
+        'suffix': ERROR_SUFFIX,
+    }
     VOLUME_COPY_FAILED = {
         'msg_id': 725,
         'loglevel': base_logging.ERROR,
-        'msg': 'Failed to copy a volume. (copy method: %(copy_method)s, '
-               'P-VOL: %(pvol)s, S-VOL: %(svol)s)',
+        'msg': 'Failed to copy a volume. (P-VOL: %(pvol)s, S-VOL: %(svol)s)',
         'suffix': ERROR_SUFFIX
     }
     REST_SERVER_CONNECT_FAILED = {
@@ -482,12 +520,82 @@ class HBSDMsg(enum.Enum):
                'resource of host group or wwn was found. (ports: %(ports)s)',
         'suffix': ERROR_SUFFIX,
     }
+    SITE_NOT_INITIALIZED = {
+        'msg_id': 751,
+        'loglevel': base_logging.ERROR,
+        'msg': 'The driver is not initialized for the %(site)s storage '
+               'system.',
+        'suffix': ERROR_SUFFIX,
+    }
+    CREATE_REPLICATION_VOLUME_FAILED = {
+        'msg_id': 752,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to create the %(type)s for a %(rep_type)s pair. '
+               '(volume: %(volume_id)s, volume type: %(volume_type)s, '
+               'size: %(size)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    CREATE_REPLICATION_PAIR_FAILED = {
+        'msg_id': 754,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to create a %(rep_type)s pair or '
+               'to mirror data in a %(rep_type)s pair. '
+               '(P-VOL: %(pvol)s, S-VOL: %(svol)s, copy group: '
+               '%(copy_group)s, pair status: %(status)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    SPLIT_REPLICATION_PAIR_FAILED = {
+        'msg_id': 755,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to split a %(rep_type)s pair. '
+               '(P-VOL: %(pvol)s, S-VOL: %(svol)s, '
+               'copy group: %(copy_group)s, pair status: %(status)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    PAIR_CHANGE_TIMEOUT = {
+        'msg_id': 756,
+        'loglevel': base_logging.ERROR,
+        'msg': 'A timeout occurred before the status of '
+               'the %(rep_type)s pair changes. '
+               '(P-VOL: %(pvol)s, S-VOL: %(svol)s, copy group: '
+               '%(copy_group)s, current status: %(current_status)s, '
+               'expected status: %(expected_status)s, timeout: %(timeout)s '
+               'seconds)',
+        'suffix': ERROR_SUFFIX,
+    }
+    EXTEND_REPLICATION_VOLUME_ERROR = {
+        'msg_id': 758,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to extend a volume. The LDEVs for the volume are in '
+               'a %(rep_type)s pair and the volume is attached. '
+               '(volume: %(volume_id)s, '
+               'LDEV: %(ldev)s, source size: %(source_size)s, destination '
+               'size: %(destination_size)s, P-VOL: %(pvol)s, S-VOL: %(svol)s, '
+               'P-VOL[numOfPorts]: %(pvol_num_of_ports)s, '
+               'S-VOL[numOfPorts]: %(svol_num_of_ports)s)',
+        'suffix': ERROR_SUFFIX,
+    }
     MIGRATE_VOLUME_FAILED = {
         'msg_id': 760,
         'loglevel': base_logging.ERROR,
         'msg': 'Failed to migrate a volume. The volume is in a copy pair that '
                'cannot be deleted. (volume: %(volume)s, LDEV: %(ldev)s, '
                '(P-VOL, S-VOL, copy method, status): %(pair_info)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    REPLICATION_PAIR_ERROR = {
+        'msg_id': 766,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to %(operation)s. The LDEV for the volume is in '
+               'a remote replication pair. (volume: %(volume)s, '
+               '%(snapshot_info)sLDEV: %(ldev)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    LDEV_NUMBER_NOT_FOUND = {
+        'msg_id': 770,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to %(operation)s. The LDEV number is not found in the '
+               'Cinder object. (%(obj)s: %(obj_id)s)',
         'suffix': ERROR_SUFFIX,
     }
 
@@ -498,46 +606,34 @@ class HBSDMsg(enum.Enum):
         self.msg = error_info['msg']
         self.suffix = error_info['suffix']
 
-    def output_log(self, **kwargs):
+    def output_log(self, storage_id, **kwargs):
         """Output the message to the log file and return the message."""
         msg = self.msg % kwargs
-        LOG.log(self.level, "MSGID%(msg_id)04d-%(msg_suffix)s: %(msg)s",
+        if storage_id:
+            LOG.log(
+                self.level,
+                "%(storage_id)s MSGID%(msg_id)04d-%(msg_suffix)s: %(msg)s",
+                {'storage_id': storage_id[-6:], 'msg_id': self.msg_id,
+                 'msg_suffix': self.suffix, 'msg': msg})
+        else:
+            LOG.log(
+                self.level, "MSGID%(msg_id)04d-%(msg_suffix)s: %(msg)s",
                 {'msg_id': self.msg_id, 'msg_suffix': self.suffix, 'msg': msg})
         return msg
 
 
-def output_log(msg_enum, **kwargs):
+def output_log(msg_enum, storage_id=None, **kwargs):
     """Output the specified message to the log file and return the message."""
-    return msg_enum.output_log(**kwargs)
+    return msg_enum.output_log(storage_id, **kwargs)
 
 
 LOG = logging.getLogger(__name__)
 MSG = HBSDMsg
 
 
-def get_ldev(obj):
-    """Get the LDEV number from the given object and return it as integer."""
-    if not obj:
-        return None
-    ldev = obj.get('provider_location')
-    if not ldev or not ldev.isdigit():
-        return None
-    return int(ldev)
-
-
 def timed_out(start_time, timeout):
     """Check if the specified time has passed."""
     return timeutils.is_older_than(start_time, timeout)
-
-
-def check_opt_value(conf, names):
-    """Check if the parameter names and values are valid."""
-    for name in names:
-        try:
-            getattr(conf, name)
-        except (cfg.NoSuchOptError, cfg.ConfigFileValueError):
-            with excutils.save_and_reraise_exception():
-                output_log(MSG.INVALID_PARAMETER, param=name)
 
 
 def build_initiator_target_map(connector, target_wwns, lookup_service):
@@ -614,3 +710,52 @@ def get_exception_msg(exc):
             exc, exception.CinderException) else exc.args[0]
     else:
         return ""
+
+
+def synchronized_on_copy_group():
+    def wrap(func):
+        @functools.wraps(func)
+        def inner(self, remote_client, copy_group_name, *args, **kwargs):
+            sync_key = '%s-%s' % (copy_group_name,
+                                  self.storage_id[-6:])
+
+            @cinder_utils.synchronized(sync_key, external=True)
+            def _inner():
+                return func(self, remote_client, copy_group_name,
+                            *args, **kwargs)
+            return _inner()
+        return inner
+    return wrap
+
+
+DICT = '_dict'
+CONF = '_conf'
+
+
+class Config(object):
+
+    def __init__(self, conf):
+        super().__setattr__(CONF, conf)
+        super().__setattr__(DICT, dict())
+        self._opts = {}
+
+    def __getitem__(self, name):
+        return (super().__getattribute__(DICT)[name]
+                if name in super().__getattribute__(DICT)
+                else super().__getattribute__(CONF).safe_get(name))
+
+    def __getattr__(self, name):
+        return (super().__getattribute__(DICT)[name]
+                if name in super().__getattribute__(DICT)
+                else getattr(super().__getattribute__(CONF), name))
+
+    def __setitem__(self, key, value):
+        super().__getattribute__(DICT)[key] = value
+
+    def __setattr__(self, key, value):
+        self.__setitem__(key, value)
+
+    def safe_get(self, name):
+        return (super().__getattribute__(DICT)[name]
+                if name in super().__getattribute__(DICT)
+                else super().__getattribute__(CONF).safe_get(name))

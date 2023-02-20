@@ -57,6 +57,12 @@ class HBSDRESTFC(rest.HBSDREST):
         """Prepare for using the storage."""
         target_ports = self.conf.hitachi_target_ports
         compute_target_ports = self.conf.hitachi_compute_target_ports
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] + '_rest_pair_target_ports'):
+            pair_target_ports = self.conf.hitachi_rest_pair_target_ports
+        else:
+            pair_target_ports = []
         available_ports = []
         available_compute_ports = []
 
@@ -64,13 +70,15 @@ class HBSDRESTFC(rest.HBSDREST):
         # The port attributes must contain TAR.
         params = {'portAttributes': 'TAR'}
         port_list = self.client.get_ports(params=params)
-        for port in set(target_ports + compute_target_ports):
+        for port in set(target_ports + compute_target_ports +
+                        pair_target_ports):
             if port not in [port_data['portId'] for port_data in port_list]:
-                utils.output_log(MSG.INVALID_PORT, port=port,
-                                 additional_info='portAttributes: not TAR')
+                self.output_log(MSG.INVALID_PORT, port=port,
+                                additional_info='portAttributes: not TAR')
         for port_data in port_list:
             port = port_data['portId']
-            if port not in set(target_ports + compute_target_ports):
+            if port not in set(target_ports + compute_target_ports +
+                               pair_target_ports):
                 continue
             secure_fc_port = True
             can_port_schedule = True
@@ -89,7 +97,7 @@ class HBSDRESTFC(rest.HBSDREST):
                       port_data.get('portConnection') == 'PtoP')):
                 can_port_schedule = False
             if not secure_fc_port or not can_port_schedule:
-                utils.output_log(
+                self.output_log(
                     MSG.INVALID_PORT, port=port,
                     additional_info='portType: %s, lunSecuritySetting: %s, '
                     'fabricMode: %s, portConnection: %s' %
@@ -107,6 +115,8 @@ class HBSDRESTFC(rest.HBSDREST):
                     can_port_schedule):
                 available_compute_ports.append(port)
                 self.storage_info['wwns'][port] = wwn
+            if pair_target_ports and port in pair_target_ports:
+                self.storage_info['pair_ports'].append(port)
 
         if target_ports:
             for port in target_ports:
@@ -118,8 +128,14 @@ class HBSDRESTFC(rest.HBSDREST):
                     self.storage_info['compute_ports'].append(port)
 
         self.check_ports_info()
-        utils.output_log(MSG.SET_CONFIG_VALUE, object='port-wwn list',
-                         value=self.storage_info['wwns'])
+        if pair_target_ports and not self.storage_info['pair_ports']:
+            msg = self.output_log(
+                MSG.RESOURCE_NOT_FOUND, resource="Pair target ports")
+            self.raise_error(msg)
+        self.output_log(MSG.SET_CONFIG_VALUE, object='pair_target_ports',
+                        value=self.storage_info['pair_ports'])
+        self.output_log(MSG.SET_CONFIG_VALUE, object='port-wwn list',
+                        value=self.storage_info['wwns'])
 
     def check_param(self):
         """Check parameter values and consistency among them."""
@@ -150,15 +166,15 @@ class HBSDRESTFC(rest.HBSDREST):
                 self.client.add_hba_wwn(port, gid, wwn, no_log=True)
                 registered_wwns.append(wwn)
             except exception.VolumeDriverException as ex:
-                utils.output_log(MSG.ADD_HBA_WWN_FAILED, port=port, gid=gid,
-                                 wwn=wwn)
+                self.output_log(MSG.ADD_HBA_WWN_FAILED, port=port, gid=gid,
+                                wwn=wwn)
                 if (self.get_port_scheduler_param() and
                         utils.safe_get_err_code(ex.kwargs.get('errobj'))
                         == rest_api.EXCEED_WWN_MAX):
                     raise ex
         if not registered_wwns:
-            msg = utils.output_log(MSG.NO_HBA_WWN_ADDED_TO_HOST_GRP, port=port,
-                                   gid=gid)
+            msg = self.output_log(MSG.NO_HBA_WWN_ADDED_TO_HOST_GRP, port=port,
+                                  gid=gid)
             self.raise_error(msg)
 
     def set_target_mode(self, port, gid):
@@ -265,10 +281,12 @@ class HBSDRESTFC(rest.HBSDREST):
 
         return not_found_count
 
-    def initialize_connection(self, volume, connector, is_snapshot=False):
+    def initialize_connection(
+            self, volume, connector, is_snapshot=False, lun=None,
+            is_mirror=False):
         """Initialize connection between the server and the volume."""
         conn_info, map_info = super(HBSDRESTFC, self).initialize_connection(
-            volume, connector, is_snapshot)
+            volume, connector, is_snapshot, lun)
         if self.conf.hitachi_zoning_request:
             if (self.get_port_scheduler_param() and
                     not self.is_controller(connector)):
@@ -279,10 +297,11 @@ class HBSDRESTFC(rest.HBSDREST):
                     self._lookup_service)
             if init_targ_map:
                 conn_info['data']['initiator_target_map'] = init_targ_map
-            fczm_utils.add_fc_zone(conn_info)
+            if not is_mirror:
+                fczm_utils.add_fc_zone(conn_info)
         return conn_info
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, is_mirror=False):
         """Terminate connection between the server and the volume."""
         conn_info = super(HBSDRESTFC, self).terminate_connection(
             volume, connector)
@@ -293,7 +312,8 @@ class HBSDRESTFC(rest.HBSDREST):
                     self._lookup_service)
                 if init_targ_map:
                     conn_info['data']['initiator_target_map'] = init_targ_map
-            fczm_utils.remove_fc_zone(conn_info)
+            if not is_mirror:
+                fczm_utils.remove_fc_zone(conn_info)
         return conn_info
 
     def _get_wwpns(self, port, hostgroup):
@@ -335,8 +355,8 @@ class HBSDRESTFC(rest.HBSDREST):
 
         active_hba_ids = list(set(active_hba_ids))
         if not active_hba_ids:
-            msg = utils.output_log(MSG.NO_ACTIVE_WWN, wwn=', '.join(hba_ids),
-                                   volume=vol_id)
+            msg = self.output_log(MSG.NO_ACTIVE_WWN, wwn=', '.join(hba_ids),
+                                  volume=vol_id)
             self.raise_error(msg)
 
         active_target_wwns = list(set(active_target_wwns))
@@ -347,7 +367,7 @@ class HBSDRESTFC(rest.HBSDREST):
                     port_wwns += ", "
                 port_wwns += ("port, WWN: " + port +
                               ", " + self.storage_info['wwns'][port])
-            msg = utils.output_log(
+            msg = self.output_log(
                 MSG.NO_PORT_WITH_ACTIVE_WWN, port_wwns=port_wwns,
                 volume=vol_id)
             self.raise_error(msg)
@@ -371,17 +391,17 @@ class HBSDRESTFC(rest.HBSDREST):
                         == rest_api.MSGID_SPECIFIED_OBJECT_DOES_NOT_EXIST)
                     or (_MSG_EXCEED_HOST_GROUP_MAX
                         in utils.safe_get_message(ex.kwargs.get('errobj')))):
-                    utils.output_log(
+                    self.output_log(
                         MSG.HOST_GROUP_NUMBER_IS_MAXIMUM, port=ports[index])
                 elif (utils.safe_get_err_code(ex.kwargs.get('errobj'))
                         == rest_api.EXCEED_WWN_MAX):
-                    utils.output_log(
+                    self.output_log(
                         MSG.WWN_NUMBER_IS_MAXIMUM, port=ports[index],
                         wwn=", ". join(hba_ids))
                 else:
                     raise ex
 
-        msg = utils.output_log(
+        msg = self.output_log(
             MSG.HOST_GROUP_OR_WWN_IS_NOT_AVAILABLE, ports=', '.join(ports))
         self.raise_error(msg)
 
@@ -391,7 +411,7 @@ class HBSDRESTFC(rest.HBSDREST):
         active_ports = []
 
         if not devmap:
-            msg = utils.output_log(MSG.ZONE_MANAGER_IS_NOT_AVAILABLE)
+            msg = self.output_log(MSG.ZONE_MANAGER_IS_NOT_AVAILABLE)
             self.raise_error(msg)
         for fabric_name in devmap.keys():
             available_ports = []
@@ -409,7 +429,7 @@ class HBSDRESTFC(rest.HBSDREST):
                 if port in available_ports and port in filter_ports:
                     active_ports.append(port)
                 elif port not in available_ports and port in filter_ports:
-                    utils.output_log(
+                    self.output_log(
                         MSG.INVALID_PORT_BY_ZONE_MANAGER, port=port)
             for wwpns in wwpn_groups:
                 try:
