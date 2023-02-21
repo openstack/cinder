@@ -350,7 +350,6 @@ class CephBackupDriver(driver.BackupDriver):
         Incremental backups use a new base name so we support old and new style
         format.
         """
-        # Ensure no unicode
         if not backup:
             return "volume-%s.backup.base" % volume_id
 
