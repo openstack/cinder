@@ -1,0 +1,8 @@
+fixes:
+  - |
+    IBM Spectrum Virtualize family driver: `Bug #2004537
+    <https://bugs.launchpad.net/cinder/+bug/2004537>`_:
+    Fixed misleading error raised when ``storwize_portset``
+    in ``cinder.conf`` is invalid. Cinder now reports the
+    correct error message instead of incorrectly indicating
+    lack of iSCSI support.

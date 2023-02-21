@@ -10609,6 +10609,26 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         rmvdiskaccess.assert_called_with(
             volume['name'], str(key_specs_new['iogrp']))
 
+    def test_invalid_portset_message(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (8, 5, 0, 0),
+                                'topology': 'standard',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver._storwize_portset = 'portset0'
+            self.driver.do_setup(self.ctxt)
+            nodes_in_portset0 = self.sim._cmd_lsip(
+                filtervalue='portset_name=portset0')
+            storage_nodes = self.driver._master_state['storage_nodes']
+            self.assertEqual(len(storage_nodes), len(nodes_in_portset0))
+            self.driver._storwize_portset = 'portset772'
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.do_setup,
+                              self.ctxt)
+            self.driver._storwize_portset = None
+
 
 class CLIResponseTestCase(test.TestCase):
     def test_empty(self):
