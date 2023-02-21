@@ -250,6 +250,7 @@ ISCSI_CONNECTION_INFO = {
                            ISCSI_IPS[2] + ":" + TARGET_PORT,
                            ISCSI_IPS[3] + ":" + TARGET_PORT],
         "wwn": "3624a93709714b5cb91634c470002b2c8",
+        "addressing_mode": "SAM2",
     },
 }
 ISCSI_CONNECTION_INFO_V6 = {
@@ -264,6 +265,7 @@ ISCSI_CONNECTION_INFO_V6 = {
                            ISCSI_IPS[6] + ":" + TARGET_PORT,
                            ISCSI_IPS[7] + ":" + TARGET_PORT],
         "wwn": "3624a93709714b5cb91634c470002b2c8",
+        "addressing_mode": "SAM2",
     },
 }
 ISCSI_CONNECTION_INFO_AC = {
@@ -285,6 +287,7 @@ ISCSI_CONNECTION_INFO_AC = {
                            AC_ISCSI_IPS[2] + ":" + TARGET_PORT,
                            AC_ISCSI_IPS[3] + ":" + TARGET_PORT],
         "wwn": "3624a93709714b5cb91634c470002b2c8",
+        "addressing_mode": "SAM2",
     },
 }
 ISCSI_CONNECTION_INFO_AC_FILTERED = {
@@ -307,6 +310,7 @@ ISCSI_CONNECTION_INFO_AC_FILTERED = {
                            AC_ISCSI_IPS[1] + ":" + TARGET_PORT,
                            AC_ISCSI_IPS[2] + ":" + TARGET_PORT],
         "wwn": "3624a93709714b5cb91634c470002b2c8",
+        "addressing_mode": "SAM2",
     },
 }
 ISCSI_CONNECTION_INFO_AC_FILTERED_LIST = {
@@ -324,6 +328,7 @@ ISCSI_CONNECTION_INFO_AC_FILTERED_LIST = {
                            AC_ISCSI_IPS[5] + ":" + TARGET_PORT,   # IPv6
                            AC_ISCSI_IPS[6] + ":" + TARGET_PORT],  # IPv6
         "wwn": "3624a93709714b5cb91634c470002b2c8",
+        "addressing_mode": "SAM2",
     },
 }
 
@@ -411,6 +416,7 @@ FC_CONNECTION_INFO = {
         "initiator_target_map": INITIATOR_TARGET_MAP,
         "discard": True,
         "wwn": "3624a93709714b5cb91634c470002b2c8",
+        "addressing_mode": "SAM2",
     },
 }
 FC_CONNECTION_INFO_AC = {
@@ -424,6 +430,7 @@ FC_CONNECTION_INFO_AC = {
         "initiator_target_map": AC_INITIATOR_TARGET_MAP,
         "discard": True,
         "wwn": "3624a93709714b5cb91634c470002b2c8",
+        "addressing_mode": "SAM2",
     },
 }
 PURE_SNAPSHOT = {
