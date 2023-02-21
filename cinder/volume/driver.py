@@ -2775,7 +2775,8 @@ class ISCSIDriver(VolumeDriver):
 
         If the backend driver supports multiple connections for multipath and
         for single path with failover, "target_portals", "target_iqns",
-        "target_luns" are also populated::
+        "target_luns" are also populated. In this example also LUN values
+        greater than 255 use flat addressing mode::
 
             {
                 'driver_volume_type': 'iscsi',
@@ -2790,6 +2791,7 @@ class ISCSIDriver(VolumeDriver):
                     'target_luns': [1, 1],
                     'volume_id': 1,
                     'discard': False,
+                    'addressing_mode': os_brick.constants.SCSI_ADDRESSING_SAM2,
                 }
             }
         """
@@ -2935,6 +2937,7 @@ class FibreChannelDriver(VolumeDriver):
                     'target_lun': 1,
                     'target_wwn': ['1234567890123', '0987654321321'],
                     'discard': False,
+                    'addressing_mode': os_brick.constants.SCSI_ADDRESSING_SAM2,
                 }
             }
 

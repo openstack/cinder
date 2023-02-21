@@ -24,6 +24,7 @@ import platform
 import re
 import uuid
 
+from os_brick import constants as brick_constants
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -2856,6 +2857,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             "data": {
                 "target_discovered": False,
                 "discard": True,
+                "addressing_mode": brick_constants.SCSI_ADDRESSING_SAM2,
             },
         }
 
@@ -3096,6 +3098,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                 "target_wwns": target_wwns,
                 "initiator_target_map": init_targ_map,
                 "discard": True,
+                "addressing_mode": brick_constants.SCSI_ADDRESSING_SAM2,
             }
         }
         properties["data"]["wwn"] = self._get_wwn(pure_vol_name)
