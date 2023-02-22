@@ -163,6 +163,11 @@ class NVMeOF(driver.Target):
     def terminate_connection(self, volume, connector, **kwargs):
         pass
 
+    @staticmethod
+    def are_same_connector(A, B):
+        a_nqn = A.get('nqn')
+        return a_nqn and (a_nqn == B.get('nqn'))
+
     def create_export(self, context, volume, volume_path):
         """Creates export data for a logical volume."""
 

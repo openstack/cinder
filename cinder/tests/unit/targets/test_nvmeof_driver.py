@@ -162,3 +162,14 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
                           FakeNVMeOFDriver,
                           root_helper=utils.get_root_helper(),
                           configuration=self.configuration)
+
+    def test_are_same_connector(self):
+        res = self.target.are_same_connector({'nqn': 'nvme'}, {'nqn': 'nvme'})
+        self.assertTrue(res)
+
+    @ddt.data(({}, {}), ({}, {'nqn': 'nvmE'}), ({'nqn': 'nvmeE'}, {}),
+              ({'nqn': 'nvme1'}, {'nqn': 'nvme2'}))
+    @ddt.unpack
+    def test_are_same_connector_different(self, a_conn_props, b_conn_props):
+        res = self.target.are_same_connector(a_conn_props, b_conn_props)
+        self.assertFalse(bool(res))

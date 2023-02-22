@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    nvmeof target `bug #1966513
+    <https://bugs.launchpad.net/cinder/+bug/1966513>`_: Fixed
+    LVM failing on terminate_connection if the connecting host doesn't have an
+    iSCSI initiator name setup, for example if LVM is using the nvmet target.

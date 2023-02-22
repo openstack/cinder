@@ -68,3 +68,17 @@ class Target(object, metaclass=abc.ABCMeta):
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         pass
+
+    @staticmethod
+    def are_same_connector(A, B):
+        """Whether 2 connectors belong to the same host or not.
+
+        This is used for multi attach volumes, to be able to know when there
+        are no more attachments on a given host.
+
+        This is the generic implementation, but specific targets may overwrite
+        it. For example iSCSI would check the the "initiator" key instead, and
+        NVMe-oF would check the "nqn" key.
+        """
+        a_host = A.get('host')
+        return a_host and (a_host == B.get('host'))

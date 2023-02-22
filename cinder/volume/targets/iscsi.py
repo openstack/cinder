@@ -355,6 +355,11 @@ class ISCSITarget(driver.Target):
     def _do_tgt_update(self, name, force=False):
         pass
 
+    @staticmethod
+    def are_same_connector(A, B):
+        a_initiator = A.get('initiator')
+        return a_initiator and (a_initiator == B.get('initiator'))
+
 
 class SanISCSITarget(ISCSITarget):
     """iSCSI target for san devices.

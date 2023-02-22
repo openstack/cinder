@@ -12,6 +12,7 @@
 
 from unittest import mock
 
+import ddt
 from oslo_config import cfg
 
 from cinder import context
@@ -28,6 +29,7 @@ class FakeIncompleteDriver(iscsi.ISCSITarget):
         pass
 
 
+@ddt.ddt
 class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
 
     def setUp(self):
@@ -183,3 +185,15 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
                                                            self.testvol))
         self.target.db.volume_get.assert_called_once_with(
             ctxt, self.testvol['id'])
+
+    def test_are_same_connector(self):
+        res = self.target.are_same_connector({'initiator': 'iqn'},
+                                             {'initiator': 'iqn'})
+        self.assertTrue(res)
+
+    @ddt.data(({}, {}), ({}, {'initiator': 'iqn'}), ({'initiator': 'iqn'}, {}),
+              ({'initiator': 'iqn1'}, {'initiator': 'iqn2'}))
+    @ddt.unpack
+    def test_are_same_connector_different(self, a_conn_props, b_conn_props):
+        res = self.target.are_same_connector(a_conn_props, b_conn_props)
+        self.assertFalse(bool(res))
