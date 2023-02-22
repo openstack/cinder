@@ -93,6 +93,26 @@ _MAX_PAIR_COUNT_IN_CTG_EXCEEDED_ADD_SNAPSHOT = ('2E13', '9900')
 
 _PAIR_TARGET_NAME_BODY_DEFAULT = 'pair00'
 
+_DR_VOL_PATTERN = {
+    'disabled': ('REHYDRATING',),
+    'compression_deduplication': ('ENABLED',),
+    None: ('DELETING',),
+}
+_DISABLE_ABLE_DR_STATUS = {
+    'disabled': ('DISABLED', 'ENABLING', 'REHYDRATING'),
+    'compression_deduplication': ('ENABLED', 'ENABLING'),
+}
+_DEDUPCOMP_ABLE_DR_STATUS = {
+    'disabled': ('DISABLED', 'ENABLING'),
+    'compression_deduplication': ('ENABLED', 'ENABLING'),
+}
+_CAPACITY_SAVING_DR_MODE = {
+    'disable': 'disabled',
+    'deduplication_compression': 'compression_deduplication',
+    '': 'disabled',
+    None: 'disabled',
+}
+
 REST_VOLUME_OPTS = [
     cfg.BoolOpt(
         'hitachi_rest_disable_io_wait',
@@ -311,22 +331,39 @@ class HBSDREST(common.HBSDCommon):
         if self.client is not None:
             self.client.enter_keep_session()
 
-    def _create_ldev_on_storage(self, size, pool_id, ldev_range):
+    def _set_dr_mode(self, body, capacity_saving):
+        dr_mode = _CAPACITY_SAVING_DR_MODE.get(capacity_saving)
+        if not dr_mode:
+            msg = self.output_log(
+                MSG.INVALID_EXTRA_SPEC_KEY,
+                key=self.driver_info['driver_dir_name'] + ':capacity_saving',
+                value=capacity_saving)
+            self.raise_error(msg)
+        body['dataReductionMode'] = dr_mode
+
+    def _create_ldev_on_storage(self, size, extra_specs, pool_id, ldev_range):
         """Create an LDEV on the storage system."""
         body = {
             'byteFormatCapacity': '%sG' % size,
             'poolId': pool_id,
             'isParallelExecutionEnabled': True,
         }
+        capacity_saving = None
+        if self.driver_info.get('driver_dir_name'):
+            capacity_saving = extra_specs.get(
+                self.driver_info['driver_dir_name'] + ':capacity_saving')
+        if capacity_saving:
+            self._set_dr_mode(body, capacity_saving)
         if self.storage_info['ldev_range']:
             min_ldev, max_ldev = self.storage_info['ldev_range'][:2]
             body['startLdevId'] = min_ldev
             body['endLdevId'] = max_ldev
         return self.client.add_ldev(body, no_log=True)
 
-    def create_ldev(self, size, pool_id, ldev_range):
+    def create_ldev(self, size, extra_specs, pool_id, ldev_range):
         """Create an LDEV of the specified size and the specified type."""
-        ldev = self._create_ldev_on_storage(size, pool_id, ldev_range)
+        ldev = self._create_ldev_on_storage(
+            size, extra_specs, pool_id, ldev_range)
         LOG.debug('Created logical device. (LDEV: %s)', ldev)
         return ldev
 
@@ -337,12 +374,23 @@ class HBSDREST(common.HBSDCommon):
 
     def delete_ldev_from_storage(self, ldev):
         """Delete the specified LDEV from the storage."""
-        result = self.client.get_ldev(ldev)
+        result = self.get_ldev_info(['emulationType',
+                                     'dataReductionMode',
+                                     'dataReductionStatus'], ldev)
+        if result['dataReductionStatus'] == 'FAILED':
+            msg = self.output_log(
+                MSG.CONSISTENCY_NOT_GUARANTEE, ldev=ldev)
+            self.raise_error(msg)
+        if result['dataReductionStatus'] in _DR_VOL_PATTERN.get(
+                result['dataReductionMode'], ()):
+            body = {'isDataReductionDeleteForceExecute': True}
+        else:
+            body = None
         if result['emulationType'] == 'NOT DEFINED':
             self.output_log(MSG.LDEV_NOT_EXIST, ldev=ldev)
             return
         self.client.delete_ldev(
-            ldev,
+            ldev, body,
             timeout_message=(MSG.LDEV_DELETION_WAIT_TIMEOUT, {'ldev': ldev}))
 
     def _get_snap_pool_id(self, pvol):
@@ -1227,7 +1275,9 @@ class HBSDREST(common.HBSDCommon):
                 size = snapshot.volume_size
                 pool_id = self.get_pool_id_of_volume(snapshot.volume)
                 ldev_range = self.storage_info['ldev_range']
-                pair['svol'] = self.create_ldev(size, pool_id, ldev_range)
+                extra_specs = self.get_volume_extra_specs(snapshot.volume)
+                pair['svol'] = self.create_ldev(size, extra_specs,
+                                                pool_id, ldev_range)
             except Exception as exc:
                 pair['msg'] = utils.get_exception_msg(exc)
             raise loopingcall.LoopingCallDone(pair)
@@ -1415,13 +1465,14 @@ class HBSDREST(common.HBSDCommon):
         if (new_type or old_pool_id != new_pool_id or
                 (ldev_range and
                  (pvol < ldev_range[0] or ldev_range[1] < pvol))):
-
+            extra_specs = self.get_volume_extra_specs(volume)
             snap_pool_id = host['capabilities']['location_info'].get(
                 'snap_pool_id')
             ldev_range = host['capabilities']['location_info'].get(
                 'ldev_range')
             svol = self.copy_on_storage(
-                pvol, volume.size, new_pool_id, snap_pool_id, ldev_range,
+                pvol, volume.size, extra_specs, new_pool_id,
+                snap_pool_id, ldev_range,
                 is_snapshot=False, sync=True)
             self.modify_ldev_name(svol, volume['id'].replace("-", ""))
 
@@ -1436,16 +1487,62 @@ class HBSDREST(common.HBSDCommon):
 
         return True, None
 
+    def _is_modifiable_dr_value(self, dr_mode, dr_status, new_dr_mode, volume):
+        if (dr_status == 'REHYDRATING' and
+                new_dr_mode == 'compression_deduplication'):
+            self.output_log(MSG.VOLUME_IS_BEING_REHYDRATED,
+                            volume_id=volume['id'],
+                            volume_type=volume['volume_type']['name'])
+            return False
+        elif dr_status == 'FAILED':
+            self.output_log(MSG.INCONSISTENCY_DEDUPLICATION_SYSTEM_VOLUME,
+                            volume_id=volume['id'],
+                            volume_type=volume['volume_type']['name'])
+            return False
+        elif new_dr_mode == 'disabled':
+            return dr_status in _DISABLE_ABLE_DR_STATUS.get(dr_mode, ())
+        elif new_dr_mode == 'compression_deduplication':
+            return dr_status in _DEDUPCOMP_ABLE_DR_STATUS.get(dr_mode, ())
+        return False
+
+    def _modify_capacity_saving(self, ldev, capacity_saving):
+        body = {'dataReductionMode': capacity_saving}
+        self.client.modify_ldev(
+            ldev, body,
+            timeout_message=(
+                MSG.NOT_COMPLETED_CHANGE_VOLUME_TYPE, {'ldev': ldev}))
+
     def retype(self, ctxt, volume, new_type, diff, host):
         """Retype the specified volume."""
+        diff_items = []
 
-        def _check_specs_diff(diff):
+        def _check_specs_diff(diff, allowed_extra_specs):
             for specs_key, specs_val in diff.items():
                 for diff_key, diff_val in specs_val.items():
+                    if (specs_key == 'extra_specs' and
+                            diff_key in allowed_extra_specs):
+                        diff_items.append(diff_key)
+                        continue
                     if diff_val[0] != diff_val[1]:
                         return False
             return True
 
+        extra_specs_capacity_saving = None
+        new_capacity_saving = None
+        allowed_extra_specs = []
+        if self.driver_info.get('driver_dir_name'):
+            extra_specs_capacity_saving = (
+                self.driver_info['driver_dir_name'] + ':capacity_saving')
+            new_capacity_saving = (
+                new_type['extra_specs'].get(extra_specs_capacity_saving))
+            allowed_extra_specs.append(extra_specs_capacity_saving)
+        new_dr_mode = _CAPACITY_SAVING_DR_MODE.get(new_capacity_saving)
+        if not new_dr_mode:
+            msg = self.output_log(
+                MSG.FAILED_CHANGE_VOLUME_TYPE,
+                key=extra_specs_capacity_saving,
+                value=new_capacity_saving)
+            self.raise_error(msg)
         ldev = self.get_ldev(volume)
         if ldev is None:
             msg = self.output_log(
@@ -1453,14 +1550,26 @@ class HBSDREST(common.HBSDCommon):
                 id=volume['id'])
             self.raise_error(msg)
         ldev_info = self.get_ldev_info(
-            ['poolId'], ldev)
+            ['dataReductionMode', 'dataReductionStatus', 'poolId'], ldev)
         old_pool_id = ldev_info['poolId']
         new_pool_id = host['capabilities']['location_info'].get('pool_id')
-        if not _check_specs_diff(diff) or new_pool_id != old_pool_id:
+        if (not _check_specs_diff(diff, allowed_extra_specs)
+                or new_pool_id != old_pool_id):
             snaps = SnapshotList.get_all_for_volume(ctxt, volume.id)
             if not snaps:
                 return self.migrate_volume(volume, host, new_type)
             return False
+
+        if (extra_specs_capacity_saving
+                and extra_specs_capacity_saving in diff_items):
+            ldev_info = self.get_ldev_info(
+                ['dataReductionMode', 'dataReductionStatus'], ldev)
+            if not self._is_modifiable_dr_value(
+                    ldev_info['dataReductionMode'],
+                    ldev_info['dataReductionStatus'], new_dr_mode, volume):
+                return False
+
+            self._modify_capacity_saving(ldev, new_dr_mode)
 
         return True
 

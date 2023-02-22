@@ -250,7 +250,7 @@ class HBSDCommon():
                 return pool['location_info']['pool_id']
         return None
 
-    def create_ldev(self, size, pool_id, ldev_range):
+    def create_ldev(self, size, extra_specs, pool_id, ldev_range):
         """Create an LDEV and return its LDEV number."""
         raise NotImplementedError()
 
@@ -260,10 +260,12 @@ class HBSDCommon():
 
     def create_volume(self, volume):
         """Create a volume and return its properties."""
+        extra_specs = self.get_volume_extra_specs(volume)
         pool_id = self.get_pool_id_of_volume(volume)
         ldev_range = self.storage_info['ldev_range']
         try:
-            ldev = self.create_ldev(volume['size'], pool_id, ldev_range)
+            ldev = self.create_ldev(
+                volume['size'], extra_specs, pool_id, ldev_range)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.output_log(MSG.CREATE_LDEV_FAILED)
@@ -286,14 +288,14 @@ class HBSDCommon():
         raise NotImplementedError()
 
     def copy_on_storage(
-            self, pvol, size, pool_id, snap_pool_id, ldev_range,
+            self, pvol, size, extra_specs, pool_id, snap_pool_id, ldev_range,
             is_snapshot=False, sync=False, is_rep=False):
         """Create a copy of the specified LDEV on the storage."""
         ldev_info = self.get_ldev_info(['status', 'attributes'], pvol)
         if ldev_info['status'] != 'NML':
             msg = self.output_log(MSG.INVALID_LDEV_STATUS_FOR_COPY, ldev=pvol)
             self.raise_error(msg)
-        svol = self.create_ldev(size, pool_id, ldev_range)
+        svol = self.create_ldev(size, extra_specs, pool_id, ldev_range)
         try:
             self.create_pair_on_storage(
                 pvol, svol, snap_pool_id, is_snapshot=is_snapshot)
@@ -318,11 +320,13 @@ class HBSDCommon():
             self.raise_error(msg)
 
         size = volume['size']
+        extra_specs = self.get_volume_extra_specs(volume)
         pool_id = self.get_pool_id_of_volume(volume)
         snap_pool_id = self.storage_info['snap_pool_id']
         ldev_range = self.storage_info['ldev_range']
-        new_ldev = self.copy_on_storage(
-            ldev, size, pool_id, snap_pool_id, ldev_range, is_rep=is_rep)
+        new_ldev = self.copy_on_storage(ldev, size, extra_specs, pool_id,
+                                        snap_pool_id, ldev_range,
+                                        is_rep=is_rep)
         self.modify_ldev_name(new_ldev, volume['id'].replace("-", ""))
         if is_rep:
             self.delete_pair(new_ldev)
@@ -412,11 +416,13 @@ class HBSDCommon():
                 type='volume', id=src_vref['id'])
             self.raise_error(msg)
         size = snapshot['volume_size']
+        extra_specs = self.get_volume_extra_specs(snapshot['volume'])
         pool_id = self.get_pool_id_of_volume(snapshot['volume'])
         snap_pool_id = self.storage_info['snap_pool_id']
         ldev_range = self.storage_info['ldev_range']
         new_ldev = self.copy_on_storage(
-            ldev, size, pool_id, snap_pool_id, ldev_range, is_snapshot=True)
+            ldev, size, extra_specs, pool_id, snap_pool_id, ldev_range,
+            is_snapshot=True)
         return {
             'provider_location': str(new_ldev),
         }

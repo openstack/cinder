@@ -25,7 +25,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder import utils as cinder_utils
 
-VERSION = '2.3.3'
+VERSION = '2.3.4'
 CI_WIKI_NAME = 'Hitachi_VSP_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
@@ -189,6 +189,25 @@ class HBSDMsg(enum.Enum):
                'target_ports or compute_target_ports '
                'parameter in cinder.conf. (port: %(port)s, volume type: '
                '%(volume_type)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    VOLUME_IS_BEING_REHYDRATED = {
+        'msg_id': 333,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Retyping the volume will be performed using migration '
+               'because the specified volume is being rehydrated. '
+               'This process may take a long time depending on the data '
+               'size. (volume: %(volume_id)s, volume type: %(volume_type)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    INCONSISTENCY_DEDUPLICATION_SYSTEM_VOLUME = {
+        'msg_id': 334,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Retyping the volume will be performed using migration '
+               'because inconsistency was found in the deduplication '
+               'system data volume. This process may take a long time '
+               'depending on the data size. '
+               '(volume: %(volume_id)s, volume type: %(volume_type)s)',
         'suffix': WARNING_SUFFIX,
     }
     HOST_GROUP_NUMBER_IS_MAXIMUM = {
@@ -436,6 +455,30 @@ class HBSDMsg(enum.Enum):
         'msg': 'Failed to copy a volume. (P-VOL: %(pvol)s, S-VOL: %(svol)s)',
         'suffix': ERROR_SUFFIX
     }
+    CONSISTENCY_NOT_GUARANTEE = {
+        'msg_id': 726,
+        'loglevel': base_logging.ERROR,
+        'msg': 'A volume or snapshot cannot be deleted. '
+               'The consistency of logical device for '
+               'a volume or snapshot cannot be guaranteed. (LDEV: %(ldev)s)',
+        'suffix': ERROR_SUFFIX
+    }
+    FAILED_CHANGE_VOLUME_TYPE = {
+        'msg_id': 727,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to change a volume type. '
+               'An invalid value is specified for the extra spec key '
+               '"%(key)s" of the volume type after change. '
+               '(value: %(value)s)',
+        'suffix': ERROR_SUFFIX
+    }
+    NOT_COMPLETED_CHANGE_VOLUME_TYPE = {
+        'msg_id': 728,
+        'loglevel': base_logging.ERROR,
+        'msg': 'The volume type change could not be completed. '
+               '(LDEV: %(ldev)s)',
+        'suffix': ERROR_SUFFIX
+    }
     REST_SERVER_CONNECT_FAILED = {
         'msg_id': 731,
         'loglevel': base_logging.ERROR,
@@ -531,6 +574,15 @@ class HBSDMsg(enum.Enum):
         'msg_id': 752,
         'loglevel': base_logging.ERROR,
         'msg': 'Failed to create the %(type)s for a %(rep_type)s pair. '
+               '(volume: %(volume_id)s, volume type: %(volume_type)s, '
+               'size: %(size)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    DEDUPLICATION_IS_ENABLED = {
+        'msg_id': 753,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to create a volume in a %(rep_type)s environment '
+               'because deduplication is enabled for the volume type. '
                '(volume: %(volume_id)s, volume type: %(volume_type)s, '
                'size: %(size)s)',
         'suffix': ERROR_SUFFIX,

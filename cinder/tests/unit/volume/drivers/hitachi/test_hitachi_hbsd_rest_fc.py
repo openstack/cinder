@@ -216,6 +216,8 @@ GET_LDEV_RESULT = {
     "attributes": ["CVS", "HDP"],
     "status": "NML",
     "poolId": 30,
+    "dataReductionStatus": "DISABLED",
+    "dataReductionMode": "disabled",
 }
 
 GET_LDEV_RESULT_MAPPED = {
@@ -238,6 +240,16 @@ GET_LDEV_RESULT_PAIR = {
     "blockCapacity": 2097152,
     "attributes": ["CVS", "HDP", "HTI"],
     "status": "NML",
+}
+
+GET_LDEV_RESULT_PAIR_STATUS_TEST = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 2097152,
+    "attributes": ["CVS", "HDP", "HTI"],
+    "status": "TEST",
+    "poolId": 30,
+    "dataReductionStatus": "REHYDRATING",
+    "dataReductionMode": "disabled"
 }
 
 GET_POOL_RESULT = {
@@ -775,6 +787,25 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('1', ret['provider_location'])
         self.assertEqual(2, request.call_count)
 
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_create_volume_deduplication_compression(
+            self, get_volume_type_extra_specs, request):
+        extra_specs = {'hbsd:capacity_saving': 'deduplication_compression'}
+        get_volume_type_extra_specs.return_value = extra_specs
+        request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_volume(TEST_VOLUME[3])
+        args, kwargs = request.call_args_list[0]
+        body = kwargs['json']
+        self.assertEqual(body.get('dataReductionMode'),
+                         'compression_deduplication')
+        self.assertEqual('1', ret['provider_location'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
+        self.assertEqual(2, request.call_count)
+
     @reduce_retrying_time
     @mock.patch.object(requests.Session, "request")
     def test_create_volume_timeout(self, request):
@@ -852,17 +883,40 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(1, get_goodness_function.call_count)
 
     @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
-    def test_create_snapshot(self, volume_get, request):
+    def test_create_snapshot(
+            self, volume_get, get_volume_type_extra_specs, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT)]
+        get_volume_type_extra_specs.return_value = {}
         self.driver.common._stats = {}
         self.driver.common._stats['pools'] = [
             {'location_info': {'pool_id': 30}}]
         ret = self.driver.create_snapshot(TEST_SNAPSHOT[0])
         self.assertEqual('1', ret['provider_location'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
+        self.assertEqual(4, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    def test_create_snapshot_dedup_false(
+            self, volume_get, get_volume_type_extra_specs, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT)]
+        get_volume_type_extra_specs.return_value = {'hbsd:capacity_saving':
+                                                    'disable'}
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_snapshot(TEST_SNAPSHOT[0])
+        self.assertEqual('1', ret['provider_location'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(4, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
@@ -895,32 +949,40 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(4, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    def test_create_cloned_volume(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_create_cloned_volume(
+            self, get_volume_type_extra_specs, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        get_volume_type_extra_specs.return_value = {}
         self.driver.common._stats = {}
         self.driver.common._stats['pools'] = [
             {'location_info': {'pool_id': 30}}]
         vol = self.driver.create_cloned_volume(TEST_VOLUME[0], TEST_VOLUME[1])
         self.assertEqual('1', vol['provider_location'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(5, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    def test_create_volume_from_snapshot(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_create_volume_from_snapshot(
+            self, get_volume_type_extra_specs, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.common._stats = {}
+        get_volume_type_extra_specs.return_value = {}
         self.driver.common._stats['pools'] = [
             {'location_info': {'pool_id': 30}}]
         vol = self.driver.create_volume_from_snapshot(
             TEST_VOLUME[0], TEST_SNAPSHOT[0])
         self.assertEqual('1', vol['provider_location'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(5, request.call_count)
 
     @mock.patch.object(fczm_utils, "add_fc_zone")
@@ -1166,10 +1228,9 @@ class HBSDRESTFCDriverTest(test.TestCase):
 
     @mock.patch.object(requests.Session, "request")
     def test_retype(self, request):
-        request.return_value = FakeResponse(200, GET_LDEV_RESULT)
-        new_specs = {'hbsd:test': 'test'}
-        new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
-        diff = {}
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         host = {
             'capabilities': {
                 'location_info': {
@@ -1177,9 +1238,17 @@ class HBSDRESTFCDriverTest(test.TestCase):
                 },
             },
         }
+        new_type = {'extra_specs': {
+            'hbsd:capacity_saving': 'deduplication_compression'}}
+        old_specs = {'hbsd:capacity_saving': 'disable'}
+        new_specs = {'hbsd:capacity_saving': 'deduplication_compression'}
+        old_type_ref = volume_types.create(self.ctxt, 'old', old_specs)
+        new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
+        diff = volume_types.volume_types_diff(self.ctxt, old_type_ref['id'],
+                                              new_type_ref['id'])[0]
         ret = self.driver.retype(
-            self.ctxt, TEST_VOLUME[0], new_type_ref, diff, host)
-        self.assertEqual(1, request.call_count)
+            self.ctxt, TEST_VOLUME[0], new_type, diff, host)
+        self.assertEqual(3, request.call_count)
         self.assertTrue(ret)
 
     @mock.patch.object(requests.Session, "request")
@@ -1199,7 +1268,10 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertTupleEqual(actual, ret)
 
     @mock.patch.object(requests.Session, "request")
-    def test_migrate_volume_diff_pool(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_migrate_volume_diff_pool(
+            self, get_volume_type_extra_specs, request):
+        get_volume_type_extra_specs.return_value = {}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
@@ -1224,6 +1296,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
             },
         }
         ret = self.driver.migrate_volume(self.ctxt, TEST_VOLUME[0], host)
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(15, request.call_count)
         actual = (True, {'provider_location': '1'})
         self.assertTupleEqual(actual, ret)
@@ -1268,7 +1341,10 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertTupleEqual(actual, ret)
 
     @mock.patch.object(requests.Session, "request")
-    def test_create_group_from_src_volume(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_create_group_from_src_volume(
+            self, get_volume_type_extra_specs, request):
+        get_volume_type_extra_specs.return_value = {}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1281,13 +1357,17 @@ class HBSDRESTFCDriverTest(test.TestCase):
             self.ctxt, TEST_GROUP[1], [TEST_VOLUME[1]],
             source_group=TEST_GROUP[0], source_vols=[TEST_VOLUME[0]]
         )
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(5, request.call_count)
         actual = (
             None, [{'id': TEST_VOLUME[1]['id'], 'provider_location': '1'}])
         self.assertTupleEqual(actual, ret)
 
     @mock.patch.object(requests.Session, "request")
-    def test_create_group_from_src_snapshot(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_create_group_from_src_snapshot(
+            self, get_volume_type_extra_specs, request):
+        get_volume_type_extra_specs.return_value = {}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1300,6 +1380,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
             self.ctxt, TEST_GROUP[0], [TEST_VOLUME[0]],
             group_snapshot=TEST_GROUP_SNAP[0], snapshots=[TEST_SNAPSHOT[0]]
         )
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(5, request.call_count)
         actual = (
             None, [{'id': TEST_VOLUME[0]['id'], 'provider_location': '1'}])
@@ -1330,10 +1411,13 @@ class HBSDRESTFCDriverTest(test.TestCase):
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
     def test_create_group_snapshot_non_cg(
-            self, is_group_a_cg_snapshot_type, volume_get, request):
+            self, is_group_a_cg_snapshot_type, get_volume_type_extra_specs,
+            volume_get, request):
         is_group_a_cg_snapshot_type.return_value = False
+        get_volume_type_extra_specs.return_value = {}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1344,6 +1428,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         ret = self.driver.create_group_snapshot(
             self.ctxt, TEST_GROUP_SNAP[0], [TEST_SNAPSHOT[0]]
         )
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(4, request.call_count)
         actual = (
             {'status': 'available'},
@@ -1355,10 +1440,13 @@ class HBSDRESTFCDriverTest(test.TestCase):
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
     def test_create_group_snapshot_cg(
-            self, is_group_a_cg_snapshot_type, volume_get, request):
+            self, is_group_a_cg_snapshot_type, get_volume_type_extra_specs,
+            volume_get, request):
         is_group_a_cg_snapshot_type.return_value = True
+        get_volume_type_extra_specs.return_value = {}
         request.side_effect = [FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT_PAIR),
@@ -1370,6 +1458,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         ret = self.driver.create_group_snapshot(
             self.ctxt, TEST_GROUP_SNAP[0], [TEST_SNAPSHOT[0]]
         )
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(5, request.call_count)
         actual = (
             None,
@@ -1422,3 +1511,29 @@ class HBSDRESTFCDriverTest(test.TestCase):
                   hbsd_replication.REST_MIRROR_API_OPTS +
                   hbsd_replication.REST_MIRROR_SSL_OPTS)
         self.assertEqual(actual, ret)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_is_modifiable_dr_value_new_dr_mode_disabled(self, request):
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_PAIR_STATUS_TEST),
+            FakeResponse(200, GET_LDEV_RESULT_PAIR_STATUS_TEST),
+            FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        ]
+        host = {
+            'capabilities': {
+                'location_info': {
+                    'pool_id': 30,
+                },
+            },
+        }
+        new_type = {'extra_specs': {'hbsd:capacity_saving': 'disable'}}
+        old_specs = {'hbsd:capacity_saving': 'deduplication_compression'}
+        new_specs = {'hbsd:capacity_saving': 'disable'}
+        old_type_ref = volume_types.create(self.ctxt, 'old', old_specs)
+        new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
+        diff = volume_types.volume_types_diff(self.ctxt, old_type_ref['id'],
+                                              new_type_ref['id'])[0]
+        ret = self.driver.retype(
+            self.ctxt, TEST_VOLUME[0], new_type, diff, host)
+        self.assertEqual(3, request.call_count)
+        self.assertTrue(ret)
