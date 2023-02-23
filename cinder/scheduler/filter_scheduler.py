@@ -324,19 +324,6 @@ class FilterScheduler(driver.Scheduler):
         self.populate_filter_properties(request_spec,
                                         filter_properties)
 
-        # If multiattach is enabled on a volume, we need to add
-        # multiattach to extra specs, so that the capability
-        # filtering is enabled.
-        multiattach = request_spec['volume_properties'].get('multiattach',
-                                                            False)
-        if multiattach and 'multiattach' not in resource_type.get(
-                'extra_specs', {}):
-            if 'extra_specs' not in resource_type:
-                resource_type['extra_specs'] = {}
-
-            resource_type['extra_specs'].update(
-                multiattach='<is> True')
-
         # Revert volume consumed capacity if it's a rescheduled request
         retry = filter_properties.get('retry', {})
         if retry.get('backends', []):

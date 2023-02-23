@@ -209,7 +209,6 @@ Request
    - availability_zone: availability_zone
    - source_volid: source_volid
    - description: description_vol
-   - multiattach: multiattach_req
    - snapshot_id: snapshot_id
    - backup_id: backup_id
    - name: volume_name_optional

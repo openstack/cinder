@@ -208,7 +208,7 @@ class API(base.Base):
                availability_zone=None, source_volume=None,
                scheduler_hints=None,
                source_replica=None, consistencygroup=None,
-               cgsnapshot=None, multiattach=False, source_cg=None,
+               cgsnapshot=None, source_cg=None,
                group=None, group_snapshot=None, source_group=None,
                backup=None):
 
@@ -314,7 +314,6 @@ class API(base.Base):
             'optional_args': {'is_quota_committed': False},
             'consistencygroup': consistencygroup,
             'cgsnapshot': cgsnapshot,
-            'raw_multiattach': multiattach,
             'group': group,
             'group_snapshot': group_snapshot,
             'source_group': source_group,

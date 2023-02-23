@@ -15,7 +15,6 @@
 from http import HTTPStatus
 
 from oslo_log import log as logging
-from oslo_log import versionutils
 from oslo_utils import timeutils
 import webob
 from webob import exc
@@ -387,15 +386,14 @@ class VolumeController(volumes_v2.VolumeController):
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
-        multiattach = volume.get('multiattach', False)
-        kwargs['multiattach'] = multiattach
-
+        multiattach = utils.get_bool_param('multiattach', volume)
         if multiattach:
-            msg = ("The option 'multiattach' "
-                   "is deprecated and will be removed in a future "
-                   "release.  The default behavior going forward will "
-                   "be to specify multiattach enabled volume types.")
-            versionutils.report_deprecated_feature(LOG, msg)
+            msg = _("multiattach parameter has been removed. The default "
+                    "behavior is to use multiattach enabled volume types. "
+                    "Contact your administrator to create a multiattach "
+                    "enabled volume type and use it to create multiattach "
+                    "volumes.")
+            raise exc.HTTPBadRequest(explanation=msg)
         try:
             new_volume = self.volume_api.create(
                 context, size, volume.get('display_name'),

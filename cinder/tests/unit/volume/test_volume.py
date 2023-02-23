@@ -772,19 +772,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual(foo['id'], vol['volume_type_id'])
         self.assertTrue(vol['multiattach'])
 
-    def test_create_volume_with_multiattach_flag(self):
-        """Tests creating a volume with multiattach=True but no special type.
-
-        This tests the pre 3.50 microversion behavior of being able to create
-        a volume with the multiattach request parameter regardless of a
-        multiattach-capable volume type.
-        """
-        volume_api = cinder.volume.api.API()
-        volume = volume_api.create(
-            self.context, 1, 'name', 'description', multiattach=True,
-            volume_type=self.vol_type)
-        self.assertTrue(volume.multiattach)
-
     def _fail_multiattach_policy_authorize(self, policy):
         if policy == vol_policy.MULTIATTACH_POLICY:
             raise exception.PolicyNotAuthorized(action='Test')
@@ -808,16 +795,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                               volume_api.create, self.context,
                               1, 'admin-vol', 'description',
                               volume_type=foo)
-
-    def test_create_volume_with_multiattach_flag_not_authorized(self):
-        """Test policy unauthorized create with multiattach flag."""
-        volume_api = cinder.volume.api.API()
-
-        with mock.patch.object(self.context, 'authorize') as mock_auth:
-            mock_auth.side_effect = self._fail_multiattach_policy_authorize
-            self.assertRaises(exception.PolicyNotAuthorized,
-                              volume_api.create, self.context, 1, 'name',
-                              'description', multiattach=True)
 
     @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_with_encrypted_volume_type_multiattach(self):
