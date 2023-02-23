@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family driver: Added `--delete-volumes` flag
+    support for delete volumegroup operation. After adding support,
+    the volumes can optionally be deleted when the volume group is deleted.

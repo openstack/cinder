@@ -2921,6 +2921,18 @@ class StorwizeHelpers(object):
             return
         self.ssh.rmsnapshot(params)
 
+    def get_volume_name_from_metadata(self, volume):
+        """Get Volume name from metadata if metadata exists"""
+        if volume.metadata:
+            svc_volume_name = volume.metadata.get("Volume Name", None)
+            if svc_volume_name:
+                LOG.info('Volume %(cinder_id)s in cinder API is linked to '
+                         'volume_name %(svc_volume_name)s in SVC',
+                         {'cinder_id': volume.name,
+                          'svc_volume_name': svc_volume_name})
+                volume.name_id = svc_volume_name.split("-", 1)[1]
+        return volume
+
     def get_partnership_info(self, system_name):
         partnership = self.ssh.lspartnership(system_name)
         return partnership[0] if len(partnership) > 0 else None
@@ -6375,7 +6387,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         elif volume_utils.is_group_a_type(group, "volume_group_enabled"):
             self._helpers.check_codelevel_for_volumegroup(
                 self._state['code_level'])
-            model_update = self._delete_volumegroup(group)
+            model_update, volumes_model_update = self._delete_volumegroup(
+                group, volumes)
 
         else:
             for volume in volumes:
@@ -7102,9 +7115,41 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                           {'vol': volume.name, 'exception': err})
         return model_update, added_vols, removed_vols
 
-    def _delete_volumegroup(self, group):
+    def _delete_volumegroup(self, group, volumes):
         model_update = {'status': fields.GroupStatus.DELETED}
         volumegroup_name = self._get_volumegroup_name(group)
+        volumes_model_update = []
+        force_unmap = True
+        if self._state['code_level'] < (7, 7, 0, 0):
+            force_unmap = False
+        for volume in volumes:
+            volume = self._helpers.get_volume_name_from_metadata(volume)
+            if self._active_backend_id:
+                msg = (_('Error: deleting non-replicated volume in '
+                         'failover mode is not allowed.'))
+                LOG.error(msg)
+                volume.name_id = None
+                raise exception.VolumeDriverException(message=msg)
+            else:
+                try:
+                    self._helpers.delete_vdisk(
+                        volume.name,
+                        force_unmap=force_unmap,
+                        force_delete=True)
+                    volumes_model_update.append({'id': volume.id,
+                                                 'status': 'deleted'})
+                except exception.VolumeBackendAPIException as err:
+                    model_update['status'] = (
+                        fields.GroupStatus.ERROR_DELETING)
+                    LOG.error("Failed to delete the volume %(vol)s of CG. "
+                              "Exception: %(exception)s.",
+                              {'vol': volume.name, 'exception': err})
+                    volume.name_id = None
+                    volumes_model_update.append(
+                        {'id': volume.id,
+                         'status': fields.GroupStatus.ERROR_DELETING})
+            volume.name_id = None
+
         try:
             self._helpers.delete_volumegroup(volumegroup_name)
         except exception.VolumeBackendAPIException as err:
@@ -7113,7 +7158,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                       {'volumegroup': volumegroup_name, 'exception': err})
             model_update = {'status': fields.GroupStatus.ERROR_DELETING}
 
-        return model_update
+        return model_update, volumes_model_update
 
     def _update_volumegroup(self, context, group, add_volumes,
                             remove_volumes):

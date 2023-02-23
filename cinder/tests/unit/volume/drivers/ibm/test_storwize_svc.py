@@ -7257,7 +7257,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'])
         # Delete Volume Group
-        model_update = self.driver.delete_group(self.ctxt, volumegroup, None)
+        model_update = self.driver.delete_group(self.ctxt, volumegroup, [])
         self.assertTrue(delete_volumegroup.called)
         self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
@@ -7374,7 +7374,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
             # Delete Volume Group
             model_update = self.driver.delete_group(self.ctxt, volumegroup,
-                                                    None)
+                                                    [])
             self.assertTrue(delete_volumegroup.called)
             self.assertEqual(fields.GroupStatus.DELETED,
                              model_update[0]['status'])
@@ -7460,6 +7460,66 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                 [])
         self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_system_info')
+    def test_storwize_delete_volumegroup_with_delete_volumes(self,
+                                                             get_system_info):
+        """Test volume group creation and deletion"""
+
+        fake_system_info = {'code_level': (8, 5, 1, 0),
+                            'system_name': 'storwize-svc-sim',
+                            'system_id': '0123456789ABCDEF'}
+        get_system_info.return_value = fake_system_info
+        self.driver.do_setup(None)
+
+        # Seting the storwize_volume_group to True
+        self._set_flag('storwize_volume_group', True)
+
+        # Create volumegroup type
+        volumegroup_spec = {'volume_group_enabled': '<is> True'}
+        volumegroup_type_ref = group_types.create(self.ctxt,
+                                                  'volumegroup_type',
+                                                  volumegroup_spec)
+        volumegroup_type = objects.GroupType.get_by_id(
+            self.ctxt, volumegroup_type_ref['id'])
+
+        # Create source volume
+        vol_type_ref = volume_types.create(self.ctxt, 'non_rep_type', {})
+        vol_type = objects.VolumeType.get_by_id(self.ctxt,
+                                                vol_type_ref['id'])
+        source_vol = self._generate_vol_info(vol_type)
+        self.driver.create_volume(source_vol)
+
+        # Create source volumegroup
+        source_volumegroup = testutils.create_group(
+            self.ctxt, group_type_id=volumegroup_type.id,
+            volume_type_ids=[vol_type_ref['id']])
+
+        model_update = self.driver.create_group(self.ctxt, source_volumegroup)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+
+        # Add source volumes to source volumegroup
+        (model_update, add_volumes_update, remove_volumes_update) = (
+            self.driver.update_group(self.ctxt, source_volumegroup,
+                                     [source_vol], []))
+
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'])
+        source_volumegroup_name = self.driver._get_volumegroup_name(
+            source_volumegroup)
+        self.assertEqual(source_volumegroup_name,
+                         source_vol.metadata['Volume Group Name'])
+
+        # Delete Volume Group
+        model_update = self.driver.delete_group(self.ctxt,
+                                                source_volumegroup,
+                                                [source_vol])
+        self.assertEqual(fields.GroupStatus.DELETED,
+                         model_update[0]['status'])
+        for volume in model_update[1]:
+            self.assertEqual('deleted', volume['status'])
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'get_system_info')
