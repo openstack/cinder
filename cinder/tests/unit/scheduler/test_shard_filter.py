@@ -18,6 +18,8 @@ from cinder.tests.unit.scheduler import fakes
 from cinder.tests.unit.scheduler.test_host_filters \
     import BackendFiltersTestCase
 
+VMWARE_VENDOR = 'VMware'
+
 
 class ShardFilterTestCase(BackendFiltersTestCase):
 
@@ -72,7 +74,9 @@ class ShardFilterTestCase(BackendFiltersTestCase):
     def test_shard_project_not_found(self, mock_update_cache):
         caps = {'vcenter-shard': 'vc-a-1'}
         self.props['request_spec']['volume_properties']['project_id'] = 'bar'
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.assertFalse(self.filt_cls.backend_passes(host, self.props))
 
     def test_snapshot(self):
@@ -83,7 +87,9 @@ class ShardFilterTestCase(BackendFiltersTestCase):
             }
         }
         caps = {'vcenter-shard': 'vc-a-1'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.assertTrue(self.filt_cls.backend_passes(host, snap_props))
 
     def test_snapshot_None(self):
@@ -94,44 +100,58 @@ class ShardFilterTestCase(BackendFiltersTestCase):
             }
         }
         caps = {'vcenter-shard': 'vc-a-1'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.assertFalse(self.filt_cls.backend_passes(host, snap_props))
 
     def test_shard_project_no_shards(self):
         caps = {'vcenter-shard': 'vc-a-1'}
         self.filt_cls._PROJECT_SHARD_CACHE['foo'] = []
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.assertFalse(self.filt_cls.backend_passes(host, self.props))
 
     def test_backend_without_shard(self):
-        host = fakes.FakeBackendState('host1', {})
+        host = fakes.FakeBackendState('host1', {'vendor_name': VMWARE_VENDOR})
         self.assertFalse(self.filt_cls.backend_passes(host, self.props))
 
     def test_backend_shards_dont_match(self):
         caps = {'vcenter-shard': 'vc-a-1'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.assertFalse(self.filt_cls.backend_passes(host, self.props))
 
     def test_backend_shards_match(self):
         caps = {'vcenter-shard': 'vc-b-0'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.assertTrue(self.filt_cls.backend_passes(host, self.props))
 
     def test_shard_override_matches(self):
         caps = {'vcenter-shard': 'vc-a-1'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.props['scheduler_hints'] = {'vcenter-shard': 'vc-a-1'}
         self.assertTrue(self.filt_cls.backend_passes(host, self.props))
 
     def test_shard_override_no_match(self):
         caps = {'vcenter-shard': 'vc-a-0'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.props['scheduler_hints'] = {'vcenter-shard': 'vc-a-1'}
         self.assertFalse(self.filt_cls.backend_passes(host, self.props))
 
     def test_shard_override_no_data(self):
         caps = {'vcenter-shard': 'vc-a-0'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.props['scheduler_hints'] = {'vcenter-shard': None}
         self.assertFalse(self.filt_cls.backend_passes(host, self.props))
 
@@ -139,7 +159,9 @@ class ShardFilterTestCase(BackendFiltersTestCase):
         self.filt_cls._PROJECT_SHARD_CACHE['baz'] = ['sharding_enabled']
         self.props['request_spec']['volume_properties']['project_id'] = 'baz'
         caps = {'vcenter-shard': 'vc-a-0'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.assertTrue(self.filt_cls.backend_passes(host, self.props))
 
     def test_sharding_enabled_and_single_shard_any_backend_match(self):
@@ -147,7 +169,9 @@ class ShardFilterTestCase(BackendFiltersTestCase):
                                                      'vc-a-1']
         self.props['request_spec']['volume_properties']['project_id'] = 'baz'
         caps = {'vcenter-shard': 'vc-a-0'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.assertTrue(self.filt_cls.backend_passes(host, self.props))
 
     def test_scheduler_hints_override_sharding_enabled(self):
@@ -155,11 +179,15 @@ class ShardFilterTestCase(BackendFiltersTestCase):
         self.props['scheduler_hints'] = {'vcenter-shard': 'vc-a-1'}
         self.props['request_spec']['volume_properties']['project_id'] = 'baz'
         caps0 = {'vcenter-shard': 'vc-a-0'}
-        host0 = fakes.FakeBackendState('host0', {'capabilities': caps0})
-        self.assertFalse(self.filt_cls.backend_passes(host0, self.props))
+        host = fakes.FakeBackendState('host0',
+                                      {'capabilities': caps0,
+                                       'vendor_name': VMWARE_VENDOR})
+        self.assertFalse(self.filt_cls.backend_passes(host, self.props))
         caps1 = {'vcenter-shard': 'vc-a-1'}
-        host1 = fakes.FakeBackendState('host1', {'capabilities': caps1})
-        self.assertTrue(self.filt_cls.backend_passes(host1, self.props))
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps1,
+                                       'vendor_name': VMWARE_VENDOR})
+        self.assertTrue(self.filt_cls.backend_passes(host, self.props))
 
     def test_noop_for_find_backend_by_connector_with_hint(self):
         """Check if we pass any backend
@@ -171,7 +199,9 @@ class ShardFilterTestCase(BackendFiltersTestCase):
         making when we don't know where the volume will be attached.
         """
         caps = {'vcenter-shard': 'vc-a-0'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.props['scheduler_hints'] = {'vcenter-shard': 'vc-a-1'}
         self.props['request_spec']['operation'] = 'find_backend_for_connector'
         self.assertTrue(self.filt_cls.backend_passes(host, self.props))
@@ -187,6 +217,8 @@ class ShardFilterTestCase(BackendFiltersTestCase):
         """
         self.filt_cls._PROJECT_SHARD_CACHE['baz'] = ['vc-a-1']
         caps = {'vcenter-shard': 'vc-a-0'}
-        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': caps,
+                                       'vendor_name': VMWARE_VENDOR})
         self.props['request_spec']['operation'] = 'find_backend_for_connector'
         self.assertTrue(self.filt_cls.backend_passes(host, self.props))

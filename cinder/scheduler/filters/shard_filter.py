@@ -143,6 +143,13 @@ class ShardFilter(filters.BaseBackendFilter):
         return self._PROJECT_SHARD_CACHE.get(project_id)
 
     def backend_passes(self, backend_state, filter_properties):
+        # We only need the shard filter for vmware based pools
+        if backend_state.vendor_name != 'VMware':
+            LOG.info(
+                "Shard Filter ignoring backend %s as it's not vmware based"
+                " driver", backend_state.backend_id)
+            return True
+
         spec = filter_properties.get('request_spec', {})
         vol = spec.get('volume_properties', {})
         project_id = vol.get('project_id', None)
