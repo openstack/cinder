@@ -279,8 +279,9 @@ nvmet_opts = [
                 help='The port that the NVMe target is listening on.'),
     cfg.IntOpt('nvmet_ns_id',
                default=10,
-               help='The namespace id associated with the subsystem '
-                    'that will be created with the path for the LVM volume.'),
+               help='Namespace id for the subsystem for the LVM volume when '
+                    'not sharing targets.  The minimum id value when sharing.'
+                    'Maximum supported value in Linux is 8192')
 ]
 
 scst_opts = [

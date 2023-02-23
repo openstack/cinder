@@ -298,7 +298,7 @@ class TestPrivsep(test.TestCase):
 
 @ddt.ddt
 class TestNvmetClasses(test.TestCase):
-    @ddt.data('Namespace', 'Host', 'Referral', 'ANAGroup')
+    @ddt.data('Host', 'Referral', 'ANAGroup')
     def test_same_classes(self, cls_name):
         self.assertEqual(getattr(nvmet, cls_name),
                          getattr(nvmet.nvmet, cls_name))
@@ -329,6 +329,22 @@ class TestNvmetClasses(test.TestCase):
         mock_serialize.assert_called_once_with(subsys)
         mock_privsep.assert_called_once_with(mock_serialize.return_value,
                                              'delete')
+
+    @mock.patch('os.listdir',
+                return_value=['/path/namespaces/1', '/path/namespaces/2'])
+    @mock.patch.object(nvmet, 'Namespace')
+    def test_subsystem_namespaces(self, mock_nss, mock_listdir):
+        subsys = nvmet.Subsystem(mock.sentinel.nqn)
+        subsys.path = '/path'  # Set by the parent nvmet library Root class
+
+        res = list(subsys.namespaces)
+
+        self.assertEqual([mock_nss.return_value, mock_nss.return_value], res)
+
+        mock_listdir.assert_called_once_with('/path/namespaces/')
+        self.assertEqual(2, mock_nss.call_count)
+        mock_nss.assert_has_calls((mock.call(subsys, '1'),
+                                   mock.call(subsys, '2')))
 
     def test_port_init(self):
         port = nvmet.Port('portid')
@@ -397,3 +413,30 @@ class TestNvmetClasses(test.TestCase):
         mock_listdir.assert_called_once_with('/path/ports/')
         self.assertEqual(2, mock_port.call_count)
         mock_port.assert_has_calls((mock.call('1'), mock.call('2')))
+
+    def test_namespace_init(self):
+        ns = nvmet.Namespace('subsystem', 'nsid')
+        self.assertIsInstance(ns, nvmet.nvmet.Namespace)
+        self.assertIsInstance(ns, nvmet.Namespace)
+        self.assertEqual('subsystem', ns.subsystem)
+        self.assertEqual('nsid', ns.nsid)
+        self.assertEqual('lookup', ns.mode)
+
+    @mock.patch.object(nvmet, 'serialize')
+    @mock.patch.object(nvmet, 'privsep_setup')
+    def test_namespace_setup(self, mock_setup, mock_serialize):
+        nvmet.Namespace.setup(mock.sentinel.subsys,
+                              mock.sentinel.n)
+        mock_serialize.assert_called_once_with(mock.sentinel.subsys)
+        mock_setup.assert_called_once_with('Namespace',
+                                           mock_serialize.return_value,
+                                           mock.sentinel.n, None)
+
+    @mock.patch.object(nvmet, 'serialize')
+    @mock.patch.object(nvmet, 'do_privsep_call')
+    def test_namespace_delete(self, mock_privsep, mock_serialize):
+        ns = nvmet.Namespace('subsystem', 'nsid')
+        ns.delete()
+        mock_serialize.assert_called_once_with(ns)
+        mock_privsep.assert_called_once_with(mock_serialize.return_value,
+                                             'delete')

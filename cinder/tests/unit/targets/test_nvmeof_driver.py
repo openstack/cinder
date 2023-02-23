@@ -72,7 +72,7 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
              'created_at': timeutils.utcnow(),
              'host': 'fake_host@lvm#lvm'})
 
-    @mock.patch.object(nvmeof.NVMeOF, '_get_connection_properties')
+    @mock.patch.object(nvmeof.NVMeOF, '_get_connection_properties_from_vol')
     def test_initialize_connection(self, mock_get_conn):
         mock_connector = {'initiator': 'fake_init'}
         mock_testvol = self.testvol
@@ -108,43 +108,62 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
             self.testvol
         )
 
+    @mock.patch.object(nvmeof.NVMeOF, '_get_nvme_uuid')
+    @mock.patch.object(nvmeof.NVMeOF, '_get_connection_properties')
+    def test__get_connection_properties(self, mock_get_conn_props, mock_uuid):
+        """Test connection properties from a volume."""
+        res = self.target._get_connection_properties_from_vol(self.testvol)
+        self.assertEqual(mock_get_conn_props.return_value, res)
+        mock_uuid.assert_called_once_with(self.testvol)
+        mock_get_conn_props.assert_called_once_with(
+            f'ngn.{self.nvmet_subsystem_name}-{self.fake_volume_id}',
+            self.target_ip,
+            str(self.target_port),
+            self.nvme_transport_type,
+            str(self.nvmet_ns_id),
+            mock_uuid.return_value)
+
     def test__get_connection_properties_old(self):
         """Test connection properties with the old NVMe-oF format."""
+        nqn = f'ngn.{self.nvmet_subsystem_name}-{self.fake_volume_id}'
         expected_return = {
             'target_portal': self.target_ip,
             'target_port': str(self.target_port),
-            'nqn': "ngn.%s-%s" % (
-                self.nvmet_subsystem_name, self.fake_volume_id),
+            'nqn': nqn,
             'transport_type': self.nvme_transport_type,
             'ns_id': str(self.nvmet_ns_id)
         }
-        self.assertEqual(expected_return,
-                         self.target._get_connection_properties(self.testvol))
+        res = self.target._get_connection_properties(nqn,
+                                                     self.target_ip,
+                                                     str(self.target_port),
+                                                     self.nvme_transport_type,
+                                                     str(self.nvmet_ns_id),
+                                                     mock.sentinel.uuid)
+        self.assertEqual(expected_return, res)
 
     @ddt.data(('rdma', 'RoCEv2'), ('tcp', 'tcp'))
     @ddt.unpack
-    @mock.patch.object(nvmeof.NVMeOF, '_get_nvme_uuid')
-    def test__get_connection_properties_new(self, transport,
-                                            expected_transport, mock_uuid):
+    def test__get_connection_properties_new(
+            self, transport, expected_transport):
         """Test connection properties with the new NVMe-oF format."""
         nqn = f'ngn.{self.nvmet_subsystem_name}-{self.fake_volume_id}'
-        vol = self.testvol.copy()
-        vol['provider_location'] = self.target.get_nvmeof_location(
-            nqn, self.target_ip, self.target_port, transport, self.nvmet_ns_id)
-
         self.configuration.nvmeof_conn_info_version = 2
 
         expected_return = {
             'target_nqn': nqn,
-            'vol_uuid': mock_uuid.return_value,
+            'vol_uuid': mock.sentinel.uuid,
             'ns_id': str(self.nvmet_ns_id),
             'portals': [(self.target_ip,
                          str(self.target_port),
                          expected_transport)],
         }
-        self.assertEqual(expected_return,
-                         self.target._get_connection_properties(vol))
-        mock_uuid.assert_called_once_with(vol)
+        res = self.target._get_connection_properties(nqn,
+                                                     self.target_ip,
+                                                     str(self.target_port),
+                                                     transport,
+                                                     str(self.nvmet_ns_id),
+                                                     mock.sentinel.uuid)
+        self.assertEqual(expected_return, res)
 
     def test_validate_connector(self):
         mock_connector = {'initiator': 'fake_init'}

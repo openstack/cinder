@@ -31,6 +31,8 @@ class Target(object, metaclass=abc.ABCMeta):
     well as force implementation of required methods.
 
     """
+    storage_protocol = None
+    SHARED_TARGET_SUPPORT = False
 
     def __init__(self, *args, **kwargs):
         # TODO(stephenfin): Drop this in favour of using 'db' directly

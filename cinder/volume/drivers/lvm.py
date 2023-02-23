@@ -68,6 +68,10 @@ volume_opts = [
                 default=False,
                 help='Suppress leaked file descriptor warnings in LVM '
                      'commands.'),
+    cfg.BoolOpt('lvm_share_target',
+                default=False,
+                help='Whether to share the same target for all LUNs or not '
+                     '(currently only supported by nvmet.'),
 ]
 
 CONF = cfg.CONF
@@ -108,7 +112,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
             target_driver,
             configuration=self.configuration,
             executor=self._execute)
-        self.protocol = self.target_driver.protocol
+        self.protocol = (self.target_driver.storage_protocol or
+                         self.target_driver.protocol)
+        if (self.configuration.lvm_share_target
+                and not self.target_driver.SHARED_TARGET_SUPPORT):
+            raise exception.InvalidConfigurationValue(
+                f"{target_driver} doesn't support shared targets")
         self._sparse_copy_volume = False
 
     @classmethod
@@ -285,8 +294,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             backend_state='up'
         ))
         data["pools"].append(single_pool)
-        data["shared_targets"] = False
-
+        data["shared_targets"] = self.configuration.lvm_share_target
         # Check availability of sparse volume copy.
         data['sparse_copy_volume'] = self._sparse_copy_volume
 

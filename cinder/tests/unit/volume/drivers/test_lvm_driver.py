@@ -17,6 +17,7 @@ from unittest import mock
 import ddt
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils import importutils
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import db
@@ -46,6 +47,54 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
     driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
     FAKE_VOLUME = {'name': 'test1',
                    'id': 'test1'}
+
+    def test___init___share_target_not_supported(self):
+        """Fail to use shared targets if target driver doesn't support it."""
+        original_import = importutils.import_object
+
+        def wrap_target_as_no_shared_support(*args, **kwargs):
+            res = original_import(*args, **kwargs)
+            self.mock_object(res, 'SHARED_TARGET_SUPPORT', False)
+            return res
+
+        self.patch('oslo_utils.importutils.import_object',
+                   side_effect=wrap_target_as_no_shared_support)
+
+        self.configuration.lvm_share_target = True
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          lvm.LVMVolumeDriver,
+                          configuration=self.configuration)
+
+    def test___init___share_target_supported(self):
+        """OK to use shared targets if target driver supports it."""
+        original_import = importutils.import_object
+
+        def wrap_target_as_no_shared_support(*args, **kwargs):
+            res = original_import(*args, **kwargs)
+            self.mock_object(res, 'SHARED_TARGET_SUPPORT', True)
+            return res
+
+        self.patch('oslo_utils.importutils.import_object',
+                   side_effect=wrap_target_as_no_shared_support)
+
+        self.configuration.lvm_share_target = True
+        lvm.LVMVolumeDriver(configuration=self.configuration)
+
+    @ddt.data(True, False)
+    def test___init___share_target_not_requested(self, supports_shared):
+        """For non shared it works regardless of target driver support."""
+        original_import = importutils.import_object
+
+        def wrap_target_as_no_shared_support(*args, **kwargs):
+            res = original_import(*args, **kwargs)
+            self.mock_object(res, 'SHARED_TARGET_SUPPORT', supports_shared)
+            return res
+
+        self.patch('oslo_utils.importutils.import_object',
+                   side_effect=wrap_target_as_no_shared_support)
+
+        self.configuration.lvm_share_target = False
+        lvm.LVMVolumeDriver(configuration=self.configuration)
 
     @mock.patch.object(os.path, 'exists', return_value=True)
     @mock.patch.object(fake_driver.FakeLoggingVolumeDriver, 'create_export')

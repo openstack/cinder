@@ -174,7 +174,6 @@ def privsep_setup(cls_name, *args, **kwargs):
 ###################
 # Classes that don't currently have privsep support
 
-Namespace = nvmet.Namespace
 Host = nvmet.Host
 Referral = nvmet.Referral
 ANAGroup = nvmet.ANAGroup
@@ -188,6 +187,18 @@ ANAGroup = nvmet.ANAGroup
 NotFound = nvmet.nvme.CFSNotFound
 
 
+class Namespace(nvmet.Namespace):
+    def __init__(self, subsystem, nsid=None, mode='lookup'):
+        super().__init__(subsystem=subsystem, nsid=nsid, mode=mode)
+
+    @classmethod
+    def setup(cls, subsys, n, err_func=None):
+        privsep_setup(cls.__name__, serialize(subsys), n, err_func)
+
+    def delete(self):
+        do_privsep_call(serialize(self), 'delete')
+
+
 class Subsystem(nvmet.Subsystem):
     def __init__(self, nqn=None, mode='lookup'):
         super().__init__(nqn=nqn, mode=mode)
@@ -198,6 +209,11 @@ class Subsystem(nvmet.Subsystem):
 
     def delete(self):
         do_privsep_call(serialize(self), 'delete')
+
+    @property
+    def namespaces(self):
+        for d in os.listdir(self.path + '/namespaces/'):
+            yield Namespace(self, os.path.basename(d))
 
 
 class Port(nvmet.Port):
