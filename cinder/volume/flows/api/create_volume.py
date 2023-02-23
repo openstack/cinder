@@ -440,8 +440,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 cgsnapshot,
                 group,
                 group_snapshot,
-                backup: Optional[dict],
-                multiattach: bool = False) -> Dict[str, Any]:
+                backup: Optional[dict]) -> Dict[str, Any]:
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -489,11 +488,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             volume_type = objects.VolumeType.get_by_name_or_id(
                 context, volume_type_id)
             extra_specs = volume_type.get('extra_specs', {})
-            # NOTE(tommylikehu): Although the parameter `multiattach` from
-            # create volume API is deprecated now, we still need to consider
-            # it when multiattach is not enabled in volume type.
-            multiattach = (extra_specs.get(
-                'multiattach', '') == '<is> True' or multiattach)
+            multiattach = (extra_specs.get('multiattach', '') == '<is> True')
             if multiattach and encryption_key_id:
                 msg = _('Multiattach cannot be used with encrypted volumes.')
                 raise exception.InvalidVolume(reason=msg)
@@ -910,8 +905,7 @@ def get_flow(db_api, image_service_api, availability_zones, create_what,
         availability_zones,
         rebind={'size': 'raw_size',
                 'availability_zone': 'raw_availability_zone',
-                'volume_type': 'raw_volume_type',
-                'multiattach': 'raw_multiattach'}))
+                'volume_type': 'raw_volume_type'}))
     api_flow.add(QuotaReserveTask(),
                  EntryCreateTask(),
                  QuotaCommitTask())

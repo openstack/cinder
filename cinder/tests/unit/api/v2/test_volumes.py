@@ -158,8 +158,7 @@ class VolumeApiTest(test.TestCase):
                              consistencygroup_id=None,
                              volume_type=None,
                              image_ref=None,
-                             image_id=None,
-                             multiattach=False):
+                             image_id=None):
         vol = {"size": size,
                "name": name,
                "description": description,
@@ -168,7 +167,6 @@ class VolumeApiTest(test.TestCase):
                "source_volid": source_volid,
                "consistencygroup_id": consistencygroup_id,
                "volume_type": volume_type,
-               "multiattach": multiattach,
                }
 
         if image_id is not None:
@@ -240,7 +238,6 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup': None,
                 'availability_zone': availability_zone,
                 'scheduler_hints': None,
-                'multiattach': False,
                 }
 
     @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
@@ -569,37 +566,6 @@ class VolumeApiTest(test.TestCase):
                           self.controller.create,
                           req,
                           body=body)
-
-    def test_volume_create_with_invalid_multiattach(self):
-        vol = self._vol_in_request_body(multiattach="InvalidBool")
-        body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v3/volumes')
-
-        self.assertRaises(exception.ValidationError,
-                          self.controller.create,
-                          req,
-                          body=body)
-
-    @mock.patch.object(volume_api.API, 'create', autospec=True)
-    @mock.patch.object(volume_api.API, 'get', autospec=True)
-    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
-                       autospec=True)
-    def test_volume_create_with_valid_multiattach(self,
-                                                  volume_type_get,
-                                                  get, create):
-        create.side_effect = v2_fakes.fake_volume_api_create
-        get.side_effect = v2_fakes.fake_volume_get
-        volume_type_get.side_effect = v2_fakes.fake_volume_type_get
-
-        vol = self._vol_in_request_body(multiattach=True)
-        body = {"volume": vol}
-
-        ex = self._expected_vol_from_controller(multiattach=True)
-
-        req = fakes.HTTPRequest.blank('/v3/volumes')
-        res_dict = self.controller.create(req, body=body)
-
-        self.assertEqual(ex, res_dict)
 
     @ddt.data({'a' * 256: 'a'},
               {'a': 'a' * 256},
