@@ -1,0 +1,20 @@
+---
+fixes:
+  - |
+    `Bug #2008259 <https://bugs.launchpad.net/cinder/+bug/2008259>`_:
+    Fixed the volume create functionality where non-admin users were
+    able to create multiattach volumes by providing the `multiattach`
+    parameter in the request body. Now we can only create multiattach
+    volumes using a multiattach volume type, which is also the
+    recommended way.
+other:
+  - |
+    Removed the ability to create multiattach volumes by specifying
+    `multiattach` parameter in the request body of a volume create
+    operation. This functionality is unsafe, can lead to data loss,
+    and has been deprecated since the Queens release.
+    The recommended method for creating a multiattach volume is to
+    use a volume type that supports multiattach.  By default, volume
+    types can only be created by the operator.  Users who have a need
+    for multiattach volumes should contact their operator if a suitable
+    volume type is not available.
