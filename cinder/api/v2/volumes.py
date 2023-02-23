@@ -19,7 +19,6 @@ from http import HTTPStatus
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_log import versionutils
 from oslo_utils import uuidutils
 import webob
 from webob import exc
@@ -261,14 +260,6 @@ class VolumeController(wsgi.Controller):
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
-        kwargs['multiattach'] = utils.get_bool_param('multiattach', volume)
-
-        if kwargs.get('multiattach', False):
-            msg = ("The option 'multiattach' "
-                   "is deprecated and will be removed in a future "
-                   "release.  The default behavior going forward will "
-                   "be to specify multiattach enabled volume types.")
-            versionutils.report_deprecated_feature(LOG, msg)
 
         try:
             new_volume = self.volume_api.create(
