@@ -22,6 +22,7 @@ import requests
 
 from cinder import context as cinder_context
 from cinder.db.sqlalchemy import api as sqlalchemy_api
+from cinder import exception
 from cinder.objects import group_snapshot as obj_group_snap
 from cinder.objects import snapshot as obj_snap
 from cinder.tests.unit import fake_group
@@ -267,6 +268,8 @@ GET_LDEV_RESULT = {
     "attributes": ["CVS", "HDP"],
     "status": "NML",
     "poolId": 30,
+    "dataReductionStatus": "DISABLED",
+    "dataReductionMode": "disabled",
 }
 
 GET_LDEV_RESULT_MAPPED = {
@@ -1497,3 +1500,62 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
             [{'id': TEST_SNAPSHOT[0]['id'], 'status': 'deleted'}]
         )
         self.assertTupleEqual(actual, ret)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_create_rep_ldev_and_pair_deduplication_compression(
+            self, get_volume_type_extra_specs, get_volume_type, request):
+        get_volume_type_extra_specs.return_value = {
+            'hbsd:topology': 'active_active_mirror_volume',
+            'hbsd:capacity_saving': 'deduplication_compression'}
+        get_volume_type.return_value = {}
+        self.snapshot_count = 0
+
+        def _request_side_effect(
+                method, url, params, json, headers, auth, timeout, verify):
+            if self.configuration.hitachi_storage_id in url:
+                if method in ('POST', 'PUT'):
+                    return FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+                elif method == 'GET':
+                    if ('/remote-mirror-copygroups' in url or
+                            '/journals' in url):
+                        return FakeResponse(200, NOTFOUND_RESULT)
+                    elif '/remote-mirror-copypairs/' in url:
+                        return FakeResponse(
+                            200, GET_REMOTE_MIRROR_COPYPAIR_RESULT)
+                    elif '/ldevs/' in url:
+                        return FakeResponse(200, GET_LDEV_RESULT_REP)
+                    elif '/snapshots' in url:
+                        if self.snapshot_count < 1:
+                            self.snapshot_count = self.snapshot_count + 1
+                            return FakeResponse(200, GET_SNAPSHOTS_RESULT)
+                        else:
+                            return FakeResponse(200, NOTFOUND_RESULT)
+            else:
+                if method in ('POST', 'PUT'):
+                    return FakeResponse(400, REMOTE_COMPLETED_SUCCEEDED_RESULT)
+                elif method == 'GET':
+                    if '/remote-mirror-copygroups' in url:
+                        return FakeResponse(200, NOTFOUND_RESULT)
+                    elif '/ldevs/' in url:
+                        return FakeResponse(200, GET_LDEV_RESULT_REP)
+            if '/ldevs/' in url:
+                return FakeResponse(200, GET_LDEV_RESULT_REP)
+            else:
+                return FakeResponse(
+                    200, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common.rep_primary._stats = {}
+        self.driver.common.rep_primary._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        self.driver.common.rep_secondary._stats = {}
+        self.driver.common.rep_secondary._stats['pools'] = [
+            {'location_info': {'pool_id': 40}}]
+        request.side_effect = _request_side_effect
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_cloned_volume,
+                          TEST_VOLUME[4],
+                          TEST_VOLUME[5])
+        self.assertEqual(2, get_volume_type_extra_specs.call_count)
+        self.assertEqual(0, get_volume_type.call_count)
+        self.assertEqual(14, request.call_count)

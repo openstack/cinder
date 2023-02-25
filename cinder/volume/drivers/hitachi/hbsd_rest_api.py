@@ -672,13 +672,13 @@ class RestApiClient():
         }
         self._delete_object(url, body=body, **kwargs)
 
-    def modify_ldev(self, ldev_id, body):
+    def modify_ldev(self, ldev_id, body, **kwargs):
         """Modify a ldev information."""
         url = '%(url)s/ldevs/%(id)s' % {
             'url': self.object_url,
             'id': ldev_id,
         }
-        self._invoke(url, body=body)
+        self._invoke(url, body=body, **kwargs)
 
     def extend_ldev(self, ldev_id, body):
         """Expand a ldev size."""

@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Hitachi driver: Support data deduplication and compression, by storage assist.
+    The feature can be worked, if user enable deduplication and compression
+    for the DP-pool, by Configuration Manager REST API, and set the extra
+    spec ``hbsd:capacity_saving`` to ``deduplication_compression``

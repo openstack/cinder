@@ -315,10 +315,12 @@ class HBSDREPLICATION(rest.HBSDREST):
             self.raise_error(msg)
 
     def _is_mirror_spec(self, extra_specs):
+        topology = None
         if not extra_specs:
             return False
-        topology = extra_specs.get(
-            self.driver_info['driver_dir_name'] + ':topology')
+        if self.driver_info.get('driver_dir_name'):
+            topology = extra_specs.get(
+                self.driver_info['driver_dir_name'] + ':topology')
         if topology is None:
             return False
         elif topology == 'active_active_mirror_volume':
@@ -330,17 +332,19 @@ class HBSDREPLICATION(rest.HBSDREST):
                 value=topology)
             self.raise_error(msg)
 
-    def _create_rep_ldev(self, volume, rep_type, pvol=None):
+    def _create_rep_ldev(self, volume, extra_specs, rep_type, pvol=None):
         """Create a primary volume and  a secondary volume."""
         pool_id = self.rep_secondary.storage_info['pool_id'][0]
         ldev_range = self.rep_secondary.storage_info['ldev_range']
         thread = greenthread.spawn(
-            self.rep_secondary.create_ldev, volume.size, pool_id, ldev_range)
+            self.rep_secondary.create_ldev, volume.size, extra_specs,
+            pool_id, ldev_range)
         if pvol is None:
             try:
                 pool_id = self.rep_primary.get_pool_id_of_volume(volume)
                 ldev_range = self.rep_primary.storage_info['ldev_range']
                 pvol = self.rep_primary.create_ldev(volume.size,
+                                                    extra_specs,
                                                     pool_id, ldev_range)
             except exception.VolumeDriverException:
                 self.rep_primary.output_log(MSG.CREATE_LDEV_FAILED)
@@ -491,10 +495,22 @@ class HBSDREPLICATION(rest.HBSDREST):
             copy_group_name, pvol, svol, rep_type, _WAIT_PAIR)
 
     def _create_rep_ldev_and_pair(
-            self, volume, rep_type, pvol=None):
+            self, volume, extra_specs, rep_type, pvol=None):
         """Create volume and Replication pair."""
+        capacity_saving = None
+        if self.driver_info.get('driver_dir_name'):
+            capacity_saving = extra_specs.get(
+                self.driver_info['driver_dir_name'] + ':capacity_saving')
+        if capacity_saving == 'deduplication_compression':
+            msg = self.output_log(
+                MSG.DEDUPLICATION_IS_ENABLED,
+                rep_type=rep_type, volume_id=volume.id,
+                volume_type=volume.volume_type.name, size=volume.size)
+            if pvol is not None:
+                self.rep_primary.delete_ldev(pvol)
+            self.raise_error(msg)
         svol = None
-        pvol, svol = self._create_rep_ldev(volume, rep_type, pvol)
+        pvol, svol = self._create_rep_ldev(volume, extra_specs, rep_type, pvol)
         try:
             thread = greenthread.spawn(
                 self.rep_secondary.initialize_pair_connection, svol)
@@ -530,7 +546,7 @@ class HBSDREPLICATION(rest.HBSDREST):
             self._require_rep_secondary()
             rep_type = self.driver_info['mirror_attr']
             pldev, sldev = self._create_rep_ldev_and_pair(
-                volume, rep_type)
+                volume, extra_specs, rep_type)
             provider_location = _pack_rep_provider_location(
                 pldev, sldev, rep_type)
             return {
@@ -621,7 +637,8 @@ class HBSDREPLICATION(rest.HBSDREST):
         else:
             self.rep_primary.delete_ldev(ldev)
 
-    def _create_rep_volume_from_src(self, volume, src, src_type, operation):
+    def _create_rep_volume_from_src(
+            self, volume, extra_specs, src, src_type, operation):
         """Create a replication volume from a volume or snapshot and return
 
         its properties.
@@ -631,7 +648,7 @@ class HBSDREPLICATION(rest.HBSDREST):
             volume, src, src_type, is_rep=True)
         new_ldev = self.rep_primary.get_ldev(data)
         sldev = self._create_rep_ldev_and_pair(
-            volume, rep_type, new_ldev)[1]
+            volume, extra_specs, rep_type, new_ldev)[1]
         provider_location = _pack_rep_provider_location(
             new_ldev, sldev, rep_type)
         return {
@@ -648,7 +665,7 @@ class HBSDREPLICATION(rest.HBSDREST):
         if self._is_mirror_spec(extra_specs):
             self._require_rep_secondary()
             return self._create_rep_volume_from_src(
-                volume, src, src_type, operation)
+                volume, extra_specs, src, src_type, operation)
         return self.rep_primary.create_volume_from_src(volume, src, src_type)
 
     def create_cloned_volume(self, volume, src_vref):

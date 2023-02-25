@@ -959,6 +959,7 @@ class VStorageRESTFCDriverTest(test.TestCase):
         request.return_value = FakeResponse(200, GET_LDEV_RESULT)
         new_specs = {'nec:test': 'test'}
         new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
+        new_type = volume_types.get_volume_type(self.ctxt, new_type_ref['id'])
         diff = {}
         host = {
             'capabilities': {
@@ -968,7 +969,7 @@ class VStorageRESTFCDriverTest(test.TestCase):
             },
         }
         ret = self.driver.retype(
-            self.ctxt, TEST_VOLUME[0], new_type_ref, diff, host)
+            self.ctxt, TEST_VOLUME[0], new_type, diff, host)
         self.assertEqual(1, request.call_count)
         self.assertTrue(ret)
 

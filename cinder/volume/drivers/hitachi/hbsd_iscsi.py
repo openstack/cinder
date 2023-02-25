@@ -75,9 +75,10 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         2.2.2 - Add Target Port Assignment.
         2.2.3 - Add port scheduler.
         2.3.0 - Support multi pool.
-        2.3.1 - Add specifies format of the names HostGroups/iSCSI Targets.
-        2.3.2 - Add GAD volume support.
-        2.3.3 - Update retype and support storage assisted migration.
+        2.3.1 - Update retype and support storage assisted migration.
+        2.3.2 - Add specifies format of the names HostGroups/iSCSI Targets.
+        2.3.3 - Add GAD volume support.
+        2.3.4 - Support data deduplication and compression.
 
     """
 

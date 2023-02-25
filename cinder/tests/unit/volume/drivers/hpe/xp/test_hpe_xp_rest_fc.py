@@ -963,8 +963,9 @@ class HPEXPRESTFCDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     def test_retype(self, request):
         request.return_value = FakeResponse(200, GET_LDEV_RESULT)
-        new_specs = {'hbsd:test': 'test'}
+        new_specs = {'hpe_xp:test': 'test'}
         new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
+        new_type = volume_types.get_volume_type(self.ctxt, new_type_ref['id'])
         diff = {}
         host = {
             'capabilities': {
@@ -974,7 +975,7 @@ class HPEXPRESTFCDriverTest(test.TestCase):
             },
         }
         ret = self.driver.retype(
-            self.ctxt, TEST_VOLUME[0], new_type_ref, diff, host)
+            self.ctxt, TEST_VOLUME[0], new_type, diff, host)
         self.assertEqual(1, request.call_count)
         self.assertTrue(ret)
 
