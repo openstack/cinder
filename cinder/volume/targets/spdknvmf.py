@@ -51,6 +51,7 @@ LOG = logging.getLogger(__name__)
 
 
 class SpdkNvmf(nvmeof.NVMeOF):
+    SECONDARY_IP_SUPPORT = False
 
     def __init__(self, *args, **kwargs):
         super(SpdkNvmf, self).__init__(*args, **kwargs)
@@ -131,7 +132,7 @@ class SpdkNvmf(nvmeof.NVMeOF):
     def create_nvmeof_target(self,
                              volume_id,
                              subsystem_name,
-                             target_ip,
+                             target_ips,
                              target_port,
                              transport_type,
                              nvmet_port_id,
@@ -158,7 +159,7 @@ class SpdkNvmf(nvmeof.NVMeOF):
 
             listen_address = {
                 'trtype': transport_type,
-                'traddr': target_ip,
+                'traddr': target_ips[0],
                 'trsvcid': str(target_port),
             }
             params = {
@@ -179,7 +180,7 @@ class SpdkNvmf(nvmeof.NVMeOF):
 
         location = self.get_nvmeof_location(
             nqn,
-            target_ip,
+            target_ips,
             target_port,
             transport_type,
             ns_id)

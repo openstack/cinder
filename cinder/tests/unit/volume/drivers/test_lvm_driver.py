@@ -65,6 +65,23 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                           lvm.LVMVolumeDriver,
                           configuration=self.configuration)
 
+    def test___init___secondary_ips_not_supported(self):
+        """Fail to use secondary ips if target driver doesn't support it."""
+        original_import = importutils.import_object
+
+        def wrap_target_as_no_secondary_ips_support(*args, **kwargs):
+            res = original_import(*args, **kwargs)
+            self.mock_object(res, 'SECONDARY_IP_SUPPORT', False)
+            return res
+
+        self.patch('oslo_utils.importutils.import_object',
+                   side_effect=wrap_target_as_no_secondary_ips_support)
+
+        self.configuration.target_secondary_ip_addresses = True
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          lvm.LVMVolumeDriver,
+                          configuration=self.configuration)
+
     def test___init___share_target_supported(self):
         """OK to use shared targets if target driver supports it."""
         original_import = importutils.import_object

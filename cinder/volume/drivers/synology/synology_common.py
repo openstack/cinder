@@ -993,7 +993,7 @@ class SynoCommon(object):
     def get_provider_location(self, iqn, trg_id):
         portals = ['%(ip)s:%(port)d' % {'ip': self.get_ip(),
                                         'port': self.target_port}]
-        sec_ips = self.config.safe_get('iscsi_secondary_ip_addresses')
+        sec_ips = self.config.safe_get('target_secondary_ip_addresses')
         for ip in sec_ips:
             portals.append('%(ip)s:%(port)d' %
                            {'ip': ip,
@@ -1288,7 +1288,7 @@ class SynoCommon(object):
             'access_mode': 'rw',
             'discard': False
         }
-        ips = self.config.safe_get('iscsi_secondary_ip_addresses')
+        ips = self.config.safe_get('target_secondary_ip_addresses')
         if ips:
             target_portals = [iscsi_properties['target_portal']]
             for ip in ips:

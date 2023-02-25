@@ -33,6 +33,7 @@ class Target(object, metaclass=abc.ABCMeta):
     """
     storage_protocol = None
     SHARED_TARGET_SUPPORT = False
+    SECONDARY_IP_SUPPORT = True
 
     def __init__(self, *args, **kwargs):
         # TODO(stephenfin): Drop this in favour of using 'db' directly

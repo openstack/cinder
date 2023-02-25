@@ -82,7 +82,7 @@ class TestWindowsISCSIDriver(test.TestCase):
         self._driver.configuration = mock.Mock()
         self._driver.configuration.target_port = iscsi_port
         self._driver.configuration.target_ip_address = requested_ips[0]
-        self._driver.configuration.iscsi_secondary_ip_addresses = (
+        self._driver.configuration.target_secondary_ip_addresses = (
             requested_ips[1:])
 
         self._driver._tgt_utils.get_portal_locations.return_value = (

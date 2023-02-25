@@ -76,7 +76,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
         mock_uuid.assert_called_once_with(vol)
         mock_get_conn_props.assert_called_once_with(
             mock.sentinel.nqn,
-            self.target.target_ip,
+            self.target.target_ips,
             self.target.target_port,
             self.target.nvme_transport_type,
             mock.sentinel.nsid,
@@ -119,7 +119,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
         mock_map.assert_called_once_with(mock.sentinel.vol,
                                          mock.sentinel.volume_path)
         mock_location.assert_called_once_with(mock.sentinel.nqn,
-                                              self.target.target_ip,
+                                              self.target.target_ips,
                                               self.target.target_port,
                                               self.target.nvme_transport_type,
                                               mock.sentinel.nsid)
@@ -160,7 +160,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
                                             mock.sentinel.volume_path,
                                             mock_uuid.return_value)
         mock_port.assert_called_once_with(mock_nqn.return_value,
-                                          self.target.target_ip,
+                                          self.target.target_ips,
                                           self.target.target_port,
                                           self.target.nvme_transport_type,
                                           self.target.nvmet_port_id)
@@ -197,7 +197,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
             mock_port.assert_not_called()
         else:
             mock_port.assert_called_once_with(mock.sentinel.nqn,
-                                              self.target.target_ip,
+                                              self.target.target_ips,
                                               self.target.target_port,
                                               self.target.nvme_transport_type,
                                               self.target.nvmet_port_id)
@@ -345,13 +345,14 @@ class TestNVMETDriver(tf.TargetDriverFixture):
     def test__ensure_port_exports_already_does(self, mock_port):
         """Skips port creation and subsystem export since they both exist."""
         nqn = 'nqn.nvme-subsystem-1-uuid'
+        port_id = 1
         mock_port.return_value.subsystems = [nqn]
         self.target._ensure_port_exports(nqn,
-                                         mock.sentinel.addr,
+                                         [mock.sentinel.addr],
                                          mock.sentinel.port,
                                          mock.sentinel.transport,
-                                         mock.sentinel.port_id)
-        mock_port.assert_called_once_with(mock.sentinel.port_id)
+                                         port_id)
+        mock_port.assert_called_once_with(port_id)
         mock_port.setup.assert_not_called()
         mock_port.return_value.add_subsystem.assert_not_called()
 
@@ -359,13 +360,14 @@ class TestNVMETDriver(tf.TargetDriverFixture):
     def test__ensure_port_exports_port_exists_not_exported(self, mock_port):
         """Skips port creation if exists but exports subsystem."""
         nqn = 'nqn.nvme-subsystem-1-vol-2-uuid'
+        port_id = 1
         mock_port.return_value.subsystems = ['nqn.nvme-subsystem-1-vol-1-uuid']
         self.target._ensure_port_exports(nqn,
-                                         mock.sentinel.addr,
+                                         [mock.sentinel.addr],
                                          mock.sentinel.port,
                                          mock.sentinel.transport,
-                                         mock.sentinel.port_id)
-        mock_port.assert_called_once_with(mock.sentinel.port_id)
+                                         port_id)
+        mock_port.assert_called_once_with(port_id)
         mock_port.setup.assert_not_called()
         mock_port.return_value.add_subsystem.assert_called_once_with(nqn)
 
@@ -373,23 +375,35 @@ class TestNVMETDriver(tf.TargetDriverFixture):
     def test__ensure_port_exports_port(self, mock_port):
         """Creates the port and export the subsystem when they don't exist."""
         nqn = 'nqn.nvme-subsystem-1-vol-2-uuid'
+        port_id = 1
         mock_port.side_effect = priv_nvmet.NotFound
         self.target._ensure_port_exports(nqn,
-                                         mock.sentinel.addr,
+                                         [mock.sentinel.addr,
+                                          mock.sentinel.addr2],
                                          mock.sentinel.port,
                                          mock.sentinel.transport,
-                                         mock.sentinel.port_id)
-        mock_port.assert_called_once_with(mock.sentinel.port_id)
-        new_port = {'addr': {'adrfam': 'ipv4',
-                             'traddr': mock.sentinel.addr,
-                             'treq': 'not specified',
-                             'trsvcid': mock.sentinel.port,
-                             'trtype': mock.sentinel.transport},
-                    'portid': mock.sentinel.port_id,
-                    'referrals': [],
-                    'subsystems': [nqn]}
-        mock_port.setup.assert_called_once_with(self.target._nvmet_root,
-                                                new_port)
+                                         port_id)
+        new_port1 = {'addr': {'adrfam': 'ipv4',
+                              'traddr': mock.sentinel.addr,
+                              'treq': 'not specified',
+                              'trsvcid': mock.sentinel.port,
+                              'trtype': mock.sentinel.transport},
+                     'portid': port_id,
+                     'referrals': [],
+                     'subsystems': [nqn]}
+        new_port2 = new_port1.copy()
+        new_port2['portid'] = port_id + 1
+        new_port2['addr'] = new_port1['addr'].copy()
+        new_port2['addr']['traddr'] = mock.sentinel.addr2
+
+        self.assertEqual(2, mock_port.call_count)
+        self.assertEqual(2, mock_port.setup.call_count)
+        mock_port.assert_has_calls([
+            mock.call(port_id),
+            mock.call.setup(self.target._nvmet_root, new_port1),
+            mock.call(port_id + 1),
+            mock.call.setup(self.target._nvmet_root, new_port2)
+        ])
         mock_port.return_value.assert_not_called()
 
     @mock.patch.object(nvmet.NVMET, '_locked_unmap_volume')

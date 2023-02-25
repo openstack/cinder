@@ -93,7 +93,7 @@ class WindowsISCSIDriver(driver.ISCSIDriver):
 
         iscsi_port = self.configuration.target_port
         iscsi_ips = ([self.configuration.target_ip_address] +
-                     self.configuration.iscsi_secondary_ip_addresses)
+                     self.configuration.target_secondary_ip_addresses)
         requested_portals = {':'.join([iscsi_ip, str(iscsi_port)])
                              for iscsi_ip in iscsi_ips}
 

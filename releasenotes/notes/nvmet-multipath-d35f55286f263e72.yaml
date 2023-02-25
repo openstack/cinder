@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    nvmet target driver: Added support to serve volumes on multiple addresses
+    using the ``target_secondary_ip_addresses`` configuration option. This
+    allows os-brick to iterate through them in search of one connection that
+    works, and once os-brick supports NVMe-oF multipathing it will be
+    automatically supported.
+
+    This requires that ``nvmeof_conn_info_version`` configuration option is set
+    to ``2`` as well.
+deprecations:
+  - |
+    Configuration option ``iscsi_secondary_ip_addresses`` is deprecated in
+    favor of ``target_secondary_ip_addresses`` to follow the same naming
+    convention of ``target_ip_address``.

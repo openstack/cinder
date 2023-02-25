@@ -118,6 +118,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 and not self.target_driver.SHARED_TARGET_SUPPORT):
             raise exception.InvalidConfigurationValue(
                 f"{target_driver} doesn't support shared targets")
+
+        if (self.configuration.target_secondary_ip_addresses
+                and not self.target_driver.SECONDARY_IP_SUPPORT):
+            raise exception.InvalidConfigurationValue(
+                f"{target_driver} doesn't support secondary addresses")
+
         self._sparse_copy_volume = False
 
     @classmethod
@@ -129,7 +135,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             'target_ip_address', 'target_helper', 'target_protocol',
             'volume_clear', 'volume_clear_size', 'reserved_percentage',
             'max_over_subscription_ratio', 'volume_dd_blocksize',
-            'target_prefix', 'volumes_dir', 'iscsi_secondary_ip_addresses',
+            'target_prefix', 'volumes_dir', 'target_secondary_ip_addresses',
             'target_port',
             'iscsi_write_cache', 'iscsi_target_flags',  # TGT
             'iet_conf', 'iscsi_iotype',  # IET
