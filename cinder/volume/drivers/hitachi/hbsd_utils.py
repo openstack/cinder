@@ -25,7 +25,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder import utils as cinder_utils
 
-VERSION = '2.3.4'
+VERSION = '2.3.5'
 CI_WIKI_NAME = 'Hitachi_VSP_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'

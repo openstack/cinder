@@ -462,14 +462,21 @@ class HBSDCommon():
             pool_name=pool_name,
             reserved_percentage=self.conf.safe_get('reserved_percentage'),
             QoS_support=False,
+            thin_provisioning_support=True,
             thick_provisioning_support=False,
             multiattach=True,
             consistencygroup_support=True,
             consistent_group_snapshot_enabled=True,
+            max_over_subscription_ratio=(
+                volume_utils.get_max_over_subscription_ratio(
+                    self.conf.safe_get('max_over_subscription_ratio'),
+                    True)),
             location_info=location_info
         ))
         if cap_data is None:
             single_pool.update(dict(
+                total_capacity_gb=0,
+                free_capacity_gb=0,
                 provisioned_capacity_gb=0,
                 backend_state='down'))
             self.output_log(MSG.POOL_INFO_RETRIEVAL_FAILED, pool=pool_name)
@@ -478,12 +485,7 @@ class HBSDCommon():
         single_pool.update(dict(
             total_capacity_gb=total_capacity,
             free_capacity_gb=free_capacity,
-            provisioned_capacity_gb=provisioned_capacity,
-            max_over_subscription_ratio=(
-                volume_utils.get_max_over_subscription_ratio(
-                    self.conf.safe_get('max_over_subscription_ratio'),
-                    True)),
-            thin_provisioning_support=True
+            provisioned_capacity_gb=provisioned_capacity
         ))
         single_pool.update(dict(backend_state='up'))
         return single_pool

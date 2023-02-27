@@ -79,6 +79,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         2.3.2 - Add specifies format of the names HostGroups/iSCSI Targets.
         2.3.3 - Add GAD volume support.
         2.3.4 - Support data deduplication and compression.
+        2.3.5 - Fix key error when backend is down.
 
     """
 

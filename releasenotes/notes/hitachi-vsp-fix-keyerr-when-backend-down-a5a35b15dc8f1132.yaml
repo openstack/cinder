@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Hitachi, NEC V, HPE XP drivers `bug #2004140
+    <https://bugs.launchpad.net/cinder/+bug/2004140>`_: Fixed
+    ``KeyError`` when a backend is down.
