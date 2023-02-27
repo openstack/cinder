@@ -85,3 +85,11 @@ class Target(object, metaclass=abc.ABCMeta):
         """
         a_host = A.get('host')
         return a_host and (a_host == B.get('host'))
+
+    def extend_target(self, volume):
+        """Reinitializes a target after the volume has been extended.
+
+        Most drivers don't need to do anything, but in other cases this may
+        cause IO disruption.
+        """
+        pass
