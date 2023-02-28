@@ -841,9 +841,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             # TODO(walt) - this writes the volume update to the db. :(
             # This sucks, but don't have any other way
             new_host = self._new_host_for_volume(volume)
-            LOG.info("Changing volume host from {} to {}".format(
-                volume.host, new_host
-            ))
+            LOG.info("Changing volume host from %(old_host)s to %(new_host)s",
+                     {'old_host': volume.host, 'new_host': new_host})
             model_update = {'host': new_host}
             volume.update(model_update)
             volume.save()
@@ -2596,7 +2595,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         We don't care about snapshots, they just use the volume's provider_id.
         """
-        LOG.info("HOST {} : volumes {}".format(self.host, len(volumes)))
+        LOG.info("HOST %(host)s : volumes %(volumes_count)s",
+                 {'host': self.host, 'volumes_count': len(volumes)})
         if not self.configuration.vmware_sap_update_provider_info:
             LOG.info("Not updating provider information")
             return [], None
@@ -2607,7 +2607,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             datastores = self._get_datastores_for_profiles()
             ds_keys = datastores.keys()
             vol_updates = []
-            LOG.info("Process {} volumes".format(len(volumes)))
+            LOG.info("Process %s volumes", len(volumes))
             for vol in volumes:
                 # make sure we have the correc host info
                 if vol['status'] in ['in-use', 'available']:
@@ -2621,7 +2621,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     # this will save time on every startup
                     if (pool_info not in ds_keys or
                             pool_info == volume_utils.DEFAULT_POOL_NAME):
-                        LOG.debug("Updating host for volume {}".format(vol.id))
+                        LOG.debug("Updating host for volume %s", vol.id)
 
                         try:
                             new_host = self._new_host_for_volume(vol)
@@ -2629,12 +2629,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                 vol.update({'host': new_host})
                                 vol.save()
                         except Exception as ex:
-                            LOG.warning("Couldn't update host for {} because "
-                                        " {}".format(vol.id, ex))
+                            LOG.warning("Couldn't update host for %(id)s "
+                                        "because  %(error)s",
+                                        {'id': vol.id, 'error': ex})
                     else:
-                        LOG.debug("Keeping host for volume {}".format(vol.id))
+                        LOG.debug("Keeping host for volume %s", vol.id)
 
-            LOG.info("HOST COMPLETE {}".format(self.host))
+            LOG.info("HOST COMPLETE %s", self.host)
             return vol_updates, None
         else:
             # Since pools are not enabled, we should ensure that the datastore
@@ -2653,8 +2654,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         vol.host, level='backend'
                     )
                     backend = backend_info.split("@")
-                    LOG.info("Volume host '{}' backend '{}'  pool '{}'".format(
-                        vol.host, backend[1], pool_info))
+                    LOG.info("Volume host '%(host)s' backend '%(backend)s' "
+                             "pool '%(pool)s'",
+                             {'host': vol.host,
+                              'backend': backend[1],
+                              'pool': pool_info})
 
                     # we need to force the host back to
                     # host@backend#backend
@@ -2664,11 +2668,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         backend[1]
                     )
                     if new_host != vol.host:
-                        LOG.info("Setting host to {}".format(new_host))
+                        LOG.info("Setting host to %s", new_host)
                         vol.update({'host': new_host})
                         vol.save()
 
-            LOG.info("HOST COMPLETE {}".format(self.host))
+            LOG.info("HOST COMPLETE %s", self.host)
             return vol_updates, None
 
     def _get_volume_group_folder(self, datacenter, project_id, snapshot=False):
