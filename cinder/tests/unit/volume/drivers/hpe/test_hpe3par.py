@@ -749,10 +749,7 @@ class HPE3PARBaseDriver(test.TestCase):
         configuration.unique_fqdn_network = True
         return configuration
 
-    @mock.patch(
-        'hpe3parclient.client.HPE3ParClient',
-        spec=True,
-    )
+    @mock.patch('hpe3parclient.client.HPE3ParClient')
     def setup_mock_client(self, _m_client, driver, conf=None, m_conf=None,
                           is_primera=False,
                           wsapi_version=wsapi_version_latest):
