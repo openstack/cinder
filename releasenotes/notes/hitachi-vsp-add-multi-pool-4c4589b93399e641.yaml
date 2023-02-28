@@ -1,5 +1,12 @@
 ---
 features:
-- |
-    Supported multi-pool for Hitachi driver and OEM storage driver.
-
+  - |
+    Supported multi-pools for Hitachi driver and OEM storage drivers.
+upgrades:
+  - |
+    Hitachi driver and OEM storage drivers: Changed option names
+    ``hitachi_pool`` to ``hitachi_pools``,
+    ``hpexp_pool`` to ``hpexp_pools`` and
+    ``nec_v_pool`` to ``nec_v_pools``.
+    The options ``hitachi_pool``, ``hpexp_pool`` and ``nec_v_pool``
+    are deprecated.

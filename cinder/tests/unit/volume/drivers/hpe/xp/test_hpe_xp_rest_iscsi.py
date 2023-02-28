@@ -330,7 +330,7 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
         self.configuration.driver_ssl_cert_verify = False
 
         self.configuration.hpexp_storage_id = CONFIG_MAP['serial']
-        self.configuration.hpexp_pool = ["30"]
+        self.configuration.hpexp_pools = ["30"]
         self.configuration.hpexp_snap_pool = None
         self.configuration.hpexp_ldev_range = "0-1"
         self.configuration.hpexp_target_ports = [CONFIG_MAP['port_id']]

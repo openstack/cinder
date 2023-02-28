@@ -344,7 +344,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.configuration.driver_ssl_cert_verify = False
 
         self.configuration.hitachi_storage_id = CONFIG_MAP['serial']
-        self.configuration.hitachi_pool = ['30']
+        self.configuration.hitachi_pools = ['30']
         self.configuration.hitachi_snap_pool = None
         self.configuration.hitachi_ldev_range = "0-1"
         self.configuration.hitachi_target_ports = [CONFIG_MAP['port_id']]

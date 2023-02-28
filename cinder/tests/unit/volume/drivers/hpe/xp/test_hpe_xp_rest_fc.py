@@ -426,7 +426,7 @@ class HPEXPRESTFCDriverTest(test.TestCase):
         self.configuration.driver_ssl_cert_verify = False
 
         self.configuration.hpexp_storage_id = CONFIG_MAP['serial']
-        self.configuration.hpexp_pool = ["30"]
+        self.configuration.hpexp_pools = ["30"]
         self.configuration.hpexp_snap_pool = None
         self.configuration.hpexp_ldev_range = "0-1"
         self.configuration.hpexp_target_ports = [CONFIG_MAP['port_id']]
@@ -593,8 +593,8 @@ class HPEXPRESTFCDriverTest(test.TestCase):
         drv = hpe_xp_fc.HPEXPFCDriver(
             configuration=self.configuration)
         self._setup_config()
-        tmp_pool = self.configuration.hitachi_pool
-        self.configuration.hitachi_pool = [CONFIG_MAP['pool_name']]
+        tmp_pools = self.configuration.hitachi_pools
+        self.configuration.hitachi_pools = [CONFIG_MAP['pool_name']]
         request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
                                FakeResponse(200, GET_POOLS_RESULT),
                                FakeResponse(200, GET_PORTS_RESULT),
@@ -605,7 +605,7 @@ class HPEXPRESTFCDriverTest(test.TestCase):
             drv.common.storage_info['wwns'])
         self.assertEqual(1, brick_get_connector_properties.call_count)
         self.assertEqual(4, request.call_count)
-        self.configuration.hitachi_pool = tmp_pool
+        self.configuration.hitachi_pools = tmp_pools
         # stop the Loopingcall within the do_setup treatment
         self.driver.common.client.keep_session_loop.stop()
         self.driver.common.client.keep_session_loop.wait()
