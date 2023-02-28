@@ -17,6 +17,7 @@
 import hashlib
 import json
 import os
+import subprocess
 import tempfile
 import threading
 from unittest import mock
@@ -136,8 +137,7 @@ class BackupCephTestCase(test.TestCase):
                                              'user_foo', 'conf_foo')
         return linuxrbd.RBDVolumeIOWrapper(rbd_meta)
 
-    def _setup_mock_popen(self, mock_popen, retval=None, p1hook=None,
-                          p2hook=None):
+    def _setup_mock_popen(self, retval=None, p1hook=None, p2hook=None):
 
         class MockPopen(object):
             hooks = [p2hook, p1hook]
@@ -157,7 +157,7 @@ class BackupCephTestCase(test.TestCase):
                 self.callstack.append('communicate')
                 return retval
 
-        mock_popen.side_effect = MockPopen
+        subprocess.Popen.side_effect = MockPopen
 
     def setUp(self):
         global RAISED_EXCEPTIONS
@@ -468,8 +468,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     @mock.patch('fcntl.fcntl', spec=True)
-    @mock.patch('subprocess.Popen', spec=True)
-    def test_backup_volume_from_rbd(self, mock_popen, mock_fnctl):
+    def test_backup_volume_from_rbd(self, mock_fnctl):
         """Test full RBD backup generated successfully."""
         backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          self.alt_backup)
@@ -485,8 +484,7 @@ class BackupCephTestCase(test.TestCase):
             self.callstack.append('read')
             return self.volume_file.read(self.data_length)
 
-        self._setup_mock_popen(mock_popen,
-                               ['out', 'err'],
+        self._setup_mock_popen(['out', 'err'],
                                p1hook=mock_read_data,
                                p2hook=mock_write_data)
 
@@ -647,8 +645,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     @mock.patch('fcntl.fcntl', spec=True)
-    @mock.patch('subprocess.Popen', spec=True)
-    def test_backup_volume_from_rbd_fail(self, mock_popen, mock_fnctl):
+    def test_backup_volume_from_rbd_fail(self, mock_fnctl):
         """Test of when an exception occurs in an exception handler.
 
         In _backup_rbd(), after an exception.BackupRBDOperationFailed
@@ -670,8 +667,7 @@ class BackupCephTestCase(test.TestCase):
             self.callstack.append('read')
             return self.volume_file.read(self.data_length)
 
-        self._setup_mock_popen(mock_popen,
-                               ['out', 'err'],
+        self._setup_mock_popen(['out', 'err'],
                                p1hook=mock_read_data,
                                p2hook=mock_write_data)
 
@@ -726,8 +722,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     @mock.patch('fcntl.fcntl', spec=True)
-    @mock.patch('subprocess.Popen', spec=True)
-    def test_backup_volume_from_rbd_fail2(self, mock_popen, mock_fnctl):
+    def test_backup_volume_from_rbd_fail2(self, mock_fnctl):
         """Test of when an exception occurs in an exception handler.
 
         In backup(), after an exception.BackupOperationError occurs in
@@ -748,8 +743,7 @@ class BackupCephTestCase(test.TestCase):
             self.callstack.append('read')
             return self.volume_file.read(self.data_length)
 
-        self._setup_mock_popen(mock_popen,
-                               ['out', 'err'],
+        self._setup_mock_popen(['out', 'err'],
                                p1hook=mock_read_data,
                                p2hook=mock_write_data)
 
@@ -1324,10 +1318,9 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     @mock.patch('fcntl.fcntl', spec=True)
-    @mock.patch('subprocess.Popen', spec=True)
-    def test_piped_execute(self, mock_popen, mock_fcntl):
+    def test_piped_execute(self, mock_fcntl):
         mock_fcntl.return_value = 0
-        self._setup_mock_popen(mock_popen, ['out', 'err'])
+        self._setup_mock_popen(['out', 'err'])
         self.service._piped_execute(['foo'], ['bar'])
         self.assertEqual(['popen_init', 'popen_init',
                           'stdout_close', 'communicate'], self.callstack)
