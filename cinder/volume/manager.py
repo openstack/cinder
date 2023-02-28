@@ -4881,7 +4881,7 @@ class VolumeManager(manager.CleanableManager,
         if async_call:
             # we have to use an rpc call back to the backup manager to
             # continue the backup
-            LOG.info("Calling backup continue_backup for: {}", backup)
+            LOG.info("Calling backup continue_backup for: %s", backup)
             rpcapi = backup_rpcapi.BackupAPI()
             rpcapi.continue_backup(ctxt, backup, backup_device)
         else:
