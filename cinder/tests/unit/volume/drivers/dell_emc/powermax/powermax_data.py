@@ -1274,6 +1274,12 @@ class PowerMaxData(object):
                 'getDynamicRDFCapability': 'RDF1_Capable', 'RDFA': False},
             'timeFinderInfo': {'snapVXTgt': False, 'snapVXSrc': False}}]
 
+    priv_vol_func_response_multi_sg = deepcopy(priv_vol_func_response_single)
+    priv_vol_func_response_multi_sg[0].get('volumeHeader').update(
+        {'numStorageGroups': 2})
+    priv_vol_func_response_multi_sg[0].get('volumeHeader').update(
+        {'storageGroup': ['SG1', 'SG2']})
+
     volume_create_info_dict = {utils.ARRAY: array, utils.DEVICE_ID: device_id}
 
     volume_info_dict = {
