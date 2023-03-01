@@ -143,7 +143,7 @@ If you use Fibre Channel:
    san_login = hitachiuser
    san_password = password
    hitachi_storage_id = 123456789012
-   hitachi_pool = pool0
+   hitachi_pools = pool0
 
 If you use iSCSI:
 
@@ -156,7 +156,7 @@ If you use iSCSI:
    san_login = hitachiuser
    san_password = password
    hitachi_storage_id = 123456789012
-   hitachi_pool = pool0
+   hitachi_pools = pool0
 
 This table shows configuration options for Hitachi block storage driver.
 
@@ -182,5 +182,5 @@ Required options
 - ``hitachi_storage_id``
     Product number of the storage system.
 
-- ``hitachi_pool``
-    Pool number or pool name of the DP pool.
+- ``hitachi_pools``
+    Pool number(s) or pool name(s) of the DP pool.
