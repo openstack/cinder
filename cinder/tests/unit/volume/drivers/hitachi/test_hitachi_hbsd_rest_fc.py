@@ -18,6 +18,7 @@ import functools
 from unittest import mock
 
 from oslo_config import cfg
+from oslo_utils import units
 import requests
 from requests import models
 
@@ -877,8 +878,56 @@ class HBSDRESTFCDriverTest(test.TestCase):
         get_goodness_function.return_value = None
         stats = self.driver.get_volume_stats(True)
         self.assertEqual('Hitachi', stats['vendor_name'])
+        self.assertEqual(self.configuration.volume_backend_name,
+                         stats["pools"][0]['pool_name'])
+        self.assertEqual(self.configuration.reserved_percentage,
+                         stats["pools"][0]['reserved_percentage'])
+        self.assertTrue(stats["pools"][0]['thin_provisioning_support'])
+        self.assertFalse(stats["pools"][0]['thick_provisioning_support'])
         self.assertTrue(stats["pools"][0]['multiattach'])
+        self.assertTrue(stats["pools"][0]['consistencygroup_support'])
+        self.assertTrue(stats["pools"][0]['consistent_group_snapshot_enabled'])
+        self.assertEqual(self.configuration.max_over_subscription_ratio,
+                         stats["pools"][0]['max_over_subscription_ratio'])
+        self.assertEqual(
+            GET_POOL_RESULT['totalPoolCapacity'] // units.Ki,
+            stats["pools"][0]['total_capacity_gb'])
+        self.assertEqual(
+            GET_POOL_RESULT['availableVolumeCapacity'] // units.Ki,
+            stats["pools"][0]['free_capacity_gb'])
+        self.assertEqual(
+            GET_POOL_RESULT['totalLocatedCapacity'] // units.Ki,
+            stats["pools"][0]['provisioned_capacity_gb'])
+        self.assertEqual('up', stats["pools"][0]['backend_state'])
         self.assertEqual(1, request.call_count)
+        self.assertEqual(1, get_filter_function.call_count)
+        self.assertEqual(1, get_goodness_function.call_count)
+
+    @mock.patch.object(driver.FibreChannelDriver, "get_goodness_function")
+    @mock.patch.object(driver.FibreChannelDriver, "get_filter_function")
+    @mock.patch.object(hbsd_rest.HBSDREST, "get_pool_info")
+    def test_get_volume_stats_error(
+            self, get_pool_info, get_filter_function, get_goodness_function):
+        get_pool_info.side_effect = exception.VolumeDriverException(data='')
+        get_filter_function.return_value = None
+        get_goodness_function.return_value = None
+        stats = self.driver.get_volume_stats(True)
+        self.assertEqual('Hitachi', stats['vendor_name'])
+        self.assertEqual(self.configuration.volume_backend_name,
+                         stats["pools"][0]['pool_name'])
+        self.assertEqual(self.configuration.reserved_percentage,
+                         stats["pools"][0]['reserved_percentage'])
+        self.assertTrue(stats["pools"][0]['thin_provisioning_support'])
+        self.assertFalse(stats["pools"][0]['thick_provisioning_support'])
+        self.assertTrue(stats["pools"][0]['multiattach'])
+        self.assertTrue(stats["pools"][0]['consistencygroup_support'])
+        self.assertTrue(stats["pools"][0]['consistent_group_snapshot_enabled'])
+        self.assertEqual(self.configuration.max_over_subscription_ratio,
+                         stats["pools"][0]['max_over_subscription_ratio'])
+        self.assertEqual(0, stats["pools"][0]['total_capacity_gb'])
+        self.assertEqual(0, stats["pools"][0]['free_capacity_gb'])
+        self.assertEqual(0, stats["pools"][0]['provisioned_capacity_gb'])
+        self.assertEqual('down', stats["pools"][0]['backend_state'])
         self.assertEqual(1, get_filter_function.call_count)
         self.assertEqual(1, get_goodness_function.call_count)
 
