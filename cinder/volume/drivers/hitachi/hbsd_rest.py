@@ -980,11 +980,11 @@ class HBSDREST(common.HBSDCommon):
         self.raise_error(msg)
 
     def check_pool_id(self):
-        """Check the pool id of hitachi_pool and hitachi_snap_pool."""
+        """Check the pool id of hitachi_pools and hitachi_snap_pool."""
         pool_id_list = []
         pool_list = {'pool_list': None}
 
-        for pool in self.conf.hitachi_pool:
+        for pool in self.conf.hitachi_pools:
             pool_id_list.append(self._get_pool_id(pool_list, pool))
 
         snap_pool = self.conf.hitachi_snap_pool

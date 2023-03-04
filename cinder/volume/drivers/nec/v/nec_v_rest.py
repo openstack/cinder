@@ -1,4 +1,4 @@
-# Copyright (C) 2021 NEC corporation
+# Copyright (C) 2021, 2023, NEC corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -28,8 +28,9 @@ COMMON_VOLUME_OPTS = [
         default=None,
         help='Product number of the storage system.'),
     cfg.ListOpt(
-        'nec_v_pool',
+        'nec_v_pools',
         default=[],
+        deprecated_name='nec_v_pool',
         help='Pool number[s] or pool name[s] of the DP pool.'),
     cfg.StrOpt(
         'nec_v_snap_pool',
@@ -198,7 +199,7 @@ CONF.register_opts(FC_VOLUME_OPTS, group=configuration.SHARED_CONF_GROUP)
 def update_conf(conf):
     # COMMON_VOLUME_OPTS
     conf.hitachi_storage_id = conf.nec_v_storage_id
-    conf.hitachi_pool = conf.nec_v_pool
+    conf.hitachi_pools = conf.nec_v_pools
     conf.hitachi_snap_pool = conf.nec_v_snap_pool
     conf.hitachi_ldev_range = conf.nec_v_ldev_range
     conf.hitachi_target_ports = conf.nec_v_target_ports

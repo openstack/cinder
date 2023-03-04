@@ -1,4 +1,4 @@
-# Copyright (C) 2021 NEC corporation
+# Copyright (C) 2021, 2023, NEC corporation
 #
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -180,7 +180,7 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
         self.configuration.driver_ssl_cert_verify = False
 
         self.configuration.nec_v_storage_id = CONFIG_MAP['serial']
-        self.configuration.nec_v_pool = ["30"]
+        self.configuration.nec_v_pools = ["30"]
         self.configuration.nec_v_snap_pool = None
         self.configuration.nec_v_ldev_range = "0-1"
         self.configuration.nec_v_target_ports = [CONFIG_MAP['port_id']]
@@ -290,8 +290,8 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
             configuration=self.configuration, db=db)
         self.assertEqual(drv.configuration.hitachi_storage_id,
                          drv.configuration.nec_v_storage_id)
-        self.assertEqual(drv.configuration.hitachi_pool,
-                         drv.configuration.nec_v_pool)
+        self.assertEqual(drv.configuration.hitachi_pools,
+                         drv.configuration.nec_v_pools)
         self.assertEqual(drv.configuration.hitachi_snap_pool,
                          drv.configuration.nec_v_snap_pool)
         self.assertEqual(drv.configuration.hitachi_ldev_range,

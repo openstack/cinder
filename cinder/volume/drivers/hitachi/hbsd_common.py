@@ -67,8 +67,9 @@ COMMON_VOLUME_OPTS = [
         default=None,
         help='Product number of the storage system.'),
     cfg.ListOpt(
-        'hitachi_pool',
+        'hitachi_pools',
         default=[],
+        deprecated_name='hitachi_pool',
         help='Pool number[s] or pool name[s] of the DP pool.'),
     cfg.StrOpt(
         'hitachi_snap_pool',
@@ -236,7 +237,7 @@ class HBSDCommon():
 
         self._required_common_opts = [
             self.driver_info['param_prefix'] + '_storage_id',
-            self.driver_info['param_prefix'] + '_pool',
+            self.driver_info['param_prefix'] + '_pools',
         ]
         self.port_index = {}
 
@@ -503,10 +504,10 @@ class HBSDCommon():
             'pools': [],
         }
         for pool_id, pool_name, cap_data in zip(
-                self.storage_info['pool_id'], self.conf.hitachi_pool,
+                self.storage_info['pool_id'], self.conf.hitachi_pools,
                 self.get_pool_infos(self.storage_info['pool_id'])):
             single_pool = self._create_single_pool_data(
-                pool_id, pool_name if len(self.conf.hitachi_pool) > 1 else
+                pool_id, pool_name if len(self.conf.hitachi_pools) > 1 else
                 data['volume_backend_name'], cap_data)
             data['pools'].append(single_pool)
         LOG.debug("Updating volume status. (%s)", data)
@@ -670,11 +671,11 @@ class HBSDCommon():
             if not self.conf.safe_get(opt):
                 msg = self.output_log(MSG.INVALID_PARAMETER, param=opt)
                 self.raise_error(msg)
-        for pool in self.conf.hitachi_pool:
+        for pool in self.conf.hitachi_pools:
             if len(pool) == 0:
                 msg = self.output_log(
                     MSG.INVALID_PARAMETER,
-                    param=self.driver_info['param_prefix'] + '_pool')
+                    param=self.driver_info['param_prefix'] + '_pools')
                 self.raise_error(msg)
         if self.storage_info['protocol'] == 'FC':
             self.check_param_fc()
@@ -738,7 +739,7 @@ class HBSDCommon():
         pass
 
     def check_pool_id(self):
-        """Check the pool id of hitachi_pool and hitachi_snap_pool."""
+        """Check the pool id of hitachi_pools and hitachi_snap_pool."""
         raise NotImplementedError()
 
     def connect_storage(self):

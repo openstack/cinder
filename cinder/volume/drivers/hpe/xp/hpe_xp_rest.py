@@ -1,4 +1,4 @@
-# Copyright (C) 2022, Hewlett Packard Enterprise, Ltd.
+# Copyright (C) 2022, 2023, Hewlett Packard Enterprise, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -28,8 +28,9 @@ COMMON_VOLUME_OPTS = [
         default=None,
         help='Product number of the storage system.'),
     cfg.ListOpt(
-        'hpexp_pool',
+        'hpexp_pools',
         default=[],
+        deprecated_name='hpexp_pool',
         help='Pool number[s] or pool name[s] of the THP pool.'),
     cfg.StrOpt(
         'hpexp_snap_pool',
@@ -212,7 +213,7 @@ class HPEXPRESTFC(hbsd_rest_fc.HBSDRESTFC):
         """Update configuration"""
         # COMMON_VOLUME_OPTS
         self.conf.hitachi_storage_id = self.conf.hpexp_storage_id
-        self.conf.hitachi_pool = self.conf.hpexp_pool
+        self.conf.hitachi_pools = self.conf.hpexp_pools
         self.conf.hitachi_snap_pool = self.conf.hpexp_snap_pool
         self.conf.hitachi_ldev_range = self.conf.hpexp_ldev_range
         self.conf.hitachi_target_ports = self.conf.hpexp_target_ports
@@ -283,7 +284,7 @@ class HPEXPRESTISCSI(hbsd_rest_iscsi.HBSDRESTISCSI):
         """Update configuration"""
         # COMMON_VOLUME_OPTS
         self.conf.hitachi_storage_id = self.conf.hpexp_storage_id
-        self.conf.hitachi_pool = self.conf.hpexp_pool
+        self.conf.hitachi_pools = self.conf.hpexp_pools
         self.conf.hitachi_snap_pool = self.conf.hpexp_snap_pool
         self.conf.hitachi_ldev_range = self.conf.hpexp_ldev_range
         self.conf.hitachi_target_ports = self.conf.hpexp_target_ports
