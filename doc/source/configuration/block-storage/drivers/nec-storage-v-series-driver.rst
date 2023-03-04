@@ -96,7 +96,7 @@ If you use Fibre Channel:
    san_login = userid
    san_password = password
    nec_v_storage_id = 123456789012
-   nec_v_pool = pool0
+   nec_v_pools = pool0
 
 If you use iSCSI:
 
@@ -110,7 +110,7 @@ If you use iSCSI:
    san_login = userid
    san_password = password
    nec_v_storage_id = 123456789012
-   nec_v_pool = pool0
+   nec_v_pools = pool0
 
 This table shows configuration options for NEC V series storage driver.
 
@@ -134,6 +134,6 @@ Required options
 - ``nec_v_storage_id``
     Product number of the storage system.
 
-- ``nec_v_pool``
-    Pool number or pool name of the DP pool.
+- ``nec_v_pools``
+    Pool number(s) or pool name(s) of the DP pool.
 

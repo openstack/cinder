@@ -84,7 +84,7 @@ If you use Fibre Channel:
    san_login = hpexpuser
    san_password = password
    hpexp_storage_id = 123456789012
-   hpexp_pool = pool0
+   hpexp_pools = pool0
 
 If you use iSCSI:
 
@@ -97,7 +97,7 @@ If you use iSCSI:
    san_login = hpexpuser
    san_password = password
    hpexp_storage_id = 123456789012
-   hpexp_pool = pool0
+   hpexp_pools = pool0
 
 This table shows configuration options for HPE XP block storage driver.
 
@@ -121,6 +121,6 @@ Required options
 - ``hpexp_storage_id``
     Product number of the storage system.
 
-- ``hpexp_pool``
-    Pool number or pool name of the THP pool.
+- ``hpexp_pools``
+    Pool number(s) or pool name(s) of the THP pool.
 
