@@ -218,6 +218,11 @@ class Group(BASE, CinderBase):
     """Represents a generic volume group."""
 
     __tablename__ = 'groups'
+    __table_args__ = (
+        # Speed up normal listings
+        sa.Index('groups_deleted_project_id_idx', 'deleted', 'project_id'),
+        CinderBase.__table_args__,
+    )
 
     id = sa.Column(sa.String(36), primary_key=True)
 
@@ -272,6 +277,12 @@ class GroupSnapshot(BASE, CinderBase):
     """Represents a group snapshot."""
 
     __tablename__ = 'group_snapshots'
+    __table_args__ = (
+        # Speed up normal listings
+        sa.Index('group_snapshots_deleted_project_id_idx',
+                 'deleted', 'project_id'),
+        CinderBase.__table_args__,
+    )
 
     id = sa.Column(sa.String(36), primary_key=True)
 
@@ -304,6 +315,11 @@ class Volume(BASE, CinderBase):
     __tablename__ = 'volumes'
     __table_args__ = (
         sa.Index('volumes_service_uuid_idx', 'deleted', 'service_uuid'),
+        # Speed up normal listings
+        sa.Index('volumes_deleted_project_id_idx', 'deleted', 'project_id'),
+        # Speed up service start, create volume from image when using direct
+        # urls, host REST API, and the cinder-manage update host cmd
+        sa.Index('volumes_deleted_host_idx', 'deleted', 'host'),
         CinderBase.__table_args__,
     )
 
@@ -894,6 +910,11 @@ class Snapshot(BASE, CinderBase):
     """Represents a snapshot of volume."""
 
     __tablename__ = 'snapshots'
+    __table_args__ = (
+        # Speed up normal listings
+        sa.Index('snapshots_deleted_project_id_idx', 'deleted', 'project_id'),
+        CinderBase.__table_args__,
+    )
 
     id = sa.Column(sa.String(36), primary_key=True)
     # TODO: (Y release) Change nullable to False
@@ -996,6 +1017,11 @@ class Backup(BASE, CinderBase):
     """Represents a backup of a volume to Swift."""
 
     __tablename__ = 'backups'
+    __table_args__ = (
+        # Speed up normal listings
+        sa.Index('backups_deleted_project_id_idx', 'deleted', 'project_id'),
+        CinderBase.__table_args__,
+    )
 
     id = sa.Column(sa.String(36), primary_key=True)
     # Backups don't have use_quota field since we don't have temporary backups
