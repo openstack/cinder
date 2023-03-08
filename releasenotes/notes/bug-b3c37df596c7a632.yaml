@@ -1,5 +1,5 @@
 ---
 fixes:
   - |
-    `Bug #1953168 <https://bugs.launchpad.net/cinder/+bug/1965952>`_:
-     add netapp copyoffload provider location
+    `Bug #1965952 <https://bugs.launchpad.net/cinder/+bug/1965952>`_:
+     Added netapp copyoffload provider location.
