@@ -84,6 +84,10 @@ Between PTG and Milestone-1
      .. _zuul.d/project-templates.yaml: https://opendev.org/openstack/openstack-zuul-jobs/src/branch/master/zuul.d/project-templates.yaml
      .. _openstack/openstack-zuul-jobs repo: https://opendev.org/openstack/openstack-zuul-jobs
 
+   * Check the ``setup.cfg`` file in each cinder deliverable to make
+     sure that the claimed supported Python versions line up with
+     the cycle's supported Python versions.
+
 #. Focus on spec reviews to get them approved and updated early in
    the cycle to allow enough time for implementation.
 
