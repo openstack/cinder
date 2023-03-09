@@ -887,8 +887,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                           })
             else:
                 backing_file_template = \
-                    "(%(basedir)s/[0-9a-f]+/)?%" \
-                    "(volname)s(.(tmp-snap-)?[0-9a-f-]+)?%(valid_ext)s$" % {
+                    "(%(basedir)s/[0-9a-f]+/)?" \
+                    "%(volname)s(.(tmp-snap-)?[0-9a-f-]+)?%(valid_ext)s$" % {
                         'basedir': basedir,
                         'volname': volume_name,
                         'valid_ext': valid_ext,
