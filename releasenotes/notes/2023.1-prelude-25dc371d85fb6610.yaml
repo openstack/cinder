@@ -1,0 +1,13 @@
+---
+prelude: |
+    Welcome to the 2023.1 (Antelope) release of the OpenStack Block Storage
+    service (cinder). With this release, we added several drivers and
+    driver features as follows:
+
+    * Added HPE XP iSCSI and FC, Fungible NVMe-TCP, NetApp NVMe-TCP storage
+      drivers.
+
+    * Added Features like Trisync replication support for Pure driver,
+      volume group snapshot support for IBM SVF driver, Unisphere 10 support
+      for Dell EMC PowerMax driver, Host assisted migration and retype
+      support for Hitachi VSP driver.
