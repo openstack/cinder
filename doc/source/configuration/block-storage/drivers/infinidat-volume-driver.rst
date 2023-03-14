@@ -27,6 +27,7 @@ Supported operations
 * List manageable volumes and snapshots.
 * Attach a volume to multiple instances at once (multi-attach).
 * Host and storage assisted volume migration.
+* Efficient non-disruptive volume backup.
 
 External package installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,6 +44,11 @@ Setting up the storage array
 
 Create a storage pool object on the InfiniBox array in advance.
 The storage pool will contain volumes managed by OpenStack.
+Mixing OpenStack APIs and non-OpenStack methods are not supported
+when used to attach the same hosts via the same protocol.
+For example, it is not possible to create boot-from-SAN volumes
+and OpenStack volumes for the same host with Fibre Channel.
+Instead, use a different protocol for one of the volumes.
 Refer to the InfiniBox manuals for details on pool management.
 
 Driver configuration
@@ -89,7 +95,7 @@ Configure the driver back-end section with the parameters below.
 
   The driver requires an InfiniBox user with administrative privileges.
   We recommend creating a dedicated OpenStack user account
-  that holds an administrative user role.
+  that holds a pool admin user role.
   Refer to the InfiniBox manuals for details on user account management.
   Configure the user credentials by adding the following parameters:
 
@@ -182,6 +188,20 @@ Configure the driver back-end section with the parameters below.
      infinidat_use_compression = true
 
   Volume compression is available on InfiniBox 3.0 onward.
+
+After modifying the ``cinder.conf`` file, restart the ``cinder-volume``
+service.
+
+Create a new volume type for each distinct ``volume_backend_name`` value
+that you added in the ``cinder.conf`` file. The example below assumes that
+the same ``volume_backend_name=infinidat-pool-a`` option was specified in
+all of the entries, and specifies that the volume type ``infinidat`` can be
+used to allocate volumes from any of them. Example of creating a volume type:
+
+  .. code-block:: console
+
+     $ openstack volume type create infinidat
+     $ openstack volume type set --property volume_backend_name=infinidat-pool-a infinidat
 
 Configuration example
 ~~~~~~~~~~~~~~~~~~~~~
