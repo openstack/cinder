@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    HPE 3PAR driver `bug #2008931
+    <https://bugs.launchpad.net/cinder/+bug/2008931>`_: Fixed
+    issue when performing migrate volume operation when `comment`
+    attribute is missing from the volume.
