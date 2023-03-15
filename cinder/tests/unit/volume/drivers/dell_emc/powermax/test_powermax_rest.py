@@ -2554,3 +2554,28 @@ class PowerMaxRestTest(test.TestCase):
                 self.data.array, self.data.device_id,
                 self.data.test_snapshot_snap_name)
             self.assertEqual('0', snap_id)
+
+    def test_check_force(self):
+        extra_specs = {'pool_name': 'Diamond+DSS+SRP_1+000197800123',
+                       'slo': 'Diamond',
+                       'srp': 'SRP_1',
+                       'array': '000123456789',
+                       'interval': 3,
+                       'retries': 120}
+        self.assertEqual(
+            'false', self.rest._check_force(extra_specs))
+        self.assertEqual(
+            'false', self.rest._check_force(
+                self.data.extra_specs, force_flag=False))
+        self.assertEqual(
+            'true', self.rest._check_force(
+                self.data.extra_specs, force_flag=True))
+        extra_specs[utils.FORCE_VOL_EDIT] = True
+        self.assertEqual(
+            'true', self.rest._check_force(extra_specs))
+        self.assertEqual(
+            'true', self.rest._check_force(
+                extra_specs, force_flag=False))
+        self.assertEqual(
+            'true', self.rest._check_force(
+                extra_specs, force_flag=True))
