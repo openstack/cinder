@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder Release Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-13 05:20+0000\n"
+"POT-Creation-Date: 2023-03-14 18:08+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -254,9 +254,6 @@ msgstr "15.5.0"
 msgid "15.6.0"
 msgstr "15.6.0"
 
-msgid "15.6.0-19"
-msgstr "15.6.0-19"
-
 msgid "16.0.0"
 msgstr "16.0.0"
 
@@ -281,9 +278,6 @@ msgstr "16.4.1"
 msgid "16.4.2"
 msgstr "16.4.2"
 
-msgid "16.4.2-13"
-msgstr "16.4.2-13"
-
 msgid "17.0.0"
 msgstr "17.0.0"
 
@@ -301,9 +295,6 @@ msgstr "17.3.0"
 
 msgid "17.4.0"
 msgstr "17.4.0"
-
-msgid "17.4.0-8"
-msgstr "17.4.0-8"
 
 msgid "18.0.0"
 msgstr "18.0.0"
@@ -328,9 +319,6 @@ msgstr "19.1.1"
 
 msgid "19.2.0"
 msgstr "19.2.0"
-
-msgid "19.2.0-2"
-msgstr "19.2.0-2"
 
 msgid ""
 "2. The FlexGroup pool has a different view of aggregate capabilites, "
@@ -360,9 +348,6 @@ msgstr "21.0.0"
 
 msgid "21.1.0"
 msgstr "21.1.0"
-
-msgid "21.1.0-1"
-msgstr "21.1.0-1"
 
 msgid ""
 "3. The ``utilization`` capability is not calculated to FlexGroup pools, it "
@@ -8882,9 +8867,6 @@ msgstr ""
 msgid "Supported ``project_id`` admin filters to limits API."
 msgstr "Supported ``project_id`` admin filters to limits API."
 
-msgid "Supported multi-pool for Hitachi driver and OEM storage driver."
-msgstr "Supported multi-pool for Hitachi driver and OEM storage driver."
-
 msgid ""
 "Swift backup driver: Added new configuration option "
 "``backup_swift_create_storage_policy`` for the Swift backup driver. If "
@@ -14341,9 +14323,6 @@ msgstr ""
 "`Bug #1953168 <https://bugs.launchpad.net/cinder/+bug/1953168>`_: Fixed "
 "missing parameter in the capacity filter log message."
 
-msgid "`Bug #1953168 <https://bugs.launchpad.net/cinder/+bug/1965952>`_:"
-msgstr "`Bug #1953168 <https://bugs.launchpad.net/cinder/+bug/1965952>`_:"
-
 msgid ""
 "`Bug #1960019 <https://bugs.launchpad.net/cinder/+bug/1960019>`_: Fixed "
 "value of the x-openstack-request-id header when Cinder is using noauth."
@@ -14800,25 +14779,11 @@ msgid "``volume_name_prefix`` to ``disco_volume_name_prefix``"
 msgstr "``volume_name_prefix`` to ``disco_volume_name_prefix``"
 
 msgid ""
-"`bug #2000724 <https://bugs.launchpad.net/cinder/+bug/2000724>`_: Handled "
-"the case when glance is calling online extend and externals events were "
-"being sent to nova. Now Cinder will only send external events when the "
-"volume, to be extended, is attached to a nova instance."
-msgstr ""
-"`bug #2000724 <https://bugs.launchpad.net/cinder/+bug/2000724>`_: Handled "
-"the case when Glance is calling online extend and external events were being "
-"sent to Nova. Now Cinder will only send external events when the volume, to "
-"be extended, is attached to a Nova instance."
-
-msgid ""
 "a [nova] section is added to configure the connection to the compute "
 "service, which is needed to the InstanceLocalityFilter, for example."
 msgstr ""
 "a [nova] section is added to configure the connection to the compute "
 "service, which is needed to the InstanceLocalityFilter, for example."
-
-msgid "add netapp copyoffload provider location"
-msgstr "add netapp copyoffload provider location"
 
 msgid ""
 "cinder-backup service is now decoupled from cinder-volume, which allows more "
