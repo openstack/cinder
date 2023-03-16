@@ -585,7 +585,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     # in which case we want to mark it down.
                     if 'cinder_state' in custom_attributes:
                         cinder_pool_state = custom_attributes['cinder_state']
-                        if cinder_pool_state.lower() == 'drain':
+                        if (cinder_pool_state and
+                                cinder_pool_state.lower() == 'drain'):
                             pool_state = 'down'
                             pool_down_reason = 'Datastore marked as draining'
 
