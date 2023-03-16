@@ -1285,9 +1285,8 @@ class PowerMaxRestTest(test.TestCase):
         target_id = self.data.volume_snap_vx[
             'snapshotSrcs'][0]['linkedDevices'][0]['targetDevice']
         snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
-        extra_specs = self.data.extra_specs
-        if extra_specs.get(utils.FORCE_VOL_EDIT):
-            del extra_specs[utils.FORCE_VOL_EDIT]
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs.pop(utils.FORCE_VOL_EDIT, None)
         payload = {'deviceNameListSource': [{'name': source_id}],
                    'deviceNameListTarget': [
                        {'name': target_id}],
@@ -2566,10 +2565,10 @@ class PowerMaxRestTest(test.TestCase):
             'false', self.rest._check_force(extra_specs))
         self.assertEqual(
             'false', self.rest._check_force(
-                self.data.extra_specs, force_flag=False))
+                extra_specs, force_flag=False))
         self.assertEqual(
             'true', self.rest._check_force(
-                self.data.extra_specs, force_flag=True))
+                extra_specs, force_flag=True))
         extra_specs[utils.FORCE_VOL_EDIT] = True
         self.assertEqual(
             'true', self.rest._check_force(extra_specs))
