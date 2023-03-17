@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Hitachi driver `bug #2011810
+    <https://bugs.launchpad.net/cinder/+bug/2011810>`_: Fixed to use
+    correct pool number for secondary storage on GAD environment.
