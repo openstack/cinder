@@ -165,11 +165,18 @@ class PowerMaxMaskingTest(test.TestCase):
         rest.PowerMaxRest, 'get_num_vols_in_sg', side_effect=[2, 1, 1])
     def test_move_volume_between_storage_groups(
             self, mock_num, mock_parent, mock_rm, mck_mod):
+        extra_specs = {'pool_name': u'Diamond+DSS+SRP_1+000197800123',
+                       'slo': 'Diamond',
+                       'workload': 'DSS',
+                       'srp': 'SRP_1',
+                       'array': '000197800123',
+                       'interval': 3,
+                       'retries': 120}
         for x in range(0, 3):
             self.driver.masking.move_volume_between_storage_groups(
                 self.data.array, self.data.device_id,
                 self.data.storagegroup_name_i, self.data.storagegroup_name_f,
-                self.data.extra_specs)
+                extra_specs)
         mock_rm.assert_called_once()
         ref_payload = (
             {"executionOption": "ASYNCHRONOUS",
