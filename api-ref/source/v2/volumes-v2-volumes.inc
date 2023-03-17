@@ -183,7 +183,6 @@ Request
    - size: size
    - description: description_9
    - imageRef: imageRef
-   - multiattach: multiattach_req
    - availability_zone: availability_zone
    - source_volid: source_volid
    - name: volume_name_optional
