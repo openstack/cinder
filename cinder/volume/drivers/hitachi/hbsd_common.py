@@ -717,7 +717,7 @@ class HBSDCommon():
                     MSG.INVALID_PARAMETER,
                     param=self.driver_info['param_prefix'] +
                     '_group_name_format')
-                raise self.raise_error(msg)
+                self.raise_error(msg)
             self.format_info['group_name_format'] = (
                 self.conf.hitachi_group_name_format)
             self.format_info['group_name_format_without_var_len'] = (
