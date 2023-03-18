@@ -465,7 +465,7 @@ class ChunkedDriverTestCase(test.TestCase):
             self.volume, parent_id=self.backup.id)
 
         with mock.patch.object(self.driver, 'put_metadata') as mock_put:
-            self.driver.restore(backup, self.volume, volume_file)
+            self.driver.restore(backup, self.volume, volume_file, False)
             self.assertEqual(2, mock_put.call_count)
 
         restore_test.assert_called()

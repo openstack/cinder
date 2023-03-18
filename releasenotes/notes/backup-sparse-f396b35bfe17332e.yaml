@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #2007615 <https://bugs.launchpad.net/cinder/+bug/2007615>`_:
+    the restore operation of the Cinder backup service now restores into
+    sparse volumes, if possible. So, operators no longer need more space
+    than used previously when they restore from a disaster.

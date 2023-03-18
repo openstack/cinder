@@ -607,8 +607,15 @@ class BackupManager(manager.SchedulerDependentManager):
         return False
 
     @utils.limit_operations
-    def restore_backup(self, context, backup, volume_id):
-        """Restore volume backups from configured backup service."""
+    def restore_backup(self, context, backup, volume_id, volume_is_new):
+        """Restore volume backups from configured backup service.
+
+        :param context: RequestContext for the restore operation
+        :param backup: Backup that we're restoring
+        :param volume_id: The ID of the volume into which we're restoring
+        :param volume_is_new: The volume does not have stale data, so
+                              sparse backups can be restored as such.
+        """
         context.message_resource_id = backup.id
         context.message_resource_type = message_field.Resource.VOLUME_BACKUP
         context.message_action = message_field.Action.BACKUP_RESTORE
@@ -683,7 +690,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
         canceled = False
         try:
-            self._run_restore(context, backup, volume)
+            self._run_restore(context, backup, volume, volume_is_new)
         except exception.BackupRestoreCancel:
             canceled = True
         except Exception:
@@ -725,7 +732,7 @@ class BackupManager(manager.SchedulerDependentManager):
                   'volume_id': volume_id})
         self._notify_about_backup_usage(context, backup, "restore.end")
 
-    def _run_restore(self, context, backup, volume):
+    def _run_restore(self, context, backup, volume, volume_is_new):
         message_created = False
         orig_key_id = volume.encryption_key_id
         backup_service = self.service(context)
@@ -754,16 +761,19 @@ class BackupManager(manager.SchedulerDependentManager):
                 if secure_enabled:
                     with open(device_path, open_mode) as device_file:
                         backup_service.restore(backup, volume.id,
-                                               tpool.Proxy(device_file))
+                                               tpool.Proxy(device_file),
+                                               volume_is_new)
                 else:
                     with utils.temporary_chown(device_path):
                         with open(device_path, open_mode) as device_file:
                             backup_service.restore(backup, volume.id,
-                                                   tpool.Proxy(device_file))
+                                                   tpool.Proxy(device_file),
+                                                   volume_is_new)
             # device_path is already file-like so no need to open it
             else:
                 backup_service.restore(backup, volume.id,
-                                       tpool.Proxy(device_path))
+                                       tpool.Proxy(device_path),
+                                       volume_is_new)
         except exception.BackupRestoreCancel:
             raise
         except Exception:

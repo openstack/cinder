@@ -1634,3 +1634,8 @@ def log_unsupported_driver_warning(driver):
                      'version': driver.get_version()},
                     resource={'type': 'driver',
                               'id': driver.__class__.__name__})
+
+
+def is_all_zero(chunk: bytes) -> bool:
+    """Return true if the chunk of bytes is all zeroes."""
+    return chunk == bytes(len(chunk))

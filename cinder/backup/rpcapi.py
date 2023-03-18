@@ -48,9 +48,10 @@ class BackupAPI(rpc.RPCAPI):
         2.1 - Adds set_log_levels and get_log_levels
         2.2 - Adds publish_service_capabilities
         2.3 - Adds continue_backup call
+        2.4 - Add the volume_is_new flag to the restore_backup method
     """
 
-    RPC_API_VERSION = '2.3'
+    RPC_API_VERSION = '2.4'
     RPC_DEFAULT_VERSION = '2.0'
     TOPIC = constants.BACKUP_TOPIC
     BINARY = 'cinder-backup'
@@ -66,11 +67,16 @@ class BackupAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'continue_backup', backup=backup,
                    backup_device=backup_device)
 
-    def restore_backup(self, ctxt, backup_host, backup, volume_id):
+    def restore_backup(self, ctxt, backup_host, backup, volume_id,
+                       volume_is_new):
         LOG.debug("restore_backup in rpcapi backup_id %s", backup.id)
         cctxt = self._get_cctxt(server=backup_host)
-        cctxt.cast(ctxt, 'restore_backup', backup=backup,
-                   volume_id=volume_id)
+        if self.client.can_send_version('2.4'):
+            cctxt.cast(ctxt, 'restore_backup', backup=backup,
+                       volume_id=volume_id, volume_is_new=volume_is_new)
+        else:
+            cctxt.cast(ctxt, 'restore_backup', backup=backup,
+                       volume_id=volume_id)
 
     def delete_backup(self, ctxt, backup):
         LOG.debug("delete_backup rpcapi backup_id %s", backup.id)

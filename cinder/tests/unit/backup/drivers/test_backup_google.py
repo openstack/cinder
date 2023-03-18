@@ -504,7 +504,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
         service = google_dr.GoogleBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as volume_file:
-            service.restore(backup, volume_id, volume_file)
+            service.restore(backup, volume_id, volume_file, False)
 
     @gcs_client
     def test_restore_fail(self):
@@ -517,7 +517,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
         with tempfile.NamedTemporaryFile() as volume_file:
             self.assertRaises(google_dr.GCSConnectionFailure,
                               service.restore,
-                              backup, volume_id, volume_file)
+                              backup, volume_id, volume_file, False)
 
     @gcs_client2
     def test_restore_delta(self):
@@ -548,8 +548,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
         service2.backup(deltabackup, self.volume_file, True)
 
         with tempfile.NamedTemporaryFile() as restored_file:
-            service2.restore(deltabackup, volume_id,
-                             restored_file)
+            service2.restore(deltabackup, volume_id, restored_file, False)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 

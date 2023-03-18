@@ -1139,7 +1139,8 @@ class BackupTestCase(BaseBackupTest):
                           self.backup_mgr.restore_backup,
                           self.ctxt,
                           backup,
-                          vol_id)
+                          vol_id,
+                          False)
         backup = db.backup_get(self.ctxt, backup.id)
         vol = db.volume_get(self.ctxt, vol_id)
         self.assertEqual('error_restoring', vol['status'])
@@ -1159,7 +1160,8 @@ class BackupTestCase(BaseBackupTest):
                           self.backup_mgr.restore_backup,
                           self.ctxt,
                           backup,
-                          vol_id)
+                          vol_id,
+                          False)
         vol = db.volume_get(self.ctxt, vol_id)
         self.assertEqual('error', vol['status'])
         backup = db.backup_get(self.ctxt, backup.id)
@@ -1180,7 +1182,8 @@ class BackupTestCase(BaseBackupTest):
                           self.backup_mgr.restore_backup,
                           self.ctxt,
                           backup,
-                          vol_id)
+                          vol_id,
+                          False)
         vol = db.volume_get(self.ctxt, vol_id)
         self.assertEqual('error_restoring', vol['status'])
         backup = db.backup_get(self.ctxt, backup.id)
@@ -1200,7 +1203,7 @@ class BackupTestCase(BaseBackupTest):
         mock_run_restore.side_effect = exception.BackupRestoreCancel(
             vol_id=vol_id, back_id=backup.id)
         # We shouldn't raise an exception on the call, it's OK to cancel
-        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual('error', vol.status)
         backup.refresh()
@@ -1217,7 +1220,7 @@ class BackupTestCase(BaseBackupTest):
         mock_run_restore = self.mock_object(
             self.backup_mgr,
             '_run_restore')
-        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual(fields.VolumeStatus.AVAILABLE, vol.status)
         self.assertIsNotNone(vol.launched_at)
@@ -1238,7 +1241,7 @@ class BackupTestCase(BaseBackupTest):
         mock_run_restore.side_effect = exception.BackupRestoreCancel(
             vol_id=vol_id, back_id=backup.id)
         # We shouldn't raise an exception on the call, it's OK to cancel
-        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual(fields.VolumeStatus.ERROR, vol.status)
         backup.refresh()
@@ -1262,7 +1265,8 @@ class BackupTestCase(BaseBackupTest):
                           self.backup_mgr.restore_backup,
                           self.ctxt,
                           backup,
-                          vol_id)
+                          vol_id,
+                          False)
         vol = db.volume_get(self.ctxt, vol_id)
         self.assertEqual('error', vol['status'])
         backup = db.backup_get(self.ctxt, backup.id)
@@ -1299,7 +1303,7 @@ class BackupTestCase(BaseBackupTest):
         mock_attach_device.return_value = attach_info
 
         with mock.patch('os.name', os_name):
-            self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+            self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
 
         mock_open.assert_called_once_with('/dev/null', exp_open_mode)
         mock_temporary_chown.assert_called_once_with('/dev/null')
@@ -1359,14 +1363,15 @@ class BackupTestCase(BaseBackupTest):
         mock_attach_device.return_value = attach_info
 
         with mock.patch('os.name', os_name):
-            self.backup_mgr.restore_backup(self.ctxt, backup, new_vol_id)
+            self.backup_mgr.restore_backup(self.ctxt, backup, new_vol_id,
+                                           False)
 
         backup.status = "restoring"
         db.backup_update(self.ctxt, backup.id, {"status": "restoring"})
         vol.status = 'available'
         vol.obj_reset_changes()
         with mock.patch('os.name', os_name):
-            self.backup_mgr.restore_backup(self.ctxt, backup, vol2_id)
+            self.backup_mgr.restore_backup(self.ctxt, backup, vol2_id, False)
 
         vol2.refresh()
         old_src_backup_id = vol2.metadata["src_backup_id"]
@@ -1376,7 +1381,7 @@ class BackupTestCase(BaseBackupTest):
         vol2.obj_reset_changes()
 
         with mock.patch('os.name', os_name):
-            self.backup_mgr.restore_backup(self.ctxt, backup2, vol2_id)
+            self.backup_mgr.restore_backup(self.ctxt, backup2, vol2_id, False)
 
         vol2.status = 'available'
         vol2.obj_reset_changes()
@@ -1399,7 +1404,7 @@ class BackupTestCase(BaseBackupTest):
             status=fields.BackupStatus.RESTORING, volume_id=vol_id)
         self.backup_mgr._run_restore = mock.Mock()
 
-        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
         self.assertEqual(2, notify.call_count)
 
     @mock.patch('cinder.volume.volume_utils.clone_encryption_key')
@@ -1429,7 +1434,7 @@ class BackupTestCase(BaseBackupTest):
                                               '_attach_device')
         mock_attach_device.return_value = {'device': {'path': '/dev/null'}}
 
-        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
         volume = db.volume_get(self.ctxt, vol_id)
         self.assertEqual(fake.UUID1, volume.encryption_key_id)
         mock_clone_encryption_key.assert_not_called()
@@ -1470,13 +1475,13 @@ class BackupTestCase(BaseBackupTest):
         # Mimic the driver's side effect where it updates the volume's
         # metadata. For backups of encrypted volumes, this will essentially
         # overwrite the volume's encryption key ID prior to the restore.
-        def restore_side_effect(backup, volume_id, volume_file):
+        def restore_side_effect(backup, volume_id, volume_file, volume_is_new):
             db.volume_update(self.ctxt,
                              volume_id,
                              {'encryption_key_id': fake.UUID4})
         mock_backup_driver_restore.side_effect = restore_side_effect
 
-        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
 
         # Volume's original encryption key ID should be deleted
         mock_delete_encryption_key.assert_called_once_with(self.ctxt,
@@ -1527,13 +1532,13 @@ class BackupTestCase(BaseBackupTest):
         # Mimic the driver's side effect where it updates the volume's
         # metadata. For backups of encrypted volumes, this will essentially
         # overwrite the volume's encryption key ID prior to the restore.
-        def restore_side_effect(backup, volume_id, volume_file):
+        def restore_side_effect(backup, volume_id, volume_file, volume_is_new):
             db.volume_update(self.ctxt,
                              volume_id,
                              {'encryption_key_id': fake.UUID4})
         mock_backup_driver_restore.side_effect = restore_side_effect
 
-        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
 
         # Volume's original encryption key ID should be deleted
         mock_delete_encryption_key.assert_called_once_with(self.ctxt,
@@ -1931,7 +1936,7 @@ class BackupTestCase(BaseBackupTest):
         backup = self._create_backup_db_entry(
             volume_id=vol_id, status=fields.BackupStatus.RESTORING)
 
-        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
 
         self.assertEqual(1, mock_sem.__enter__.call_count)
         self.assertEqual(1, mock_restore.call_count)

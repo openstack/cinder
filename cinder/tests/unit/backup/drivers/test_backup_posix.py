@@ -16,14 +16,19 @@
 
 import builtins
 import os
+import shutil
+import tempfile
 from unittest import mock
+import uuid
 
 from cinder.backup.drivers import posix
+from cinder.common import config
 from cinder import context
 from cinder import objects
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 
+CONF = config.CONF
 
 FAKE_FILE_SIZE = 52428800
 FAKE_SHA_BLOCK_SIZE_BYTES = 1024
@@ -177,3 +182,148 @@ class PosixBackupDriverTestCase(test.TestCase):
                                                timestamp,
                                                backup.id)
         self.assertEqual(expected, res)
+
+
+class PosixBackupTestWithData(test.TestCase):
+
+    def _create_volume_db_entry(self, display_name='test_volume',
+                                display_description='this is a test volume',
+                                status='backing-up',
+                                previous_status='available',
+                                size=1,
+                                host='testhost',
+                                encryption_key_id=None,
+                                project_id=None):
+        """Create a volume entry in the DB.
+
+        Return the entry ID
+        """
+        vol = {}
+        vol['size'] = size
+        vol['host'] = host
+        vol['user_id'] = fake.USER_ID
+        vol['project_id'] = project_id or fake.PROJECT_ID
+        vol['status'] = status
+        vol['display_name'] = display_name
+        vol['display_description'] = display_description
+        vol['attach_status'] = objects.fields.VolumeAttachStatus.DETACHED
+        vol['availability_zone'] = '1'
+        vol['previous_status'] = previous_status
+        vol['encryption_key_id'] = encryption_key_id
+        vol['volume_type_id'] = fake.VOLUME_TYPE_ID
+        volume = objects.Volume(context=self.ctxt, **vol)
+        volume.create()
+        return volume.id
+
+    def _create_backup_db_entry(self, volume_id=str(uuid.uuid4()),
+                                restore_volume_id=None,
+                                display_name='test_backup',
+                                display_description='this is a test backup',
+                                container='volumebackups',
+                                status=objects.fields.BackupStatus.CREATING,
+                                size=1,
+                                object_count=0,
+                                project_id=str(uuid.uuid4()),
+                                service=None,
+                                temp_volume_id=None,
+                                temp_snapshot_id=None,
+                                snapshot_id=None,
+                                metadata=None,
+                                parent_id=None,
+                                encryption_key_id=None):
+        """Create a backup entry in the DB.
+
+        Return the entry ID
+        """
+        kwargs = {}
+        kwargs['volume_id'] = volume_id
+        kwargs['restore_volume_id'] = restore_volume_id
+        kwargs['user_id'] = str(uuid.uuid4())
+        kwargs['project_id'] = project_id
+        kwargs['host'] = 'testhost'
+        kwargs['availability_zone'] = '1'
+        kwargs['display_name'] = display_name
+        kwargs['display_description'] = display_description
+        kwargs['container'] = container
+        kwargs['status'] = status
+        kwargs['fail_reason'] = ''
+        kwargs['service'] = service or CONF.backup_driver
+        kwargs['snapshot_id'] = snapshot_id
+        kwargs['parent_id'] = parent_id
+        kwargs['size'] = size
+        kwargs['object_count'] = object_count
+        kwargs['temp_volume_id'] = temp_volume_id
+        kwargs['temp_snapshot_id'] = temp_snapshot_id
+        kwargs['metadata'] = metadata or {}
+        kwargs['encryption_key_id'] = encryption_key_id
+        backup = objects.Backup(context=self.ctxt, **kwargs)
+        backup.create()
+        return backup
+
+    def setUp(self):
+        super(PosixBackupTestWithData, self).setUp()
+
+        self.tempdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tempdir)
+
+        backup_path = os.path.join(self.tempdir, "backup-dir")
+        os.mkdir(backup_path)
+
+        self.ctxt = context.get_admin_context()
+
+        self.override_config('backup_file_size',
+                             FAKE_FILE_SIZE)
+        self.override_config('backup_sha_block_size_bytes',
+                             FAKE_SHA_BLOCK_SIZE_BYTES)
+        self.override_config('backup_enable_progress_timer',
+                             FAKE_BACKUP_ENABLE_PROGRESS_TIMER)
+        self.override_config('backup_posix_path', backup_path)
+        self.mock_object(posix, 'LOG')
+
+        self.driver = posix.PosixBackupDriver(self.ctxt)
+
+        mock_volume_filename = "restore-volume"
+        self.vol_path = os.path.join(self.tempdir, mock_volume_filename)
+
+    def test_restore_backup_with_sparseness(self):
+        """Test a sparse backup restoration."""
+
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(status='restoring-backup',
+                                              size=vol_size)
+
+        chunk_size = 1024 * 1024
+
+        obj_data = b'01234567890123456789'
+
+        backup = self._create_backup_db_entry(
+            volume_id=vol_id,
+            status=objects.fields.BackupStatus.RESTORING)
+
+        with tempfile.NamedTemporaryFile() as volume_file:
+
+            # First, we create a fake volume with a hole. Although we know that
+            # the driver only detects zeroes, we create a real file with a hole
+            # as a way to future-proof this a little. Also, it's easier.
+            # Miraclously, tmpfs supports files with actual holes.
+            volume_file.seek(3 * chunk_size)
+            volume_file.write(obj_data)
+
+            # And then, we immediately run a backup on the fake volume.
+            # We don't attempt to re-create the backup volume by hand.
+            volume_file.seek(0)
+            self.driver.backup(backup, volume_file)
+
+        # Next, we restore, excercising the code under test.
+        with open(self.vol_path, 'wb') as volume_file:
+            self.driver.restore(backup, vol_id, volume_file, True)
+
+        # Finally, we examine the fake volume into which we restored.
+        with open(self.vol_path, 'rb') as volume_file:
+            volume_file.seek(3 * chunk_size)
+            question_data = volume_file.read(len(obj_data))
+
+        self.assertEqual(obj_data, question_data)
+
+        statb = os.stat(self.vol_path)
+        self.assertLess(statb.st_blocks * 512, (3 * chunk_size + 512) / 512)
