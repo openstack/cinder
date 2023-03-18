@@ -49,6 +49,12 @@ create = {
                 'consistencygroup_id': parameter_types.optional_uuid,
                 'size': parameter_types.volume_size_allows_null,
                 'availability_zone': parameter_types.availability_zone,
+                # The functionality to create a multiattach volume by the
+                # multiattach parameter is removed.
+                # We accept the parameter but raise a BadRequest stating the
+                # "new way" of creating multiattach volumes i.e. with a
+                # multiattach volume type so users using the "old way"
+                # have ease of moving into the new functionality.
                 'multiattach': parameter_types.optional_boolean,
                 'image_id': {'type': ['string', 'null'], 'minLength': 0,
                              'maxLength': 255},
