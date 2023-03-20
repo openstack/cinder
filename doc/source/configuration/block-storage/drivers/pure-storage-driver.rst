@@ -8,12 +8,12 @@ operations.
 
 Support for iSCSI storage protocol is available with the PureISCSIDriver
 Volume Driver class, Fibre Channel with the PureFCDriver and
-NVMe-ROCE with the PureNVMEDriver.
+NVMe-ROCE or NVMe-TCP with the PureNVMEDriver.
 
-iSCSI and Fibre Channel drivers are compatible with Purity FlashArrays
-that support the REST API version 1.6 and higher (Purity 4.7.0 and newer).
-The NVMe driver is compatible with Purity FlashArrays
+iSCSI, Fibre Channel and NVMe-RoCE drivers are compatible with FlashArrays
 that support the REST API version 1.16 and higher (Purity 5.2.0 and newer).
+The NVMe-TCP driver is compatible with FlashArrays
+that are running Purity 6.4.2 and higher.
 Some features may require newer versions of Purity.
 
 Limitations and known issues
@@ -161,7 +161,7 @@ Pure Storage FlashArray as back-end storage.
        NVME connectivity.
 
        If using the NVME driver, specify the ``pure_nvme_transport`` value.
-       Currently only ``roce`` is supported.
+       Supported values are ``roce`` or ``tcp``.
 
    IP_PURE_MGMT
        The IP address of the Pure Storage array's management interface or a

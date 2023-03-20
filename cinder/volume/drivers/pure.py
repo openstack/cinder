@@ -111,9 +111,8 @@ PURE_OPTS = [
                      "IPv4 and IPv6 subnets. This parameter supersedes "
                      "pure_nvme_cidr."),
     cfg.StrOpt("pure_nvme_transport", default="roce",
-               choices=['roce'],
-               help="The NVMe transport layer to be used by the NVMe driver. "
-                    "This only supports RoCE at this time."),
+               choices=['roce', 'tcp'],
+               help="The NVMe transport layer to be used by the NVMe driver."),
     cfg.BoolOpt("pure_eradicate_on_delete",
                 default=False,
                 help="When enabled, all Pure volumes, snapshots, and "
@@ -405,6 +404,13 @@ class PureBaseVolumeDriver(san.SanDriver):
                 msg = _("FlashArray Purity version less than 5.3.0 "
                         "unsupported. Please upgrade your backend to "
                         "a supported version.")
+                raise PureDriverException(msg)
+            if version.parse(array_info["version"]) < version.parse(
+                '6.4.2'
+            ) and self._storage_protocol == constants.NVMEOF_TCP:
+                msg = _("FlashArray Purity version less than 6.4.2 "
+                        "unsupported for NVMe-TCP. Please upgrade your "
+                        "backend to a supported version.")
                 raise PureDriverException(msg)
 
             self._array.array_name = array_info["array_name"]
@@ -3217,6 +3223,9 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         if self.configuration.pure_nvme_transport == "roce":
             self.transport_type = "rdma"
             self._storage_protocol = constants.NVMEOF_ROCE
+        else:
+            self.transport_type = "tcp"
+            self._storage_protocol = constants.NVMEOF_TCP
 
     def _get_nguid(self, pure_vol_name):
         """Return the NGUID based on the volume's serial number
@@ -3331,14 +3340,24 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         return props
 
     def _get_target_nvme_ports(self, array):
-        """Return list of nvme-enabled port descriptions."""
+        """Return list of correct nvme-enabled port descriptions."""
         ports = array.list_ports()
+        valid_nvme_ports = []
         nvme_ports = [port for port in ports if port["nqn"]]
+        for port in range(0, len(nvme_ports)):
+            if "ETH" in nvme_ports[port]["name"]:
+                port_detail = array.get_network_interface(
+                    interface=nvme_ports[port]["name"]
+                )
+                if port_detail["services"][0] == "nvme-" + \
+                        self.configuration.pure_nvme_transport:
+                    valid_nvme_ports.append(nvme_ports[port])
         if not nvme_ports:
             raise PureDriverException(
-                reason=_("No nvme-enabled ports on target array.")
+                reason=_("No %(type)s enabled ports on target array.") %
+                {"type": self._storage_protocol}
             )
-        return nvme_ports
+        return valid_nvme_ports
 
     @utils.retry(PureRetryableException, retries=HOST_CREATE_MAX_RETRIES)
     def _connect(self, array, vol_name, connector):
