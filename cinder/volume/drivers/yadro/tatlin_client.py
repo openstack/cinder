@@ -366,7 +366,7 @@ class TatlinClientCommon:
             result, status = self._access_api(tatlin_api.POOLS)
         except TatlinAPIException as exp:
             message = _('Unable to get pool id for %s due to %s' %
-                        pool_name, exp.message)
+                        (pool_name, exp.message))
             LOG.error(message)
             raise exception.VolumeBackendAPIException(message=message)
 
