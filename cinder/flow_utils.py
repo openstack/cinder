@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, Optional  # noqa: H301
 
 from oslo_log import log as logging
 # For more information please visit: https://wiki.openstack.org/wiki/TaskFlow
@@ -27,7 +27,7 @@ from cinder import exception
 LOG = logging.getLogger(__name__)
 
 
-def _make_task_name(cls, addons: list[str] = None) -> str:
+def _make_task_name(cls, addons: Optional[list[str]] = None) -> str:
     """Makes a pretty name for a task class."""
     base_name = ".".join([cls.__module__, cls.__name__])
     extra = ''
@@ -43,11 +43,13 @@ class CinderTask(task.Task):
     implement the given task as the task name.
     """
 
-    def __init__(self, addons: list[str] = None, **kwargs: Any) -> None:
+    def __init__(self,
+                 addons: Optional[list[str]] = None,
+                 **kwargs: Any) -> None:
         super(CinderTask, self).__init__(self.make_name(addons), **kwargs)
 
     @classmethod
-    def make_name(cls, addons: list[str] = None) -> str:
+    def make_name(cls, addons: Optional[list[str]] = None) -> str:
         return _make_task_name(cls, addons)
 
 

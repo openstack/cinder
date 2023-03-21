@@ -19,6 +19,7 @@ cinder/image/glance.py
 cinder/image/image_utils.py
 cinder/keymgr/transfer.py
 cinder/exception.py
+cinder/flow_utils.py
 cinder/manager.py
 cinder/objects/backup.py
 cinder/policy.py
