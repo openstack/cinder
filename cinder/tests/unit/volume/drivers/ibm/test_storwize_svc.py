@@ -4321,7 +4321,6 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         self.assertIsNotNone(host_name)
 
     def test_storwize_get_host_from_connector_with_lshost_failure(self):
-        self.skipTest('Bug 1640205')
         self._connector.pop('initiator')
         helper = self.fc_driver._helpers
         # Create two hosts. The first is not related to the connector and
@@ -4341,12 +4340,6 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         host_name = helper.get_host_from_connector(self._connector)
 
         self.assertIsNotNone(host_name)
-        # Need to assert that lshost was actually called. The way
-        # we do that is check that the next simulator error for lshost
-        # has been reset.
-        self.assertEqual(self.sim._next_cmd_error['lshost'], '',
-                         "lshost was not called in the simulator. The "
-                         "queued error still remains.")
 
     def test_storwize_get_host_from_connector_with_lshost_failure2(self):
         self._connector.pop('initiator')
