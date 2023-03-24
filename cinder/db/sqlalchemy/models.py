@@ -314,7 +314,7 @@ class Volume(BASE, CinderBase):
 
     __tablename__ = 'volumes'
     __table_args__ = (
-        sa.Index('volumes_service_uuid_idx', 'deleted', 'service_uuid'),
+        sa.Index('volumes_service_uuid_idx', 'service_uuid', 'deleted'),
         # Speed up normal listings
         sa.Index('volumes_deleted_project_id_idx', 'deleted', 'project_id'),
         # Speed up service start, create volume from image when using direct
