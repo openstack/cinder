@@ -3092,7 +3092,7 @@ class HPE3PARCommon(object):
 
     def _get_updated_comment(self, vol_name, **values):
         vol = self.client.getVolume(vol_name)
-        comment = json.loads(vol['comment']) if vol['comment'] else {}
+        comment = json.loads(vol['comment']) if vol.get('comment') else {}
         comment.update(values)
 
     def _update_comment(self, vol_name, **values):
