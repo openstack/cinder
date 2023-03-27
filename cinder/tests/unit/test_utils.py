@@ -62,14 +62,14 @@ class ExecuteTestCase(test.TestCase):
                                                 run_as_root=True,
                                                 root_helper=mock_helper)
 
-    @mock.patch('cinder.utils.get_root_helper')
-    @mock.patch('cinder.utils.processutils.execute')
+    @mock.patch('cinder.utils.get_root_helper', autospec=True)
+    @mock.patch('cinder.utils.processutils.execute', autospec=True)
     def test_execute_root_and_helper(self, mock_putils_exe, mock_get_helper):
-        mock_helper = mock.Mock()
+        mock_helper = mock.sentinel
         output = utils.execute('a', 1, foo='bar', run_as_root=True,
                                root_helper=mock_helper)
         self.assertEqual(mock_putils_exe.return_value, output)
-        self.assertFalse(mock_get_helper.called)
+        mock_get_helper.assert_not_called()
         mock_putils_exe.assert_called_once_with('a', 1, foo='bar',
                                                 run_as_root=True,
                                                 root_helper=mock_helper)
