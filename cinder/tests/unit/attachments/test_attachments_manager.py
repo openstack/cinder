@@ -195,12 +195,6 @@ class AttachmentManagerTestCase(test.TestCase):
                   mock_db_detached, mock_db_meta_delete, mock_get_attachment):
             mock_elevated.return_value = self.context
             mock_con_term.return_value = False
-            mock_db_detached.return_value = (
-                {'status': 'available',
-                 'attach_status': fields.VolumeAttachStatus.DETACHED},
-                {'attach_status': fields.VolumeAttachStatus.DETACHED,
-                 'deleted': True}
-            )
 
             # test single attachment. This should call
             # detach and remove_export
@@ -208,10 +202,8 @@ class AttachmentManagerTestCase(test.TestCase):
 
             self.manager.attachment_delete(self.context, attachment1.id, vref)
 
-            mock_db_detached.called_once_with(self.context, vref,
-                                              attachment1.id)
-            mock_db_meta_delete.called_once_with(self.context, vref.id,
-                                                 'attached_mode')
+            mock_db_detached.assert_not_called()
+            mock_db_meta_delete.assert_not_called()
             mock_rm_export.assert_called_once_with(self.context, vref)
 
             # test more than 1 attachment. This should skip
@@ -226,10 +218,8 @@ class AttachmentManagerTestCase(test.TestCase):
             self.manager.attachment_delete(self.context, attachment2.id, vref)
 
             mock_rm_export.assert_not_called()
-            mock_db_detached.called_once_with(self.context, vref,
-                                              attachment2.id)
-            mock_db_meta_delete.called_once_with(self.context, vref.id,
-                                                 'attached_mode')
+            mock_db_detached.assert_not_called()
+            mock_db_meta_delete.assert_not_called()
         _test()
 
     def test_connection_terminate_no_connector_force_false(self):
