@@ -555,6 +555,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
                         'backup. Do a full backup.')
                 raise exception.InvalidBackup(reason=err)
 
+        win32_disk_size = None
         if sys.platform == 'win32':
             # When dealing with Windows physical disks, we need the exact
             # size of the disk. Attempting to read passed this boundary will
@@ -602,7 +603,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
                 break
             data_offset = volume_file.tell()
 
-            if sys.platform == 'win32':
+            if win32_disk_size is not None:
                 read_bytes = min(self.chunk_size_bytes,
                                  win32_disk_size - data_offset)
             else:
