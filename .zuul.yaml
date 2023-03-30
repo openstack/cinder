@@ -169,6 +169,9 @@
         - "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
       devstack_localrc:
         CEPH_MIN_CLIENT_VERSION: "mimic"
+        # NOTE: if jobs are having memory problems, may want
+        # to turn this on (currently defaults to false):
+        # MYSQL_REDUCE_MEMORY: true
       devstack_local_conf:
         test-config:
           $TEMPEST_CONFIG:
@@ -191,6 +194,9 @@
         - "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
       devstack_localrc:
         TEMPEST_VOLUME_REVERT_TO_SNAPSHOT: True
+        # NOTE: if jobs are having memory problems, may want
+        # to turn this on (currently defaults to false):
+        # MYSQL_REDUCE_MEMORY: true
       devstack_local_conf:
         post-config:
           $CINDER_CONF:
