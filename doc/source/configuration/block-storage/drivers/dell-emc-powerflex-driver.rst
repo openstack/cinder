@@ -41,6 +41,8 @@ compatible:
 
 * PowerFlex 3.6.0
 
+* PowerFlex 4.0.x
+
 Please consult the :ref:`powerflex_docs`
 to determine supported operating systems for each version
 of PowerFlex or VxFlex OS.
