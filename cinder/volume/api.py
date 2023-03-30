@@ -553,7 +553,7 @@ class API(base.Base):
                 if hasattr(e, 'msg'):
                     # ignore type (Exception has no attr "msg") error
                     msg = _("Unable to delete encryption key for "
-                            "volume: %s") % (e.msg)  # type: ignore
+                            "volume: %s") % (e.msg)
                 else:
                     msg = _("Unable to delete encryption key for volume.")
                 LOG.error(msg)
