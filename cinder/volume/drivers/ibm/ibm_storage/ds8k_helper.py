@@ -22,7 +22,6 @@ import string
 import eventlet
 from oslo_log import log as logging
 import packaging.version as dist_version  # pylint: disable=E0611
-import six
 
 from cinder import coordination
 from cinder import exception
@@ -187,7 +186,7 @@ class DS8KCommonHelper(object):
                             err=_('Param [lss_range_for_cg] is invalid, it '
                                   'only supports space and \'-\' as '
                                   'separator. '
-                                  'Exception = %s.') % six.text_type(e))
+                                  'Exception = %s.') % str(e))
                 else:
                     lss_ids.append(lss)
             lss_ids_for_cg |= set(lss_ids)
@@ -203,7 +202,7 @@ class DS8KCommonHelper(object):
                 raise exception.InvalidParameterValue(
                     err=_('Param [lss_range_for_cg] is invalid, it '
                           'only supports space and \'-\' as separator. '
-                          'Exception = %s.') % six.text_type(e))
+                          'Exception = %s.') % str(e))
         return lss_ids_for_cg
 
     def _check_host_type(self):
@@ -287,7 +286,7 @@ class DS8KCommonHelper(object):
             except restclient.APIException as e:
                 LOG.warning("Failed to get pool %(id)s information, "
                             "Exception: %(ex)s.", {'id': pid,
-                                                   'ex': six.text_type(e)})
+                                                   'ex': str(e)})
         if len(pools):
             unsorted_pools = self._format_pools(pools)
             storage_pools = collections.OrderedDict(sorted(
@@ -1177,7 +1176,7 @@ class DS8KECKDHelper(DS8KCommonHelper):
                     raise exception.VolumeDriverException(
                         message=(_('Can not create lcu %(lcu)s, '
                                    'Exception = %(e)s.')
-                                 % {'lcu': lcu, 'e': six.text_type(e)}))
+                                 % {'lcu': lcu, 'e': str(e)}))
         return lcu_ids
 
     def _format_pools(self, pools):
@@ -1210,7 +1209,7 @@ class DS8KECKDHelper(DS8KCommonHelper):
         existing_lcu = [lcu for lcu in all_lss if
                         lcu['type'] == 'ckd' and
                         lcu['id'] in self.backend['device_mapping'].keys() and
-                        lcu['group'] == six.text_type(node)]
+                        lcu['group'] == str(node)]
         LOG.info("All appropriate LCUs are %s.",
                  ','.join([lcu['id'] for lcu in existing_lcu]))
 

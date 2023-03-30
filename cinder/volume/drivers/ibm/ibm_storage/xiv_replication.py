@@ -22,7 +22,6 @@ if pyxcli:
     from pyxcli.mirroring import cg_recovery_manager
     from pyxcli.mirroring import errors as m_errors
     from pyxcli.mirroring import volume_recovery_manager
-import six
 
 from cinder.i18n import _
 from cinder.volume.drivers.ibm.ibm_storage import strings
@@ -130,7 +129,7 @@ class Replication(object):
 
         target, params = self.proxy._get_replication_target_params()
         LOG.info('Target %(target)s: %(params)s',
-                 {'target': target, 'params': six.text_type(params)})
+                 {'target': target, 'params': str(params)})
 
         try:
             pool = params['san_clustername']

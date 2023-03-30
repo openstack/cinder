@@ -16,8 +16,6 @@
 from unittest import mock
 from xml.etree import ElementTree
 
-import six
-
 from cinder import context
 from cinder import exception
 from cinder import objects
@@ -1494,7 +1492,7 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli = mock.MagicMock()
         p.ibm_storage_cli.cmd.fc_port_list.return_value = FC_PORT_LIST_OUTPUT
         fc_targets = p._get_fc_targets(None)
-        six.assertCountEqual(self, FC_TARGETS_OPTIMIZED, fc_targets)
+        self.assertCountEqual(FC_TARGETS_OPTIMIZED, fc_targets)
 
     def test_get_fc_targets_returns_host_optimized_wwpns_list(self):
         driver = mock.MagicMock()
@@ -1513,9 +1511,8 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli.cmd.host_connectivity_list.return_value = (
             HOST_CONNECTIVITY_LIST)
         fc_targets = p._get_fc_targets(host)
-        six.assertCountEqual(self,
-                             FC_TARGETS_OPTIMIZED_WITH_HOST, fc_targets,
-                             "FC targets are different from the expected")
+        self.assertCountEqual(FC_TARGETS_OPTIMIZED_WITH_HOST, fc_targets,
+                              "FC targets are different from the expected")
 
     def test_get_fc_targets_returns_host_all_wwpns_list(self):
         driver = mock.MagicMock()
@@ -1534,9 +1531,8 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli.cmd.host_connectivity_list.return_value = (
             HOST_CONNECTIVITY_LIST_UNKNOWN_HOST)
         fc_targets = p._get_fc_targets(host)
-        six.assertCountEqual(self,
-                             FC_TARGETS_OPTIMIZED, fc_targets,
-                             "FC targets are different from the expected")
+        self.assertCountEqual(FC_TARGETS_OPTIMIZED, fc_targets,
+                              "FC targets are different from the expected")
 
     def test_define_fc_returns_all_wwpns_list(self):
         driver = mock.MagicMock()
@@ -1552,9 +1548,8 @@ class XIVProxyTest(test.TestCase):
         p.ibm_storage_cli.cmd.fc_port_list.return_value = FC_PORT_LIST_OUTPUT
         p.ibm_storage_cli.fc_connectivity_list.return_value = ()
         fc_targets = p._define_fc(p._define_host(TEST_CONNECTOR))
-        six.assertCountEqual(self,
-                             FC_TARGETS_OPTIMIZED, fc_targets,
-                             "FC targets are different from the expected")
+        self.assertCountEqual(FC_TARGETS_OPTIMIZED, fc_targets,
+                              "FC targets are different from the expected")
 
     def test_define_ports_returns_sorted_wwpns_list(self):
         driver = mock.MagicMock()

@@ -23,7 +23,6 @@ from unittest import mock
 
 from oslo_concurrency import processutils
 from oslo_utils import units
-import six
 
 from cinder import context
 from cinder import exception
@@ -69,8 +68,8 @@ class FlashSystemManagementSimulator(object):
         ids.sort()
         for index, n in enumerate(ids):
             if n > index:
-                return six.text_type(index)
-        return six.text_type(len(ids))
+                return str(index)
+        return str(len(ids))
 
     @staticmethod
     def _is_invalid_name(name):
@@ -99,7 +98,7 @@ class FlashSystemManagementSimulator(object):
 
         # All commands should begin with svcinfo or svctask
         if arg_list[0] not in ('svcinfo', 'svctask') or len(arg_list) < 2:
-            raise exception.InvalidInput(reason=six.text_type(arg_list))
+            raise exception.InvalidInput(reason=str(arg_list))
         ret = {'cmd': arg_list[1]}
 
         skip = False
@@ -139,7 +138,7 @@ class FlashSystemManagementSimulator(object):
             num = num * 1024
             unit_index += 1
 
-        return six.text_type(num)
+        return str(num)
 
     def _cmd_lshost(self, **kwargs):
         """lshost command.
@@ -451,7 +450,7 @@ class FlashSystemManagementSimulator(object):
 
         curr_size = int(self._volumes_list[vol_name]['capacity'])
         addition = size * units.Gi
-        self._volumes_list[vol_name]['capacity'] = six.text_type(
+        self._volumes_list[vol_name]['capacity'] = str(
             curr_size + addition)
         return ('', '')
 
@@ -710,7 +709,7 @@ class FlashSystemDriverTestCase(test.TestCase):
                            vol_name,
                            vol_size=10,
                            vol_status='available'):
-        rand_id = six.text_type(random.randint(10000, 99999))
+        rand_id = str(random.randint(10000, 99999))
         if not vol_name:
             vol_name = 'test_volume%s' % rand_id
 
@@ -727,7 +726,7 @@ class FlashSystemDriverTestCase(test.TestCase):
                             vol_size,
                             vol_status,
                             snap_status='available'):
-        rand_id = six.text_type(random.randint(10000, 99999))
+        rand_id = str(random.randint(10000, 99999))
         return {'name': 'test_snap_%s' % rand_id,
                 'id': rand_id,
                 'volume': {'name': vol_name,

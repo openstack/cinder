@@ -65,7 +65,6 @@ import json
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
-import six
 
 from cinder import context
 from cinder import coordination
@@ -124,7 +123,7 @@ ds8k_opts = [
         help='Set to zLinux if your OpenStack version is prior to '
              'Liberty and you\'re connecting to zLinux systems. '
              'Otherwise set to auto. Valid values for this parameter '
-             'are: %s.' % six.text_type(helper.VALID_HOST_TYPES)[1:-1])
+             'are: %s.' % str(helper.VALID_HOST_TYPES)[1:-1])
 ]
 
 CONF = cfg.CONF
@@ -177,12 +176,12 @@ class Lun(object):
         def update_volume(self, lun):
             lun.data_type = self.data_type
             volume_update = lun.get_volume_update()
-            volume_update['provider_location'] = six.text_type({
+            volume_update['provider_location'] = str({
                 'vol_hex_id': self.ds_id})
             if self.type_replication:
                 volume_update['replication_driver_data'] = json.dumps(
                     self.replication_driver_data)
-                volume_update['metadata']['replication'] = six.text_type(
+                volume_update['metadata']['replication'] = str(
                     self.replication_driver_data)
             else:
                 volume_update.pop('replication_driver_data', None)
@@ -322,12 +321,12 @@ class Lun(object):
     # Note: updating metadata in vol related funcs deletes all prior metadata
     def get_volume_update(self):
         volume_update = {}
-        volume_update['provider_location'] = six.text_type(
+        volume_update['provider_location'] = str(
             {'vol_hex_id': self.ds_id})
         # update metadata
         if not self.is_snapshot:
             if self.type_replication:
-                self.metadata['replication'] = six.text_type(
+                self.metadata['replication'] = str(
                     self.replication_driver_data)
             else:
                 self.metadata.pop('replication', None)
@@ -1529,7 +1528,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 raise exception.UnableToFailOver(
                     reason=(_("Unable to failover host to %(id)s. "
                               "Exception= %(ex)s")
-                            % {'id': secondary_id, 'ex': six.text_type(e)}))
+                            % {'id': secondary_id, 'ex': str(e)}))
 
             for lun in failover_luns:
                 volume_update = lun.get_volume_update()
@@ -1594,7 +1593,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
             except restclient.APIException as e:
                 msg = (_('Failed to enable replication for group %(id)s, '
                          'Exception: %(ex)s.')
-                       % {'id': group.id, 'ex': six.text_type(e)})
+                       % {'id': group.id, 'ex': str(e)})
                 LOG.exception(msg)
                 raise exception.VolumeDriverException(message=msg)
             for lun in luns:
@@ -1619,7 +1618,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
             except restclient.APIException as e:
                 msg = (_('Failed to disable replication for group %(id)s, '
                          'Exception: %(ex)s.')
-                       % {'id': group.id, 'ex': six.text_type(e)})
+                       % {'id': group.id, 'ex': str(e)})
                 LOG.exception(msg)
                 raise exception.VolumeDriverException(message=msg)
             for lun in luns:
@@ -1681,7 +1680,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
                            "backend %(bck_id)s. Exception= %(ex)s")
                          % {'grp_id': group.id,
                             'bck_id': secondary_backend_id,
-                            'ex': six.text_type(e)}))
+                            'ex': str(e)}))
 
         for lun in luns:
             volume_model_update = lun.get_volume_update()

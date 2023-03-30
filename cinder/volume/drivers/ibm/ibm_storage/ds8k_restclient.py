@@ -16,12 +16,11 @@
 import abc
 import importlib
 import json
+import urllib
 
 import eventlet
 import requests
 from requests import exceptions as req_exception
-import six
-from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
@@ -87,8 +86,7 @@ class TimeoutException(APIException):
     pass
 
 
-@six.add_metaclass(abc.ABCMeta)
-class AbstractRESTConnector(object):
+class AbstractRESTConnector(object, metaclass=abc.ABCMeta):
     """Inherit this class when you define your own connector."""
 
     @abc.abstractmethod
@@ -142,7 +140,7 @@ class DefaultRESTConnector(AbstractRESTConnector):
     def __init__(self, verify):
         # overwrite certificate validation method only when using
         # default connector, and not globally import the new scheme.
-        if isinstance(verify, six.string_types):
+        if isinstance(verify, str):
             importlib.import_module("cinder.volume.drivers.ibm.ibm_storage."
                                     "ds8k_connection")
         self.session = None
@@ -151,7 +149,7 @@ class DefaultRESTConnector(AbstractRESTConnector):
     def connect(self):
         if self.session is None:
             self.session = requests.Session()
-            if isinstance(self.verify, six.string_types):
+            if isinstance(self.verify, str):
                 self.session.mount('httpsds8k://',
                                    requests.adapters.HTTPAdapter())
             else:
@@ -166,7 +164,7 @@ class DefaultRESTConnector(AbstractRESTConnector):
     def send(self, method='', url='', headers=None, payload='', timeout=900):
         self.connect()
         try:
-            if isinstance(self.verify, six.string_types):
+            if isinstance(self.verify, str):
                 url = url.replace('https://', 'httpsds8k://')
             resp = self.session.request(method,
                                         url,
@@ -176,13 +174,13 @@ class DefaultRESTConnector(AbstractRESTConnector):
             return resp.status_code, resp.text
         except req_exception.ConnectTimeout as e:
             self.close()
-            return 408, "Connection time out: %s" % six.text_type(e)
+            return 408, "Connection time out: %s" % str(e)
         except req_exception.SSLError as e:
             self.close()
-            return False, "SSL error: %s" % six.text_type(e)
+            return False, "SSL error: %s" % str(e)
         except Exception as e:
             self.close()
-            return False, "Unexcepted exception: %s" % six.text_type(e)
+            return False, "Unexcepted exception: %s" % str(e)
 
 
 class RESTScheduler(object):
