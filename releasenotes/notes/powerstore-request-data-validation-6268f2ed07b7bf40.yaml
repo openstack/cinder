@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    PowerStore driver `bug #1981068
+    <https://bugs.launchpad.net/cinder/+bug/1981068>`_: Fixed
+    request data validation for the REST client.
