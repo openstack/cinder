@@ -29,8 +29,6 @@ from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
-_GROUP_NAME_FORMAT_DEFAULT_FC = utils.TARGET_PREFIX + '{wwn}'
-_GROUP_NAME_FORMAT_DEFAULT_ISCSI = utils.TARGET_PREFIX + '{ip}'
 _GROUP_NAME_MAX_LEN_FC = 64
 _GROUP_NAME_MAX_LEN_ISCSI = 32
 
@@ -147,27 +145,6 @@ COMMON_NAME_OPTS = [
         help='Format of host groups, iSCSI targets, and server objects.'),
 ]
 
-_GROUP_NAME_FORMAT = {
-    'FC': {
-        'group_name_max_len': _GROUP_NAME_MAX_LEN_FC,
-        'group_name_var_cnt': {
-            GROUP_NAME_VAR_WWN: [1],
-            GROUP_NAME_VAR_IP: [0],
-            GROUP_NAME_VAR_HOST: [0, 1],
-        },
-        'group_name_format_default': _GROUP_NAME_FORMAT_DEFAULT_FC,
-    },
-    'iSCSI': {
-        'group_name_max_len': _GROUP_NAME_MAX_LEN_ISCSI,
-        'group_name_var_cnt': {
-            GROUP_NAME_VAR_WWN: [0],
-            GROUP_NAME_VAR_IP: [1],
-            GROUP_NAME_VAR_HOST: [0, 1],
-        },
-        'group_name_format_default': _GROUP_NAME_FORMAT_DEFAULT_ISCSI,
-    }
-}
-
 CONF = cfg.CONF
 CONF.register_opts(COMMON_VOLUME_OPTS, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(COMMON_PORT_OPTS, group=configuration.SHARED_CONF_GROUP)
@@ -217,7 +194,28 @@ class HBSDCommon():
             'portals': {},
         }
         self.storage_id = None
-        self.group_name_format = _GROUP_NAME_FORMAT[driverinfo['proto']]
+        if self.storage_info['protocol'] == 'FC':
+            self.group_name_format = {
+                'group_name_max_len': _GROUP_NAME_MAX_LEN_FC,
+                'group_name_var_cnt': {
+                    GROUP_NAME_VAR_WWN: [1],
+                    GROUP_NAME_VAR_IP: [0],
+                    GROUP_NAME_VAR_HOST: [0, 1],
+                },
+                'group_name_format_default': self.driver_info[
+                    'target_prefix'] + '{wwn}',
+            }
+        if self.storage_info['protocol'] == 'iSCSI':
+            self.group_name_format = {
+                'group_name_max_len': _GROUP_NAME_MAX_LEN_ISCSI,
+                'group_name_var_cnt': {
+                    GROUP_NAME_VAR_WWN: [0],
+                    GROUP_NAME_VAR_IP: [1],
+                    GROUP_NAME_VAR_HOST: [0, 1],
+                },
+                'group_name_format_default': self.driver_info[
+                    'target_prefix'] + '{ip}',
+            }
         self.format_info = {
             'group_name_format': self.group_name_format[
                 'group_name_format_default'],
@@ -690,7 +688,8 @@ class HBSDCommon():
         if self.conf.hitachi_group_name_format is not None:
             error_flag = False
             if re.match(
-                    utils.TARGET_PREFIX + '(' + GROUP_NAME_VAR_WWN + '|' +
+                    self.driver_info['target_prefix'] + '(' +
+                    GROUP_NAME_VAR_WWN + '|' +
                     GROUP_NAME_VAR_IP + '|' + GROUP_NAME_VAR_HOST + '|' + '[' +
                     GROUP_NAME_ALLOWED_CHARS + '])+$',
                     self.conf.hitachi_group_name_format) is None:
