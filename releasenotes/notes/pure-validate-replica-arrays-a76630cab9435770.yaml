@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Pure Storage FlashArray driver `bug #1969784
+    <https://bugs.launchpad.net/cinder/+bug/1969784>`_: Fixed array failover
+    incorrectly handles loss of an array due to network issue
