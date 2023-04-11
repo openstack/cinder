@@ -24,7 +24,11 @@ from eventlet import pools
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
-import paramiko
+
+try:
+    import paramiko
+except ImportError:
+    paramiko = None
 
 from cinder import exception
 from cinder.i18n import _
@@ -64,6 +68,9 @@ class SSHPool(pools.Pool):
         self.privatekey = privatekey
         self.hosts_key_file = None
         self.current_size = 0
+
+        if paramiko is None:
+            raise exception.RequirementMissing(req='paramiko')
 
         # Validate good config setting here.
         # Paramiko handles the case where the file is inaccessible.
