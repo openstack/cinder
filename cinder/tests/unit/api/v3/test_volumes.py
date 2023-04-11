@@ -619,7 +619,6 @@ class VolumeApiTest(test.TestCase):
             'consistencygroup': None,
             'availability_zone': availability_zone,
             'scheduler_hints': None,
-            'multiattach': False,
             'group': test_group,
         }
 
@@ -1189,3 +1188,25 @@ class VolumeApiTest(test.TestCase):
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
         self.assertEqual(vols[1].id, volumes[0]['id'])
+
+    def test_create_volume_with_multiattach_param(self):
+        """Tests creating a volume with multiattach=True but no multiattach
+
+        volume type.
+
+        This test verifies that providing the multiattach parameter will error
+        out the request since it is removed and the recommended way is to
+        create a multiattach volume using a multiattach volume type.
+        """
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+
+        body = {'volume': {
+                'name': 'test name',
+                'description': 'test desc',
+                'size': 1,
+                'multiattach': True}}
+        exc = self.assertRaises(webob.exc.HTTPBadRequest,
+                                self.controller.create,
+                                req, body=body)
+        self.assertIn("multiattach parameter has been removed",
+                      exc.explanation)
