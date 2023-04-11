@@ -1099,3 +1099,7 @@ class ConflictNovaUsingAttachment(CinderException):
                 "Compute API")
     code = 409
     safe = True
+
+
+class RequirementMissing(CinderException):
+    message = _('Requirement %(req)s is not installed.')
