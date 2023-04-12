@@ -585,7 +585,7 @@ the lock, and `external=True` to make sure that file locks are being used.
 The name parameter provided for these locks must be a literal string value.
 There is no kind of templating support.
 
-Example from `cinder/volume/targest/lio.py`:
+Example from `cinder/volume/targets/lio.py`:
 
 .. code-block:: python
 
