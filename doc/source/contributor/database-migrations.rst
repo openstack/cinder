@@ -36,7 +36,7 @@ run by end users using the :program:`cinder-manage db sync` command.
 
 .. note::
 
-   There wer also legacy migrations provided in the
+   There were also legacy migrations provided in the
    ``cinder/db/legacy_migrations`` directory . These were provided to facilitate
    upgrades from pre-Xena (19.0.0) deployments. They were removed in the
    22.0.0 (Antelope) release.
