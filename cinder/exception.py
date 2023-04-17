@@ -1092,3 +1092,7 @@ class DriverInitiatorDataExists(Duplicate):
         "Driver initiator data for initiator '%(initiator)s' and backend "
         "'%(namespace)s' with key '%(key)s' already exists."
     )
+
+
+class RequirementMissing(CinderException):
+    message = _('Requirement %(req)s is not installed.')
