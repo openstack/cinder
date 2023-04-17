@@ -1,4 +1,4 @@
-# Copyright 2016 Infinidat Ltd.
+# Copyright 2022 Infinidat Ltd.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -28,14 +28,25 @@ from cinder.volume import configuration
 from cinder.volume.drivers import infinidat
 
 
+TEST_LUN = 1
 TEST_WWN_1 = '00:11:22:33:44:55:66:77'
 TEST_WWN_2 = '11:11:22:33:44:55:66:77'
-
-TEST_IP_ADDRESS = '1.1.1.1'
-TEST_IQN = 'iqn.2012-07.org.fake:01'
-TEST_ISCSI_TCP_PORT = 3260
-
-TEST_TARGET_PORTAL = '{}:{}'.format(TEST_IP_ADDRESS, TEST_ISCSI_TCP_PORT)
+TEST_IP_ADDRESS1 = '1.1.1.1'
+TEST_IP_ADDRESS2 = '2.2.2.2'
+TEST_IP_ADDRESS3 = '3.3.3.3'
+TEST_IP_ADDRESS4 = '4.4.4.4'
+TEST_INITIATOR_IQN = 'iqn.2012-07.org.initiator:01'
+TEST_TARGET_IQN = 'iqn.2012-07.org.target:01'
+TEST_ISCSI_TCP_PORT1 = 3261
+TEST_ISCSI_TCP_PORT2 = 3262
+TEST_ISCSI_NAMESPACE1 = 'netspace1'
+TEST_ISCSI_NAMESPACE2 = 'netspace2'
+TEST_TARGET_PORTAL1 = '{}:{}'.format(TEST_IP_ADDRESS1, TEST_ISCSI_TCP_PORT1)
+TEST_TARGET_PORTAL2 = '{}:{}'.format(TEST_IP_ADDRESS2, TEST_ISCSI_TCP_PORT1)
+TEST_TARGET_PORTAL3 = '{}:{}'.format(TEST_IP_ADDRESS3, TEST_ISCSI_TCP_PORT2)
+TEST_TARGET_PORTAL4 = '{}:{}'.format(TEST_IP_ADDRESS4, TEST_ISCSI_TCP_PORT2)
+TEST_FC_PROTOCOL = 'fc'
+TEST_ISCSI_PROTOCOL = 'iscsi'
 
 test_volume = mock.Mock(id=1, size=1, volume_type_id=1)
 test_snapshot = mock.Mock(id=2, volume=test_volume, volume_id='1')
@@ -43,7 +54,7 @@ test_clone = mock.Mock(id=3, size=1)
 test_group = mock.Mock(id=4)
 test_snapgroup = mock.Mock(id=5, group=test_group)
 test_connector = dict(wwpns=[TEST_WWN_1],
-                      initiator=TEST_IQN)
+                      initiator=TEST_INITIATOR_IQN)
 
 
 def skip_driver_setup(func):
@@ -69,7 +80,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
 
         # create mock configuration
         self.configuration = mock.Mock(spec=configuration.Configuration)
-        self.configuration.infinidat_storage_protocol = 'fc'
+        self.configuration.infinidat_storage_protocol = TEST_FC_PROTOCOL
         self.configuration.san_ip = 'mockbox'
         self.configuration.infinidat_pool_name = 'mockpool'
         self.configuration.san_thin_provision = True
@@ -113,15 +124,20 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         self._mock_volume.create_snapshot.return_value = self._mock_volume
         self._mock_host = mock.Mock()
         self._mock_host.get_luns.return_value = []
-        self._mock_host.map_volume().get_lun.return_value = 1
+        self._mock_host.map_volume().get_lun.return_value = TEST_LUN
         self._mock_pool = mock.Mock()
         self._mock_pool.get_free_physical_capacity.return_value = units.Gi
         self._mock_pool.get_physical_capacity.return_value = units.Gi
-        self._mock_ns = mock.Mock()
-        self._mock_ns.get_ips.return_value = [
-            mock.Mock(ip_address=TEST_IP_ADDRESS, enabled=True)]
-        self._mock_ns.get_properties.return_value = mock.Mock(
-            iscsi_iqn=TEST_IQN, iscsi_tcp_port=TEST_ISCSI_TCP_PORT)
+        self._mock_name_space1 = mock.Mock()
+        self._mock_name_space2 = mock.Mock()
+        self._mock_name_space1.get_ips.return_value = [
+            mock.Mock(ip_address=TEST_IP_ADDRESS1, enabled=True)]
+        self._mock_name_space2.get_ips.return_value = [
+            mock.Mock(ip_address=TEST_IP_ADDRESS3, enabled=True)]
+        self._mock_name_space1.get_properties.return_value = mock.Mock(
+            iscsi_iqn=TEST_TARGET_IQN, iscsi_tcp_port=TEST_ISCSI_TCP_PORT1)
+        self._mock_name_space2.get_properties.return_value = mock.Mock(
+            iscsi_iqn=TEST_TARGET_IQN, iscsi_tcp_port=TEST_ISCSI_TCP_PORT2)
         self._mock_group = mock.Mock()
         self._mock_qos_policy = mock.Mock()
         result.volumes.safe_get.return_value = self._mock_volume
@@ -131,7 +147,7 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         result.cons_groups.safe_get.return_value = self._mock_group
         result.cons_groups.create.return_value = self._mock_group
         result.hosts.create.return_value = self._mock_host
-        result.network_spaces.safe_get.return_value = self._mock_ns
+        result.network_spaces.safe_get.return_value = self._mock_name_space1
         result.components.nodes.get_all.return_value = []
         result.qos_policies.create.return_value = self._mock_qos_policy
         result.qos_policies.safe_get.return_value = None
@@ -590,7 +606,7 @@ class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
 
     def test_validate_connector(self):
         fc_connector = {'wwpns': [TEST_WWN_1, TEST_WWN_2]}
-        iscsi_connector = {'initiator': TEST_IQN}
+        iscsi_connector = {'initiator': TEST_INITIATOR_IQN}
         self.driver.validate_connector(fc_connector)
         self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector, iscsi_connector)
@@ -599,8 +615,8 @@ class InfiniboxDriverTestCaseFC(InfiniboxDriverTestCaseBase):
 class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
     def setUp(self):
         super(InfiniboxDriverTestCaseISCSI, self).setUp()
-        self.configuration.infinidat_storage_protocol = 'iscsi'
-        self.configuration.infinidat_iscsi_netspaces = ['netspace1']
+        self.configuration.infinidat_storage_protocol = TEST_ISCSI_PROTOCOL
+        self.configuration.infinidat_iscsi_netspaces = [TEST_ISCSI_NAMESPACE1]
         self.configuration.use_chap_auth = False
         self.driver.do_setup(None)
 
@@ -609,23 +625,27 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.do_setup, None)
 
-    def _assert_plurals(self, result, expected_length):
-        self.assertEqual(expected_length, len(result['data']['target_luns']))
-        self.assertEqual(expected_length, len(result['data']['target_iqns']))
-        self.assertEqual(expected_length,
-                         len(result['data']['target_portals']))
-        self.assertTrue(all(lun == 1 for lun in result['data']['target_luns']))
-        self.assertTrue(
-            all(iqn == test_connector['initiator'] for
-                iqn in result['data']['target_iqns']))
-
-        self.assertTrue(all(target_portal == TEST_TARGET_PORTAL for
-                            target_portal in result['data']['target_portals']))
-
     def test_initialize_connection(self):
         result = self.driver.initialize_connection(test_volume, test_connector)
-        self.assertEqual(1, result['data']['target_lun'])
-        self._assert_plurals(result, 1)
+        expected = {
+            'driver_volume_type': TEST_ISCSI_PROTOCOL,
+            'data': {
+                'target_discovered': True,
+                'target_portal': TEST_TARGET_PORTAL1,
+                'target_iqn': TEST_TARGET_IQN,
+                'target_lun': TEST_LUN,
+                'target_portals': [
+                    TEST_TARGET_PORTAL1
+                ],
+                'target_iqns': [
+                    TEST_TARGET_IQN
+                ],
+                'target_luns': [
+                    TEST_LUN
+                ]
+            }
+        }
+        self.assertEqual(expected, result)
 
     def test_initialize_netspace_does_not_exist(self):
         self._system.network_spaces.safe_get.return_value = None
@@ -634,7 +654,7 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
                           test_volume, test_connector)
 
     def test_initialize_netspace_has_no_ips(self):
-        self._mock_ns.get_ips.return_value = []
+        self._mock_name_space1.get_ips.return_value = []
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.initialize_connection,
                           test_volume, test_connector)
@@ -648,22 +668,136 @@ class InfiniboxDriverTestCaseISCSI(InfiniboxDriverTestCaseBase):
         self.assertIn('auth_password', result['data'])
 
     def test_initialize_connection_multiple_netspaces(self):
-        self.configuration.infinidat_iscsi_netspaces = ['netspace1',
-                                                        'netspace2']
+        self.configuration.infinidat_iscsi_netspaces = [
+            TEST_ISCSI_NAMESPACE1, TEST_ISCSI_NAMESPACE2]
+        self._system.network_spaces.safe_get.side_effect = [
+            self._mock_name_space1, self._mock_name_space2]
         result = self.driver.initialize_connection(test_volume, test_connector)
-        self.assertEqual(1, result['data']['target_lun'])
-        self._assert_plurals(result, 2)
+        expected = {
+            'driver_volume_type': TEST_ISCSI_PROTOCOL,
+            'data': {
+                'target_discovered': True,
+                'target_portal': TEST_TARGET_PORTAL1,
+                'target_iqn': TEST_TARGET_IQN,
+                'target_lun': TEST_LUN,
+                'target_portals': [
+                    TEST_TARGET_PORTAL1,
+                    TEST_TARGET_PORTAL3
+                ],
+                'target_iqns': [
+                    TEST_TARGET_IQN,
+                    TEST_TARGET_IQN
+                ],
+                'target_luns': [
+                    TEST_LUN,
+                    TEST_LUN
+                ]
+            }
+        }
+        self.assertEqual(expected, result)
 
-    def test_initialize_connection_plurals(self):
+    def test_initialize_connection_multiple_netspaces_multipath(self):
+        self.configuration.infinidat_iscsi_netspaces = [
+            TEST_ISCSI_NAMESPACE1, TEST_ISCSI_NAMESPACE2]
+        self._system.network_spaces.safe_get.side_effect = [
+            self._mock_name_space1, self._mock_name_space2]
+        self._mock_name_space1.get_ips.return_value = [
+            mock.Mock(ip_address=TEST_IP_ADDRESS1, enabled=True),
+            mock.Mock(ip_address=TEST_IP_ADDRESS2, enabled=True)]
+        self._mock_name_space2.get_ips.return_value = [
+            mock.Mock(ip_address=TEST_IP_ADDRESS3, enabled=True),
+            mock.Mock(ip_address=TEST_IP_ADDRESS4, enabled=True)]
         result = self.driver.initialize_connection(test_volume, test_connector)
-        self._assert_plurals(result, 1)
+        expected = {
+            'driver_volume_type': TEST_ISCSI_PROTOCOL,
+            'data': {
+                'target_discovered': True,
+                'target_portal': TEST_TARGET_PORTAL1,
+                'target_iqn': TEST_TARGET_IQN,
+                'target_lun': TEST_LUN,
+                'target_portals': [
+                    TEST_TARGET_PORTAL1,
+                    TEST_TARGET_PORTAL2,
+                    TEST_TARGET_PORTAL3,
+                    TEST_TARGET_PORTAL4
+                ],
+                'target_iqns': [
+                    TEST_TARGET_IQN,
+                    TEST_TARGET_IQN,
+                    TEST_TARGET_IQN,
+                    TEST_TARGET_IQN
+                ],
+                'target_luns': [
+                    TEST_LUN,
+                    TEST_LUN,
+                    TEST_LUN,
+                    TEST_LUN
+                ]
+            }
+        }
+        self.assertEqual(expected, result)
+
+    def test_initialize_connection_disabled_interface(self):
+        self._mock_name_space1.get_ips.return_value = [
+            mock.Mock(ip_address=TEST_IP_ADDRESS1, enabled=False),
+            mock.Mock(ip_address=TEST_IP_ADDRESS2, enabled=True)]
+        result = self.driver.initialize_connection(test_volume, test_connector)
+        expected = {
+            'driver_volume_type': TEST_ISCSI_PROTOCOL,
+            'data': {
+                'target_discovered': True,
+                'target_portal': TEST_TARGET_PORTAL2,
+                'target_iqn': TEST_TARGET_IQN,
+                'target_lun': TEST_LUN,
+                'target_portals': [
+                    TEST_TARGET_PORTAL2
+                ],
+                'target_iqns': [
+                    TEST_TARGET_IQN
+                ],
+                'target_luns': [
+                    TEST_LUN
+                ]
+            }
+        }
+        self.assertEqual(expected, result)
+
+    def test_initialize_connection_multiple_interfaces(self):
+        self._mock_name_space1.get_ips.return_value = [
+            mock.Mock(ip_address=TEST_IP_ADDRESS1, enabled=True),
+            mock.Mock(ip_address=TEST_IP_ADDRESS2, enabled=True)]
+        self._mock_name_space1.get_properties.return_value = mock.Mock(
+            iscsi_iqn=TEST_TARGET_IQN, iscsi_tcp_port=TEST_ISCSI_TCP_PORT1)
+        result = self.driver.initialize_connection(test_volume, test_connector)
+        expected = {
+            'driver_volume_type': TEST_ISCSI_PROTOCOL,
+            'data': {
+                'target_discovered': True,
+                'target_portal': TEST_TARGET_PORTAL1,
+                'target_iqn': TEST_TARGET_IQN,
+                'target_lun': TEST_LUN,
+                'target_portals': [
+                    TEST_TARGET_PORTAL1,
+                    TEST_TARGET_PORTAL2
+                ],
+                'target_iqns': [
+                    TEST_TARGET_IQN,
+                    TEST_TARGET_IQN
+                ],
+                'target_luns': [
+                    TEST_LUN,
+                    TEST_LUN
+                ]
+            }
+        }
+        self.assertEqual(expected, result)
 
     def test_terminate_connection(self):
         self.driver.terminate_connection(test_volume, test_connector)
 
     def test_validate_connector(self):
         fc_connector = {'wwpns': [TEST_WWN_1, TEST_WWN_2]}
-        iscsi_connector = {'initiator': TEST_IQN}
+        iscsi_connector = {'initiator': TEST_INITIATOR_IQN}
         self.driver.validate_connector(iscsi_connector)
         self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector, fc_connector)
