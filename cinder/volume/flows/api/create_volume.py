@@ -11,8 +11,6 @@
 #    under the License.
 
 
-from __future__ import annotations  # Remove when only supporting python 3.9+
-
 from typing import Any, Optional, Type, Union
 
 from oslo_config import cfg

@@ -17,8 +17,6 @@
 
 """RequestContext: context for requests that persist through all of cinder."""
 
-from __future__ import annotations
-
 import copy
 from typing import Any, Optional
 

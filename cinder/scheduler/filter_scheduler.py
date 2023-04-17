@@ -20,8 +20,6 @@ You can customize this scheduler by specifying your own volume Filters and
 Weighing Functions.
 """
 
-from __future__ import annotations
-
 from typing import (Optional, Union)
 
 from oslo_config import cfg

@@ -15,8 +15,6 @@
 
 """Manage backends in the current zone."""
 
-from __future__ import annotations
-
 from collections import abc
 import random
 import typing

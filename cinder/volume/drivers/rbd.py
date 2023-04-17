@@ -14,8 +14,6 @@
 #    under the License.
 """RADOS Block Device Driver"""
 
-from __future__ import annotations
-
 import binascii
 import errno
 import json

@@ -23,8 +23,6 @@ Some slight modifications, but at some point
 we should look at maybe pushing this up to Oslo
 """
 
-from __future__ import annotations  # Remove when only supporting python 3.9+
-
 import contextlib
 import errno
 import io
