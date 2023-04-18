@@ -3398,6 +3398,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         }
 
         mock_client = self.setup_driver(mock_conf=conf)
+        mock_client.getVolumeSnapshots.return_value = []
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
@@ -3426,6 +3427,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     {
                         'comment': comment,
                         'readOnly': False}),
+                mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                 mock.call.copyVolume(
                     osv_matcher, omv_matcher, HPE3PAR_CPG, mock.ANY),
                 mock.call.getTask(mock.ANY),
@@ -3449,6 +3451,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         }
 
         mock_client = self.setup_driver(mock_conf=conf)
+        mock_client.getVolumeSnapshots.return_value = []
         _mock_volume_types.return_value = {
             'name': 'gold',
             'extra_specs': {
@@ -3490,6 +3493,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                         'comment': comment,
                         'readOnly': False}),
                 mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                 mock.call.copyVolume(
                     osv_matcher, omv_matcher, HPE3PAR_CPG, mock.ANY),
                 mock.call.getTask(mock.ANY),
@@ -3606,6 +3610,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             'getVolume.return_value': {}
         }
         mock_client = self.setup_driver(mock_conf=conf)
+        mock_client.getVolumeSnapshots.return_value = []
         volume_type_hos = copy.deepcopy(self.volume_type_hos)
         volume_type_hos['extra_specs']['convert_to_base'] = True
         _mock_volume_types.return_value = volume_type_hos
@@ -3635,6 +3640,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     {
                         'comment': comment,
                         'readOnly': False}),
+                mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                 mock.call.copyVolume(
                     osv_matcher, omv_matcher, HPE3PAR_CPG, mock.ANY),
                 mock.call.getTask(mock.ANY),
@@ -3656,6 +3662,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             'getVolume.return_value': {}
         }
         mock_client = self.setup_driver(mock_conf=conf)
+        mock_client.getVolumeSnapshots.return_value = []
         _mock_volume_types.return_value = self.volume_type_hos
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -3684,6 +3691,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     {
                         'comment': comment,
                         'readOnly': False}),
+                mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                 mock.call.copyVolume(
                     osv_matcher, omv_matcher, HPE3PAR_CPG, mock.ANY),
                 mock.call.getTask(mock.ANY),
@@ -3706,6 +3714,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             'getVolume.return_value': {}
         }
         mock_client = self.setup_driver(mock_conf=conf)
+        mock_client.getVolumeSnapshots.return_value = []
         volume_type_hos = copy.deepcopy(self.volume_type_hos)
         volume_type_hos['extra_specs']['convert_to_base'] = True
         _mock_volume_types.return_value = volume_type_hos
@@ -3736,6 +3745,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     {
                         'comment': comment,
                         'readOnly': False}),
+                mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                 mock.call.copyVolume(
                     osv_matcher, omv_matcher, HPE3PAR_CPG, mock.ANY),
                 mock.call.getTask(mock.ANY),
@@ -3834,6 +3844,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         }
 
         mock_client = self.setup_driver(mock_conf=conf)
+        mock_client.getVolumeSnapshots.return_value = []
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
@@ -3857,6 +3868,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         }
 
         mock_client = self.setup_driver(mock_conf=conf)
+        mock_client.getVolumeSnapshots.return_value = []
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
@@ -3867,6 +3879,18 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                               self.driver.extend_volume,
                               self.volume,
                               str(new_size))
+
+    def test__convert_to_base_volume_failure(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolumeSnapshots.return_value = (
+            ['oss-nwJVbXaEQMi0w.xPutFRQw'])
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+            self.assertRaises(exception.VolumeIsBusy,
+                              common._convert_to_base_volume,
+                              self.volume)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_extend_volume_replicated(self, _mock_volume_types):
