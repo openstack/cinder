@@ -15,12 +15,12 @@
 
 """Utilities for Dell EMC PowerStore Cinder driver."""
 
-from distutils import version
 import functools
 import re
 
 from oslo_log import log as logging
 from oslo_utils import units
+from packaging import version
 
 from cinder.common import constants
 from cinder import exception
@@ -186,4 +186,4 @@ def is_group_a_cg_snapshot_type(func):
 
 
 def version_gte(ver1, ver2):
-    return version.LooseVersion(ver1) >= version.LooseVersion(ver2)
+    return version.parse(ver1) >= version.parse(ver2)
