@@ -1027,7 +1027,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.assertEqual('fallback2', target)
         self.assertFalse(mock_debug_log.called)
 
-    def test__failover_host_no_suitable_target(self):
+    def test__complete_failover_no_suitable_target(self):
         flexvols = ['nvol1', 'nvol2']
         replication_backends = ['fallback1', 'fallback2']
         self.mock_object(self.dm_mixin, '_choose_failover_target',
@@ -1045,7 +1045,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.assertFalse(self.dm_mixin.break_snapmirrors.called)
 
     @ddt.data('fallback1', None)
-    def test__failover_host(self, failover_target):
+    def test__complete_failover(self, failover_target):
         flexvols = ['nvol1', 'nvol2', 'nvol3']
         replication_backends = ['fallback1', 'fallback2']
         volumes = [

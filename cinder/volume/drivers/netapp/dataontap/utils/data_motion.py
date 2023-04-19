@@ -787,6 +787,48 @@ class DataMotionMixin(object):
 
         return active_backend_name, volume_updates, []
 
+    def _failover(self, context, volumes, secondary_id=None, groups=None):
+        """Failover to replication target."""
+        if secondary_id == self.backend_name:
+            msg = _("Cannot failover to the same host as the primary.")
+            raise exception.InvalidReplicationTarget(reason=msg)
+
+        replication_targets = self.get_replication_backend_names(
+            self.configuration)
+
+        if not replication_targets:
+            msg = _("No replication targets configured for backend "
+                    "%s. Cannot failover.")
+            raise exception.InvalidReplicationTarget(reason=msg % self.host)
+        elif secondary_id and secondary_id not in replication_targets:
+            msg = _("%(target)s is not among replication targets configured "
+                    "for back end %(host)s. Cannot failover.")
+            payload = {
+                'target': secondary_id,
+                'host': self.host,
+            }
+            raise exception.InvalidReplicationTarget(reason=msg % payload)
+
+        flexvols = self.ssc_library.get_ssc_flexvol_names()
+
+        try:
+            active_backend_name, volume_updates = self._complete_failover(
+                self.backend_name, replication_targets, flexvols, volumes,
+                failover_target=secondary_id)
+        except na_utils.NetAppDriverException as e:
+            msg = _("Could not complete failover: %s") % e
+            raise exception.UnableToFailOver(reason=msg)
+
+        return active_backend_name, volume_updates, []
+
+    def _failover_completed(self, context, secondary_id=None):
+        """Update volume node when `failover` is completed."""
+        # Update the ZAPI client to the backend we failed over to
+        self._update_zapi_client(secondary_id)
+
+        self.failed_over = True
+        self.failed_over_backend_name = secondary_id
+
     def _get_replication_volume_online_timeout(self):
         return self.configuration.netapp_replication_volume_online_timeout
 
