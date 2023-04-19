@@ -58,6 +58,9 @@
             irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-plugin-lvm-lio-barbican:
             irrelevant-files: *gate-irrelevant-files
+        - cinder-tempest-plugin-lvm-lio-barbican-fips:
+            voting: false
+            irrelevant-files: *gate-irrelevant-files
         - cinder-grenade-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-lvm-multibackend:
@@ -67,6 +70,9 @@
             voting: false
             irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-nfs-tempest-full:
+            irrelevant-files: *gate-irrelevant-files
+        - devstack-plugin-nfs-tempest-full-fips:
+            voting: false
             irrelevant-files: *gate-irrelevant-files
         - tempest-slow-py3:
             irrelevant-files: *gate-irrelevant-files
@@ -177,6 +183,17 @@
           $TEMPEST_CONFIG:
             volume-feature-enabled:
               volume_revert: True
+
+- job:
+    # this depends on some ceph admin setup which is not yet complete
+    # TODO(alee) enable this test when ceph admin work is complete.
+    name: cinder-plugin-ceph-tempest-fips
+    parent: cinder-plugin-ceph-tempest
+    nodeset: devstack-single-node-centos-9-stream
+    pre-run: playbooks/enable-fips.yaml
+    vars:
+      configure_swap_size: 4096
+      nslookup_target: 'opendev.org'
 
 - job:
     name: cinder-plugin-ceph-tempest-mn-aa
