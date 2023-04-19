@@ -1,0 +1,5 @@
+# hacking already covers E402 (and disagrees w/ ruff)
+ignore = ["E402"]
+
+[per-file-ignores]
+"cinder/volume/drivers/fungible/swagger_api_client.py" = ["E501"]
