@@ -1087,16 +1087,27 @@ class CephBackupDriver(driver.BackupDriver):
 
         This will result in all extents being copied from source to
         destination.
+
+        :param backup: Backup object describing the backup to be restored.
+        :param dest_file: File object of the destination volume.
+        :param dest_name: Name of the destination volume.
+        :param length: Size of the destination volume in bytes.
+        :param volume_is_new: True if the destination volume is new.
+        :param src_snap: A string, the name of the restore point snapshot,
+        optional, used for incremental backups or RBD backup.
         """
         with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
                                   backup.container)) as client:
-            # If a source snapshot is provided we assume the base is diff
-            # format.
-            if src_snap:
+            # In case of snapshot_id, the old base name format is used:
+            # volume-<vol-uuid>.backup.base
+            # Otherwise, the new base name format is used:
+            # volume-<vol-uuid>.backup-<backup-uuid>
+            # Should match the base name format in _full_backup()
+            if backup.snapshot_id:
+                backup_name = self._get_backup_base_name(backup.volume_id)
+            else:
                 backup_name = self._get_backup_base_name(backup.volume_id,
                                                          backup=backup)
-            else:
-                backup_name = self._get_backup_base_name(backup.volume_id)
 
             # Retrieve backup volume
             src_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,

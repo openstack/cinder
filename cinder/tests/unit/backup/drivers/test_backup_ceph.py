@@ -934,6 +934,71 @@ class BackupCephTestCase(test.TestCase):
         self.assertNotEqual(threading.current_thread(), thread_dict['thread'])
 
     @common_mocks
+    def test_full_restore_without_snapshot_id_nor_src_snap(self):
+        length = 1024
+        volume_is_new = True
+        src_snap = ''
+        with tempfile.NamedTemporaryFile() as dest_file:
+            with mock.patch.object(self.service,
+                                   '_transfer_data') as mock_transfer_data,\
+                mock.patch.object(self.service,
+                                  '_get_backup_base_name') as mock_getbasename:
+
+                self.service._full_restore(self.backup, dest_file, length,
+                                           volume_is_new, src_snap)
+
+                mock_getbasename.assert_called_once_with(self.volume_id,
+                                                         backup=self.backup)
+                mock_transfer_data.assert_called_once()
+
+    @common_mocks
+    def test_full_restore_without_snapshot_id_w_src_snap(self):
+        length = 1024
+        volume_is_new = True
+        src_snap = 'random_snap'
+        with tempfile.NamedTemporaryFile() as dest_file:
+            with mock.patch.object(self.service,
+                                   '_transfer_data') as mock_transfer_data,\
+                mock.patch.object(self.service,
+                                  '_get_backup_base_name') as mock_getbasename:
+
+                self.service._full_restore(self.backup, dest_file, length,
+                                           volume_is_new, src_snap)
+
+                mock_getbasename.assert_called_once_with(self.volume_id,
+                                                         backup=self.backup)
+                mock_transfer_data.assert_called_once()
+
+    @common_mocks
+    def test_full_restore_with_snapshot_id(self):
+        length = 1024
+        volume_is_new = True
+        src_snap = ''
+
+        # Create alternate backup with snapshot_id
+        backup_id = fake.BACKUP4_ID
+        self._create_backup_db_entry(backup_id, self.volume_id,
+                                     self.volume_size)
+
+        backup = objects.Backup.get_by_id(self.ctxt, backup_id)
+        backup.snapshot_id = 'random_snap_id'
+        backup.container = "backups"
+        backup.parent = self.backup
+        backup.parent.service_metadata = '{"base": "random"}'
+
+        with tempfile.NamedTemporaryFile() as dest_file:
+            with mock.patch.object(self.service,
+                                   '_transfer_data') as mock_transfer_data,\
+                mock.patch.object(self.service,
+                                  '_get_backup_base_name') as mock_getbasename:
+
+                self.service._full_restore(backup, dest_file, length,
+                                           volume_is_new, src_snap)
+
+                mock_getbasename.assert_called_once_with(self.volume_id)
+                mock_transfer_data.assert_called_once()
+
+    @common_mocks
     def test_discard_bytes(self):
         # Lower the chunksize to a memory manageable number
         thread_dict = {}
