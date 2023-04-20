@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1997980 <https://bugs.launchpad.net/cinder/+bug/1997980>`_: RBD:
+    Fixed failure to update rbd image features for multi-attach when
+    features = 0.
