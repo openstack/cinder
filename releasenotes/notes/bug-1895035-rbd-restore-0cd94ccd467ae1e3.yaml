@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Ceph backup driver `Bug #1895035
+    <https://bugs.launchpad.net/cinder/+bug/1895035>`_: Fixed restore full
+    backups to non RBD volumes.
