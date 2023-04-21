@@ -983,6 +983,15 @@ def fetch_to_volume_format(context: context.RequestContext,
                       data=data)
 
 
+@contextlib.contextmanager
+def chown_if_needed(volume_path: str) -> Generator[None, None, None]:
+    if os.name == 'nt' or os.access(volume_path, os.R_OK):
+        yield
+    else:
+        with utils.temporary_chown(volume_path):
+            yield
+
+
 def upload_volume(context: context.RequestContext,
                   image_service: glance.GlanceImageService,
                   image_meta: dict,
@@ -1003,19 +1012,12 @@ def upload_volume(context: context.RequestContext,
         if (image_meta['disk_format'] == volume_format):
             LOG.debug("%s was %s, no need to convert to %s",
                       image_id, volume_format, image_meta['disk_format'])
-            if os.name == 'nt' or os.access(volume_path, os.R_OK):
+            with chown_if_needed(volume_path):
                 with open(volume_path, 'rb') as image_file:
                     image_service.update(context, image_id, {},
                                          tpool.Proxy(image_file),
                                          store_id=store_id,
                                          base_image_ref=base_image_ref)
-            else:
-                with utils.temporary_chown(volume_path):
-                    with open(volume_path, 'rb') as image_file:
-                        image_service.update(context, image_id, {},
-                                             tpool.Proxy(image_file),
-                                             store_id=store_id,
-                                             base_image_ref=base_image_ref)
             return
 
     with temporary_file(prefix='vol_upload_') as tmp:
