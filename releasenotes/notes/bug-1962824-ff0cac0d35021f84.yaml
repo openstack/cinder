@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    PowerStore driver `bug #1962824
+    <https://bugs.launchpad.net/cinder/+bug/1962824>`_: Fixed Cinder
+    volume caching mechanism for the driver. Now the driver
+    correctly raises ``exception.SnapshotLimitReached`` when maximum
+    snapshots are created for a given volume and the volume cache is
+    invalidated to allow a new row of fast volume clones.

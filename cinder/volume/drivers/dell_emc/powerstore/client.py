@@ -31,6 +31,8 @@ from cinder.volume.drivers.dell_emc.powerstore import utils
 LOG = logging.getLogger(__name__)
 VOLUME_NOT_MAPPED_ERROR = "0xE0A08001000F"
 SESSION_ALREADY_FAILED_OVER_ERROR = "0xE0201005000C"
+TOO_MANY_SNAPS_ERROR = "0xE0A040010003"
+MAX_SNAPS_IN_VTREE = 32
 
 
 class PowerStoreClient(object):
@@ -271,6 +273,10 @@ class PowerStoreClient(object):
                       "entity": entity,
                       "entity_id": entity_id, })
             LOG.error(msg)
+            if ("messages" in response and
+                    response["messages"][0]["code"] == TOO_MANY_SNAPS_ERROR):
+                raise exception.SnapshotLimitReached(
+                    set_limit=MAX_SNAPS_IN_VTREE)
             raise exception.VolumeBackendAPIException(data=msg)
         return response["id"]
 
