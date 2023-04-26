@@ -251,6 +251,7 @@ PowerMax drivers also support the following features:
 -  Snap id support
 -  Seamless Live Migration from SMI-S support
 -  Port group & port performance load balancing
+-  Cinder volume active/active support
 
 .. note::
 
@@ -2417,6 +2418,16 @@ failover promotion.
 
    # cinder service-list
    # cinder service-enable <host> <binary>
+
+.. note::
+
+   With Cinder volume active/active deployment, use the following commands to
+   view and enable the cluster as well.
+
+   .. code-block:: console
+
+      # cinder --os-volume-api-version 3.17 cluster-list
+      # cinder --os-volume-api-version 3.17 cluster-enable [<binary>] <cluster-name>
 
 4. Remove all volumes from volume groups
 

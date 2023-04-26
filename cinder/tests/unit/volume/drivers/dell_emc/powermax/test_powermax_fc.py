@@ -315,7 +315,7 @@ class PowerMaxFCTest(test.TestCase):
 
     def test_failover_host(self):
         with mock.patch.object(
-                self.common, 'failover_host',
+                self.common, 'failover',
                 return_value=(self.data.remote_array, [], [])) as mock_fo:
             self.driver.failover_host(self.data.ctx, [self.data.test_volume])
             mock_fo.assert_called_once_with([self.data.test_volume], None,

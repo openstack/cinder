@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Dell PowerMax driver: Enabled support for Active/Active
+    to both FC and iSCSI driver. This allows users to configure
+    Dell PowerMax backends in clustered environments.
+

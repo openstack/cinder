@@ -297,7 +297,8 @@ class PowerMaxReplicationTest(test.TestCase):
         backend_id = self.data.rep_backend_id_sync
         rep_configs = self.common.rep_configs
         secondary_id, volume_update_list, group_update_list = (
-            self.common.failover_host(volumes, backend_id, groups))
+            self.common.failover(volumes, backend_id, groups))
+        self.common.failover_completed(backend_id)
         mck_validate.assert_called_once_with(
             False, backend_id, rep_configs, self.data.array, ['123'], False)
         mck_populate.assert_called_once_with(volumes, groups, None)
@@ -314,7 +315,7 @@ class PowerMaxReplicationTest(test.TestCase):
         backend_id = self.data.rep_backend_id_sync
         rep_configs = self.common.rep_configs
         self.assertRaises(exception.InvalidReplicationTarget,
-                          self.common.failover_host, volumes, backend_id)
+                          self.common.failover, volumes, backend_id)
         mck_validate.assert_called_once_with(
             False, backend_id, rep_configs, self.data.array, ['123'], False)
 
@@ -331,7 +332,8 @@ class PowerMaxReplicationTest(test.TestCase):
         backend_id = utils.PMAX_FAILOVER_START_ARRAY_PROMOTION
         rep_configs = self.common.rep_configs
         secondary_id, volume_update_list, group_update_list = (
-            self.common.failover_host(volumes, backend_id, groups))
+            self.common.failover(volumes, backend_id, groups))
+        self.common.failover_completed(backend_id)
         self.assertEqual(0, mck_populate.call_count)
         self.assertEqual(backend_id, secondary_id)
         self.assertEqual(list(), volume_update_list)
@@ -358,7 +360,8 @@ class PowerMaxReplicationTest(test.TestCase):
         rep_configs = self.common.rep_configs
         self.common.promotion = True
         secondary_id, volume_update_list, group_update_list = (
-            self.common.failover_host(volumes, backend_id, groups))
+            self.common.failover(volumes, backend_id, groups))
+        self.common.failover_completed(backend_id)
         mck_populate.assert_called_once_with(volumes, groups, None)
         mck_validate.assert_called_once_with(
             False, backend_id, rep_configs, self.data.array, ['123'], True)
@@ -497,7 +500,8 @@ class PowerMaxReplicationTest(test.TestCase):
         extra_specs['rep_mode'] = utils.REP_ASYNC
         with mock.patch.object(common.PowerMaxCommon, '_initial_setup',
                                return_value=extra_specs):
-            self.async_driver.common.failover_host(volumes, None, [])
+            self.async_driver.common.failover(volumes, None, [])
+        self.common.failover_completed(None)
         mock_fg.assert_called_once()
 
     @mock.patch.object(rest.PowerMaxRest,

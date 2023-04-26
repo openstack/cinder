@@ -137,9 +137,12 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Support for Failover Abilities (bp/powermax-failover-abilities)
         4.4.0 - Early check for status of port
         4.4.1 - Report trim/discard support
+        4.5.0 - Add PowerMax v4 support
+        4.5.1 - Add active/active compliance
     """
 
-    VERSION = "4.4.1"
+    VERSION = "4.5.1"
+    SUPPORTS_ACTIVE_ACTIVE = True
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerMAX_CI"
@@ -571,7 +574,18 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         :param groups: replication groups
         :returns: secondary_id, volume_update_list, group_update_list
         """
-        return self.common.failover_host(volumes, secondary_id, groups)
+        active_backend_id, volume_update_list, group_update_list = (
+            self.common.failover(volumes, secondary_id, groups))
+        self.common.failover_completed(secondary_id, False)
+        return active_backend_id, volume_update_list, group_update_list
+
+    def failover(self, context, volumes, secondary_id=None, groups=None):
+        """Like failover but for a host that is clustered."""
+        return self.common.failover(volumes, secondary_id, groups)
+
+    def failover_completed(self, context, active_backend_id=None):
+        """This method is called after failover for clustered backends."""
+        return self.common.failover_completed(active_backend_id, True)
 
     def create_group(self, context, group):
         """Creates a generic volume group.
