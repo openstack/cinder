@@ -1,0 +1,16 @@
+---
+fixes:
+  - |
+    Infinidat driver `bug #2017815
+    <https://bugs.launchpad.net/cinder/+bug/2017815>`_:
+    Fixed Infinidat driver to inherit compression setting by default for
+    all newly created volumes. Admin can set ``True`` or ``False`` for
+    the ``infinidat_use_compression`` option in the driver section
+    of ``cinder.conf`` to explicitly enable or disable compression setting
+    for all newly created volumes. Or leave this option unset (commented out)
+    for all created volumes to inherit their compression setting from their
+    parent pool at creation time. The default value is unset.
+upgrade:
+  - |
+    Infinidat driver: support has been removed for pre-v3.0 InfiniBox systems.
+    These versions are end of life and have not been supported for a long time.

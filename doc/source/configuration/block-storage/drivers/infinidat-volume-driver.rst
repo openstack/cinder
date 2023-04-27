@@ -180,14 +180,21 @@ Configure the driver back-end section with the parameters below.
 
 * Volume compression
 
-  Volume compression is disabled by default.
-  To enable volume compression, add the following parameter:
+  Volume compression is available for all supported InfiniBox versions.
+  By default, compression for all newly created volumes is inherited from
+  its parent pool at creation time. All pools are created by default with
+  compression enabled.
+
+  To explicitly enable or disable compression for all newly created volumes,
+  add the following configuration parameter:
 
   .. code-block:: ini
 
-     infinidat_use_compression = true
+     infinidat_use_compression = true/false
 
-  Volume compression is available on InfiniBox 3.0 onward.
+  Or leave this configuration parameter unset (commented out) for all
+  created volumes to inherit their compression setting from their parent
+  pool at creation time. The default value is unset.
 
 After modifying the ``cinder.conf`` file, restart the ``cinder-volume``
 service.

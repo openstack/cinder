@@ -455,7 +455,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         )
 
     @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
-    def test_create_volume_compression_not_enabled(self, *mocks):
+    def test_create_volume_compression_disabled(self, *mocks):
         self.override_config('infinidat_use_compression', False)
         self.driver.create_volume(test_volume)
         self.assertFalse(
@@ -463,8 +463,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         )
 
     @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
-    def test_create_volume_compression_not_available(self, *mocks):
-        self._system.compat.has_compression.return_value = False
+    def test_create_volume_compression_default(self, *mocks):
         self.driver.create_volume(test_volume)
         self.assertNotIn(
             "compression_enabled",
