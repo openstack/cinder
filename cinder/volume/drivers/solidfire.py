@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import functools
 import inspect
 import json
 import math
@@ -29,7 +30,6 @@ from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
-import six
 
 from cinder.common import constants
 from cinder import context
@@ -174,7 +174,7 @@ class SolidFireDuplicateVolumeNames(SolidFireDriverException):
 
 def retry(exc_tuple, tries=5, delay=1, backoff=2):
     def retry_dec(f):
-        @six.wraps(f)
+        @functools.wraps(f)
         def func_retry(*args, **kwargs):
             _tries, _delay = tries, delay
             while _tries > 1:
