@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1945500 <https://bugs.launchpad.net/cinder/+bug/1945500>`_: The
+    original attempt at fixing this bug did not account for differences in
+    how glance and cinder store image metadata, and as a result some image
+    properties were not filtered out. This new improved fix addresses those
+    differences and makes the filtering more thorough.

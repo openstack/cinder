@@ -2570,3 +2570,69 @@ class TestFilterReservedNamespaces(test.TestCase):
                       "name spaces [%s], and the result is [%s].",
                       metadata_for_test, keys_to_pop, expected_result)
         ])
+
+    @ddt.data(  # remove default keys
+        ({"some_key": 13, "other_key": "test",
+          "os_glance_key": "this should be removed",
+          "os_glance_key2": "this should also be removed",
+          "properties": {"os_glance_key3": "this should be removed",
+                         "os_glance_key4": "this should also be removed",
+                         "another_key": "foobar"}
+          },
+         None,
+         []),
+        # remove nothing
+        ({"some_key": 13, "other_key": "test",
+          "properties": {"another_key": "foobar"}},
+         None,
+         []),
+        # custom config empty
+        ({"some_key": 13, "other_key": "test",
+          "os_glance_key": "this should be removed",
+          "os_glance_key2": "this should also be removed",
+          "properties": {"os_glance_key3": "this should be removed",
+                         "os_glance_key4": "this should also be removed",
+                         "another_key": "foobar"}
+          },
+         [],
+         []),
+        # custom config
+        ({"some_key": 13, "other_key": "test",
+          "os_glance_key": "this should be removed",
+          "os_glance_key2": "this should also be removed",
+          "properties": {"os_glance_key3": "this should be removed",
+                         "os_glance_key4": "this should also be removed",
+                         "custom_key": "this should be removed",
+                         "another_custom_key": "this should also be removed",
+                         "another_key": "foobar"},
+          },
+         ['custom_key', 'another_custom_key'],
+         ['custom_key', 'another_custom_key']))
+    @ddt.unpack
+    def test_filter_out_reserved_namespaces_metadata_properties(
+            self, metadata_for_test, config, keys_to_pop):
+        hardcoded_keys = ['os_glance', "img_signature"]
+
+        keys_to_pop = hardcoded_keys + keys_to_pop
+
+        if config:
+            self.override_config('reserved_image_namespaces', config)
+
+        expected_result = {
+            "some_key": 13,
+            "other_key": "test",
+            "properties": {
+                "another_key": "foobar"
+            }
+        }
+
+        method_return = image_utils.filter_out_reserved_namespaces_metadata(
+            metadata_for_test)
+
+        self.assertEqual(expected_result, method_return)
+
+        image_utils.LOG.debug.assert_has_calls([
+            mock.call("The metadata set [%s] was filtered using the reserved "
+                      "name spaces [%s], and the result is [%s].",
+                      metadata_for_test, keys_to_pop, expected_result)
+        ])

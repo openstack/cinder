@@ -1270,6 +1270,16 @@ class TemporaryImages(object):
         return self.temporary_images[user].get(image_id)
 
 
+def _filter_out_metadata(metadata, filter_keys):
+    new_metadata = {}
+    for k, v in metadata.items():
+        if any(k.startswith(filter_key)
+               for filter_key in filter_keys):
+            continue
+        new_metadata[k] = v
+    return new_metadata
+
+
 def filter_out_reserved_namespaces_metadata(
         metadata: Optional[Dict[str, str]]) -> Dict[str, str]:
 
@@ -1283,12 +1293,12 @@ def filter_out_reserved_namespaces_metadata(
         LOG.debug("No metadata to be filtered.")
         return {}
 
-    new_metadata = {}
-    for k, v in metadata.items():
-        if any(k.startswith(reserved_name_space)
-               for reserved_name_space in reserved_name_spaces):
-            continue
-        new_metadata[k] = v
+    new_metadata = _filter_out_metadata(metadata, reserved_name_spaces)
+    # NOTE(ganso): handle adjustment of metadata structure performed by
+    # the cinder.volume.api.API._merge_volume_image_meta() method
+    if 'properties' in new_metadata:
+        new_metadata['properties'] = _filter_out_metadata(
+            metadata['properties'], reserved_name_spaces)
 
     LOG.debug("The metadata set [%s] was filtered using the reserved name "
               "spaces [%s], and the result is [%s].", metadata,
