@@ -27,22 +27,17 @@ in the backend to perform PowerMax and VMAX storage operations.
 
    While ``PowerMax`` will be used throughout this document, it will be used
    to collectively categorize the following supported arrays, PowerMax 2000,
-   8000, VMAX All Flash 250F, 450F, 850F and 950F and VMAX-Hybrid_.
+   8000, 2500, 8500, VMAX All Flash 250F, 450F, 850F and 950F and VMAX-Hybrid_.
 
 
 System requirements and licensing
 =================================
 
 The Dell PowerMax Cinder driver supports the VMAX-Hybrid_ series,
-VMAX All-Flash series and the PowerMax arrays.
-
-The array operating system software, Solutions Enabler 9.2.2 series, and
-Unisphere for PowerMax 9.2.2 series are required to run Dell PowerMax
-Cinder driver for the Wallaby release. Please refer to support-matrix-table_
-for the support matrix of previous OpenStack versions.
+VMAX All-Flash series and the PowerMax v3 and v4 arrays.
 
 Download Solutions Enabler and Unisphere from the Dell's support web site
-(login is required). See the `Dell Solutions Enabler 9.2.2 Installation
+(login is required). See the `Dell Solutions Enabler Installation
 and Configuration Guide` and `Dell Unisphere for PowerMax Installation
 Guide` at the `Dell Support`_ site.
 
@@ -53,26 +48,54 @@ Guide` at the `Dell Support`_ site.
    reach out your local PowerMax representative to see if these versions
    are still valid.
 
+   Starting with Antelope, the PowerMax OS version is now aligned with the
+   Unisphere version scheme.
 
 .. _support-matrix-table:
 
 .. table:: PowerMax Management software and OS for OpenStack release
 
-   +-----------+------------------------+-------------+
-   | OpenStack | Unisphere for PowerMax | PowerMax OS |
-   +===========+========================+=============+
-   | Xena      | 9.2.2                  | 5978.711    |
-   +-----------+------------------------+-------------+
-   | Wallaby   | 9.2.1                  | 5978.711    |
-   +-----------+------------------------+-------------+
-   | Victoria  | 9.2.x                  | 5978.669    |
-   +-----------+------------------------+-------------+
-   | Ussuri    | 9.1.x                  | 5978.479    |
-   +-----------+------------------------+-------------+
-   | Train     | 9.1.x                  | 5978.444    |
-   +-----------+------------------------+-------------+
-   | Stein     | 9.0.x                  | 5978.221    |
-   +-----------+------------------------+-------------+
+   +-----------+--------------+-------------+--------------------------------+
+   | OpenStack | Unisphere    | PowerMax OS | Supported Arrays               |
+   | release   | for PowerMax |             |                                |
+   +===========+==============+=============+================================+
+   | Antelope  | 10.0.1       | 10.0.1      | PowerMax 2500,8500             |
+   |           |              | (6079.175)  |                                |
+   |           |              +-------------+--------------------------------+
+   |           |              | 5978.711    | PowerMax 2000,8000             |
+   |           |              |             | VMAX 250F, 450F, 850F, 950F    |
+   +-----------+--------------+-------------+--------------------------------+
+   | Zed       | 9.2.2        | 5978.711    | PowerMax 2000,8000             |
+   |           |              |             | VMAX 250F, 450F, 850F, 950F    |
+   +-----------+--------------+-------------+--------------------------------+
+   | Yoga      | 9.2.2        | 5978.711    | PowerMax 2000,8000             |
+   |           |              |             | VMAX 250F, 450F, 850F, 950F    |
+   |           |              |             | VMAX 100K, 200K, 400K (Hybrid) |
+   +-----------+--------------+-------------+--------------------------------+
+   | Xena      | 9.2.2        | 5978.711    | PowerMax 2000,8000             |
+   |           |              |             | VMAX 250F, 450F, 850F, 950F    |
+   |           |              |             | VMAX 100K, 200K, 400K (Hybrid) |
+   +-----------+--------------+-------------+--------------------------------+
+   | Wallaby   | 9.2.1        | 5978.711    | PowerMax 2000,8000             |
+   |           |              |             | VMAX 250F, 450F, 850F, 950F    |
+   |           |              |             | VMAX 100K, 200K, 400K (Hybrid) |
+   +-----------+--------------+-------------+--------------------------------+
+   | Victoria  | 9.2.0        | 5978.669    | PowerMax 2000,8000             |
+   |           |              |             | VMAX 250F, 450F, 850F, 950F    |
+   |           |              |             | VMAX 100K, 200K, 400K (Hybrid) |
+   +-----------+--------------+-------------+--------------------------------+
+   | Ussuri    | 9.1.x        | 5978.479    | PowerMax 2000,8000             |
+   |           |              |             | VMAX 250F, 450F, 850F, 950F    |
+   |           |              |             | VMAX 100K, 200K, 400K (Hybrid) |
+   +-----------+--------------+-------------+--------------------------------+
+   | Train     | 9.1.x        | 5978.444    | PowerMax 2000,8000             |
+   |           |              |             | VMAX 250F, 450F, 850F, 950F    |
+   |           |              |             | VMAX 100K, 200K, 400K (Hybrid) |
+   +-----------+--------------+-------------+--------------------------------+
+   | Stein     | 9.0.x        | 5978.221    | PowerMax 2000,8000             |
+   |           |              |             | VMAX 250F, 450F, 850F, 950F    |
+   |           |              |             | VMAX 100K, 200K, 400K (Hybrid) |
+   +-----------+--------------+-------------+--------------------------------+
 
 .. note::
 
@@ -397,6 +420,9 @@ PowerMax driver integration
    container application (containing Solutions Enabler and Unisphere for
    PowerMax). See ``Dell Solutions Enabler 9.2.1 Installation and
    Configuration Guide`` at `Dell Support`_.
+
+#. Pay attention to the number of Gatekeepers device to have in your
+   environment. It may vary depending on simultaneous call to Unisphere.
 
 
 2. FC zoning with PowerMax
