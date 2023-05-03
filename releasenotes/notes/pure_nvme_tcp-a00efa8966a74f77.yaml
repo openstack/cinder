@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Pure Storage FlashArray driver: Added support NVMe-TCP transport layer.

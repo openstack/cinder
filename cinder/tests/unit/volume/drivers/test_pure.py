@@ -4932,14 +4932,54 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver.initialize_connection(vol, multipath_connector)
 
     def test_get_target_nvme_ports(self):
-        self.array.list_ports.return_value = NVME_PORTS
+        ports = [{'name': 'CT0.ETH4',
+                  'wwn': None,
+                  'iqn': None,
+                  'nqn': TARGET_NQN},
+                 {'name': 'CT0.ETH5',
+                  'wwn': None,
+                  'iqn': TARGET_IQN,
+                  'nqn': None},
+                 {'name': 'CT0.ETH20',
+                  'wwn': None,
+                  'iqn': None,
+                  'nqn': TARGET_NQN},
+                 {'name': 'CT0.FC4',
+                  'wwn': TARGET_WWN,
+                  'iqn': None,
+                  'nqn': TARGET_NQN}]
+        interfaces = [
+            {'name': 'ct0.eth4', 'services': ['nvme-tcp']},
+            {'name': 'ct0.eth5', 'services': ['iscsi']},
+            {'name': 'ct0.eth20', 'services': ['nvme-roce']},
+            {'name': 'ct0.fc4', 'services': ['nvme-fc']}
+        ]
+        # Test for the nvme-tcp port
+        self.driver.configuration.pure_nvme_transport = "tcp"
+        self.array.get_network_interface.return_value = interfaces[0]
+        self.array.list_ports.return_value = [ports[0]]
         ret = self.driver._get_target_nvme_ports(self.array)
-        self.assertEqual(NVME_PORTS, ret)
-
-    def test_get_target_nvme_ports_with_nvme_and_fc(self):
-        self.array.list_ports.return_value = NVME_PORTS_WITH
+        self.assertEqual([ports[0]], ret)
+        # Test for failure if no NVMe ports
+        self.array.get_network_interface.return_value = interfaces[1]
+        self.array.list_ports.return_value = [ports[1]]
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver._get_target_nvme_ports,
+            self.array,
+        )
+        # Test for the nvme-roce port
+        self.driver.configuration.pure_nvme_transport = "roce"
+        self.array.get_network_interface.return_value = interfaces[2]
+        self.array.list_ports.return_value = [ports[2]]
         ret = self.driver._get_target_nvme_ports(self.array)
-        self.assertEqual(NVME_PORTS, ret)
+        self.assertEqual([ports[2]], ret)
+        # Test for empty dict if only nvme-fc port
+        self.driver.configuration.pure_nvme_transport = "roce"
+        self.array.get_network_interface.return_value = interfaces[3]
+        self.array.list_ports.return_value = [ports[3]]
+        ret = self.driver._get_target_nvme_ports(self.array)
+        self.assertEqual([], ret)
 
     def test_get_target_nvme_ports_with_no_ports(self):
         # Should raise an exception if there are no ports
