@@ -94,10 +94,7 @@ class DS8KHTTPSConnection(connection.VerifiedHTTPSConnection):
             # Calls self._set_hostport(), so self.host is
             # self._tunnel_host below.
             #
-            # disable pylint because pylint doesn't support importing
-            # from six.moves yet. see:
-            # https://bitbucket.org/logilab/pylint/issue/550/
-            self._tunnel()  # pylint: disable=E1101
+            self._tunnel()
             # Mark this connection as not reusable
             self.auto_open = 0
 
