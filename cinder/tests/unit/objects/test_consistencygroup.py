@@ -13,9 +13,9 @@
 # under the License.
 
 from unittest import mock
+from zoneinfo import ZoneInfo
 
 from oslo_utils import timeutils
-import pytz
 
 from cinder import exception
 from cinder import objects
@@ -194,8 +194,9 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
         self.assertTrue(consistencygroup.deleted)
         self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
                          consistencygroup.status)
-        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
-                         consistencygroup.deleted_at)
+        self.assertEqual(
+            utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
+            consistencygroup.deleted_at)
 
     @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_get')
     def test_refresh(self, consistencygroup_get):

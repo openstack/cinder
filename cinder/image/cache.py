@@ -13,11 +13,11 @@
 #    under the License.
 
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
-from pytz import timezone
 
 from cinder import context
 from cinder import objects
@@ -114,7 +114,7 @@ class ImageVolumeCache(object):
         if isinstance(image_updated_at, str):
             image_updated_at = timeutils.parse_strtime(image_updated_at)
         else:
-            image_updated_at = image_updated_at.astimezone(timezone('UTC'))
+            image_updated_at = image_updated_at.astimezone(ZoneInfo('UTC'))
 
         cache_entry = self.db.image_volume_cache_create(
             context,
@@ -252,9 +252,9 @@ class ImageVolumeCache(object):
                              image_meta: dict) -> bool:
         """Ensure that the cache entry image data is still valid."""
         image_updated_utc = (image_meta['updated_at']
-                             .astimezone(timezone('UTC')))
+                             .astimezone(ZoneInfo('UTC')))
         cache_updated_utc = (cache_entry['image_updated_at']
-                             .replace(tzinfo=timezone('UTC')))
+                             .replace(tzinfo=ZoneInfo('UTC')))
 
         LOG.debug('Image-volume cache entry image_update_at = %(entry_utc)s, '
                   'requested image updated_at = %(image_utc)s.',

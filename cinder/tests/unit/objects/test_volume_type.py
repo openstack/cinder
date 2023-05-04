@@ -13,10 +13,10 @@
 #    under the License.
 
 from unittest import mock
+from zoneinfo import ZoneInfo
 
 import ddt
 from oslo_utils import timeutils
-import pytz
 
 from cinder import db
 from cinder.db.sqlalchemy import models
@@ -123,8 +123,9 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
         admin_context = volume_type_destroy.call_args[0][0]
         self.assertTrue(admin_context.is_admin)
         self.assertTrue(volume_type.deleted)
-        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
-                         volume_type.deleted_at)
+        self.assertEqual(
+            utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
+            volume_type.deleted_at)
 
     @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
     def test_refresh(self, volume_type_get):

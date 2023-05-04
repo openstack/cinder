@@ -11,9 +11,9 @@
 #    under the License.
 
 from unittest import mock
+from zoneinfo import ZoneInfo
 
 from oslo_utils import timeutils
-import pytz
 
 from cinder.db.sqlalchemy import models
 from cinder import exception
@@ -97,8 +97,9 @@ class TestQos(test_objects.BaseObjectsTestCase):
 
         qos_fake_delete.assert_called_once_with(mock.ANY, fake_qos['id'])
         self.assertTrue(qos_object.deleted)
-        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
-                         qos_object.deleted_at)
+        self.assertEqual(
+            utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
+            qos_object.deleted_at)
 
     @mock.patch('cinder.db.sqlalchemy.api.qos_specs_delete')
     @mock.patch('cinder.db.qos_specs_disassociate_all')

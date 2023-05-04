@@ -14,10 +14,10 @@
 
 import datetime
 from unittest import mock
+from zoneinfo import ZoneInfo
 
 import ddt
 from oslo_utils import timeutils
-import pytz
 
 from cinder import exception
 from cinder import objects
@@ -92,8 +92,9 @@ class TestService(test_objects.BaseObjectsTestCase):
             service.destroy()
             service_destroy.assert_called_once_with(elevated_ctx(), 123)
         self.assertTrue(service.deleted)
-        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
-                         service.deleted_at)
+        self.assertEqual(
+            utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
+            service.deleted_at)
 
     @mock.patch('cinder.db.sqlalchemy.api.service_get')
     def test_refresh(self, service_get):

@@ -17,10 +17,10 @@ import datetime
 from http import HTTPStatus
 from unittest import mock
 from urllib import parse as urllib
+from zoneinfo import ZoneInfo
 
 import ddt
 from oslo_config import cfg
-import pytz
 import webob
 
 from cinder.api import common
@@ -269,7 +269,7 @@ class SnapshotApiTest(test.TestCase):
                 'status': fields.SnapshotStatus.AVAILABLE,
                 'size': 100,
                 'created_at': datetime.datetime(2014, 1, 1, 0, 0, 0,
-                                                tzinfo=pytz.utc),
+                                                tzinfo=ZoneInfo('UTC')),
                 'updated_at': None,
                 'name': u'Updated Test Name',
                 'description': u'Default description',
@@ -376,7 +376,7 @@ class SnapshotApiTest(test.TestCase):
                 'status': fields.SnapshotStatus.AVAILABLE,
                 'size': 100,
                 'created_at': datetime.datetime(2018, 1, 14, 0, 0, 0,
-                                                tzinfo=pytz.utc),
+                                                tzinfo=ZoneInfo('UTC')),
                 'updated_at': None,
                 'name': u'test',
                 'description': u'test',
