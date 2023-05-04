@@ -158,6 +158,7 @@ ERR_MSG_NOT_CONNECTED = "is not connected"
 ERR_MSG_ALREADY_BELONGS = "already belongs to"
 ERR_MSG_EXISTING_CONNECTIONS = "cannot be deleted due to existing connections"
 ERR_MSG_ALREADY_IN_USE = "already in use"
+ERR_MSG_ARRAY_LIMIT = "limit reached"
 
 EXTRA_SPECS_REPL_ENABLED = "replication_enabled"
 EXTRA_SPECS_REPL_TYPE = "replication_type"
@@ -2424,8 +2425,9 @@ class PureBaseVolumeDriver(san.SanDriver):
             except purestorage.PureHTTPError as err:
                 with excutils.save_and_reraise_exception() as ctxt:
                     if err.code == 400 and (
-                            ERR_MSG_ALREADY_EXISTS
-                            in err.text):
+                        ERR_MSG_ALREADY_EXISTS in err.text
+                        or ERR_MSG_ARRAY_LIMIT in err.text
+                    ):
                         ctxt.reraise = False
                         LOG.info("Skipping add array %(target_array)s to pod"
                                  " %(pod_name)s since it's already added.",
