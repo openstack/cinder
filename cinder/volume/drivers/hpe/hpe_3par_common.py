@@ -81,6 +81,7 @@ FLASH_CACHE_API_VERSION = 30201200
 COMPRESSION_API_VERSION = 30301215
 SRSTATLD_API_VERSION = 30201200
 REMOTE_COPY_API_VERSION = 30202290
+API_VERSION_2023 = 100000000
 
 hpe3par_opts = [
     cfg.StrOpt('hpe3par_api_url',
@@ -302,11 +303,12 @@ class HPE3PARCommon(object):
                  Bug #1819903
         4.0.18 - During conversion of volume to base volume,
                  error out if it has child snapshot(s). Bug #1994521
+        4.0.19 - Update code to work with new WSAPI (of 2023). Bug #2015746
 
 
     """
 
-    VERSION = "4.0.18"
+    VERSION = "4.0.19"
 
     stats = {}
 
@@ -706,8 +708,11 @@ class HPE3PARCommon(object):
             compression = self.get_compression_policy(
                 type_info['hpe3par_keys'])
 
-            optional = {'online': True, 'snapCPG': snapcpg,
+            optional = {'online': True,
                         'tpvv': tpvv, 'tdvv': tdvv}
+
+            if self.API_VERSION < API_VERSION_2023:
+                optional['snapCPG'] = snapcpg
 
             if compression is not None:
                 optional['compression'] = compression
@@ -1006,7 +1011,7 @@ class HPE3PARCommon(object):
                     'comment': json.dumps(new_comment)}
 
         # Ensure that snapCPG is set
-        if 'snapCPG' not in vol:
+        if 'snapCPG' not in vol and self.API_VERSION < API_VERSION_2023:
             new_vals['snapCPG'] = vol['userCPG']
             LOG.info("Virtual volume %(disp)s '%(new)s' snapCPG "
                      "is empty so it will be set to: %(cpg)s",
@@ -2395,8 +2400,13 @@ class HPE3PARCommon(object):
                     comments['qos'] = qos
 
             extras = {'comment': json.dumps(comments),
-                      'snapCPG': snap_cpg,
                       'tpvv': tpvv}
+
+            LOG.debug("self.API_VERSION: %(version)s",
+                      {'version': self.API_VERSION})
+
+            if self.API_VERSION < API_VERSION_2023:
+                extras['snapCPG'] = snap_cpg
 
             # Only set the dedup option if the backend supports it.
             if self.API_VERSION >= DEDUP_API_VERSION:
@@ -2468,7 +2478,7 @@ class HPE3PARCommon(object):
                   {'src': src_name, 'dest': dest_name})
 
         optional = {'tpvv': tpvv, 'online': True}
-        if snap_cpg is not None:
+        if snap_cpg is not None and self.API_VERSION < API_VERSION_2023:
             optional['snapCPG'] = snap_cpg
 
         if self.API_VERSION >= DEDUP_API_VERSION:
@@ -4377,15 +4387,17 @@ class HPE3PARCommon(object):
                                                      local_cpg)
                     rcg_target = {'targetName': target['backend_id'],
                                   'mode': replication_mode_num,
-                                  'snapCPG': cpg,
                                   'userCPG': cpg}
+                    if self.API_VERSION < API_VERSION_2023:
+                        rcg_target['snapCPG'] = cpg
                     rcg_targets.append(rcg_target)
                     sync_target = {'targetName': target['backend_id'],
                                    'syncPeriod': replication_sync_period}
                     sync_targets.append(sync_target)
 
-            optional = {'localSnapCPG': vol_settings['snap_cpg'],
-                        'localUserCPG': local_cpg}
+            optional = {'localUserCPG': local_cpg}
+            if self.API_VERSION < API_VERSION_2023:
+                optional['localSnapCPG'] = vol_settings['snap_cpg']
             pool = volume_utils.extract_host(volume['host'], level='pool')
             domain = self.get_domain(pool)
             if domain:
@@ -4399,6 +4411,8 @@ class HPE3PARCommon(object):
                        six.text_type(ex))
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
+
+            LOG.debug("created rcg %(name)s", {'name': rcg_name})
 
             # Add volume to remote copy group.
             rcg_targets = []
@@ -5319,7 +5333,11 @@ class ModifyVolumeTask(flow_utils.CinderTask):
         comment_dict = self._get_new_comment(
             old_comment, new_vvs, new_qos, new_type_name, new_type_id)
 
-        if new_snap_cpg != old_snap_cpg:
+        LOG.debug("API_VERSION: %(ver_1)s, API_VERSION_2023: %(ver_2)s",
+                  {'ver_1': common.API_VERSION,
+                   'ver_2': API_VERSION_2023})
+        if (new_snap_cpg != old_snap_cpg and
+                common.API_VERSION < API_VERSION_2023):
             # Modify the snap_cpg.  This will fail with snapshots.
             LOG.info("Modifying %(volume_name)s snap_cpg from "
                      "%(old_snap_cpg)s to %(new_snap_cpg)s.",
