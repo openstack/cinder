@@ -36,7 +36,8 @@ In order to be able to attach a volume to multiple server instances you need to
 have the 'multiattach' flag set to 'True' in the volume details. Please ensure
 you have the right role and policy settings before performing the operation.
 
-Currently you can create a multiattach volume in two ways.
+The only way to create a multiattach volume is by creating a multiattach volume
+type and using it to create the volume.
 
 .. note::
 
