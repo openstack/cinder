@@ -304,11 +304,12 @@ class HPE3PARCommon(object):
         4.0.18 - During conversion of volume to base volume,
                  error out if it has child snapshot(s). Bug #1994521
         4.0.19 - Update code to work with new WSAPI (of 2023). Bug #2015746
+        4.0.20 - Use small QoS Latency value. Bug #2018994
 
 
     """
 
-    VERSION = "4.0.19"
+    VERSION = "4.0.20"
 
     stats = {}
 
@@ -2051,7 +2052,17 @@ class HPE3PARCommon(object):
             if min_bw is None:
                 qosRule['bwMinGoalKB'] = int(max_bw) * units.Ki
         if latency:
-            qosRule['latencyGoal'] = int(latency)
+            # latency could be values like 2, 5, etc or
+            # small values like 0.1, 0.02, etc.
+            # we are converting to float so that 0.1 doesn't become 0
+            latency = float(latency)
+            if latency >= 1:
+                # by default, latency in millisecs
+                qosRule['latencyGoal'] = int(latency)
+            else:
+                # latency < 1 Eg. 0.1, 0.02, etc
+                # convert latency to microsecs
+                qosRule['latencyGoaluSecs'] = int(latency * 1000)
         if priority:
             qosRule['priority'] = self.qos_priority_level.get(priority.lower())
 

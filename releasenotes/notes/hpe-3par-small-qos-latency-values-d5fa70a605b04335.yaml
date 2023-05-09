@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    HPE 3PAR driver `bug #2018994
+    <https://bugs.launchpad.net/cinder/+bug/2018994>`_:
+    Fixed: use small QoS Latency value (less than 1)
