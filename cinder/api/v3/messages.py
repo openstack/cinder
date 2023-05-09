@@ -70,7 +70,7 @@ class MessagesController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         message = self.message_api.get(context, id)
         context.authorize(policy.DELETE_POLICY, target_obj=message)
-        self.message_api.delete(context, message)
+        self.message_api.delete(context, id)
 
         return webob.Response(status_int=HTTPStatus.NO_CONTENT)
 

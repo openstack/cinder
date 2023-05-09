@@ -16,7 +16,23 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Implementation of SQLAlchemy backend."""
+"""Defines interface for DB access.
+
+Functions in this module are imported into the cinder.db namespace. Call these
+functions from cinder.db namespace, not the cinder.db.api namespace.
+
+All functions in this module return objects that implement a dictionary-like
+interface. Currently, many of these objects are sqlalchemy objects that
+implement a dictionary interface. However, a future goal is to have all of
+these objects be simple dictionaries.
+
+**Related Flags**
+
+:connection:  string specifying the sqlalchemy connection to use, like:
+    `sqlite:///var/lib/cinder/cinder.sqlite`.
+:enable_new_services:  when adding a new service to the database, is it in the
+    pool of available hardware (Default: True)
+"""
 
 import collections
 from collections import abc
@@ -183,6 +199,9 @@ def require_context(f):
     return wrapper
 
 
+###################
+
+
 @require_context
 @main_context_manager.reader
 def resource_exists(context, model, resource_id):
@@ -316,131 +335,6 @@ def model_query(context, model, *args, **kwargs):
             query = query.filter_by(project_id=context.project_id)
 
     return query
-
-
-def _sync_volumes(
-    context,
-    project_id,
-    volume_type_id=None,
-    volume_type_name=None,
-):
-    volumes, _ = _volume_data_get_for_project(
-        context,
-        project_id,
-        volume_type_id=volume_type_id,
-    )
-    key = 'volumes'
-    if volume_type_name:
-        key += '_' + volume_type_name
-    return {key: volumes}
-
-
-def _sync_snapshots(
-    context,
-    project_id,
-    volume_type_id=None,
-    volume_type_name=None,
-):
-    snapshots, _ = _snapshot_data_get_for_project(
-        context,
-        project_id,
-        volume_type_id=volume_type_id,
-    )
-    key = 'snapshots'
-    if volume_type_name:
-        key += '_' + volume_type_name
-    return {key: snapshots}
-
-
-def _sync_backups(
-    context,
-    project_id,
-    volume_type_id=None,
-    volume_type_name=None,
-):
-    backups, _ = _backup_data_get_for_project(
-        context,
-        project_id,
-        volume_type_id=volume_type_id,
-    )
-    key = 'backups'
-    return {key: backups}
-
-
-def _sync_gigabytes(
-    context,
-    project_id,
-    volume_type_id=None,
-    volume_type_name=None,
-):
-    _, vol_gigs = _volume_data_get_for_project(
-        context,
-        project_id,
-        volume_type_id=volume_type_id,
-    )
-
-    key = 'gigabytes'
-    if volume_type_name:
-        key += '_' + volume_type_name
-
-    if CONF.no_snapshot_gb_quota:
-        return {key: vol_gigs}
-
-    _, snap_gigs = _snapshot_data_get_for_project(
-        context,
-        project_id,
-        volume_type_id=volume_type_id,
-    )
-
-    return {key: vol_gigs + snap_gigs}
-
-
-def _sync_consistencygroups(
-    context,
-    project_id,
-    volume_type_id=None,
-    volume_type_name=None,
-):
-    _, groups = _consistencygroup_data_get_for_project(context, project_id)
-    key = 'consistencygroups'
-    return {key: groups}
-
-
-def _sync_backup_gigabytes(
-    context,
-    project_id,
-    volume_type_id=None,
-    volume_type_name=None,
-):
-    key = 'backup_gigabytes'
-    _, backup_gigs = _backup_data_get_for_project(
-        context,
-        project_id,
-        volume_type_id=volume_type_id,
-    )
-    return {key: backup_gigs}
-
-
-def _sync_groups(
-    context,
-    project_id,
-    volume_type_id=None,
-    volume_type_name=None,
-):
-    _, groups = _group_data_get_for_project(context, project_id)
-    key = 'groups'
-    return {key: groups}
-
-
-QUOTA_SYNC_FUNCTIONS = {
-    '_sync_volumes': _sync_volumes,
-    '_sync_snapshots': _sync_snapshots,
-    '_sync_gigabytes': _sync_gigabytes,
-    '_sync_consistencygroups': _sync_consistencygroups,
-    '_sync_backups': _sync_backups,
-    '_sync_backup_gigabytes': _sync_backup_gigabytes,
-    '_sync_groups': _sync_groups,
-}
 
 
 ###################
@@ -692,6 +586,134 @@ def conditional_update(
         project_only=project_only,
         order=order,
     )
+
+
+###################
+
+
+def _sync_volumes(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    volumes, _ = _volume_data_get_for_project(
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
+    )
+    key = 'volumes'
+    if volume_type_name:
+        key += '_' + volume_type_name
+    return {key: volumes}
+
+
+def _sync_snapshots(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    snapshots, _ = _snapshot_data_get_for_project(
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
+    )
+    key = 'snapshots'
+    if volume_type_name:
+        key += '_' + volume_type_name
+    return {key: snapshots}
+
+
+def _sync_backups(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    backups, _ = _backup_data_get_for_project(
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
+    )
+    key = 'backups'
+    return {key: backups}
+
+
+def _sync_gigabytes(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    _, vol_gigs = _volume_data_get_for_project(
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
+    )
+
+    key = 'gigabytes'
+    if volume_type_name:
+        key += '_' + volume_type_name
+
+    if CONF.no_snapshot_gb_quota:
+        return {key: vol_gigs}
+
+    _, snap_gigs = _snapshot_data_get_for_project(
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
+    )
+
+    return {key: vol_gigs + snap_gigs}
+
+
+def _sync_consistencygroups(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    _, groups = _consistencygroup_data_get_for_project(context, project_id)
+    key = 'consistencygroups'
+    return {key: groups}
+
+
+def _sync_backup_gigabytes(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    key = 'backup_gigabytes'
+    _, backup_gigs = _backup_data_get_for_project(
+        context,
+        project_id,
+        volume_type_id=volume_type_id,
+    )
+    return {key: backup_gigs}
+
+
+def _sync_groups(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    _, groups = _group_data_get_for_project(context, project_id)
+    key = 'groups'
+    return {key: groups}
+
+
+QUOTA_SYNC_FUNCTIONS = {
+    '_sync_volumes': _sync_volumes,
+    '_sync_snapshots': _sync_snapshots,
+    '_sync_gigabytes': _sync_gigabytes,
+    '_sync_consistencygroups': _sync_consistencygroups,
+    '_sync_backups': _sync_backups,
+    '_sync_backup_gigabytes': _sync_backup_gigabytes,
+    '_sync_groups': _sync_groups,
+}
 
 
 ###################
@@ -1128,22 +1150,22 @@ def cluster_create(context, values):
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @main_context_manager.writer
-def cluster_update(context, id, values):
+def cluster_update(context, cluster_id, values):
     """Set the given properties on an cluster and update it.
 
     Raises ClusterNotFound if cluster does not exist.
     """
-    query = _cluster_query(context, id=id)
+    query = _cluster_query(context, id=cluster_id)
     result = query.update(values)
     if not result:
-        raise exception.ClusterNotFound(id=id)
+        raise exception.ClusterNotFound(id=cluster_id)
 
 
 @require_admin_context
 @main_context_manager.writer
-def cluster_destroy(context, id):
+def cluster_destroy(context, cluster_id):
     """Destroy the cluster or raise if it does not exist or has hosts."""
-    query = _cluster_query(context, id=id)
+    query = _cluster_query(context, id=cluster_id)
     query = query.filter(models.Cluster.num_hosts == 0)
     # If the update doesn't succeed we don't know if it's because the
     # cluster doesn't exist or because it has hosts.
@@ -1154,9 +1176,9 @@ def cluster_destroy(context, id):
     if not result:
         # This will fail if the cluster doesn't exist raising the right
         # exception
-        cluster_get(context, id=id)
+        cluster_get(context, id=cluster_id)
         # If it doesn't fail, then the problem is that there are hosts
-        raise exception.ClusterHasHosts(id=id)
+        raise exception.ClusterHasHosts(id=cluster_id)
 
 
 ###################
@@ -1863,6 +1885,8 @@ def quota_destroy_by_project(context, project_id):
     quota_destroy_all_by_project(context, project_id, only_quotas=True)
 
 
+# TODO(stephenfin): No one is using this except 'quota_destroy_by_project'
+# above, so the only_quotas=False path could be removed.
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @main_context_manager.writer
@@ -1939,8 +1963,8 @@ def volume_attached(
     instance_uuid,
     host_name,
     mountpoint,
-    attach_mode,
-    mark_attached,
+    attach_mode='rw',
+    mark_attached=True,
 ):
     """This method updates a volume attachment entry.
 
@@ -2521,9 +2545,10 @@ def volume_attachment_get_all_by_volume_id(context, volume_id):
     return result
 
 
+# FIXME(jdg): Not using filters
 @require_context
 @main_context_manager.reader
-def volume_attachment_get_all_by_host(context, host):
+def volume_attachment_get_all_by_host(context, host, filters=None):
     result = (
         model_query(context, models.VolumeAttachment)
         .filter_by(attached_host=host)
@@ -2544,9 +2569,14 @@ def volume_attachment_get(context, attachment_id):
     return _attachment_get(context, attachment_id)
 
 
+# FIXME(jdg): Not using filters
 @require_context
 @main_context_manager.reader
-def volume_attachment_get_all_by_instance_uuid(context, instance_uuid):
+def volume_attachment_get_all_by_instance_uuid(
+    context,
+    instance_uuid,
+    filters=None,
+):
     """Fetch all attachment records associated with the specified instance."""
     result = (
         model_query(context, models.VolumeAttachment)
@@ -3576,7 +3606,12 @@ def volume_metadata_get(context, volume_id):
 @require_volume_exists
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @main_context_manager.writer
-def volume_metadata_delete(context, volume_id, key, meta_type):
+def volume_metadata_delete(
+    context,
+    volume_id,
+    key,
+    meta_type=common.METADATA_TYPES.user,
+):
     if meta_type == common.METADATA_TYPES.user:
         query = _volume_user_metadata_get_query(context, volume_id).filter_by(
             key=key
@@ -3614,7 +3649,13 @@ def volume_metadata_delete(context, volume_id, key, meta_type):
 @handle_db_data_error
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @main_context_manager.writer
-def volume_metadata_update(context, volume_id, metadata, delete, meta_type):
+def volume_metadata_update(
+    context,
+    volume_id,
+    metadata,
+    delete,
+    meta_type=common.METADATA_TYPES.user,
+):
     if meta_type == common.METADATA_TYPES.user:
         return _volume_user_metadata_update(
             context, volume_id, metadata, delete
@@ -4795,7 +4836,15 @@ def _group_type_get(context, id, inactive=False, expected_fields=None):
 @require_context
 @main_context_manager.reader
 def volume_type_get(context, id, inactive=False, expected_fields=None):
-    """Return a dict describing specific volume_type."""
+    """Get volume type by id.
+
+    :param context: context to query under
+    :param id: Volume type id to get.
+    :param inactive: Consider inactive volume types when searching
+    :param expected_fields: Return those additional fields.
+        Supported fields are: projects.
+    :returns: volume type
+    """
 
     return _volume_type_get(
         context, id, inactive=inactive, expected_fields=expected_fields
@@ -5035,15 +5084,17 @@ def volume_type_qos_specs_get(context, type_id):
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @main_context_manager.writer
-def volume_type_destroy(context, id):
+def volume_type_destroy(context, type_id):
     utcnow = timeutils.utcnow()
 
     vol_types = volume_type_get_all(context)
     if len(vol_types) <= 1:
-        raise exception.VolumeTypeDeletionError(volume_type_id=id)
-    _volume_type_get(context, id)
+        raise exception.VolumeTypeDeletionError(volume_type_id=type_id)
+    _volume_type_get(context, type_id)
     results = (
-        model_query(context, models.Volume).filter_by(volume_type_id=id).all()
+        model_query(context, models.Volume)
+        .filter_by(volume_type_id=type_id)
+        .all()
     )
 
     group_count = (
@@ -5052,7 +5103,7 @@ def volume_type_destroy(context, id):
             models.GroupVolumeTypeMapping,
             read_deleted="no",
         )
-        .filter_by(volume_type_id=id)
+        .filter_by(volume_type_id=type_id)
         .count()
     )
     cg_count = (
@@ -5060,14 +5111,14 @@ def volume_type_destroy(context, id):
             context,
             models.ConsistencyGroup,
         )
-        .filter(models.ConsistencyGroup.volume_type_id.contains(id))
+        .filter(models.ConsistencyGroup.volume_type_id.contains(type_id))
         .count()
     )
     if results or group_count or cg_count:
-        LOG.error('VolumeType %s deletion failed, VolumeType in use.', id)
-        raise exception.VolumeTypeInUse(volume_type_id=id)
+        LOG.error('VolumeType %s deletion failed, VolumeType in use.', type_id)
+        raise exception.VolumeTypeInUse(volume_type_id=type_id)
 
-    query = model_query(context, models.VolumeType).filter_by(id=id)
+    query = model_query(context, models.VolumeType).filter_by(id=type_id)
     entity = query.column_descriptions[0]['entity']
     updated_values = {
         'deleted': True,
@@ -5079,7 +5130,7 @@ def volume_type_destroy(context, id):
     query = model_query(
         context,
         models.VolumeTypeExtraSpecs,
-    ).filter_by(volume_type_id=id)
+    ).filter_by(volume_type_id=type_id)
     entity = query.column_descriptions[0]['entity']
     query.update(
         {
@@ -5090,7 +5141,7 @@ def volume_type_destroy(context, id):
     )
 
     query = model_query(context, models.Encryption).filter_by(
-        volume_type_id=id
+        volume_type_id=type_id
     )
     entity = query.column_descriptions[0]['entity']
     query.update(
@@ -5103,7 +5154,7 @@ def volume_type_destroy(context, id):
 
     model_query(
         context, models.VolumeTypeProjects, read_deleted="int_no"
-    ).filter_by(volume_type_id=id).soft_delete(synchronize_session=False)
+    ).filter_by(volume_type_id=type_id).soft_delete(synchronize_session=False)
     del updated_values['updated_at']
     return updated_values
 
@@ -5111,16 +5162,18 @@ def volume_type_destroy(context, id):
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @main_context_manager.writer
-def group_type_destroy(context, id):
-    _group_type_get(context, id)
+def group_type_destroy(context, type_id):
+    _group_type_get(context, type_id)
     results = (
-        model_query(context, models.Group).filter_by(group_type_id=id).all()
+        model_query(context, models.Group)
+        .filter_by(group_type_id=type_id)
+        .all()
     )
     if results:
-        LOG.error('GroupType %s deletion failed, ' 'GroupType in use.', id)
-        raise exception.GroupTypeInUse(group_type_id=id)
+        LOG.error('GroupType %s deletion failed, GroupType in use.', type_id)
+        raise exception.GroupTypeInUse(group_type_id=type_id)
 
-    query = model_query(context, models.GroupType).filter_by(id=id)
+    query = model_query(context, models.GroupType).filter_by(id=type_id)
     entity = query.column_descriptions[0]['entity']
     query.update(
         {
@@ -5131,7 +5184,7 @@ def group_type_destroy(context, id):
     )
 
     query = model_query(context, models.GroupTypeSpecs).filter_by(
-        group_type_id=id
+        group_type_id=type_id
     )
     entity = query.column_descriptions[0]['entity']
     query.update(
@@ -5441,9 +5494,13 @@ def _volume_type_extra_specs_get_item(context, volume_type_id, key):
 @handle_db_data_error
 @require_context
 @main_context_manager.writer
-def volume_type_extra_specs_update_or_create(context, volume_type_id, specs):
+def volume_type_extra_specs_update_or_create(
+    context,
+    volume_type_id,
+    extra_specs,
+):
     spec_ref = None
-    for key, value in specs.items():
+    for key, value in extra_specs.items():
         try:
             spec_ref = _volume_type_extra_specs_get_item(
                 context,
@@ -5463,7 +5520,7 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id, specs):
         )
         spec_ref.save(context.session)
 
-    return specs
+    return extra_specs
 
 
 ####################
@@ -5524,9 +5581,9 @@ def _group_type_specs_get_item(context, group_type_id, key):
 @handle_db_data_error
 @require_context
 @main_context_manager.writer
-def group_type_specs_update_or_create(context, group_type_id, specs):
+def group_type_specs_update_or_create(context, group_type_id, group_specs):
     spec_ref = None
-    for key, value in specs.items():
+    for key, value in group_specs.items():
         try:
             spec_ref = _group_type_specs_get_item(context, group_type_id, key)
         except exception.GroupTypeSpecsNotFound:
@@ -5541,7 +5598,7 @@ def group_type_specs_update_or_create(context, group_type_id, specs):
         )
         spec_ref.save(context.session)
 
-    return specs
+    return group_specs
 
 
 ####################
@@ -5915,18 +5972,18 @@ def _qos_specs_get_item(context, qos_specs_id, key):
 @require_admin_context
 @require_qos_specs_exists
 @main_context_manager.writer
-def qos_specs_update(context, qos_specs_id, updates):
+def qos_specs_update(context, qos_specs_id, values):
     """Make updates to an existing qos specs.
 
     Perform add, update or delete key/values to a qos specs.
     """
-    specs = updates.get('specs', {})
+    specs = values.get('specs', {})
 
-    if 'consumer' in updates:
+    if 'consumer' in values:
         # Massage consumer to the right place for DB and copy specs
         # before updating so we don't modify dict for caller
         specs = specs.copy()
-        specs['consumer'] = updates['consumer']
+        specs['consumer'] = values['consumer']
     spec_ref = None
     for key in specs.keys():
         try:
@@ -8254,12 +8311,9 @@ def message_create(context, values):
 
 @require_admin_context
 @main_context_manager.writer
-def message_destroy(context, message):
+def message_destroy(context, message_id):
     now = timeutils.utcnow()
-    query = model_query(
-        context,
-        models.Message,
-    ).filter_by(id=message.get('id'))
+    query = model_query(context, models.Message).filter_by(id=message_id)
     entity = query.column_descriptions[0]['entity']
     updated_values = {
         'deleted': True,
@@ -8321,64 +8375,6 @@ def driver_initiator_data_get(context, initiator, namespace):
         .filter_by(namespace=namespace)
         .all()
     )
-
-
-###############################
-
-
-PAGINATION_HELPERS = {
-    models.Volume: (_volume_get_query, _process_volume_filters, _volume_get),
-    models.Snapshot: (_snaps_get_query, _process_snaps_filters, _snapshot_get),
-    models.Backup: (_backups_get_query, _process_backups_filters, _backup_get),
-    models.QualityOfServiceSpecs: (
-        _qos_specs_get_query,
-        _process_qos_specs_filters,
-        _qos_specs_get,
-    ),
-    models.VolumeType: (
-        _volume_type_get_query,
-        _process_volume_types_filters,
-        _volume_type_get_db_object,
-    ),
-    models.ConsistencyGroup: (
-        _consistencygroups_get_query,
-        _process_consistencygroups_filters,
-        _consistencygroup_get,
-    ),
-    models.Message: (
-        _messages_get_query,
-        _process_messages_filters,
-        _message_get,
-    ),
-    models.GroupType: (
-        _group_type_get_query,
-        _process_group_types_filters,
-        _group_type_get_db_object,
-    ),
-    models.Group: (_groups_get_query, _process_groups_filters, _group_get),
-    models.GroupSnapshot: (
-        _group_snapshot_get_query,
-        _process_group_snapshot_filters,
-        _group_snapshot_get,
-    ),
-    models.VolumeAttachment: (
-        _attachment_get_query,
-        _process_attachment_filters,
-        _attachment_get,
-    ),
-    models.Transfer: (
-        _transfer_get_query,
-        _process_transfer_filters,
-        _transfer_get,
-    ),
-}
-
-
-CALCULATE_COUNT_HELPERS = {
-    'volume': (_volume_get_query, _process_volume_filters),
-    'snapshot': (_snaps_get_query, _process_snaps_filters),
-    'backup': (_backups_get_query, _process_backups_filters),
-}
 
 
 ###############################
@@ -8550,9 +8546,14 @@ def worker_get(context, **filters):
 
 @require_context
 @main_context_manager.reader
-def worker_get_all(context, **filters):
+def worker_get_all(context, until=None, db_filters=None, **filters):
     """Get all workers that match given criteria."""
-    query = _worker_query(context, **filters)
+    query = _worker_query(
+        context,
+        until=until,
+        db_filters=db_filters,
+        **filters,
+    )
     return query.all() if query else []
 
 
@@ -8704,3 +8705,61 @@ def use_quota_online_data_migration(
 #         models.VolumeAdminMetadata.delete_values)
 #
 #     return total, updated
+
+
+###############################
+
+
+PAGINATION_HELPERS = {
+    models.Volume: (_volume_get_query, _process_volume_filters, _volume_get),
+    models.Snapshot: (_snaps_get_query, _process_snaps_filters, _snapshot_get),
+    models.Backup: (_backups_get_query, _process_backups_filters, _backup_get),
+    models.QualityOfServiceSpecs: (
+        _qos_specs_get_query,
+        _process_qos_specs_filters,
+        _qos_specs_get,
+    ),
+    models.VolumeType: (
+        _volume_type_get_query,
+        _process_volume_types_filters,
+        _volume_type_get_db_object,
+    ),
+    models.ConsistencyGroup: (
+        _consistencygroups_get_query,
+        _process_consistencygroups_filters,
+        _consistencygroup_get,
+    ),
+    models.Message: (
+        _messages_get_query,
+        _process_messages_filters,
+        _message_get,
+    ),
+    models.GroupType: (
+        _group_type_get_query,
+        _process_group_types_filters,
+        _group_type_get_db_object,
+    ),
+    models.Group: (_groups_get_query, _process_groups_filters, _group_get),
+    models.GroupSnapshot: (
+        _group_snapshot_get_query,
+        _process_group_snapshot_filters,
+        _group_snapshot_get,
+    ),
+    models.VolumeAttachment: (
+        _attachment_get_query,
+        _process_attachment_filters,
+        _attachment_get,
+    ),
+    models.Transfer: (
+        _transfer_get_query,
+        _process_transfer_filters,
+        _transfer_get,
+    ),
+}
+
+
+CALCULATE_COUNT_HELPERS = {
+    'volume': (_volume_get_query, _process_volume_filters),
+    'snapshot': (_snaps_get_query, _process_snaps_filters),
+    'backup': (_backups_get_query, _process_backups_filters),
+}
