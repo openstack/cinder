@@ -417,6 +417,21 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                   % storage_profile)
                         raise exception.InvalidInput(reason=reason)
 
+    def _init_vendor_properties(self):
+        """Set some vmware specific properties."""
+
+        properties = {}
+        vendor_prefix = "vmware"
+        self._set_property(
+            properties,
+            f"{vendor_prefix}:snapshot_type",
+            "Snapshot type",
+            _("Specifies Type of snapshot"),
+            "string",
+            enum=["snapshot", "clone"])
+
+        return properties, vendor_prefix
+
     def _update_volume_stats(self):
         if self.configuration.safe_get('vmware_enable_volume_stats'):
             self._stats = self._get_volume_stats()
@@ -535,6 +550,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         max_over_subscription_ratio = self.configuration.safe_get(
             'max_over_subscription_ratio')
 
+        snapshot_format = self.configuration.vmware_snapshot_format
+        if snapshot_format == 'COW':
+            snapshot_type = 'snapshot'
+        else:
+            snapshot_type = 'clone'
+
         backend_state = 'up'
         data = {'volume_backend_name': backend_name,
                 'vendor_name': 'VMware',
@@ -542,6 +563,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 'storage_protocol': 'vmdk',
                 'location_info': location_info,
                 'backend_state': backend_state,
+                'snapshot_type': snapshot_type
                 }
 
         result, datastores = self._collect_backend_stats()

@@ -328,6 +328,20 @@ class VolumeManager(manager.CleanableManager,
                      {'host': self.host})
             self.image_volume_cache = None
 
+    def _update_pool_allocated_capacity(self, pool, size):
+        try:
+            pool_stat = self.stats['pools'][pool]
+        except KeyError:
+            # First volume in the pool
+            self.stats['pools'][pool] = dict(
+                allocated_capacity_gb=0)
+            pool_stat = self.stats['pools'][pool]
+        pool_sum = pool_stat['allocated_capacity_gb']
+        pool_sum += size
+
+        self.stats['pools'][pool]['allocated_capacity_gb'] = pool_sum
+        self.stats['allocated_capacity_gb'] += size
+
     def _count_allocated_capacity(self, ctxt: context.RequestContext,
                                   volume: objects.Volume) -> None:
         pool = volume_utils.extract_host(volume['host'], 'pool')
@@ -356,18 +370,29 @@ class VolumeManager(manager.CleanableManager,
                 pool = (self.driver.configuration.safe_get(
                     'volume_backend_name') or volume_utils.extract_host(
                     volume['host'], 'pool', True))
-        try:
-            pool_stat = self.stats['pools'][pool]
-        except KeyError:
-            # First volume in the pool
-            self.stats['pools'][pool] = dict(
-                allocated_capacity_gb=0)
-            pool_stat = self.stats['pools'][pool]
-        pool_sum = pool_stat['allocated_capacity_gb']
-        pool_sum += volume['size']
 
-        self.stats['pools'][pool]['allocated_capacity_gb'] = pool_sum
-        self.stats['allocated_capacity_gb'] += volume['size']
+        self._update_pool_allocated_capacity(pool, volume['size'])
+
+    def _update_snapshot_allocated_capacity(self, ctxt: context.RequestContext,
+                                            snapshot: objects.Snapshot,
+                                            host: ty.Optional[str]) -> None:
+        """Use the size of the snapshot to adjust the allocated capacity.
+
+        This updates the pool stats allocated_capacity for the pool that owns
+        the snapshot.  The snapshot lives either in it's independent pool
+        or in the same pool as the source volume.
+
+        The scheduler updates the pool account at snapshot creation time.  This
+        ensures at volume service start time, the stats are adjusted as well.
+        """
+        size = snapshot.volume_size
+        if not host:
+            # get the source volume to find the host
+            volume = snapshot.volume
+            host = volume.host
+
+        pool = volume_utils.extract_host(host, 'pool')
+        self._update_pool_allocated_capacity(pool, size)
 
     def _set_voldb_empty_at_startup_indicator(
             self,
@@ -610,6 +635,25 @@ class VolumeManager(manager.CleanableManager,
                 LOG.exception("Error during re-export on driver init.",
                               resource=volume)
                 return
+
+            # SAP
+            # Account for the creation of snapshots on each pool
+            # this is only valid for vmware backends that are configured
+            # for clone based snapshots.  This only counts snapshots against
+            # the snapshot/source volume's pool if the snapshot is a clone
+            # of the source volume.
+            if self.driver.capabilities.get('snapshot_type') == 'clone':
+                try:
+                    for snapshot in snapshots:
+                        host = None
+                        key = objects.snapshot.SAP_HIDDEN_BACKEND_KEY
+                        if snapshot.metadata:
+                            host = snapshot.metadata.get(key)
+                        self._update_snapshot_allocated_capacity(
+                            ctxt, snapshot, host=host
+                        )
+                except Exception:
+                    LOG.exception("Error during snapshot calculation")
 
             if len(volumes):
                 volumes_to_migrate.append(volumes, ctxt)
