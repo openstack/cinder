@@ -1,6 +1,6 @@
-=========================================================
-Using service tokens to prevent long-running job failures
-=========================================================
+====================
+Using service tokens
+====================
 
 When a user initiates a request whose processing involves multiple services
 (for example, a boot-from-volume request to the Compute Service will require
@@ -8,20 +8,32 @@ processing by the Block Storage Service, and may require processing by the
 Image Service), the user's token is handed from service to service.  This
 ensures that the requestor is tracked correctly for audit purposes and also
 guarantees that the requestor has the appropriate permissions to do what needs
-to be done by the other services.  If the chain of operations takes a long
-time, however, the user's token may expire before the action is completed,
-leading to the failure of the user's original request.
+to be done by the other services.
 
-One way to deal with this is to set a long token life in Keystone, and this may
-be what you are currently doing.  But this can be problematic for installations
-whose security policies prefer short user token lives.  Beginning with the
-Queens release, an alternative solution is available.  You have the ability to
-configure some services (particularly Nova and Cinder) to send a "service
-token" along with the user's token.  When properly configured, the Identity
-Service will validate an expired user token *when it is accompanied by a valid
-service token*.  Thus if the user's token expires somewhere during a long
-running chain of operations among various OpenStack services, the operations
-can continue.
+There are several instances where we want to differentiate between a request
+coming from the user to one coming from another OpenStack service on behalf of
+the user:
+
+- **For security reasons** There are some operations in the Block Storage
+  service, required for normal operations, that could be exploited by a
+  malicious user to gain access to resources belonging to other users.  By
+  differentiating when the request comes directly from a user and when from
+  another OpenStack service the Cinder service can protect the deployment.
+
+- To prevent long-running job failures: If the chain of operations takes a long
+  time, the user's token may expire before the action is completed, leading to
+  the failure of the user's original request.
+
+  One way to deal with this is to set a long token life in Keystone, and this
+  may be what you are currently doing.  But this can be problematic for
+  installations whose security policies prefer short user token lives.
+  Beginning with the Queens release, an alternative solution is available.  You
+  have the ability to configure some services (particularly Nova and Cinder) to
+  send a "service token" along with the user's token.  When properly
+  configured, the Identity Service will validate an expired user token *when it
+  is accompanied by a valid service token*.  Thus if the user's token expires
+  somewhere during a long running chain of operations among various OpenStack
+  services, the operations can continue.
 
 .. note::
    There's nothing special about a service token.  It's a regular token

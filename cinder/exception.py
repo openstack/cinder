@@ -1092,3 +1092,10 @@ class DriverInitiatorDataExists(Duplicate):
         "Driver initiator data for initiator '%(initiator)s' and backend "
         "'%(namespace)s' with key '%(key)s' already exists."
     )
+
+
+class ConflictNovaUsingAttachment(CinderException):
+    message = _("Detach volume from instance %(instance_id)s using the "
+                "Compute API")
+    code = 409
+    safe = True
