@@ -1334,7 +1334,8 @@ class VolumeAttachDetachTestCase(base.BaseVolumeTestCase):
                           self.context,
                           volume, None, None, None, None)
 
-    def test_volume_detach_in_maintenance(self):
+    @mock.patch('cinder.volume.api.API.attachment_deletion_allowed')
+    def test_volume_detach_in_maintenance(self, mock_attachment_deletion):
         """Test detach the volume in maintenance."""
         test_meta1 = {'fake_key1': 'fake_value1', 'fake_key2': 'fake_value2'}
         volume = tests_utils.create_volume(self.context, metadata=test_meta1,
@@ -1345,3 +1346,5 @@ class VolumeAttachDetachTestCase(base.BaseVolumeTestCase):
                           volume_api.detach,
                           self.context,
                           volume, None)
+        mock_attachment_deletion.assert_called_once_with(self.context,
+                                                         None, volume)
