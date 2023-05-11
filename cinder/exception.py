@@ -1096,3 +1096,10 @@ class DriverInitiatorDataExists(Duplicate):
 
 class RequirementMissing(CinderException):
     message = _('Requirement %(req)s is not installed.')
+
+
+class ConflictNovaUsingAttachment(CinderException):
+    message = _("Detach volume from instance %(instance_id)s using the "
+                "Compute API")
+    code = 409
+    safe = True
