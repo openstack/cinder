@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    RBD driver `bug #1960206
+    <https://bugs.launchpad.net/cinder/+bug/1960206>`_: Fixed
+    ``total_capacity`` reported by the driver to the scheduler on Ceph clusters
+    that have renamed the ``bytes_used`` field to ``stored``. (e.g., `Nautilus
+    <https://docs.ceph.com/en/nautilus/releases/nautilus/#upgrade-compatibility-notes>`_).

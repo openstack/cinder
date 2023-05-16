@@ -1838,6 +1838,51 @@ class RBDTestCase(test.TestCase):
         ])
         self.assertEqual((free_capacity, total_capacity), result)
 
+    @ddt.data(
+        # Normal case, no quota and dynamic total
+        {'free_capacity': 27.0, 'total_capacity': 28.44},
+        # No quota and static total
+        {'dynamic_total': False,
+         'free_capacity': 27.0, 'total_capacity': 59.96},
+        # Quota and dynamic total
+        {'quota_max_bytes': 3221225472, 'max_avail': 1073741824,
+         'free_capacity': 1, 'total_capacity': 2.44},
+        # Quota and static total
+        {'quota_max_bytes': 3221225472, 'max_avail': 1073741824,
+         'dynamic_total': False,
+         'free_capacity': 1, 'total_capacity': 3.00},
+        # Quota and dynamic total when free would be negative
+        {'quota_max_bytes': 1073741824,
+         'free_capacity': 0, 'total_capacity': 1.44},
+    )
+    @ddt.unpack
+    @common_mocks
+    def test_get_pool_nautilus(self, free_capacity, total_capacity,
+                               max_avail=28987613184, quota_max_bytes=0,
+                               dynamic_total=True):
+        client = self.mock_client.return_value
+        client.__enter__.return_value = client
+        client.cluster.mon_command.side_effect = [
+            (0, '{"stats":{"total_bytes":64385286144,'
+             '"total_used_bytes":3289628672,"total_avail_bytes":61095657472},'
+             '"pools":[{"name":"rbd","id":2,"stats":{"kb_used":1510197,'
+             '"stored":1546440971,"bytes_used":4639322913,"max_avail":%s,'
+             '"objects":412}},{"name":"volumes","id":3,"stats":{"kb_used":0,'
+             '"bytes_used":0,"max_avail":28987613184,"objects":0}}]}\n' %
+             max_avail, ''),
+            (0, '{"pool_name":"volumes","pool_id":4,"quota_max_objects":0,'
+             '"quota_max_bytes":%s}\n' % quota_max_bytes, ''),
+        ]
+        with mock.patch.object(self.driver.configuration, 'safe_get',
+                               return_value=dynamic_total):
+            result = self.driver._get_pool_stats()
+        client.cluster.mon_command.assert_has_calls([
+            mock.call('{"prefix":"df", "format":"json"}', b''),
+            mock.call('{"prefix":"osd pool get-quota", "pool": "rbd",'
+                      ' "format":"json"}', b''),
+        ])
+        self.assertEqual((free_capacity, total_capacity), result)
+
     @common_mocks
     def test_get_pool_bytes(self):
         """Test for mon_commands returning bytes instead of strings."""
