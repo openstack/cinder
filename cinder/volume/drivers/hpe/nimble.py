@@ -402,6 +402,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                 reserved_percentage=0,
                 QoS_support=False,
                 multiattach=True,
+                thin_provisioning_support=True,
                 consistent_group_snapshot_enabled=True)
             self.group_stats['pools'] = [single_pool]
         return self.group_stats
