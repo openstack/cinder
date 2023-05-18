@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    Nimble driver: Enable thin provisioning as default method while creating
+    volumes.
