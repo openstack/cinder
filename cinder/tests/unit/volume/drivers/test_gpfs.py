@@ -2050,7 +2050,7 @@ class GPFSRemoteDriverTestCase(test.TestCase):
 
     @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
     @mock.patch('os.path.isfile', return_value=True)
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch('os.path.expanduser')
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('oslo_concurrency.processutils.ssh_execute')
@@ -2069,7 +2069,7 @@ class GPFSRemoteDriverTestCase(test.TestCase):
 
     @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
     @mock.patch('os.path.isfile', return_value=True)
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch('os.path.expanduser')
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('oslo_concurrency.processutils.ssh_execute')
@@ -2088,7 +2088,7 @@ class GPFSRemoteDriverTestCase(test.TestCase):
 
     @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
     @mock.patch('os.path.isfile', return_value=True)
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     def test_get_active_gpfs_node_ip_missing_key_and_password(self, mock_open,
                                                               mock_isfile):
         configuration = conf.Configuration(None)
@@ -2100,7 +2100,7 @@ class GPFSRemoteDriverTestCase(test.TestCase):
 
     @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
     @mock.patch('os.path.isfile', return_value=True)
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch('os.path.expanduser')
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('oslo_concurrency.processutils.ssh_execute')
@@ -2143,7 +2143,7 @@ class GPFSRemoteDriverTestCase(test.TestCase):
 
     @mock.patch('paramiko.SSHClient', new=mock.MagicMock())
     @mock.patch('os.path.isfile', return_value=True)
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch('os.path.expanduser')
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('oslo_concurrency.processutils.ssh_execute')

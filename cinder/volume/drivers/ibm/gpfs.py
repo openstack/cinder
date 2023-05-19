@@ -26,7 +26,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 import paramiko
-import six
 
 from cinder.common import constants
 from cinder import context
@@ -1148,7 +1147,7 @@ class GPFSDriver(driver.CloneableImageVD,
         except processutils.ProcessExecutionError as e:
             msg = (_('Failed to create consistency group: %(cgid)s. '
                      'Error: %(excmsg)s.') %
-                   {'cgid': group['id'], 'excmsg': six.text_type(e)})
+                   {'cgid': group['id'], 'excmsg': str(e)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -1158,7 +1157,7 @@ class GPFSDriver(driver.CloneableImageVD,
         except processutils.ProcessExecutionError as e:
             msg = (_('Failed to link fileset for the share %(cgname)s. '
                      'Error: %(excmsg)s.') %
-                   {'cgname': cgname, 'excmsg': six.text_type(e)})
+                   {'cgname': cgname, 'excmsg': str(e)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -1168,7 +1167,7 @@ class GPFSDriver(driver.CloneableImageVD,
             msg = (_('Failed to set permissions for the consistency group '
                      '%(cgname)s. '
                      'Error: %(excmsg)s.') %
-                   {'cgname': cgname, 'excmsg': six.text_type(e)})
+                   {'cgname': cgname, 'excmsg': str(e)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -1203,7 +1202,7 @@ class GPFSDriver(driver.CloneableImageVD,
             except processutils.ProcessExecutionError as e:
                 msg = (_('Failed to unlink fileset for consistency group '
                          '%(cgname)s. Error: %(excmsg)s.') %
-                       {'cgname': cgname, 'excmsg': six.text_type(e)})
+                       {'cgname': cgname, 'excmsg': str(e)})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
@@ -1213,7 +1212,7 @@ class GPFSDriver(driver.CloneableImageVD,
             except processutils.ProcessExecutionError as e:
                 msg = (_('Failed to delete fileset for consistency group '
                          '%(cgname)s. Error: %(excmsg)s.') %
-                       {'cgname': cgname, 'excmsg': six.text_type(e)})
+                       {'cgname': cgname, 'excmsg': str(e)})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
