@@ -365,6 +365,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
     VERSION = '2.3.12'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "LightbitsLabs_CI"
+    SUPPORTS_ACTIVE_ACTIVE = True
 
     def __init__(self, *args, **kwargs):
         super(LightOSVolumeDriver, self).__init__(*args, **kwargs)
