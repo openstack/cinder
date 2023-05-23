@@ -15,9 +15,10 @@
 
 """Cinder Driver for Unity"""
 
+import functools
+
 from oslo_config import cfg
 from oslo_log import log as logging
-import six
 
 from cinder import interface
 from cinder.volume import configuration
@@ -50,7 +51,7 @@ CONF.register_opts(UNITY_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 
 def skip_if_not_cg(func):
-    @six.wraps(func)
+    @functools.wraps(func)
     def inner(self, *args, **kwargs):
         # Only used to decorating the second argument is `group`
         if volume_utils.is_group_a_cg_snapshot_type(args[1]):

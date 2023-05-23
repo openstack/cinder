@@ -17,7 +17,6 @@ from unittest import mock
 
 import ddt
 from oslo_service import loopingcall
-import six
 
 from cinder import context
 from cinder import exception
@@ -61,7 +60,7 @@ class TestMigrateVolume(powerflex.TestPowerFlexDriver):
                     'volume_type_id': fake.VOLUME_TYPE_ID})
         self.dst_host = {'host': host}
         self.DST_STORAGE_POOL_NAME = 'SP2'
-        self.DST_STORAGE_POOL_ID = six.text_type('2')
+        self.DST_STORAGE_POOL_ID = str('2')
         self.fake_vtree_id = 'c075744900000001'
         self.migration_success = (True, {})
         self.migration_host_assisted = (False, None)

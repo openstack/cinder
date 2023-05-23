@@ -24,7 +24,6 @@ import time
 from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log as logging
-import six
 
 from cinder import coordination
 from cinder import exception
@@ -476,7 +475,7 @@ class PowerMaxCommon(object):
         except Exception as e:
             exception_message = (_(
                 "Unable to get the SLO/Workload combinations from the array. "
-                "Exception received was %(e)s") % {'e': six.text_type(e)})
+                "Exception received was %(e)s") % {'e': str(e)})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
@@ -514,7 +513,7 @@ class PowerMaxCommon(object):
 
         # Gather Metadata
         model_update.update(
-            {'provider_location': six.text_type(volume_dict)})
+            {'provider_location': str(volume_dict)})
         model_update = self.update_metadata(
             model_update, volume.metadata, self.get_volume_metadata(
                 volume_dict['array'], volume_dict['device_id']))
@@ -608,7 +607,7 @@ class PowerMaxCommon(object):
             model_update.update(rep_update)
 
         model_update.update(
-            {'provider_location': six.text_type(clone_dict)})
+            {'provider_location': str(clone_dict)})
         model_update = self.update_metadata(
             model_update, volume.metadata, self.get_volume_metadata(
                 clone_dict['array'], clone_dict['device_id']))
@@ -654,7 +653,7 @@ class PowerMaxCommon(object):
             rep_driver_data)
 
         model_update.update(
-            {'provider_location': six.text_type(clone_dict)})
+            {'provider_location': str(clone_dict)})
         model_update = self.update_metadata(
             model_update, clone_volume.metadata, self.get_volume_metadata(
                 clone_dict['array'], clone_dict['device_id']))
@@ -697,7 +696,7 @@ class PowerMaxCommon(object):
             snapshot, volume, extra_specs, is_snapshot=True)
 
         model_update = {
-            'provider_location': six.text_type(snapshot_dict)}
+            'provider_location': str(snapshot_dict)}
         snapshot_metadata = self.get_snapshot_metadata(
             extra_specs.get('array'), snapshot_dict.get('source_id'),
             snapshot_dict.get('snap_name'))
@@ -1605,7 +1604,7 @@ class PowerMaxCommon(object):
         else:
             loc = volume.provider_location
 
-        if isinstance(loc, six.string_types):
+        if isinstance(loc, str):
             name = ast.literal_eval(loc)
             array = extra_specs[utils.ARRAY]
             if name.get('device_id'):
@@ -1988,7 +1987,7 @@ class PowerMaxCommon(object):
 
         loc = snapshot.provider_location
 
-        if isinstance(loc, six.string_types):
+        if isinstance(loc, str):
             name = ast.literal_eval(loc)
             try:
                 sourcedevice_id = name['source_id']
@@ -2042,7 +2041,7 @@ class PowerMaxCommon(object):
             exception_message = (_("Error creating snap Vx of %(vol)s. "
                                    "Exception received: %(e)s.")
                                  % {'vol': source_device_id,
-                                    'e': six.text_type(e)})
+                                    'e': str(e)})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
@@ -2575,7 +2574,7 @@ class PowerMaxCommon(object):
                 "%(dev)s. Exception received: %(e)s.") %
                 {'volume_name': volume_name,
                  'dev': device_id,
-                 'e': six.text_type(e)})
+                 'e': str(e)})
             LOG.error(error_message)
             LOG.warning("Attempting device cleanup after a failed delete of: "
                         "%(name)s. device_id: %(device_id)s.",
@@ -3179,7 +3178,7 @@ class PowerMaxCommon(object):
                    'element_name': volume_name})
         self.rest.rename_volume(array, device_id, volume_name)
         provider_location = {'device_id': device_id, 'array': array}
-        model_update = {'provider_location': six.text_type(provider_location)}
+        model_update = {'provider_location': str(provider_location)}
 
         # Set-up volume replication, if enabled
         if self.utils.is_replication_enabled(extra_specs):
@@ -3190,7 +3189,7 @@ class PowerMaxCommon(object):
             if rep_driver_data:
                 rep_model_update = {
                     'replication_status': rep_status,
-                    'replication_driver_data': six.text_type(
+                    'replication_driver_data': str(
                         {'device_id': rep_info_dict['target_device_id'],
                          'array': rep_info_dict['remote_array']})}
 
@@ -3207,7 +3206,7 @@ class PowerMaxCommon(object):
         except Exception as e:
             exception_message = (_(
                 "Unable to move the volume to the default SG. "
-                "Exception received was %(e)s") % {'e': six.text_type(e)})
+                "Exception received was %(e)s") % {'e': str(e)})
             LOG.error(exception_message)
             LOG.debug("Rename volume %(vol)s back to %(element_name)s.",
                       {'vol': volume_id, 'element_name': orig_vol_name})
@@ -3223,7 +3222,7 @@ class PowerMaxCommon(object):
         if rep_driver_data:
             rep_model_update = {
                 'replication_status': rep_status,
-                'replication_driver_data': six.text_type(
+                'replication_driver_data': str(
                     {'device_id': rep_info_dict['target_device_id'],
                      'array': rep_info_dict['remote_array']})}
 
@@ -3486,7 +3485,7 @@ class PowerMaxCommon(object):
                 msg = ("Exception creating %(sg)s. "
                        "Exception received was %(e)s."
                        % {'sg': utils.UNMANAGED_SG,
-                          'e': six.text_type(e)})
+                          'e': str(e)})
                 LOG.warning(msg)
                 return
             # Try to add the volume
@@ -3570,7 +3569,7 @@ class PowerMaxCommon(object):
             exception_message = (
                 _("There was an issue managing %(snap_name)s, it was not "
                   "possible to add the OS- prefix. Error Message: %(e)s.")
-                % {'snap_name': snap_name, 'e': six.text_type(e)})
+                % {'snap_name': snap_name, 'e': str(e)})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
@@ -3578,7 +3577,7 @@ class PowerMaxCommon(object):
         prov_loc = {'source_id': device_id, 'snap_name': snap_backend_name}
         model_update = {
             'display_name': snap_display_name,
-            'provider_location': six.text_type(prov_loc)}
+            'provider_location': str(prov_loc)}
         snapshot_metadata = self.get_snapshot_metadata(
             array, device_id, snap_backend_name)
         if persist_metadata:
@@ -3674,7 +3673,7 @@ class PowerMaxCommon(object):
                 _("There was an issue unmanaging Snapshot, it "
                   "was not possible to remove the OS- prefix. Error "
                   "message is: %(e)s.")
-                % {'snap_name': snap_name, 'e': six.text_type(e)})
+                % {'snap_name': snap_name, 'e': str(e)})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
@@ -3914,13 +3913,13 @@ class PowerMaxCommon(object):
             # Convert timestamp to human readable format
             human_timestamp = time.strftime(
                 "%Y/%m/%d, %H:%M:%S", time.localtime(
-                    float(six.text_type(
+                    float(str(
                         snap_info['timestamp'])[:-3])))
             # If TTL is set, convert value to human readable format
             if int(snap_info['timeToLive']) > 0:
                 human_ttl_timestamp = time.strftime(
                     "%Y/%m/%d, %H:%M:%S", time.localtime(
-                        float(six.text_type(
+                        float(str(
                             snap_info['timeToLive']))))
             else:
                 human_ttl_timestamp = 'N/A'
@@ -4131,7 +4130,7 @@ class PowerMaxCommon(object):
                         nrr.rep_extra_specs, volume))
                 model_update = {
                     'replication_status': rep_status,
-                    'replication_driver_data': six.text_type(
+                    'replication_driver_data': str(
                         {'device_id': tgt_device_id,
                          'array': rdf_pair_info['remoteSymmetrixId']})}
                 rdf_pair_created = True
@@ -4287,7 +4286,7 @@ class PowerMaxCommon(object):
                 rdf_pair_created = True
             model_update = {
                 'replication_status': rep_status,
-                'replication_driver_data': six.text_type(
+                'replication_driver_data': str(
                     {'device_id': rep_info_dict['target_device_id'],
                      'array': rep_info_dict['remote_array']})}
 
@@ -5210,7 +5209,7 @@ class PowerMaxCommon(object):
             exception_message = (
                 _('Exception occurred adding volume %(vol)s to its '
                   'rdf management group - the exception received was: %(e)s')
-                % {'vol': volume_name, 'e': six.text_type(e)})
+                % {'vol': volume_name, 'e': str(e)})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
@@ -5799,7 +5798,7 @@ class PowerMaxCommon(object):
         :returns: secondary_info - dict
         """
         secondary_info = array_info.copy()
-        secondary_info['SerialNumber'] = six.text_type(rep_config['array'])
+        secondary_info['SerialNumber'] = str(rep_config['array'])
         secondary_info['srpName'] = rep_config['srp']
         return secondary_info
 
@@ -6156,7 +6155,7 @@ class PowerMaxCommon(object):
             exception_message = (_("Failed to create snapshot for group: "
                                    "%(volGrpName)s. Exception received: %(e)s")
                                  % {'volGrpName': grp_id,
-                                    'e': six.text_type(e)})
+                                    'e': str(e)})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
@@ -6167,7 +6166,7 @@ class PowerMaxCommon(object):
             array = extra_specs['array']
             snapshot_model_dict = {
                 'id': snapshot.id,
-                'provider_location': six.text_type(
+                'provider_location': str(
                     {'source_id': src_dev_id, 'snap_name': snap_name}),
                 'status': fields.SnapshotStatus.AVAILABLE}
 
@@ -6862,7 +6861,7 @@ class PowerMaxCommon(object):
             self.rest.rename_volume(remote_array, tgt_device_id, element_name)
             rep_update = {'device_id': tgt_device_id, 'array': remote_array}
             volume_model_update.update(
-                {'replication_driver_data': six.text_type(rep_update),
+                {'replication_driver_data': str(rep_update),
                  'replication_status': fields.ReplicationStatus.ENABLED})
             volume_model_update = self.update_metadata(
                 volume_model_update, None, self.get_volume_metadata(
@@ -7219,7 +7218,7 @@ class PowerMaxCommon(object):
         except Exception as e:
             exception_message = (_(
                 "Failed to revert the volume to the snapshot. "
-                "Exception received was %(e)s") % {'e': six.text_type(e)})
+                "Exception received was %(e)s") % {'e': str(e)})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
@@ -7343,7 +7342,7 @@ class PowerMaxCommon(object):
         metadata = {'SnapshotLabel': snap_name,
                     'SourceDeviceID': device_id,
                     'SnapIdList': ', '.join(
-                        six.text_type(v) for v in snap_id_list),
+                        str(v) for v in snap_id_list),
                     'is_snap_id': self.rest.is_snap_id}
         if device_label:
             metadata['SourceDeviceLabel'] = device_label
@@ -7481,7 +7480,7 @@ class PowerMaxCommon(object):
         """
         replication_update = (
             {'replication_status': REPLICATION_ENABLED,
-             'replication_driver_data': six.text_type(
+             'replication_driver_data': str(
                  {'array': rep_extra_specs['array'],
                   'device_id': volume_dict['remote_device_id']})})
 

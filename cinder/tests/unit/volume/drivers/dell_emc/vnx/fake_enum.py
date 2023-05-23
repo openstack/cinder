@@ -15,8 +15,6 @@
 
 import enum
 
-import six
-
 
 class Enum(enum.Enum):
     @classmethod
@@ -47,9 +45,9 @@ class Enum(enum.Enum):
 
     @classmethod
     def parse(cls, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             ret = cls.from_str(value)
-        elif isinstance(value, six.integer_types):
+        elif isinstance(value, int):
             ret = cls.from_int(value)
         elif isinstance(value, cls):
             ret = value
@@ -61,7 +59,7 @@ class Enum(enum.Enum):
         return ret
 
     def is_equal(self, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             ret = self.value.lower() == value.lower()
         else:
             ret = self.value == value

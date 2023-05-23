@@ -17,7 +17,6 @@ from unittest import mock
 import uuid
 
 import ddt
-import six
 
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.dell_emc.powerstore import MockResponse
@@ -66,7 +65,7 @@ class TestClient(test.TestCase):
         super(TestClient, self).setUp()
 
         self.client = client.PowerStoreClient(**CLIENT_OPTIONS)
-        self.fake_volume = six.text_type(uuid.uuid4())
+        self.fake_volume = str(uuid.uuid4())
 
     @ddt.data(("iSCSI", ISCSI_IP_POOL_RESP),
               ("NVMe", NVME_IP_POOL_RESP))

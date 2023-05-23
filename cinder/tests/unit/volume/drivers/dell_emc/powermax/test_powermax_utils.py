@@ -19,7 +19,6 @@ from unittest import mock
 
 from ddt import data
 from ddt import ddt
-import six
 
 from cinder import exception
 from cinder.objects import fields
@@ -148,7 +147,7 @@ class PowerMaxUtilsTest(test.TestCase):
         start_time = 1487781721.09
         end_time = 1487781758.16
         delta = end_time - start_time
-        ref_delta = six.text_type(datetime.timedelta(seconds=int(delta)))
+        ref_delta = str(datetime.timedelta(seconds=int(delta)))
         time_delta = self.utils.get_time_delta(start_time, end_time)
         self.assertEqual(ref_delta, time_delta)
 
@@ -685,14 +684,14 @@ class PowerMaxUtilsTest(test.TestCase):
 
         ref_model_update_meta = {
             'id': volume.id, 'status': 'available', 'metadata': metadata,
-            'provider_location': six.text_type(volume_dict)}
+            'provider_location': str(volume_dict)}
         act_model_update_meta = self.utils.get_grp_volume_model_update(
             volume, volume_dict, group_id, metadata)
         self.assertEqual(ref_model_update_meta, act_model_update_meta)
 
         ref_model_update_no_meta = {
             'id': volume.id, 'status': 'available',
-            'provider_location': six.text_type(volume_dict)}
+            'provider_location': str(volume_dict)}
         act_model_update_no_meta = self.utils.get_grp_volume_model_update(
             volume, volume_dict, group_id)
         self.assertEqual(ref_model_update_no_meta, act_model_update_no_meta)

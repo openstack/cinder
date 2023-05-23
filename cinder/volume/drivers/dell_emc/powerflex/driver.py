@@ -16,6 +16,7 @@
 Driver for Dell EMC PowerFlex (formerly named Dell EMC VxFlex OS).
 """
 
+import http.client as http_client
 import math
 from operator import xor
 
@@ -26,8 +27,6 @@ from oslo_log import versionutils
 from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
-import six
-from six.moves import http_client
 
 from cinder.common import constants
 from cinder import context
@@ -903,7 +902,7 @@ class PowerFlexDriver(driver.VolumeDriver):
                     int(max_bandwidth),
                     units.Ki
                 )
-                max_bandwidth = six.text_type(max_bandwidth)
+                max_bandwidth = str(max_bandwidth)
             LOG.info("Max bandwidth: %s.", max_bandwidth)
             bw_per_gb = storage_type.get(QOS_BANDWIDTH_PER_GB)
             LOG.info("Bandwidth per GB: %s.", bw_per_gb)
@@ -917,9 +916,9 @@ class PowerFlexDriver(driver.VolumeDriver):
                                                     MIN_BWS_SCALING_SIZE)
             )
             if max_bandwidth is None or scaled_bw_limit < int(max_bandwidth):
-                return six.text_type(scaled_bw_limit)
+                return str(scaled_bw_limit)
             else:
-                return six.text_type(max_bandwidth)
+                return str(max_bandwidth)
         except ValueError:
             msg = _("None numeric BWS QoS limitation.")
             raise exception.InvalidInput(reason=msg)
@@ -933,14 +932,14 @@ class PowerFlexDriver(driver.VolumeDriver):
         try:
             if iops_per_gb is None:
                 if max_iops is not None:
-                    return six.text_type(max_iops)
+                    return str(max_iops)
                 else:
                     return None
             scaled_iops_limit = size * int(iops_per_gb)
             if max_iops is None or scaled_iops_limit < int(max_iops):
-                return six.text_type(scaled_iops_limit)
+                return str(scaled_iops_limit)
             else:
-                return six.text_type(max_iops)
+                return str(max_iops)
         except ValueError:
             msg = _("None numeric IOPS QoS limitation.")
             raise exception.InvalidInput(reason=msg)
@@ -1412,7 +1411,7 @@ class PowerFlexDriver(driver.VolumeDriver):
             "destSPId": dst_pool_id,
             "volTypeConversion": "NoConversion",
             "compressionMethod": "None",
-            "allowDuringRebuild": six.text_type(
+            "allowDuringRebuild": str(
                 self.configuration.powerflex_allow_migration_during_rebuild
             ),
         }

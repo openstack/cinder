@@ -25,7 +25,6 @@ import requests.auth
 import requests.exceptions as r_exc
 # pylint: disable=E0401
 import requests.packages.urllib3.util.retry as requests_retry
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -316,7 +315,7 @@ class PowerMaxRest(object):
             if retry:
                 self.u4p_failover_lock = False
             msg = _("The %s request to URL %s failed with exception "
-                    "%s" % (method, url, six.text_type(e)))
+                    "%s" % (method, url, str(e)))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(message=msg)
 
@@ -440,7 +439,7 @@ class PowerMaxRest(object):
                     _("Error %(operation)s. Status code: %(sc)lu. Error: "
                       "%(error)s. Status: %(status)s.") % {
                         'operation': operation, 'sc': rc,
-                        'error': six.text_type(result), 'status': status})
+                        'error': str(result), 'status': status})
                 LOG.error(exception_message)
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)

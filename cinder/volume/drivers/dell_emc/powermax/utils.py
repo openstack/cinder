@@ -22,7 +22,6 @@ from oslo_utils.secretutils import md5
 from oslo_utils import strutils
 from oslo_utils import units
 import packaging.version
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -283,7 +282,7 @@ class PowerMaxUtils(object):
                 extra_specs = volume_types.get_volume_type_extra_specs(type_id)
         except Exception as e:
             LOG.debug('Exception getting volume type extra specs: %(e)s',
-                      {'e': six.text_type(e)})
+                      {'e': str(e)})
         return extra_specs
 
     @staticmethod
@@ -324,7 +323,7 @@ class PowerMaxUtils(object):
         :returns: string -- delta in string H:MM:SS
         """
         delta = end_time - start_time
-        return six.text_type(datetime.timedelta(seconds=int(delta)))
+        return str(datetime.timedelta(seconds=int(delta)))
 
     def get_default_storage_group_name(
             self, srp_name, slo, workload, is_compression_disabled=False,
@@ -628,7 +627,7 @@ class PowerMaxUtils(object):
                     error_message = (
                         _("Failed to retrieve all necessary SRDF "
                           "information. Error received: %(ke)s.") %
-                        {'ke': six.text_type(ke)})
+                        {'ke': str(ke)})
                     LOG.exception(error_message)
                     raise exception.VolumeBackendAPIException(
                         message=error_message)
@@ -643,7 +642,7 @@ class PowerMaxUtils(object):
                         "SRDF Sync wait/retries options not set or set "
                         "incorrectly, defaulting to 200 retries with a 3 "
                         "second wait. Configuration load warning: %(ke)s.",
-                        {'ke': six.text_type(ke)})
+                        {'ke': str(ke)})
                     rep_config_element['sync_retries'] = 200
                     rep_config_element['sync_interval'] = 3
 
@@ -719,7 +718,7 @@ class PowerMaxUtils(object):
         """
         LOG.info("Updating status for group: %(id)s.", {'id': group_id})
         model_update = ({'id': volume.id, 'status': 'available',
-                         'provider_location': six.text_type(volume_dict)})
+                         'provider_location': str(volume_dict)})
         if meta:
             model_update['metadata'] = meta
         return model_update

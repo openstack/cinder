@@ -15,7 +15,6 @@
 import json
 
 import requests
-import six
 
 from cinder.volume.drivers.dell_emc.powerflex import driver
 from cinder.volume.drivers.dell_emc.powerflex import rest_client
@@ -65,20 +64,20 @@ class MockHTTPSResponse(requests.Response):
     def __init__(self, content, status_code=200):
         super(MockHTTPSResponse, self).__init__()
 
-        if isinstance(content, six.text_type):
+        if isinstance(content, str):
             content = content.encode('utf-8')
         self._content = content
         self.status_code = status_code
 
     def json(self, **kwargs):
-        if isinstance(self._content, (bytes, six.text_type)):
+        if isinstance(self._content, (bytes, str)):
             return super(MockHTTPSResponse, self).json(**kwargs)
 
         return self._content
 
     @property
     def text(self):
-        if not isinstance(self._content, (bytes, six.text_type)):
+        if not isinstance(self._content, (bytes, str)):
             return json.dumps(self._content)
 
         return super(MockHTTPSResponse, self).text

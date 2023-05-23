@@ -14,10 +14,10 @@
 # under the License.
 
 
+import functools
 from os import path
 from unittest import mock
 
-import six
 import yaml
 
 from cinder.volume.drivers.dell_emc.vnx import client
@@ -62,7 +62,7 @@ def patch_extra_specs_validate(return_value=None, side_effect=None):
 
 def _build_patch_decorator(module_str, return_value=None, side_effect=None):
     def _inner_mock(func):
-        @six.wraps(func)
+        @functools.wraps(func)
         def decorator(*args, **kwargs):
             with mock.patch(
                     module_str,

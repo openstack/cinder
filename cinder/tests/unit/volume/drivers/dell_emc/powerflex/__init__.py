@@ -15,7 +15,6 @@
 import copy
 
 import requests
-import six
 
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
@@ -108,10 +107,10 @@ class TestPowerFlexDriver(test.TestCase):
     __https_response_mode = RESPONSE_MODE.Valid
     log = None
 
-    STORAGE_POOL_ID = six.text_type('1')
+    STORAGE_POOL_ID = str('1')
     STORAGE_POOL_NAME = 'SP1'
 
-    PROT_DOMAIN_ID = six.text_type('1')
+    PROT_DOMAIN_ID = str('1')
     PROT_DOMAIN_NAME = 'PD1'
 
     STORAGE_POOLS = ['{}:{}'.format(PROT_DOMAIN_NAME, STORAGE_POOL_NAME)]

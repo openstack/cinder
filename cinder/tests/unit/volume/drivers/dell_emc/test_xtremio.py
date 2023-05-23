@@ -19,7 +19,6 @@ import time
 from unittest import mock
 
 from oslo_utils import netutils
-import six
 
 from cinder import context
 from cinder import exception
@@ -131,8 +130,8 @@ def fix_data(data, object_type):
         ig_idx = get_xms_obj_by_name('initiator-groups',
                                      data['ig-id'])['index']
 
-        d['name'] = '_'.join([six.text_type(vol_idx),
-                              six.text_type(ig_idx),
+        d['name'] = '_'.join([str(vol_idx),
+                              str(ig_idx),
                               '1'])
 
     d[typ2id[object_type]] = ["a91e8c81c2d14ae4865187ce4f866f8a",
