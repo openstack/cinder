@@ -18,10 +18,14 @@ migrations.
 Schema migrations
 -----------------
 
-.. versionchanged:: 24.0.0 (Xena)
+.. versionchanged:: 19.0.0 (Xena)
 
    The database migration engine was changed from ``sqlalchemy-migrate`` to
    ``alembic``.
+
+.. versionchanged:: 22.0.0 (Antelope)
+
+   The legacy ``sqlalchemy-migrate``-based database migrations were removed.
 
 The `alembic`__ database migration tool is used to manage schema migrations in
 cinder. The migration files and related metadata can be found in
@@ -32,10 +36,10 @@ run by end users using the :program:`cinder-manage db sync` command.
 
 .. note::
 
-   There are also legacy migrations provided in the
-   ``cinder/db/legacy_migrations`` directory . These are provided to facilitate
-   upgrades from pre-Xena (24.0.0) deployments and will be removed in a future
-   release. They should not be modified or extended.
+   There wer also legacy migrations provided in the
+   ``cinder/db/legacy_migrations`` directory . These were provided to facilitate
+   upgrades from pre-Xena (19.0.0) deployments. They were removed in the
+   22.0.0 (Antelope) release.
 
 The best reference for alembic is the `alembic documentation`__, but a small
 example is provided here. You can create the migration either manually or

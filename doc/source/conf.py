@@ -55,8 +55,6 @@ apidoc_output_dir = 'contributor/api'
 apidoc_excluded_paths = [
     'tests/*',
     'tests',
-    'db/legacy_migrations/*',
-    'db/legacy_migrations',
     'db/migrations/*',
     'db/migrations',
     'db/sqlalchemy/*',
