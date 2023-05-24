@@ -422,7 +422,7 @@ class AttachmentManagerTestCase(test.TestCase):
                           self.context, None)
 
     @mock.patch('cinder.objects.VolumeAttachment.get_by_id',
-                side_effect=exception.VolumeAttachmentNotFound())
+                side_effect=exception.VolumeAttachmentNotFound(filter=''))
     def test_attachment_deletion_allowed_attachment_id_not_found(self,
                                                                  mock_get):
         """For users don't allow if attachment cannot be found."""
