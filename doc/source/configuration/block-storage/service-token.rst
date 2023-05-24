@@ -2,6 +2,15 @@
 Using service tokens
 ====================
 
+.. warning::
+
+   For all OpenStack releases after 2023-05-10, it is **required** that Nova be
+   configured to send a service token to Cinder and Cinder to receive it.  This
+   is required by the fix for `CVE-2023-2088
+   <https://nvd.nist.gov/vuln/detail/CVE-2023-2088>`_.  See
+   `OSSA-2023-003 <https://security.openstack.org/ossa/OSSA-2023-003.html>`_
+   for details.
+
 When a user initiates a request whose processing involves multiple services
 (for example, a boot-from-volume request to the Compute Service will require
 processing by the Block Storage Service, and may require processing by the
@@ -52,33 +61,123 @@ the user:
 Configuration
 ~~~~~~~~~~~~~
 
-To configure Cinder to send a "service token" along with the user's
-token when it makes a request to another service, you must do the
-following:
+To configure an OpenStack service that supports Service Tokens, like Nova and
+Cinder, to send a "service token" along with the user's token when it makes a
+request to another service, you must do the following:
 
-1.  Find the ``[service_user]`` section in the Cinder configuration
-    file (usually ``/etc/cinder/cinder.conf``, though it may be in a
-    different location in your installation).
+1. Configure the "sender" services to send the token when calling other
+   OpenStack services.
+2. Configure each service's user to have a service role in Keystone.
+3. Configure the "receiver" services to expect the token and validate it
+   appropriately on reception.
 
-2.  In that section, set ``send_service_user_token = true``.
+Send service token
+^^^^^^^^^^^^^^^^^^
 
-3.  Also in that section, fill in the appropriate configuration for
-    your service user (``username``, ``project_name``, etc.)
+To send the token we need to add to our configuration file the
+``[service_user]`` section and fill it in with the appropriate configuration
+for your service user (``username``, ``project_name``, etc.) and set the
+``send_service_user_token`` option to ``true`` to tell the service to send the
+token.
 
-4.  If Cinder is going to receive service tokens from other services
-    it needs to have two options configured in the
-    ``[keystone_authtoken]`` section of the configuration file:
+The configuration for the service user is basically the normal keystone user
+configuration like we would have in the ``[keystone_authtoken]`` section, but
+without the 2 configuration options we'll see in one of the next subsection to
+configure the reception of service tokens.
 
-    ``service_token_roles``
-        The value is a list of roles; the service user passing the service
-        token must have at least one of these roles or the token will be
-        rejected. The default value is ``service``.
+In most cases we would use the same user we do in ``[keystone_authtoken]``, for
+example for the nova configuration we would have something like this:
 
-    ``service_token_roles_required``
-        This is a boolean; the default value is ``False``.  It governs whether
-        the keystone middleware used by the receiving service will pay any
-        attention to the ``service_token_roles`` setting.  It should be set
-        to ``True``.
+.. code-block:: ini
+
+    [service_user]
+    send_service_user_token = True
+
+    # Copy following options from [keystone_authtoken] section
+    project_domain_name = Default
+    project_name = service
+    user_domain_name = Default
+    password = abc123
+    username = nova
+    auth_url = http://192.168.121.66/identity
+    auth_type = password
+
+Service role
+^^^^^^^^^^^^
+
+A service role is nothing more than a Keystone role that allows a deployment to
+identify a service without the need to make them admins, that way there is no
+change in the privileges but we are able to identify that the request is
+coming from another service and not a user.
+
+The default service role is ``service``, but we can use a different name or
+even have multiple service roles.  For simplicity's sake we recommend having
+just one, ``service``.
+
+We need to make sure that the user configured in the ``[service_user]`` section
+for a project has a service role.
+
+Assuming our users are ``nova`` and ``cinder`` from the ``service`` project and
+the service role is going to be the default ``service``, we first check
+`if the role exists or not
+<https://docs.openstack.org/keystone/latest/admin/cli-manage-projects-users-and-roles.html#view-role-details>`_:
+
+.. code-block:: bash
+
+    $ openstack role show service
+
+If it doesn't, we need `to create it
+<https://docs.openstack.org/keystone/latest/admin/cli-manage-projects-users-and-roles.html#create-a-role>`_
+
+.. code-block:: bash
+
+    $ openstack role create service
+
+Check if the users have the roles assigned or not:
+
+.. code-block:: bash
+
+    $ openstack role assignment list --user cinder --project service --names
+    $ openstack role assignment list --user nova --project service --names
+
+And if they are not we `assign the role to those users
+<https://docs.openstack.org/keystone/latest/admin/cli-manage-projects-users-and-roles.html#assign-a-role>`_
+
+.. code-block:: bash
+
+    $ openstack role add --user cinder --project service service
+    $ openstack role add --user nova --project service service
+
+More information on creating service users can be found in `the Keystone
+documentation <https://docs.openstack.org/keystone/latest/admin/manage-services.html>`_
+
+Receive service token
+^^^^^^^^^^^^^^^^^^^^^
+
+Now we need to make the services validate the service token on reception, this
+part is crucial.
+
+The 2 configuration options in ``[keystone_authoken]`` related to receiving
+service tokens are ``service_token_roles`` and
+``service_token_roles_required``.
+
+The ``service_token_roles`` contains a list of roles that we consider to belong
+to services.  The service user must belong to at least one of them to be
+considered a valid service token.  The value defaults to ``service``, so we
+don't need to set it if that's the value we are using.
+
+Now we need to tell the keystone middleware to actually validate the service
+token and confirm that it's not only a valid token, but that it has one of the
+roles set in ``service_token_roles``. We do this by setting
+``service_token_roles_required`` to ``true``.
+
+So we would have something like this in our ``[keystone_authtoken]`` section:
+
+.. code-block:: ini
+
+    [keystone_authtoken]
+    service_token_roles = service
+    service_token_roles_required = true
 
 .. _service-token-troubleshooting:
 
@@ -96,8 +195,8 @@ Identity Service (Keystone).
     section above.
 
     .. note::
-       As of the Train release, Glance does not have the ability to pass
-       service tokens.  It can receive them, though.  The place where you may
+       As of the 2023.1 release, Glance does not have the ability to pass
+       service tokens. It can receive them, though.  The place where you may
        still see a long running failure is when Glance is using a backend that
        requires Keystone validation (for example, the Swift backend) and the
        user token has expired.
