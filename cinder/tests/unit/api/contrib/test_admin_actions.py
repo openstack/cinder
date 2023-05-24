@@ -965,6 +965,8 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         super(AdminActionsAttachDetachTest, self).setUp()
         # start service to handle rpc messages for attach requests
         self.svc = self.start_service('volume', host='test')
+        self.mock_deletion_allowed = self.mock_object(
+            volume_api.API, 'attachment_deletion_allowed', return_value=None)
 
     def tearDown(self):
         self.svc.stop()
@@ -1020,6 +1022,16 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         admin_metadata = volume.admin_metadata
         self.assertEqual(1, len(admin_metadata))
         self.assertEqual('False', admin_metadata['readonly'])
+        # One call is for the terminate_connection and the other is for the
+        # detach
+        self.assertEqual(2, self.mock_deletion_allowed.call_count)
+        self.mock_deletion_allowed.assert_has_calls(
+            [mock.call(self.ctx, None, mock.ANY),
+             mock.call(self.ctx, attachment['id'], mock.ANY)])
+        for i in (0, 1):
+            self.assertIsInstance(
+                self.mock_deletion_allowed.call_args_list[i][0][2],
+                objects.Volume)
 
     def test_force_detach_host_attached_volume(self):
         # current status is available
@@ -1071,6 +1083,16 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         admin_metadata = volume['admin_metadata']
         self.assertEqual(1, len(admin_metadata))
         self.assertEqual('False', admin_metadata['readonly'])
+        # One call is for the terminate_connection and the other is for the
+        # detach
+        self.assertEqual(2, self.mock_deletion_allowed.call_count)
+        self.mock_deletion_allowed.assert_has_calls(
+            [mock.call(self.ctx, None, mock.ANY),
+             mock.call(self.ctx, attachment['id'], mock.ANY)])
+        for i in (0, 1):
+            self.assertIsInstance(
+                self.mock_deletion_allowed.call_args_list[i][0][2],
+                objects.Volume)
 
     def test_volume_force_detach_raises_remote_error(self):
         # current status is available
@@ -1114,6 +1136,10 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             resp = req.get_response(app())
             self.assertEqual(HTTPStatus.BAD_REQUEST, resp.status_int)
 
+        self.mock_deletion_allowed.assert_called_once_with(
+            self.ctx, None, volume)
+        self.mock_deletion_allowed.reset_mock()
+
         # test for VolumeBackendAPIException
         volume_remote_error = (
             messaging.RemoteError(exc_type='VolumeBackendAPIException'))
@@ -1133,6 +1159,8 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             self.assertRaises(messaging.RemoteError,
                               req.get_response,
                               app())
+        self.mock_deletion_allowed.assert_called_once_with(
+            self.ctx, None, volume)
 
     def test_volume_force_detach_raises_db_error(self):
         # In case of DB error 500 error code is returned to user
@@ -1178,6 +1206,8 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             self.assertRaises(messaging.RemoteError,
                               req.get_response,
                               app())
+        self.mock_deletion_allowed.assert_called_once_with(
+            self.ctx, None, volume)
 
     def test_volume_force_detach_missing_connector(self):
         # current status is available
@@ -1218,6 +1248,8 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             # make request
             resp = req.get_response(app())
             self.assertEqual(HTTPStatus.ACCEPTED, resp.status_int)
+        self.mock_deletion_allowed.assert_called_once_with(
+            self.ctx, None, volume)
 
     def test_attach_in_used_volume_by_instance(self):
         """Test that attaching to an in-use volume fails."""

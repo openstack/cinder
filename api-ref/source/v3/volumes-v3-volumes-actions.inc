@@ -337,6 +337,21 @@ Preconditions
 
 - Volume status must be ``in-use``.
 
+For security reasons (see bug `#2004555
+<https://bugs.launchpad.net/nova/+bug/2004555>`_), regardless of the policy
+defaults,  the Block Storage API rejects REST API calls manually made from
+users with a 409 status code if completing the request could pose a risk, which
+happens if all of these happen:
+
+- The request comes from a user
+- There's an instance uuid in provided attachment or in the volume's attachment
+- VM exists in Nova
+- Instance has the volume attached
+- Attached volume in instance is using the attachment
+
+Calls coming from other OpenStack services (like the Compute Service) are
+always accepted.
+
 Response codes
 --------------
 
@@ -344,6 +359,9 @@ Response codes
 
    - 202
 
+.. rest_status_code:: error ../status.yaml
+
+   - 409
 
 Request
 -------
@@ -415,6 +433,21 @@ perform this operation. Cloud providers can change these permissions
 through the ``volume_extension:volume_admin_actions:force_detach`` rule in
 the policy configuration file.
 
+For security reasons (see bug `#2004555
+<https://bugs.launchpad.net/nova/+bug/2004555>`_), regardless of the policy
+defaults,  the Block Storage API rejects REST API calls manually made from
+users with a 409 status code if completing the request could pose a risk, which
+happens if all of these happen:
+
+- The request comes from a user
+- There's an instance uuid in provided attachment or in the volume's attachment
+- VM exists in Nova
+- Instance has the volume attached
+- Attached volume in instance is using the attachment
+
+Calls coming from other OpenStack services (like the Compute Service) are
+always accepted.
+
 Response codes
 --------------
 
@@ -422,6 +455,9 @@ Response codes
 
    - 202
 
+.. rest_status_code:: error ../status.yaml
+
+   - 409
 
 Request
 -------
@@ -883,6 +919,22 @@ Preconditions
 
 - Volume status must be ``in-use``.
 
+For security reasons (see bug `#2004555
+<https://bugs.launchpad.net/nova/+bug/2004555>`_), regardless of the policy
+defaults,  the Block Storage API rejects REST API calls manually made from
+users with a 409 status code if completing the request could pose a risk, which
+happens if all of these happen:
+
+- The request comes from a user
+- There's an instance uuid in the volume's attachment
+- VM exists in Nova
+- Instance has the volume attached
+- Attached volume in instance is using the attachment
+
+Calls coming from other OpenStack services (like the Compute Service) are
+always accepted.
+
+
 Response codes
 --------------
 
@@ -890,6 +942,9 @@ Response codes
 
    - 202
 
+.. rest_status_code:: error ../status.yaml
+
+   - 409
 
 Request
 -------
