@@ -1669,7 +1669,22 @@ class API(base.Base):
         else:
             expected['host'] = db.Not(host)
 
-        filters = [~db.volume_has_snapshots_filter()]
+        # SAP: If the backend's snapshots are clones, then we don't
+        # have to filter out volumes that have snapshots.  We can find out
+        # if a backend has clones for snapshots by fetching the backend
+        # capabilities and looking for snapshot_type=='clone'
+        caps = self.volume_rpcapi.get_capabilities(
+            context, volume.service_topic_queue, discover=False)
+
+        # SAP(walter): If snapshots are clones, then we can migrate a
+        # volume to another pool on the same shard. So we can ignore
+        # filtering on the volume having snapshots
+        if caps.get('snapshot_type') == 'clone':
+            # This has to be (), not [] as the default filters param in the
+            # conditional_update is ()
+            filters = ()
+        else:
+            filters = [~db.volume_has_snapshots_filter()]
 
         updates = {'migration_status': 'starting',
                    'previous_status': volume.model.status}
@@ -1688,10 +1703,13 @@ class API(base.Base):
         result = volume.conditional_update(updates, expected, filters)
 
         if not result:
+            snaps_str = ""
+            if filters:
+                snaps_str = " have snapshots,"
             msg = _('Volume %s status must be available or in-use, must not '
-                    'be migrating, have snapshots, be replicated, be part of '
+                    'be migrating,%s be replicated, be part of '
                     'a group and destination host/cluster must be different '
-                    'than the current one') % volume.id
+                    'than the current one') % (volume.id, snaps_str)
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
