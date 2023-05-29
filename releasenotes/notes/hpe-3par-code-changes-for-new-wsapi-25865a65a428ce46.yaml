@@ -1,0 +1,4 @@
+fixes:
+  - |
+    HPE 3PAR driver `Bug #2015746 <https://bugs.launchpad.net/cinder/+bug/2015746>`_:
+    Fixed: minor code changes to work with new wsapi.

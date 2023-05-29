@@ -675,6 +675,11 @@ class HPE3PARBaseDriver(test.TestCase):
                                      'minor': 5,
                                      'revision': 0}
 
+    wsapi_version_2023 = {'major': 1,
+                          'build': 100000050,
+                          'minor': 10,
+                          'revision': 0}
+
     # Use this to point to latest version of wsapi
     wsapi_version_latest = wsapi_version_for_compression
 
@@ -892,28 +897,41 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected)
             self.assertEqual(self.STATUS_DONE, status)
 
-    def test_create_volume(self):
+    # (i) wsapi version is old/default
+    # (ii) wsapi version is 2023, then snapCPG isn't required
+    @ddt.data({'wsapi_version': None},
+              {'wsapi_version': HPE3PARBaseDriver.wsapi_version_2023})
+    @ddt.unpack
+    def test_create_volume(self, wsapi_version):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
+        mock_client = self.setup_driver(wsapi_version=wsapi_version)
+
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.driver.create_volume(self.volume)
+            if not wsapi_version:
+                # (i) old/default
+                self.driver.create_volume(self.volume)
+            else:
+                # (ii) wsapi 2023
+                common = self.driver._login()
+                common.create_volume(self.volume)
             comment = Comment({
                 "display_name": "Foo Volume",
                 "type": "OpenStack",
                 "name": "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
                 "volume_id": "d03338a9-9115-48a3-8dfc-35cdfcdc15a7"})
+            optional = {'comment': comment,
+                        'tpvv': True,
+                        'tdvv': False}
+            if not wsapi_version:
+                optional['snapCPG'] = HPE3PAR_CPG_SNAP
             expected = [
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
                     HPE3PAR_CPG,
-                    2048, {
-                        'comment': comment,
-                        'tpvv': True,
-                        'tdvv': False,
-                        'snapCPG': HPE3PAR_CPG_SNAP})]
+                    2048, optional)]
 
             mock_client.assert_has_calls(expected)
 
@@ -1253,6 +1271,89 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     'tgt',
                     mirror_config=True)]
             mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_volume_replicated_periodic_2023(self, _mock_volume_types):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(conf, None, self.wsapi_version_2023)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getRemoteCopyGroup.side_effect = (
+            hpeexceptions.HTTPNotFound)
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(conf, None,
+                                                   self.wsapi_version_2023)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            common = self.driver._login()
+            return_model = common.create_volume(self.volume_replicated)
+            comment = Comment({
+                "volume_type_name": "replicated",
+                "display_name": "Foo Volume",
+                "name": "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
+                "volume_type_id": "be9181f1-4040-46f2-8298-e7532f2bf9db",
+                "volume_id": "d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
+                "qos": {},
+                "type": "OpenStack"})
+
+            backend_id = self.replication_targets[0]['backend_id']
+            expected = [
+                mock.call.createVolume(
+                    self.VOLUME_3PAR_NAME,
+                    HPE3PAR_CPG,
+                    2048, {
+                        'comment': comment,
+                        'tpvv': True,
+                        'tdvv': False}),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_NAME),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.createRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    [{'userCPG': HPE3PAR_CPG_REMOTE,
+                      'targetName': backend_id,
+                      'mode': PERIODIC_MODE}],
+                    {'localUserCPG': HPE3PAR_CPG}),
+                mock.call.addVolumeToRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    [{'secVolumeName': self.VOLUME_3PAR_NAME,
+                      'targetName': backend_id}],
+                    optional={'volumeAutoCreation': True}),
+                mock.call.modifyRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    {'targets': [{'syncPeriod': SYNC_PERIOD,
+                                  'targetName': backend_id}]}),
+                mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected)
+            self.assertEqual({'replication_status': 'enabled',
+                              'provider_location': self.CLIENT_ID},
+                             return_model)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_replicated_sync(self, _mock_volume_types):
@@ -4245,10 +4346,16 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 expected_retype_specs)
             self.assertEqual(expected_obj, obj)
 
+    # (i) wsapi version is old/default
+    # (ii) wsapi version is 2023, then snapCPG isn't required
+    @ddt.data({'wsapi_version': None},
+              {'wsapi_version': HPE3PARBaseDriver.wsapi_version_2023})
+    @ddt.unpack
     @mock.patch.object(volume_types, 'get_volume_type')
-    def test_manage_existing_with_no_snap_cpg(self, _mock_volume_types):
+    def test_manage_existing_with_no_snap_cpg(self, _mock_volume_types,
+                                              wsapi_version):
         _mock_volume_types.return_value = self.volume_type
-        mock_client = self.setup_driver()
+        mock_client = self.setup_driver(wsapi_version=wsapi_version)
 
         new_comment = Comment({
             "display_name": "Foo Volume",
@@ -4280,15 +4387,20 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
             obj = self.driver.manage_existing(volume, existing_ref)
 
+            optional = {'newName': osv_matcher,
+                        'comment': new_comment}
+
+            if not wsapi_version:
+                # (i) old/default
+                # manage_existing() should be setting
+                # blank snapCPG to the userCPG
+                optional['snapCPG'] = 'testUserCpg0'
+
             expected_manage = [
                 mock.call.getVolume(existing_ref['source-name']),
                 mock.call.modifyVolume(
                     existing_ref['source-name'],
-                    {'newName': osv_matcher,
-                     'comment': new_comment,
-                     # manage_existing() should be setting
-                     # blank snapCPG to the userCPG
-                     'snapCPG': 'testUserCpg0'})
+                    optional)
             ]
 
             mock_client.assert_has_calls(self.standard_login + expected_manage)
@@ -6052,16 +6164,21 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
             mock_client.assert_has_calls(expected)
 
+    # (i) wsapi version is old/default
+    # (ii) wsapi version is 2023, then snapCPG isn't required
+    @ddt.data({'wsapi_version': None},
+              {'wsapi_version': HPE3PARBaseDriver.wsapi_version_2023})
+    @ddt.unpack
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'get_volume_settings_from_type')
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src_group(self, cg_ss_enable, vol_ss_enable,
-                                         typ_info):
+                                         typ_info, wsapi_version):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
-        mock_client = self.setup_driver()
+        mock_client = self.setup_driver(wsapi_version=wsapi_version)
         task_id = 1
         mock_client.copyVolume.return_value = {'taskid': task_id}
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
@@ -6092,6 +6209,10 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             source_grp = self.fake_group_object(
                 grp_id=self.SRC_CONSIS_GROUP_ID)
 
+            optional = {'online': True,
+                        'tpvv': mock.ANY, 'tdvv': mock.ANY}
+            if not wsapi_version:
+                optional['snapCPG'] = HPE3PAR_CPG
             expected = [
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet(
@@ -6107,17 +6228,25 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     mock.ANY,
                     self.VOLUME_NAME_3PAR,
                     HPE3PAR_CPG,
-                    {'snapCPG': HPE3PAR_CPG, 'online': True,
-                     'tpvv': mock.ANY, 'tdvv': mock.ANY}),
+                    optional),
                 mock.call.addVolumeToVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     self.VOLUME_NAME_3PAR)]
 
             # Create a consistency group from a source consistency group.
-            self.driver.create_group_from_src(
-                context.get_admin_context(), group,
-                [volume], source_group=source_grp,
-                source_vols=[source_volume])
+            if not wsapi_version:
+                # (i) old/default
+                self.driver.create_group_from_src(
+                    context.get_admin_context(), group,
+                    [volume], source_group=source_grp,
+                    source_vols=[source_volume])
+            else:
+                # (ii) wsapi 2023
+                common = self.driver._login()
+                common.create_group_from_src(
+                    context.get_admin_context(), group,
+                    [volume], source_group=source_grp,
+                    source_vols=[source_volume])
 
             mock_client.assert_has_calls(expected)
 
