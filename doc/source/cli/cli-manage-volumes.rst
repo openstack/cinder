@@ -27,13 +27,12 @@ This example creates a ``my-new-volume`` volume based on an image.
       | 4b227119-68a1-4b28-8505-f94c6ea4c6dc | cirros-0.3.5-x86_64-uec-ramdisk |
       +--------------------------------------+---------------------------------+
 
-
 #. List the availability zones, and note the ID of the availability zone in
    which you want to create your volume:
 
    .. code-block:: console
 
-      $ openstack availability zone list
+      $ openstack availability zone list --volume
       +-----------+-------------+
       | Zone Name | Zone Status |
       +-----------+-------------+
@@ -85,7 +84,6 @@ This example creates a ``my-new-volume`` volume based on an image.
       | bab4b0e0-ce3d-4d57-bf57-3c51319f5202 | my-new-volume | available | 8    |             |
       +--------------------------------------+---------------+-----------+------+-------------+
 
-
    If your volume was created successfully, its status is ``available``. If
    its status is ``error``, you might have exceeded your quota.
 
@@ -101,7 +99,6 @@ volume creation.
 #. cinder_img_volume_type (via glance image metadata)
 #. default volume type (via project defaults or cinder.conf)
 
-
 volume-type
 ^^^^^^^^^^^
 
@@ -109,17 +106,7 @@ User can specify `volume type` when creating a volume.
 
 .. code-block:: console
 
-      $ openstack volume create -h -f {json,shell,table,value,yaml}
-                               -c COLUMN --max-width <integer>
-                               --noindent --prefix PREFIX --size <size>
-                               --type <volume-type> --image <image>
-                               --snapshot <snapshot> --source <volume>
-                               --description <description> --user <user>
-                               --project <project>
-                               --availability-zone <availability-zone>
-                               --property <key=value>
-                               <name>
-
+   $ openstack volume create --type <volume-type> ...
 
 cinder_img_volume_type
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -132,71 +119,67 @@ a volume from the image.
 
 .. code-block:: console
 
-      $ openstack image list
-      +----------------------------------+---------------------------------+--------+
-      | ID                               | Name                            | Status |
-      +----------------------------------+---------------------------------+--------+
-      | 376bd633-c9c9-4c5d-a588-342f4f66 | cirros-0.3.5-x86_64-uec         | active |
-      | d086                             |                                 |        |
-      | 2c20fce7-2e68-45ee-ba8d-         | cirros-0.3.5-x86_64-uec-ramdisk | active |
-      | beba27a91ab5                     |                                 |        |
-      | a5752de4-9faf-4c47-acbc-         | cirros-0.3.5-x86_64-uec-kernel  | active |
-      | 78a5efa7cc6e                     |                                 |        |
-      +----------------------------------+---------------------------------+--------+
+   $ openstack image list
+   +--------------------------------------+---------------------------------+--------+
+   | ID                                   | Name                            | Status |
+   +--------------------------------------+---------------------------------+--------+
+   | 376bd633-c9c9-4c5d-a588-342f4f66d086 | cirros-0.3.5-x86_64-uec         | active |
+   | 2c20fce7-2e68-45ee-ba8d-beba27a91ab5 | cirros-0.3.5-x86_64-uec-ramdisk | active |
+   | a5752de4-9faf-4c47-acbc-78a5efa7cc6e | cirros-0.3.5-x86_64-uec-kernel  | active |
+   +--------------------------------------+---------------------------------+--------+
 
+   $ openstack image show 376bd633-c9c9-4c5d-a588-342f4f66d086
+   +------------------------+------------------------------------------------------+
+   | Field                  | Value                                                |
+   +------------------------+------------------------------------------------------+
+   | checksum               | eb9139e4942121f22bbc2afc0400b2a                      |
+   | cinder_img_volume_type | nfstype                                              |
+   | container_format       | ami                                                  |
+   | created_at             | 2016-10-13T03:28:55Z                                 |
+   | disk_format            | ami                                                  |
+   | file                   | /v2/images/376bd633-c9c9-4c5d-a588-342f4f66d086/file |
+   | id                     | 376bd633-c9c9-4c5d-a588-342f4f66d086                 |
+   | min_disk               | 0                                                    |
+   | min_ram                | 0                                                    |
+   | name                   | cirros-0.3.5-x86_64-uec                              |
+   | owner                  | 88ba456e3a884c318394737765e0ef4d                     |
+   | properties             | kernel_id='a5752de4-9faf-4c47-acbc-78a5efa7cc6e',    |
+   |                        | ramdisk_id='2c20fce7-2e68-45ee-ba8d-beba27a91ab5'    |
+   | protected              | False                                                |
+   | schema                 | /v2/schemas/image                                    |
+   | size                   | 25165824                                             |
+   | status                 | active                                               |
+   | tags                   |                                                      |
+   | updated_at             | 2016-10-13T03:28:55Z                                 |
+   | virtual_size           | None                                                 |
+   | visibility             | public                                               |
+   +------------------------+------------------------------------------------------+
 
-      $ openstack image show 376bd633-c9c9-4c5d-a588-342f4f66d086
-      +------------------------+------------------------------------------------------+
-      | Field                  | Value                                                |
-      +------------------------+------------------------------------------------------+
-      | checksum               | eb9139e4942121f22bbc2afc0400b2a                      |
-      | cinder_img_volume_type | nfstype                                              |
-      | container_format       | ami                                                  |
-      | created_at             | 2016-10-13T03:28:55Z                                 |
-      | disk_format            | ami                                                  |
-      | file                   | /v2/images/376bd633-c9c9-4c5d-a588-342f4f66d086/file |
-      | id                     | 376bd633-c9c9-4c5d-a588-342f4f66d086                 |
-      | min_disk               | 0                                                    |
-      | min_ram                | 0                                                    |
-      | name                   | cirros-0.3.5-x86_64-uec                              |
-      | owner                  | 88ba456e3a884c318394737765e0ef4d                     |
-      | properties             | kernel_id='a5752de4-9faf-4c47-acbc-78a5efa7cc6e',    |
-      |                        | ramdisk_id='2c20fce7-2e68-45ee-ba8d-beba27a91ab5'    |
-      | protected              | False                                                |
-      | schema                 | /v2/schemas/image                                    |
-      | size                   | 25165824                                             |
-      | status                 | active                                               |
-      | tags                   |                                                      |
-      | updated_at             | 2016-10-13T03:28:55Z                                 |
-      | virtual_size           | None                                                 |
-      | visibility             | public                                               |
-      +------------------------+------------------------------------------------------+
-
-      $ openstack volume create --image 376bd633-c9c9-4c5d-a588-342f4f66d086 \
-        --size 1 --availability-zone nova test
-      +---------------------+--------------------------------------+
-      | Field               | Value                                |
-      +---------------------+--------------------------------------+
-      | attachments         | []                                   |
-      | availability_zone   | nova                                 |
-      | bootable            | false                                |
-      | consistencygroup_id | None                                 |
-      | created_at          | 2016-10-13T06:29:53.688599           |
-      | description         | None                                 |
-      | encrypted           | False                                |
-      | id                  | e6e6a72d-cda7-442c-830f-f306ea6a03d5 |
-      | multiattach         | False                                |
-      | name                | test                                 |
-      | properties          |                                      |
-      | replication_status  | disabled                             |
-      | size                | 1                                    |
-      | snapshot_id         | None                                 |
-      | source_volid        | None                                 |
-      | status              | creating                             |
-      | type                | nfstype                              |
-      | updated_at          | None                                 |
-      | user_id             | 33fdc37314914796883706b33e587d51     |
-      +---------------------+--------------------------------------+
+   $ openstack volume create --image 376bd633-c9c9-4c5d-a588-342f4f66d086 \
+       --size 1 --availability-zone nova test
+   +---------------------+--------------------------------------+
+   | Field               | Value                                |
+   +---------------------+--------------------------------------+
+   | attachments         | []                                   |
+   | availability_zone   | nova                                 |
+   | bootable            | false                                |
+   | consistencygroup_id | None                                 |
+   | created_at          | 2016-10-13T06:29:53.688599           |
+   | description         | None                                 |
+   | encrypted           | False                                |
+   | id                  | e6e6a72d-cda7-442c-830f-f306ea6a03d5 |
+   | multiattach         | False                                |
+   | name                | test                                 |
+   | properties          |                                      |
+   | replication_status  | disabled                             |
+   | size                | 1                                    |
+   | snapshot_id         | None                                 |
+   | source_volid        | None                                 |
+   | status              | creating                             |
+   | type                | nfstype                              |
+   | updated_at          | None                                 |
+   | user_id             | 33fdc37314914796883706b33e587d51     |
+   +---------------------+--------------------------------------+
 
 default volume type
 ^^^^^^^^^^^^^^^^^^^
@@ -209,9 +192,9 @@ default_volume_type) can be checked with the following command:
 
 .. code-block:: console
 
-   $ cinder type-default
+   $ openstack volume type list --default
 
-There are 2 ways to set the default volume type:
+There are two ways to set the default volume type:
 
 1) Project specific defaults
 2) default_volume_type defined in cinder.conf
@@ -232,13 +215,12 @@ configured in cinder.conf is used to create volumes.
 
 Example cinder.conf file configuration.
 
-.. code-block:: console
+.. code-block:: ini
 
    [default]
    default_volume_type = lvmdriver-1
 
 .. _Attach_a_volume_to_an_instance:
-
 
 Attach a volume to an instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

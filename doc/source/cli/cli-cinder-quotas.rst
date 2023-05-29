@@ -88,69 +88,47 @@ Administrative users can view Block Storage service quotas.
 
    .. code-block:: console
 
-      $ openstack quota show $PROJECT_ID
+      $ openstack quota show --volume $PROJECT_ID
       +-----------------------+-------+
-      | Field                 | Value |
+      | Resource              | Limit |
       +-----------------------+-------+
-      | backup-gigabytes      | 1000  |
-      | backups               | 10    |
-      | cores                 | 20    |
-      | fixed-ips             | -1    |
-      | floating-ips          | 50    |
-      | gigabytes             | 1000  |
-      | gigabytes_lvmdriver-1 | -1    |
-      | health_monitors       | None  |
-      | injected-file-size    | 10240 |
-      | injected-files        | 5     |
-      | injected-path-size    | 255   |
-      | instances             | 10    |
-      | key-pairs             | 100   |
-      | l7_policies           | None  |
-      | listeners             | None  |
-      | load_balancers        | None  |
-      | location              | None  |
-      | name                  | None  |
-      | networks              | 10    |
-      | per-volume-gigabytes  | -1    |
-      | pools                 | None  |
-      | ports                 | 50    |
-      | project               | None  |
-      | project_id            | None  |
-      | properties            | 128   |
-      | ram                   | 51200 |
-      | rbac_policies         | 10    |
-      | routers               | 10    |
-      | secgroup-rules        | 100   |
-      | secgroups             | 10    |
-      | server-group-members  | 10    |
-      | server-groups         | 10    |
-      | snapshots             | 10    |
-      | snapshots_lvmdriver-1 | -1    |
-      | subnet_pools          | -1    |
-      | subnets               | 10    |
-      | volumes               | 10    |
-      | volumes_lvmdriver-1   | -1    |
+      | volumes               |    10 |
+      | snapshots             |    10 |
+      | gigabytes             |  1000 |
+      | backups               |    10 |
+      | volumes_lvmdriver-1   |    -1 |
+      | gigabytes_lvmdriver-1 |    -1 |
+      | snapshots_lvmdriver-1 |    -1 |
+      | volumes___DEFAULT__   |    -1 |
+      | gigabytes___DEFAULT__ |    -1 |
+      | snapshots___DEFAULT__ |    -1 |
+      | groups                |    10 |
+      | backup-gigabytes      |  1000 |
+      | per-volume-gigabytes  |    -1 |
       +-----------------------+-------+
-
 
 #. Show the current usage of a per-project quota:
 
    .. code-block:: console
 
-      $ cinder quota-usage $PROJECT_ID
-      +-----------------------+--------+----------+-------+
-      | Type                  | In_use | Reserved | Limit |
-      +-----------------------+--------+----------+-------+
-      | backup_gigabytes      | 0      | 0        | 1000  |
-      | backups               | 0      | 0        | 10    |
-      | gigabytes             | 0      | 0        | 1000  |
-      | gigabytes_lvmdriver-1 | 0      | 0        | -1    |
-      | per_volume_gigabytes  | 0      | 0        | -1    |
-      | snapshots             | 0      | 0        | 10    |
-      | snapshots_lvmdriver-1 | 0      | 0        | -1    |
-      | volumes               | 0      | 0        | 10    |
-      | volumes_lvmdriver-1   | 0      | 0        | -1    |
-      +-----------------------+--------+----------+-------+
+      $ openstack quota show --volume --usage $PROJECT_ID
+      +-----------------------+-------+--------+----------+
+      | Resource              | Limit | In Use | Reserved |
+      +-----------------------+-------+--------+----------+
+      | volumes               |    10 |      1 |        0 |
+      | snapshots             |    10 |      0 |        0 |
+      | gigabytes             |  1000 |      1 |        0 |
+      | backups               |    10 |      0 |        0 |
+      | volumes_lvmdriver-1   |    -1 |      1 |        0 |
+      | gigabytes_lvmdriver-1 |    -1 |      1 |        0 |
+      | snapshots_lvmdriver-1 |    -1 |      0 |        0 |
+      | volumes___DEFAULT__   |    -1 |      0 |        0 |
+      | gigabytes___DEFAULT__ |    -1 |      0 |        0 |
+      | snapshots___DEFAULT__ |    -1 |      0 |        0 |
+      | groups                |    10 |      0 |        0 |
+      | backup-gigabytes      |  1000 |      0 |        0 |
+      | per-volume-gigabytes  |    -1 |      0 |        0 |
+      +-----------------------+-------+--------+----------+
 
 
 Edit and update Block Storage service quotas
@@ -245,4 +223,4 @@ service quotas.
 
    .. code-block:: console
 
-      $ cinder quota-delete $PROJECT_ID
+      $ openstack quota delete --volume $PROJECT_ID

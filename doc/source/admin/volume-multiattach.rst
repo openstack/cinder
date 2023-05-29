@@ -54,8 +54,8 @@ volume type the following way:
 
 .. code-block:: console
 
-   $ cinder type-create multiattach
-   $ cinder type-key multiattach set multiattach="<is> True"
+   $ openstack volume type create multiattach
+   $ openstack volume type set --property multiattach="<is> True"  multiattach
 
 .. note::
 
@@ -69,7 +69,7 @@ this:
 
 .. code-block:: console
 
-   $ cinder create <volume_size> --name <volume_name> --volume-type <volume_type_uuid>
+   $ openstack volume create --size 10 --type multiattach my-volume
 
 In addition, it is possible to retype a volume to be (or not to be) multiattach
 capable. Currently however we only allow retyping a volume if its status is
