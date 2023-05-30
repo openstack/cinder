@@ -147,7 +147,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         pass
 
     @volume_utils.trace
-    def create_volume(self, volume):
+    def create_volume(self, volume, perform_replica=True):
         return self.common.create_volume(volume)
 
     @volume_utils.trace

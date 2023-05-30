@@ -2992,6 +2992,69 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
             mock_client.assert_has_calls(expected)
 
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_cloned_replicated_volume(self, _mock_volume_types):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getRemoteCopyGroup.side_effect = (
+            hpeexceptions.HTTPNotFound)
+        mock_client.getCPG.return_value = {'domain': None}
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'sync',
+                'volume_type': self.volume_type_replicated}}
+
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'name': mock.ANY}
+        task_id = 1
+        mock_client.copyVolume.return_value = {'taskid': task_id}
+        mock_client.getTask.return_value = {'status': 1}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            type_id_replicated = HPE3PARBaseDriver.VOLUME_TYPE_ID_REPLICATED
+            volume = copy.deepcopy(self.volume_replicated)
+            src_vref = {'id': HPE3PARBaseDriver.VOLUME_ID,
+                        'name': HPE3PARBaseDriver.VOLUME_NAME,
+                        'size': 2, 'status': 'available',
+                        'volume_type': 'replicated',
+                        'volume_type_id': type_id_replicated}
+            model_update = self.driver.create_cloned_volume(volume, src_vref)
+            self.assertEqual(model_update['replication_status'],
+                             fields.ReplicationStatus.ENABLED)
+
+            common = hpecommon.HPE3PARCommon(None)
+            vol_name = common._get_3par_vol_name(volume['id'])
+            src_vol_name = common._get_3par_vol_name(src_vref['id'])
+            optional = {'priority': 1}
+            comment = mock.ANY
+
+            expected = [
+                mock.call.createVolume(vol_name, 'OpenStackCPG',
+                                       2048, comment),
+                mock.call.copyVolume(
+                    src_vol_name,
+                    vol_name,
+                    None,
+                    optional=optional),
+                mock.call.getTask(task_id),
+                mock.call.getRemoteCopyGroup('rcg-0DM4qZEVSKON-DXN-N'),
+                mock.call.startRemoteCopy('rcg-0DM4qZEVSKON-DXN-N')
+            ]
+
+            mock_client.assert_has_calls(expected)
+
     def test_migrate_volume(self):
 
         conf = {
