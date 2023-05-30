@@ -306,11 +306,12 @@ class HPE3PARCommon(object):
         4.0.19 - Update code to work with new WSAPI (of 2023). Bug #2015746
         4.0.20 - Use small QoS Latency value. Bug #2018994
         4.0.21 - Fix issue seen during retype/migrate. Bug #2026718
+        4.0.22 - Fixed clone of replicated volume. Bug #2021941
 
 
     """
 
-    VERSION = "4.0.21"
+    VERSION = "4.0.22"
 
     stats = {}
 
@@ -2371,7 +2372,7 @@ class HPE3PARCommon(object):
 
         return volume_settings
 
-    def create_volume(self, volume):
+    def create_volume(self, volume, perform_replica=True):
         LOG.debug('CREATE VOLUME (%(disp_name)s: %(vol_name)s %(id)s on '
                   '%(host)s)',
                   {'disp_name': volume['display_name'],
@@ -2469,10 +2470,11 @@ class HPE3PARCommon(object):
                     LOG.error("Exception: %s", ex)
                     raise exception.CinderException(ex)
 
-            if (self._volume_of_replicated_type(volume,
-                                                hpe_tiramisu_check=True)
-               and self._do_volume_replication_setup(volume)):
-                replication_flag = True
+            if perform_replica:
+                if (self._volume_of_replicated_type(volume,
+                                                    hpe_tiramisu_check=True)
+                   and self._do_volume_replication_setup(volume)):
+                    replication_flag = True
 
         except hpeexceptions.HTTPConflict:
             msg = _("Volume (%s) already exists on array") % volume_name
@@ -2614,13 +2616,17 @@ class HPE3PARCommon(object):
             if str(src_vref['status']) == 'backing-up':
                 back_up_process = True
 
-            # if the sizes of the 2 volumes are the same and except backup
-            # process for ISCSI volume with chap enabled on it.
+            # (i) if the sizes of the 2 volumes are the same and
+            # (ii) this is not a backup process for ISCSI volume with chap
+            #      enabled on it and
+            #  (iii) volume is not replicated
             # we can do an online copy, which is a background process
             # on the 3PAR that makes the volume instantly available.
             # We can't resize a volume, while it's being copied.
             if volume['size'] == src_vref['size'] and not (
-               back_up_process and vol_chap_enabled):
+               back_up_process and vol_chap_enabled) and not (
+                self._volume_of_replicated_type(volume,
+                                                hpe_tiramisu_check=True)):
                 LOG.debug("Creating a clone of volume, using online copy.")
 
                 type_info = self.get_volume_settings_from_type(volume)
@@ -2656,18 +2662,11 @@ class HPE3PARCommon(object):
                         LOG.error(msg)
                         raise exception.CinderException(msg)
 
-                # v2 replication check
-                replication_flag = False
-                if (self._volume_of_replicated_type(volume,
-                                                    hpe_tiramisu_check=True)
-                   and self._do_volume_replication_setup(volume)):
-                    replication_flag = True
-
                 if self._volume_of_hpe_tiramisu_type(volume):
                     hpe_tiramisu = True
 
                 return self._get_model_update(volume['host'], cpg,
-                                              replication=replication_flag,
+                                              replication=False,
                                               provider_location=self.client.id,
                                               hpe_tiramisu=hpe_tiramisu)
             else:
@@ -2677,7 +2676,8 @@ class HPE3PARCommon(object):
                 LOG.debug("Creating a clone of volume, using non-online copy.")
 
                 # we first have to create the destination volume
-                model_update = self.create_volume(volume)
+                model_update = self.create_volume(volume,
+                                                  perform_replica=False)
 
                 optional = {'priority': 1}
                 body = self.client.copyVolume(src_vol_name, vol_name, None,
@@ -2693,6 +2693,24 @@ class HPE3PARCommon(object):
                 else:
                     LOG.debug('Copy volume completed: create_cloned_volume: '
                               'id=%s.', volume['id'])
+
+                # v2 replication check
+                LOG.debug("v2 replication check")
+                replication_flag = False
+                if (self._volume_of_replicated_type(volume,
+                                                    hpe_tiramisu_check=True)
+                   and self._do_volume_replication_setup(volume)):
+                    replication_flag = True
+                    type_info = self.get_volume_settings_from_type(volume)
+                    cpg = type_info['cpg']
+                    model_update = self._get_model_update(
+                        volume['host'], cpg,
+                        replication=True,
+                        provider_location=self.client.id,
+                        hpe_tiramisu=hpe_tiramisu)
+
+                LOG.debug("replication_flag: %(flag)s",
+                          {'flag': replication_flag})
 
                 return model_update
 
