@@ -26,7 +26,6 @@ from oslo_utils import importutils
 from oslo_utils import units
 from oslo_utils import versionutils
 import requests
-import six
 
 import cinder
 from cinder import exception
@@ -100,7 +99,7 @@ if krest:
                 err_msg = err.response.text
                 if self._should_retry(err_code, err_msg):
                     raise KaminarioRetryableException(
-                        reason=six.text_type(err_msg))
+                        reason=str(err_msg))
                 raise
             finally:
                 self.krestlock.release()
