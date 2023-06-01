@@ -181,6 +181,7 @@
           $TEMPEST_CONFIG:
             volume-feature-enabled:
               volume_revert: True
+    timeout: 10800
 
 - job:
     # this depends on some ceph admin setup which is not yet complete
