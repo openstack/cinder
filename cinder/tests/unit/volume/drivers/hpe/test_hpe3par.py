@@ -1107,11 +1107,18 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
             self.assertEqual(expected_cpg, result['snap_cpg'])
 
+    # (i) normal value; eg. 7, 10, etc
+    # (ii) small value less than 1; eg. 0.1, 0.02, etc
+    @ddt.data({'latency': 25}, {'latency': 0.2})
+    @ddt.unpack
     @mock.patch.object(volume_types, 'get_volume_type')
-    def test_create_volume_qos(self, _mock_volume_types):
+    def test_create_volume_qos(self, _mock_volume_types, latency):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
+
+        QOS = self.QOS.copy()
+        QOS['qos:latency'] = latency
 
         _mock_volume_types.return_value = {
             'name': 'gold',
@@ -1119,7 +1126,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 'cpg': HPE3PAR_CPG_QOS,
                 'snap_cpg': HPE3PAR_CPG_SNAP,
                 'vvs_name': self.VVS_NAME,
-                'qos': self.QOS,
+                'qos': QOS,
                 'tpvv': True,
                 'tdvv': False,
                 'volume_type': self.volume_type}}
