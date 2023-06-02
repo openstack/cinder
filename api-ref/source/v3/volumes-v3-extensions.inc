@@ -3,9 +3,6 @@
 API extensions (extensions)
 ===========================
 
-
-
-
 List Known API extensions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -24,14 +21,12 @@ Response codes
 
    - 300
 
-
 Request
 -------
 
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-
 
 Response Parameters
 -------------------
@@ -41,18 +36,11 @@ Response Parameters
    - updated: updated_at
    - description: description_extn
    - links: links
-   - namespace: namespace
    - alias: alias
    - name: name
-
-
-
 
 Response Example
 ----------------
 
 .. literalinclude:: ./samples/extensions/extensions-list-response.json
    :language: javascript
-
-
-
