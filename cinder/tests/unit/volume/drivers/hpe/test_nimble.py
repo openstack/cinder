@@ -14,11 +14,11 @@
 #    under the License.
 
 
+import http.client as http_client
 import sys
 from unittest import mock
 
 from oslo_utils import uuidutils
-from six.moves import http_client
 
 from cinder import context
 from cinder import exception

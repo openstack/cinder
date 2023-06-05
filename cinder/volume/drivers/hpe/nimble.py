@@ -32,7 +32,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 import requests
-import six
 
 from cinder.common import constants
 from cinder import exception
@@ -242,7 +241,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
             _retry_remove_vol(volume)
         except NimbleAPIException as ex:
             LOG.debug("delete volume exception: %s", ex)
-            if SM_OBJ_HAS_CLONE in six.text_type(ex):
+            if SM_OBJ_HAS_CLONE in str(ex):
                 LOG.warning('Volume %(vol)s : %(state)s',
                             {'vol': volume['name'],
                              'state': SM_OBJ_HAS_CLONE})
@@ -1276,7 +1275,7 @@ def _connection_checker(func):
                 return func(self, *args, **kwargs)
             except Exception as e:
                 if attempts < 1 and (re.search("Failed to execute",
-                                     six.text_type(e))):
+                                     str(e))):
                     LOG.info('Session might have expired.'
                              ' Trying to relogin')
                     self.login()
@@ -1327,7 +1326,7 @@ class NimbleRestAPIExecutor(object):
 
     def get_group_info(self):
         group_id = self.get_group_id()
-        api = 'groups/' + six.text_type(group_id)
+        api = 'groups/' + str(group_id)
         r = self.get(api)
         if not r.json()['data']:
             raise NimbleAPIException(_("Unable to retrieve Group info for: %s")
@@ -1666,7 +1665,7 @@ class NimbleRestAPIExecutor(object):
         return r.json()['data'][0]['id']
 
     def get_pool_info(self, pool_id):
-        api = 'pools/' + six.text_type(pool_id)
+        api = 'pools/' + str(pool_id)
         r = self.get(api)
         return r.json()['data']
 
@@ -1699,7 +1698,7 @@ class NimbleRestAPIExecutor(object):
         return r.json()['data'][0]['id']
 
     def get_volume_name(self, volume_id):
-        api = "volumes/" + six.text_type(volume_id)
+        api = "volumes/" + str(volume_id)
         r = self.get(api)
         if not r.json()['data']:
             raise NimbleAPIException(_("Unable to retrieve information for "
@@ -1719,13 +1718,13 @@ class NimbleRestAPIExecutor(object):
             self.post(api, data)
         except NimbleAPIException as ex:
             LOG.debug("add_acl_exception: %s", ex)
-            if SM_OBJ_EXIST_MSG in six.text_type(ex):
+            if SM_OBJ_EXIST_MSG in str(ex):
                 LOG.warning('Volume %(vol)s : %(state)s',
                             {'vol': volume['name'],
                              'state': SM_OBJ_EXIST_MSG})
             else:
                 msg = (_("Add access control failed with error:  %s") %
-                       six.text_type(ex))
+                       str(ex))
                 raise NimbleAPIException(msg)
 
     def get_acl_record(self, volume_id, initiator_group_id):
@@ -1741,7 +1740,7 @@ class NimbleRestAPIExecutor(object):
         return r.json()['data'][0]
 
     def get_volume_acl_records(self, volume_id):
-        api = "volumes/" + six.text_type(volume_id)
+        api = "volumes/" + str(volume_id)
         r = self.get(api)
         if not r.json()['data']:
             raise NimbleAPIException(_("Unable to retrieve information for "
@@ -1778,13 +1777,13 @@ class NimbleRestAPIExecutor(object):
                 self.delete(api)
         except NimbleAPIException as ex:
             LOG.debug("remove_acl_exception: %s", ex)
-            if SM_OBJ_ENOENT_MSG in six.text_type(ex):
+            if SM_OBJ_ENOENT_MSG in str(ex):
                 LOG.warning('Volume %(vol)s : %(state)s',
                             {'vol': volume['name'],
                              'state': SM_OBJ_ENOENT_MSG})
             else:
                 msg = (_("Remove access control failed with error:  %s") %
-                       six.text_type(ex))
+                       str(ex))
                 raise NimbleAPIException(msg)
 
     def get_snap_info_by_id(self, snap_id, vol_id):
@@ -1878,9 +1877,9 @@ class NimbleRestAPIExecutor(object):
     @utils.retry(NimbleAPIException, 2, 3)
     def online_vol(self, volume_name, online_flag):
         volume_id = self.get_volume_id_by_name(volume_name)
-        LOG.debug("volume_id %s", six.text_type(volume_id))
+        LOG.debug("volume_id %s", str(volume_id))
         eventlet.sleep(DEFAULT_SLEEP)
-        api = "volumes/" + six.text_type(volume_id)
+        api = "volumes/" + str(volume_id)
         data = {'data': {"online": online_flag, 'force': True}}
         try:
             LOG.debug("data :%s", data)
@@ -1904,7 +1903,7 @@ class NimbleRestAPIExecutor(object):
 
     def online_snap(self, volume_name, online_flag, snap_name):
         snap_info = self.get_snap_info(snap_name, volume_name)
-        api = "snapshots/" + six.text_type(snap_info['id'])
+        api = "snapshots/" + str(snap_info['id'])
         data = {'data': {"online": online_flag}}
         try:
             self.put(api, data)
@@ -1913,7 +1912,7 @@ class NimbleRestAPIExecutor(object):
                       {'snap': snap_name, 'flag': online_flag})
         except Exception as ex:
             LOG.debug("online_snap_exception: %s", ex)
-            if six.text_type(ex).__contains__("Object %s" % SM_STATE_MSG):
+            if str(ex).__contains__("Object %s" % SM_STATE_MSG):
                 LOG.warning('Snapshot %(snap)s :%(state)s',
                             {'snap': snap_name,
                              'state': SM_STATE_MSG})
@@ -1923,7 +1922,7 @@ class NimbleRestAPIExecutor(object):
     @utils.retry(NimbleAPIException, 2, 3)
     def get_vol_info(self, volume_name):
         volume_id = self.get_volume_id_by_name(volume_name)
-        api = 'volumes/' + six.text_type(volume_id)
+        api = 'volumes/' + str(volume_id)
         r = self.get(api)
         if not r.json()['data']:
             raise exception.VolumeNotFound(_("Volume: %s not found") %
@@ -1932,7 +1931,7 @@ class NimbleRestAPIExecutor(object):
 
     def delete_vol(self, volume_name):
         volume_id = self.get_volume_id_by_name(volume_name)
-        api = "volumes/" + six.text_type(volume_id)
+        api = "volumes/" + str(volume_id)
         self.delete(api)
 
     def snap_vol(self, snapshot):
@@ -2081,17 +2080,17 @@ class NimbleRestAPIExecutor(object):
 
     def edit_vol(self, volume_name, data):
         vol_id = self.get_volume_id_by_name(volume_name)
-        api = "volumes/" + six.text_type(vol_id)
+        api = "volumes/" + str(vol_id)
         self.put(api, data)
 
     def delete_snap(self, volume_name, snap_name):
         snap_info = self.get_snap_info(snap_name, volume_name)
-        api = "snapshots/" + six.text_type(snap_info['id'])
+        api = "snapshots/" + str(snap_info['id'])
         try:
             self.delete(api)
         except NimbleAPIException as ex:
             LOG.debug("delete snapshot exception: %s", ex)
-            if SM_OBJ_HAS_CLONE in six.text_type(ex):
+            if SM_OBJ_HAS_CLONE in str(ex):
                 # if snap has a clone log the error and continue ahead
                 LOG.warning('Snapshot %(snap)s : %(state)s',
                             {'snap': snap_name,
@@ -2131,7 +2130,7 @@ class NimbleRestAPIExecutor(object):
             except IndexError:
                 msg = _("%(base)s Message: %(msg)s") % {
                     'base': base,
-                    'msg': six.text_type(r.json())}
+                    'msg': str(r.json())}
             raise NimbleAPIException(msg)
         return r.json()
 
@@ -2164,7 +2163,7 @@ class NimbleRestAPIExecutor(object):
             except IndexError:
                 msg = _("%(base)s Message: %(msg)s") % {
                     'base': base,
-                    'msg': six.text_type(r.json())}
+                    'msg': str(r.json())}
             raise NimbleAPIException(msg)
         return r.json()
 
@@ -2183,6 +2182,6 @@ class NimbleRestAPIExecutor(object):
 
     def enable_group_scoped_target(self):
         group_id = self.get_group_id()
-        api = "groups/" + six.text_type(group_id)
+        api = "groups/" + str(group_id)
         data = {'data': {'group_target_enabled': True}}
         self.put(api, data)
