@@ -18,6 +18,8 @@ warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_reports import guru_meditation_report as gmr
+from oslo_reports import opts as gmr_opts
 from oslo_service import wsgi
 
 from cinder import objects  # noqa
@@ -36,10 +38,16 @@ CONF = cfg.CONF
 
 def initialize_application():
     objects.register_all()
+    gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
     logging.setup(CONF, "cinder")
     config.set_middleware_defaults()
+
+    # NOTE(amorin): Do not register signal handers because it does not work
+    # in wsgi applications
+    gmr.TextGuruMeditation.setup_autorun(
+        version, conf=CONF, setup_signal=False)
 
     coordination.COORDINATOR.start()
 

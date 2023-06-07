@@ -1,0 +1,6 @@
+---
+other:
+  - |
+    Enabled Guru Meditation Reports on Cinder wsgi.
+    When running Cinder under WSGI, we might want to have Guru Meditation
+    Reports as well as when running outside of WSGI.
