@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    [Pure Storage] 'bug #2028380
+    <https://bugs.launchpad.net/cinder/+bug/2028380>'_:
+    Fixed issue with cinder replication failover failing due to
+    incorrect REST call.
