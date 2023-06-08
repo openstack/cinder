@@ -25,6 +25,7 @@ Supported operations
 - Delete snapshot
 - Create volume from snapshot
 - Create volume from volume (clone)
+- Active active deployment support
 
 LightOS OpenStack Driver Components
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,3 +142,25 @@ Lightbits LightOS Cinder driver.
    :config-target: Lightbits LightOS
 
    cinder.volume.drivers.lightos
+
+Active active deployment support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To enable active-active deployment, follow these steps:
+
+1. Activate the active-active mode by setting the "cluster" option
+   in the "DEFAULT" section.
+2. Configure the Distributed Lock Manager (DLM) such as Redis or etcd
+   in the "coordination" section.
+
+These options should be added to the cinder.conf file:
+
+.. code-block:: ini
+
+   [DEFAULT]
+   cluster = <cluster_name>
+
+   [coordination]
+   backend_url = <coordination_backend_url>
+
+For more detailed instructions, please refer to the guidelines at::
+https://docs.openstack.org/cinder/latest/contributor/high_availability.html
