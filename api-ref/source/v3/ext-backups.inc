@@ -424,7 +424,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/backups-list-response.json
+.. literalinclude:: ./samples/backups/backups-list-response.json
    :language: javascript
 
 

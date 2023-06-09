@@ -34,3 +34,8 @@ class BackupClassesSampleJsonTest(test_base.VolumesSampleBase):
     def test_backup_create(self):
         self._verify_response('backup-create-response',
                               {}, self.response, 202)
+
+    def test_backup_list(self):
+        response = self._do_get('backups')
+        self._verify_response('backups-list-response',
+                              {}, response, 200)
