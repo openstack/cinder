@@ -38,7 +38,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume_transfer/volume-transfer-accept-request.json
+.. literalinclude:: ./samples/volume_transfers/volume-transfers-accept-request.json
    :language: javascript
 
 Response Parameters
@@ -55,7 +55,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume_transfer/volume-transfer-accept-response.json
+.. literalinclude:: ./samples/volume_transfers/volume-transfers-accept-response.json
    :language: javascript
 
 
@@ -99,7 +99,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume_transfer/volume-transfer-create-request.json
+.. literalinclude:: ./samples/volume_transfers/v3.57/volume-transfers-create-request.json
    :language: javascript
 
 
@@ -117,11 +117,12 @@ Response Parameters
    - destination_project_id: destination_project_id
    - source_project_id: source_project_id
    - accepted: accepted
+   - no_snapshots: no_snapshots
 
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume_transfer/volume-transfer-create-response.json
+.. literalinclude:: ./samples/volume_transfers/v3.57/volume-transfers-create-response.json
    :language: javascript
 
 
@@ -209,12 +210,13 @@ Response Parameters
    - destination_project_id: destination_project_id
    - source_project_id: source_project_id
    - accepted: accepted
+   - no_snapshots: no_snapshots
 
 
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume_transfer/volume-transfer-show-response.json
+.. literalinclude:: ./samples/volume_transfers/v3.57/volume-transfers-show-response.json
    :language: javascript
 
 

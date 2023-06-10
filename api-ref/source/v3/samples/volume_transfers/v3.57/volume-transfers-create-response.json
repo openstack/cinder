@@ -1,0 +1,23 @@
+{
+    "transfer": {
+        "accepted": false,
+        "auth_key": "e2cb02466324813c",
+        "created_at": "2023-06-12T21:21:38.392033",
+        "destination_project_id": null,
+        "id": "94bae1a0-83fb-496c-9cd2-800d8237ab0d",
+        "links": [
+            {
+                "href": "http://127.0.0.1:45193/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/os-volume-transfer/94bae1a0-83fb-496c-9cd2-800d8237ab0d",
+                "rel": "self"
+            },
+            {
+                "href": "http://127.0.0.1:45193/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/os-volume-transfer/94bae1a0-83fb-496c-9cd2-800d8237ab0d",
+                "rel": "bookmark"
+            }
+        ],
+        "name": "first volume",
+        "no_snapshots": false,
+        "source_project_id": "89afd400-b646-4bbc-b12b-c0a4d63e5bd3",
+        "volume_id": "202eead8-3c82-41e1-914f-83638a063be9"
+    }
+}
