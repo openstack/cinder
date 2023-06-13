@@ -692,3 +692,16 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
         expected_attrs = cls._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)
+
+    @classmethod
+    def get_all_by_metadata(cls, context, project_id, metadata, marker=None,
+                            limit=None, sort_keys=None, sort_dirs=None,
+                            filters=None, offset=None):
+        query_filters = {'metadata': metadata}
+        if filters:
+            query_filters.update(filters)
+        volumes = db.volume_get_all_by_project(
+            context, project_id, marker, limit, sort_keys=sort_keys,
+            sort_dirs=sort_dirs, filters=query_filters, offset=offset)
+        return base.obj_make_list(context, cls(context), objects.Volume,
+                                  volumes)

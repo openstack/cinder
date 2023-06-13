@@ -694,3 +694,24 @@ class TestVolumeList(test_objects.BaseObjectsTestCase):
         volume.populate_consistencygroup()
         self.assertEqual(volume.group_id, volume.consistencygroup_id)
         self.assertEqual(volume.group.id, volume.consistencygroup.id)
+
+    @mock.patch('cinder.db.volume_get_all_by_project')
+    def test_get_by_metadata(self, get_all_by_project):
+        db_volume = fake_volume.fake_db_volume()
+        get_all_by_project.return_value = [db_volume]
+
+        volumes = objects.VolumeList.get_all_by_metadata(
+            self.context, mock.sentinel.project_id, mock.sentinel.metadata,
+            mock.sentinel.marker, mock.sentinel.limit,
+            mock.sentinel.sorted_keys, mock.sentinel.sorted_dirs)
+
+        self.assertEqual(1, len(volumes))
+        TestVolume._compare(self, db_volume, volumes[0])
+
+        get_all_by_project.assert_called_once_with(
+            self.context, mock.sentinel.project_id,
+            mock.sentinel.marker, mock.sentinel.limit,
+            sort_keys=mock.sentinel.sorted_keys,
+            sort_dirs=mock.sentinel.sorted_dirs,
+            filters={'metadata': mock.sentinel.metadata},
+            offset=None)
