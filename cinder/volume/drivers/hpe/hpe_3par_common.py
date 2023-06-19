@@ -562,6 +562,16 @@ class HPE3PARCommon(object):
     def extend_volume(self, volume, new_size):
         volume_name = self._get_3par_vol_name(volume)
         old_size = volume['size']
+
+        if int(new_size) == old_size:
+            LOG.debug("Expand Volume %(vol)s new size %(new)s to match current size %(old)s, skipping.",
+                      {'vol': volume_name, 'old': old_size, 'new': new_size})
+            return None
+        elif int(new_size) < old_size:
+            LOG.debug("Expand Volume %(vol)s new size %(new)s smaller than current size %(old)s, skipping.",
+                      {'vol': volume_name, 'old': old_size, 'new': new_size})
+            return None
+
         growth_size = int(new_size) - old_size
         LOG.debug("Extending Volume %(vol)s from %(old)s to %(new)s, "
                   " by %(diff)s GB.",
