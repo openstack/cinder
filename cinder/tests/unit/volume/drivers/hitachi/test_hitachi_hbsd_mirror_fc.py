@@ -141,19 +141,20 @@ def _volume_get(context, volume_id):
 
 
 TEST_SNAPSHOT = []
-snapshot = {}
-snapshot['id'] = '10000000-0000-0000-0000-{0:012d}'.format(0)
-snapshot['name'] = 'TEST_SNAPSHOT{0:d}'.format(0)
-snapshot['provider_location'] = '{0:d}'.format(1)
-snapshot['status'] = 'available'
-snapshot['volume_id'] = '00000000-0000-0000-0000-{0:012d}'.format(0)
-snapshot['volume'] = _volume_get(None, snapshot['volume_id'])
-snapshot['volume_name'] = 'test-volume{0:d}'.format(0)
-snapshot['volume_size'] = 128
-snapshot = obj_snap.Snapshot._from_db_object(
-    CTXT, obj_snap.Snapshot(),
-    fake_snapshot.fake_db_snapshot(**snapshot))
-TEST_SNAPSHOT.append(snapshot)
+for i in range(2):
+    snapshot = {}
+    snapshot['id'] = '10000000-0000-0000-0000-{0:012d}'.format(i)
+    snapshot['name'] = 'TEST_SNAPSHOT{0:d}'.format(i)
+    snapshot['provider_location'] = '{0:d}'.format(i + 1)
+    snapshot['status'] = 'available'
+    snapshot['volume_id'] = '00000000-0000-0000-0000-{0:012d}'.format(i)
+    snapshot['volume'] = _volume_get(None, snapshot['volume_id'])
+    snapshot['volume_name'] = 'test-volume{0:d}'.format(i)
+    snapshot['volume_size'] = 128
+    snapshot = obj_snap.Snapshot._from_db_object(
+        CTXT, obj_snap.Snapshot(),
+        fake_snapshot.fake_db_snapshot(**snapshot))
+    TEST_SNAPSHOT.append(snapshot)
 
 TEST_GROUP = []
 for i in range(2):
@@ -367,6 +368,18 @@ GET_SNAPSHOTS_RESULT_BUSY = {
             "primaryOrSecondary": "P-VOL",
             "status": "PSUP",
             "pvolLdevId": 0,
+            "muNumber": 1,
+            "svolLdevId": 1,
+        },
+    ],
+}
+
+GET_SNAPSHOTS_RESULT_TEST = {
+    "data": [
+        {
+            "primaryOrSecondary": "S-VOL",
+            "status": "PSUS",
+            "pvolLdevId": 1,
             "muNumber": 1,
             "svolLdevId": 1,
         },
@@ -1000,6 +1013,23 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.assertEqual(14, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
+    def test_delete_snapshot_pldev_in_loc(self, request):
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.delete_snapshot,
+                          TEST_SNAPSHOT[1])
+        self.assertEqual(1, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_delete_snapshot_snapshot_is_busy(self, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT_TEST)]
+        self.assertRaises(exception.SnapshotIsBusy,
+                          self.driver.delete_snapshot,
+                          TEST_SNAPSHOT[0])
+        self.assertEqual(3, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     def test_create_cloned_volume(
@@ -1231,6 +1261,14 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                                FakeResponse(200, GET_LDEV_RESULT)]
         self.driver.unmanage(TEST_VOLUME[0])
         self.assertEqual(3, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_unmanage_has_rep_pair_true(self, request):
+        request.return_value = FakeResponse(200, GET_LDEV_RESULT_REP)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.unmanage,
+                          TEST_VOLUME[4])
+        self.assertEqual(1, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     def test_copy_image_to_volume(self, request):
