@@ -243,6 +243,14 @@ GET_LDEV_RESULT_PAIR = {
     "status": "NML",
 }
 
+GET_LDEV_RESULT_PAIR_TEST = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 2097152,
+    "attributes": ["CVS", "HDP", "HTI", "111"],
+    "status": "NML",
+    "snapshotPoolId": 0
+}
+
 GET_LDEV_RESULT_PAIR_STATUS_TEST = {
     "emulationType": "OPEN-V-CVS",
     "blockCapacity": 2097152,
@@ -834,7 +842,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(4, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    def test_delete_volume_temporary_busy(self, request):
+    def test_delete_volume_wait_copy_pair_deleting(self, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT_BUSY),
                                FakeResponse(200, GET_LDEV_RESULT),
@@ -849,7 +857,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=test_utils.ZeroIntervalLoopingCall)
     @mock.patch.object(requests.Session, "request")
-    def test_delete_volume_busy_timeout(self, request):
+    def test_delete_volume_request_failed(self, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT_BUSY),
                                FakeResponse(200, GET_LDEV_RESULT_PAIR),
@@ -859,6 +867,15 @@ class HBSDRESTFCDriverTest(test.TestCase):
                           self.driver.delete_volume,
                           TEST_VOLUME[0])
         self.assertGreater(request.call_count, 2)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_delete_volume_volume_is_busy(self, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT_PAIR)]
+        self.assertRaises(exception.VolumeIsBusy,
+                          self.driver.delete_volume,
+                          TEST_VOLUME[0])
+        self.assertEqual(2, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     def test_extend_volume(self, request):
@@ -1242,6 +1259,31 @@ class HBSDRESTFCDriverTest(test.TestCase):
                                FakeResponse(200, GET_LDEV_RESULT)]
         self.driver.unmanage(TEST_VOLUME[0])
         self.assertEqual(2, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_unmanage_volume_is_busy(self, request):
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_PAIR),
+            FakeResponse(200, GET_LDEV_RESULT_PAIR),
+            FakeResponse(200, NOTFOUND_RESULT),
+            FakeResponse(200, GET_SNAPSHOTS_RESULT_PAIR),
+        ]
+        self.assertRaises(exception.VolumeIsBusy,
+                          self.driver.unmanage,
+                          TEST_VOLUME[1])
+        self.assertEqual(4, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_unmanage_volume_is_busy_raise_ex(self, request):
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_PAIR),
+            FakeResponse(200, GET_LDEV_RESULT_PAIR),
+            FakeResponse(400, GET_SNAPSHOTS_RESULT_BUSY)
+        ]
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.unmanage,
+                          TEST_VOLUME[0])
+        self.assertEqual(3, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     def test_copy_image_to_volume(self, request):
