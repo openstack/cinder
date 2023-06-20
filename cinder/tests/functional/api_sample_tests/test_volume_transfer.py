@@ -70,3 +70,9 @@ class VolumeTransferSampleJsonTest(test_base.VolumesSampleBase):
         response = self._do_get('os-volume-transfer/detail')
         self._verify_response('volume-transfers-list-detailed-response',
                               {}, response, 200)
+
+    def test_transfer_delete(self):
+
+        res = jsonutils.loads(self.response.content)['transfer']
+        response = self._do_delete('os-volume-transfer/%s' % res['id'])
+        self.assertEqual(response.status_code, 202)
