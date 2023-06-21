@@ -211,7 +211,13 @@ class BackupManager(manager.SchedulerDependentManager):
                               "snapshots for backup %(bkup)s.",
                               {'bkup': backup['id']})
 
-    def _cleanup_one_volume(self, ctxt, volume):
+    def _cleanup_one_volume(self, ctxt, volume_id):
+        try:
+            volume = objects.Volume.get_by_id(ctxt, volume_id)
+        except exception.VolumeNotFound:
+            LOG.info('Volume %s does not exist anymore. Ignoring.', volume_id)
+            return
+
         if volume['status'] == 'backing-up':
             self._detach_all_attachments(ctxt, volume)
             LOG.info('Resetting volume %(vol_id)s to previous '
@@ -231,19 +237,14 @@ class BackupManager(manager.SchedulerDependentManager):
         if backup['status'] == fields.BackupStatus.CREATING:
             LOG.info('Resetting backup %s to error (was creating).',
                      backup['id'])
-
-            volume = objects.Volume.get_by_id(ctxt, backup.volume_id)
-            self._cleanup_one_volume(ctxt, volume)
-
+            self._cleanup_one_volume(ctxt, backup.volume_id)
             err = 'incomplete backup reset on manager restart'
             volume_utils.update_backup_error(backup, err)
         elif backup['status'] == fields.BackupStatus.RESTORING:
             LOG.info('Resetting backup %s to '
                      'available (was restoring).',
                      backup['id'])
-            volume = objects.Volume.get_by_id(ctxt, backup.restore_volume_id)
-            self._cleanup_one_volume(ctxt, volume)
-
+            self._cleanup_one_volume(ctxt, backup.restore_volume_id)
             backup.status = fields.BackupStatus.AVAILABLE
             backup.save()
         elif backup['status'] == fields.BackupStatus.DELETING:

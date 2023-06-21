@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #2016138 <https://bugs.launchpad.net/cinder/+bug/2016138>`_:
+    Handle missing volumes during cleanup of incomplete backups.
