@@ -1,0 +1,32 @@
+{
+    "backups": [
+        {
+            "availability_zone": null,
+            "container": null,
+            "created_at": "2023-07-10T13:23:21.178739",
+            "data_timestamp": "2023-07-10T13:23:21.178739",
+            "description": "Test backup",
+            "fail_reason": null,
+            "has_dependent_backups": false,
+            "id": "7ab823f7-1174-4447-9a76-863ae2dcf372",
+            "is_incremental": false,
+            "links": [
+                {
+                    "href": "http://127.0.0.1:44197/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/backups/7ab823f7-1174-4447-9a76-863ae2dcf372",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://127.0.0.1:44197/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/backups/7ab823f7-1174-4447-9a76-863ae2dcf372",
+                    "rel": "bookmark"
+                }
+            ],
+            "name": "backup001",
+            "object_count": 0,
+            "size": 10,
+            "snapshot_id": null,
+            "status": "creating",
+            "updated_at": "2023-07-10T13:23:21.189552",
+            "volume_id": "9fc31617-303d-4b52-826e-b598cca40419"
+        }
+    ]
+}
