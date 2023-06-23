@@ -1530,7 +1530,7 @@ class SCApi(object):
         if hba is not None and hba.get('server') is not None:
             pf = self._get_payload_filter()
             pf.append('scSerialNumber', ssn)
-            pf.append('instanceId', self._get_id(hba['server']))
+            pf.append('instanceId', self._get_id(hba['server']).upper())
             r = self.client.post('StorageCenter/ScServer/GetList', pf.payload)
             if self._check_result(r):
                 scserver = self._first_result(r)
@@ -1554,7 +1554,7 @@ class SCApi(object):
         # We search for our server by first finding our HBA
         pf = self._get_payload_filter()
         pf.append('scSerialNumber', ssn)
-        pf.append('instanceName', instance_name)
+        pf.append('instanceName', instance_name.upper())
         r = self.client.post('StorageCenter/ScServerHba/GetList', pf.payload)
         if self._check_result(r):
             scserverhba = self._first_result(r)
@@ -1590,7 +1590,7 @@ class SCApi(object):
                 wwn = hba.get('instanceName')
                 if (hba.get('portType') == self.protocol and
                         wwn is not None):
-                    initiators.append(wwn)
+                    initiators.append(wwn.upper())
         else:
             LOG.error('Unable to find initiators')
         LOG.debug('_find_initiators: %s', initiators)
@@ -1702,7 +1702,9 @@ class SCApi(object):
                     serverhba = mapping.get('serverHba')
                     if serverhba:
                         hbaname = serverhba.get('instanceName')
-                        if hbaname in initiators:
+                        if hbaname.upper() in list(
+                            map(lambda x: x.upper(), initiators)
+                        ):
                             if itmap.get(hbaname) is None:
                                 itmap[hbaname] = []
                             itmap[hbaname].append(wwn)
