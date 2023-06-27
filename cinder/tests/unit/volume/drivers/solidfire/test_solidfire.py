@@ -27,7 +27,6 @@ from ddt import unpack
 from oslo_service import loopingcall
 from oslo_utils import timeutils
 from oslo_utils import units
-import six
 
 from cinder import context
 from cinder import exception
@@ -2833,7 +2832,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         with mock.patch.object(volume_types, 'get_volume_type',
                                return_value=fake_type):
             res = sfv._extract_sf_attributes_from_extra_specs(type_id)
-            six.assertCountEqual(self, expected, res)
+            self.assertCountEqual(expected, res)
 
     def test_build_endpoint_with_kwargs(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
