@@ -28,7 +28,6 @@ import threading
 
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -101,7 +100,7 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver):
 
         LOG.debug('enter: _create_host: host %s.', connector['host'])
 
-        rand_id = six.text_type(random.randint(0, 99999999)).zfill(8)
+        rand_id = str(random.randint(0, 99999999)).zfill(8)
         host_name = '%s-%s' % (self._connector_to_hostname_prefix(connector),
                                rand_id)
 

@@ -21,7 +21,6 @@ from unittest import mock
 
 import ddt
 import eventlet
-import six
 
 from cinder import context
 from cinder import exception
@@ -1459,7 +1458,7 @@ class DS8KProxyTest(test.TestCase):
         )
         group = self._create_group(host=TEST_GROUP_HOST,
                                    group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': '2000'})
+        location = str({'vol_hex_id': '2000'})
         self._create_volume(group_id=group.id,
                             provider_location=location)
         volume = self._create_volume(group_id=group.id)
@@ -1490,7 +1489,7 @@ class DS8KProxyTest(test.TestCase):
         )
         group2 = self._create_group(host=TEST_GROUP_HOST,
                                     group_type_id=group_type2.id)
-        location = six.text_type({'vol_hex_id': '2000'})
+        location = str({'vol_hex_id': '2000'})
         self._create_volume(group_id=group2.id,
                             provider_location=location)
         lun = ds8kproxy.Lun(volume)
@@ -1521,7 +1520,7 @@ class DS8KProxyTest(test.TestCase):
         group2 = self._create_group(status='error',
                                     host=TEST_GROUP_HOST,
                                     group_type_id=group_type2.id)
-        location = six.text_type({'vol_hex_id': '2000'})
+        location = str({'vol_hex_id': '2000'})
         self._create_volume(group_id=group2.id,
                             provider_location=location)
         lun = ds8kproxy.Lun(volume)
@@ -1958,7 +1957,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
         self.driver.delete_volume(volume)
@@ -1985,7 +1984,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
         mock_lun_exists.return_value = False
@@ -2004,7 +2003,7 @@ class DS8KProxyTest(test.TestCase):
 
         extra_spec = {'replication_enabled': '<is> True'}
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', extra_spec)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -2020,10 +2019,10 @@ class DS8KProxyTest(test.TestCase):
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         src_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
-        location = six.text_type({'vol_hex_id': None})
+        location = str({'vol_hex_id': None})
         metadata = [{'key': 'async_clone', 'value': True}]
         tgt_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location,
@@ -2041,10 +2040,10 @@ class DS8KProxyTest(test.TestCase):
     def test_check_async_cloned_volumes_when_initialize_driver(self):
         """initialize driver should check volumes cloned asynchronously."""
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         src_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID_2})
+        location = str({'vol_hex_id': TEST_VOLUME_ID_2})
         metadata = [{'key': 'flashcopy', 'value': 'started'}]
         self._create_volume(volume_type_id=vol_type.id,
                             source_volid=src_vol.id,
@@ -2063,10 +2062,10 @@ class DS8KProxyTest(test.TestCase):
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         src_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID_2})
+        location = str({'vol_hex_id': TEST_VOLUME_ID_2})
         metadata = [{'key': 'async_clone', 'value': True}]
         tgt_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location,
@@ -2090,10 +2089,10 @@ class DS8KProxyTest(test.TestCase):
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         src_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID_2})
+        location = str({'vol_hex_id': TEST_VOLUME_ID_2})
         metadata = [{'key': 'async_clone', 'value': True}]
         tgt_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location,
@@ -2114,10 +2113,10 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         src_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
-        location = six.text_type({'vol_hex_id': None})
+        location = str({'vol_hex_id': None})
         tgt_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
 
@@ -2138,10 +2137,10 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         src_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
-        location = six.text_type({'vol_hex_id': None})
+        location = str({'vol_hex_id': None})
         tgt_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location,
                                       size=2)
@@ -2157,11 +2156,11 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         src_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location,
                                       size=2)
-        location = six.text_type({'vol_hex_id': None})
+        location = str({'vol_hex_id': None})
         tgt_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
         self.assertRaises(exception.VolumeDriverException,
@@ -2175,10 +2174,10 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         src_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
-        location = six.text_type({'vol_hex_id': None})
+        location = str({'vol_hex_id': None})
         tgt_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
 
@@ -2200,10 +2199,10 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         src_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location)
-        location = six.text_type({'vol_hex_id': '0003'})
+        location = str({'vol_hex_id': '0003'})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
         tgt_vol = self._create_volume(volume_type_id=vol_type.id,
                                       provider_location=location,
@@ -2224,7 +2223,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
         volume = self._create_volume(volume_type_id=vol_type.id)
-        location = six.text_type({'vol_hex_id': '0002'})
+        location = str({'vol_hex_id': '0002'})
         snap = self._create_snapshot(volume_id=volume.id,
                                      volume_type_id=vol_type.id,
                                      provider_location=location)
@@ -2243,7 +2242,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
         self.driver.extend_volume(volume, 2)
@@ -2258,7 +2257,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -2275,7 +2274,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -2293,7 +2292,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': '0002'})
+        location = str({'vol_hex_id': '0002'})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
         snapshot = self._create_snapshot(volume_id=volume.id)
@@ -2320,7 +2319,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'drivers:thin_provision': 'False'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2346,7 +2345,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'drivers:thin_provision': 'True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2374,7 +2373,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> False'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -2406,7 +2405,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -2440,7 +2439,7 @@ class DS8KProxyTest(test.TestCase):
         }
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2471,7 +2470,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -2505,7 +2504,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -2540,7 +2539,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'drivers:thin_provision': 'False'})
-        location = six.text_type({'vol_hex_id': '0400'})
+        location = str({'vol_hex_id': '0400'})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2576,7 +2575,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': '0400'})
+        location = str({'vol_hex_id': '0400'})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2607,7 +2606,7 @@ class DS8KProxyTest(test.TestCase):
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {
             'drivers:storage_pool_ids': TEST_POOL_ID_1,
             'drivers:storage_lss_ids': TEST_LSS_ID_1})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2632,7 +2631,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'multiattach': '<is> False'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location,
@@ -2659,7 +2658,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'multiattach': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location,
@@ -2689,7 +2688,7 @@ class DS8KProxyTest(test.TestCase):
         }
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2720,7 +2719,7 @@ class DS8KProxyTest(test.TestCase):
         host = None
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'multiattach': '<is> False'})
-        location = six.text_type({'vol_hex_id': '0400'})
+        location = str({'vol_hex_id': '0400'})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2741,7 +2740,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver._update_stats()
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -2767,7 +2766,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
         self.driver._update_stats()
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2794,7 +2793,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
         self.driver._update_stats()
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2822,7 +2821,7 @@ class DS8KProxyTest(test.TestCase):
                                     self.exception, self)
         self.driver.setup(self.ctxt)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2843,7 +2842,7 @@ class DS8KProxyTest(test.TestCase):
                                     self.exception, self)
         self.driver.setup(self.ctxt)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_ECKD_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_ECKD_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2860,7 +2859,7 @@ class DS8KProxyTest(test.TestCase):
                                     self.exception, self)
         self.driver.setup(self.ctxt)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2885,7 +2884,7 @@ class DS8KProxyTest(test.TestCase):
                                     self.exception, self)
         self.driver.setup(self.ctxt)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2916,7 +2915,7 @@ class DS8KProxyTest(test.TestCase):
                                     self.exception, self)
         self.driver.setup(self.ctxt)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2933,7 +2932,7 @@ class DS8KProxyTest(test.TestCase):
                                     self.exception, self)
         self.driver.setup(self.ctxt)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_ECKD_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_ECKD_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
         unmap_data = self.driver.terminate_connection(volume, {})
@@ -2947,7 +2946,7 @@ class DS8KProxyTest(test.TestCase):
                                     self.exception, self)
         self.driver.setup(self.ctxt)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -2980,7 +2979,7 @@ class DS8KProxyTest(test.TestCase):
                                     self.exception, self)
         self.driver.setup(self.ctxt)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -3005,7 +3004,7 @@ class DS8KProxyTest(test.TestCase):
                                     self.exception, self)
         self.driver.setup(self.ctxt)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
 
@@ -3050,7 +3049,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -3125,7 +3124,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='failed-over')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -3286,7 +3285,7 @@ class DS8KProxyTest(test.TestCase):
         )
         group = self._create_group(host=TEST_GROUP_HOST,
                                    group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(provider_location=location,
                                      group_id=group.id)
         model_update, volumes_model_update = (
@@ -3308,7 +3307,7 @@ class DS8KProxyTest(test.TestCase):
         )
         group = self._create_group(host=TEST_GROUP_HOST,
                                    group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(provider_location=location,
                                      group_id=group.id)
         mock_delete_lun.side_effect = (
@@ -3335,7 +3334,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -3357,7 +3356,7 @@ class DS8KProxyTest(test.TestCase):
         )
         group = self._create_group(host=TEST_GROUP_HOST,
                                    group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(provider_location=location,
                                      status='in-use')
         self.assertRaises(exception.VolumeDriverException,
@@ -3375,7 +3374,7 @@ class DS8KProxyTest(test.TestCase):
         )
         group = self._create_group(host=TEST_GROUP_HOST,
                                    group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(provider_location=location,
                                      status='in-use',
                                      group_id=group.id)
@@ -3399,7 +3398,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -3419,7 +3418,7 @@ class DS8KProxyTest(test.TestCase):
         group_type = group_types.create(self.ctxt, 'group', {})
         group = self._create_group(host=TEST_GROUP_HOST,
                                    group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(provider_location=location)
         self.assertRaises(NotImplementedError,
                           self.driver.update_group,
@@ -3446,7 +3445,7 @@ class DS8KProxyTest(test.TestCase):
         )
         group = self._create_group(host=TEST_GROUP_HOST,
                                    group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
         volume = self._create_volume(provider_location=location,
                                      volume_metadata=metadata)
@@ -3484,7 +3483,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(
             self.ctxt, 'VOL_TYPE', {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -3508,7 +3507,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
         group_type = group_types.create(self.ctxt, 'group', {})
         group = self._create_group(group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         volume = self._create_volume(group_type_id=group_type.id,
                                      provider_location=location,
                                      group_id=group.id)
@@ -3532,7 +3531,7 @@ class DS8KProxyTest(test.TestCase):
             {'consistent_group_snapshot_enabled': '<is> True'}
         )
         group = self._create_group(group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': '2000'})
+        location = str({'vol_hex_id': '2000'})
         volume = self._create_volume(provider_location=location,
                                      group_id=group.id)
         group_snapshot = (
@@ -3567,7 +3566,7 @@ class DS8KProxyTest(test.TestCase):
             {'consistent_group_snapshot_enabled': '<is> True'}
         )
         group = self._create_group(group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': '2000'})
+        location = str({'vol_hex_id': '2000'})
         volume = self._create_volume(provider_location=location,
                                      group_id=group.id)
         group_snapshot = (
@@ -3597,7 +3596,7 @@ class DS8KProxyTest(test.TestCase):
             {'consistent_group_snapshot_enabled': '<is> True'}
         )
         group = self._create_group(group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': '2000'})
+        location = str({'vol_hex_id': '2000'})
         volume = self._create_volume(provider_location=location,
                                      group_id=group.id)
         group_snapshot = (
@@ -3627,7 +3626,7 @@ class DS8KProxyTest(test.TestCase):
             {'consistent_group_snapshot_enabled': '<is> True'}
         )
         group = self._create_group(group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': '2000'})
+        location = str({'vol_hex_id': '2000'})
         volume = self._create_volume(provider_location=location,
                                      group_id=group.id)
         group_snapshot = (
@@ -3663,7 +3662,7 @@ class DS8KProxyTest(test.TestCase):
         )
         src_group = self._create_group(host=TEST_GROUP_HOST,
                                        group_type_id=group_type.id)
-        location = six.text_type({'vol_hex_id': '2000'})
+        location = str({'vol_hex_id': '2000'})
         src_vol = self._create_volume(provider_location=location,
                                       group_id=src_group.id)
         group = self._create_group(host=TEST_GROUP_HOST,
@@ -3700,7 +3699,7 @@ class DS8KProxyTest(test.TestCase):
         group_snapshot = (
             self._create_group_snapshot(group_id=src_group.id,
                                         group_type_id=group_type.id))
-        location = six.text_type({'vol_hex_id': '2000'})
+        location = str({'vol_hex_id': '2000'})
         snapshot = self._create_snapshot(volume_id=src_vol.id,
                                          provider_location=location,
                                          group_snapshot_id=group_snapshot.id)
@@ -3737,7 +3736,7 @@ class DS8KProxyTest(test.TestCase):
                                        group_type_id=group_type.id)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         src_volume = self._create_volume(volume_type_id=vol_type.id,
@@ -3766,7 +3765,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -3800,7 +3799,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='enabled')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -3845,7 +3844,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='failed-over')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -3874,7 +3873,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -3898,7 +3897,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -3917,7 +3916,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -3937,7 +3936,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -3959,7 +3958,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -3987,7 +3986,7 @@ class DS8KProxyTest(test.TestCase):
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -4017,7 +4016,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='disabled')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -4057,7 +4056,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='disabled')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -4094,7 +4093,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='disabled')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -4131,7 +4130,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='enabled')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -4171,7 +4170,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='enabled')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -4208,7 +4207,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='enabled')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -4246,7 +4245,7 @@ class DS8KProxyTest(test.TestCase):
                                    group_type_id=group_type.id)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -4285,7 +4284,7 @@ class DS8KProxyTest(test.TestCase):
                                    group_type_id=group_type.id)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -4317,7 +4316,7 @@ class DS8KProxyTest(test.TestCase):
                                    group_type_id=group_type.id)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -4345,7 +4344,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='failed-over')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {'default': {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -4375,7 +4374,7 @@ class DS8KProxyTest(test.TestCase):
                                    replication_status='enabled')
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         volume = self._create_volume(volume_type_id=vol_type.id,
@@ -4409,7 +4408,7 @@ class DS8KProxyTest(test.TestCase):
                                    group_type_id=group_type.id)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         data = json.dumps(
             {TEST_TARGET_DS8K_IP: {'vol_hex_id': TEST_VOLUME_ID}})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
@@ -4444,7 +4443,7 @@ class DS8KProxyTest(test.TestCase):
                                    group_type_id=group_type.id)
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE',
                                        {'replication_enabled': '<is> True'})
-        location = six.text_type({'vol_hex_id': TEST_VOLUME_ID})
+        location = str({'vol_hex_id': TEST_VOLUME_ID})
         metadata = [{'key': 'data_type', 'value': 'FB 512'}]
         data = json.dumps(
             {'default': {'vol_hex_id': TEST_VOLUME_ID_2}})
@@ -4487,7 +4486,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
-        location = six.text_type({'vol_hex_id': '0002'})
+        location = str({'vol_hex_id': '0002'})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
         snapshot = self._create_snapshot(volume_id=volume.id)
@@ -4523,7 +4522,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = testutils.create_volume_type(self.ctxt, name='VOL_TYPE')
-        location = six.text_type({'vol_hex_id': '0002'})
+        location = str({'vol_hex_id': '0002'})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
         snapshot = self._create_snapshot(volume_id=volume.id)
@@ -4545,7 +4544,7 @@ class DS8KProxyTest(test.TestCase):
         extra_specs = {'replication_enabled': '<is> True'}
         vol_type = testutils.create_volume_type(self.ctxt, name='VOL_TYPE',
                                                 extra_specs=extra_specs)
-        location = six.text_type({'vol_hex_id': '0002'})
+        location = str({'vol_hex_id': '0002'})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
         snapshot = self._create_snapshot(volume_id=volume.id)
@@ -4565,7 +4564,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = testutils.create_volume_type(self.ctxt, name='VOL_TYPE')
-        location = six.text_type({'vol_hex_id': 'fake_volume_id_2'})
+        location = str({'vol_hex_id': 'fake_volume_id_2'})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
         snapshot = self._create_snapshot(volume_id=volume.id)
@@ -4585,7 +4584,7 @@ class DS8KProxyTest(test.TestCase):
         self.driver.setup(self.ctxt)
 
         vol_type = testutils.create_volume_type(self.ctxt, name='VOL_TYPE')
-        location = six.text_type({'vol_hex_id': 'fake_volume_id_2'})
+        location = str({'vol_hex_id': 'fake_volume_id_2'})
         volume = self._create_volume(volume_type_id=vol_type.id,
                                      provider_location=location)
         snapshot = self._create_snapshot(volume_id=volume.id)

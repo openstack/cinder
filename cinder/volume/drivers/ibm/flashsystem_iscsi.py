@@ -29,7 +29,6 @@ import threading
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -119,7 +118,7 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver):
 
         LOG.debug('enter: _create_host: host %s.', connector['host'])
 
-        rand_id = six.text_type(random.randint(0, 99999999)).zfill(8)
+        rand_id = str(random.randint(0, 99999999)).zfill(8)
         host_name = '%s-%s' % (self._connector_to_hostname_prefix(connector),
                                rand_id)
 
@@ -344,8 +343,7 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver):
                 self._handle_keyerror('lsportip', header)
             if port_ipv4 == self.configuration.target_ip_address and (
                     port_data['id'] == (
-                        six.text_type(
-                            self.configuration.flashsystem_iscsi_portid))):
+                        str(self.configuration.flashsystem_iscsi_portid))):
                 if state not in ('configured', 'online'):
                     msg = (_('State of node is wrong. Current state is %s.')
                            % state)

@@ -16,7 +16,6 @@
 import eventlet
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import coordination
 from cinder import exception
@@ -555,7 +554,7 @@ class Replication(object):
                 raise exception.VolumeDriverException(
                     message=(_('Failed to delete the target volume for '
                                'volume %(volume)s, Exception: %(ex)s.')
-                             % {'volume': lun.ds_id, 'ex': six.text_type(e)}))
+                             % {'volume': lun.ds_id, 'ex': str(e)}))
         lun.replication_status = 'disabled'
         lun.replication_driver_data = {}
         return lun

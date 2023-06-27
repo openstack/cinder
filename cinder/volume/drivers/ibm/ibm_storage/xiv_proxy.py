@@ -26,7 +26,6 @@ if pyxcli:
     from pyxcli.events import events
     from pyxcli.mirroring import mirrored_entities
     from pyxcli import transports
-import six
 
 from cinder import context
 from cinder.i18n import _
@@ -1002,7 +1001,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             meta['data']['initiator_target_map'] = (
                 self._build_initiator_target_map(fc_targets, connector))
 
-        LOG.debug(six.text_type(meta))
+        LOG.debug(str(meta))
         return meta
 
     @proxy._trace_time
@@ -2610,7 +2609,7 @@ class XIVProxy(proxy.IBMStorageProxy):
                      self._call_xiv_xcli(
                          "mapping_list",
                          host=host['name']).as_list]
-        luns = six.moves.xrange(MIN_LUNID, MAX_LUNID)  # pylint: disable=E1101
+        luns = range(MIN_LUNID, MAX_LUNID)
         for lun_id in luns:
             if lun_id not in used_luns:
                 self._call_xiv_xcli(

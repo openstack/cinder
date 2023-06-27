@@ -19,8 +19,6 @@
 import random
 from unittest import mock
 
-import six
-
 from cinder import context
 from cinder import exception
 from cinder.tests.unit import test
@@ -80,7 +78,7 @@ class FlashSystemISCSIDriverTestCase(test.TestCase):
                            vol_name,
                            vol_size=10,
                            vol_status='available'):
-        rand_id = six.text_type(random.randint(10000, 99999))
+        rand_id = str(random.randint(10000, 99999))
         if not vol_name:
             vol_name = 'test_volume%s' % rand_id
 
@@ -97,7 +95,7 @@ class FlashSystemISCSIDriverTestCase(test.TestCase):
                             vol_size,
                             vol_status,
                             snap_status='available'):
-        rand_id = six.text_type(random.randint(10000, 99999))
+        rand_id = str(random.randint(10000, 99999))
         return {'name': 'test_snap_%s' % rand_id,
                 'id': rand_id,
                 'volume': {'name': vol_name,

@@ -19,7 +19,6 @@ import inspect
 
 from oslo_log import log as logging
 from oslo_utils import timeutils
-import six
 
 from cinder.i18n import _
 from cinder import version
@@ -261,7 +260,7 @@ class IBMStorageProxy(object):
             return "Status: '%s', Code: %s" % (
                 exception.status, exception.code)
 
-        return six.text_type(exception)
+        return str(exception)
 
     def _get_driver_super(self):
         """Gets the IBM Storage Drivers super class
