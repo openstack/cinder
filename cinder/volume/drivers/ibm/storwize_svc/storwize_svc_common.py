@@ -31,7 +31,6 @@ from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
 import paramiko
-import six
 
 from cinder import context
 from cinder import exception
@@ -409,7 +408,7 @@ class StorwizeSSH(object):
         if cycle_period_seconds:
             ssh_cmd = ['svctask', 'chrcrelationship']
             ssh_cmd.extend(['-cycleperiodseconds',
-                            six.text_type(cycle_period_seconds)])
+                            str(cycle_period_seconds)])
             ssh_cmd.append(relationship)
             self.run_ssh_assert_no_output(ssh_cmd)
 
@@ -501,16 +500,15 @@ class StorwizeSSH(object):
 
     def mkippartnership(self, ip_v4, bandwidth=1000, backgroundcopyrate=50):
         ssh_cmd = ['svctask', 'mkippartnership', '-type', 'ipv4',
-                   '-clusterip', ip_v4, '-linkbandwidthmbits',
-                   six.text_type(bandwidth),
-                   '-backgroundcopyrate', six.text_type(backgroundcopyrate)]
+                   '-clusterip', ip_v4, '-linkbandwidthmbits', str(bandwidth),
+                   '-backgroundcopyrate', str(backgroundcopyrate)]
         return self.run_ssh_assert_no_output(ssh_cmd)
 
     def mkfcpartnership(self, system_name, bandwidth=1000,
                         backgroundcopyrate=50):
         ssh_cmd = ['svctask', 'mkfcpartnership', '-linkbandwidthmbits',
-                   six.text_type(bandwidth),
-                   '-backgroundcopyrate', six.text_type(backgroundcopyrate),
+                   str(bandwidth),
+                   '-backgroundcopyrate', str(backgroundcopyrate),
                    system_name]
         return self.run_ssh_assert_no_output(ssh_cmd)
 
@@ -650,7 +648,7 @@ class StorwizeSSH(object):
 
     def mkvdisk(self, name, size, units, pool, opts, params):
         ssh_cmd = ['svctask', 'mkvdisk', '-name', '"%s"' % name, '-mdiskgrp',
-                   '"%s"' % pool, '-iogrp', six.text_type(opts['iogrp']),
+                   '"%s"' % pool, '-iogrp', str(opts['iogrp']),
                    '-size', size, '-unit', units] + params
         try:
             return self.run_ssh_check_created(ssh_cmd)
@@ -721,7 +719,7 @@ class StorwizeSSH(object):
 
     def expandvdisksize(self, vdisk, amount):
         ssh_cmd = (
-            ['svctask', 'expandvdisksize', '-size', six.text_type(amount),
+            ['svctask', 'expandvdisksize', '-size', str(amount),
              '-unit', 'gb', '"%s"' % vdisk])
         self.run_ssh_assert_no_output(ssh_cmd)
 
@@ -732,7 +730,7 @@ class StorwizeSSH(object):
         if not full_copy:
             ssh_cmd.extend(['-copyrate', '0'])
         else:
-            ssh_cmd.extend(['-copyrate', six.text_type(copy_rate)])
+            ssh_cmd.extend(['-copyrate', str(copy_rate)])
             ssh_cmd.append('-autodelete')
         if consistgrp:
             ssh_cmd.extend(['-consistgrp', consistgrp])
@@ -1462,8 +1460,8 @@ class StorwizeHelpers(object):
         # Before we start, make sure host name is a string and that we have at
         # least one port.
         host_name = connector['host']
-        if not isinstance(host_name, six.string_types):
-            msg = _('create_host: Host name is not unicode or string.')
+        if not isinstance(host_name, str):
+            msg = _('create_host: Host name is not a string.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -1484,7 +1482,7 @@ class StorwizeHelpers(object):
             raise exception.VolumeDriverException(message=msg)
 
         # Build a host name for the Storwize host - first clean up the name
-        if isinstance(host_name, six.text_type):
+        if isinstance(host_name, str):
             host_name = unicodedata.normalize('NFKD', host_name).encode(
                 'ascii', 'replace').decode('ascii')
 
@@ -2060,7 +2058,7 @@ class StorwizeHelpers(object):
         else:
             params.extend(['-buffersize', '%s%%' % str(opts['rsize']),
                            '-warning',
-                           '%s%%' % six.text_type(opts['warning'])])
+                           '%s%%' % str(opts['warning'])])
             if not opts['autoexpand']:
                 params.append('-noautoexpand')
             if opts['compression']:
@@ -2068,7 +2066,7 @@ class StorwizeHelpers(object):
             else:
                 params.append('-thin')
                 params.extend(['-grainsize',
-                               six.text_type(opts['grainsize'])])
+                               str(opts['grainsize'])])
         return params
 
     def create_hyperswap_volume(self, vol_name, size, units, pool, opts):
@@ -2080,8 +2078,7 @@ class StorwizeHelpers(object):
                 self.check_data_reduction_pool_params(opts)
             params = self._get_hyperswap_volume_create_params(opts, is_dr_pool)
         hyperpool = '%s:%s' % (pool, opts['peer_pool'])
-        self.ssh.mkvolume(vol_name, six.text_type(size), units,
-                          hyperpool, params)
+        self.ssh.mkvolume(vol_name, str(size), units, hyperpool, params)
 
     def convert_volume_to_hyperswap(self, vol_name, opts, state):
         vol_name = '%s' % vol_name
@@ -2421,7 +2418,7 @@ class StorwizeHelpers(object):
             # update flashcopy rate for clone volume
             if copy_rate != '0' and attrs['rc_controlled'] != 'yes':
                 self.ssh.chfcmap(map_id,
-                                 copyrate=six.text_type(new_flashcopy_rate))
+                                 copyrate=str(new_flashcopy_rate))
 
     def run_flashcopy(self, source, target, timeout, copy_rate,
                       clean_rate, full_copy=True, restore=False):
@@ -3312,7 +3309,7 @@ class CLIResponse(object):
             vs = []
             for k in keys:
                 v = a.get(k, None)
-                if isinstance(v, six.string_types) or v is None:
+                if isinstance(v, str) or v is None:
                     v = [v]
                 if isinstance(v, list):
                     vs.append(v)
@@ -3347,7 +3344,7 @@ class CLIResponse(object):
                 else:
                     yield []
 
-        if isinstance(self.raw, six.string_types):
+        if isinstance(self.raw, str):
             stdout, stderr = self.raw, ''
         else:
             stdout, stderr = self.raw
@@ -5996,7 +5993,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     volume['volume_type_id'],
                     volume_metadata=volume.get('volume_metadata'))
                 # Check cycle_period_seconds
-                rep_cps = six.text_type(rep_opts.get('cycle_period_seconds'))
+                rep_cps = str(rep_opts.get('cycle_period_seconds'))
             if rel_info['cycle_period_seconds'] != rep_cps:
                 msg = (_("Failed to manage existing volume due to "
                          "the cycle_period_seconds %(vol_cps)s of "

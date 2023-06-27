@@ -28,7 +28,6 @@ from oslo_config import cfg
 from oslo_service import loopingcall
 from oslo_utils import units
 import paramiko
-import six
 
 from cinder import context
 import cinder.db
@@ -350,8 +349,8 @@ class StorwizeSVCManagementSimulator(object):
         ids.sort()
         for index, n in enumerate(ids):
             if n > index:
-                return six.text_type(index)
-        return six.text_type(len(ids))
+                return str(index)
+        return str(len(ids))
 
     # Check if name is valid
     @staticmethod
@@ -516,7 +515,7 @@ class StorwizeSVCManagementSimulator(object):
             num = num * 1024
             unit_index += 1
 
-        return six.text_type(num)
+        return str(num)
 
     def _cmd_lslicense(self, **kwargs):
         rows = [None] * 3
@@ -569,7 +568,7 @@ class StorwizeSVCManagementSimulator(object):
         for i in range(pool_num):
             row_data = [str(i + 1),
                         self._flags['storwize_svc_volpool_name'][i], 'online',
-                        '1', six.text_type(len(self._volumes_list)),
+                        '1', str(len(self._volumes_list)),
                         '3573412790272', '256', '3529926246400',
                         '1693247906775',
                         '26843545600', '38203734097', '47', '80', 'auto',
@@ -801,13 +800,13 @@ port_speed!N/A
                 value1 = filter1.split('=')[1]
                 value2 = filter2.split('=')[1]
                 for v in ports:
-                    if(six.text_type(v[5]) == value1 and six.text_type(
+                    if(str(v[5]) == value1 and str(
                             v[7]) == value2):
                         rows.append(v)
             else:
                 value = kwargs['filtervalue'].split('=')[1]
                 for v in ports:
-                    if six.text_type(v[5]) == value:
+                    if str(v[5]) == value:
                         rows.append(v)
         else:
             rows = ports
@@ -866,7 +865,7 @@ port_speed!N/A
 
             value = kwargs['filtervalue'].split('=')[1]
             for v in ports:
-                if six.text_type(v[5]) == value:
+                if str(v[5]) == value:
                     rows.append(v)
         else:
             rows = ports
@@ -1146,7 +1145,7 @@ port_speed!N/A
         curr_size = int(self._volumes_list[vol_name]['capacity'])
         addition = size * units.Gi
         self._volumes_list[vol_name]['capacity'] = (
-            six.text_type(curr_size + addition))
+            str(curr_size + addition))
         return ('', '')
 
     def _get_fcmap_info(self, vol_name):
@@ -1182,7 +1181,7 @@ port_speed!N/A
                     cap = self._convert_bytes_units(vol['capacity'])
                 else:
                     cap = vol['capacity']
-                rows.append([six.text_type(vol['id']), vol['name'],
+                rows.append([str(vol['id']), vol['name'],
                              vol['IO_group_id'],
                              vol['IO_group_name'], 'online', '0',
                              _get_test_pool(),
@@ -1207,7 +1206,7 @@ port_speed!N/A
                     item = self._convert_bytes_units(item)
             rows = []
 
-            rows.append(['id', six.text_type(vol['id'])])
+            rows.append(['id', str(vol['id'])])
             rows.append(['name', vol['name']])
             rows.append(['IO_group_id', vol['IO_group_id']])
             rows.append(['IO_group_name', vol['IO_group_name']])
@@ -1306,7 +1305,7 @@ port_speed!N/A
         if 'name' in kwargs:
             host_name = kwargs['name'].strip('\'\"')
         else:
-            host_name = 'host' + six.text_type(host_info['id'])
+            host_name = 'host' + str(host_info['id'])
 
         if self._is_invalid_name(host_name):
             return self._errors['CMMVC6527E']
@@ -1754,7 +1753,7 @@ port_speed!N/A
         filter_value = kwargs['filtervalue'].split('=')[1]
         to_delete = []
         for k, v in self._fcmappings_list.items():
-            if six.text_type(v[filter_key]) == filter_value:
+            if str(v[filter_key]) == filter_value:
                 source = self._volumes_list[v['source']]
                 target = self._volumes_list[v['target']]
                 self._state_transition('wait', v)
@@ -1883,16 +1882,16 @@ port_speed!N/A
                     fcconsistgrp = self._fcconsistgrp_list[cg_id]
                     break
             rows = []
-            rows.append(['id', six.text_type(cg_id)])
+            rows.append(['id', str(cg_id)])
             rows.append(['name', fcconsistgrp['name']])
             rows.append(['status', fcconsistgrp['status']])
             rows.append(['autodelete',
-                         six.text_type(fcconsistgrp['autodelete'])])
+                         str(fcconsistgrp['autodelete'])])
             rows.append(['start_time',
-                         six.text_type(fcconsistgrp['start_time'])])
+                         str(fcconsistgrp['start_time'])])
 
             for fcmap_id in fcconsistgrp['fcmaps'].keys():
-                rows.append(['FC_mapping_id', six.text_type(fcmap_id)])
+                rows.append(['FC_mapping_id', str(fcmap_id)])
                 rows.append(['FC_mapping_name',
                              fcconsistgrp['fcmaps'][fcmap_id]])
 
@@ -2971,7 +2970,7 @@ port_speed!N/A
         filter_key = kwargs['filtervalue'].split('=')[0]
         filter_value = kwargs['filtervalue'].split('=')[1]
         for k, v in self._partnership_list.items():
-            if six.text_type(v[filter_key]) == filter_value:
+            if str(v[filter_key]) == filter_value:
                 rows.append([v['id'], v['name'], v['location'],
                              v['partnership'], v['type'], v['cluster_ip'],
                              v['event_log_sequence']])
@@ -3451,9 +3450,9 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                                'storwize_svc_allow_tenant_qos': True,
                                'storwize_preferred_host_site': self.host_site}
             wwpns = [
-                six.text_type(random.randint(0, 9999999999999999)).zfill(16),
-                six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
-            initiator = 'test.initiator.%s' % six.text_type(
+                str(random.randint(0, 9999999999999999)).zfill(16),
+                str(random.randint(0, 9999999999999999)).zfill(16)]
+            initiator = 'test.initiator.%s' % str(
                 random.randint(10000, 99999))
             self._connector = {'ip': '1.234.56.78',
                                'host': 'storwize-svc-test',
@@ -3920,14 +3919,12 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         # Check the multipath host-volume map return value
         # target_iqns and target_portals have no guaranteed order
-        six.assertCountEqual(self,
-                             exp_m_path['data']['target_iqns'],
-                             ret['data']['target_iqns'])
+        self.assertCountEqual(exp_m_path['data']['target_iqns'],
+                              ret['data']['target_iqns'])
         del exp_m_path['data']['target_iqns']
 
-        six.assertCountEqual(self,
-                             exp_m_path['data']['target_portals'],
-                             ret['data']['target_portals'])
+        self.assertCountEqual(exp_m_path['data']['target_portals'],
+                              ret['data']['target_portals'])
         del exp_m_path['data']['target_portals']
 
         for k, v in exp_m_path['data'].items():
@@ -4007,8 +4004,8 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                 for host_exists in ['yes-auth', 'yes-noauth', 'no']:
                     self._set_flag('storwize_svc_iscsi_chap_enabled',
                                    auth_enabled)
-                    case = 'en' + six.text_type(
-                        auth_enabled) + 'ex' + six.text_type(host_exists)
+                    case = 'en' + str(
+                        auth_enabled) + 'ex' + str(host_exists)
                     conn_na = {'initiator': 'test:init:%s' %
                                             random.randint(10000, 99999),
                                'ip': '11.11.11.11',
@@ -4123,10 +4120,9 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
             types[protocol] = volume_types.create(ctxt, protocol, opts)
 
         # Create a connector for the second 'host'
-        wwpns = [six.text_type(random.randint(0, 9999999999999999)).zfill(16),
-                 six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
-        initiator = 'test.initiator.%s' % six.text_type(random.randint(10000,
-                                                                       99999))
+        wwpns = [str(random.randint(0, 9999999999999999)).zfill(16),
+                 str(random.randint(0, 9999999999999999)).zfill(16)]
+        initiator = 'test.initiator.%s' % str(random.randint(10000, 99999))
         conn2 = {'ip': '1.234.56.79',
                  'host': 'storwize-svc-test2',
                  'wwpns': wwpns,
@@ -4178,9 +4174,9 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                                'storwize_svc_multipath_enabled': False,
                                'storwize_svc_allow_tenant_qos': True}
             wwpns = [
-                six.text_type(random.randint(0, 9999999999999999)).zfill(16),
-                six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
-            initiator = 'test.initiator.%s' % six.text_type(
+                str(random.randint(0, 9999999999999999)).zfill(16),
+                str(random.randint(0, 9999999999999999)).zfill(16)]
+            initiator = 'test.initiator.%s' % str(
                 random.randint(10000, 99999))
             self._connector = {'ip': '1.234.56.78',
                                'host': 'storwize-svc-test',
@@ -5011,10 +5007,9 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
             types[protocol] = volume_types.create(ctxt, protocol, opts)
 
         # Create a connector for the second 'host'
-        wwpns = [six.text_type(random.randint(0, 9999999999999999)).zfill(16),
-                 six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
-        initiator = 'test.initiator.%s' % six.text_type(random.randint(10000,
-                                                                       99999))
+        wwpns = [str(random.randint(0, 9999999999999999)).zfill(16),
+                 str(random.randint(0, 9999999999999999)).zfill(16)]
+        initiator = 'test.initiator.%s' % str(random.randint(10000, 99999))
         conn2 = {'ip': '1.234.56.79',
                  'host': 'storwize-svc-test2',
                  'wwpns': wwpns,
@@ -5076,9 +5071,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.fcdriver = StorwizeSVCFcFakeDriver(
                 configuration=config)
             wwpns = [
-                six.text_type(random.randint(0, 9999999999999999)).zfill(16),
-                six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
-            initiator = 'test.initiator.%s' % six.text_type(
+                str(random.randint(0, 9999999999999999)).zfill(16),
+                str(random.randint(0, 9999999999999999)).zfill(16)]
+            initiator = 'test.initiator.%s' % str(
                 random.randint(10000, 99999))
             self._connector = {'ip': '1.234.56.78',
                                'host': 'storwize-svc-test',
@@ -11528,9 +11523,9 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                SVC_POOLS,
                                'replication_device': [self.rep_target]}
             wwpns = [
-                six.text_type(random.randint(0, 9999999999999999)).zfill(16),
-                six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
-            initiator = 'test.initiator.%s' % six.text_type(
+                str(random.randint(0, 9999999999999999)).zfill(16),
+                str(random.randint(0, 9999999999999999)).zfill(16)]
+            initiator = 'test.initiator.%s' % str(
                 random.randint(10000, 99999))
             self._connector = {'ip': '1.234.56.78',
                                'host': 'storwize-svc-test',
@@ -11999,7 +11994,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             rep_type = self.driver._get_volume_replicated_type(
                 self.ctxt, volume)
             src_opts = self.driver._get_vdisk_params(volume['volume_type_id'])
-            opt_cycle_period_seconds = six.text_type(
+            opt_cycle_period_seconds = str(
                 src_opts.get('cycle_period_seconds'))
             self.assertEqual(opt_cycle_period_seconds, cycle_period_seconds)
             self.assertEqual(storwize_const.GMCV_MULTI, cycling_mode)
@@ -12052,7 +12047,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertIsNotNone(rel_info)
 
         src_opts = self.driver._get_vdisk_params(volume['volume_type_id'])
-        opt_cycle_period_seconds = six.text_type(
+        opt_cycle_period_seconds = str(
             src_opts.get('cycle_period_seconds'))
         self.assertEqual(opt_cycle_period_seconds,
                          rel_info['cycle_period_seconds'])

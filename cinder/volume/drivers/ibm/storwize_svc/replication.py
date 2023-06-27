@@ -20,7 +20,6 @@ from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -52,7 +51,7 @@ class StorwizeSVCReplication(object):
         except Exception as e:
             msg = (_('Unable to fail-over the volume %(id)s to the '
                    'secondary back-end, error: %(error)s') %
-                   {"id": vref['id'], "error": six.text_type(e)})
+                   {"id": vref['id'], "error": str(e)})
             LOG.exception(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -68,7 +67,7 @@ class StorwizeSVCReplication(object):
             except Exception as e:
                 msg = (_('Unable to fail-back the volume: %(vol)s to the '
                          'master back-end, error: %(error)s') %
-                       {"vol": volume['name'], "error": six.text_type(e)})
+                       {"vol": volume['name'], "error": str(e)})
                 LOG.exception(msg)
                 raise exception.VolumeDriverException(message=msg)
 
@@ -106,7 +105,7 @@ class StorwizeSVCReplicationGlobalMirror(StorwizeSVCReplication):
                     vref['name'])
                 opts['iogrp'] = src_attr['IO_group_id']
                 self.target_helpers.create_vdisk(target_vol_name,
-                                                 six.text_type(vref['size']),
+                                                 str(vref['size']),
                                                  'gb', pool, opts)
 
             system_info = self.target_helpers.get_system_info()
@@ -184,7 +183,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
                 src_change_pool = src_child_pool
             try:
                 self.driver._helpers.create_vdisk(source_change_vol_name,
-                                                  six.text_type(vref['size']),
+                                                  str(vref['size']),
                                                   'gb',
                                                   src_change_pool,
                                                   src_change_opts)
@@ -201,7 +200,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
             target_opts['iogrp'] = src_attr['IO_group_id']
             try:
                 self.target_helpers.create_vdisk(target_vol_name,
-                                                 six.text_type(vref['size']),
+                                                 str(vref['size']),
                                                  'gb',
                                                  target_pool,
                                                  target_opts)
@@ -228,7 +227,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
             target_change_opts['autoexpand'] = True
             try:
                 self.target_helpers.create_vdisk(target_change_vol_name,
-                                                 six.text_type(vref['size']),
+                                                 str(vref['size']),
                                                  'gb',
                                                  target_change_pool,
                                                  target_change_opts)
@@ -257,7 +256,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
         except Exception as e:
             msg = (_("Unable to set up gmcv mode replication for %(vol)s. "
                      "Exception: %(err)s.") % {'vol': vref['id'],
-                                               'err': six.text_type(e)})
+                                               'err': str(e)})
             LOG.exception(msg)
             raise exception.VolumeDriverException(message=msg)
         LOG.debug('leave: volume_replication_setup:volume %s', vref['name'])
@@ -303,7 +302,7 @@ class StorwizeSVCReplicationManager(object):
                         return processutils.ssh_execute(
                             ssh, command, check_exit_code=check_exit_code)
                     except Exception as e:
-                        LOG.error(six.text_type(e))
+                        LOG.error(str(e))
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 try:
