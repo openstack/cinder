@@ -102,6 +102,20 @@ By default, the SSL certificate validation is disabled.
 If the ``driver_ssl_cert_path`` option is omitted, the system default CA will
 be used.
 
+Image Volume Caching support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The image volume cache functionality is supported.
+To enable it, modify the following options in the
+``cinder.conf`` file:
+
+.. code-block:: ini
+
+  image_volume_cache_enabled = True
+
+By default, Image Volume Caching is disabled.
+
+
 Thin provisioning and compression
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
