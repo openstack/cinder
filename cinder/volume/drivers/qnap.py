@@ -22,6 +22,7 @@ import functools
 import re
 import threading
 import time
+import urllib.parse
 
 import eventlet
 from lxml import etree as ET
@@ -32,8 +33,6 @@ from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
-import six
-from six.moves import urllib
 
 from cinder.common import constants
 from cinder import exception
@@ -286,8 +285,8 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         'True' and 'False'.
         """
 
-        if not isinstance(extra_spec_value, six.string_types):
-            extra_spec_value = six.text_type(extra_spec_value)
+        if not isinstance(extra_spec_value, str):
+            extra_spec_value = str(extra_spec_value)
 
         match = re.match(r'^<is>\s*(?P<value>True|False)$',
                          extra_spec_value.strip(),
@@ -1056,10 +1055,10 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         lun_status = self.enum('creating', 'unmapped', 'mapped')
 
         LOG.debug('LUNStatus: %s', selected_lun.find('LUNStatus').text)
-        LOG.debug('lun_status.mapped: %s', six.text_type(lun_status.mapped))
+        LOG.debug('lun_status.mapped: %s', str(lun_status.mapped))
         # lun does not map to any target
         if (selected_lun.find('LUNStatus').text) != (
-                six.text_type(lun_status.mapped)):
+                str(lun_status.mapped)):
             return
 
         target_index = (selected_lun.find('LUNTargetList')
@@ -1126,7 +1125,7 @@ def _connection_checker(func):
             except exception.VolumeBackendAPIException as e:
                 pattern = re.compile(
                     r".*Session id expired$")
-                matches = pattern.match(six.text_type(e))
+                matches = pattern.match(str(e))
                 if matches:
                     if attempts < 4:
                         LOG.debug('Session might have expired.'
@@ -1267,7 +1266,7 @@ class QnapAPIExecutor(object):
 
         for key, value in params.items():
             if value is not None:
-                sanitized_params[key] = six.text_type(value)
+                sanitized_params[key] = str(value)
 
         encoded_params = urllib.parse.urlencode(sanitized_params)
         url = url + encoded_params
@@ -1467,8 +1466,8 @@ class QnapAPIExecutor(object):
         if root.find('result').text < '0':
             raise exception.VolumeBackendAPIException(data=_(
                 "Map lun %(lun_index)s to target %(target_index)s failed") %
-                {'lun_index': six.text_type(lun_index),
-                 'target_index': six.text_type(target_index)})
+                {'lun_index': str(lun_index),
+                 'target_index': str(target_index)})
 
     @_connection_checker
     def disable_lun(self, lun_index, target_index):
@@ -1894,8 +1893,8 @@ class QnapAPIExecutorTS(QnapAPIExecutor):
         if root.find('result').text < '0':
             raise exception.VolumeBackendAPIException(data=_(
                 "Map lun %(lun_index)s to target %(target_index)s failed") %
-                {'lun_index': six.text_type(lun_index),
-                 'target_index': six.text_type(target_index)})
+                {'lun_index': str(lun_index),
+                 'target_index': str(target_index)})
 
         return root.find('result').text
 

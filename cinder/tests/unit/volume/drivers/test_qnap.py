@@ -612,7 +612,7 @@ class QnapDriverBaseTestCase(test.TestCase):
 
     @staticmethod
     def sanitize(params):
-        sanitized = {_key: six.text_type(_value)
+        sanitized = {_key: str(_value)
                      for _key, _value in six.iteritems(params)
                      if _value is not None}
         sanitized = utils.create_ordereddict(sanitized)
