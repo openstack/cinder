@@ -13,6 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import functools
 import time
 
 from oslo_log import log as logging
@@ -20,7 +21,6 @@ from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import uuidutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -70,8 +70,8 @@ def build_provider_location(system, lun_type, lun_id, base_lun_name, version):
     """
     location_dict = {'system': system,
                      'type': lun_type,
-                     'id': six.text_type(lun_id),
-                     'base_lun_name': six.text_type(base_lun_name),
+                     'id': str(lun_id),
+                     'base_lun_name': str(base_lun_name),
                      'version': version}
     return dump_provider_location(location_dict)
 
@@ -112,7 +112,7 @@ def update_remote_provider_location(volume, client):
     provider_location = volume.provider_location
     updated = {}
     updated['system'] = client.get_serial()
-    updated['id'] = six.text_type(
+    updated['id'] = str(
         client.get_lun(name=volume.name).lun_id)
     provider_location = update_provider_location(
         provider_location, updated)
@@ -218,14 +218,14 @@ def get_original_status(volume):
 def construct_snap_name(volume):
     """Return snapshot name."""
     if is_snapcopy_enabled(volume):
-        return 'snap-as-vol-' + six.text_type(volume.name_id)
+        return 'snap-as-vol-' + str(volume.name_id)
     else:
-        return 'tmp-snap-' + six.text_type(volume.name_id)
+        return 'tmp-snap-' + str(volume.name_id)
 
 
 def construct_mirror_name(volume):
     """Constructs MirrorView name for volume."""
-    return 'mirror_' + six.text_type(volume.id)
+    return 'mirror_' + str(volume.id)
 
 
 def construct_group_name(group):
@@ -239,7 +239,7 @@ def construct_group_name(group):
 
 def construct_tmp_cg_snap_name(cg_name):
     """Return CG snapshot name."""
-    return 'tmp-snap-' + six.text_type(cg_name)
+    return 'tmp-snap-' + str(cg_name)
 
 
 def construct_tmp_lun_name(lun_name):
@@ -249,7 +249,7 @@ def construct_tmp_lun_name(lun_name):
 
 
 def construct_smp_name(snap_id):
-    return 'tmp-smp-' + six.text_type(snap_id)
+    return 'tmp-smp-' + str(snap_id)
 
 
 def is_snapcopy_enabled(volume):
@@ -410,7 +410,7 @@ def is_volume_smp(volume):
 
 
 def require_consistent_group_snapshot_enabled(func):
-    @six.wraps(func)
+    @functools.wraps(func)
     def inner(self, *args, **kwargs):
         if not volume_utils.is_group_a_cg_snapshot_type(args[1]):
             raise NotImplementedError

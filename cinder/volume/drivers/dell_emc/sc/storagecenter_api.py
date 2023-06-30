@@ -13,6 +13,7 @@
 #    under the License.
 """Interface for interacting with the Dell Storage Center array."""
 
+import http.client as http_client
 import json
 import os.path
 import uuid
@@ -21,8 +22,6 @@ import eventlet
 from oslo_log import log as logging
 from oslo_utils import excutils
 import requests
-import six
-from six.moves import http_client
 
 from cinder.common import constants
 from cinder import exception
@@ -722,7 +721,7 @@ class SCApi(object):
         ret = False
         if provider_id:
             try:
-                if provider_id.split('.')[0] == six.text_type(self.ssn):
+                if provider_id.split('.')[0] == str(self.ssn):
                     ret = True
                 else:
                     LOG.debug('_use_provider_id: provider_id '
@@ -1846,7 +1845,7 @@ class SCApi(object):
 
             if process_it:
                 # Make sure this isn't a duplicate.
-                newportal = address + ':' + six.text_type(port)
+                newportal = address + ':' + str(port)
                 for idx, portal in enumerate(portals):
                     if (portal == newportal
                             and iqns[idx] == iqn

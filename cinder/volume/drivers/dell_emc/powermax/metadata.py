@@ -19,7 +19,6 @@ import traceback
 import types
 
 from oslo_log import log as logging
-import six
 import tabulate
 
 from cinder.objects import volume
@@ -401,7 +400,7 @@ class PowerMaxVolumeMetadata(object):
         source_device_label, snap_ids, is_snap_id = None, None, None
         if isinstance(source, volume.Volume):
             if 'create' or 'manage' in successful_operation:
-                snapshot_count = six.text_type(len(source.snapshots))
+                snapshot_count = str(len(source.snapshots))
                 if snapshot_metadata:
                     last_ss_name = snapshot_metadata.get('snap_display_name')
                     snapshot_label = snapshot_metadata.get('SnapshotLabel')
@@ -411,7 +410,7 @@ class PowerMaxVolumeMetadata(object):
                     snap_ids = snapshot_metadata.get('SnapIdList')
                     is_snap_id = snapshot_metadata.get('is_snap_id')
             else:
-                snapshot_count = six.text_type(len(source.snapshots) - 1)
+                snapshot_count = str(len(source.snapshots) - 1)
             default_sg = (
                 self.utils.derive_default_sg_from_extra_specs(extra_specs))
             sl, wl = self.utils.get_service_level_workload(extra_specs)

@@ -14,8 +14,7 @@
 #    under the License.
 
 from unittest.mock import patch
-
-from six.moves import urllib
+import urllib.parse
 
 from cinder import context
 from cinder import exception

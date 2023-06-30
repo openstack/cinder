@@ -12,15 +12,15 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import http.client as http_client
 import json
 import re
+import urllib.parse
 
 from oslo_log import log as logging
 from oslo_utils import units
 import requests
-import six
-from six.moves import http_client
-from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
@@ -188,7 +188,7 @@ class RestClient(object):
             "storagePoolId": pool_id,
             "name": volume_name,
             "volumeType": provisioning,
-            "volumeSizeInKb": six.text_type(volume_size_kb),
+            "volumeSizeInKb": str(volume_size_kb),
             "compressionMethod": compression,
         }
         r, response = self.execute_powerflex_post_request(url, params)
@@ -541,7 +541,7 @@ class RestClient(object):
             LOG.warning("PowerFlex only supports volumes with a granularity "
                         "of 8 GBs. The new volume size is: %d.",
                         new_size)
-        params = {"sizeInGB": six.text_type(new_size)}
+        params = {"sizeInGB": str(new_size)}
         r, response = self.execute_powerflex_post_request(url,
                                                           params,
                                                           vol_id=vol_id)

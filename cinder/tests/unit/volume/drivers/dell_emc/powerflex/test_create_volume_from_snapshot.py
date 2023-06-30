@@ -13,8 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import json
-
-from six.moves import urllib
+import urllib.parse
 
 from cinder import context
 from cinder import exception

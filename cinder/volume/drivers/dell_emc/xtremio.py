@@ -35,6 +35,7 @@ Supports XtremIO version 2.4 and up.
   1.0.13 - add support for iSCSI IPv6
 """
 
+import http.client as http_client
 import json
 import math
 import random
@@ -46,8 +47,6 @@ from oslo_utils import netutils
 from oslo_utils import strutils
 from oslo_utils import units
 import requests
-import six
-from six.moves import http_client
 
 from cinder.common import constants
 from cinder import context
@@ -176,7 +175,7 @@ class XtremIOClient(object):
                     verify=self.verify, auth=(self.configuration.san_login,
                                               self.configuration.san_password))
             except requests.exceptions.RequestException as exc:
-                msg = (_('Exception: %s') % six.text_type(exc))
+                msg = (_('Exception: %s') % str(exc))
                 raise exception.VolumeDriverException(message=msg)
 
             if (http_client.OK <= response.status_code <
@@ -724,7 +723,7 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume's size."""
-        data = {'vol-size': six.text_type(new_size) + 'g'}
+        data = {'vol-size': str(new_size) + 'g'}
         try:
             self.client.req('volumes', 'PUT', data, name=volume['id'])
         except exception.NotFound:
@@ -770,8 +769,8 @@ class XtremIOVolumeDriver(san.SanDriver):
             ig_indexes = self._get_ig_indexes_from_initiators(connector)
 
         for ig_idx in ig_indexes:
-            lm_name = '%s_%s_%s' % (six.text_type(vol['index']),
-                                    six.text_type(ig_idx),
+            lm_name = '%s_%s_%s' % (str(vol['index']),
+                                    str(ig_idx),
                                     tg_index)
             LOG.debug('Removing lun map %s.', lm_name)
             try:

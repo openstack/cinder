@@ -13,9 +13,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import functools
 from unittest import mock
-
-import six
 
 from cinder import context
 from cinder.tests.unit.consistencygroup import fake_cgsnapshot
@@ -158,8 +157,8 @@ class CinderResourceMock(DriverResourceMock):
     def _build_provider_location(props):
         return vnx_utils.build_provider_location(
             props.get('system'), props.get('type'),
-            six.text_type(props.get('id')),
-            six.text_type(props.get('base_lun_name')),
+            str(props.get('id')),
+            str(props.get('base_lun_name')),
             props.get('version'))
 
 
@@ -348,7 +347,7 @@ DRIVER_RES_MAPPING = {
 
 
 def mock_driver_input(func):
-    @six.wraps(func)
+    @functools.wraps(func)
     def decorated(cls, *args, **kwargs):
         return func(cls,
                     DRIVER_RES_MAPPING[cls.__class__.__name__][func.__name__],
@@ -382,7 +381,7 @@ def _build_client():
 
 
 def patch_client(func):
-    @six.wraps(func)
+    @functools.wraps(func)
     def decorated(cls, *args, **kwargs):
         storage_res = (
             STORAGE_RES_MAPPING[cls.__class__.__name__][func.__name__])
@@ -404,7 +403,7 @@ PROTOCOL_MAPPING = {
 
 def patch_adapter_init(protocol):
     def inner_patch_adapter(func):
-        @six.wraps(func)
+        @functools.wraps(func)
         def decorated(cls, *args, **kwargs):
             storage_res = (
                 STORAGE_RES_MAPPING[cls.__class__.__name__][func.__name__])
@@ -427,7 +426,7 @@ def _patch_adapter_prop(adapter, client):
 
 def patch_adapter(protocol):
     def inner_patch_adapter(func):
-        @six.wraps(func)
+        @functools.wraps(func)
         def decorated(cls, *args, **kwargs):
             storage_res = (
                 STORAGE_RES_MAPPING[cls.__class__.__name__][func.__name__])
@@ -449,7 +448,7 @@ patch_fc_adapter = patch_adapter(common.PROTOCOL_FC)
 
 
 def mock_storage_resources(func):
-    @six.wraps(func)
+    @functools.wraps(func)
     def decorated(cls, *args, **kwargs):
         storage_res = (
             STORAGE_RES_MAPPING[cls.__class__.__name__][func.__name__])

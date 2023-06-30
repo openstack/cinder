@@ -17,7 +17,6 @@ from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder.common import constants
 from cinder import exception
@@ -1444,7 +1443,7 @@ class SCCommonDriver(driver.ManageableVD,
         # Mark for failover or undo failover.
         LOG.debug('active_backend_id: %s', active_backend_id)
         if active_backend_id:
-            self.active_backend_id = six.text_type(active_backend_id)
+            self.active_backend_id = str(active_backend_id)
             self.failed_over = True
         else:
             self.active_backend_id = None
@@ -1666,7 +1665,7 @@ class SCCommonDriver(driver.ManageableVD,
             'cvol': cvol['instanceId'],
             'ovol': ovol['instanceId'],
             'nvol': nvolid,
-            'rdd': six.text_type(api.ssn),
+            'rdd': str(api.ssn),
             'status': status}
 
         return replitem

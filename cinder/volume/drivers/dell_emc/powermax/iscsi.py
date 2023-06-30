@@ -20,7 +20,6 @@ import random
 
 from oslo_log import log as logging
 from oslo_utils import strutils
-import six
 
 from cinder.common import constants
 from cinder import exception
@@ -316,7 +315,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         except KeyError as e:
             exception_message = (_("Cannot get iSCSI ipaddresses, multipath "
                                    "flag, or hostlunid. Exception is %(e)s.")
-                                 % {'e': six.text_type(e)})
+                                 % {'e': str(e)})
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
 

@@ -22,7 +22,6 @@ import re
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -369,7 +368,7 @@ class CommonAdapter(replication.ReplicationAdapter):
                 lun_id=new_lun_id,
                 base_lun_name=volume.name)
             volume_metadata['snapcopy'] = 'False'
-            volume_metadata['async_migrate'] = six.text_type(async_migrate)
+            volume_metadata['async_migrate'] = str(async_migrate)
             rep_update = self.setup_lun_replication(volume, new_lun_id)
 
         model_update = {'provider_location': location,
@@ -424,7 +423,7 @@ class CommonAdapter(replication.ReplicationAdapter):
                 lun_id=new_lun_id,
                 base_lun_name=volume.name)
             volume_metadata['snapcopy'] = 'False'
-            volume_metadata['async_migrate'] = six.text_type(async_migrate)
+            volume_metadata['async_migrate'] = str(async_migrate)
             rep_update = self.setup_lun_replication(volume, new_lun_id)
 
         model_update = {'provider_location': location,

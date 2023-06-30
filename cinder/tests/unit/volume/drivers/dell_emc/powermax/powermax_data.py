@@ -16,8 +16,6 @@
 from copy import deepcopy
 import random
 
-import six
-
 from cinder import context
 from cinder.objects import fields
 from cinder.objects import group
@@ -182,13 +180,13 @@ class PowerMaxData(object):
     provider_location = {'array': array,
                          'device_id': device_id}
 
-    provider_location2 = {'array': six.text_type(array),
+    provider_location2 = {'array': str(array),
                           'device_id': device_id2}
 
-    provider_location3 = {'array': six.text_type(remote_array),
+    provider_location3 = {'array': str(remote_array),
                           'device_id': device_id2}
 
-    provider_location4 = {'array': six.text_type(uni_array),
+    provider_location4 = {'array': str(uni_array),
                           'device_id': device_id}
     provider_location_clone = {'array': array,
                                'device_id': device_id,
@@ -204,7 +202,7 @@ class PowerMaxData(object):
 
     replication_update = (
         {'replication_status': 'enabled',
-         'replication_driver_data': six.text_type(
+         'replication_driver_data': str(
              {'array': remote_array, 'device_id': device_id2})})
 
     legacy_provider_location = {
@@ -227,52 +225,52 @@ class PowerMaxData(object):
 
     test_volume = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
-        provider_location=six.text_type(provider_location),
+        provider_location=str(provider_location),
         volume_type=test_volume_type, host=fake_host,
-        replication_driver_data=six.text_type(provider_location3))
+        replication_driver_data=str(provider_location3))
 
     test_rep_volume = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
-        provider_location=six.text_type(provider_location),
+        provider_location=str(provider_location),
         volume_type=test_volume_type, host=fake_host,
-        replication_driver_data=six.text_type(provider_location3),
+        replication_driver_data=str(provider_location3),
         replication_status=fields.ReplicationStatus.ENABLED)
 
     test_attached_volume = fake_volume.fake_volume_obj(
         id='4732de9b-98a4-4b6d-ae4b-3cafb3d34220', context=ctx, name='vol1',
         size=0, provider_auth=None, attach_status='attached',
-        provider_location=six.text_type(provider_location), host=fake_host,
+        provider_location=str(provider_location), host=fake_host,
         volume_type=test_volume_type,
-        replication_driver_data=six.text_type(provider_location3))
+        replication_driver_data=str(provider_location3))
 
     test_legacy_vol = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
-        provider_location=six.text_type(legacy_provider_location),
-        replication_driver_data=six.text_type(legacy_provider_location2),
+        provider_location=str(legacy_provider_location),
+        replication_driver_data=str(legacy_provider_location2),
         host=fake_host, volume_type=test_volume_type)
 
     test_clone_volume = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
-        provider_location=six.text_type(provider_location2),
+        provider_location=str(provider_location2),
         host=fake_host, source_volid=test_volume.id,
         snapshot_id=snapshot_id, _name_id=test_volume.id)
 
     test_volume_snap_manage = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
         display_name='vol1',
-        provider_location=six.text_type(provider_location),
+        provider_location=str(provider_location),
         volume_type=test_volume_type, host=fake_host,
-        replication_driver_data=six.text_type(provider_location4))
+        replication_driver_data=str(provider_location4))
 
     test_snapshot = fake_snapshot.fake_snapshot_obj(
         context=ctx, id=snapshot_id,
         name='my_snap', size=2,
-        provider_location=six.text_type(snap_location),
+        provider_location=str(snap_location),
         host=fake_host, volume=test_volume)
 
     test_legacy_snapshot = fake_snapshot.fake_snapshot_obj(
         context=ctx, id=test_volume.id, name='my_snap', size=2,
-        provider_location=six.text_type(legacy_provider_location),
+        provider_location=str(legacy_provider_location),
         host=fake_host, volume=test_volume)
 
     test_failed_snap = fake_snapshot.fake_snapshot_obj(
@@ -280,13 +278,13 @@ class PowerMaxData(object):
         id='4732de9b-98a4-4b6d-ae4b-3cafb3d34220',
         name=failed_resource,
         size=2,
-        provider_location=six.text_type(snap_location),
+        provider_location=str(snap_location),
         host=fake_host, volume=test_volume)
 
     test_snapshot_manage = fake_snapshot.fake_snapshot_obj(
         context=ctx, id=snapshot_id,
         name='my_snap', size=2,
-        provider_location=six.text_type(snap_location),
+        provider_location=str(snap_location),
         host=fake_host, volume=test_volume_snap_manage,
         display_name='my_snap')
 
@@ -541,7 +539,7 @@ class PowerMaxData(object):
         provider_auth=None, volume_type_ids=['abc'],
         group_type_id='grptypeid',
         volume_types=test_volume_type_list,
-        host=fake_host, provider_location=six.text_type(provider_location))
+        host=fake_host, provider_location=str(provider_location))
 
     test_group_failed = group.Group(
         context=None, name=failed_resource,
@@ -552,7 +550,7 @@ class PowerMaxData(object):
         provider_auth=None, volume_type_ids=['abc'],
         group_type_id='grptypeid',
         volume_types=test_volume_type_list,
-        host=fake_host, provider_location=six.text_type(provider_location),
+        host=fake_host, provider_location=str(provider_location),
         replication_status=fields.ReplicationStatus.DISABLED)
 
     test_rep_group = fake_group.fake_group_obj(
@@ -590,9 +588,9 @@ class PowerMaxData(object):
 
     test_volume_group_member = fake_volume.fake_volume_obj(
         context=ctx, name='vol1', size=2, provider_auth=None,
-        provider_location=six.text_type(provider_location),
+        provider_location=str(provider_location),
         volume_type=test_volume_type, host=fake_host,
-        replication_driver_data=six.text_type(provider_location3),
+        replication_driver_data=str(provider_location3),
         group_id=test_vol_grp_name_id_only)
 
     # masking view dict
@@ -1577,7 +1575,7 @@ class PowerMaxData(object):
 
     r2_sg_list = deepcopy(r1_sg_list)
     replication_model = (
-        {'provider_location': six.text_type(provider_location),
+        {'provider_location': str(provider_location),
          'metadata': {'DeviceID': device_id,
                       'DeviceLabel': 'OS-%s' % volume_id,
                       'ArrayID': array,
@@ -1596,7 +1594,7 @@ class PowerMaxData(object):
                       'R2-RDFG': rdf_group_no_1}})
 
     non_replication_model = (
-        {'provider_location': six.text_type(provider_location),
+        {'provider_location': str(provider_location),
          'metadata': {'DeviceID': device_id,
                       'DeviceLabel': 'OS-%s' % volume_id,
                       'ArrayID': array,

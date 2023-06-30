@@ -21,7 +21,6 @@ import json
 from oslo_log import log as logging
 from oslo_utils import units
 from packaging import version
-import six
 
 from cinder import coordination
 from cinder import exception
@@ -59,7 +58,7 @@ def build_provider_location(system, lun_type, lun_id, version):
     """
     location_dict = {'system': system,
                      'type': lun_type,
-                     'id': six.text_type(lun_id),
+                     'id': str(lun_id),
                      'version': version}
     return dump_provider_location(location_dict)
 
@@ -378,7 +377,7 @@ def append_capabilities(func):
         'consistent_group_replication_enabled': True
     }
 
-    @six.wraps(func)
+    @functools.wraps(func)
     def _inner(*args, **kwargs):
         output = func(*args, **kwargs)
         output.update(capabilities)
