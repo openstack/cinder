@@ -209,3 +209,71 @@ class CoordinationTestCase(test.TestCase):
         coordination.synchronized_remove(mock.sentinel.glob_name, coordinator)
         coordinator.remove_lock.assert_called_once_with(
             mock.sentinel.glob_name)
+
+    @mock.patch.object(coordination.COORDINATOR, 'get_lock')
+    def test_synchronized_multiple_templates(self, get_lock):
+        """Test locks requested in the right order and duplicates removed."""
+        locks = ['lock-{f_name}-%s-{foo.val}-{bar[val]}' % i for i in range(3)]
+        expect = [f'lock-func-{i}-7-8' for i in range(3)]
+
+        @coordination.synchronized(locks[1], locks[0], locks[1], locks[2])
+        def func(foo, bar):
+            pass
+
+        foo = mock.Mock(val=7)
+        bar = mock.MagicMock()
+        bar.__getitem__.return_value = 8
+        func(foo, bar)
+        self.assertEqual(len(expect), get_lock.call_count)
+        get_lock.assert_has_calls([mock.call(lock) for lock in expect])
+
+        self.assertEqual(len(expect), get_lock.return_value.acquire.call_count)
+        get_lock.return_value.acquire.assert_has_calls(
+            [mock.call(True)] * len(expect))
+
+        self.assertEqual(['foo', 'bar'], inspect.getfullargspec(func)[0])
+
+    @mock.patch('oslo_utils.timeutils.now', side_effect=[1, 2])
+    def test___acquire(self, mock_now):
+        lock = mock.Mock()
+        # Using getattr to avoid AttributeError: module 'cinder.coordination'
+        # has no attribute '_CoordinationTestCase__acquire'
+        res = getattr(coordination, '__acquire')(lock, mock.sentinel.blocking,
+                                                 mock.sentinel.f_name)
+        self.assertEqual(2, res)
+        self.assertEqual(2, mock_now.call_count)
+        mock_now.assert_has_calls([mock.call(), mock.call()])
+        lock.acquire.assert_called_once_with(mock.sentinel.blocking)
+
+    @mock.patch('oslo_utils.timeutils.now')
+    def test___acquire_propagates_exception(self, mock_now):
+        lock = mock.Mock()
+        lock.acquire.side_effect = ValueError
+        # Using getattr to avoid AttributeError: module 'cinder.coordination'
+        # has no attribute '_CoordinationTestCase__acquire'
+        self.assertRaises(ValueError,
+                          getattr(coordination, '__acquire'),
+                          lock, mock.sentinel.blocking, mock.sentinel.f_name)
+        mock_now.assert_called_once_with()
+        lock.acquire.assert_called_once_with(mock.sentinel.blocking)
+
+    @mock.patch('oslo_utils.timeutils.now', return_value=2)
+    def test___release(self, mock_now):
+        lock = mock.Mock()
+        # Using getattr to avoid AttributeError: module 'cinder.coordination'
+        # has no attribute '_CoordinationTestCase__release'
+        getattr(coordination, '__release')(lock, 1, mock.sentinel.f_name)
+
+        mock_now.assert_called_once_with()
+        lock.release.assert_called_once_with()
+
+    @mock.patch('oslo_utils.timeutils.now')
+    def test___release_ignores_exception(self, mock_now):
+        lock = mock.Mock()
+        lock.release.side_effect = ValueError
+        # Using getattr to avoid AttributeError: module 'cinder.coordination'
+        # has no attribute '_CoordinationTestCase__release'
+        getattr(coordination, '__release')(lock, 1, mock.sentinel.f_name)
+
+        mock_now.assert_not_called()
+        lock.release.assert_called_once_with()

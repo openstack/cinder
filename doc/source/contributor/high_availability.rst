@@ -642,6 +642,10 @@ race conditions.
 Global locking functionality is provided by the `synchronized` decorator from
 `cinder.coordination`.
 
+.. attention:: Optional `blocking` and `coordinator` arguments to the
+   `synchronized` decorator are **keyword** arguments only and cannot be passed
+   as positional arguments.
+
 This method is more advanced than the one used for the `Process locks`_ and the
 `Node locks`_, as the name supports templates.  For the template we have all
 the method parameters as well as `f_name` that represents that name of the
@@ -672,6 +676,37 @@ attribute from `self`, and a recursive reference in the `snapshot` parameter.
 
    @coordination.synchronized('{self.driver_prefix}-{snapshot.volume.id}')
    def create_snapshot(self, snapshot):
+
+Some drivers may require multiple locks for a critical section, which could
+potentially create deadlocks.  Like in the following example, where `PowerMax`
+method `move_volume_between_storage_groups` creates 2 locks:
+
+.. code-block:: python
+
+    @coordination.synchronized(
+        "emc-sg-{source_storagegroup_name}-{serial_number}")
+    @coordination.synchronized(
+        "emc-sg-{target_storagegroup_name}-{serial_number}")
+    def move_volume_between_storage_groups(
+            self, serial_number, device_id, source_storagegroup_name,
+            target_storagegroup_name, extra_specs, force=False,
+            parent_sg=None):
+
+That code can result in a deadlock if 2 opposite requests come in concurrently
+and their first lock acquisition interleaves.
+
+The solution is calling the `synchronized` decorator with both lock names and
+let it resolve the acquire ordering issue for us.  The right code would be:
+
+.. code-block:: python
+
+    @coordination.synchronized(
+        "emc-sg-{source_storagegroup_name}-{serial_number}",
+        "emc-sg-{target_storagegroup_name}-{serial_number}")
+    def move_volume_between_storage_groups(
+            self, serial_number, device_id, source_storagegroup_name,
+            target_storagegroup_name, extra_specs, force=False,
+            parent_sg=None):
 
 Internally Cinder uses the `Tooz library`_ to provide the distributed locking.
 By default, this library is configured for Active-Passive deployments, where it
