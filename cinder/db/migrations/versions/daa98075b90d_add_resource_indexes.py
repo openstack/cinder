@@ -13,7 +13,7 @@
 """Add resource indexes
 
 Revision ID: daa98075b90d
-Revises: 9c74c1c6971f
+Revises: c92a3e68beed
 Create Date: 2021-11-26 10:26:41.883072
 """
 

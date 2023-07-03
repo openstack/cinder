@@ -62,15 +62,6 @@ class CinderModelsMigrationsSync(test_migrations.ModelsMigrationsSync):
     def get_metadata(self):
         return models.BASE.metadata
 
-    def include_object(self, object_, name, type_, reflected, compare_to):
-        if type_ == 'table':
-            # migrate_version is a sqlalchemy-migrate control table and
-            # isn't included in the model
-            if name == 'migrate_version':
-                return False
-
-        return True
-
     def filter_metadata_diff(self, diff):
         # Overriding the parent method to decide on certain attributes
         # that maybe present in the DB but not in the models.py
@@ -218,6 +209,11 @@ class MigrationsWalk(
 
         db_utils.index_exists(connection,
                               'volumes', 'volumes_deleted_host_idx')
+
+    def _check_89aa6f9639f9(self, connection):
+        # the table only existed on legacy deployments: there's no way to check
+        # for its removal without creating it first, which is dumb
+        pass
 
 
 class TestMigrationsWalkSQLite(
