@@ -2176,6 +2176,38 @@ def volume_get_all(context, marker=None, limit=None, sort_keys=None,
         return query.all()
 
 
+def get_host_by_volume_metadata(meta_key, meta_value, filters=None):
+    session = get_session()
+    count_label = func.count().label("n")
+    query = session.query(
+        func.substring_index(models.Volume.host, '@', 1).label("h"),
+        count_label
+    ).join(
+        models.VolumeMetadata,
+        models.VolumeMetadata.volume_id == models.Volume.id
+    ).filter(
+        models.VolumeMetadata.key == meta_key,
+        models.VolumeMetadata.value == meta_value,
+        models.Volume.deleted == 0,
+        models.Volume.host.isnot(None)
+    )
+
+    if filters:
+        az = filters.get('availability_zone')
+        if az:
+            query = query.filter(
+                models.Volume.availability_zone == az)
+
+    query = query.group_by("h")\
+        .order_by(desc(count_label)).limit(1)
+
+    with session.begin():
+        result = query.first()
+        if result:
+            return result[0]
+    return None
+
+
 @require_context
 def get_volume_summary(context, project_only, filters=None):
     """Retrieves all volumes summary.

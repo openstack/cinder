@@ -92,7 +92,6 @@ class BaseFilterHandler(base_handler.BaseHandler):
                       each resource.
         """
         list_objs = list(objs)
-        all_objs = list(objs)
         LOG.debug("Starting with %d host(s)", len(list_objs))
         # The 'part_filter_results' list just tracks the number of hosts
         # before and after the filter, unless the filter returns zero
@@ -105,11 +104,6 @@ class BaseFilterHandler(base_handler.BaseHandler):
             cls_name = filter_cls.__name__
             start_count = len(list_objs)
             filter_class = filter_cls()
-
-            # SAP
-            # All available backends are needed in ShardFilter
-            if hasattr(filter_class, 'all_backend_states'):
-                setattr(filter_class, 'all_backend_states', all_objs)
 
             if filter_class.run_filter_for_index(index):
                 objs = filter_class.filter_all(list_objs, filter_properties)

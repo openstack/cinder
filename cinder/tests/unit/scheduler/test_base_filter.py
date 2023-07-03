@@ -90,15 +90,6 @@ class FakeFilter5(BaseFakeFilter):
     pass
 
 
-class FakeFilterAllBackends(BaseFakeFilter):
-    """Derives from BaseFakeFilter but has no entry point.
-
-    Should not be included.
-    """
-    all_backend_states = None
-    pass
-
-
 class FilterA(base_filter.BaseFilter):
     def filter_all(self, list_objs, filter_properties):
         # return all but the first object
@@ -181,17 +172,3 @@ class TestBaseFilterHandler(test.TestCase):
             result = self._get_filtered_objects(filter_classes, index=2)
             self.assertEqual(filter_objs_expected, result)
             self.assertEqual(1, fake5_filter_all.call_count)
-
-    @mock.patch.object(FakeFilterAllBackends, 'all_backend_states',
-                       new_callable=mock.PropertyMock)
-    @mock.patch.object(FakeFilterAllBackends, 'filter_all')
-    def test_get_filtered_objects_with_all_backend_states(self, filter_all,
-                                                          all_backends):
-        filter_objs_expected = [1, 2, 3, 4]
-        filter_classes = [FakeFilterAllBackends]
-        filter_all.return_value = filter_objs_expected
-        self._get_filtered_objects(filter_classes)
-        all_backends.assert_has_calls([
-            mock.call(),
-            mock.call(filter_objs_expected)
-        ])

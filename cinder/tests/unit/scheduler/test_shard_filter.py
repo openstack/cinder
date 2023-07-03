@@ -16,7 +16,6 @@ from unittest import mock
 
 from cinder import context
 from cinder.tests.unit import fake_constants
-from cinder.tests.unit import fake_volume
 from cinder.tests.unit.scheduler import fakes
 from cinder.tests.unit.scheduler.test_host_filters \
     import BackendFiltersTestCase
@@ -229,9 +228,10 @@ class ShardFilterTestCase(BackendFiltersTestCase):
         self.backend_passes(host, self.props)
 
     @mock.patch('cinder.context.get_admin_context')
-    @mock.patch('cinder.objects.volume.VolumeList.get_all_by_metadata')
-    def test_same_shard_for_k8s_volumes(self, mock_get_all,
+    @mock.patch('cinder.db.get_host_by_volume_metadata')
+    def test_same_shard_for_k8s_volumes(self, mock_get_hosts,
                                         mock_get_context):
+        CSI_KEY = 'cinder.csi.openstack.org/cluster'
         all_backends = [
             fakes.FakeBackendState(
                 'volume-vc-a-0@backend#pool1',
@@ -244,13 +244,9 @@ class ShardFilterTestCase(BackendFiltersTestCase):
         ]
         mock_get_context.return_value = self.context
         fake_meta = {
-            'cinder.csi.openstack.org/cluster': 'cluster-1',
+            CSI_KEY: 'cluster-1',
         }
-        mock_get_all.return_value = [
-            fake_volume.fake_volume_obj(self.context, metadata=fake_meta,
-                                        host='volume-vc-a-1@backend#pool3')
-        ]
-        self.filt_cls.all_backend_states = all_backends
+        mock_get_hosts.return_value = 'volume-vc-a-1'
         self.filt_cls._PROJECT_SHARD_CACHE['baz'] = ['sharding_enabled',
                                                      'vc-a-1']
         filter_props = dict(self.props)
@@ -264,8 +260,8 @@ class ShardFilterTestCase(BackendFiltersTestCase):
 
         filtered = self.filt_cls.filter_all(all_backends, filter_props)
 
-        mock_get_all.assert_called_once_with(
-            self.context, 'baz', fake_meta, filters={
+        mock_get_hosts.assert_called_once_with(
+            key=CSI_KEY, value=fake_meta[CSI_KEY], filters={
                 'availability_zone': 'az-1'
             })
         self.assertEqual(len(filtered), 1)

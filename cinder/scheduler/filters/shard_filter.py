@@ -19,8 +19,7 @@ from keystoneauth1 import loading as ks_loading
 from oslo_config import cfg
 from oslo_log import log as logging
 
-from cinder import context as cinder_context
-from cinder.objects.volume import VolumeList
+from cinder import db
 from cinder.scheduler import filters
 from cinder.service_auth import SERVICE_USER_GROUP
 from cinder import utils as cinder_utils
@@ -65,9 +64,6 @@ class ShardFilter(filters.BaseBackendFilter):
     _SHARD_PREFIX = 'vc-'
     _CAPABILITY_NAME = 'vcenter-shard'
     _ALL_SHARDS = "sharding_enabled"
-
-    # To be populated by the host manager
-    all_backend_states = []
 
     def _get_keystone_adapter(self):
         """Return a keystone adapter
@@ -151,11 +147,7 @@ class ShardFilter(filters.BaseBackendFilter):
         return self._PROJECT_SHARD_CACHE.get(project_id)
 
     def _is_vmware(self, backend_state):
-        # We only need the shard filter for vmware based pools
         if backend_state.vendor_name != 'VMware':
-            LOG.info(
-                "Shard Filter ignoring backend %s as it's not "
-                "vmware based driver", backend_state.backend_id)
             return False
         return True
 
@@ -172,8 +164,10 @@ class ShardFilter(filters.BaseBackendFilter):
         project_id = vol_props.get('project_id', None)
         metadata = vol_props.get('metadata', {})
 
+        is_vmware = any(self._is_vmware(b) for b in backends)
         if (not metadata or not project_id
-                or spec.get('snapshot_id')):
+                or spec.get('snapshot_id')
+                or not is_vmware):
             return backends
 
         cluster_name = metadata.get(CSI_CLUSTER_METADATA_KEY)
@@ -186,42 +180,28 @@ class ShardFilter(filters.BaseBackendFilter):
         if availability_zone:
             query_filters = {'availability_zone': availability_zone}
 
-        query_metadata = {CSI_CLUSTER_METADATA_KEY: cluster_name}
-        k8s_volumes = VolumeList.get_all_by_metadata(
-            cinder_context.get_admin_context(),
-            project_id, query_metadata,
+        k8s_host = db.get_host_by_volume_metadata(
+            key=CSI_CLUSTER_METADATA_KEY,
+            value=cluster_name,
             filters=query_filters)
 
-        if not k8s_volumes:
+        if not k8s_host:
             return backends
-
-        k8s_hosts = set(volume_utils.extract_host(v.host, 'host')
-                        for v in k8s_volumes
-                        if v.id != spec.get('volume_id') and v.host)
-        if not k8s_hosts:
-            return backends
-
-        def _backend_shards(backend_state):
-            cap = backend_state.capabilities.get(self._CAPABILITY_NAME)
-            return cap.split(',') if cap else []
-
-        hosts_shards_map = {
-            volume_utils.extract_host(bs.host, 'host'):
-                _backend_shards(bs)
-            for bs in self.all_backend_states}
-
-        k8s_shards = set()
-        for host in k8s_hosts:
-            shards = hosts_shards_map[host]
-            k8s_shards.update(shards)
 
         return [
             b for b in backends if
             (not self._is_vmware(b) or
-             set(_backend_shards(b)) & k8s_shards)
+             volume_utils.extract_host(b.host, 'host') == k8s_host)
         ]
 
     def _backend_passes(self, backend_state, filter_properties):
+        # We only need the shard filter for vmware based pools
+        if not self._is_vmware(backend_state):
+            LOG.info(
+                "Shard Filter ignoring backend %s as it's not "
+                "vmware based driver", backend_state.backend_id)
+            return True
+
         spec = filter_properties.get('request_spec', {})
         vol = spec.get('volume_properties', {})
         project_id = vol.get('project_id', None)
