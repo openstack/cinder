@@ -472,7 +472,7 @@ To enable volume replications, follow below steps:
 
 The way could be different depending on the type of replications - sync or async.
 Refer to `Unity Replication White Paper
-<https://www.emc.com/collateral/white-papers/h15088-dell-emc-unity-replication-technologies.pdf>`_
+<https://dl.dell.com/content/docu69886_dell-emc-unity-replication-technologies-a-detailed-review.pdf>`_
 for more detail.
 
 2. Add `replication_device` to storage backend settings in `cinder.conf`, then
@@ -529,7 +529,7 @@ To enable consistency group replications, follow below steps:
 
 The way could be different depending on the type of replications - sync or async.
 Refer to `Unity Replication White Paper
-<https://www.emc.com/collateral/white-papers/h15088-dell-emc-unity-replication-technologies.pdf>`_
+<https://dl.dell.com/content/docu69886_dell-emc-unity-replication-technologies-a-detailed-review.pdf>`_
 for more detail.
 
 2. Add `replication_device` to storage backend settings in `cinder.conf`, then
