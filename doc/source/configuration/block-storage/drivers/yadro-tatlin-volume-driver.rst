@@ -2,7 +2,7 @@
 YADRO Cinder Driver
 ============================
 
-YADRO Cinder driver provides iSCSI support for
+YADRO Cinder driver provides iSCSI and FC support for
 TATLIN.UNIFIED storages.
 
 
@@ -49,7 +49,7 @@ details about each setting, see the user's guide of the storage system.
 
 #. Ports
 
-   Setup data ETH ports you want to export volumes to.
+   Setup Ethernet or FC ports you want to export volumes to.
 
 #. Hosts
 
@@ -86,6 +86,22 @@ Add the following configuration to ``/etc/cinder/cinder.conf``:
    auth_method=<CHAP|NONE>
    chap_username=<chap_username>
    chap_password=<chap_password>
+
+or
+
+.. code-block:: ini
+
+   [fc-1]
+   volume_driver=cinder.volume.drivers.yadro.tatlin_fc.TatlinFCVolumeDriver
+   san_ip=<management_ip>
+   san_login=<login>
+   san_password=<password>
+   tat_api_retry_count=<count>
+   api_port=<management_port>
+   pool_name=<cinder_volumes_pool>
+   export_ports=<port1>,<port2>
+   host_group=<name>
+   max_resource_count=<count>
 
 ``volume_driver``
  Volume driver name.

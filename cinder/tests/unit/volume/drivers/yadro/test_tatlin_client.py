@@ -35,39 +35,55 @@ from cinder.volume.drivers.yadro.tatlin_client import TatlinClientV25
 from cinder.volume.drivers.yadro.tatlin_exception import TatlinAPIException
 
 
-RES_PORTS_RESP = [
-    {
-        "port": "fc20",
-        "port_status": "healthy",
-        "port_status_desc": "resource is available",
-        "running": [
-            "sp-0",
-            "sp-1"
-        ],
-        "wwn": [
-            "10:00:14:52:90:00:03:10",
-            "10:00:14:52:90:00:03:90"
-        ],
-        "lun": "scsi-lun-fc20-5",
-        "volume": "pty-vol-0d9627cb-c52e-49f1-878c-57c9bc3010c9",
-        "lun_index": "5"
-    }
-]
+VOL_ID = 'cinder-volume-id'
+
+LUN_ID = 75
+
+HOST_ID = 'host-id'
+
+HOST_ID_2 = 'host-id-2'
+
+HOST_GROUP_ID = 'group-id'
+
+HOST_GROUP_NAME = 'cinder-group'
+
+HOST_IQN = 'iqn.1994-05.com.redhat:12345'
+
+POOL_NAME = 'cinder-pool-name'
+
+POOL_ID = 'cinder-pool-id'
 
 ALL_HOSTS_RESP = [
     {
-        "version": "d6a2d310d9adb16f0d24d5352b5c4837",
-        "id": "5e37d335-8fff-4aee-840a-34749301a16a",
-        "name": "victoria-fc",
+        "version": "c7216b2e14c8edc718e1664178f75777",
+        "id": HOST_ID_2,
+        "name": "cinder-host-2",
         "port_type": "fc",
-        "initiators": [
-            "21:00:34:80:0d:6b:aa:e3",
-            "21:00:34:80:0d:6b:aa:e2"
-        ],
-        "tags": [],
-        "comment": "",
-        "auth": {}
-    }
+        "initiators": ["21:00:34:80:0d:74:17:30", "21:00:34:80:0d:74:17:31"],
+    },
+    {
+        "version": "216d08e98f8d4a695b6632fc3c79b1cc",
+        "id": HOST_ID,
+        "name": "cinder-host-1",
+        "port_type": "fc",
+        "initiators": ['21:00:00:24:ff:7f:35:b7', '21:00:00:24:ff:7f:35:b6'],
+    },
+    {
+        "version": "301fc82d355a691248b1e1dd8164f5e5",
+        "id": HOST_ID,
+        "name": "cinder-host-1",
+        "port_type": "iscsi",
+        "initiators": [HOST_IQN],
+        "auth": {"auth_type": "none"},
+    },
+    {
+        "version": "401fc82d355a691248b1e1dd8164f5e5",
+        "id": HOST_ID_2,
+        "name": "cinder-host-2",
+        "port_type": "iscsi",
+        "initiators": ["iqn.1994-05.com.redhat:5daf702e9655"],
+        "auth": {"auth_type": "none"},
+    },
 ]
 
 RES_MAPPING_RESP = [
@@ -75,18 +91,44 @@ RES_MAPPING_RESP = [
         "resource_id": "62bbb941-ba4a-4101-927d-e527ce5ee011",
         "host_id": "5e37d335-8fff-4aee-840a-34749301a16a",
         "mapped_lun_id": 1
-    }
+    },
+    {
+        "resource_id": VOL_ID,
+        "host_id": HOST_ID,
+        "mapped_lun_id": LUN_ID
+    },
+    {
+        "resource_id": "62bbb941-ba4a-4101-927d-e527ce5ee011",
+        "host_id": "5e37d335-8fff-4aee-840a-34749301a16a",
+        "mapped_lun_id": 1
+    },
+]
+
+RES_MAPPING_RESP2 = [
+    {
+        "resource_id": "62bbb941-ba4a-4101-927d-e527ce5ee011",
+        "host_id": "5e37d335-8fff-4aee-840a-34749301a16a",
+        "mapped_lun_id": 1
+    },
+    {
+        "resource_id": "62bbb941-ba4a-4101-927d-e527ce5ee011",
+        "host_id": "5e37d335-8fff-4aee-840a-34749301a16a",
+        "mapped_lun_id": 1
+    },
 ]
 
 POOL_LIST_RESPONCE = [
     {
-        "id": "7e259486-deb8-4d11-8cb0-e2c5874aaa5e",
-        "name": "cinder-pool",
+        "id": POOL_ID,
+        "name": POOL_NAME,
+        "status": "ready"
+    },
+    {
+        "id": "123",
+        "name": "some-name",
         "status": "ready"
     }
 ]
-
-VOL_ID = 'cinder-volume-id'
 
 ERROR_VOLUME = [
     {
@@ -132,7 +174,7 @@ RESOURCE_INFORMATION = {
     "lbaFormat": "4kn",
     "volume_id": "pty-vol-62bbb941-ba4a-4101-927d-e527ce5ee011",
     "wwid": "naa.614529011650000c4000800000000004",
-    "lun_id": "4",
+    "lun_id": LUN_ID,
     "cached": "true",
     "rCacheMode": "enabled",
     "wCacheMode": "enabled",
@@ -152,7 +194,7 @@ RESOURCE_INFORMATION = {
             ],
             "lun": "scsi-lun-fc21-4",
             "volume": "pty-vol-62bbb941-ba4a-4101-927d-e527ce5ee011",
-            "lun_index": "4"
+            "lun_index": LUN_ID
         },
         {
             "port": "fc20",
@@ -169,7 +211,7 @@ RESOURCE_INFORMATION = {
             ],
             "lun": "scsi-lun-fc20-4",
             "volume": "pty-vol-62bbb941-ba4a-4101-927d-e527ce5ee011",
-            "lun_index": "4"
+            "lun_index": LUN_ID
         }
     ],
     "volume_path": "/dev/mapper/dmc-89382c6c-7cf9-4ff8-bdbb-f438d20c960a",
@@ -179,13 +221,44 @@ RESOURCE_INFORMATION = {
     }
 }
 
+VOL_PORTS_RESP = [
+    {
+        "port": "p01",
+        "port_status": "healthy",
+        "running": ["sp-0", "sp-1"],
+        "wwn": ["iqn.2017-01.com.yadro:tatlin:sn.09082200a51002"],
+        "lun_index": LUN_ID,
+    },
+    {
+        "port": "p11",
+        "port_status": "healthy",
+        "running": ["sp-0", "sp-1"],
+        "wwn": ["iqn.2017-01.com.yadro:tatlin:sn.09082200a51002"],
+        "lun_index": LUN_ID,
+    },
+    {
+        "port": "p10",
+        "port_status": "healthy",
+        "running": ["sp-0", "sp-1"],
+        "wwn": ["iqn.2017-01.com.yadro:tatlin:sn.09082200a51002"],
+        "lun_index": LUN_ID,
+    },
+    {
+        "port": "p00",
+        "port_status": "healthy",
+        "running": ["sp-0", "sp-1"],
+        "wwn": ["iqn.2017-01.com.yadro:tatlin:sn.09082200a51002"],
+        "lun_index": LUN_ID
+    },
+]
+
 ALL_HOST_GROUP_RESP = [
     {
         "version": "20c28d21549fb7ec5777637f72f50043",
-        "id": "314b5546-45da-4c8f-a24c-b615265fbc32",
-        "name": "cinder-group",
+        "id": HOST_GROUP_ID,
+        "name": HOST_GROUP_NAME,
         "host_ids": [
-            "5e37d335-8fff-4aee-840a-34749301a16a"
+            HOST_ID,
         ],
         "tags": None,
         "comment": ""
@@ -413,18 +486,34 @@ class TatlinClientTest(TestCase):
     def test_get_host_group_id_success(self, send_request):
         send_request.return_value = MockResponse(
             ALL_HOST_GROUP_RESP, codes.ok)
-        self.assertEqual(self.client.get_host_group_id('cinder-group'),
-                         '314b5546-45da-4c8f-a24c-b615265fbc32')
+        self.assertEqual(self.client.get_host_group_id(HOST_GROUP_NAME),
+                         HOST_GROUP_ID)
 
-    @mock.patch.object(TatlinClientCommon,
-                       'is_volume_exists',
-                       return_value=True)
     @mock.patch.object(TatlinAccessAPI, 'send_request')
-    def test_get_resource_ports_array(self, send_request, *args):
-        send_request.return_value = MockResponse(RES_PORTS_RESP, codes.ok)
+    def test_get_volume_ports(self, send_request):
+        send_request.return_value = MockResponse(
+            VOL_PORTS_RESP, requests.codes.ok)
+        self.assertEqual(VOL_PORTS_RESP, self.client.get_volume_ports(VOL_ID))
 
-        self.assertListEqual(self.client.get_resource_ports_array(VOL_ID),
-                             ["fc20"])
+    @mock.patch.object(TatlinAccessAPI, 'send_request')
+    def test_get_volume_ports_negative(self, send_request):
+        send_request.return_value = MockResponse(
+            {}, requests.codes.internal_server_error)
+        self.assertRaises(VolumeBackendAPIException,
+                          self.client.get_volume_ports,
+                          VOL_ID)
+
+    @mock.patch.object(TatlinClientCommon, 'get_volume_ports')
+    def test_get_resource_ports_array_empty(self, vol_ports):
+        vol_ports.return_value = []
+        self.assertListEqual([], self.client.get_resource_ports_array(VOL_ID))
+
+    @mock.patch.object(TatlinClientCommon, 'get_volume_ports')
+    def test_get_resource_ports_array(self, vol_ports):
+        vol_ports.return_value = VOL_PORTS_RESP
+        self.assertListEqual(
+            ['p00', 'p01', 'p10', 'p11'],
+            sorted(self.client.get_resource_ports_array(VOL_ID)))
 
     @mock.patch.object(TatlinAccessAPI, 'send_request')
     def test_get_resource_mapping_negative(self, send_request):
@@ -436,8 +525,8 @@ class TatlinClientTest(TestCase):
     @mock.patch.object(TatlinAccessAPI, 'send_request')
     def test_get_pool_id_by_name(self, send_request, *args):
         send_request.return_value = MockResponse(POOL_LIST_RESPONCE, codes.ok)
-        self.assertEqual(self.client.get_pool_id_by_name('cinder-pool'),
-                         '7e259486-deb8-4d11-8cb0-e2c5874aaa5e')
+        self.assertEqual(self.client.get_pool_id_by_name(POOL_NAME),
+                         POOL_ID)
 
     @mock.patch.object(TatlinAccessAPI, 'send_request')
     def test_get_all_hosts(self, send_request):

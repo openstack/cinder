@@ -391,7 +391,7 @@ class TatlinCommonVolumeDriverTest(TestCase):
     @mock.patch.object(TatlinClientCommon,
                        'is_volume_ready',
                        return_value=True)
-    def test_wait_volume_reay_success(self, is_ready):
+    def test_wait_volume_ready_success(self, is_ready):
         self.driver.wait_volume_ready(DummyVolume('cinder_volume'))
 
     @mock.patch.object(TatlinCommonVolumeDriver, '_update_qos')
@@ -505,7 +505,6 @@ class TatlinCommonVolumeDriverTest(TestCase):
             '62bbb941-ba4a-4101-927d-e527ce5ee011', '')
 
     @mock.patch.object(TatlinCommonVolumeDriver, '_update_qos')
-    @mock.patch.object(TatlinCommonVolumeDriver, 'wait_volume_online')
     @mock.patch.object(TatlinClientCommon, 'add_vol_to_host')
     @mock.patch.object(TatlinClientCommon,
                        'is_volume_exists',
