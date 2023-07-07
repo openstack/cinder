@@ -2144,8 +2144,8 @@ class VMwareVolumeOps(object):
         spec = cf.create('ns0:VslmCreateSpec')
         spec.capacityInMB = size_mb
         spec.name = name
-        spec.backingSpec = self._create_fcd_backing_spec(disk_type, 
-                                                         ds_ref, 
+        spec.backingSpec = self._create_fcd_backing_spec(disk_type,
+                                                         ds_ref,
                                                          name)
         hosts = self.get_connected_hosts(ds_ref)
         host_ref = vim_util.get_moref(hosts[0], 'HostSystem')
