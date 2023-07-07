@@ -309,6 +309,9 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         """Ensure that the backend exists and can accept the volume."""
         self._wait_for_scheduler()
 
+        # [SAP] So the filter has the destination host
+        request_spec['destination_host'] = backend
+
         def _migrate_volume_set_error(self, context, ex, request_spec):
             if volume.status == 'maintenance':
                 previous_status = (

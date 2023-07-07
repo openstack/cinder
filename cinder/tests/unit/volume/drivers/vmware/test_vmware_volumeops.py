@@ -620,7 +620,7 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(name, ret.name)
         self.assertEqual(mock.sentinel.uuid, ret.instanceUuid)
         self.assertEqual('[%s]' % ds_name, ret.files.vmPathName)
-        self.assertEqual("vmx-08", ret.version)
+        self.assertEqual("vmx-17", ret.version)
         self.assertEqual(profile_id, ret.vmProfile[0].profileId)
         self.assertEqual(1, len(ret.extraConfig))
         self.assertEqual(option_key, ret.extraConfig[0].key)
@@ -1958,43 +1958,75 @@ class VolumeOpsTestCase(test.TestCase):
 
         profile_spec = mock.sentinel.profile_spec
         create_profile_spec.return_value = profile_spec
-
         task = mock.sentinel.task
-        self.session.invoke_api.return_value = task
-
         task_info = mock.Mock()
         fcd_id = mock.sentinel.fcd_id
         task_info.result.config.id.id = fcd_id
         self.session.wait_for_task.return_value = task_info
 
-        name = mock.sentinel.name
+        name = "volume-405d6afd-43be-4ce0-9e5f-fd49559e2763"
         size_mb = 1024
         ds_ref_val = mock.sentinel.ds_ref_val
-        ds_ref = vmware_fake.ManagedObjectReference(value=ds_ref_val)
+        ds_ref_val.name = 'ds-1'
+        dc = mock.Mock(spec=object)
+        dc._type = 'Datacenter'
+        ds_ref = mock.Mock(value=ds_ref_val)
+        ds_ref._type = 'Datastore'
+        ds_ref.parent = dc
+        ds_ref.name = 'ds-1'
+        cinder_uuid = '405d6afd-43be-4ce0-9e5f-fd49559e2763'
         disk_type = mock.sentinel.disk_type
         profile_id = mock.sentinel.profile_id
-        ret = self.vops.create_fcd(
-            name, size_mb, ds_ref, disk_type, profile_id=profile_id)
 
+        def mock_invoke_api(vim_util, method, vim,
+                            the_object=None, arg=None,
+                            name=None, datacenter=None,
+                            spec=None, **kwargs):
+            if arg == "parent":
+                return the_object.parent
+            if arg == "name":
+                return the_object.name
+            if method == "CreateDisk_Task":
+                return task
+            if method == "MakeDirectory":
+                return None
+        self.session.invoke_api.side_effect = mock_invoke_api
+        ret = self.vops.create_fcd(cinder_uuid, name, size_mb,
+                                   ds_ref, disk_type,
+                                   profile_id=profile_id)
         self.assertEqual(fcd_id, ret.fcd_id)
         self.assertEqual(ds_ref_val, ret.ds_ref_val)
         self.session.vim.client.factory.create.assert_called_once_with(
             'ns0:VslmCreateSpec')
-        create_fcd_backing_spec.assert_called_once_with(disk_type, ds_ref)
+        create_fcd_backing_spec.assert_called_once_with(disk_type,
+                                                        ds_ref,
+                                                        name)
         self.assertEqual(1024, spec.capacityInMB)
         self.assertEqual(name, spec.name)
         self.assertEqual(backing_spec, spec.backingSpec)
         self.assertEqual([profile_spec], spec.profile)
         create_profile_spec.assert_called_once_with(
             self.session.vim.client.factory, profile_id)
-        self.session.invoke_api.assert_called_once_with(
+        ds_folder_path = "[ds-1] %s" % name
+        self.session.invoke_api.assert_any_call(
+            self.session.vim,
+            'MakeDirectory',
+            self.session.vim.service_content.fileManager,
+            name=ds_folder_path,
+            datacenter=dc)
+        self.session.invoke_api.assert_any_call(
             self.session.vim,
             'CreateDisk_Task',
             self.session.vim.service_content.vStorageObjectManager,
             spec=spec)
         self.session.wait_for_task.assert_called_once_with(task)
 
-    def test_delete_fcd(self):
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_dc')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_vmdk_path_for_fcd')
+    def test_delete_fcd(self, get_vmdk_path_for_fcd,
+                        get_dc):
         task = mock.sentinel.task
         self.session.invoke_api.return_value = task
 
@@ -2003,9 +2035,12 @@ class VolumeOpsTestCase(test.TestCase):
         fcd_location.id.return_value = fcd_id
         ds_ref = mock.sentinel.ds_ref
         fcd_location.ds_ref.return_value = ds_ref
+        get_vmdk_path_for_fcd.return_value = (
+            "[ds-1] volume-9b3f6f1b-03a9-4f1e-abc123")
+        get_dc.return_value = mock.sentinel.dc
 
-        self.vops.delete_fcd(fcd_location)
-        self.session.invoke_api.assert_called_once_with(
+        self.vops.delete_fcd(fcd_location, delete_folder=False)
+        self.session.invoke_api.assert_called_with(
             self.session.vim,
             'DeleteVStorageObject_Task',
             self.session.vim.service_content.vStorageObjectManager,
@@ -2026,10 +2061,20 @@ class VolumeOpsTestCase(test.TestCase):
 
         profile_spec = mock.sentinel.profile_spec
         create_profile_spec.return_value = profile_spec
-
         task = mock.sentinel.task
-        self.session.invoke_api.return_value = task
 
+        def mock_invoke_api(vim_util, method, vim,
+                            the_object=None, arg=None,
+                            name=None, datacenter=None,
+                            spec=None, **kwargs):
+
+            if arg == "parent":
+                return dc
+            if arg == "name":
+                return the_object.name
+            if method == "CloneVStorageObject_Task":
+                return task
+        self.session.invoke_api.side_effect = mock_invoke_api
         task_info = mock.Mock()
         fcd_id = mock.sentinel.fcd_id
         task_info.result.config.id.id = fcd_id
@@ -2038,28 +2083,39 @@ class VolumeOpsTestCase(test.TestCase):
         fcd_location = mock.Mock()
         fcd_id = mock.sentinel.fcd_id
         fcd_location.id.return_value = fcd_id
-        ds_ref = mock.sentinel.ds_ref
-        fcd_location.ds_ref.return_value = ds_ref
+        ds_ref_val = mock.sentinel.ds_ref_val
+        ds_ref_val.name = 'ds-1'
+        dc = mock.Mock(spec=object)
+        dc._type = 'Datacenter'
+        ds_ref = mock.Mock(value=ds_ref_val)
+        ds_ref._type = 'Datastore'
+        ds_ref.parent = dc
+        ds_ref.name = 'ds-1'
 
-        name = mock.sentinel.name
+        fcd_location.ds_ref.return_value = ds_ref
+        volume = mock.sentinel.name
+        volume.id = "9b3f6f1b-03a9-4f1e-aaff-ae15122b6ccf"
+        volume.name = "volume-9b3f6f1b-03a9-4f1e-aaff-ae15122b6ccf"
         dest_ds_ref_val = mock.sentinel.dest_ds_ref_val
-        dest_ds_ref = vmware_fake.ManagedObjectReference(value=dest_ds_ref_val)
+        dest_ds_ref = mock.Mock(value=dest_ds_ref_val)
         disk_type = mock.sentinel.disk_type
         profile_id = mock.sentinel.profile_id
-        ret = self.vops.clone_fcd(
-            name, fcd_location, dest_ds_ref, disk_type, profile_id=profile_id)
+        ret = self.vops.clone_fcd(volume, fcd_location, dest_ds_ref,
+                                  disk_type, profile_id=profile_id)
 
         self.assertEqual(fcd_id, ret.fcd_id)
         self.assertEqual(dest_ds_ref_val, ret.ds_ref_val)
         self.session.vim.client.factory.create.assert_called_once_with(
             'ns0:VslmCloneSpec')
-        create_fcd_backing_spec.assert_called_once_with(disk_type, dest_ds_ref)
-        self.assertEqual(name, spec.name)
+        create_fcd_backing_spec.assert_called_once_with(disk_type,
+                                                        dest_ds_ref,
+                                                        volume.name)
+        self.assertEqual(volume.name, spec.name)
         self.assertEqual(backing_spec, spec.backingSpec)
         self.assertEqual([profile_spec], spec.profile)
         create_profile_spec.assert_called_once_with(
             self.session.vim.client.factory, profile_id)
-        self.session.invoke_api.assert_called_once_with(
+        self.session.invoke_api.assert_any_call(
             self.session.vim,
             'CloneVStorageObject_Task',
             self.session.vim.service_content.vStorageObjectManager,
@@ -2182,7 +2238,7 @@ class VolumeOpsTestCase(test.TestCase):
 
         self.assertEqual(fcd_snap_id, ret.snap_id)
         self.assertEqual(fcd_location, ret.fcd_loc)
-        self.session.invoke_api.assert_called_once_with(
+        self.session.invoke_api.assert_any_call(
             self.session.vim,
             'VStorageObjectCreateSnapshot_Task',
             self.session.vim.service_content.vStorageObjectManager,
@@ -2218,7 +2274,6 @@ class VolumeOpsTestCase(test.TestCase):
                 '_create_profile_spec')
     def test_create_fcd_from_snapshot(self, create_profile_spec):
         task = mock.sentinel.task
-        self.session.invoke_api.return_value = task
 
         profile_spec = mock.sentinel.profile_spec
         create_profile_spec.return_value = profile_spec
@@ -2228,26 +2283,48 @@ class VolumeOpsTestCase(test.TestCase):
         task_info.result.config.id.id = fcd_id
         self.session.wait_for_task.return_value = task_info
 
+        def mock_invoke_api(vim_util, method, vim,
+                            the_object=None, arg=None,
+                            name=None, datacenter=None,
+                            spec=None, **kwargs):
+            if arg == "parent":
+                return the_object.parent
+            if arg == "name":
+                return the_object.name
+            if method == "CreateDiskFromSnapshot_Task":
+                return task
+            if method == "MakeDirectory":
+                return None
+        self.session.invoke_api.side_effect = mock_invoke_api
         fcd_location = mock.Mock()
         fcd_id = mock.sentinel.fcd_id
+        dc = mock.Mock(spec=object)
+        dc._type = 'Datacenter'
         fcd_location.id.return_value = fcd_id
         ds_ref_val = mock.sentinel.ds_ref_val
-        ds_ref = vmware_fake.ManagedObjectReference(value=ds_ref_val)
+        ds_ref_val.name = 'ds-1'
+        ds_ref_val.parent = dc
+        ds_ref_val._type = 'Datastore'
+        ds_ref = mock.Mock(value=ds_ref_val)
+        ds_ref._type = 'Datastore'
+        ds_ref.parent = dc
+        ds_ref.name = 'ds-1'
         fcd_location.ds_ref.return_value = ds_ref
         fcd_snap_id = mock.sentinel.fcd_snap_id
         fcd_snap_loc = mock.Mock(fcd_loc=fcd_location)
         fcd_snap_loc.id.return_value = fcd_snap_id
 
-        name = mock.sentinel.name
+        name = "volume-9b3f6f1b-03a9-4f1e-aaff-ae15122b6ccf"
+        cinder_uuid = "9b3f6f1b-03a9-4f1e-aaff-ae15122b6ccf"
         profile_id = mock.sentinel.profile_id
         ret = self.vops.create_fcd_from_snapshot(
-            fcd_snap_loc, name, profile_id=profile_id)
+            fcd_snap_loc, name, cinder_uuid, profile_id=profile_id)
 
         self.assertEqual(fcd_id, ret.fcd_id)
         self.assertEqual(ds_ref_val, ret.ds_ref_val)
         create_profile_spec.assert_called_once_with(
             self.session.vim.client.factory, profile_id)
-        self.session.invoke_api.assert_called_once_with(
+        self.session.invoke_api.assert_any_call(
             self.session.vim,
             'CreateDiskFromSnapshot_Task',
             self.session.vim.service_content.vStorageObjectManager,
@@ -2255,7 +2332,8 @@ class VolumeOpsTestCase(test.TestCase):
             datastore=ds_ref,
             snapshotId=fcd_snap_id,
             name=name,
-            profile=[profile_spec])
+            profile=[profile_spec],
+            path=name + '/')
         self.session.wait_for_task.assert_called_once_with(task)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'

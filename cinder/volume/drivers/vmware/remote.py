@@ -58,6 +58,17 @@ class VmdkDriverRemoteApi(rpc.RPCAPI):
                           create_params=create_params,
                           cinder_host=cinder_host or host)
 
+    def destory_backing(self, ctxt, host, volume):
+        cctxt = self._get_cctxt(host)
+        return cctxt.call(ctxt, 'destory_backing', volume=volume)
+
+    @volume_utils.trace
+    def update_fcd_policy(self, ctxt, cinder_host, prov_loc, profile_id):
+        cctxt = self._get_cctxt(cinder_host)
+        return cctxt.call(ctxt, 'update_fcd_policy',
+                          prov_loc=prov_loc,
+                          profile_id=profile_id)
+
 
 class VmdkDriverRemoteService(object):
     RPC_API_VERSION = VmdkDriverRemoteApi.RPC_API_VERSION
@@ -101,3 +112,18 @@ class VmdkDriverRemoteService(object):
         return self._driver._create_backing(volume,
                                             create_params=create_params,
                                             cinder_host=cinder_host)
+
+    @volume_utils.trace
+    def destory_backing(self, ctxt, volume):
+        backing = self._driver.volumeops.get_backing_by_uuid(volume.id)
+        disk_device = self._driver.volumeops._get_disk_device(backing)
+        self._driver.volumeops.detach_disk_from_backing(backing,
+                                                        disk_device)
+        self._driver.volumeops.delete_backing(backing)
+
+    @volume_utils.trace
+    def update_fcd_policy(self, ctxt, prov_loc, profile_id):
+        vops = self._driver.volumeops
+        fcd_location = vops._get_fcd_loc(prov_loc)
+        return self._driver.volumeops.update_fcd_policy(fcd_location,
+                                                        profile_id)
