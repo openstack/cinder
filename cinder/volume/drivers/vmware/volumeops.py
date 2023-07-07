@@ -2123,13 +2123,15 @@ class VMwareVolumeOps(object):
         LOG.debug("Marking backing: %s as template.", backing)
         self._session.invoke_api(self._session.vim, 'MarkAsTemplate', backing)
 
-    def _create_fcd_backing_spec(self, disk_type, ds_ref):
+    def _create_fcd_backing_spec(self, disk_type, ds_ref, path=None):
         backing_spec = self._session.vim.client.factory.create(
             'ns0:VslmCreateSpecDiskFileBackingSpec')
         if disk_type == VirtualDiskType.PREALLOCATED:
             disk_type = 'lazyZeroedThick'
         backing_spec.provisioningType = disk_type
         backing_spec.datastore = ds_ref
+        if path:
+                backing_spec.path = path + '/'
         return backing_spec
 
     def _create_profile_spec(self, cf, profile_id):
@@ -2142,7 +2144,16 @@ class VMwareVolumeOps(object):
         spec = cf.create('ns0:VslmCreateSpec')
         spec.capacityInMB = size_mb
         spec.name = name
-        spec.backingSpec = self._create_fcd_backing_spec(disk_type, ds_ref)
+        spec.backingSpec = self._create_fcd_backing_spec(disk_type, ds_ref, name)
+        hosts = self.get_connected_hosts(ds_ref)
+        host_ref = vim_util.get_moref(hosts[0], 'HostSystem')
+        dc_ref = self.get_dc(host_ref)
+        ds_name = self._session.invoke_api(vim_util, 'get_object_property',
+                                        self._session.vim, ds_ref,
+                                        'name')
+ 
+        self.create_datastore_folder(ds_name, name, dc_ref)
+
 
         if profile_id:
             profile_spec = self._create_profile_spec(cf, profile_id)
@@ -2177,7 +2188,8 @@ class VMwareVolumeOps(object):
         spec = cf.create('ns0:VslmCloneSpec')
         spec.name = name
         spec.backingSpec = self._create_fcd_backing_spec(disk_type,
-                                                         dest_ds_ref)
+                                                         dest_ds_ref,
+                                                         name)
 
         if profile_id:
             profile_spec = self._create_profile_spec(cf, profile_id)

@@ -91,7 +91,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         (_host_ref, _resource_pool, summary) = self._select_datastore(req)
         return summary.datastore
 
-    def _get_temp_image_folder(self, size_bytes, preallocated=False):
+    def _get_temp_image_folder(self, name, size_bytes, preallocated=False):
         req = {}
         req[hub.DatastoreSelector.SIZE_BYTES] = size_bytes
 
@@ -102,7 +102,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
         (host_ref, _resource_pool, summary) = self._select_datastore(req)
 
-        folder_path = vmdk.TMP_IMAGES_DATASTORE_FOLDER_PATH
+        folder_path = name + '/'
         dc_ref = self.volumeops.get_dc(host_ref)
         self.volumeops.create_datastore_folder(
             summary.name, folder_path, dc_ref)
@@ -201,7 +201,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
         size_bytes = metadata['size']
         dc_ref, summary, folder_path = self._get_temp_image_folder(
-            volume.size * units.Gi)
+            volume.name, volume.size * units.Gi)
         disk_name = volume.id
         if disk_type in [vmdk.ImageDiskType.SPARSE,
                          vmdk.ImageDiskType.STREAM_OPTIMIZED]:
