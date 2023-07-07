@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    HPE 3PAR driver `Bug #2026718 <https://bugs.launchpad.net/cinder/+bug/2026718>`_:
+    Fixed: With this patch, added logic to fetch correct volume name on 3par
+    (osv_name), rcg_name and vvset_name (for particular scenarios);
+    so that volumes can be identified and deleted from 3par.
