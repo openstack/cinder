@@ -161,15 +161,16 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         host = mock.sentinel.host
         summary = mock.Mock()
         summary.name = 'ds-1'
+        volume = self._create_volume_obj()
         select_datastore.return_value = (host, mock.ANY, summary)
 
         dc_ref = mock.sentinel.dc_ref
         vops.get_dc.return_value = dc_ref
 
         size_bytes = units.Gi
-        ret = self._driver._get_temp_image_folder(size_bytes, preallocated)
+        ret = self._driver._get_temp_image_folder(volume.name, size_bytes, preallocated)
         self.assertEqual(
-            (dc_ref, summary, vmdk.TMP_IMAGES_DATASTORE_FOLDER_PATH), ret)
+            (dc_ref, summary, volume.name + '/'), ret)
         exp_req = {hub.DatastoreSelector.SIZE_BYTES: size_bytes}
         if preallocated:
             exp_req[hub.DatastoreSelector.HARD_AFFINITY_DS_TYPE] = (
@@ -179,7 +180,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         select_datastore.assert_called_once_with(exp_req)
         vops.get_dc.assert_called_once_with(host)
         vops.create_datastore_folder.assert_called_once_with(
-            summary.name, vmdk.TMP_IMAGES_DATASTORE_FOLDER_PATH, dc_ref)
+            summary.name, volume.name + '/', dc_ref)
 
     def test_get_temp_image_folder(self):
         self._test_get_temp_image_folder()
@@ -357,7 +358,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
             self._context, volume, image_service, image_id)
 
         self.assertEqual({'provider_location': provider_location}, ret)
-        get_temp_image_folder.assert_called_once_with(volume.size * units.Gi)
+        get_temp_image_folder.assert_called_once_with(volume.name, volume.size * units.Gi)
         if disk_type == vmdk.ImageDiskType.PREALLOCATED:
             create_disk_from_preallocated_image.assert_called_once_with(
                 self._context, image_service, image_id, image_meta['size'],

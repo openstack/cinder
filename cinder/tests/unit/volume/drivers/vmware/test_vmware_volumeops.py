@@ -32,7 +32,6 @@ class VolumeOpsTestCase(test.TestCase):
     """Unit tests for volumeops module."""
 
     MAX_OBJECTS = 100
-
     def setUp(self):
         super(VolumeOpsTestCase, self).setUp()
         self.session = mock.MagicMock()
@@ -1958,27 +1957,39 @@ class VolumeOpsTestCase(test.TestCase):
     def test_create_fcd(self, create_profile_spec, create_fcd_backing_spec):
         spec = mock.Mock()
         self.session.vim.client.factory.create.return_value = spec
-
         backing_spec = mock.sentinel.backing_spec
         create_fcd_backing_spec.return_value = backing_spec
-
         profile_spec = mock.sentinel.profile_spec
         create_profile_spec.return_value = profile_spec
-
         task = mock.sentinel.task
-        self.session.invoke_api.return_value = task
-
         task_info = mock.Mock()
         fcd_id = mock.sentinel.fcd_id
         task_info.result.config.id.id = fcd_id
         self.session.wait_for_task.return_value = task_info
-
         name = mock.sentinel.name
         size_mb = 1024
         ds_ref_val = mock.sentinel.ds_ref_val
+        dc = mock.Mock(spec=object)
+        dc._type = 'Datacenter'
         ds_ref = mock.Mock(value=ds_ref_val)
+        ds_ref._type = 'Datastore'
+        ds_ref.parent = dc
+        self.session.invoke_api.return_value = dc
         disk_type = mock.sentinel.disk_type
         profile_id = mock.sentinel.profile_id
+
+        def mock_invoke_api(vim_util, method, vim, 
+                            the_object=None, arg=None, 
+                            name=None, datacenter=None, 
+                            spec=None):
+            if arg == "parent":
+                return the_object.parent
+            if arg == "name":
+                return mock.sentinel.name
+            if method == "CreateDisk_Task":
+                return task
+        self.session.invoke_api.side_effect = mock_invoke_api
+
         ret = self.vops.create_fcd(
             name, size_mb, ds_ref, disk_type, profile_id=profile_id)
 
@@ -1986,14 +1997,21 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(ds_ref_val, ret.ds_ref_val)
         self.session.vim.client.factory.create.assert_called_once_with(
             'ns0:VslmCreateSpec')
-        create_fcd_backing_spec.assert_called_once_with(disk_type, ds_ref)
+        create_fcd_backing_spec.assert_called_once_with(disk_type, ds_ref, name)
         self.assertEqual(1024, spec.capacityInMB)
         self.assertEqual(name, spec.name)
         self.assertEqual(backing_spec, spec.backingSpec)
         self.assertEqual([profile_spec], spec.profile)
         create_profile_spec.assert_called_once_with(
             self.session.vim.client.factory, profile_id)
-        self.session.invoke_api.assert_called_once_with(
+        ds_folder_path = "[%s] %s" % (mock.sentinel.name, name)
+        self.session.invoke_api.assert_any_call(
+            self.session.vim,
+            'MakeDirectory',
+            self.session.vim.service_content.fileManager,
+            name = ds_folder_path,
+            datacenter = dc)
+        self.session.invoke_api.assert_any_call(
             self.session.vim,
             'CreateDisk_Task',
             self.session.vim.service_content.vStorageObjectManager,
@@ -2059,7 +2077,7 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(dest_ds_ref_val, ret.ds_ref_val)
         self.session.vim.client.factory.create.assert_called_once_with(
             'ns0:VslmCloneSpec')
-        create_fcd_backing_spec.assert_called_once_with(disk_type, dest_ds_ref)
+        create_fcd_backing_spec.assert_called_once_with(disk_type, dest_ds_ref, name)
         self.assertEqual(name, spec.name)
         self.assertEqual(backing_spec, spec.backingSpec)
         self.assertEqual([profile_spec], spec.profile)
