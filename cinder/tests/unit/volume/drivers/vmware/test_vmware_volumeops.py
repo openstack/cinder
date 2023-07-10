@@ -32,6 +32,7 @@ class VolumeOpsTestCase(test.TestCase):
     """Unit tests for volumeops module."""
 
     MAX_OBJECTS = 100
+
     def setUp(self):
         super(VolumeOpsTestCase, self).setUp()
         self.session = mock.MagicMock()
@@ -1978,9 +1979,9 @@ class VolumeOpsTestCase(test.TestCase):
         disk_type = mock.sentinel.disk_type
         profile_id = mock.sentinel.profile_id
 
-        def mock_invoke_api(vim_util, method, vim, 
-                            the_object=None, arg=None, 
-                            name=None, datacenter=None, 
+        def mock_invoke_api(vim_util, method, vim,
+                            the_object=None, arg=None,
+                            name=None, datacenter=None,
                             spec=None):
             if arg == "parent":
                 return the_object.parent
@@ -1997,7 +1998,9 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(ds_ref_val, ret.ds_ref_val)
         self.session.vim.client.factory.create.assert_called_once_with(
             'ns0:VslmCreateSpec')
-        create_fcd_backing_spec.assert_called_once_with(disk_type, ds_ref, name)
+        create_fcd_backing_spec.assert_called_once_with(disk_type,
+                                                        ds_ref,
+                                                        name)
         self.assertEqual(1024, spec.capacityInMB)
         self.assertEqual(name, spec.name)
         self.assertEqual(backing_spec, spec.backingSpec)
