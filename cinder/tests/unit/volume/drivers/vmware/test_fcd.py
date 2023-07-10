@@ -168,7 +168,9 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         vops.get_dc.return_value = dc_ref
 
         size_bytes = units.Gi
-        ret = self._driver._get_temp_image_folder(volume.name, size_bytes, preallocated)
+        ret = self._driver._get_temp_image_folder(volume.name,
+                                                  size_bytes,
+                                                  preallocated)
         self.assertEqual(
             (dc_ref, summary, volume.name + '/'), ret)
         exp_req = {hub.DatastoreSelector.SIZE_BYTES: size_bytes}
@@ -358,7 +360,8 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
             self._context, volume, image_service, image_id)
 
         self.assertEqual({'provider_location': provider_location}, ret)
-        get_temp_image_folder.assert_called_once_with(volume.name, volume.size * units.Gi)
+        get_temp_image_folder.assert_called_once_with(volume.name,
+                                                      volume.size * units.Gi)
         if disk_type == vmdk.ImageDiskType.PREALLOCATED:
             create_disk_from_preallocated_image.assert_called_once_with(
                 self._context, image_service, image_id, image_meta['size'],

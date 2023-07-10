@@ -2080,7 +2080,9 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(dest_ds_ref_val, ret.ds_ref_val)
         self.session.vim.client.factory.create.assert_called_once_with(
             'ns0:VslmCloneSpec')
-        create_fcd_backing_spec.assert_called_once_with(disk_type, dest_ds_ref, name)
+        create_fcd_backing_spec.assert_called_once_with(disk_type,
+                                                        dest_ds_ref,
+                                                        name)
         self.assertEqual(name, spec.name)
         self.assertEqual(backing_spec, spec.backingSpec)
         self.assertEqual([profile_spec], spec.profile)

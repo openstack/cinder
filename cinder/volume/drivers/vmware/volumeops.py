@@ -2144,7 +2144,7 @@ class VMwareVolumeOps(object):
         spec = cf.create('ns0:VslmCreateSpec')
         spec.capacityInMB = size_mb
         spec.name = name
-        spec.backingSpec = self._create_fcd_backing_spec(disk_type, 
+        spec.backingSpec = self._create_fcd_backing_spec(disk_type,
                                                          ds_ref, name)
         dc_ref = self.get_dc(ds_ref)
         ds_name = self._session.invoke_api(vim_util, 'get_object_property',
