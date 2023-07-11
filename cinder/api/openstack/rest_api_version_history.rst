@@ -529,8 +529,8 @@ following meanings:
 - ``false``: Never do locking.
 - ``null``: Forced locking regardless of the iSCSI initiator.
 
-3.70
-----
+3.70 (Maximum in Zed and 2023.1)
+--------------------------------
 
 Add the ability to transfer encrypted volumes and their snapshots. The feature
 removes a prior restriction on transferring encrypted volumes. Otherwise, the
