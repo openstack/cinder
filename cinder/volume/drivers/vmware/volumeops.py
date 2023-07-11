@@ -2300,6 +2300,13 @@ class VMwareVolumeOps(object):
 
         vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
         cf = self._session.vim.client.factory
+        ds_ref = fcd_snap_loc.fcd_loc.ds_ref()
+        dc_ref = self.get_dc(ds_ref)
+        ds_name = self._session.invoke_api(vim_util, 'get_object_property',
+                                           self._session.vim, ds_ref,
+                                           'name')
+        self.create_datastore_folder(ds_name, name, dc_ref)
+
         if profile_id:
             profile = [self._create_profile_spec(cf, profile_id)]
         else:
@@ -2312,7 +2319,8 @@ class VMwareVolumeOps(object):
             datastore=fcd_snap_loc.fcd_loc.ds_ref(),
             snapshotId=fcd_snap_loc.id(cf),
             name=name,
-            profile=profile)
+            profile=profile,
+            path=name + '/')
         task_info = self._session.wait_for_task(task)
         fcd_loc = FcdLocation.create(task_info.result.config.id,
                                      fcd_snap_loc.fcd_loc.ds_ref())
