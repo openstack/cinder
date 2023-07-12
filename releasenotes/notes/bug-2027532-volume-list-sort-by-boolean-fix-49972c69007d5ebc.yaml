@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #2027532 <https://bugs.launchpad.net/cinder/+bug/2027532>`_:
+    Fixed Cinder API HTTP 500 when issuing a volume list and sorting by a
+    boolean field (i.e. "bootable").
