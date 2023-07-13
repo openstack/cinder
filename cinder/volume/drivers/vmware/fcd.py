@@ -130,8 +130,8 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         ds_ref = self._select_ds_fcd(volume)
         profile_id = self._get_storage_profile_id(volume)
         fcd_loc = self.volumeops.create_fcd(
-            volume.name, volume.size * units.Ki, ds_ref, disk_type,
-            profile_id=profile_id)
+            volume.id, volume.name, volume.size * units.Ki, ds_ref,
+            disk_type, profile_id=profile_id)
         return {'provider_location': fcd_loc.provider_location()}
 
     def _delete_fcd(self, provider_loc):
@@ -228,6 +228,8 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         profile_id = self._get_storage_profile_id(volume)
         if profile_id:
             self.volumeops.update_fcd_policy(fcd_loc, profile_id)
+        
+        self.volumeops.update_fcd_vmdk_uuid(summary.datastore, vmdk_path, volume.id)
 
         return {'provider_location': fcd_loc.provider_location()}
 
@@ -344,6 +346,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             self.volumeops.extend_fcd(fcd_loc, new_size * units.Ki)
 
     def _create_volume_from_fcd(self, provider_loc, cur_size, volume):
+        cf = self._session.vim.client.factory
         ds_ref = self._select_ds_fcd(volume)
         disk_type = self._get_disk_type(volume)
         profile_id = self._get_storage_profile_id(volume)
@@ -351,6 +354,8 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             provider_loc, volume.name, ds_ref, disk_type=disk_type,
             profile_id=profile_id)
         self._extend_if_needed(cloned_fcd_loc, cur_size, volume.size)
+        vmdk_path = self.volumeops.get_vmdk_path_for_fcd(ds_ref, cloned_fcd_loc.id(cf))
+        self.volumeops.update_fcd_vmdk_uuid(ds_ref, vmdk_path, volume.id)
         return {'provider_location': cloned_fcd_loc.provider_location()}
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -365,7 +370,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         if fcd_snap_loc:
             profile_id = self._get_storage_profile_id(volume)
             fcd_loc = self.volumeops.create_fcd_from_snapshot(
-                fcd_snap_loc, volume.name, profile_id=profile_id)
+                fcd_snap_loc, volume.name, volume.id, profile_id=profile_id)
             self._extend_if_needed(fcd_loc, snapshot.volume_size, volume.size)
             return {'provider_location': fcd_loc.provider_location()}
         else:

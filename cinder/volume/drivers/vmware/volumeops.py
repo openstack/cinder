@@ -2134,12 +2134,38 @@ class VMwareVolumeOps(object):
             backing_spec.path = path + '/'
         return backing_spec
 
+    def get_vmdk_path_for_fcd(self, ds_ref, disk_id):
+        vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
+        fcd_obj = self._session.invoke_api(
+            self._session.vim,
+            'RetrieveVStorageObject',
+            vstorage_mgr,
+            id=disk_id,
+            datastore=ds_ref)
+        vmdk_path = fcd_obj.config.backing.filePath
+        return vmdk_path
+    
+    def update_fcd_vmdk_uuid(self, ds_ref, vmdk_path, cinder_uuid ):
+        def cinder_uuid_to_vmwhex(cinder_uuid):
+            t = iter(cinder_uuid.replace('-',''))
+            hextext = ' '.join(a+b for a,b in zip(t, t))
+            return hextext[:23] + '-' + hextext[24:]
+
+        virtual_dmgr = self._session.vim.service_content.virtualDiskManager
+        self._session.invoke_api(
+            self._session.vim,
+            'SetVirtualDiskUuid',
+            virtual_dmgr,
+            name=vmdk_path,
+            datacenter=self.get_dc(ds_ref),
+            uuid=cinder_uuid_to_vmwhex(cinder_uuid))
+
     def _create_profile_spec(self, cf, profile_id):
         profile_spec = cf.create('ns0:VirtualMachineDefinedProfileSpec')
         profile_spec.profileId = profile_id
         return profile_spec
 
-    def create_fcd(self, name, size_mb, ds_ref, disk_type, profile_id=None):
+    def create_fcd(self, cinder_uuid, name, size_mb, ds_ref, disk_type, profile_id=None):
         cf = self._session.vim.client.factory
         spec = cf.create('ns0:VslmCreateSpec')
         spec.capacityInMB = size_mb
@@ -2164,10 +2190,13 @@ class VMwareVolumeOps(object):
                                         vstorage_mgr,
                                         spec=spec)
         task_info = self._session.wait_for_task(task)
-        fcd_loc = FcdLocation.create(task_info.result.config.id, ds_ref)
+        fcd_obj = task_info.result
+        fcd_loc = FcdLocation.create(fcd_obj.config.id, ds_ref)
+        vmdk_path = fcd_obj.config.backing.filePath
+        self.update_fcd_vmdk_uuid(ds_ref, vmdk_path, cinder_uuid )
         LOG.debug("Created fcd: %s.", fcd_loc)
         return fcd_loc
-
+    
     def delete_fcd(self, fcd_location):
         cf = self._session.vim.client.factory
         vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
@@ -2294,7 +2323,8 @@ class VMwareVolumeOps(object):
             snapshotId=fcd_snap_loc.id(cf))
         self._session.wait_for_task(task)
 
-    def create_fcd_from_snapshot(self, fcd_snap_loc, name, profile_id=None):
+    def create_fcd_from_snapshot(self, fcd_snap_loc, name,
+                                 cinder_uuid, profile_id=None):
         LOG.debug("Creating fcd with name: %(name)s from fcd snapshot: "
                   "%(snap)s.", {'name': name, 'snap': fcd_snap_loc})
 
@@ -2322,6 +2352,9 @@ class VMwareVolumeOps(object):
             profile=profile,
             path=name + '/')
         task_info = self._session.wait_for_task(task)
+        self.update_fcd_vmdk_uuid(fcd_snap_loc.fcd_loc.ds_ref(),
+                                  task_info.result.config.backing.filePath,
+                                  cinder_uuid)
         fcd_loc = FcdLocation.create(task_info.result.config.id,
                                      fcd_snap_loc.fcd_loc.ds_ref())
 
