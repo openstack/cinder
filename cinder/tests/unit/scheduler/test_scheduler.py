@@ -716,6 +716,23 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         driver.volume_update_db(self.context, volume.id, 'fake_host',
                                 'fake_cluster')
         scheduled_at = volume.scheduled_at.replace(tzinfo=None)
+        _mock_volume_get.assert_called_once_with(self.context, volume.id)
+        _mock_vol_update.assert_called_once_with(
+            self.context, volume.id, {'host': 'fake_host',
+                                      'cluster_name': 'fake_cluster',
+                                      'scheduled_at': scheduled_at,
+                                      'availability_zone': None})
+
+    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_volume_host_update_db_vol_present(self, _mock_volume_get,
+                                               _mock_vol_update):
+        volume = fake_volume.fake_volume_obj(self.context, use_quota=True)
+
+        driver.volume_update_db(self.context, volume.id, 'fake_host',
+                                'fake_cluster', volume=volume)
+        scheduled_at = volume.scheduled_at.replace(tzinfo=None)
+        _mock_volume_get.assert_not_called()
         _mock_vol_update.assert_called_once_with(
             self.context, volume.id, {'host': 'fake_host',
                                       'cluster_name': 'fake_cluster',
