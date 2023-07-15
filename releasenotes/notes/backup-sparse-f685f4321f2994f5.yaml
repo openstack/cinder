@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #2025277 <https://bugs.launchpad.net/cinder/+bug/2025277>`_:
+    Fixed a regression in the fix for Cinder backup restoring into
+    sparse volumes, where OpenStack's integrated CLI triggered a traceback.
+    The deprecated project-specific legacy CLI of Cinder continued to work.

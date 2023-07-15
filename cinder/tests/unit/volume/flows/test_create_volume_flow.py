@@ -1254,7 +1254,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
         fake_driver = mock.MagicMock()
         fake_volume_manager = mock.MagicMock()
         backup_host = 'host@backend#pool'
-        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
+        test_manager = create_volume_manager.CreateVolumeFromSpecTask(
             fake_volume_manager, fake_db, fake_driver)
 
         volume_obj = fake_volume.fake_volume_obj(self.ctxt)
@@ -1271,8 +1271,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
         if driver_error:
             fake_driver.create_volume_from_backup.side_effect = [
                 NotImplementedError]
-        fake_manager._create_from_backup(self.ctxt, volume_obj,
-                                         backup_obj.id)
+        test_manager._create_from_backup(self.ctxt, volume_obj, backup_obj.id)
         fake_driver.create_volume_from_backup.assert_called_once_with(
             volume_obj, backup_obj)
         if driver_error:
@@ -1282,7 +1281,8 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
             mock_restore_backup.assert_called_once_with(self.ctxt,
                                                         backup_host,
                                                         backup_obj,
-                                                        volume_obj['id'])
+                                                        volume_obj['id'],
+                                                        volume_is_new=True)
         else:
             fake_driver.create_volume_from_backup.assert_called_once_with(
                 volume_obj, backup_obj)
