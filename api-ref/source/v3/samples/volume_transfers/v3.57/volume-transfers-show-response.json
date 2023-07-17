@@ -1,0 +1,22 @@
+{
+    "transfer": {
+        "accepted": false,
+        "created_at": "2023-06-22T08:28:17.647081",
+        "destination_project_id": null,
+        "id": "3d79fbda-8d9c-4da3-a016-e5612fcb7f65",
+        "links": [
+            {
+                "href": "http://127.0.0.1:34593/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/os-volume-transfer/3d79fbda-8d9c-4da3-a016-e5612fcb7f65",
+                "rel": "self"
+            },
+            {
+                "href": "http://127.0.0.1:34593/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/os-volume-transfer/3d79fbda-8d9c-4da3-a016-e5612fcb7f65",
+                "rel": "bookmark"
+            }
+        ],
+        "name": "first volume",
+        "no_snapshots": false,
+        "source_project_id": "89afd400-b646-4bbc-b12b-c0a4d63e5bd3",
+        "volume_id": "7e31e409-2a7a-4ea6-aa0b-bc7be056fc57"
+    }
+}

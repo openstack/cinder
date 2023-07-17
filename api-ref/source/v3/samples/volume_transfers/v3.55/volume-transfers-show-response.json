@@ -1,0 +1,19 @@
+{
+    "transfer": {
+        "created_at": "2023-06-22T08:28:14.618343",
+        "id": "16b47e50-ab70-4781-bc01-cdcc01ca264a",
+        "links": [
+            {
+                "href": "http://127.0.0.1:38399/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/os-volume-transfer/16b47e50-ab70-4781-bc01-cdcc01ca264a",
+                "rel": "self"
+            },
+            {
+                "href": "http://127.0.0.1:38399/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/os-volume-transfer/16b47e50-ab70-4781-bc01-cdcc01ca264a",
+                "rel": "bookmark"
+            }
+        ],
+        "name": "first volume",
+        "no_snapshots": false,
+        "volume_id": "a67e4027-4a83-4b80-a2d5-5b49650ac28c"
+    }
+}

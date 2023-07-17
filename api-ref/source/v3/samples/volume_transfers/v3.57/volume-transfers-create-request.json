@@ -1,0 +1,7 @@
+{
+	"transfer": {
+            "volume_id": "80d68197-b67e-4c8e-bbb9-030b2581f921",
+            "name": "first volume",
+	    "no_snapshots": false
+    }
+}
