@@ -97,20 +97,23 @@ class StorwizeSVCReplicationGlobalMirror(StorwizeSVCReplication):
 
         target_vol_name = storwize_const.REPLICA_AUX_VOL_PREFIX + vref['name']
         try:
-            attr = self.target_helpers.get_vdisk_attributes(target_vol_name)
-            if not attr:
-                opts = self.driver._get_vdisk_params(vref['volume_type_id'])
-                pool = self.target.get('pool_name')
-                src_attr = self.driver._helpers.get_vdisk_attributes(
-                    vref['name'])
-                opts['iogrp'] = src_attr['IO_group_id']
+            opts = self.driver._get_vdisk_params(vref['volume_type_id'])
+            pool = self.target.get('pool_name')
+            src_attr = self.driver._helpers.get_vdisk_attributes(
+                vref['name'])
+            opts['iogrp'] = src_attr['IO_group_id']
+            try:
                 self.target_helpers.create_vdisk(target_vol_name,
                                                  str(vref['size']),
                                                  'gb', pool, opts)
+            except exception.VolumeBackendAPIException as excp:
+                if "CMMVC6035E" in excp.msg:
+                    LOG.info('Target Volume: %(vol)s already exists',
+                             {'vol': target_vol_name})
 
-            system_info = self.target_helpers.get_system_info()
+            target_system_id = self.driver._aux_state['system_id']
             self.driver._helpers.create_relationship(
-                vref['name'], target_vol_name, system_info.get('system_id'),
+                vref['name'], target_vol_name, target_system_id,
                 self.asyncmirror)
         except Exception as e:
             msg = (_("Unable to set up mirror mode replication for %(vol)s. "
