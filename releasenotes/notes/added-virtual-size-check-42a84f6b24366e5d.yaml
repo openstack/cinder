@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    `Bug #1980268 <https://bugs.launchpad.net/cinder/+bug/1980268>`_:
+    When creating a volume from an image, a check has been added to compare
+    the requested volume size to the image's ``virtual_size`` property and
+    fail the request if the volume will be too small to contain the image.
+    If the image record does not contain this property, the request is
+    accepted but the volume will go to ``error`` status if the image does
+    not fit (which is the current behavior).
