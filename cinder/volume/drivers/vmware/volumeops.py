@@ -2148,7 +2148,7 @@ class VMwareVolumeOps(object):
     def update_fcd_vmdk_uuid(self, ds_ref, vmdk_path, cinder_uuid):
         def cinder_uuid_to_vmwhex(cinder_uuid):
             t = iter(cinder_uuid.replace('-', ''))
-            hextext = ' '.join(a+b for a, b in zip(t, t))
+            hextext = ' '.join(a + b for a, b in zip(t, t))
             return hextext[:23] + '-' + hextext[24:]
 
         virtual_dmgr = self._session.vim.service_content.virtualDiskManager

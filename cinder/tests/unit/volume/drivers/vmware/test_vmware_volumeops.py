@@ -2331,7 +2331,7 @@ class VolumeOpsTestCase(test.TestCase):
             snapshotId=fcd_snap_id,
             name=name,
             profile=[profile_spec],
-            path=name+'/')
+            path=name + '/')
         self.session.wait_for_task.assert_called_once_with(task)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
