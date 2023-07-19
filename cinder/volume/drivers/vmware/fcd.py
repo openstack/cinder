@@ -228,8 +228,9 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         profile_id = self._get_storage_profile_id(volume)
         if profile_id:
             self.volumeops.update_fcd_policy(fcd_loc, profile_id)
-        
-        self.volumeops.update_fcd_vmdk_uuid(summary.datastore, vmdk_path, volume.id)
+
+        self.volumeops.update_fcd_vmdk_uuid(summary.datastore,
+                                            vmdk_path, volume.id)
 
         return {'provider_location': fcd_loc.provider_location()}
 
@@ -300,12 +301,13 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             volume.provider_location)
         self.volumeops.extend_fcd(fcd_loc, new_size * units.Ki)
 
-    def _clone_fcd(self, provider_loc, name, dest_ds_ref,
+    def _clone_fcd(self, provider_loc, volume, dest_ds_ref,
                    disk_type=vops.VirtualDiskType.THIN,
                    profile_id=None):
         fcd_loc = vops.FcdLocation.from_provider_location(provider_loc)
-        return self.volumeops.clone_fcd(
-            name, fcd_loc, dest_ds_ref, disk_type, profile_id=profile_id)
+        return self.volumeops.clone_fcd(volume,
+                                        fcd_loc, dest_ds_ref,
+                                        disk_type, profile_id=profile_id)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
@@ -346,16 +348,13 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             self.volumeops.extend_fcd(fcd_loc, new_size * units.Ki)
 
     def _create_volume_from_fcd(self, provider_loc, cur_size, volume):
-        cf = self._session.vim.client.factory
         ds_ref = self._select_ds_fcd(volume)
         disk_type = self._get_disk_type(volume)
         profile_id = self._get_storage_profile_id(volume)
         cloned_fcd_loc = self._clone_fcd(
-            provider_loc, volume.name, ds_ref, disk_type=disk_type,
+            provider_loc, volume, ds_ref, disk_type=disk_type,
             profile_id=profile_id)
         self._extend_if_needed(cloned_fcd_loc, cur_size, volume.size)
-        vmdk_path = self.volumeops.get_vmdk_path_for_fcd(ds_ref, cloned_fcd_loc.id(cf))
-        self.volumeops.update_fcd_vmdk_uuid(ds_ref, vmdk_path, volume.id)
         return {'provider_location': cloned_fcd_loc.provider_location()}
 
     def create_volume_from_snapshot(self, volume, snapshot):

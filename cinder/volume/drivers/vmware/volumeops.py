@@ -2144,11 +2144,11 @@ class VMwareVolumeOps(object):
             datastore=ds_ref)
         vmdk_path = fcd_obj.config.backing.filePath
         return vmdk_path
-    
-    def update_fcd_vmdk_uuid(self, ds_ref, vmdk_path, cinder_uuid ):
+
+    def update_fcd_vmdk_uuid(self, ds_ref, vmdk_path, cinder_uuid):
         def cinder_uuid_to_vmwhex(cinder_uuid):
-            t = iter(cinder_uuid.replace('-',''))
-            hextext = ' '.join(a+b for a,b in zip(t, t))
+            t = iter(cinder_uuid.replace('-', ''))
+            hextext = ' '.join(a+b for a, b in zip(t, t))
             return hextext[:23] + '-' + hextext[24:]
 
         virtual_dmgr = self._session.vim.service_content.virtualDiskManager
@@ -2165,7 +2165,8 @@ class VMwareVolumeOps(object):
         profile_spec.profileId = profile_id
         return profile_spec
 
-    def create_fcd(self, cinder_uuid, name, size_mb, ds_ref, disk_type, profile_id=None):
+    def create_fcd(self, cinder_uuid, name, size_mb,
+                   ds_ref, disk_type, profile_id=None):
         cf = self._session.vim.client.factory
         spec = cf.create('ns0:VslmCreateSpec')
         spec.capacityInMB = size_mb
@@ -2193,10 +2194,10 @@ class VMwareVolumeOps(object):
         fcd_obj = task_info.result
         fcd_loc = FcdLocation.create(fcd_obj.config.id, ds_ref)
         vmdk_path = fcd_obj.config.backing.filePath
-        self.update_fcd_vmdk_uuid(ds_ref, vmdk_path, cinder_uuid )
+        self.update_fcd_vmdk_uuid(ds_ref, vmdk_path, cinder_uuid)
         LOG.debug("Created fcd: %s.", fcd_loc)
         return fcd_loc
-    
+
     def delete_fcd(self, fcd_location):
         cf = self._session.vim.client.factory
         vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
@@ -2209,13 +2210,19 @@ class VMwareVolumeOps(object):
         self._session.wait_for_task(task)
 
     def clone_fcd(
-            self, name, fcd_location, dest_ds_ref, disk_type, profile_id=None):
+            self, volume, fcd_location, dest_ds_ref,
+            disk_type, profile_id=None):
         cf = self._session.vim.client.factory
         spec = cf.create('ns0:VslmCloneSpec')
-        spec.name = name
+        spec.name = volume.name
+        dc_ref = self.get_dc(dest_ds_ref)
+        ds_name = self._session.invoke_api(vim_util, 'get_object_property',
+                                           self._session.vim, dest_ds_ref,
+                                           'name')
+        self.create_datastore_folder(ds_name, volume.name, dc_ref)
         spec.backingSpec = self._create_fcd_backing_spec(disk_type,
                                                          dest_ds_ref,
-                                                         name)
+                                                         volume.name)
 
         if profile_id:
             profile_spec = self._create_profile_spec(cf, profile_id)
@@ -2234,6 +2241,8 @@ class VMwareVolumeOps(object):
                                         datastore=fcd_location.ds_ref(),
                                         spec=spec)
         task_info = self._session.wait_for_task(task)
+        vmdk_path = task_info.result.config.backing.filePath
+        self.update_fcd_vmdk_uuid(dest_ds_ref, vmdk_path, volume.id)
         dest_fcd_loc = FcdLocation.create(task_info.result.config.id,
                                           dest_ds_ref)
         LOG.debug("Clone fcd: %s.", dest_fcd_loc)
