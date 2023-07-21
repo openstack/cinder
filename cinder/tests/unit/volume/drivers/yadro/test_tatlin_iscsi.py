@@ -312,7 +312,7 @@ class TatlinISCSIVolumeDriverTest(TestCase):
             (MockResponse(ISCSI_HOST_INFO, 200)),
         ]
         self.assertEqual(self.driver.find_current_host(
-            'iqn.1994-05.com.redhat:4e5d7ab85a4c'),
+            {'initiator': 'iqn.1994-05.com.redhat:4e5d7ab85a4c'}),
             '5e37d335-8fff-4aee-840a-34749301a16a')
 
     @mock.patch.object(TatlinAccessAPI, 'send_request')

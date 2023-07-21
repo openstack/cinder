@@ -35,6 +35,7 @@ from cinder.volume import qos_specs
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 from cinder.volume.volume_utils import brick_get_connector_properties
+from cinder.zonemanager import utils as fczm_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -373,31 +374,49 @@ class TatlinCommonVolumeDriver(driver.VolumeDriver, object):
         _do_detach_volume()
 
     @volume_utils.trace
+    def initialize_connection(self, volume, connector):
+        @utils.synchronized("tatlin-volume-connections-%s" % volume.name_id)
+        def _initialize_connection():
+            LOG.debug('Init %s with connector %s', volume.name_id, connector)
+            current_host = self.find_current_host(connector)
+            self.add_volume_to_host(volume, current_host)
+            if self._is_cinder_host_connection(connector):
+                self._connections.increment(volume.name_id)
+            connection_info = self._create_connection_info(volume, connector)
+            fczm_utils.add_fc_zone(connection_info)
+            return connection_info
+        return _initialize_connection()
+
+    @volume_utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         @utils.synchronized("tatlin-volume-connections-%s" % volume.name_id)
         def _terminate_connection():
             LOG.debug('Terminate connection for %s with connector  %s',
                       volume.name_id, connector)
+            connection_info = self._create_connection_info(volume, connector)
             if not connector:
-                return
+                self.remove_volume_from_all_hosts(volume)
+                return connection_info
             if self._is_cinder_host_connection(connector):
                 connections = self._connections.decrement(volume.name_id)
                 if connections > 0:
                     LOG.debug('Not terminating connection: '
                               'volume %s, existing connections: %s',
                               volume.name_id, connections)
-                    return
+                    return connection_info
             hostname = connector['host']
             if self._is_nova_multiattached(volume, hostname):
                 LOG.debug('Volume %s is attached on host %s to multiple VMs.'
                           ' Not terminating connection', volume.name_id,
                           hostname)
-                return
-
-            host = self.find_current_host(connector['initiator'])
-            LOG.debug('Terminate connection volume %s removing from host %s',
-                      volume.name_id, host)
-            self.remove_volume_from_host(volume, host)
+                return connection_info
+            host_id = self.find_current_host(connector)
+            self.remove_volume_from_host(volume, host_id)
+            resources = [r for r in self.tatlin_api.get_resource_mapping()
+                         if r.get('host_id', '') == host_id]
+            if not resources:
+                fczm_utils.remove_fc_zone(connection_info)
+            return connection_info
         _terminate_connection()
 
     def _is_cinder_host_connection(self, connector):
@@ -673,6 +692,13 @@ class TatlinCommonVolumeDriver(driver.VolumeDriver, object):
     def remove_volume_from_host(self, volume, host_id):
         self.tatlin_api.remove_vol_from_host(volume.name_id, host_id)
 
+    def remove_volume_from_all_hosts(self, volume):
+        mappings = self.tatlin_api.get_resource_mapping()
+        hosts = [m['host_id'] for m in mappings
+                 if 'resource_id' in m and m['resource_id'] == volume.name_id]
+        for host_id in hosts:
+            self.tatlin_api.remove_vol_from_host(volume.name_id, host_id)
+
     def _is_port_assigned(self, volume_id, port):
         LOG.debug('VOLUME %s: Checking port %s ', volume_id, port)
         cur_ports = self.tatlin_api.get_resource_ports_array(volume_id)
@@ -684,20 +710,19 @@ class TatlinCommonVolumeDriver(driver.VolumeDriver, object):
     def _get_ports_portals(self):
         return {}
 
-    def _find_mapped_lun(self, volume_id, iqn):
-        host_id = self.find_current_host(iqn)
+    def _create_connection_info(self, volume, connector):
+        return {}
+
+    def _find_mapped_lun(self, volume_id, connector):
+        host_id = self.find_current_host(connector)
         result = self.tatlin_api.get_resource_mapping()
         for r in result:
             if 'host_id' in r:
                 if r['resource_id'] == volume_id and r['host_id'] == host_id:
-                    LOG.debug('Current mapped lun record %s volume_id: %s '
-                              'host_id: is %s', r, volume_id, host_id)
                     return r['mapped_lun_id']
-
         mess = (_('Unable to get mapped lun for volume %s on host %s') %
                  (volume_id, host_id))
         LOG.error(mess)
-
         raise exception.VolumeBackendAPIException(message=mess)
 
     @staticmethod
@@ -727,7 +752,7 @@ class TatlinCommonVolumeDriver(driver.VolumeDriver, object):
             wait_interval=self._wait_interval,
             wait_retry_count=self._wait_retry_count)
 
-    def find_current_host(self, wwn):
+    def find_current_host(self, connector):
         return ''
 
     @property
