@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Open-E JovianDSS driver: revert-to-snapshot has been removed.
+other:
+  - |
+    Open-E JovianDSS driver: general rework of volume and snapshot creation and deletion.
+  - |
+    Open-E JovianDSS driver: network interfaces selection on JovianDSS storage has been reworked.
