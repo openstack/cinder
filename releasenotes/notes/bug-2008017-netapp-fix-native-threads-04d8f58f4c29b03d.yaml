@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #2008017 <https://bugs.launchpad.net/cinder/+bug/2008017>`_: Fixed
+    NetApp NFS driver to never spawn a native thread avoid thread starvation
+    and other related issues.

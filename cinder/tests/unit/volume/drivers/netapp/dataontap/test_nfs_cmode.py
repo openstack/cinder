@@ -136,7 +136,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_debug_log = self.mock_object(nfs_cmode.LOG, 'debug')
         self.mock_object(self.driver, 'get_filter_function')
         self.mock_object(self.driver, 'get_goodness_function')
-        self.mock_object(self.driver, '_spawn_clean_cache_job')
         self.driver.zapi_client = mock.Mock()
         self.mock_object(self.driver, '_get_pool_stats', return_value={})
         expected_stats = {
@@ -152,7 +151,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         retval = self.driver._update_volume_stats()
 
         self.assertIsNone(retval)
-        self.assertTrue(self.driver._spawn_clean_cache_job.called)
         self.assertEqual(1, mock_debug_log.call_count)
         self.assertEqual(expected_stats, self.driver._stats)
 

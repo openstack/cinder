@@ -102,6 +102,11 @@ netapp_cluster_opts = [
                      'provisioning of block storage volumes should occur.')), ]
 
 netapp_img_cache_opts = [
+    cfg.IntOpt('netapp_nfs_image_cache_cleanup_interval',
+               default=600,
+               min=60,
+               help=('Sets time in seconds between NFS image cache '
+                     'cleanup tasks.')),
     cfg.IntOpt('thres_avl_size_perc_start',
                default=20,
                help=('If the percentage of available space for an NFS share '
