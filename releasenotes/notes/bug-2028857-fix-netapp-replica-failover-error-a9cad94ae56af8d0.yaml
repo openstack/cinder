@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver `bug #2028857
+    <https://bugs.launchpad.net/cinder/+bug/2028857>`_: Fixed
+    errors that were occuring in the replica failover operation when using
+    ONTAP REST API.
