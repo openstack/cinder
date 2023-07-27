@@ -1,0 +1,16 @@
+{
+    "backup": {
+        "id": "06d5db4f-1f80-4a71-99a6-99368cfb8f8e",
+        "links": [
+            {
+                "href": "http://127.0.0.1:45187/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/backups/06d5db4f-1f80-4a71-99a6-99368cfb8f8e",
+                "rel": "self"
+            },
+            {
+                "href": "http://127.0.0.1:45187/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/backups/06d5db4f-1f80-4a71-99a6-99368cfb8f8e",
+                "rel": "bookmark"
+            }
+        ],
+        "name": "backup001"
+    }
+}

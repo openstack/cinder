@@ -104,7 +104,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/backups-list-detailed-response.json
+.. literalinclude:: ./samples/backups/backups-list-detailed-response.json
    :language: javascript
 
 
@@ -164,7 +164,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/backup-show-response.json
+.. literalinclude:: ./samples/backups/backup-show-response.json
    :language: javascript
 
 
@@ -356,7 +356,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/backup-update-request.json
+.. literalinclude:: ./samples/backups/v3.9/backup-update-request.json
    :language: javascript
 
 Response Parameters
@@ -373,7 +373,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/backup-update-response.json
+.. literalinclude:: ./samples/backups/v3.9/backup-update-response.json
    :language: javascript
 
 
