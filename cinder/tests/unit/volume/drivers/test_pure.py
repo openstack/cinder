@@ -4252,7 +4252,7 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver.terminate_connection(vol, FC_CONNECTOR)
         mock_disconnect.assert_has_calls([
             mock.call(mock_secondary, vol, FC_CONNECTOR,
-                      is_multiattach=False, remove_remote_hosts=False),
+                      is_multiattach=False, remove_remote_hosts=True),
             mock.call(self.array, vol, FC_CONNECTOR,
                       is_multiattach=False, remove_remote_hosts=False)
         ])

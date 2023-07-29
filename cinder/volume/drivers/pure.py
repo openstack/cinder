@@ -927,7 +927,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             for array in self._uniform_active_cluster_target_arrays:
                 try:
                     self._disconnect(array, volume, connector,
-                                     remove_remote_hosts=False,
+                                     remove_remote_hosts=True,
                                      is_multiattach=multiattach)
                 except purestorage.PureError as err:
                     # Swallow any exception, just warn and continue
@@ -3180,7 +3180,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
             for array in self._uniform_active_cluster_target_arrays:
                 try:
                     no_more_connections = self._disconnect(
-                        array, volume, connector, remove_remote_hosts=False,
+                        array, volume, connector, remove_remote_hosts=True,
                         is_multiattach=multiattach)
                     if no_more_connections:
                         unused_wwns += self._get_array_wwns(array)
