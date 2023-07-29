@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Pure Storage Cinder Driver: Fixed `bug 2029005
+    <https://bugs.launchpad.net/cinder/+bug/2029005>`__ to correctly
+    disconnect a sync replicated volume from host on the secondary
+    array when uniform option is set to True.
