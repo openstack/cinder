@@ -28,7 +28,7 @@ a block device.
    Spectrum Scale must be installed and cluster has to be created on the
    storage nodes in the OpenStack environment. A file system must also be
    created and mounted on these nodes before configuring the cinder service
-   to use Spectrum Scale storage.For more details, please refer to
+   to use Spectrum Scale storage. For more details, please refer to
    `Spectrum Scale product documentation <https://ibm.biz/Bdi84g>`_.
 
 Optionally, the Image service can be configured to store glance images
