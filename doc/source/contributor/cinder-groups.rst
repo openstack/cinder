@@ -120,6 +120,30 @@ can do is defined in the project-config repository:
 https://opendev.org/openstack/project-config
 
 * ``gerrit/projects.yaml`` sets the config file for a project
-* ``gerrit/acls`` contains the config files
+* ``gerrit/acls/openstack`` contains the config files
 
+The Special Relationship with OpenStack Command Line Client and SDK
+-------------------------------------------------------------------
 
+The OpenStack Command Line Client (aka OSC) and the OpenStack SDK provide
+unified interfaces across most of the OpenStack APIs.  To facilitate this,
+they make use of two kinds of core teams:
+
+- "service cores": people very familiar with the particular API that's
+  being given an interface in the OSC or SDK.  For example, cinder cores
+  can be service cores for implementations in OSC or SDK that provide
+  an interface to the Block Storage API.
+- additionally, the OSC and SDK projects have their own core teams whose
+  members have a broader vision over the OSC and SDK, and therefore can
+  enforce consistency across all the service code.  This way, end users
+  will be provided with a consistent and predictable interface to
+  OpenStack as a whole.
+
+The cinder-core gerrit group acts as "service cores" for the OSC and SDK.
+This means that the cinder-core members have +2 powers on OSC or SDK reviews
+but do not have permission to approve patches.  The connection between
+cinder-core and the python-openstackclient and openstacksdk code repositories
+is made directly in their ACL files in the ``project-config`` repository:
+
+- ``gerrit/acls/openstack/openstacksdk.config``
+- ``gerrit/acls/openstack/python-openstackclient.config``
