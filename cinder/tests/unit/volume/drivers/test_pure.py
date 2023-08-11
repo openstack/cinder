@@ -1822,9 +1822,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             cgsnapshot=mock_cgsnapshot,
             snapshots=mock_snapshots,
             source_cg=None,
-            source_vols=None
+            source_vols=None,
+            group_type=None
         )
-        mock_create_cg.assert_called_with(ctxt, mock_group)
+        mock_create_cg.assert_called_with(ctxt, mock_group, None)
         expected_calls = [mock.call(vol, snap)
                           for vol, snap in zip(mock_volumes, mock_snapshots)]
         mock_create_vol.assert_has_calls(expected_calls,
@@ -1855,9 +1856,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             mock_group,
             mock_volumes,
             source_cg=mock_source_cg,
-            source_vols=mock_source_vols
+            source_vols=mock_source_vols,
+            group_type=None
         )
-        mock_create_cg.assert_called_with(ctxt, mock_group)
+        mock_create_cg.assert_called_with(ctxt, mock_group, None)
         self.assertTrue(self.array.create_pgroup_snapshot.called)
         self.assertTrue(self.array.destroy_pgroup.called)
 
@@ -4377,6 +4379,8 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
             'driver_version': self.driver.VERSION,
             'storage_protocol': None,
             'consistencygroup_support': True,
+            'consistent_group_snapshot_enabled': True,
+            'consistent_group_replication_enabled': True,
             'thin_provisioning_support': True,
             'multiattach': True,
             'QoS_support': True,
@@ -4532,10 +4536,23 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(BASE_DRIVER_OBJ + '.create_consistencygroup')
     @mock.patch('cinder.volume.group_types.get_group_type_specs')
     def test_create_group_with_cg(self, mock_get_specs, mock_create_cg):
+        self.driver._is_replication_enabled = True
         mock_get_specs.return_value = '<is> True'
         group = mock.MagicMock()
         self.driver.create_group(self.ctxt, group)
-        mock_create_cg.assert_called_once_with(self.ctxt, group)
+        mock_create_cg.assert_called_once_with(self.ctxt, group, None)
+
+    @mock.patch(BASE_DRIVER_OBJ + '.create_consistencygroup')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_create_group_with_cg_failure(self, mock_get_specs,
+                                          mock_create_cg):
+        group = mock.MagicMock()
+        mock_get_specs.return_value = '<is> True'
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver.create_group,
+            self.ctxt, group
+        )
 
     @mock.patch(BASE_DRIVER_OBJ + '.delete_consistencygroup')
     @mock.patch('cinder.volume.group_types.get_group_type_specs')
@@ -4572,6 +4589,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
     @mock.patch('cinder.volume.group_types.get_group_type_specs')
     def test_create_group_from_src_with_cg(self, mock_get_specs, mock_create):
         mock_get_specs.return_value = '<is> True'
+        self.driver._is_replication_enabled = True
         group = mock.MagicMock()
         volumes = [mock.Mock()]
         group_snapshot = mock.Mock()
@@ -4595,7 +4613,8 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
             group_snapshot,
             snapshots,
             source_group,
-            source_vols
+            source_vols,
+            True
         )
 
     @mock.patch(BASE_DRIVER_OBJ + '.create_cgsnapshot')
