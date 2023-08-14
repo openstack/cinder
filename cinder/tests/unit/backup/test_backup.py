@@ -675,6 +675,26 @@ class BackupTestCase(BaseBackupTest):
 
     @mock.patch('cinder.backup.manager.BackupManager._start_backup',
                 side_effect=FakeBackupException(str(uuid.uuid4())))
+    @mock.patch.object(db, 'volume_update')
+    def test_create_backup_aborted_volume_not_found(self, vol_up_mock,
+                                                    start_backup_mock):
+        """Test error handling when backup fails and volume does not exist."""
+        vol_id = self._create_volume_db_entry(size=1)
+        backup = self._create_backup_db_entry(volume_id=vol_id)
+
+        vol_up_mock.side_effect = exception.VolumeNotFound(volume_id=vol_id)
+
+        self.assertRaises(FakeBackupException,
+                          self.backup_mgr.create_backup,
+                          self.ctxt,
+                          backup)
+        backup.refresh()
+        self.assertEqual(fields.BackupStatus.ERROR, backup.status)
+        self.assertTrue(start_backup_mock.called)
+        self.assertTrue(vol_up_mock.called)
+
+    @mock.patch('cinder.backup.manager.BackupManager._start_backup',
+                side_effect=FakeBackupException(str(uuid.uuid4())))
     def test_create_backup_with_snapshot_error(self, mock_start_backup):
         """Test error handling when error occurs during backup creation."""
         vol_id = self._create_volume_db_entry(size=1)
