@@ -1031,6 +1031,88 @@ class AdminActionsTest(BaseAdminTest):
         res = req.get_response(app())
         self.assertEqual(HTTPStatus.METHOD_NOT_ALLOWED, res.status_int)
 
+    def _extend_volume_comp_exec(self, ctx, volume, error, expected_status):
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, volume['id']))
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        body = {'os-extend_volume_completion': {'error': error}}
+        req.body = jsonutils.dump_as_bytes(body)
+        req.environ['cinder.context'] = ctx
+        resp = req.get_response(app())
+        # verify status
+        self.assertEqual(expected_status, resp.status_int)
+
+    def test_extend_volume_comp_accepted_success(self):
+        volume = self._create_volume(
+            self.ctx,
+            {'size': 1,
+             'status': 'extending',
+             'admin_metadata': {
+                 'extend_new_size': '2',
+                 'extend_reservations':
+                     '["563e9e70-5f46-4265-9a92-f7bca28d896c"]'
+             }})
+
+        expected_status = HTTPStatus.ACCEPTED
+        self._extend_volume_comp_exec(self.ctx, volume, False,
+                                      expected_status)
+
+    def test_extend_volume_comp_accepted_failure(self):
+        volume = self._create_volume(
+            self.ctx,
+            {'size': 1,
+             'status': 'extending',
+             'admin_metadata': {
+                 'extend_new_size': '2',
+                 'extend_reservations':
+                     '["563e9e70-5f46-4265-9a92-f7bca28d896c"]'
+             }})
+
+        expected_status = HTTPStatus.ACCEPTED
+        self._extend_volume_comp_exec(self.ctx, volume, True,
+                                      expected_status)
+
+    def test_extend_volume_comp_wrong_status(self):
+        volume = self._create_volume(
+            self.ctx,
+            {'size': 1,
+             'status': 'in-use',
+             'admin_metadata': {
+                 'extend_new_size': '2',
+                 'extend_reservations':
+                     '["563e9e70-5f46-4265-9a92-f7bca28d896c"]'
+             }})
+
+        expected_status = HTTPStatus.BAD_REQUEST
+        self._extend_volume_comp_exec(self.ctx, volume, False,
+                                      expected_status)
+
+    def test_extend_volume_comp_missing_metadata(self):
+        volume = self._create_volume(
+            self.ctx,
+            {'size': 1,
+             'status': 'extending'})
+
+        expected_status = HTTPStatus.BAD_REQUEST
+        self._extend_volume_comp_exec(self.ctx, volume, False,
+                                      expected_status)
+
+    def test_extend_volume_comp_wrong_size(self):
+        volume = self._create_volume(
+            self.ctx,
+            {'size': 2,
+             'status': 'extending',
+             'admin_metadata': {
+                 'extend_new_size': '1',
+                 'extend_reservations':
+                     '["563e9e70-5f46-4265-9a92-f7bca28d896c"]'
+             }})
+
+        expected_status = HTTPStatus.BAD_REQUEST
+        self._extend_volume_comp_exec(self.ctx, volume, False,
+                                      expected_status)
+
 
 class AdminActionsAttachDetachTest(BaseAdminTest):
     def setUp(self):

@@ -20,6 +20,8 @@ from cinder.policies import base
 
 EXTEND_POLICY = "volume:extend"
 EXTEND_ATTACHED_POLICY = "volume:extend_attached_volume"
+EXTEND_COMPLETE_POLICY = \
+    "volume_extension:volume_admin_actions:extend_volume_completion"
 REVERT_POLICY = "volume:revert_to_snapshot"
 RESET_STATUS = "volume_extension:volume_admin_actions:reset_status"
 RETYPE_POLICY = "volume:retype"
@@ -123,6 +125,16 @@ volume_action_policies = [
             }
         ],
         deprecated_rule=deprecated_extend_attached_policy,
+    ),
+    policy.DocumentedRuleDefault(
+        name=EXTEND_COMPLETE_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="Complete a volume extend operation.",
+        operations=[{
+            'method': 'POST',
+            'path':
+                '/volumes/{volume_id}/action (os-extend_volume_completion)'}
+        ],
     ),
     policy.DocumentedRuleDefault(
         name=REVERT_POLICY,

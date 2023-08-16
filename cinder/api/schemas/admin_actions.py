@@ -119,6 +119,22 @@ migrate_volume_completion = {
 }
 
 
+extend_volume_completion = {
+    'type': 'object',
+    'properties': {
+        'os-extend_volume_completion': {
+            'type': 'object',
+            'properties': {
+                'error': {'type': ['string', 'null', 'boolean']},
+            },
+            'additionalProperties': False,
+        },
+    },
+    'required': ['os-extend_volume_completion'],
+    'additionalProperties': False,
+}
+
+
 reset_status_backup = {
     'type': 'object',
     'properties': {

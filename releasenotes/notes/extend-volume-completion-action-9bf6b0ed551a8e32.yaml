@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add the new ``os-extend_volume_completion`` volume action, which the Nova
+    compute agent can use to notify Cinder that it has finished handling the
+    ``volume-extended`` external server event.

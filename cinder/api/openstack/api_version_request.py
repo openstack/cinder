@@ -156,14 +156,15 @@ REST_API_VERSION_HISTORY = """
     * 3.68 - Support re-image volume
     * 3.69 - Allow null value for shared_targets
     * 3.70 - Support encrypted volume transfers
+    * 3.71 - Support 'os-extend_volume_completion' volume action
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.70"
-UPDATED = "2022-08-31T00:00:00Z"
+_MAX_API_VERSION = "3.71"
+UPDATED = "2023-08-31T00:00:00Z"
 
 
 # NOTE(cyeoh): min and max versions declared as functions so we can
