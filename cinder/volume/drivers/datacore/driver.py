@@ -411,7 +411,7 @@ class DataCoreVolumeDriver(driver.VolumeDriver):
             kwargs = {'existing_ref': vd_alias,
                       'reason': 'Specified Virtual disk does not exist.'}
             raise cinder_exception.ManageExistingInvalidReference(**kwargs)
-        return(self._get_size_in_gigabytes(virtual_disk.Size.Value))
+        return (self._get_size_in_gigabytes(virtual_disk.Size.Value))
 
     def _update_volume_stats(self):
         performance_data = self._api.get_performance_by_type(

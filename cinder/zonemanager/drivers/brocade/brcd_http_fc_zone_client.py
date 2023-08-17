@@ -896,7 +896,7 @@ class BrcdHTTPFCZoneClient(object):
         timeout = 360
         sleep_time = 3
         time_elapsed = 0
-        while(status != "done"):
+        while (status != "done"):
             txn_response = self.connect(
                 zone_constant.GET_METHOD, transURL, "", headers)
             parsed_data_txn = self.get_parsed_data(txn_response,

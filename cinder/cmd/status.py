@@ -287,9 +287,9 @@ def main():
     try:
         return uc.main(CONF, 'cinder', Checks())
     except cfg.ConfigDirNotFoundError:
-        return('ERROR: cannot read the cinder configuration directory.\n'
-               'Please re-run using the --config-dir <dirname> option '
-               'with a valid cinder configuration directory.')
+        return ('ERROR: cannot read the cinder configuration directory.\n'
+                'Please re-run using the --config-dir <dirname> option '
+                'with a valid cinder configuration directory.')
 
 
 if __name__ == '__main__':

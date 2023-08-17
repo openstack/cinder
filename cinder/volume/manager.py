@@ -3112,7 +3112,7 @@ class VolumeManager(manager.CleanableManager,
 
             # Don't allow volume with replicas to be migrated
             rep_status = volume.replication_status
-            if(rep_status is not None and rep_status not in
+            if (rep_status is not None and rep_status not in
                     [fields.ReplicationStatus.DISABLED,
                      fields.ReplicationStatus.NOT_CAPABLE]):
                 _retype_error(context, volume, old_reservations,

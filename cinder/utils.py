@@ -576,7 +576,7 @@ def check_string_length(value: str, name: str, min_length: int = 0,
         strutils.check_string_length(value, name=name,
                                      min_length=min_length,
                                      max_length=max_length)
-    except(ValueError, TypeError) as exc:
+    except (ValueError, TypeError) as exc:
         raise exception.InvalidInput(reason=exc)
 
     if not allow_all_spaces and value.isspace():

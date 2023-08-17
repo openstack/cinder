@@ -115,7 +115,7 @@ def no_translate_logs(logical_line, filename):
     C312
     """
     if translated_log.match(logical_line):
-        yield(0, "C312: Log messages should not be translated!")
+        yield (0, "C312: Log messages should not be translated!")
 
 
 @core.flake8ext
@@ -145,7 +145,7 @@ def check_explicit_underscore_import(logical_line, filename):
             custom_underscore_check.match(logical_line)):
         UNDERSCORE_IMPORT_FILES.append(filename)
     elif string_translation.match(logical_line):
-        yield(0, "N323: Found use of _() without explicit import of _ !")
+        yield (0, "N323: Found use of _() without explicit import of _ !")
 
 
 class CheckLoggingFormatArgs(BaseASTChecker):
@@ -305,7 +305,7 @@ def check_datetime_now(logical_line, noqa):
     msg = ("C301: Found datetime.now(). "
            "Please use timeutils.utcnow() from oslo_utils.")
     if 'datetime.now' in logical_line:
-        yield(0, msg)
+        yield (0, msg)
 
 
 @core.flake8ext
@@ -322,7 +322,7 @@ def check_no_print_statements(logical_line, filename, noqa):
         msg = ("C303: print() should not be used. "
                "Please use LOG.[info|error|warning|exception|debug]. "
                "If print() must be used, use '# noqa' to skip this check.")
-        yield(0, msg)
+        yield (0, msg)
 
 
 @core.flake8ext
@@ -354,7 +354,7 @@ def validate_assertTrue(logical_line, filename):
     if re.match(assert_True, logical_line):
         msg = ("C313: Unit tests should use assertTrue(value) instead"
                " of using assertEqual(True, value).")
-        yield(0, msg)
+        yield (0, msg)
 
 
 third_party_mock = re.compile("^import.mock")
@@ -369,7 +369,7 @@ def no_third_party_mock(logical_line):
             re.match(from_third_party_mock, logical_line)):
         msg = ('C337: Unit tests should use the standard library "mock" '
                'module, not the third party mock lib.')
-        yield(0, msg)
+        yield (0, msg)
 
 
 @core.flake8ext

@@ -202,7 +202,7 @@ class DBMock(object):
         return httpstatus.OK, vol
 
     def update_volume(self, **kwargs):
-        assert("project_name" in kwargs and kwargs["project_name"]), \
+        assert ("project_name" in kwargs and kwargs["project_name"]), \
             "project_name must be provided"
 
     def create_snapshot(self, snapshot) -> Tuple[int, Dict]:

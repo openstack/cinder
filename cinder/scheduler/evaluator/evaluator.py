@@ -32,7 +32,7 @@ def _operatorOperands(tokenList):
         try:
             op1 = next(it)
             op2 = next(it)
-            yield(op1, op2)
+            yield (op1, op2)
         except StopIteration:
             break
 
