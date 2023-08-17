@@ -1,0 +1,5 @@
+fixes:
+  - |
+    HPE 3PAR driver `Bug #2015034 <https://bugs.launchpad.net/cinder/+bug/2015034>`_:
+    Added handling for VLAN iscsi IPs in the 3PAR iSCSI driver.
+
