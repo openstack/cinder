@@ -2253,9 +2253,9 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                                     fake_volume.id)
         with mock.patch.object(
                 self.volume.driver,
-                '_create_temp_volume_from_snapshot') as mock_temp,\
+                '_create_temp_volume_from_snapshot') as mock_temp, \
             mock.patch.object(
-                self.volume.driver, 'delete_volume') as mock_driver_delete,\
+                self.volume.driver, 'delete_volume') as mock_driver_delete, \
                 mock.patch.object(
                     self.volume, '_copy_volume_data') as mock_copy:
             temp_volume = tests_utils.create_volume(self.context,
@@ -2277,7 +2277,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         with mock.patch.object(self.volume.driver,
                                'revert_to_snapshot') as driver_revert, \
             mock.patch.object(self.volume, '_notify_about_volume_usage'), \
-            mock.patch.object(self.volume, '_notify_about_snapshot_usage'),\
+            mock.patch.object(self.volume, '_notify_about_snapshot_usage'), \
             mock.patch.object(self.volume,
                               '_revert_to_snapshot_generic') as generic_revert:
             if driver_error:
@@ -2307,9 +2307,9 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                                     status='restoring',
                                                     volume_size=1)
         with mock.patch.object(self.volume,
-                               '_revert_to_snapshot') as _revert,\
+                               '_revert_to_snapshot') as _revert, \
             mock.patch.object(self.volume,
-                              '_create_backup_snapshot') as _create_snapshot,\
+                              '_create_backup_snapshot') as _create_snapshot, \
             mock.patch.object(self.volume,
                               'delete_snapshot') as _delete_snapshot, \
             mock.patch.object(self.volume.driver,

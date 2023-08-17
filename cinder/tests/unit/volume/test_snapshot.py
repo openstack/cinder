@@ -244,8 +244,8 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         mock_get.return_value = test_volume
         volume_api = cinder.volume.api.API()
 
-        with mock.patch.object(QUOTAS, 'add_volume_type_opts'),\
-            mock.patch.object(QUOTAS, 'reserve') as mock_reserve,\
+        with mock.patch.object(QUOTAS, 'add_volume_type_opts'), \
+            mock.patch.object(QUOTAS, 'reserve') as mock_reserve, \
                 mock.patch.object(QUOTAS, 'commit') as mock_commit:
             self.assertRaises(exception.InvalidInput,
                               volume_api.create_snapshot_in_db,

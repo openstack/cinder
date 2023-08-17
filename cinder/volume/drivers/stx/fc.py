@@ -53,7 +53,7 @@ class STXFCDriver(cinder.volume.driver.FibreChannelDriver):
         self.common = None
         self.configuration.append_config_values(san.san_opts)
         self.lookup_service = fczm_utils.create_lookup_service()
-        if type(self) != STXFCDriver:
+        if type(self) is not STXFCDriver:
             return
         self.configuration.append_config_values(common.common_opts)
 

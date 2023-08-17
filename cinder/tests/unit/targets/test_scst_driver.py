@@ -153,18 +153,19 @@ class TestSCSTAdmDriver(tf.TargetDriverFixture):
                            'QZJbisGmn9AL954FNF4D P68eE7u9eFqDGexd28DQ'}
 
         with mock.patch.object(self.target, '_get_target_and_lun',
-                               side_effect=_fake_get_target_and_lun),\
+                               side_effect=_fake_get_target_and_lun), \
                 mock.patch.object(self.target, '_get_target_chap_auth',
-                                  side_effect=_fake_get_target_chap_auth),\
+                                  side_effect=_fake_get_target_chap_auth), \
                 mock.patch.object(self.target, 'initiator_iqn',
                                   return_value='iqn.1993-08.org.debian:'
-                                               '01:626bf14ebdc'),\
+                                               '01:626bf14ebdc'), \
                 mock.patch.object(self.target, '_iscsi_location',
-                                  side_effect=_fake_iscsi_location),\
+                                  side_effect=_fake_iscsi_location), \
                 mock.patch.object(self.target, 'target_driver',
-                                  return_value='iscsi'),\
+                                  return_value='iscsi'), \
                 mock.patch.object(volume_utils, 'generate_username',
-                                  side_effect=lambda: 'QZJbisGmn9AL954FNF4D'),\
+                                  side_effect=
+                                  lambda: 'QZJbisGmn9AL954FNF4D'), \
                 mock.patch.object(volume_utils, 'generate_password',
                                   side_effect=lambda: 'P68eE7u9eFqDGexd28DQ'):
             self.assertEqual(expected_result,
@@ -189,9 +190,9 @@ class TestSCSTAdmDriver(tf.TargetDriverFixture):
         def _fake_get_target_chap_auth(*args, **kwargs):
             return ('QZJbisGmn9AL954FNF4D', 'P68eE7u9eFqDGexd28DQ')
 
-        with mock.patch.object(self.target, 'create_iscsi_target'),\
+        with mock.patch.object(self.target, 'create_iscsi_target'), \
                 mock.patch.object(self.target, '_get_target_chap_auth',
-                                  side_effect=_fake_get_target_chap_auth),\
+                                  side_effect=_fake_get_target_chap_auth), \
                 mock.patch.object(self.target, '_get_target_and_lun',
                                   side_effect=_fake_get_target_and_lun):
             self.target.ensure_export(ctxt,
@@ -219,9 +220,9 @@ class TestSCSTAdmDriver(tf.TargetDriverFixture):
         def _fake_get_target_chap_auth(*args, **kwargs):
             return None
 
-        with mock.patch.object(self.target, 'create_iscsi_target'),\
+        with mock.patch.object(self.target, 'create_iscsi_target'), \
                 mock.patch.object(self.target, '_get_target_chap_auth',
-                                  side_effect=_fake_get_target_chap_auth),\
+                                  side_effect=_fake_get_target_chap_auth), \
                 mock.patch.object(self.target, '_get_target_and_lun',
                                   side_effect=_fake_get_target_and_lun):
             self.target.ensure_export(ctxt,

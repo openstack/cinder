@@ -940,7 +940,7 @@ class BackupCephTestCase(test.TestCase):
         src_snap = ''
         with tempfile.NamedTemporaryFile() as dest_file:
             with mock.patch.object(self.service,
-                                   '_transfer_data') as mock_transfer_data,\
+                                   '_transfer_data') as mock_transfer_data, \
                 mock.patch.object(self.service,
                                   '_get_backup_base_name') as mock_getbasename:
 
@@ -958,7 +958,7 @@ class BackupCephTestCase(test.TestCase):
         src_snap = 'random_snap'
         with tempfile.NamedTemporaryFile() as dest_file:
             with mock.patch.object(self.service,
-                                   '_transfer_data') as mock_transfer_data,\
+                                   '_transfer_data') as mock_transfer_data, \
                 mock.patch.object(self.service,
                                   '_get_backup_base_name') as mock_getbasename:
 
@@ -988,7 +988,7 @@ class BackupCephTestCase(test.TestCase):
 
         with tempfile.NamedTemporaryFile() as dest_file:
             with mock.patch.object(self.service,
-                                   '_transfer_data') as mock_transfer_data,\
+                                   '_transfer_data') as mock_transfer_data, \
                 mock.patch.object(self.service,
                                   '_get_backup_base_name') as mock_getbasename:
 
@@ -1005,7 +1005,7 @@ class BackupCephTestCase(test.TestCase):
         src_snap = None
         with tempfile.NamedTemporaryFile() as dest_file:
             with mock.patch.object(self.service,
-                                   '_get_backup_base_name') as mock_name,\
+                                   '_get_backup_base_name') as mock_name, \
                     mock.patch('eventlet.tpool.Proxy') as mock_proxy:
 
                 self.mock_rbd.Image.side_effect = self.mock_rbd.ImageNotFound

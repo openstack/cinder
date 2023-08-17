@@ -76,7 +76,7 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
 
     def test_do_iscsi_discovery(self):
         with mock.patch.object(self.configuration,
-                               'safe_get', return_value='127.0.0.1'),\
+                               'safe_get', return_value='127.0.0.1'), \
                 mock.patch('cinder.utils.execute',
                            return_value=(self.target_string, '')):
             self.assertEqual(self.target_string,
@@ -85,8 +85,8 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
     def test_remove_export(self):
 
         with mock.patch.object(self.target, '_get_target_and_lun') as \
-                mock_get_target,\
-                mock.patch.object(self.target, 'show_target'),\
+                mock_get_target, \
+                mock.patch.object(self.target, 'show_target'), \
                 mock.patch.object(self.target, 'remove_iscsi_target') as \
                 mock_remove_target:
 
@@ -103,8 +103,8 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
     def test_remove_export_notfound(self):
 
         with mock.patch.object(self.target, '_get_target_and_lun') as \
-                mock_get_target,\
-                mock.patch.object(self.target, 'show_target'),\
+                mock_get_target, \
+                mock.patch.object(self.target, 'show_target'), \
                 mock.patch.object(self.target, 'remove_iscsi_target'):
 
             mock_get_target.side_effect = exception.NotFound
@@ -115,8 +115,8 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
     def test_remove_export_show_error(self):
 
         with mock.patch.object(self.target, '_get_target_and_lun') as \
-                mock_get_target,\
-                mock.patch.object(self.target, 'show_target') as mshow,\
+                mock_get_target, \
+                mock.patch.object(self.target, 'show_target') as mshow, \
                 mock.patch.object(self.target, 'remove_iscsi_target'):
 
             mock_get_target.return_value = (0, 1)

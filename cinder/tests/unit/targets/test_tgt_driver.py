@@ -142,9 +142,9 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_iscsi_target(self):
         with mock.patch('cinder.privsep.targets.tgt.tgtadm_show',
-                        return_value=('', '')),\
+                        return_value=('', '')), \
                 mock.patch.object(self.target, '_get_target',
-                                  side_effect=lambda x: 1),\
+                                  side_effect=lambda x: 1), \
                 mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
                            return_value=('', '')), \
                 mock.patch.object(self.target, '_verify_backing_lun',
@@ -165,11 +165,11 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
         mock_open = mock.mock_open()
         with mock.patch('cinder.privsep.targets.tgt.tgtadm_show',
-                        return_value=('', '')),\
+                        return_value=('', '')), \
                 mock.patch.object(self.target, '_get_target',
-                                  side_effect=lambda x: 1),\
+                                  side_effect=lambda x: 1), \
                 mock.patch.object(self.target, '_verify_backing_lun',
-                                  side_effect=lambda x, y: True),\
+                                  side_effect=lambda x, y: True), \
                 mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
                            return_value=('', '')), \
                 mock.patch('cinder.volume.targets.tgt.open',
@@ -196,9 +196,9 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                 return 'fake out', 'fake err'
 
         with mock.patch.object(self.target, '_get_target',
-                               side_effect=lambda x: 1),\
+                               side_effect=lambda x: 1), \
                 mock.patch.object(self.target, '_verify_backing_lun',
-                                  side_effect=lambda x, y: True),\
+                                  side_effect=lambda x, y: True), \
                 mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
                            return_value=('', '')), \
                 mock.patch('cinder.privsep.targets.tgt.tgtadm_show',
@@ -344,15 +344,15 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                            'auth': 'CHAP QZJb P68e'}
 
         with mock.patch('cinder.privsep.targets.tgt.tgtadm_show',
-                        return_value=('', '')),\
+                        return_value=('', '')), \
                 mock.patch.object(self.target, '_get_target',
-                                  side_effect=lambda x: 1),\
+                                  side_effect=lambda x: 1), \
                 mock.patch.object(self.target, '_verify_backing_lun',
-                                  side_effect=lambda x, y: True),\
+                                  side_effect=lambda x, y: True), \
                 mock.patch.object(self.target, '_get_target_chap_auth',
-                                  side_effect=lambda x, y: None) as m_chap,\
+                                  side_effect=lambda x, y: None) as m_chap, \
                 mock.patch.object(volume_utils, 'generate_username',
-                                  side_effect=lambda: 'QZJb'),\
+                                  side_effect=lambda: 'QZJb'), \
                 mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
                            return_value=('', '')), \
                 mock.patch.object(volume_utils, 'generate_password',
@@ -393,9 +393,9 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_create_iscsi_target_retry(self):
         with mock.patch('cinder.privsep.targets.tgt.tgtadm_show',
-                        return_value=('', '')),\
+                        return_value=('', '')), \
                 mock.patch.object(self.target, '_get_target',
-                                  side_effect=[None, None, 1]) as get_target,\
+                                  side_effect=[None, None, 1]) as get_target, \
                 mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
                            return_value=('', '')), \
                 mock.patch.object(self.target, '_verify_backing_lun',

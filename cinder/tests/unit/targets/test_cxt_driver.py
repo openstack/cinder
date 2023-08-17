@@ -43,7 +43,7 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
 
     def test_get_target(self):
         with mock.patch.object(self.target, '_get_volumes_dir',
-                               return_value=self.fake_volumes_dir),\
+                               return_value=self.fake_volumes_dir), \
             mock.patch('cinder.utils.execute',
                        return_value=(self.fake_iscsi_scan, None)) as m_exec:
             self.assertEqual(

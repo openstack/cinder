@@ -9187,7 +9187,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                        host='openstack@svc#hyperswap1',
                                        volume_type_id=hyper_type.id)
         with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
-              'convert_volume_to_hyperswap')) as convert_volume_to_hyperswap,\
+              'convert_volume_to_hyperswap')) as convert_volume_to_hyperswap, \
              (mock.patch.object(storwize_svc_common.StorwizeHelpers,
               'ensure_vdisk_no_fc_mappings')) as ensure_vdisk_no_fc_mappings:
             self.driver.create_volume_from_snapshot(vol2, snap)
@@ -10063,7 +10063,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                  [clone_vol1, clone_vol2])
 
         with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
-              'convert_volume_to_hyperswap')) as convert_volume_to_hyperswap,\
+              'convert_volume_to_hyperswap')) as convert_volume_to_hyperswap, \
              (mock.patch.object(storwize_svc_common.StorwizeHelpers,
               'ensure_vdisk_no_fc_mappings')) as ensure_vdisk_no_fc_mappings:
 
@@ -10189,7 +10189,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                  [clone_vol1, clone_vol2])
 
         with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
-              'convert_volume_to_hyperswap')) as convert_volume_to_hyperswap,\
+              'convert_volume_to_hyperswap')) as convert_volume_to_hyperswap, \
              (mock.patch.object(storwize_svc_common.StorwizeHelpers,
               'ensure_vdisk_no_fc_mappings')) as ensure_vdisk_no_fc_mappings:
 
@@ -11470,7 +11470,7 @@ class StorwizeSSHTestCase(test.TestCase):
         opt = {'iogrp': 0}
         with mock.patch.object(storwize_svc_common.StorwizeSSH,
                                'run_ssh_check_created',
-                               side_effect=run_ssh_check),\
+                               side_effect=run_ssh_check), \
             mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdisk',
                               return_value=lsvol):
             if lsvol:
