@@ -405,3 +405,11 @@ class SSHPoolTestCase(test.TestCase):
         sshpool = None
         self.assertEqual(fake_close.mock_calls, close_expect_calls +
                          close_expect_calls)
+
+    @mock.patch('cinder.ssh_utils.paramiko', new=None)
+    def test_missing_paramiko(self):
+        self.assertRaises(exception.RequirementMissing,
+                          ssh_utils.SSHPool,
+                          '192.0.2.1', 22, 10,
+                          'test',
+                          password='hello')
