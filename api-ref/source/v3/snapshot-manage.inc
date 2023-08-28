@@ -99,6 +99,8 @@ Request
 
    - project_id: project_id_path
    - sort: sort
+   - sort_key: sort_key
+   - sort_dir: sort_dir
    - offset: offset
    - limit: limit
    - marker: marker
@@ -150,6 +152,8 @@ Request
 
    - project_id: project_id_path
    - sort: sort
+   - sort_key: sort_key
+   - sort_dir: sort_dir
    - offset: offset
    - limit: limit
    - marker: marker

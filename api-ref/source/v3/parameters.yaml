@@ -468,8 +468,8 @@ service_binary_query:
 sort:
   description: |
     Comma-separated list of sort keys and optional
-    sort directions in the form of < key > [: < direction > ]. A valid
-    direction is ``asc`` (ascending) or ``desc`` (descending).
+    sort directions in the form of ``< key > [: < direction > ]``.
+    A valid direction is ``asc`` (ascending) or ``desc`` (descending).
   in: query
   required: false
   type: string
@@ -478,6 +478,7 @@ sort_dir:
     Sorts by one or more sets of attribute and sort
     direction combinations. If you omit the sort direction in a set,
     default is ``desc``.
+    Deprecated in favour of the combined ``sort`` parameter.
   in: query
   required: false
   type: string
@@ -486,6 +487,7 @@ sort_dir_group_snapshot:
     Sorts by one or more sets of attribute and sort
     direction combinations. If you omit the sort direction in a set,
     default is ``desc``.
+    Deprecated in favour of the combined ``sort`` parameter.
   in: query
   required: false
   type: string
@@ -495,10 +497,20 @@ sort_dir_transfer:
     Sorts by one or more sets of attribute and sort
     direction combinations. If you omit the sort direction in a set,
     default is ``desc``.
+    Deprecated in favour of the combined ``sort`` parameter.
   in: query
   required: false
   type: string
   min_version: 3.59
+sort_group_snapshot:
+  description: |
+    Comma-separated list of sort keys and optional
+    sort directions in the form of ``< key > [: < direction > ]``.
+    A valid direction is ``asc`` (ascending) or ``desc`` (descending).
+  in: query
+  required: false
+  type: string
+  min_version: 3.29
 sort_key:
   description: |
     Sorts by an attribute. A valid value is ``name``,
@@ -506,6 +518,7 @@ sort_key:
     ``id``, ``created_at``, or ``updated_at``. Default is
     ``created_at``. The API uses the natural sorting direction of the
     ``sort_key`` attribute value.
+    Deprecated in favour of the combined ``sort`` parameter.
   in: query
   required: false
   type: string
@@ -516,6 +529,7 @@ sort_key_group_snapshot:
     ``id``, ``created_at``, or ``updated_at``. Default is
     ``created_at``. The API uses the natural sorting direction of the
     ``sort_key`` attribute value.
+    Deprecated in favour of the combined ``sort`` parameter.
   in: query
   required: false
   type: string
@@ -525,6 +539,16 @@ sort_key_transfer:
     Sorts by an attribute. Default is
     ``created_at``. The API uses the natural sorting direction of the
     ``sort_key`` attribute value.
+    Deprecated in favour of the combined ``sort`` parameter.
+  in: query
+  required: false
+  type: string
+  min_version: 3.59
+sort_transfer:
+  description: |
+    Comma-separated list of sort keys and optional
+    sort directions in the form of ``< key > [: < direction > ]``.
+    A valid direction is ``asc`` (ascending) or ``desc`` (descending).
   in: query
   required: false
   type: string
