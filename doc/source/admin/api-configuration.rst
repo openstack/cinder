@@ -53,7 +53,7 @@ filter:
   keystone_nolimit = cors ... ratelimit apiv3
 
   [filter:ratelimit]
-  paste.filter_factory = cinder.api.v2.limits:RateLimitingMiddleware.factory
+  paste.filter_factory = cinder.api.middleware.rate_limit:RateLimitingMiddleware.factory
 
 Once configured, restart the :program:`cinder-api` service. Users can then view
 API limits using the ``openstack limits show --rate`` command. For example:
