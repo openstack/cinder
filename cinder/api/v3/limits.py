@@ -15,14 +15,13 @@
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.v2 import limits as limits_v2
 from cinder.api.views import limits as limits_views
 from cinder import quota
 
 QUOTAS = quota.QUOTAS
 
 
-class LimitsController(limits_v2.LimitsController):
+class LimitsController(wsgi.Controller):
     """Controller for accessing limits in the OpenStack API."""
 
     def index(self, req):
