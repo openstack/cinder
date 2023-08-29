@@ -3501,6 +3501,7 @@ class VolumeManager(manager.CleanableManager,
                               "to driver error.")
         return driver_entries
 
+    @action_track.track_decorator(action_track.ACTION_GROUP_CREATE)
     def create_group(self,
                      context: context.RequestContext,
                      group) -> objects.Group:
@@ -3938,6 +3939,7 @@ class VolumeManager(manager.CleanableManager,
                         resource=vol)
             self.stats['pools'][pool]['allocated_capacity_gb'] = 0
 
+    @action_track.track_decorator(action_track.ACTION_GROUP_DELETE)
     def delete_group(self, context, group: objects.Group) -> None:
         """Deletes group and the volumes in the group."""
         context = context.elevated()
@@ -4190,6 +4192,7 @@ class VolumeManager(manager.CleanableManager,
             volumes_ref.append(add_vol_ref)
         return volumes_ref
 
+    @action_track.track_decorator(action_track.ACTION_GROUP_UPDATE)
     def update_group(self, context, group,
                      add_volumes=None, remove_volumes=None) -> None:
         """Updates group.
@@ -4290,6 +4293,7 @@ class VolumeManager(manager.CleanableManager,
                  resource={'type': 'group',
                            'id': group.id})
 
+    @action_track.track_decorator(action_track.ACTION_GROUP_SNAPSHOT_CREATE)
     def create_group_snapshot(
             self,
             context,
@@ -4461,6 +4465,7 @@ class VolumeManager(manager.CleanableManager,
 
         return model_update, snapshot_model_updates
 
+    @action_track.track_decorator(action_track.ACTION_GROUP_SNAPSHOT_DELETE)
     def delete_group_snapshot(self, context, group_snapshot) -> None:
         """Deletes group_snapshot."""
         caller_context = context

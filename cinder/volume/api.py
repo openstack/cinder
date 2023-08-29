@@ -401,6 +401,7 @@ class API(base.Base):
 
         self.volume_rpcapi.revert_to_snapshot(context, volume, snapshot)
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_DELETE)
     def delete(self, context, volume,
                force=False,
                unmanage_only=False,
@@ -1170,6 +1171,7 @@ class API(base.Base):
                    'encryption_key_id': volume['encryption_key_id']}
         return options
 
+    @action_track.track_decorator(action_track.ACTION_SNAPSHOT_CREATE)
     def create_snapshot(self, context,
                         volume, name, description,
                         metadata=None, cgsnapshot_id=None,
@@ -1177,23 +1179,17 @@ class API(base.Base):
         result = self._create_snapshot(context, volume, name, description,
                                        False, metadata, cgsnapshot_id,
                                        group_snapshot_id)
-        action_track.track(
-            context, action_track.ACTION_SNAPSHOT_CREATE,
-            result, "Snapshot create request issued successfully."
-        )
         return result
 
+    @action_track.track_decorator(action_track.ACTION_SNAPSHOT_CREATE)
     def create_snapshot_force(self, context,
                               volume, name,
                               description, metadata=None):
         result = self._create_snapshot(context, volume, name, description,
                                        True, metadata)
-        action_track.track(
-            context, action_track.ACTION_SNAPSHOT_CREATE,
-            result, "Snapshot force create request issued successfully."
-        )
         return result
 
+    @action_track.track_decorator(action_track.ACTION_SNAPSHOT_DELETE)
     def delete_snapshot(self, context, snapshot, force=False,
                         unmanage_only=False):
         context.authorize(snapshot_policy.DELETE_POLICY,
@@ -1222,10 +1218,6 @@ class API(base.Base):
             raise exception.InvalidSnapshot(reason=msg)
 
         self.volume_rpcapi.delete_snapshot(context, snapshot, unmanage_only)
-        action_track.track(
-            context, action_track.ACTION_SNAPSHOT_DELETE,
-            snapshot, "Snapshot delete request issued successfully."
-        )
 
     def update_snapshot(self, context, snapshot, fields):
         context.authorize(snapshot_policy.UPDATE_POLICY,
@@ -1608,6 +1600,7 @@ class API(base.Base):
                           target_obj=volume)
         self._extend(context, volume, new_size, attached=True)
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_MIGRATE)
     def migrate_volume(self, context, volume, host, cluster_name, force_copy,
                        lock_volume):
         """Migrate the volume to the specified host or cluster."""
@@ -1789,6 +1782,7 @@ class API(base.Base):
                  "completed successfully.",
                  resource=volume)
 
+    @action_track.track_decorator(action_track.ACTION_VOLUME_RETYPE)
     def retype(self, context, volume, new_type, migration_policy=None):
         """Attempt to modify the type associated with an existing volume."""
         context.authorize(vol_action_policy.RETYPE_POLICY, target_obj=volume)

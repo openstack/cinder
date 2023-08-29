@@ -43,6 +43,11 @@ ACTION_VOLUME_COPY_TO_IMAGE = "volume_copy_to_image"
 ACTION_VOLUME_BACKUP_RESET_STATUS = "volume_backup_reset_status"
 ACTION_SNAPSHOT_CREATE = "snapshot_create"
 ACTION_SNAPSHOT_DELETE = "snapshot_delete"
+ACTION_GROUP_CREATE = "group_create"
+ACTION_GROUP_DELETE = "group_delete"
+ACTION_GROUP_UPDATE = "group_update"
+ACTION_GROUP_SNAPSHOT_CREATE = "group_snapshot_create"
+ACTION_GROUP_SNAPSHOT_DELETE = "group_snapshot_delete"
 
 
 VALID_RESOURCE_NAMES = [
