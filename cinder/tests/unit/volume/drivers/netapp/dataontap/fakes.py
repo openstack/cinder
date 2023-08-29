@@ -64,7 +64,16 @@ JOB_UUID = 'fb132b04-6422-43ce-9451-ee819f0131a4'
 LUN_METADATA = {
     'OsType': None,
     'SpaceReserved': 'true',
+    'SpaceAllocated': 'false',
     'Path': PATH,
+    'Qtree': None,
+    'Volume': POOL_NAME,
+}
+LUN_METADATA_WITH_SPACE_ALLOCATION = {
+    'OsType': None,
+    'SpaceReserved': 'true',
+    'Path': PATH,
+    'SpaceAllocated': 'true',
     'Qtree': None,
     'Volume': POOL_NAME,
 }
@@ -239,6 +248,7 @@ ISCSI_VOLUME = {
     'name': 'fake_volume',
     'id': 'fake_id',
     'provider_auth': 'fake provider auth',
+    'provider_location': 'iscsi:/dummy_path'
 }
 
 ISCSI_LUN = {'name': ISCSI_VOLUME, 'lun_id': 42}
@@ -250,6 +260,7 @@ ISCSI_CONNECTION_PROPERTIES = {
         'auth_method': 'fake_method',
         'auth_password': 'auth',
         'auth_username': 'provider',
+        'discard': True,
         'discovery_auth_method': 'fake_method',
         'discovery_auth_username': 'provider',
         'discovery_auth_password': 'auth',
@@ -289,7 +300,7 @@ IGROUP1 = {'initiator-group-os-type': 'linux',
            'initiator-group-name': IGROUP1_NAME}
 
 QOS_SPECS = {}
-EXTRA_SPECS = {}
+EXTRA_SPECS = {'netapp:space_allocation': '<is> True'}
 MAX_THROUGHPUT = '21734278B/s'
 MIN_IOPS = '256iops'
 MAX_IOPS = '512iops'

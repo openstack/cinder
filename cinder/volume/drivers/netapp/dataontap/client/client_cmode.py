@@ -545,6 +545,8 @@ class Client(client_base.Client):
         meta_dict['OsType'] = lun.get_child_content('multiprotocol-type')
         meta_dict['SpaceReserved'] = \
             lun.get_child_content('is-space-reservation-enabled')
+        meta_dict['SpaceAllocated'] = \
+            lun.get_child_content('is-space-alloc-enabled')
         meta_dict['UUID'] = lun.get_child_content('uuid')
         meta_dict['BlockSize'] = lun.get_child_content('block-size')
         return meta_dict

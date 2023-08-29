@@ -136,11 +136,74 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         self.library._create_lun.assert_called_once_with(
             fake.POOL_NAME, fake.LUN_NAME, volume_size_in_bytes,
-            fake.LUN_METADATA, fake.QOS_POLICY_GROUP_NAME, False)
+            fake.LUN_METADATA,
+            fake.QOS_POLICY_GROUP_NAME, False)
         self.library._get_volume_model_update.assert_called_once_with(
             fake.VOLUME)
         self.assertEqual(
             0, self.library. _mark_qos_policy_group_for_deletion.call_count)
+        self.assertEqual(0, block_base.LOG.error.call_count)
+
+    def test_create_volume_space_allocation_extra_spec_false(self):
+        volume_size_in_bytes = int(fake.SIZE) * units.Gi
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value={
+                             'netapp:space_allocation': '<is> False'
+                         }
+                         )
+        self.mock_object(na_utils, 'log_extra_spec_warnings')
+        self.mock_object(block_base, 'LOG')
+        self.mock_object(volume_utils, 'extract_host',
+                         return_value=fake.POOL_NAME)
+        self.mock_object(self.library, '_setup_qos_for_volume',
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
+        self.mock_object(self.library, '_create_lun')
+        self.mock_object(self.library, '_create_lun_handle')
+        self.mock_object(self.library, '_add_lun_to_table')
+        self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.mock_object(self.library, '_get_volume_model_update')
+
+        self.library.create_volume(fake.VOLUME)
+
+        self.library._create_lun.assert_called_once_with(
+            fake.POOL_NAME, fake.LUN_NAME, volume_size_in_bytes,
+            fake.LUN_METADATA,
+            fake.QOS_POLICY_GROUP_NAME, False)
+        self.library._get_volume_model_update.assert_called_once_with(
+            fake.VOLUME)
+        self.assertEqual(
+            0, self.library._mark_qos_policy_group_for_deletion.call_count)
+        self.assertEqual(0, block_base.LOG.error.call_count)
+
+    def test_create_volume_space_allocation_extra_spec_true(self):
+        volume_size_in_bytes = int(fake.SIZE) * units.Gi
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value={
+                             'netapp:space_allocation': '<is> True'
+                         }
+                         )
+        self.mock_object(na_utils, 'log_extra_spec_warnings')
+        self.mock_object(block_base, 'LOG')
+        self.mock_object(volume_utils, 'extract_host',
+                         return_value=fake.POOL_NAME)
+        self.mock_object(self.library, '_setup_qos_for_volume',
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
+        self.mock_object(self.library, '_create_lun')
+        self.mock_object(self.library, '_create_lun_handle')
+        self.mock_object(self.library, '_add_lun_to_table')
+        self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.mock_object(self.library, '_get_volume_model_update')
+
+        self.library.create_volume(fake.VOLUME)
+
+        self.library._create_lun.assert_called_once_with(
+            fake.POOL_NAME, fake.LUN_NAME, volume_size_in_bytes,
+            fake.LUN_METADATA_WITH_SPACE_ALLOCATION,
+            fake.QOS_POLICY_GROUP_NAME, False)
+        self.library._get_volume_model_update.assert_called_once_with(
+            fake.VOLUME)
+        self.assertEqual(
+            0, self.library._mark_qos_policy_group_for_deletion.call_count)
         self.assertEqual(0, block_base.LOG.error.call_count)
 
     def test_create_volume_no_pool(self):
@@ -149,9 +212,21 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.InvalidHost, self.library.create_volume,
                           fake.VOLUME)
 
+    def test_space_allocation_exception_path(self):
+        self.mock_object(block_base, 'LOG')
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value={'netapp:space_allocation': 'xyz'})
+        self.mock_object(self.library, '_setup_qos_for_volume',
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
+        self.mock_object(self.library, '_create_lun', side_effect=Exception)
+        self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library.create_volume, fake.VOLUME)
+
     def test_create_volume_exception_path(self):
         self.mock_object(block_base, 'LOG')
-        self.mock_object(na_utils, 'get_volume_extra_specs')
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value={})
         self.mock_object(self.library, '_setup_qos_for_volume',
                          return_value=fake.QOS_POLICY_GROUP_INFO)
         self.mock_object(self.library, '_create_lun', side_effect=Exception)
@@ -767,6 +842,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_get_targets_from_list',
                          return_value=target_details_list)
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_is_space_alloc_enabled',
+                         return_value=True)
         self.zapi_client.get_iscsi_service_details.return_value = (
             fake.ISCSI_SERVICE_IQN)
         self.mock_object(na_utils,
@@ -796,6 +874,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             fake.ISCSI_CONNECTION_PROPERTIES['data']
             ['discovery_auth_username'],
             target_info['data']['discovery_auth_username'])
+        self.assertEqual(
+            fake.ISCSI_CONNECTION_PROPERTIES['data']
+            ['discard'],
+            target_info['data']['discard'])
 
         self.assertEqual(fake.ISCSI_CONNECTION_PROPERTIES, target_info)
         block_base.NetAppBlockStorageLibrary._map_lun.assert_called_once_with(
@@ -815,6 +897,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.zapi_client.get_iscsi_target_details.return_value = None
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_get_targets_from_list')
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_is_space_alloc_enabled',
+                         return_value=True)
         self.mock_object(na_utils,
                          'get_iscsi_connection_properties',
                          return_value=fake.ISCSI_CONNECTION_PROPERTIES)
@@ -826,6 +911,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(
             0, block_base.NetAppBlockStorageLibrary
                          ._get_targets_from_list.call_count)
+        self.assertEqual(
+            0, block_base.NetAppBlockStorageLibrary
+            ._is_space_alloc_enabled.call_count)
         self.assertEqual(
             0, self.zapi_client.get_iscsi_service_details.call_count)
         self.assertEqual(
@@ -840,6 +928,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_get_targets_from_list',
                          return_value=None)
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_is_space_alloc_enabled',
+                         return_value=True)
         self.mock_object(na_utils, 'get_iscsi_connection_properties')
 
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -848,6 +939,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(0, self.zapi_client
                                 .get_iscsi_service_details.call_count)
+        self.assertEqual(0,
+                         block_base.NetAppBlockStorageLibrary
+                         ._is_space_alloc_enabled.call_count)
         self.assertEqual(0, na_utils.get_iscsi_connection_properties
                                     .call_count)
 

@@ -2347,6 +2347,9 @@ LUN_GET_ITER_RESULT = [
         'OsType': LUN_GET_ITER_REST['records'][0]['os_type'],
         'SpaceReserved':
             LUN_GET_ITER_REST['records'][0]['space']['guarantee']['requested'],
+        'SpaceAllocated':
+            LUN_GET_ITER_REST['records'][0]['space']
+            ['scsi_thin_provisioning_support_enabled'],
         'UUID': LUN_GET_ITER_REST['records'][0]['uuid'],
     },
     {
@@ -2360,6 +2363,9 @@ LUN_GET_ITER_RESULT = [
         'OsType': LUN_GET_ITER_REST['records'][1]['os_type'],
         'SpaceReserved':
             LUN_GET_ITER_REST['records'][1]['space']['guarantee']['requested'],
+        'SpaceAllocated':
+            LUN_GET_ITER_REST['records'][1]['space']
+            ['scsi_thin_provisioning_support_enabled'],
         'UUID': LUN_GET_ITER_REST['records'][1]['uuid'],
     },
 ]
