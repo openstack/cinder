@@ -20,6 +20,7 @@ from http import HTTPStatus
 
 from oslo_log import log as logging
 from oslo_utils import strutils
+import webob
 from webob import exc
 
 from cinder.api import api_utils
@@ -27,29 +28,58 @@ from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.schemas import snapshots as snapshot
-from cinder.api.v2 import snapshots as snapshots_v2
 from cinder.api.v3.views import snapshots as snapshot_views
 from cinder.api import validation
 from cinder import utils
+from cinder import volume
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
 SNAPSHOT_IN_USE_FLAG_MSG = (
     f"Since microversion {mv.SNAPSHOT_IN_USE} the 'force' flag is "
-    "invalid for this request.  For backward compatability, however, when "
-    "the 'force' flag is passed with a value evaluating to True, it is "
-    "silently ignored.")
+    f"invalid for this request.  For backward compatability, however, when "
+    f"the 'force' flag is passed with a value evaluating to True, it is "
+    f"silently ignored."
+)
 
 
-class SnapshotsController(snapshots_v2.SnapshotsController):
+class SnapshotsController(wsgi.Controller):
     """The Snapshots API controller for the OpenStack API."""
 
     _view_builder_class = snapshot_views.ViewBuilder
 
+    def __init__(self, ext_mgr=None):
+        self.volume_api = volume.API()
+        self.ext_mgr = ext_mgr
+        super(SnapshotsController, self).__init__()
+
+    def show(self, req, id):
+        """Return data about the given snapshot."""
+        context = req.environ['cinder.context']
+
+        # Not found exception will be handled at the wsgi level
+        snapshot = self.volume_api.get_snapshot(context, id)
+        req.cache_db_snapshot(snapshot)
+
+        return self._view_builder.detail(req, snapshot)
+
+    def delete(self, req, id):
+        """Delete a snapshot."""
+        context = req.environ['cinder.context']
+
+        LOG.info("Delete snapshot with id: %s", id)
+
+        # Not found exception will be handled at the wsgi level
+        snapshot = self.volume_api.get_snapshot(context, id)
+        self.volume_api.delete_snapshot(context, snapshot)
+
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
+
     def _get_snapshot_filter_options(self):
         """returns tuple of valid filter options"""
 
-        return 'status', 'volume_id', 'name', 'metadata'
+        return ('status', 'volume_id', 'name', 'metadata')
 
     def _format_snapshot_filter_options(self, search_opts):
         """Convert valid filter options to correct expected format"""
@@ -142,6 +172,14 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
                                                         total_count)
         return snapshots
 
+    def index(self, req):
+        """Returns a summary list of snapshots."""
+        return self._items(req, is_detail=False)
+
+    def detail(self, req):
+        """Returns a detailed list of snapshots."""
+        return self._items(req, is_detail=True)
+
     @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(snapshot.create)
     def create(self, req, body):
@@ -193,6 +231,33 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
         req.cache_db_snapshot(new_snapshot)
 
         return self._view_builder.detail(req, new_snapshot)
+
+    @validation.schema(snapshot.update)
+    def update(self, req, id, body):
+        """Update a snapshot."""
+        context = req.environ['cinder.context']
+        snapshot_body = body['snapshot']
+        self.validate_name_and_description(snapshot_body, check_length=False)
+
+        if 'name' in snapshot_body:
+            snapshot_body['display_name'] = snapshot_body.pop('name')
+
+        if 'description' in snapshot_body:
+            snapshot_body['display_description'] = snapshot_body.pop(
+                'description')
+
+        # Not found exception will be handled at the wsgi level
+        snapshot = self.volume_api.get_snapshot(context, id)
+        volume_utils.notify_about_snapshot_usage(context, snapshot,
+                                                 'update.start')
+        self.volume_api.update_snapshot(context, snapshot, snapshot_body)
+
+        snapshot.update(snapshot_body)
+        req.cache_db_snapshot(snapshot)
+        volume_utils.notify_about_snapshot_usage(context, snapshot,
+                                                 'update.end')
+
+        return self._view_builder.detail(req, snapshot)
 
 
 def create_resource(ext_mgr):

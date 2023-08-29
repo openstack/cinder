@@ -22,8 +22,8 @@ from oslo_serialization import jsonutils
 import webob
 
 from cinder.api import extensions
-from cinder.api.v2 import snapshots
 from cinder.api.v3 import snapshot_metadata
+from cinder.api.v3 import snapshots
 from cinder import context
 import cinder.db
 from cinder import exception
@@ -109,10 +109,10 @@ def return_snapshot_nonexistent(context, snapshot_id):
 
 
 @ddt.ddt
-class SnapshotMetaDataTest(test.TestCase):
+class SnapshotMetadataTest(test.TestCase):
 
     def setUp(self):
-        super(SnapshotMetaDataTest, self).setUp()
+        super().setUp()
         self.volume_api = cinder.volume.api.API()
         self.mock_object(volume.api.API, 'get', fake_get)
         self.mock_object(cinder.db.sqlalchemy.api, 'volume_type_get',
