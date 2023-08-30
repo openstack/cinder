@@ -188,7 +188,7 @@ class RequestContext(context.RequestContext):
                    project_id=values.get('project_id'),
                    project_name=values.get('project_name'),
                    domain_id=values.get('domain_id'),
-                   read_deleted=values.get('read_deleted'),
+                   read_deleted=values.get('read_deleted', 'no'),
                    remote_address=values.get('remote_address'),
                    timestamp=values.get('timestamp'),
                    quota_class=values.get('quota_class'),
