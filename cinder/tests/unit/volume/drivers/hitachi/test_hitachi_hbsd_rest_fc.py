@@ -906,6 +906,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(driver.FibreChannelDriver, "get_goodness_function")
     @mock.patch.object(driver.FibreChannelDriver, "get_filter_function")
     @mock.patch.object(hbsd_rest.HBSDREST, "get_pool_info")
+    @mock.patch.object(requests.Session, 'request', new=mock.MagicMock())
     def test_get_volume_stats_error(
             self, get_pool_info, get_filter_function, get_goodness_function):
         get_pool_info.side_effect = exception.VolumeDriverException(data='')
