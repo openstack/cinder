@@ -102,7 +102,7 @@ class FungibleDriverTest(unittest.TestCase):
         volume.id = str(uuid.uuid4())
         volume.display_name = 'volume'
         volume.host = 'mock_host_name'
-        volume.volume_type_id = 'mock_volume_type_id'
+        volume.volume_type_id = fake_constants.VOLUME_TYPE_ID
         volume.metadata = {}
         return volume
 
