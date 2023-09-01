@@ -450,7 +450,7 @@ class RestClient(object):
         aggregate = None
         if unique_volume['style'] == 'flexvol':
             # flexvol has only 1 aggregate
-            aggregate = unique_volume['aggregates'][0]['name']
+            aggregate = [unique_volume['aggregates'][0]['name']]
         else:
             aggregate = [aggr["name"]
                          for aggr in unique_volume.get('aggregates', [])]

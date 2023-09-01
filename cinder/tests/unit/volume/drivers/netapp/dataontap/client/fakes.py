@@ -904,7 +904,7 @@ VOLUME_INFO_SSC = {
     'name': VOLUME_NAMES[0],
     'vserver': VOLUME_VSERVER_NAME,
     'junction-path': '/%s' % VOLUME_NAMES[0],
-    'aggregate': VOLUME_AGGREGATE_NAMES[0],
+    'aggregate': [VOLUME_AGGREGATE_NAMES[0]],
     'space-guarantee-enabled': True,
     'language': 'c.utf_8',
     'percentage-snapshot-reserve': '5',

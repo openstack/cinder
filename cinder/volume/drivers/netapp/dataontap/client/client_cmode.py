@@ -1518,8 +1518,9 @@ class Client(client_base.Client):
 
         volume_id_attributes = volume_attributes.get_child_by_name(
             'volume-id-attributes') or netapp_api.NaElement('none')
-        aggr = volume_id_attributes.get_child_content(
+        aggr_name = volume_id_attributes.get_child_content(
             'containing-aggregate-name')
+        aggr = [aggr_name] if aggr_name else None
         if not aggr:
             aggr_list_attr = volume_id_attributes.get_child_by_name(
                 'aggr-list') or netapp_api.NaElement('none')

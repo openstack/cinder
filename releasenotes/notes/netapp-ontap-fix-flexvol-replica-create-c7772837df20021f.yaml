@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver `Bug #1927784
+    <https://bugs.launchpad.net/cinder/+bug/1927784>`_:
+    Fixed the replication setup with FlexVol pools.
