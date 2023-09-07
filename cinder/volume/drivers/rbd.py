@@ -602,6 +602,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             client = self.rados.Rados(rados_id=user,
                                       clustername=name,
                                       conffile=conf)
+            client = tpool.Proxy(client)
 
             try:
                 if timeout >= 0:
