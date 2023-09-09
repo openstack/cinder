@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    [Pure Storage] Corrected support status to True for generic group
+    consistency snapshot support and added support for replication-enabled
+    consistency groups.

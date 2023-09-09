@@ -1033,6 +1033,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         # Add flags for supported features
         data['consistencygroup_support'] = True
         data['thin_provisioning_support'] = True
+        data['consistent_group_snapshot_enabled'] = True
+        data['consistent_group_replication_enabled'] = True
         data['multiattach'] = True
         data['QoS_support'] = True
 
@@ -1161,11 +1163,65 @@ class PureBaseVolumeDriver(san.SanDriver):
         current_array.set_pgroup(pgroup_name, addvollist=[vol_name])
 
     @pure_driver_debug_trace
-    def create_consistencygroup(self, context, group):
+    def create_consistencygroup(self, context, group, grp_type=None):
         """Creates a consistencygroup."""
 
         current_array = self._get_current_array()
-        current_array.create_pgroup(self._get_pgroup_name(group))
+        pg_name = self._get_pgroup_name(group)
+        current_array.create_pgroup(pg_name)
+        if grp_type:
+            current_array.set_pgroup(pg_name, **self._retention_policy)
+            # Configure replication propagation frequency on a
+            # protection group.
+            repl_freq = self._replication_interval
+            current_array.set_pgroup(pg_name,
+                                     replicate_frequency=repl_freq)
+            for target_array in self._replication_target_arrays:
+                try:
+                    # Configure PG to replicate to target_array.
+                    current_array.set_pgroup(pg_name,
+                                             addtargetlist=[
+                                                 target_array.array_name])
+                except purestorage.PureHTTPError as err:
+                    with excutils.save_and_reraise_exception() as ctxt:
+                        if err.code == 400 and (
+                                ERR_MSG_ALREADY_INCLUDES
+                                in err.text):
+                            ctxt.reraise = False
+                            LOG.info("Skipping add target %(target_array)s"
+                                     " to protection group %(pgname)s"
+                                     " since it's already added.",
+                                     {"target_array": target_array.array_name,
+                                      "pgname": pg_name})
+
+                # Wait until "Target Group" setting propagates to target_array.
+                pgroup_name_on_target = self._get_pgroup_name_on_target(
+                    current_array.array_name, pg_name)
+
+                if grp_type == REPLICATION_TYPE_TRISYNC:
+                    pgroup_name_on_target = pg_name.replace("::", ":")
+
+                try:
+                    # Configure the target_array to allow replication from the
+                    # PG on source_array.
+                    target_array.set_pgroup(pgroup_name_on_target,
+                                            allowed=True)
+                except purestorage.PureHTTPError as err:
+                    with excutils.save_and_reraise_exception() as ctxt:
+                        if (err.code == 400 and
+                                ERR_MSG_ALREADY_ALLOWED in err.text):
+                            ctxt.reraise = False
+                            LOG.info("Skipping allow pgroup %(pgname)s on "
+                                     "target array %(target_array)s since "
+                                     "it is already allowed.",
+                                     {"pgname": pg_name,
+                                      "target_array": target_array.array_name})
+
+                # Wait until source array acknowledges previous operation.
+                self._wait_until_source_array_allowed(current_array,
+                                                      pg_name)
+                # Start replication on the PG.
+                current_array.set_pgroup(pg_name, replicate_enabled=True)
 
         model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         return model_update
@@ -1229,8 +1285,9 @@ class PureBaseVolumeDriver(san.SanDriver):
     @pure_driver_debug_trace
     def create_consistencygroup_from_src(self, context, group, volumes,
                                          cgsnapshot=None, snapshots=None,
-                                         source_cg=None, source_vols=None):
-        model_update = self.create_consistencygroup(context, group)
+                                         source_cg=None, source_vols=None,
+                                         group_type=None):
+        model_update = self.create_consistencygroup(context, group, group_type)
         if cgsnapshot and snapshots:
             vol_models = self._create_cg_from_cgsnap(volumes,
                                                      snapshots)
@@ -1409,8 +1466,39 @@ class PureBaseVolumeDriver(san.SanDriver):
         :param group: the Group object of the group to be created.
         :returns: model_update
         """
+        cgr_type = None
+        repl_type = None
         if volume_utils.is_group_a_cg_snapshot_type(group):
-            return self.create_consistencygroup(ctxt, group)
+            if volume_utils.is_group_a_type(
+                    group, "consistent_group_replication_enabled"):
+                if not self._is_replication_enabled:
+                    msg = _("Replication not properly configured on backend.")
+                    LOG.error(msg)
+                    raise PureDriverException(msg)
+                for vol_type_id in group.volume_type_ids:
+                    vol_type = \
+                        volume_type.VolumeType.get_by_name_or_id(ctxt,
+                                                                 vol_type_id)
+                    repl_type = \
+                        self._get_replication_type_from_vol_type(vol_type)
+                    if repl_type not in [REPLICATION_TYPE_ASYNC,
+                                         REPLICATION_TYPE_TRISYNC]:
+                        # Unsupported configuration
+                        LOG.error("Unable to create group: create consistent "
+                                  "replication group with non-replicated or "
+                                  "sync replicated volume type is not "
+                                  "supported.")
+                        model_update = {'status': fields.GroupStatus.ERROR}
+                        return model_update
+                    if not cgr_type:
+                        cgr_type = repl_type
+                    elif cgr_type != repl_type:
+                        LOG.error("Unable to create group: create consistent "
+                                  "replication group with different "
+                                  "replication types is not supported.")
+                        model_update = {'status': fields.GroupStatus.ERROR}
+                        return model_update
+            return self.create_consistencygroup(ctxt, group, cgr_type)
 
         # If it wasn't a consistency group request ignore it and we'll rely on
         # the generic group implementation.
@@ -1466,14 +1554,19 @@ class PureBaseVolumeDriver(san.SanDriver):
         :param source_vols: a list of volume objects in the source_group.
         :returns: model_update, volumes_model_update
         """
+        cgr_type = None
         if volume_utils.is_group_a_cg_snapshot_type(group):
+            if volume_utils.is_group_a_type(
+                    group, "consistent_group_replication_enabled"):
+                cgr_type = True
             return self.create_consistencygroup_from_src(ctxt,
                                                          group,
                                                          volumes,
                                                          group_snapshot,
                                                          snapshots,
                                                          source_group,
-                                                         source_vols)
+                                                         source_vols,
+                                                         cgr_type)
 
         # If it wasn't a consistency group request ignore it and we'll rely on
         # the generic group implementation.
