@@ -1956,7 +1956,7 @@ class RestClient(object):
                          destination_vserver=None, destination_volume=None):
 
         fields = ['state', 'source.svm.name', 'source.path',
-                  'destination.svm.name', 'destination.path',
+                  'destination.svm.name', 'destination.path', 'transfer.state',
                   'transfer.end_time', 'lag_time', 'healthy', 'uuid']
 
         query = {}
@@ -1976,7 +1976,11 @@ class RestClient(object):
         snapmirrors = []
         for record in response.get('records', []):
             snapmirrors.append({
-                'relationship-status': record.get('state'),
+                'relationship-status': (
+                    'idle'
+                    if record.get('state') == 'snapmirrored'
+                    else record.get('state')),
+                'transferring-state': record.get('transfer', {}).get('state'),
                 'mirror-state': record['state'],
                 'source-vserver': record['source']['svm']['name'],
                 'source-volume': (record['source']['path'].split(':')[1] if
@@ -2070,11 +2074,11 @@ class RestClient(object):
         result = self.send_request('/snapmirror/relationships/' + uuid,
                                    'patch', body=body,
                                    wait_on_accepted=wait_result)
-        job = result['job']
+
         job_info = {
             'operation-id': None,
             'status': None,
-            'jobid': job.get('uuid'),
+            'jobid': result.get('job', {}).get('uuid'),
             'error-code': None,
             'error-message': None,
             'relationship-uuid': uuid,
@@ -2247,9 +2251,39 @@ class RestClient(object):
                          destination_vserver, destination_volume):
         """Breaks a data protection SnapMirror relationship."""
 
-        self._set_snapmirror_state(
-            'broken-off', source_vserver, source_volume,
-            destination_vserver, destination_volume)
+        interval = 2
+        retries = (10 / interval)
+
+        @utils.retry(netapp_api.NaRetryableError, interval=interval,
+                     retries=retries, backoff_rate=1)
+        def _waiter():
+            snapmirror = self.get_snapmirrors(
+                source_vserver=source_vserver,
+                source_volume=source_volume,
+                destination_vserver=destination_vserver,
+                destination_volume=destination_volume)
+
+            snapmirror_state = None
+            if snapmirror:
+                snapmirror_state = snapmirror[0].get('transferring-state')
+
+            if snapmirror_state == 'success':
+                uuid = snapmirror[0]['uuid']
+                body = {'state': 'broken_off'}
+                self.send_request(f'/snapmirror/relationships/{uuid}', 'patch',
+                                  body=body)
+                return
+            else:
+                message = 'Waiting for transfer state to be SUCCESS.'
+                code = ''
+                raise netapp_api.NaRetryableError(message=message, code=code)
+
+        try:
+            return _waiter()
+        except netapp_api.NaRetryableError:
+            msg = _("Transfer state did not reach the expected state. Retries "
+                    "exhausted. Aborting.")
+            raise na_utils.NetAppDriverException(msg)
 
     def update_snapmirror(self, source_vserver, source_volume,
                           destination_vserver, destination_volume):

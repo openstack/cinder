@@ -2865,6 +2865,7 @@ SNAPMIRROR_GET_ITER_RESPONSE_REST = {
                 "type": "async"
             },
             "state": "snapmirrored",
+            "transfer": {"state": "success"},
             "healthy": True
         }
     ],
@@ -2957,10 +2958,11 @@ REST_GET_SNAPMIRRORS_RESPONSE = [{
     'lag-time': None,
     'last-transfer-end-timestamp': None,
     'mirror-state': 'snapmirrored',
-    'relationship-status': 'snapmirrored',
+    'relationship-status': 'idle',
     'source-volume': SM_SOURCE_VOLUME,
     'source-vserver': SM_SOURCE_VSERVER,
     'uuid': FAKE_UUID,
+    'transferring-state': 'success',
 }]
 
 TRANSFERS_GET_ITER_REST = {
