@@ -66,12 +66,15 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 Implement FlexGroup pool
         3.0.0 - Add support for Intra-cluster Storage assisted volume migration
                 Add support for revert to snapshot
+        4.0.0 - Add Cinder Active/Active support (High Availability)
+                Implement Active/Active replication support
 
     """
 
-    VERSION = "3.0.0"
+    VERSION = "4.0.0"
 
     REQUIRED_CMODE_FLAGS = ['netapp_vserver']
+    SUPPORTS_ACTIVE_ACTIVE = True
 
     def __init__(self, *args, **kwargs):
         super(NetAppCmodeNfsDriver, self).__init__(*args, **kwargs)
@@ -867,9 +870,23 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         super(NetAppCmodeNfsDriver, self).unmanage(volume)
 
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
-        """Failover a backend to a secondary replication target."""
+        """Failover a backend to a secondary replication target.
 
-        return self._failover_host(volumes, secondary_id=secondary_id)
+           This function combines failover() and failover_completed()
+           to perform failover when Active/Active is not enabled.
+        """
+        active_backend_name, volume_updates, group_updates = (
+            self._failover(context, volumes, secondary_id, groups))
+        self._failover_completed(context, active_backend_name)
+        return active_backend_name, volume_updates, group_updates
+
+    def failover(self, context, volumes, secondary_id=None, groups=None):
+        """Failover to replication target."""
+        return self._failover(context, volumes, secondary_id, groups)
+
+    def failover_completed(self, context, secondary_id=None):
+        """Update volume node when `failover` is completed."""
+        return self._failover_completed(context, secondary_id)
 
     def _get_backing_flexvol_names(self):
         """Returns a list of backing flexvol names."""

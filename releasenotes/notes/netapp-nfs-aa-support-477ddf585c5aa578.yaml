@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    NetApp ONTAP NFS driver: Enabled support for Active/Active environments
+    in the NetApp NFS driver (including replication).
