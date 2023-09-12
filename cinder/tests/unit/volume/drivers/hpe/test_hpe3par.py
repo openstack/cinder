@@ -1980,6 +1980,45 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected + self.standard_logout)
 
     @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_volume_without_comment(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        volume = {'id': HPE3PARBaseDriver.CLONE_ID}
+
+        VOLUME_INFO_0 = self.RETYPE_VOLUME_INFO_0.copy()
+
+        # volume without comment
+        del(VOLUME_INFO_0['comment'])
+        mock_client.getVolume.return_value = VOLUME_INFO_0
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            retyped = self.driver.retype(
+                self.ctxt, volume, self.RETYPE_VOLUME_TYPE_1, None,
+                self.RETYPE_HOST)
+            self.assertTrue(retyped[0])
+
+            expected = [
+                mock.call.modifyVolume('osv-0DM4qZEVSKON-AAAAAAAAA',
+                                       {'comment': mock.ANY,
+                                        'snapCPG': 'OpenStackCPGSnap'}),
+                mock.call.deleteVolumeSet('vvs-0DM4qZEVSKON-AAAAAAAAA'),
+                mock.call.addVolumeToVolumeSet('myvvs',
+                                               'osv-0DM4qZEVSKON-AAAAAAAAA'),
+                mock.call.modifyVolume('osv-0DM4qZEVSKON-AAAAAAAAA',
+                                       {'action': 6,
+                                        'userCPG': 'OpenStackCPG',
+                                        'conversionOperation': 1,
+                                        'compression': False,
+                                        'tuneOperation': 1}),
+                mock.call.getTask(1),
+            ]
+            mock_client.assert_has_calls(expected + self.standard_logout)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
     def test_retype_non_rep_type_to_rep_type(self, _mock_volume_types):
 
         conf = self.setup_configuration()
