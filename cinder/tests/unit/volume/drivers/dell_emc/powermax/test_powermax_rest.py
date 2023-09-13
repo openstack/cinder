@@ -759,14 +759,8 @@ class PowerMaxRestTest(test.TestCase):
         device_id = self.data.device_id
         self.rest.ucode_major_level = utils.UCODE_5978
         self.rest.ucode_minor_level = utils.UCODE_5978_HICKORY
-        with mock.patch.object(
-            self.rest, 'delete_resource') as mock_delete, (
-                mock.patch.object(
-                    self.rest, '_modify_volume')) as mock_modify:
-
+        with mock.patch.object(self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_volume(self.data.array, device_id)
-            mod_call_count = mock_modify.call_count
-            self.assertEqual(1, mod_call_count)
             mock_delete.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'volume', device_id)
 

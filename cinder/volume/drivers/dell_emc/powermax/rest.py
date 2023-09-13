@@ -1552,8 +1552,6 @@ class PowerMaxRest(object):
                 and (self.ucode_minor_level > utils.UCODE_5978_ELMSR)):
             # Use Rapid TDEV Deallocation to delete after ELMSR
             try:
-                # Rename volume, removing the OS-<cinderUUID>
-                self.rename_volume(array, device_id, None)
                 self.delete_resource(array, SLOPROVISIONING,
                                      "volume", device_id)
             except Exception as e:

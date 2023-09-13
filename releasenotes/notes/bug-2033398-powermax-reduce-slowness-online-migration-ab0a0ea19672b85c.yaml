@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Dell PowerMax driver `bug #2033398
+    <https://bugs.launchpad.net/cinder/+bug/2033398>`_: Reduced
+    the risk of failures when doing online migration.
+    This change is to speed up the deletion of a volume which doesn't
+    require to rename the volume prior to delete it.
+    This removal will allow to save 15s in terms of operation time
+    and avoid unnecessary pausing time during migration.
