@@ -84,9 +84,11 @@ infinidat_opts = [
                 help='List of names of network spaces to use for iSCSI '
                      'connectivity'),
     cfg.BoolOpt('infinidat_use_compression',
-                default=False,
-                help='Specifies whether to turn on compression for newly '
-                     'created volumes.'),
+                help='Specifies whether to enable (true) or disable (false) '
+                     'compression for all newly created volumes. Leave this '
+                     'unset (commented out) for all created volumes to '
+                     'inherit their compression setting from their parent '
+                     'pool at creation time. The default value is unset.')
 ]
 
 CONF = cfg.CONF
@@ -188,15 +190,6 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                 raise exception.VolumeDriverException(message=msg)
         else:
             self._protocol = constants.FC
-        if (self.configuration.infinidat_use_compression and
-           not self._system.compat.has_compression()):
-            # InfiniBox systems support compression only from v3.0 and up
-            msg = _('InfiniBox system does not support volume compression.\n'
-                    'Compression is available on InfiniBox 3.0 onward.\n'
-                    'Please disable volume compression by setting '
-                    'infinidat_use_compression to False in the Cinder '
-                    'configuration file.')
-            raise exception.VolumeDriverException(message=msg)
         LOG.debug('setup complete')
 
     def validate_connector(self, connector):
@@ -644,9 +637,9 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                              pool=pool,
                              provtype=provtype,
                              size=size)
-        if self._system.compat.has_compression():
-            create_kwargs["compression_enabled"] = (
-                self.configuration.infinidat_use_compression)
+        compression_enabled = self.configuration.infinidat_use_compression
+        if compression_enabled is not None:
+            create_kwargs["compression_enabled"] = compression_enabled
         infinidat_volume = self._system.volumes.create(**create_kwargs)
         self._set_qos(volume, infinidat_volume)
         self._set_cinder_object_metadata(infinidat_volume, volume)
