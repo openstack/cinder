@@ -20,7 +20,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2022-11-16 14:04+0000\n"
+"POT-Creation-Date: 2023-09-13 17:38+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4935,9 +4935,6 @@ msgstr ""
 "标准输出：%(out)s\n"
 "标准错误：%(err)s"
 
-msgid "_create_volume_name, id_code is None."
-msgstr "_create_volume_name，id_code 为 None。"
-
 msgid "_delete_copysession, Cannot find Replication Service"
 msgstr "_delete_copysession，找不到复制服务"
 
@@ -5025,14 +5022,6 @@ msgstr ""
 #, python-format
 msgid "_find_initiator_names, connector: %(connector)s, initiator not found."
 msgstr "_find_initiator_names，连接器：%(connector)s，找不到启动程序。"
-
-#, python-format
-msgid ""
-"_find_lun, volumename: %(volumename)s, EnumerateInstanceNames, cannot "
-"connect to ETERNUS."
-msgstr ""
-"_find_lun，volumename：%(volumename)s，EnumerateInstanceNames，无法连接至 "
-"ETERNUS。"
 
 #, python-format
 msgid ""
@@ -5393,29 +5382,6 @@ msgstr ""
 
 msgid "create_snapshot: get source volume failed."
 msgstr "create_snapshot：获取源卷失败。"
-
-#, python-format
-msgid ""
-"create_volume, volume: %(volume)s, EnumerateInstances, cannot connect to "
-"ETERNUS."
-msgstr ""
-"create_volume，卷：%(volume)s，EnumerateInstances，无法连接至 ETERNUS。"
-
-#, python-format
-msgid ""
-"create_volume, volume: %(volume)s, volumename: %(volumename)s, eternus_pool: "
-"%(eternus_pool)s, Storage Configuration Service not found."
-msgstr ""
-"create_volume，卷：%(volume)s，卷名：%(volumename)s，eternus_pool："
-"%(eternus_pool)s，找不到存储器配置服务。"
-
-#, python-format
-msgid ""
-"create_volume, volumename: %(volumename)s, poolname: %(eternus_pool)s, "
-"Return code: %(rc)lu, Error: %(errordesc)s."
-msgstr ""
-"create_volume，volumename：%(volumename)s，poolname：%(eternus_pool)s，返回"
-"码：%(rc)lu，错误：%(errordesc)s。"
 
 msgid "create_volume_from_snapshot, Source Volume does not exist in ETERNUS."
 msgstr "create_volume_from_snapshot，源卷在 ETERNUS 中不存在。"
