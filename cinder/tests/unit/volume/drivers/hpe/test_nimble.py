@@ -1138,6 +1138,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                    'reserved_percentage': 0,
                                    'QoS_support': False,
                                    'multiattach': True,
+                                   'thin_provisioning_support': True,
                                    'consistent_group_snapshot_enabled': True}]}
         self.assertEqual(
             expected_res,
