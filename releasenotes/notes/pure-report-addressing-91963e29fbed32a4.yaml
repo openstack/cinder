@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Pure iSCSI & FC driver `bug #2006960
+    <https://bugs.launchpad.net/cinder/+bug/2006960>`_: Fixed attaching LUNs
+    greater than 255.  Driver leverages new os-brick functionality to specify
+    LUN addressing mode.
