@@ -198,7 +198,7 @@ def pure_driver_debug_trace(f):
         cls_name = driver.__class__.__name__
         method_name = "%(cls_name)s.%(method)s" % {"cls_name": cls_name,
                                                    "method": f.__name__}
-        backend_name = driver._get_current_array().backend_id
+        backend_name = driver._get_current_array(True).backend_id
         LOG.debug("[%(backend_name)s] Enter %(method_name)s, args=%(args)s,"
                   " kwargs=%(kwargs)s",
                   {
@@ -440,13 +440,10 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         # If we have failed over at some point we need to adjust our current
         # array based on the one that we have failed over to
-        if (self._array is not None and
-                self._active_backend_id is not None and
+        if (self._active_backend_id and
                 self._active_backend_id != self._array.backend_id):
-            for secondary_array in self._replication_target_arrays:
-                if secondary_array.backend_id == self._active_backend_id:
-                    self._swap_replication_state(self._array, secondary_array)
-                    break
+            secondary_array = self._get_secondary(self._active_backend_id)
+            self._swap_replication_state(self._array, secondary_array)
 
     def do_setup_trisync(self):
         repl_device = {}
@@ -2281,20 +2278,30 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
         active_backend_id, volume_update_list, group_update_list = (
             self.failover(context, volumes, secondary_id, groups))
-        self.failover_completed(context, secondary_id)
+        self.failover_completed(context, active_backend_id)
         return active_backend_id, volume_update_list, group_update_list
 
     @pure_driver_debug_trace
-    def failover_completed(self, context, secondary_id=None):
+    def failover_completed(self, context, active_backend_id=None):
         """Failover to replication target."""
         LOG.info('Driver failover completion started.')
-        if secondary_id == 'default':
-            self._swap_replication_state(self._get_current_array(),
+        current = self._get_current_array()
+        # This should not happen unless we receive the same RPC message twice
+        if active_backend_id == current.backend_id:
+            LOG.info('No need to switch replication backend, already using it')
+
+        # Manager sets the active_backend to '' when secondary_id was default,
+        # but the driver failover_host method calls us with "default"
+        elif not active_backend_id or active_backend_id == 'default':
+            LOG.info('Failing back to %s', self._failed_over_primary_array)
+            self._swap_replication_state(current,
                                          self._failed_over_primary_array,
                                          failback=True)
         else:
-            self._swap_replication_state(self._get_current_array(),
-                                         self._find_sync_failover_target())
+            secondary = self._get_secondary(active_backend_id)
+            LOG.info('Failing over to %s', secondary.backend_id)
+            self._swap_replication_state(current,
+                                         secondary)
         LOG.info('Driver failover completion completed.')
 
     @pure_driver_debug_trace
@@ -2340,7 +2347,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                         'done after a failover has completed.')
                 raise exception.InvalidReplicationTarget(message=msg)
 
-        current_array = self._get_current_array()
+        current_array = self._get_current_array(True)
         LOG.debug("Failover replication for array %(primary)s to "
                   "%(secondary)s.",
                   {"primary": current_array.backend_id,
@@ -2356,19 +2363,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         secondary_array = None
         pg_snap = None  # used for async only
         if secondary_id:
-            for array in self._replication_target_arrays:
-                if array.backend_id == secondary_id:
-                    secondary_array = array
-                    break
-
-            if not secondary_array:
-                raise exception.InvalidReplicationTarget(
-                    reason=_("Unable to determine secondary_array from"
-                             " supplied secondary: %(secondary)s.") %
-                    {"secondary": secondary_id}
-                )
-
-            if secondary_array.replication_type == REPLICATION_TYPE_ASYNC:
+            secondary_array = self._get_secondary(secondary_id)
+            if secondary_array.replication_type in [REPLICATION_TYPE_ASYNC,
+                                                    REPLICATION_TYPE_SYNC]:
                 pg_snap = self._get_latest_replicated_pg_snap(
                     secondary_array,
                     self._get_current_array().array_name,
@@ -2403,7 +2400,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         elif secondary_array.replication_type == REPLICATION_TYPE_SYNC:
             model_updates = self._sync_failover_host(volumes, secondary_array)
 
-        current_array = self._get_current_array()
+        current_array = self._get_current_array(True)
 
         return secondary_array.backend_id, model_updates, []
 
@@ -2436,6 +2433,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         if failback:
             self._replication_target_arrays.append(current_array)
             self._is_replication_enabled = True
+            self._failed_over_primary_array = None
 
         # If its sync rep then swap the two in their lists since it is a
         # bi-directional setup, if the primary is still OK or comes back
@@ -2730,6 +2728,17 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return secondary_array, pg_snap
 
+    def _get_secondary(self, secondary_id):
+        for array in self._replication_target_arrays:
+            if array.backend_id == secondary_id:
+                return array
+
+        raise exception.InvalidReplicationTarget(
+            reason=_("Unable to determine secondary_array from"
+                     " supplied secondary: %(secondary)s.") %
+            {"secondary": secondary_id}
+        )
+
     def _find_sync_failover_target(self):
         secondary_array = None
         if not self._active_cluster_target_arrays:
@@ -2766,11 +2775,19 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         # We have to rely on a call that is only available in REST API 1.3
         # therefore we have to create a temporary FlashArray for this.
-        target_array = self._get_flasharray(
-            secondary_array._target,
-            api_token=secondary_array._api_token,
-            rest_version='1.3',
-        )
+        if hasattr(secondary_array, '_request_kwargs'):
+            target_array = self._get_flasharray(
+                secondary_array._target,
+                api_token=secondary_array._api_token,
+                rest_version='1.3',
+                request_kwargs=secondary_array._request_kwargs,
+            )
+        else:
+            target_array = self._get_flasharray(
+                secondary_array._target,
+                api_token=secondary_array._api_token,
+                rest_version='1.3',
+            )
 
         volume_snaps = target_array.get_volume(pg_snap['name'],
                                                snap=True,
@@ -2859,13 +2876,15 @@ class PureBaseVolumeDriver(san.SanDriver):
         return wwn.lower()
 
     def _get_current_array(self, init=False):
-        if not init and self._is_active_cluster_enabled:
-            for target_array in self._active_cluster_target_arrays:
-                try:
+        if (not init and
+                self._is_active_cluster_enabled and
+                not self._failed_over_primary_array):
+            try:
+                pod_info = self._array.get_pod(self._replication_pod_name)
+                for target_array in self._active_cluster_target_arrays:
                     LOG.info("Checking target array %s...",
                              target_array.array_name)
                     status_ok = False
-                    pod_info = target_array.get_pod(self._replication_pod_name)
                     for pod_array in pod_info['arrays']:
                         if pod_array['array_id'] == target_array.array_id:
                             if pod_array['status'] == 'online':
@@ -2875,11 +2894,11 @@ class PureBaseVolumeDriver(san.SanDriver):
                         LOG.warning("Target array is offline. Volume "
                                     "replication in unknown state. Check "
                                     "replication links and array state.")
-                except purestorage.PureError as err:
-                    LOG.warning("self.get_pod failed with"
-                                " message: %(msg)s", {"msg": err})
-                    raise purestorage.PureError('No functional arrays '
-                                                'available')
+            except purestorage.PureError as err:
+                LOG.warning("self.get_pod failed with"
+                            " message: %(msg)s", {"msg": err})
+                raise purestorage.PureError('No functional arrays '
+                                            'available')
 
         return self._array
 
@@ -2917,7 +2936,8 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
         pure_vol_name = self._get_vol_name(volume)
         target_arrays = [self._get_current_array()]
         if (self._is_vol_in_pod(pure_vol_name) and
-                self._is_active_cluster_enabled):
+                self._is_active_cluster_enabled and
+                not self._failed_over_primary_array):
             target_arrays += self._uniform_active_cluster_target_arrays
 
         chap_username = None
@@ -2928,9 +2948,15 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
         targets = []
         for array in target_arrays:
-            connection = self._connect(array, pure_vol_name, connector,
-                                       chap_username, chap_password)
+            try:
+                connection = self._connect(array, pure_vol_name, connector,
+                                           chap_username, chap_password)
 
+            except purestorage.PureError as err:
+                # Swallow any exception, just warn and continue
+                LOG.warning("self._connect failed with"
+                            " message: %(msg)s", {"msg": err.reason})
+                continue
             target_ports = self._get_target_iscsi_ports(array)
             targets.append({
                 "connection": connection,
@@ -3161,7 +3187,8 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         pure_vol_name = self._get_vol_name(volume)
         target_arrays = [self._get_current_array()]
         if (self._is_vol_in_pod(pure_vol_name) and
-                self._is_active_cluster_enabled):
+                self._is_active_cluster_enabled and
+                not self._failed_over_primary_array):
             target_arrays += self._uniform_active_cluster_target_arrays
 
         target_luns = []
@@ -3360,15 +3387,20 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         """Allow connection to connector and return connection info."""
         pure_vol_name = self._get_vol_name(volume)
         target_arrays = [self._get_current_array()]
-        if (
-            self._is_vol_in_pod(pure_vol_name)
-            and self._is_active_cluster_enabled
-        ):
+        if (self._is_vol_in_pod(pure_vol_name) and
+                self._is_active_cluster_enabled and
+                not self._failed_over_primary_array):
             target_arrays += self._uniform_active_cluster_target_arrays
 
         targets = []
         for array in target_arrays:
-            connection = self._connect(array, pure_vol_name, connector)
+            try:
+                connection = self._connect(array, pure_vol_name, connector)
+            except purestorage.PureError as err:
+                # Swallow any exception, just warn and continue
+                LOG.warning("self._connect failed with"
+                            " message: %(msg)s", {"msg": err.reason})
+                continue
             target_ports = self._get_target_nvme_ports(array)
             targets.append(
                 {

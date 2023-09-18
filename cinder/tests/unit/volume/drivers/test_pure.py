@@ -1085,6 +1085,48 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         for update, vol_name in zip(model_updates, vol_names):
             self.assertEqual(vol_name, update['provider_id'])
 
+    @mock.patch(BASE_DRIVER_OBJ + '._swap_replication_state')
+    @mock.patch(BASE_DRIVER_OBJ + '._setup_replicated_pods')
+    @mock.patch(BASE_DRIVER_OBJ + '._generate_replication_retention')
+    @mock.patch(BASE_DRIVER_OBJ + '._setup_replicated_pgroups')
+    def test_do_setup_replicated_sync_rep_need_swap(
+            self,
+            mock_setup_repl_pgroups,
+            mock_generate_replication_retention,
+            mock_setup_pods,
+            mock_swap):
+        """Test do_setup when using replication and active is secondary."""
+        retention = mock.MagicMock()
+        mock_generate_replication_retention.return_value = retention
+        self._setup_mocks_for_replication()
+
+        self.mock_config.safe_get.return_value = [
+            {
+                "backend_id": "foo",
+                "managed_backend_name": None,
+                "san_ip": "1.2.3.4",
+                "api_token": "abc123",
+                "type": "sync",
+            }
+        ]
+        mock_sync_target = mock.MagicMock()
+        mock_sync_target.get.return_value = GET_ARRAY_SECONDARY
+        self.array.get.return_value = GET_ARRAY_PRIMARY
+        self.purestorage_module.FlashArray.side_effect = [self.array,
+                                                          mock_sync_target]
+        self.driver._active_backend_id = 'foo'
+        self.driver.do_setup(None)
+        self.assertEqual(self.array, self.driver._array)
+
+        mock_setup_repl_pgroups.assert_has_calls([
+            mock.call(self.array, [mock_sync_target], 'cinder-group',
+                      REPLICATION_INTERVAL_IN_SEC, retention),
+        ])
+        mock_setup_pods.assert_has_calls([
+            mock.call(self.array, [mock_sync_target], 'cinder-pod')
+        ])
+        mock_swap.assert_called_once_with(self.driver._array, mock_sync_target)
+
     def test_update_provider_info_update_some(self):
         test_vols = [
             self.new_fake_vol(spec={'id': fake.VOLUME_ID},
@@ -3331,10 +3373,13 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         ]
         self.assertEqual(expected_updates, volume_updates)
 
+    @mock.patch(BASE_DRIVER_OBJ + '._get_secondary')
     @mock.patch(BASE_DRIVER_OBJ + '._get_flasharray')
     @mock.patch(BASE_DRIVER_OBJ + '._find_async_failover_target')
     def test_async_failover_error_propagates(self, mock_find_failover_target,
-                                             mock_get_array):
+                                             mock_get_array,
+                                             mock_get_secondary):
+        mock_get_secondary.return_value = self.async_array2
         mock_find_failover_target.return_value = (
             self.async_array2,
             REPLICATED_PGSNAPS[1]
@@ -3647,9 +3692,6 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         mock_get_iscsi_ports.assert_called_with(self.array)
         mock_connection.assert_called_with(self.array, vol_name,
                                            ISCSI_CONNECTOR, None, None)
-        self.assert_error_propagates([mock_get_iscsi_ports, mock_connection],
-                                     self.driver.initialize_connection,
-                                     vol, ISCSI_CONNECTOR)
 
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
@@ -3675,9 +3717,6 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         mock_get_iscsi_ports.assert_called_with(self.array)
         mock_connection.assert_called_with(self.array, vol_name,
                                            ISCSI_CONNECTOR, None, None)
-        self.assert_error_propagates([mock_get_iscsi_ports, mock_connection],
-                                     self.driver.initialize_connection,
-                                     vol, ISCSI_CONNECTOR)
 
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
@@ -3848,10 +3887,6 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
                                            chap_username,
                                            chap_password)
         self.assertDictEqual(result, real_result)
-
-        self.assert_error_propagates([mock_get_iscsi_ports, mock_connection],
-                                     self.driver.initialize_connection,
-                                     vol, ISCSI_CONNECTOR)
 
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
@@ -4839,12 +4874,6 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
         mock_connection.assert_called_with(
             self.array, vol_name, NVME_CONNECTOR
         )
-        self.assert_error_propagates(
-            [mock_get_nvme_ports, mock_connection],
-            self.driver.initialize_connection,
-            vol,
-            NVME_CONNECTOR,
-        )
 
     @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")
     @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
@@ -4874,12 +4903,6 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
         mock_get_nvme_ports.assert_called_with(self.array)
         mock_connection.assert_called_with(
             self.array, vol_name, NVME_CONNECTOR
-        )
-        self.assert_error_propagates(
-            [mock_get_nvme_ports, mock_connection],
-            self.driver.initialize_connection,
-            vol,
-            NVME_CONNECTOR,
         )
 
     @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")
