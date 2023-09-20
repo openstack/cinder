@@ -18,6 +18,7 @@ Driver for Linux servers running LVM.
 import math
 import os
 import socket
+from typing import Any, Optional, Union  # noqa: H301
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -27,10 +28,12 @@ from oslo_utils import importutils
 from oslo_utils import units
 
 from cinder.brick.local_dev import lvm
+from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
+from cinder import objects
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
@@ -124,9 +127,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 f"{target_driver} doesn't support secondary addresses")
 
         self._sparse_copy_volume = False
+        self._stats = {}
 
     @classmethod
-    def get_driver_options(cls):
+    def get_driver_options(cls) -> list:
         # Imports required to have config options
         from cinder.volume.targets import spdknvmf  # noqa
 
@@ -145,13 +149,15 @@ class LVMVolumeDriver(driver.VolumeDriver):
         )
         return volume_opts + additional_opts
 
-    def _sizestr(self, size_in_g):
+    def _sizestr(self, size_in_g: int) -> str:
         return '%sg' % size_in_g
 
-    def _volume_not_present(self, volume_name):
+    def _volume_not_present(self, volume_name: str) -> bool:
         return self.vg.get_volume(volume_name) is None
 
-    def _delete_volume(self, volume, is_snapshot=False):
+    def _delete_volume(self,
+                       volume: objects.Volume,
+                       is_snapshot=False) -> None:
         """Deletes a logical volume."""
         if self.configuration.volume_clear != 'none' and \
                 self.configuration.lvm_type != 'thin':
@@ -162,7 +168,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             name = self._escape_snapshot(volume['name'])
         self.vg.delete(name)
 
-    def _clear_volume(self, volume, is_snapshot=False):
+    def _clear_volume(self, volume: objects.Volume, is_snapshot=False) -> None:
         # zero out old volumes to prevent data leaking between users
         # TODO(ja): reclaiming space should be done lazy and low priority
         if is_snapshot:
@@ -202,27 +208,28 @@ class LVMVolumeDriver(driver.VolumeDriver):
             volume_clear_size=self.configuration.volume_clear_size,
             volume_clear_ionice=self.configuration.volume_clear_ionice)
 
-    def _escape_snapshot(self, snapshot_name):
+    def _escape_snapshot(self, snapshot_name: str) -> str:
         # Linux LVM reserves name that starts with snapshot, so that
         # such volume name can't be created. Mangle it.
         if not snapshot_name.startswith('snapshot'):
             return snapshot_name
         return '_' + snapshot_name
 
-    def _unescape_snapshot(self, snapshot_name):
+    def _unescape_snapshot(self, snapshot_name: str) -> str:
         # Undo snapshot name change done by _escape_snapshot()
         if not snapshot_name.startswith('_snapshot'):
             return snapshot_name
         return snapshot_name[1:]
 
-    def _create_volume(self, name, size, lvm_type, mirror_count, vg=None):
+    def _create_volume(self, name: str, size: str, lvm_type: str,
+                       mirror_count: int, vg=None) -> None:
         vg_ref = self.vg
         if vg is not None:
             vg_ref = vg
 
         vg_ref.create_volume(name, size, lvm_type, mirror_count)
 
-    def _update_volume_stats(self):
+    def _update_volume_stats(self) -> None:
         """Retrieve stats info from volume group."""
 
         LOG.debug("Updating volume stats")
@@ -233,16 +240,17 @@ class LVMVolumeDriver(driver.VolumeDriver):
             return
 
         self.vg.update_volume_group_info()
-        data = {}
 
         # Note(zhiteng): These information are driver/backend specific,
         # each driver may define these values in its own config options
         # or fetch from driver specific configuration file.
-        data["volume_backend_name"] = self.backend_name
-        data["vendor_name"] = 'Open Source'
-        data["driver_version"] = self.VERSION
-        data["storage_protocol"] = self.protocol
-        data["pools"] = []
+        data: dict = {
+            'volume_backend_name': self.backend_name,
+            'vendor_name': 'Open Source',
+            'pools': [],
+            'driver_version': self.VERSION,
+            'storage_protocol': self.protocol
+        }
 
         total_capacity = 0
         free_capacity = 0
@@ -301,12 +309,13 @@ class LVMVolumeDriver(driver.VolumeDriver):
         ))
         data["pools"].append(single_pool)
         data["shared_targets"] = self.configuration.lvm_share_target
+
         # Check availability of sparse volume copy.
         data['sparse_copy_volume'] = self._sparse_copy_volume
 
         self._stats = data
 
-    def check_for_setup_error(self):
+    def check_for_setup_error(self) -> None:
         """Verify that requirements are in place to use LVM driver."""
         if self.vg is None:
             root_helper = utils.get_root_helper()
@@ -384,7 +393,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             # Enable sparse copy since lvm_type is 'thin'
             self._sparse_copy_volume = True
 
-    def create_volume(self, volume):
+    def create_volume(self, volume: objects.Volume) -> None:
         """Creates a logical volume."""
         mirror_count = 0
         if self.configuration.lvm_mirrors:
@@ -395,8 +404,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
                             self.configuration.lvm_type,
                             mirror_count)
 
-    def update_migrated_volume(self, ctxt, volume, new_volume,
-                               original_volume_status):
+    def update_migrated_volume(self,
+                               ctxt: context.RequestContext,
+                               volume: objects.Volume,
+                               new_volume: objects.Volume,
+                               original_volume_status: str) -> \
+            dict[str, Optional[str]]:
         """Return model update from LVM for migrated volume.
 
         This method should rename the back-end volume name(id) on the
@@ -430,7 +443,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
             provider_location = new_volume['provider_location']
         return {'_name_id': name_id, 'provider_location': provider_location}
 
-    def create_volume_from_snapshot(self, volume, snapshot):
+    def create_volume_from_snapshot(self,
+                                    volume: objects.Volume,
+                                    snapshot: objects.Snapshot) -> None:
         """Creates a volume from a snapshot."""
         if self.configuration.lvm_type == 'thin':
             self.vg.create_lv_snapshot(volume['name'],
@@ -463,7 +478,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                  execute=self._execute,
                                  sparse=self._sparse_copy_volume)
 
-    def delete_volume(self, volume):
+    def delete_volume(self, volume: objects.Volume) -> None:
         """Deletes a logical volume."""
 
         # NOTE(jdg):  We don't need to explicitly call
@@ -472,7 +487,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         if self._volume_not_present(volume['name']):
             # If the volume isn't present, then don't attempt to delete
-            return True
+            return
 
         if self.vg.lv_has_snapshot(volume['name']):
             LOG.error('Unable to delete due to existing snapshot '
@@ -482,27 +497,30 @@ class LVMVolumeDriver(driver.VolumeDriver):
         self._delete_volume(volume)
         LOG.info('Successfully deleted volume: %s', volume['id'])
 
-    def create_snapshot(self, snapshot):
+    def create_snapshot(self, snapshot: objects.Snapshot) -> None:
         """Creates a snapshot."""
 
         self.vg.create_lv_snapshot(self._escape_snapshot(snapshot['name']),
                                    snapshot['volume_name'],
                                    self.configuration.lvm_type)
 
-    def delete_snapshot(self, snapshot):
+    def delete_snapshot(self, snapshot: objects.Snapshot) -> None:
         """Deletes a snapshot."""
         if self._volume_not_present(self._escape_snapshot(snapshot['name'])):
             # If the snapshot isn't present, then don't attempt to delete
             LOG.warning("snapshot: %s not found, "
                         "skipping delete operations", snapshot['name'])
             LOG.info('Successfully deleted snapshot: %s', snapshot['id'])
-            return True
+            return
 
         # TODO(yamahata): zeroing out the whole snapshot triggers COW.
         # it's quite slow.
         self._delete_volume(snapshot, is_snapshot=True)
 
-    def revert_to_snapshot(self, context, volume, snapshot):
+    def revert_to_snapshot(self,
+                           context: context.RequestContext,
+                           volume: objects.Volume,
+                           snapshot: objects.Snapshot) -> None:
         """Revert a volume to a snapshot"""
 
         # NOTE(tommylikehu): We still can revert the volume because Cinder
@@ -518,7 +536,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
             # Recreate the snapshot that was destroyed by the revert
             self.create_snapshot(snapshot)
 
-    def local_path(self, volume, vg=None):
+    def local_path(self,
+                   volume: objects.Volume,
+                   vg: Optional[str] = None) -> str:
         if vg is None:
             vg = self.configuration.volume_group
         # NOTE(vish): stops deprecation warning
@@ -526,8 +546,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
         escaped_name = self._escape_snapshot(volume['name']).replace('-', '--')
         return "/dev/mapper/%s-%s" % (escaped_group, escaped_name)
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id,
-                             disable_sparse=False):
+    def copy_image_to_volume(self,
+                             context: context.RequestContext,
+                             volume: objects.Volume,
+                             image_service: Any,
+                             image_id: str,
+                             disable_sparse: bool = False) -> None:
         """Fetch the image from image_service and write it to the volume."""
         image_utils.fetch_to_raw(context,
                                  image_service,
@@ -537,7 +561,11 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                  size=volume['size'],
                                  disable_sparse=disable_sparse)
 
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+    def copy_volume_to_image(self,
+                             context: context.RequestContext,
+                             volume: objects.Volume,
+                             image_service: Any,
+                             image_meta: dict) -> None:
         """Copy the volume to the specified image."""
         volume_utils.upload_volume(context,
                                    image_service,
@@ -545,7 +573,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                    self.local_path(volume),
                                    volume)
 
-    def create_cloned_volume(self, volume, src_vref):
+    def create_cloned_volume(self,
+                             volume: objects.Volume,
+                             src_vref: dict):
         """Creates a clone of the specified volume."""
         if self.configuration.lvm_type == 'thin':
             self.vg.create_lv_snapshot(volume['name'],
@@ -596,7 +626,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                     image_service):
         return None, False
 
-    def extend_volume(self, volume, new_size):
+    def extend_volume(self, volume: objects.Volume, new_size: int):
         """Extend an existing volume's size."""
         self.vg.extend_volume(volume['name'],
                               self._sizestr(new_size))
@@ -606,7 +636,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             LOG.exception('Error extending target after volume resize.')
             raise exception.TargetUpdateFailed(volume_id=volume.id)
 
-    def manage_existing(self, volume, existing_ref):
+    def manage_existing(self, volume: objects.Volume, existing_ref: dict):
         """Manages an existing LV.
 
         Renames the LV to match the expected name for the volume.
@@ -630,8 +660,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
 
-    def manage_existing_object_get_size(self, existing_object, existing_ref,
-                                        object_type):
+    def manage_existing_object_get_size(self,
+                                        existing_object,
+                                        existing_ref: dict,
+                                        object_type) -> int:
         """Return size of an existing LV for manage existing volume/snapshot.
 
         existing_ref is a dictionary of the form:
@@ -667,26 +699,38 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 data=exception_message)
         return lv_size
 
-    def manage_existing_get_size(self, volume, existing_ref):
+    def manage_existing_get_size(self,
+                                 volume: objects.Volume,
+                                 existing_ref: dict) -> int:
         return self.manage_existing_object_get_size(volume, existing_ref,
                                                     "volume")
 
-    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+    def manage_existing_snapshot_get_size(
+            self,
+            snapshot: objects.Snapshot,
+            existing_ref: Union[dict, str]) -> int:
         if not isinstance(existing_ref, dict):
             existing_ref = {"source-name": existing_ref}
         return self.manage_existing_object_get_size(snapshot, existing_ref,
                                                     "snapshot")
 
-    def manage_existing_snapshot(self, snapshot, existing_ref):
+    def manage_existing_snapshot(self,
+                                 snapshot: objects.Snapshot,
+                                 existing_ref: Union[dict, str]) -> int:
         dest_name = self._escape_snapshot(snapshot['name'])
         snapshot_temp = {"name": dest_name}
         if not isinstance(existing_ref, dict):
             existing_ref = {"source-name": existing_ref}
         return self.manage_existing(snapshot_temp, existing_ref)
 
-    def _get_manageable_resource_info(self, cinder_resources, resource_type,
-                                      marker, limit, offset, sort_keys,
-                                      sort_dirs):
+    def _get_manageable_resource_info(self,
+                                      cinder_resources: list,
+                                      resource_type: str,
+                                      marker,
+                                      limit,
+                                      offset: Optional[int],
+                                      sort_keys: list[str],
+                                      sort_dirs) -> list:
         entries = []
         lvs = self.vg.get_volumes()
         cinder_ids = [resource['id'] for resource in cinder_resources]
@@ -729,8 +773,13 @@ class LVMVolumeDriver(driver.VolumeDriver):
         return volume_utils.paginate_entries_list(entries, marker, limit,
                                                   offset, sort_keys, sort_dirs)
 
-    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
-                               sort_keys, sort_dirs):
+    def get_manageable_volumes(self,
+                               cinder_volumes: list,
+                               marker,
+                               limit: Optional[int],
+                               offset: Optional[int],
+                               sort_keys: list[str],
+                               sort_dirs: list[str]) -> list[dict[str, Any]]:
         return self._get_manageable_resource_info(cinder_volumes, 'volume',
                                                   marker, limit,
                                                   offset, sort_keys, sort_dirs)
@@ -741,7 +790,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                                   marker, limit,
                                                   offset, sort_keys, sort_dirs)
 
-    def retype(self, context, volume, new_type, diff, host):
+    def retype(self,
+               context: context.RequestContext,
+               volume: objects.Volume,
+               new_type,
+               diff,
+               host: str) -> bool:
         """Retypes a volume, allow QoS and extra_specs change."""
 
         LOG.debug('LVM retype called for volume %s. No action '
@@ -749,7 +803,13 @@ class LVMVolumeDriver(driver.VolumeDriver):
                   volume['id'])
         return True
 
-    def migrate_volume(self, ctxt, volume, host, thin=False, mirror_count=0):
+    def migrate_volume(self,
+                       ctxt: context.RequestContext,
+                       volume: objects.Volume,
+                       host: dict,
+                       thin: bool = False,
+                       mirror_count: int = 0) -> tuple[bool,
+                                                       Optional[dict]]:
         """Optimize the migration if the destination is on the same server.
 
         If the specified host is another back-end on the same server, and
@@ -823,12 +883,14 @@ class LVMVolumeDriver(driver.VolumeDriver):
         self._delete_volume(volume)
         return (True, None)
 
-    def get_pool(self, volume):
+    def get_pool(self, volume: objects.Volume) -> str:
         return self.backend_name
 
     # #######  Interface methods for DataPath (Target Driver) ########
 
-    def ensure_export(self, context, volume):
+    def ensure_export(self,
+                      context: context.RequestContext,
+                      volume: objects.Volume) -> Optional[dict]:
         volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
                                       volume['name'])
 
@@ -838,7 +900,11 @@ class LVMVolumeDriver(driver.VolumeDriver):
             self.target_driver.ensure_export(context, volume, volume_path)
         return model_update
 
-    def create_export(self, context, volume, connector, vg=None):
+    def create_export(self,
+                      context: context.RequestContext,
+                      volume: objects.Volume,
+                      connector: dict,
+                      vg: Optional[str] = None) -> dict[str, str]:
         if vg is None:
             vg = self.configuration.volume_group
 
@@ -853,16 +919,23 @@ class LVMVolumeDriver(driver.VolumeDriver):
         return {'provider_location': export_info['location'],
                 'provider_auth': export_info['auth'], }
 
-    def remove_export(self, context, volume):
+    def remove_export(self,
+                      context: context.RequestContext,
+                      volume: objects.Volume) -> None:
         self.target_driver.remove_export(context, volume)
 
-    def initialize_connection(self, volume, connector):
+    def initialize_connection(self,
+                              volume: objects.Volume,
+                              connector: dict) -> dict:
         return self.target_driver.initialize_connection(volume, connector)
 
-    def validate_connector(self, connector):
+    def validate_connector(self, connector: dict):
         return self.target_driver.validate_connector(connector)
 
-    def terminate_connection(self, volume, connector, **kwargs):
+    def terminate_connection(self,
+                             volume: objects.Volume,
+                             connector: dict,
+                             **kwargs) -> bool:
         # NOTE(jdg):  LVM has a single export for each volume, so what
         # we need to do here is check if there is more than one attachment for
         # the volume, if there is; let the caller know that they should NOT
