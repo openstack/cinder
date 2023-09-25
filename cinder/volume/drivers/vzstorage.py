@@ -473,7 +473,8 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
         self._execute('ploop', 'restore-descriptor', image_dir, image_file)
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch the image from image_service and write it to the volume."""
         volume_format = self.get_volume_format(volume)
         qemu_volume_format = image_utils.fixup_disk_format(volume_format)
@@ -484,7 +485,8 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         image_utils.fetch_to_volume_format(
             context, image_service, image_id,
             image_path, qemu_volume_format,
-            self.configuration.volume_dd_blocksize)
+            self.configuration.volume_dd_blocksize,
+            disable_sparse=disable_sparse)
 
         if volume_format == DISK_FORMAT_PLOOP:
             self._recreate_ploop_desc(self.local_path(volume), image_path)

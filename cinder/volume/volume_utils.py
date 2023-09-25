@@ -1184,7 +1184,8 @@ def copy_image_to_volume(driver,
                          volume: 'objects.Volume',
                          image_meta: dict,
                          image_location: Union[str, tuple[Optional[str], Any]],
-                         image_service) -> None:
+                         image_service,
+                         disable_sparse: bool = False) -> None:
     """Downloads Glance image to the specified volume."""
     image_id = image_meta['id']
     LOG.debug("Attempting download of %(image_id)s (%(image_location)s)"
@@ -1199,15 +1200,18 @@ def copy_image_to_volume(driver,
             # already cloned it to the volume's key in
             # _get_encryption_key_id, so we can do a direct copy.
             driver.copy_image_to_volume(
-                context, volume, image_service, image_id)
+                context, volume, image_service, image_id,
+                disable_sparse=disable_sparse)
         elif volume.encryption_key_id:
             # Creating an encrypted volume from a normal, unencrypted,
             # image.
             driver.copy_image_to_encrypted_volume(
-                context, volume, image_service, image_id)
+                context, volume, image_service, image_id,
+                disable_sparse=disable_sparse)
         else:
             driver.copy_image_to_volume(
-                context, volume, image_service, image_id)
+                context, volume, image_service, image_id,
+                disable_sparse=disable_sparse)
     except processutils.ProcessExecutionError as ex:
         LOG.exception("Failed to copy image %(image_id)s to volume: "
                       "%(volume_id)s",
