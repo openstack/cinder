@@ -643,7 +643,10 @@ class VolumeTypeExtraSpecs(BASE, CinderBase):
     value = sa.Column(sa.String(255))
     volume_type_id = sa.Column(
         sa.String(36),
-        sa.ForeignKey('volume_types.id'),
+        sa.ForeignKey(
+            'volume_types.id',
+            name='volume_type_extra_specs_ibfk_1',
+        ),
         nullable=False,
         index=True,
     )
