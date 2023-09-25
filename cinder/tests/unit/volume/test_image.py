@@ -644,7 +644,7 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
         mock_qemu_info.return_value = image_info
 
         def fake_copy_image_to_volume(context, volume, image_service,
-                                      image_id):
+                                      image_id, disable_sparse=False):
             raise exception.ImageTooBig(image_id=image_id, reason='')
 
         self.mock_object(self.volume.driver, 'copy_image_to_volume',

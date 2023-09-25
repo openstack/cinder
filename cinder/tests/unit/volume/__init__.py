@@ -117,7 +117,7 @@ class BaseVolumeTestCase(test.TestCase):
             pass
 
         def fake_fetch_to_raw(ctx, image_service, image_id, path, blocksize,
-                              size=None, throttle=None):
+                              size=None, throttle=None, disable_sparse=False):
             pass
 
         def fake_clone_image(ctx, volume_ref,

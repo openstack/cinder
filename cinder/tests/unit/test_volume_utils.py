@@ -1213,10 +1213,12 @@ class VolumeUtilsTestCase(test.TestCase):
                                           fake_image_service)
         if is_encrypted:
             fake_driver.copy_image_to_encrypted_volume.assert_called_once_with(
-                ctxt, volume, fake_image_service, image_id)
+                ctxt, volume, fake_image_service, image_id,
+                disable_sparse=False)
         else:
             fake_driver.copy_image_to_volume.assert_called_once_with(
-                ctxt, volume, fake_image_service, image_id)
+                ctxt, volume, fake_image_service, image_id,
+                disable_sparse=False)
 
     @ddt.data({'cipher': 'aes-xts-plain64',
                'provider': 'luks'},

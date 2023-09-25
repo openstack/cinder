@@ -524,7 +524,8 @@ class RemoteFSDriver(driver.BaseVD):
                              context: context.RequestContext,
                              volume: objects.Volume,
                              image_service,
-                             image_id: str) -> None:
+                             image_id: str,
+                             disable_sparse: bool = False) -> None:
         """Fetch the image from image_service and write it to the volume."""
 
         image_utils.fetch_to_raw(context,
@@ -533,7 +534,8 @@ class RemoteFSDriver(driver.BaseVD):
                                  self.local_path(volume),
                                  self.configuration.volume_dd_blocksize,
                                  size=volume.size,
-                                 run_as_root=self._execute_as_root)
+                                 run_as_root=self._execute_as_root,
+                                 disable_sparse=disable_sparse)
 
         # NOTE (leseb): Set the virtual size of the image
         # the raw conversion overwrote the destination file

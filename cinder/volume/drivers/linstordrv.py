@@ -951,7 +951,8 @@ class LinstorBaseDriver(driver.VolumeDriver):
 
         self.delete_snapshot(snapshot)
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         # self.create_volume(volume) already called by Cinder, and works
         full_rsc_name = self._drbd_resource_name_from_cinder_volume(volume)
 
@@ -961,7 +962,8 @@ class LinstorBaseDriver(driver.VolumeDriver):
                                  image_id,
                                  str(self._get_rsc_path(full_rsc_name)),
                                  self.default_blocksize,
-                                 size=volume['size'])
+                                 size=volume['size'],
+                                 disable_sparse=disable_sparse)
         return {}
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):

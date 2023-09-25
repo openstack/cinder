@@ -582,7 +582,8 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
             if temp_path:
                 self._delete(temp_path)
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch the image from image_service and write it to the volume."""
         volume_path = self.local_path(volume)
         volume_format = self.get_volume_format(volume, qemu_format=True)
@@ -593,7 +594,8 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
             context, image_service, image_id,
             volume_path, volume_format,
             self.configuration.volume_dd_blocksize,
-            volume_subformat)
+            volume_subformat,
+            disable_sparse=disable_sparse)
 
         volume_path = self.local_path(volume)
         self._vhdutils.set_vhd_guid(volume_path, volume.id)

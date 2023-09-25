@@ -1902,16 +1902,20 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                        context: context.RequestContext,
                                        volume: Volume,
                                        image_service,
-                                       image_id: str) -> None:
+                                       image_id: str,
+                                       disable_sparse=False) -> None:
         self._copy_image_to_volume(context, volume, image_service, image_id,
-                                   encrypted=True)
+                                   encrypted=True,
+                                   disable_sparse=disable_sparse)
 
     def copy_image_to_volume(self,
                              context: context.RequestContext,
                              volume: Volume,
                              image_service,
-                             image_id: str) -> None:
-        self._copy_image_to_volume(context, volume, image_service, image_id)
+                             image_id: str,
+                             disable_sparse: bool = False) -> None:
+        self._copy_image_to_volume(context, volume, image_service, image_id,
+                                   disable_sparse=disable_sparse)
 
     def _encrypt_image(self,
                        context: context.RequestContext,
@@ -1956,7 +1960,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                               volume: Volume,
                               image_service: Any,
                               image_id: str,
-                              encrypted: bool = False) -> None:
+                              encrypted: bool = False,
+                              disable_sparse: bool = False) -> None:
 
         tmp_dir = volume_utils.image_conversion_dir()
 
@@ -1964,7 +1969,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             image_utils.fetch_to_raw(context, image_service, image_id,
                                      tmp.name,
                                      self.configuration.volume_dd_blocksize,
-                                     size=volume.size)
+                                     size=volume.size,
+                                     disable_sparse=disable_sparse)
 
             if encrypted:
                 self._encrypt_image(context, volume, tmp_dir, tmp.name)
