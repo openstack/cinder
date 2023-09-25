@@ -496,11 +496,13 @@ class NetAppNfsDriver(driver.ManageableVD,
         """Get the default goodness_function string."""
         return self.DEFAULT_GOODNESS_FUNCTION
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch the image from image_service and write it to the volume."""
         self._ensure_flexgroup_not_in_cg(volume)
         super(NetAppNfsDriver, self).copy_image_to_volume(
-            context, volume, image_service, image_id)
+            context, volume, image_service, image_id,
+            disable_sparse=disable_sparse)
         LOG.info('Copied image to volume %s using regular download.',
                  volume['id'])
 

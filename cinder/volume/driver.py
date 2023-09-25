@@ -867,25 +867,30 @@ class BaseVD(object, metaclass=abc.ABCMeta):
             data["pools"].append(single_pool)
         self._stats = data
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch image from image_service and write to unencrypted volume.
 
         This does not attach an encryptor layer when connecting to the volume.
         """
         self._copy_image_data_to_volume(
-            context, volume, image_service, image_id, encrypted=False)
+            context, volume, image_service, image_id, encrypted=False,
+            disable_sparse=disable_sparse)
 
     def copy_image_to_encrypted_volume(
-            self, context, volume, image_service, image_id):
+            self, context, volume, image_service, image_id,
+            disable_sparse=False):
         """Fetch image from image_service and write to encrypted volume.
 
         This attaches the encryptor layer when connecting to the volume.
         """
         self._copy_image_data_to_volume(
-            context, volume, image_service, image_id, encrypted=True)
+            context, volume, image_service, image_id, encrypted=True,
+            disable_sparse=disable_sparse)
 
     def _copy_image_data_to_volume(self, context, volume, image_service,
-                                   image_id, encrypted=False):
+                                   image_id, encrypted=False,
+                                   disable_sparse=False):
         """Fetch the image from image_service and write it to the volume."""
         LOG.debug('copy_image_to_volume %s.', volume['name'])
 
@@ -909,7 +914,7 @@ class BaseVD(object, metaclass=abc.ABCMeta):
                     image_id,
                     attach_info['device']['path'],
                     self.configuration.volume_dd_blocksize,
-                    size=volume['size'])
+                    size=volume['size'], disable_sparse=disable_sparse)
             except exception.ImageTooBig:
                 with excutils.save_and_reraise_exception():
                     LOG.exception("Copying image %(image_id)s "

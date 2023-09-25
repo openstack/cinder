@@ -816,7 +816,8 @@ class WindowsSmbFsTestCase(test.TestCase):
                 mock.sentinel.image_id,
                 self._FAKE_VOLUME_PATH, mock.sentinel.volume_format,
                 mock.sentinel.block_size,
-                mock_get_vhd_type.return_value)
+                mock_get_vhd_type.return_value,
+                disable_sparse=False)
             drv._vhdutils.resize_vhd.assert_called_once_with(
                 self._FAKE_VOLUME_PATH,
                 self.volume.size * units.Gi,

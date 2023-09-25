@@ -339,7 +339,8 @@ class TestWindowsISCSIDriver(test.TestCase):
         image_utils.fetch_to_vhd.assert_called_once_with(
             mock.sentinel.context, mock.sentinel.image_service,
             mock.sentinel.image_id, mock.sentinel.tmp_vhd_path,
-            self._driver.configuration.volume_dd_blocksize)
+            self._driver.configuration.volume_dd_blocksize,
+            disable_sparse=False)
 
         mock_unlink.assert_called_once_with(mock.sentinel.vol_vhd_path)
         self._driver._vhdutils.convert_vhd.assert_called_once_with(

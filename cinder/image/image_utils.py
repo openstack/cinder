@@ -207,8 +207,8 @@ def _get_qemu_convert_luks_cmd(src: str,
                                prefix: Optional[tuple] = None,
                                cipher_spec: Optional[dict] = None,
                                passphrase_file: Optional[str] = None,
-                               src_passphrase_file: Optional[str] = None) \
-        -> list[str]:
+                               src_passphrase_file: Optional[str] = None,
+                               disable_sparse: bool = False) -> list[str]:
     cmd = ['qemu-img', 'convert']
 
     if prefix:
@@ -216,6 +216,9 @@ def _get_qemu_convert_luks_cmd(src: str,
 
     if cache_mode:
         cmd += ('-t', cache_mode)
+
+    if disable_sparse:
+        cmd += ('-S', '0')
 
     obj1 = ['--object',
             'secret,id=sec1,format=raw,file=%s' % src_passphrase_file]
@@ -242,8 +245,8 @@ def _get_qemu_convert_cmd(src: str,
                           cipher_spec: Optional[dict] = None,
                           passphrase_file: Optional[str] = None,
                           compress: bool = False,
-                          src_passphrase_file: Optional[str] = None) \
-        -> list[str]:
+                          src_passphrase_file: Optional[str] = None,
+                          disable_sparse: bool = False) -> list[str]:
     if src_passphrase_file is not None:
         if passphrase_file is None:
             message = _("Can't create unencrypted volume %(format)s "
@@ -262,7 +265,8 @@ def _get_qemu_convert_cmd(src: str,
             prefix=None,
             cipher_spec=cipher_spec,
             passphrase_file=passphrase_file,
-            src_passphrase_file=src_passphrase_file)
+            src_passphrase_file=src_passphrase_file,
+            disable_sparse=disable_sparse)
 
     if out_format == 'vhd':
         # qemu-img still uses the legacy vpc name
@@ -275,6 +279,9 @@ def _get_qemu_convert_cmd(src: str,
 
     if cache_mode:
         cmd += ('-t', cache_mode)
+
+    if disable_sparse:
+        cmd += ('-S', '0')
 
     if CONF.image_compress_on_upload and compress:
         if out_format in COMPRESSIBLE_IMAGE_FORMATS:
@@ -340,7 +347,8 @@ def _convert_image(prefix: tuple,
                    cipher_spec: Optional[dict] = None,
                    passphrase_file: Optional[str] = None,
                    compress: bool = False,
-                   src_passphrase_file: Optional[str] = None) -> None:
+                   src_passphrase_file: Optional[str] = None,
+                   disable_sparse: bool = False) -> None:
     """Convert image to other format.
 
     NOTE: If the qemu-img convert command fails and this function raises an
@@ -389,7 +397,8 @@ def _convert_image(prefix: tuple,
                                 cipher_spec=cipher_spec,
                                 passphrase_file=passphrase_file,
                                 compress=compress,
-                                src_passphrase_file=src_passphrase_file)
+                                src_passphrase_file=src_passphrase_file,
+                                disable_sparse=disable_sparse)
 
     start_time = timeutils.utcnow()
 
@@ -450,7 +459,8 @@ def convert_image(source: str,
                   compress: bool = False,
                   src_passphrase_file: Optional[str] = None,
                   image_id: Optional[str] = None,
-                  data: Optional[imageutils.QemuImgInfo] = None) -> None:
+                  data: Optional[imageutils.QemuImgInfo] = None,
+                  disable_sparse: bool = False) -> None:
     """Convert image to other format.
 
     NOTE: If the qemu-img convert command fails and this function raises an
@@ -489,7 +499,8 @@ def convert_image(source: str,
                        cipher_spec=cipher_spec,
                        passphrase_file=passphrase_file,
                        compress=compress,
-                       src_passphrase_file=src_passphrase_file)
+                       src_passphrase_file=src_passphrase_file,
+                       disable_sparse=disable_sparse)
 
 
 def resize_image(source: str,
@@ -812,11 +823,13 @@ def fetch_to_vhd(context: context.RequestContext,
                  volume_subformat: Optional[str] = None,
                  user_id: Optional[str] = None,
                  project_id: Optional[str] = None,
-                 run_as_root: bool = True) -> None:
+                 run_as_root: bool = True,
+                 disable_sparse: bool = False) -> None:
     fetch_to_volume_format(context, image_service, image_id, dest, 'vpc',
                            blocksize, volume_subformat=volume_subformat,
                            user_id=user_id, project_id=project_id,
-                           run_as_root=run_as_root)
+                           run_as_root=run_as_root,
+                           disable_sparse=disable_sparse)
 
 
 def fetch_to_raw(context: context.RequestContext,
@@ -827,10 +840,12 @@ def fetch_to_raw(context: context.RequestContext,
                  user_id: Optional[str] = None,
                  project_id: Optional[str] = None,
                  size: Optional[int] = None,
-                 run_as_root: bool = True) -> None:
+                 run_as_root: bool = True,
+                 disable_sparse: bool = False) -> None:
     fetch_to_volume_format(context, image_service, image_id, dest, 'raw',
                            blocksize, user_id=user_id, project_id=project_id,
-                           size=size, run_as_root=run_as_root)
+                           size=size, run_as_root=run_as_root,
+                           disable_sparse=disable_sparse)
 
 
 def check_image_conversion_disable(disk_format, volume_format, image_id,
@@ -865,7 +880,8 @@ def fetch_to_volume_format(context: context.RequestContext,
                            user_id: Optional[str] = None,
                            project_id: Optional[str] = None,
                            size: Optional[int] = None,
-                           run_as_root: bool = True) -> None:
+                           run_as_root: bool = True,
+                           disable_sparse: bool = False) -> None:
     qemu_img = True
     image_meta = image_service.show(context, image_id)
 
@@ -980,7 +996,8 @@ def fetch_to_volume_format(context: context.RequestContext,
                       src_format=disk_format,
                       run_as_root=run_as_root,
                       image_id=image_id,
-                      data=data)
+                      data=data,
+                      disable_sparse=disable_sparse)
 
 
 def upload_volume(context: context.RequestContext,

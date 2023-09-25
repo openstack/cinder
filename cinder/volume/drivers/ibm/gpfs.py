@@ -950,7 +950,8 @@ class GPFSDriver(driver.CloneableImageVD,
 
         return {'provider_location': None}, True
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch the image from image_service and write it to the volume.
 
         Note that cinder.volume.flows.create_volume will attempt to use
@@ -967,7 +968,8 @@ class GPFSDriver(driver.CloneableImageVD,
         image_utils.fetch_to_raw(context, image_service, image_id,
                                  self.local_path(volume),
                                  self.configuration.volume_dd_blocksize,
-                                 size=volume['size'])
+                                 size=volume['size'],
+                                 disable_sparse=disable_sparse)
         self._resize_volume_file(volume, volume['size'])
 
     def _resize_volume_file(self, volume, new_size):

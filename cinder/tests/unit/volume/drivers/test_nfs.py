@@ -537,7 +537,7 @@ class NfsDriverTestCase(test.TestCase):
 
         mock_fetch.assert_called_once_with(
             None, None, None, test_img_source, mock.ANY, run_as_root=True,
-            size=self.TEST_SIZE_IN_GB)
+            size=self.TEST_SIZE_IN_GB, disable_sparse=False)
         mock_resize.assert_called_once_with(test_img_source,
                                             self.TEST_SIZE_IN_GB,
                                             run_as_root=True)

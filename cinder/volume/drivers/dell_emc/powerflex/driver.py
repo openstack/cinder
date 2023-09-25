@@ -1236,7 +1236,8 @@ class PowerFlexDriver(driver.VolumeDriver):
 
         self.connector.disconnect_volume(connection_properties, volume)
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch image from image service and write it to volume."""
 
         LOG.info("Copy image %(image_id)s from image service %(service)s "
@@ -1252,7 +1253,8 @@ class PowerFlexDriver(driver.VolumeDriver):
                                      image_id,
                                      self._sio_attach_volume(volume),
                                      BLOCK_SIZE,
-                                     size=volume.size)
+                                     size=volume.size,
+                                     disable_sparse=disable_sparse)
         finally:
             self._sio_detach_volume(volume)
 

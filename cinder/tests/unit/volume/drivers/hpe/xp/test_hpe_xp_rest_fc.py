@@ -938,7 +938,8 @@ class HPEXPRESTFCDriverTest(test.TestCase):
             self.driver.copy_image_to_volume(
                 self.ctxt, TEST_VOLUME[0], image_service, image_id)
         mock_copy_image.assert_called_with(
-            self.ctxt, TEST_VOLUME[0], image_service, image_id)
+            self.ctxt, TEST_VOLUME[0], image_service, image_id,
+            disable_sparse=False)
         self.assertEqual(1, request.call_count)
 
     @mock.patch.object(requests.Session, "request")

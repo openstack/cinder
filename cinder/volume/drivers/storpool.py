@@ -409,7 +409,8 @@ class StorPoolDriver(driver.VolumeDriver):
                     '%(vol)s: %(err)s',
                     {'name': name, 'vol': volname, 'err': e})
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         req_id = context.request_id
         name = self._attach.volumeName(volume['id'])
         self._attach.add(req_id, {
@@ -420,7 +421,8 @@ class StorPoolDriver(driver.VolumeDriver):
         })
         try:
             return super(StorPoolDriver, self).copy_image_to_volume(
-                context, volume, image_service, image_id)
+                context, volume, image_service, image_id,
+                disable_sparse=disable_sparse)
         finally:
             self._attach.remove(req_id)
 
