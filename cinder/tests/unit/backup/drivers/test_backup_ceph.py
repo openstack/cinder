@@ -999,6 +999,31 @@ class BackupCephTestCase(test.TestCase):
                 mock_transfer_data.assert_called_once()
 
     @common_mocks
+    def test_full_restore_with_image_not_found(self):
+        length = 1024
+        volume_is_new = True
+        src_snap = None
+        with tempfile.NamedTemporaryFile() as dest_file:
+            with mock.patch.object(self.service,
+                                   '_get_backup_base_name') as mock_name,\
+                    mock.patch('eventlet.tpool.Proxy') as mock_proxy:
+
+                self.mock_rbd.Image.side_effect = self.mock_rbd.ImageNotFound
+
+                self.assertRaises(self.mock_rbd.ImageNotFound,
+                                  self.service._full_restore,
+                                  self.backup,
+                                  dest_file,
+                                  length,
+                                  volume_is_new,
+                                  src_snap)
+
+                # Check that the _get_backup_base_name was called
+                # twice due to the exception
+                self.assertEqual(mock_name.call_count, 2)
+                self.assertEqual(mock_proxy.call_count, 2)
+
+    @common_mocks
     def test_discard_bytes(self):
         # Lower the chunksize to a memory manageable number
         thread_dict = {}
