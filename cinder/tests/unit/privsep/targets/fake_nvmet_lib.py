@@ -22,20 +22,16 @@ from unittest import mock
 
 from cinder import exception
 
-try:
-    import nvmet  # noqa
-    reset_mock = lambda: None  # noqa
-except ImportError:
-    mock_nvmet_lib = mock.Mock(name='nvmet',
-                               Root=type('Root', (mock.Mock, ), {}),
-                               Subsystem=type('Subsystem', (mock.Mock, ), {}),
-                               Port=type('Port', (mock.Mock, ), {}),
-                               Namespace=type('Namespace', (mock.Mock, ),
-                                              {'MAX_NSID': 8192}),
-                               Host=type('Host', (mock.Mock, ), {}),
-                               ANAGroup=type('ANAGroup', (mock.Mock, ), {}),
-                               Referral=type('Referral', (mock.Mock, ), {}),
-                               nvme=mock.Mock(CFSNotFound=exception.NotFound))
+mock_nvmet_lib = mock.Mock(name='nvmet',
+                           Root=type('Root', (mock.Mock, ), {}),
+                           Subsystem=type('Subsystem', (mock.Mock, ), {}),
+                           Port=type('Port', (mock.Mock, ), {}),
+                           Namespace=type('Namespace', (mock.Mock, ),
+                                          {'MAX_NSID': 8192}),
+                           Host=type('Host', (mock.Mock, ), {}),
+                           ANAGroup=type('ANAGroup', (mock.Mock, ), {}),
+                           Referral=type('Referral', (mock.Mock, ), {}),
+                           nvme=mock.Mock(CFSNotFound=exception.NotFound))
 
-    sys.modules['nvmet'] = mock_nvmet_lib
-    reset_mock = mock_nvmet_lib.reset_mock
+sys.modules['nvmet'] = mock_nvmet_lib
+reset_mock = mock_nvmet_lib.reset_mock
