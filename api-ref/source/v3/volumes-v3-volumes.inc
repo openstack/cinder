@@ -92,6 +92,8 @@ Request
    - project_id: project_id_path
    - all_tenants: all-tenants
    - sort: sort
+   - sort_key: sort_key
+   - sort_dir: sort_dir
    - limit: limit
    - offset: offset
    - marker: marker
@@ -308,6 +310,8 @@ Request
    - project_id: project_id_path
    - all_tenants: all-tenants
    - sort: sort
+   - sort_key: sort_key
+   - sort_dir: sort_dir
    - limit: limit
    - offset: offset
    - marker: marker
