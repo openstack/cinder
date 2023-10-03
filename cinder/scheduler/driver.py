@@ -42,12 +42,13 @@ CONF.register_opts(scheduler_driver_opts)
 
 
 def volume_update_db(context, volume_id, host, cluster_name,
-                     availability_zone=None):
+                     availability_zone=None, volume=None):
     """Set the host, cluster_name, and set the scheduled_at field of a volume.
 
     :returns: A Volume with the updated fields set properly.
     """
-    volume = objects.Volume.get_by_id(context, volume_id)
+    if not volume:
+        volume = objects.Volume.get_by_id(context, volume_id)
     volume.host = host
     volume.cluster_name = cluster_name
     volume.scheduled_at = timeutils.utcnow()

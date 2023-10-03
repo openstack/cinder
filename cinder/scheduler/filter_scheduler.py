@@ -110,7 +110,8 @@ class FilterScheduler(driver.Scheduler):
             context, volume_id,
             backend.host,
             backend.cluster_name,
-            availability_zone=backend.service['availability_zone'])
+            availability_zone=backend.service['availability_zone'],
+            volume=request_spec.get('volume'))
         self._post_select_populate_filter_properties(filter_properties,
                                                      backend)
 
