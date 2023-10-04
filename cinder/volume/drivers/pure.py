@@ -2660,10 +2660,13 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _async_failover_host(self, volumes, secondary_array, pg_snap):
         # Try to copy the flasharray as close as we can.
+
+        # We have to rely on a call that is only available in REST API 1.3
+        # therefore we have to create a temporary FlashArray for this.
         target_array = self._get_flasharray(
             secondary_array._target,
             api_token=secondary_array._api_token,
-            request_kwargs=secondary_array._request_kwargs,
+            rest_version='1.3',
         )
 
         volume_snaps = target_array.get_volume(pg_snap['name'],
