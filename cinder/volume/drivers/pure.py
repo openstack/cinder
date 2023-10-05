@@ -247,7 +247,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._replication_retention_short_term = None
         self._replication_retention_long_term = None
         self._replication_retention_long_term_per_day = None
-        self._async_replication_retention_policy = None
+        self._async_replication_retention_policy = {}
         self._is_replication_enabled = False
         self._is_active_cluster_enabled = False
         self._is_trisync_enabled = False
@@ -1171,7 +1171,10 @@ class PureBaseVolumeDriver(san.SanDriver):
         pg_name = self._get_pgroup_name(group)
         current_array.create_pgroup(pg_name)
         if grp_type:
-            current_array.set_pgroup(pg_name, **self._retention_policy)
+            current_array.set_pgroup(
+                pg_name,
+                **self._async_replication_retention_policy
+            )
             # Configure replication propagation frequency on a
             # protection group.
             repl_freq = self._replication_interval
