@@ -167,6 +167,7 @@ class ShardFilter(filters.BaseBackendFilter):
         is_vmware = any(self._is_vmware(b) for b in backends)
         if (not metadata or not project_id
                 or spec.get('snapshot_id')
+                or spec.get('operation') == 'find_backend_for_connector'
                 or not is_vmware):
             return backends
 
