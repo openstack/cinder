@@ -175,24 +175,39 @@ class ShardFilter(filters.BaseBackendFilter):
         if not cluster_name:
             return backends
 
-        props = spec.get('resource_properties', {})
-        availability_zone = props.get('availability_zone')
+        availability_zone = filter_properties.get('availability_zone')
         query_filters = None
         if availability_zone:
             query_filters = {'availability_zone': availability_zone}
 
-        k8s_host = db.get_host_by_volume_metadata(
+        results = db.get_hosts_by_volume_metadata(
             key=CSI_CLUSTER_METADATA_KEY,
             value=cluster_name,
             filters=query_filters)
 
-        if not k8s_host:
+        if not results:
             return backends
+
+        # Allowing new volumes to be created only in the dominant shard
+        if spec.get('operation') == 'create_volume':
+            results = results[:1]
+
+        k8s_hosts = dict(results)
+
+        def _is_k8s_host(b):
+            host = volume_utils.extract_host(b.host, 'host')
+            if host in k8s_hosts:
+                return True
+            else:
+                LOG.debug('%(backend)s not in the allowed '
+                          'K8S hosts %(k8s_hosts)s.',
+                          {'backend': b,
+                           'k8s_hosts': k8s_hosts})
+                return False
 
         return [
             b for b in backends if
-            (not self._is_vmware(b) or
-             volume_utils.extract_host(b.host, 'host') == k8s_host)
+            (not self._is_vmware(b) or _is_k8s_host(b))
         ]
 
     def _backend_passes(self, backend_state, filter_properties):

@@ -2176,7 +2176,7 @@ def volume_get_all(context, marker=None, limit=None, sort_keys=None,
         return query.all()
 
 
-def get_host_by_volume_metadata(meta_key, meta_value, filters=None):
+def get_hosts_by_volume_metadata(meta_key, meta_value, filters=None):
     session = get_session()
     count_label = func.count().label("n")
     query = session.query(
@@ -2199,13 +2199,10 @@ def get_host_by_volume_metadata(meta_key, meta_value, filters=None):
                 models.Volume.availability_zone == az)
 
     query = query.group_by("h")\
-        .order_by(desc(count_label)).limit(1)
+        .order_by(desc(count_label))
 
     with session.begin():
-        result = query.first()
-        if result:
-            return result[0]
-    return None
+        return query.all()
 
 
 @require_context

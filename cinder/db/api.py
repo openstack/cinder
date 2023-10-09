@@ -281,10 +281,10 @@ def volume_get_all(context, marker=None, limit=None, sort_keys=None,
                                offset=offset)
 
 
-def get_host_by_volume_metadata(key, value, filters=None):
+def get_hosts_by_volume_metadata(key, value, filters=None):
     """Returns the host with the most volumes matching volume metadata."""
-    return IMPL.get_host_by_volume_metadata(key, value,
-                                            filters=filters)
+    return IMPL.get_hosts_by_volume_metadata(key, value,
+                                             filters=filters)
 
 
 def calculate_resource_count(context, resource_type, filters):
