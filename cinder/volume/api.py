@@ -849,8 +849,8 @@ class API(base.Base):
                 filter_properties=filter_properties)
         except exception.NoValidBackend:
             msg = ("The connector was rejected by the backend. Could not "
-                   "find another backend compatible with the connector %s.",
-                   connector)
+                   "find another backend compatible with the connector %s."
+                   % connector)
             action_track.track(ctxt, action_track.ACTION_VOLUME_MIGRATE,
                                volume, msg, loglevel=logging.ERROR)
             return None
