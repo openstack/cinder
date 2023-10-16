@@ -2040,9 +2040,13 @@ class PowerMaxMasking(object):
                 if 'STG-' in storage_group_list[0]:
                     return mv_dict
 
-        split_pool = extra_specs['pool_name'].split('+')
-        src_slo = split_pool[0]
-        src_wl = split_pool[1] if len(split_pool) == 4 else 'NONE'
+        if 'pool_name' in extra_specs:
+            split_pool = extra_specs['pool_name'].split('+')
+            src_slo = split_pool[0]
+            src_wl = split_pool[1] if len(split_pool) == 4 else 'NONE'
+        else:
+            src_slo = extra_specs[utils.SLO]
+            src_wl = extra_specs[utils.WORKLOAD]
         slo_wl_combo = self.utils.truncate_string(src_slo + src_wl.upper(), 10)
         for sg in sg_list.get('storageGroupId', []):
             if slo_wl_combo in sg:
