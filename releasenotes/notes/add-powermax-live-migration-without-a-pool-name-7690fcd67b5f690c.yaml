@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Dell PowerMax driver `bug #2034937
+    <https://bugs.launchpad.net/cinder/+bug/2034937>`_: Fixed
+
+    This change is to update the live migration ability in environments using PowerMax. In previous
+    2023.1 version, the live migration fails without a pool name.
+    This update add the ability of live migration without a pool name.
+
