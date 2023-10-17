@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright (C) 2012 Hewlett-Packard Development Company, L.P.
 # All Rights Reserved.
