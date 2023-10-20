@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    Fujitsu ETERNUS DX driver: Improve volume deletion
+
+    To improve the volume deletion process, add a step to check associated copy
+    sessions. Additionally, it also improves the process of retrieving
+    storage-managed volume numbers.
+
+    There was a problem where the volume could not be deleted because the copy
+    session information acquired by SMI-S IF from ETERNUS DX Storage, which was
+    cached and did not reflect the information that had just been executed.
+
+    This problem has been addressed through improvements in information
+    retrieval.

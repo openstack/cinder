@@ -175,7 +175,7 @@ FAKE_POOLS = [{
 }]
 
 FAKE_STATS = {
-    'driver_version': '1.4.1',
+    'driver_version': '1.4.2',
     'storage_protocol': 'iSCSI',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -185,7 +185,7 @@ FAKE_STATS = {
     'pools': FAKE_POOLS,
 }
 FAKE_STATS2 = {
-    'driver_version': '1.4.1',
+    'driver_version': '1.4.2',
     'storage_protocol': 'FC',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -375,8 +375,11 @@ class FakeCIMInstanceName(dict):
         snaps = FakeCIMInstanceName()
         snaps['ElementName'] = 'FJosv_OgEZj1mSvKRvIKOExKktlg=='
         snaps['Name'] = None
+        snaps['DeviceID'] = FAKE_LUN_ID2
+        snaps['SystemName'] = STORAGE_SYSTEM
         ret.append(snaps)
         snaps.path = ''
+        snaps.classname = 'FUJITSU_StorageVolume'
 
         map = FakeCIMInstanceName()
         map['ElementName'] = 'FJosv_hhJsV9lcMBvAPADrGqucwg=='
@@ -1037,6 +1040,16 @@ class FJFCDriverTestCase(test.TestCase):
                    '0002\t\r\n0000\tFJosv_0qJ4rpOHgFE8ipcJOMfBmg==\t0F'
                    '\t\r\n0001\tFJosv_OgEZj1mSvKRvIKOExKktlg==\t0D'
                    '\t\r\nCLI> ' % exec_cmdline)
+        elif exec_cmdline.startswith('show copy-sessions'):
+            ret = ('\r\nCLI> %s\r\n00\r\n0001\t\r\n'
+                   '0001\tFFFF\t01\t08\tFF\tFF\t03\t02\tFF\tFF\t05ABD7D2\t'
+                   '########################################\t'
+                   '########################################\t'
+                   '00000281\t00000286\t0001\t00\tFF\t0000000000000800\t'
+                   '0000000000000000\t0000000000000100\t0000000000000800\t'
+                   '04\t00\t00000000\t2020101009341400\t01\t10\tFFFF\tFFFF\t'
+                   '0000000000000000\tFFFFFFFFFFFFFFFF\tFFFFFFFFFFFFFFFF\tFF\t'
+                   'FF\t64\t00\t07\t00\t00\t00\r\nCLI> ' % exec_cmdline)
         elif exec_cmdline.startswith('show qos-bandwidth-limit'):
             ret = ('\r\nCLI> %s\r\n00\r\n0010\t\r\n00\t0000ffff\t0000ffff'
                    '\t0000ffff\t0000ffff\t0000ffff\t0000ffff\t0000ffff'
@@ -1080,6 +1093,8 @@ class FJFCDriverTestCase(test.TestCase):
                    '\r\nCLI> ' % exec_cmdline)
         elif exec_cmdline.startswith('set qos-bandwidth-limit'):
             ret = '%s\r\n00\r\n0001\r\nCLI> ' % exec_cmdline
+        elif exec_cmdline.startswith('stop copy-session'):
+            ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
         else:
             ret = None
         return ret
@@ -1284,6 +1299,16 @@ class FJISCSIDriverTestCase(test.TestCase):
                    '0002\t\r\n0000\tFJosv_0qJ4rpOHgFE8ipcJOMfBmg==\t0F'
                    '\t\r\n0001\tFJosv_OgEZj1mSvKRvIKOExKktlg==\t0D'
                    '\t\r\nCLI> ' % exec_cmdline)
+        elif exec_cmdline.startswith('show copy-sessions'):
+            ret = ('\r\nCLI> %s\r\n00\r\n0001\t\r\n'
+                   '0001\tFFFF\t01\t08\tFF\tFF\t03\t02\tFF\tFF\t05ABD7D2\t'
+                   '########################################\t'
+                   '########################################\t'
+                   '00000281\t00000286\t0001\t00\tFF\t0000000000000800\t'
+                   '0000000000000000\t0000000000000100\t0000000000000800\t'
+                   '04\t00\t00000000\t2020101009341400\t01\t10\tFFFF\tFFFF\t'
+                   '0000000000000000\tFFFFFFFFFFFFFFFF\tFFFFFFFFFFFFFFFF\tFF\t'
+                   'FF\t64\t00\t07\t00\t00\t00\r\nCLI> ' % exec_cmdline)
         elif exec_cmdline.startswith('show qos-bandwidth-limit'):
             ret = ('\r\nCLI> %s\r\n00\r\n0010\t\r\n00\t0000ffff\t0000ffff'
                    '\t0000ffff\t0000ffff\t0000ffff\t0000ffff\t0000ffff'
@@ -1515,6 +1540,16 @@ class FJCLITestCase(test.TestCase):
             ret = ('\r\nCLI> %s\r\n00\r\n'
                    '0001\r\n0000\tFJosv_0qJ4rpOHgFE8ipcJOMfBmg==\t01\t00\t00'
                    '\r\nCLI> ' % exec_cmdline)
+        elif exec_cmdline.startswith('show copy-sessions'):
+            ret = ('\r\nCLI> %s\r\n00\r\n0001\t\r\n'
+                   '0001\tFFFF\t01\t08\tFF\tFF\t03\t02\tFF\tFF\t05ABD7D2\t'
+                   '########################################\t'
+                   '########################################\t'
+                   '00000281\t00000286\t0001\t00\tFF\t0000000000000800\t'
+                   '0000000000000000\t0000000000000100\t0000000000000800\t'
+                   '04\t00\t00000000\t2020101009341400\t01\t10\tFFFF\tFFFF\t'
+                   '0000000000000000\tFFFFFFFFFFFFFFFF\tFFFFFFFFFFFFFFFF\tFF\t'
+                   'FF\t64\t00\t07\t00\t00\t00\r\nCLI> ' % exec_cmdline)
         elif exec_cmdline.startswith('show qos-bandwidth-limit'):
             ret = ('\r\nCLI> %s\r\n00\r\n0001\t\r\n00\t0000ffff\t0000ffff'
                    '\t0000ffff\t0000ffff\t0000ffff\t0000ffff\t0000ffff'
@@ -1522,6 +1557,8 @@ class FJCLITestCase(test.TestCase):
                    'CLI> ' % exec_cmdline)
         elif exec_cmdline.startswith('set qos-bandwidth-limit'):
             ret = '%s\r\n00\r\n0001\r\nCLI> ' % exec_cmdline
+        elif exec_cmdline.startswith('stop copy-session'):
+            ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('delete volume'):
             ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
         else:
@@ -1608,6 +1645,21 @@ class FJCLITestCase(test.TestCase):
         volume_number = self.cli._set_volume_qos(**FAKE_QOS_OPTION)
         self.assertEqual(FAKE_QOS_OUTPUT, volume_number)
 
+    def test_show_copy_sessions(self):
+        FAKE_COPY_SESSION = [{
+            'Source Num': 641,
+            'Dest Num': 646,
+            'Type': 'Snap',
+            'Status': 'Active',
+            'Phase': 'Tracking',
+            'Session ID': 1,
+        }]
+        FAKE_COPY_SESSION_OUTPUT = {**FAKE_CLI_OUTPUT,
+                                    'message': FAKE_COPY_SESSION}
+
+        cpdatalist = self.cli._show_copy_sessions()
+        self.assertEqual(FAKE_COPY_SESSION_OUTPUT, cpdatalist)
+
     def test_show_pool_provision(self):
         FAKE_POOL_PROVIOSN_OPTION = self.create_fake_options(
             pool_name='abcd1234_TPP')
@@ -1665,6 +1717,15 @@ class FJCLITestCase(test.TestCase):
 
         versioninfo = self.cli._show_enclosure_status()
         self.assertEqual(FAKE_VERSION_INFO, versioninfo)
+
+    def test_stop_copy_session(self):
+        FAKE_SESSION_ID = '0001'
+        FAKE_STOP_OUTPUT = {**FAKE_CLI_OUTPUT, 'message': []}
+        FAKE_STOP_COPY_SESSION_OPTION = self.create_fake_options(
+            session_id=FAKE_SESSION_ID)
+        stop_output = self.cli._stop_copy_session(
+            **FAKE_STOP_COPY_SESSION_OPTION)
+        self.assertEqual(FAKE_STOP_OUTPUT, stop_output)
 
     def test_delete_volume(self):
         FAKE_VOLUME_NAME = 'FJosv_0qJ4rpOHgFE8ipcJOMfBmg=='
@@ -1746,13 +1807,25 @@ class FJCommonTestCase(test.TestCase):
             ret = ('\r\nCLI> %s\r\n00\r\n'
                    '0001\r\n0000\tFJosv_0qJ4rpOHgFE8ipcJOMfBmg==\t01\t00\t00'
                    '\r\nCLI> ' % exec_cmdline)
+        elif exec_cmdline.startswith('show copy-sessions'):
+            ret = ('\r\nCLI> %s\r\n00\r\n0001\t\r\n'
+                   '0001\tFFFF\t01\t08\tFF\tFF\t03\t02\tFF\tFF\t05ABD7D2\t'
+                   '########################################\t'
+                   '########################################\t'
+                   '00000281\t00000286\t0001\t00\tFF\t0000000000000800\t'
+                   '0000000000000000\t0000000000000100\t0000000000000800\t'
+                   '04\t00\t00000000\t2020101009341400\t01\t10\tFFFF\tFFFF\t'
+                   '0000000000000000\tFFFFFFFFFFFFFFFF\tFFFFFFFFFFFFFFFF\tFF\t'
+                   'FF\t64\t00\t07\t00\t00\t00\r\nCLI> ' % exec_cmdline)
         elif exec_cmdline.startswith('show qos-bandwidth-limit'):
             ret = ('\r\nCLI> %s\r\n00\r\n0001\t\r\n00\t0000ffff\t0000ffff'
                    '\t0000ffff\t0000ffff\t0000ffff\t0000ffff\t0000ffff'
                    '\t0000ffff\t0000ffff\t0000ffff\t0000ffff\t0000ffff\r\n'
                    'CLI> ' % exec_cmdline)
         elif exec_cmdline.startswith('set qos-bandwidth-limit'):
-            ret = '\r\nCLI> %s\r\n00\r\n0001\r\nCLI> ' % exec_cmdline
+            ret = '%s\r\n00\r\n0001\r\nCLI> ' % exec_cmdline
+        elif exec_cmdline.startswith('stop copy-session'):
+            ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
         else:
             ret = None
         return ret
@@ -1763,6 +1836,19 @@ class FJCommonTestCase(test.TestCase):
     def fake_eternus_connection(self):
         conn = FakeEternusConnection()
         return conn
+
+    def test_get_volume_number(self):
+        vol_instance = FakeCIMInstanceName()
+        vol_instance['ElementName'] = 'FJosv_0qJ4rpOHgFE8ipcJOMfBmg=='
+        vol_instance['Purpose'] = '00228+0x06'
+        vol_instance['Name'] = None
+        vol_instance['DeviceID'] = FAKE_LUN_ID1
+        vol_instance['SystemName'] = STORAGE_SYSTEM
+        vol_instance.path = ''
+        vol_instance.classname = 'FUJITSU_StorageVolume'
+
+        volume_no = self.driver.common._get_volume_number(vol_instance)
+        self.assertEqual(FAKE_LUN_NO1, volume_no)
 
     def test_get_eternus_model(self):
         ETERNUS_MODEL = self.driver.common._get_eternus_model()
@@ -1846,3 +1932,15 @@ class FJCommonTestCase(test.TestCase):
         self.driver.common._set_limit(FAKE_MODE, FAKE_LIMIT,
                                       FAKE_IOPS, FAKE_THROUGHOUTPUT)
         mock_exec_cli_with_eternus.assert_called_with(exec_cmdline)
+
+    def test_get_copy_sessions_list(self):
+        FAKE_COPY_SESSION = [{
+            'Source Num': 641,
+            'Dest Num': 646,
+            'Type': 'Snap',
+            'Status': 'Active',
+            'Phase': 'Tracking',
+            'Session ID': 1,
+        }]
+        copy_session_list = self.driver.common._get_copy_sessions_list()
+        self.assertEqual(FAKE_COPY_SESSION, copy_session_list)
