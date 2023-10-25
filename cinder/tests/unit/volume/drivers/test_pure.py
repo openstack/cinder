@@ -709,6 +709,7 @@ class PureDriverTestCase(test.TestCase):
         self.async_array2.array_id = GET_ARRAY_SECONDARY["id"]
         self.async_array2.get.return_value = GET_ARRAY_SECONDARY
         self.async_array2.replication_type = 'async'
+        self.async_array2.allowed = True
         self.purestorage_module = pure.purestorage
         self.purestorage_module.PureHTTPError = FakePureStorageHTTPError
 
@@ -1798,6 +1799,55 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.create_pgroup.assert_called_with(expected_name)
         self.assertEqual({'status': 'available'}, model_update)
 
+        self.assert_error_propagates(
+            [self.array.create_pgroup],
+            self.driver.create_consistencygroup, None, cgroup)
+
+    @ddt.data('async', 'sync', 'trisync')
+    def test_create_consistencygroup_replication_pass(self, cgrp_type):
+        cgroup = fake_group.fake_group_obj(mock.MagicMock())
+        self.driver._replication_target_arrays = [self.async_array2]
+        self.array.get_pgroup.return_value = PGROUP_ON_TARGET_ALLOWED
+        model_update = self.driver.create_consistencygroup(None, cgroup,
+                                                           grp_type=cgrp_type)
+
+        expected_name = "consisgroup-" + cgroup.id + "-cinder"
+        self.driver._get_current_array.assert_called()
+        self.array.create_pgroup.assert_called_with(expected_name)
+        self.array.set_pgroup.assert_called_with(expected_name,
+                                                 replicate_enabled=True)
+        self.assertEqual({'status': 'available'}, model_update)
+
+        self.assert_error_propagates(
+            [self.array.create_pgroup],
+            self.driver.create_consistencygroup, None, cgroup)
+
+    @ddt.data('addtargetlist', 'pgroup_name_on_target')
+    def test_create_consistencygroup_replication_fail(self, error_text):
+        cgroup = fake_group.fake_group_obj(mock.MagicMock())
+        self.driver._replication_target_arrays = [self.async_array2]
+        self.array.get_pgroup.return_value = PGROUP_ON_TARGET_ALLOWED
+
+        def custom_effect(self, *args, **kwargs):
+            if error_text == 'addtargetlist':
+                raise pure.purestorage.\
+                    PureHTTPError(code=http.client.BAD_REQUEST,
+                                  text='ERR_MSG_ALREADY_INCLUDES')
+            else:
+                raise pure.purestorage.\
+                    PureHTTPError(code=http.client.BAD_REQUEST,
+                                  text='ERR_MSG_ALREADY_ALLOWED')
+        self.array.set_pgroup.side_effect = custom_effect
+        check_msg = self.assertRaises(pure.purestorage.PureHTTPError,
+                                      self.driver.create_consistencygroup,
+                                      None, cgroup, grp_type='async')
+        if error_text == 'addtargetlist':
+            self.assertEqual(check_msg.text, 'ERR_MSG_ALREADY_INCLUDES')
+        else:
+            self.assertEqual(check_msg.text, 'ERR_MSG_ALREADY_ALLOWED')
+        expected_name = "consisgroup-" + cgroup.id + "-cinder"
+        self.driver._get_current_array.assert_called()
+        self.array.create_pgroup.assert_called_with(expected_name)
         self.assert_error_propagates(
             [self.array.create_pgroup],
             self.driver.create_consistencygroup, None, cgroup)
@@ -4469,6 +4519,65 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
             group,
             vol_name
         )
+
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    def test_create_group_replication_fail(self, mock_is_cg, mock_is_repl):
+        mock_is_cg.return_value = True
+        mock_is_repl.return_value = True
+        group = fake_group.fake_group_type_obj(self.ctxt)
+        self.assertRaises(pure.PureDriverException,
+                          self.driver.create_group, self.ctxt, group)
+
+    @mock.patch(BASE_DRIVER_OBJ + "._group_potential_repl_types")
+    @mock.patch('cinder.objects.volume_type.VolumeType.get_by_name_or_id')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    def test_create_group_async_replication_available(self,
+                                                      mock_is_cg, mock_is_repl,
+                                                      mock_get_volume_type,
+                                                      mock_get_repl_types):
+        mock_get_repl_types.return_value = set()
+        repl_extra_specs = {
+            'replication_type': '<in> async',
+            'replication_enabled': '<is> true',
+        }
+        vol, vol_name = self.new_fake_vol(spec={"size": 2},
+                                          type_extra_specs=repl_extra_specs)
+        mock_get_volume_type.return_value = vol.volume_type
+        mock_is_cg.return_value = True
+        mock_is_repl.return_value = True
+        group = fake_group.fake_group_type_obj(None)
+        group.volume_type_ids = [fake.GROUP_ID]
+        self.driver._is_replication_enabled = True
+        output = self.driver.create_group(None, group)
+        self.assertEqual({'status': 'available'}, output)
+        self.driver._is_replication_enabled = False
+
+    @mock.patch(BASE_DRIVER_OBJ + "._group_potential_repl_types")
+    @mock.patch('cinder.objects.volume_type.VolumeType.get_by_name_or_id')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    def test_create_group_sync_replication_error(self, mock_is_cg,
+                                                 mock_is_repl,
+                                                 mock_get_volume_type,
+                                                 mock_get_repl_types):
+        mock_get_repl_types.return_value = set()
+        repl_extra_specs = {
+            'replication_type': '<in> sync',
+            'replication_enabled': '<is> true',
+        }
+        vol, vol_name = self.new_fake_vol(spec={"size": 2},
+                                          type_extra_specs=repl_extra_specs)
+        mock_get_volume_type.return_value = vol.volume_type
+        mock_is_cg.return_value = True
+        mock_is_repl.return_value = True
+        group = fake_group.fake_group_type_obj(None)
+        group.volume_type_ids = [fake.GROUP_ID]
+        self.driver._is_replication_enabled = True
+        output = self.driver.create_group(None, group)
+        self.assertEqual({'status': 'error'}, output)
+        self.driver._is_replication_enabled = False
 
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group(self, mock_is_cg):
