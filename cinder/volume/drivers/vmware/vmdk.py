@@ -1026,7 +1026,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                                cert)
         return {
             'url': url,
-            'ssl_thumbprint': x509.digest("sha1"),
+            'ssl_thumbprint': x509.digest("sha1").decode("utf-8"),
             'instance_uuid': self._vcenter_instance_uuid,
             'credential': {
                 'username': self.configuration.vmware_host_username,
