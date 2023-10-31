@@ -38,7 +38,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1.13'
+VERSION = '1.1.14'
 
 LOG = logging.getLogger(__name__)
 
@@ -119,6 +119,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.11 - NAS secure ownership & permissions are now False by default
         1.1.12 - Ensure the currently configured volume url is always used
         1.1.13 - Allow creating volumes from snapshots in state 'backing-up'
+        1.1.14 - Fixes regression from encryption being added in parent class
 
     """
 
@@ -383,7 +384,9 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         return self._create_volume_from_snapshot(volume, snapshot)
 
     @coordination.synchronized('{self.driver_prefix}-{volume.id}')
-    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
+    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size,
+                                   src_encryption_key_id=None,
+                                   new_encryption_key_id=None):
         """Copy data from snapshot to destination volume.
 
         This is done with a qemu-img convert to raw/qcow2 from the snapshot
@@ -391,6 +394,12 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         is written into the cache and all volumes created from this
         snapshot id are created directly from the cache.
         """
+
+        if new_encryption_key_id:
+            msg = _("Encryption key %s was requested. Volume "
+                    "encryption is not supported.")
+            raise exception.NotSupportedOperation(
+                message=msg % new_encryption_key_id)
 
         LOG.debug("snapshot: %(snap)s, volume: %(vol)s, ",
                   {'snap': snapshot.id,
