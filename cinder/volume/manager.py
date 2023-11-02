@@ -2142,7 +2142,8 @@ class VolumeManager(manager.CleanableManager,
         # and the volume status updated.
         utils.require_driver_initialized(self.driver)
 
-        volume_ref = self.db.volume_get(context, volume_id)
+        # volume_ref = self.db.volume_get(context, volume_id)
+        volume_ref = objects.Volume.get_by_id(context, volume_id)
         try:
             self.driver.terminate_connection(volume_ref, connector,
                                              force=force)
@@ -2720,7 +2721,9 @@ class VolumeManager(manager.CleanableManager,
         # We can use driver assisted migration if we only change the backend
         # name, and the AZ.
         extra_specs = extra_specs.copy()
-        extra_specs.pop('volume_backend_name', None)
+        backend_name = extra_specs.pop('volume_backend_name', {})
+        if (('vmware' in backend_name) or ('vmware_fcd' in backend_name)):
+            return True
         extra_specs.pop('RESKEY:availability_zones', None)
         return not extra_specs
 

@@ -626,7 +626,7 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(name, ret.name)
         self.assertEqual(mock.sentinel.uuid, ret.instanceUuid)
         self.assertEqual('[%s]' % ds_name, ret.files.vmPathName)
-        self.assertEqual("vmx-08", ret.version)
+        self.assertEqual("vmx-17", ret.version)
         self.assertEqual(profile_id, ret.vmProfile[0].profileId)
         self.assertEqual(1, len(ret.extraConfig))
         self.assertEqual(option_key, ret.extraConfig[0].key)
@@ -2027,7 +2027,12 @@ class VolumeOpsTestCase(test.TestCase):
             spec=spec)
         self.session.wait_for_task.assert_called_once_with(task)
 
-    def test_delete_fcd(self):
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_dc')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_vmdk_path_for_fcd')
+    def test_delete_fcd(self, get_vmdk_path_for_fcd,
+                        get_dc):
         task = mock.sentinel.task
         self.session.invoke_api.return_value = task
 
@@ -2036,9 +2041,12 @@ class VolumeOpsTestCase(test.TestCase):
         fcd_location.id.return_value = fcd_id
         ds_ref = mock.sentinel.ds_ref
         fcd_location.ds_ref.return_value = ds_ref
+        get_vmdk_path_for_fcd.return_value = (
+            "[ds-1] volume-9b3f6f1b-03a9-4f1e-abc123")
+        get_dc.return_value = mock.sentinel.dc
 
-        self.vops.delete_fcd(fcd_location)
-        self.session.invoke_api.assert_called_once_with(
+        self.vops.delete_fcd(fcd_location, delete_folder=False)
+        self.session.invoke_api.assert_called_with(
             self.session.vim,
             'DeleteVStorageObject_Task',
             self.session.vim.service_content.vStorageObjectManager,
