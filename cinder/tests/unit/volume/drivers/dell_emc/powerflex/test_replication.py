@@ -110,3 +110,23 @@ class TestReplication(powerflex.TestPowerFlexDriver):
                           context={},
                           volumes=[],
                           secondary_id=secondary_id)
+
+    def test_failover_aa(self):
+        self.test_do_setup_replication_configured()
+        self.driver.failover({}, [], self.replication_backend_id)
+        self.driver.failover_completed({}, "failed over")
+        self.assertEqual(self.replication_backend_id,
+                         self.driver.active_backend_id)
+
+    def test_failback_aa(self):
+        self.test_do_setup_already_failed_over()
+        self.driver.failover({}, [], 'default')
+        self.driver.failover_completed({})
+        self.assertEqual('default', self.driver.active_backend_id)
+
+    def test_failover_completed_invalid(self):
+        self.test_do_setup_replication_configured()
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.driver.failover_completed,
+                          context={},
+                          active_backend_id="not_valid_target")
