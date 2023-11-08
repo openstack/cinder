@@ -41,31 +41,35 @@ NFS_CONFIG = {'max_over_subscription_ratio': 1.0,
               'nas_secure_file_operations': 'false'}
 
 
-QEMU_IMG_INFO_OUT1 = """image: %(volid)s
-        file format: raw
-        virtual size: %(size_gb)sG (%(size_b)s bytes)
-        disk size: 173K
-        """
+QEMU_IMG_INFO_OUT1 = """{
+    "image": "%(volid)s",
+    "format": "raw",
+    "virtual-size": %(size_b)s,
+    "actual-size": 177152
+}"""
 
-QEMU_IMG_INFO_OUT2 = """image: %(volid)s
-        file format: qcow2
-        virtual size: %(size_gb)sG (%(size_b)s bytes)
-        disk size: 173K
-        """
+QEMU_IMG_INFO_OUT2 = """{
+    "image": "%(volid)s",
+    "format": "qcow2",
+    "virtual-size": %(size_b)s,
+    "actual-size": 177152
+}"""
 
-QEMU_IMG_INFO_OUT3 = """image: volume-%(volid)s.%(snapid)s
-        file format: qcow2
-        virtual size: %(size_gb)sG (%(size_b)s bytes)
-        disk size: 196K
-        cluster_size: 65536
-        backing file: volume-%(volid)s
-        backing file format: qcow2
-        Format specific information:
-            compat: 1.1
-            lazy refcounts: false
-            refcount bits: 16
-            corrupt: false
-        """
+QEMU_IMG_INFO_OUT3 = """{
+    "image": "volume-%(volid)s.%(snapid)s",
+    "format": "qcow2",
+    "virtual-size": %(size_b)s,
+    "actual-size": 200704,
+    "cluster-size": 65536,
+    "backing-filename": "volume-%(volid)s",
+    "backing-filename-format": "qcow2",
+    "format-specific": {
+        "compat": 1.1,
+        "lazy-refcounts": false,
+        "refcount-bits": 16,
+        "corrupt": false
+    }
+}"""
 
 
 @ddt.ddt
@@ -362,10 +366,9 @@ class PowerStoreNFSDriverTestCase(test.TestCase):
 
         mock_img_utils = self.mock_object(drv, '_qemu_img_info')
         img_out = qemu_img_info % {'volid': volume.id,
-                                   'size_gb': volume.size,
                                    'size_b': volume.size * units.Gi}
         mock_img_utils.return_value = imageutils.QemuImgInfo(
-            img_out)
+            img_out, format='json')
 
         with mock.patch.object(image_utils, 'resize_image') as resize:
             with mock.patch.object(drv, 'local_path', return_value=path):
@@ -450,9 +453,9 @@ class PowerStoreNFSDriverTestCase(test.TestCase):
         mock_img_utils = self.mock_object(drv, '_qemu_img_info')
         img_out = qemu_img_info % {'volid': src_volume.id,
                                    'snapid': fake_snap.id,
-                                   'size_gb': src_volume.size,
                                    'size_b': src_volume.size * units.Gi}
-        mock_img_utils.return_value = imageutils.QemuImgInfo(img_out)
+        mock_img_utils.return_value = imageutils.QemuImgInfo(
+            img_out, format='json')
 
         drv._copy_volume_from_snapshot(fake_snap, new_volume, new_volume.size)
 
