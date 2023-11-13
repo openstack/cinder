@@ -2622,35 +2622,12 @@ class VolumeManager(manager.CleanableManager,
                  resource=volume)
         return volume.id
 
-    def _can_use_driver_migration(self, diff):
-        """Return when we can use driver assisted migration on a retype."""
-        # We can if there's no retype or there are no difference in the types
-        if not diff:
-            return True
-
-        extra_specs = diff.get('extra_specs')
-        qos = diff.get('qos_specs')
-        enc = diff.get('encryption')
-
-        # We cant' if QoS or Encryption changes and we can if there are no
-        # extra specs changes.
-        if qos or enc or not extra_specs:
-            return not (qos or enc)
-
-        # We can use driver assisted migration if we only change the backend
-        # name, and the AZ.
-        extra_specs = extra_specs.copy()
-        extra_specs.pop('volume_backend_name', None)
-        extra_specs.pop('RESKEY:availability_zones', None)
-        return not extra_specs
-
     def migrate_volume(self,
                        ctxt: context.RequestContext,
                        volume,
                        host,
                        force_host_copy: bool = False,
-                       new_type_id=None,
-                       diff=None) -> None:
+                       new_type_id=None) -> None:
         """Migrate the volume to the specified host (called on source host)."""
         try:
             volume_utils.require_driver_initialized(self.driver)
@@ -2668,7 +2645,7 @@ class VolumeManager(manager.CleanableManager,
 
         volume.migration_status = 'migrating'
         volume.save()
-        if not force_host_copy and self._can_use_driver_migration(diff):
+        if not force_host_copy and new_type_id is None:
             try:
                 LOG.debug("Issue driver.migrate_volume.", resource=volume)
                 moved, model_update = self.driver.migrate_volume(ctxt,
@@ -2687,8 +2664,6 @@ class VolumeManager(manager.CleanableManager,
                         updates.update(status_update)
                     if model_update:
                         updates.update(model_update)
-                    if new_type_id:
-                        updates['volume_type_id'] = new_type_id
                     volume.update(updates)
                     volume.save()
             except Exception:
@@ -3146,7 +3121,7 @@ class VolumeManager(manager.CleanableManager,
 
             try:
                 self.migrate_volume(context, volume, host,
-                                    new_type_id=new_type_id, diff=diff)
+                                    new_type_id=new_type_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     _retype_error(context, volume, old_reservations,
