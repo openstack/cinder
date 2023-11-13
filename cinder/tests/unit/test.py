@@ -64,7 +64,6 @@ CONF = config.CONF
 
 _DB_CACHE = None
 DB_SCHEMA = None
-SESSION_CONFIGURED = False
 
 
 class TestingException(Exception):
@@ -75,13 +74,6 @@ class Database(fixtures.Fixture):
 
     def __init__(self):
         super().__init__()
-
-        # NOTE(lhx_): oslo_db.enginefacade is configured in tests the same
-        # way as it's done for any other services that uses the db
-        global SESSION_CONFIGURED
-        if not SESSION_CONFIGURED:
-            sqla_api.configure(CONF)
-            SESSION_CONFIGURED = True
 
         # Suppress logging for test runs
         migrate_logger = logging.getLogger('migrate')
