@@ -69,6 +69,7 @@ CONF.register_opts(backup_opts)
 def _write_nonzero(volume_file, volume_offset, content):
     """Write non-zero parts of `content` into `volume_file`."""
     chunk_length = 1024 * 1024
+    content = memoryview(content)
     for chunk_offset in range(0, len(content), chunk_length):
         chunk_end = chunk_offset + chunk_length
         chunk = content[chunk_offset:chunk_end]
