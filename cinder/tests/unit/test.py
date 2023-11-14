@@ -34,6 +34,7 @@ from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_log.fixture import logging_error as log_fixture
 import oslo_messaging
+from oslo_messaging._drivers import impl_fake as fake_msging
 from oslo_messaging import conffixture as messaging_conffixture
 from oslo_serialization import jsonutils
 from oslo_utils import strutils
@@ -196,6 +197,9 @@ class TestCase(testtools.TestCase):
         rpc.add_extra_exmods("cinder.tests.unit")
         self.addCleanup(rpc.clear_extra_exmods)
         self.addCleanup(rpc.cleanup)
+        # TODO: Remove line after comment once the oslo.messaging fix merges
+        #       https://review.opendev.org/c/openstack/oslo.messaging/+/901018
+        self.addCleanup(fake_msging.FakeExchangeManager._exchanges.clear)
 
         self.messaging_conf = messaging_conffixture.ConfFixture(CONF)
         self.messaging_conf.transport_url = 'fake:/'
