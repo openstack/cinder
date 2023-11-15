@@ -156,7 +156,7 @@
 
 - job:
     name: cinder-sqlalchemy-2x
-    parent: openstack-tox-py310
+    parent: openstack-tox-py311
     description: |
       Run unit tests with main branch of SQLAlchemy, alembic and oslo.db.
       Takes advantage of the base tox job's install-siblings feature.
