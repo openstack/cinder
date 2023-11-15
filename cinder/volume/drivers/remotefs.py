@@ -37,7 +37,6 @@ from oslo_serialization import jsonutils
 from oslo_utils import imageutils
 from oslo_utils.secretutils import md5
 from oslo_utils import units
-import six
 
 from cinder import compute
 from cinder import context
@@ -1037,7 +1036,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
         Returns string in a hex format.
         """
-        if isinstance(base_str, six.text_type):
+        if isinstance(base_str, str):
             base_str = base_str.encode('utf-8')
         return md5(base_str, usedforsecurity=False).hexdigest()
 

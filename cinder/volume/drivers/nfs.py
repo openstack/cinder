@@ -26,7 +26,6 @@ from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
-import six
 
 from cinder import context
 from cinder import coordination
@@ -227,7 +226,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
                               '%(count)d attempts.',
                               {'share': nfs_share,
                                'count': num_attempts})
-                    raise exception.NfsException(six.text_type(e))
+                    raise exception.NfsException(str(e))
                 LOG.debug('Mount attempt %(attempt)d failed: %(exc)s.\n'
                           'Retrying mount ...',
                           {'attempt': attempt, 'exc': e})
