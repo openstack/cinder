@@ -97,9 +97,15 @@ class FJDXFCDriver(driver.FibreChannelDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        location, metadata = self.common.create_snapshot(snapshot)
+        LOG.debug('create_snapshot, '
+                  'snap id: %(sid)s, volume id: %(vid)s, Enter method.',
+                  {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
 
-        return {'provider_location': str(location)}
+        model_update = self.common.create_snapshot(snapshot)
+
+        LOG.debug('create_snapshot, info: %s, Exit method.',
+                  model_update['metadata'])
+        return model_update
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""

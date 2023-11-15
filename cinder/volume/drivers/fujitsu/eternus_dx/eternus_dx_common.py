@@ -70,10 +70,11 @@ class FJDXCommon(object):
     1.4.2 - Add the secondary check for copy-sessions when deleting volumes.
     1.4.3 - Add fragment capacity information of RAID Group.
     1.4.4 - Add support for update migrated volume.
+    1.4.5 - Add metadata for snapshot.
 
     """
 
-    VERSION = "1.4.4"
+    VERSION = "1.4.5"
     stats = {
         'driver_version': VERSION,
         'storage_protocol': None,
@@ -636,24 +637,18 @@ class FJDXCommon(object):
         LOG.error(msg)
         raise exception.VolumeBackendAPIException(data=msg)
 
-    @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
     def create_snapshot(self, snapshot):
         """Create snapshot using SnapOPC."""
         LOG.debug('create_snapshot, '
                   'snapshot id: %(sid)s, volume id: %(vid)s.',
                   {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
 
-        self.conn = self._get_eternus_connection()
-        snapshotname = snapshot['name']
-        volumename = snapshot['volume_name']
         volume = snapshot['volume']
-        d_volumename = self._get_volume_name(snapshot, use_id=True)
         s_volumename = self._get_volume_name(volume)
         vol_instance = self._find_lun(volume)
-        repservice = self._find_eternus_service(CONSTANTS.REPL)
 
         # Check the existence of volume.
-        if vol_instance is None:
+        if not vol_instance:
             # Volume not found on ETERNUS.
             msg = (_('create_snapshot, '
                      'volumename: %(s_volumename)s, '
@@ -662,7 +657,37 @@ class FJDXCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        if repservice is None:
+        model_update = self._create_snapshot(snapshot)
+
+        return model_update
+
+    @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
+    def _create_snapshot(self, snapshot):
+
+        LOG.debug('create_snapshot, '
+                  'snapshot id: %(sid)s, volume id: %(vid)s.',
+                  {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
+
+        self.conn = self._get_eternus_connection()
+        snapshotname = snapshot['name']
+        volume = snapshot['volume']
+        volumename = snapshot['volume_name']
+        d_volumename = self._get_volume_name(snapshot, use_id=True)
+        s_volumename = self._get_volume_name(volume)
+        vol_instance = self._find_lun(volume)
+        smis_service = self._find_eternus_service(CONSTANTS.REPL)
+
+        # Check the existence of volume.
+        if not vol_instance:
+            # Volume not found on ETERNUS.
+            msg = (_('create_snapshot, '
+                     'volumename: %(s_volumename)s, '
+                     'source volume not found on ETERNUS.')
+                   % {'s_volumename': s_volumename})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        if not smis_service:
             msg = (_('create_snapshot, '
                      'volumename: %(volumename)s, '
                      'Replication Service not found.')
@@ -674,7 +699,7 @@ class FJDXCommon(object):
         eternus_pool = self._get_drvcfg('EternusSnapPool')
         # Check the existence of pool
         pool = self._find_pool(eternus_pool)
-        if pool is None:
+        if not pool:
             msg = (_('create_snapshot, '
                      'eternus_pool: %(eternus_pool)s, '
                      'pool not found.')
@@ -695,14 +720,26 @@ class FJDXCommon(object):
                    'd_volumename': d_volumename,
                    'pool': pool})
 
+        if self.model_name != CONSTANTS.DX_S2:
+            smis_method = 'CreateElementReplica'
+            params = {
+                'ElementName': d_volumename,
+                'TargetPool': pool,
+                'SyncType': self._pywbem_uint(7, '16'),
+                'SourceElement': vol_instance.path
+            }
+        else:
+            smis_method = 'CreateReplica'
+            params = {
+                'ElementName': d_volumename,
+                'TargetPool': pool,
+                'CopyType': self._pywbem_uint(4, '16'),
+                'SourceElement': vol_instance.path
+            }
         # Invoke method for create snapshot
         rc, errordesc, job = self._exec_eternus_service(
-            'CreateElementReplica',
-            repservice,
-            ElementName=d_volumename,
-            TargetPool=pool,
-            SyncType=self._pywbem_uint(7, '16'),
-            SourceElement=vol_instance.path)
+            smis_method, smis_service,
+            **params)
 
         if rc != 0:
             msg = (_('create_snapshot, '
@@ -724,6 +761,7 @@ class FJDXCommon(object):
             raise exception.VolumeBackendAPIException(data=msg)
         else:
             element = job['TargetElement']
+            d_volume_no = self._get_volume_number(element)
 
         LOG.debug('create_snapshot, '
                   'volumename:%(volumename)s, '
@@ -743,11 +781,17 @@ class FJDXCommon(object):
             'vol_name': d_volumename,
         }
 
-        sdv_no = self._get_volume_number(element)
         metadata = {'FJ_SDV_Name': d_volumename,
-                    'FJ_SDV_No': sdv_no,
+                    'FJ_SDV_No': d_volume_no,
                     'FJ_Pool_Name': eternus_pool}
-        return (element_path, metadata)
+        d_metadata = self.get_metadata(snapshot)
+        d_metadata.update(metadata)
+
+        model_update = {
+            'provider_location': str(element_path),
+            'metadata': d_metadata,
+        }
+        return model_update
 
     def delete_snapshot(self, snapshot):
         """Delete snapshot."""
@@ -1197,7 +1241,7 @@ class FJDXCommon(object):
         else:
             ret = []
             for e in elem.findall(".//" + tagname):
-                if (e.text is not None) and (e.text not in ret):
+                if e.text and (e.text not in ret):
                     ret.append(e.text)
 
         if not ret:
@@ -1250,8 +1294,7 @@ class FJDXCommon(object):
         """Get volume_name on ETERNUS from volume on OpenStack."""
         LOG.debug('_get_volume_name, volume_id: %s.', volume['id'])
 
-        if (not use_id and 'provider_location' in volume and
-                volume['provider_location']):
+        if not use_id and volume['provider_location']:
             location = eval(volume['provider_location'])
             if 'vol_name' in location:
                 LOG.debug('_get_volume_name, by provider_location, '
@@ -1609,7 +1652,7 @@ class FJDXCommon(object):
 
     @lockutils.synchronized('ETERNUS-SMIS-getinstance', 'cinder-', True)
     @utils.retry(exception.VolumeBackendAPIException)
-    def _get_eternus_instance(self, classname, allownone=False, **param_dict):
+    def _get_eternus_instance(self, classname, AllowNone=False, **param_dict):
         """Get Instance."""
         LOG.debug('_get_eternus_instance, '
                   'classname: %(cls)s, param: %(param)s.',
@@ -1619,7 +1662,7 @@ class FJDXCommon(object):
         try:
             ret = self.conn.GetInstance(classname, **param_dict)
         except Exception as e:
-            if e.args[0] == 6 and allownone:
+            if e.args[0] == 6 and AllowNone:
                 return ret
             else:
                 msg = _('_get_eternus_instance, Error:%s.') % e
@@ -1703,6 +1746,7 @@ class FJDXCommon(object):
             location = eval(volume['provider_location'])
             classname = location['classname']
             bindings = location['keybindings']
+            isSuccess = True
 
             if classname and bindings:
                 LOG.debug('_find_lun, '
@@ -1718,17 +1762,17 @@ class FJDXCommon(object):
                           {'volume_instance_name': volume_instance_name})
 
                 vol_instance = self._get_eternus_instance(volume_instance_name,
-                                                          allownone=True,)
+                                                          AllowNone=True)
 
                 if vol_instance and vol_instance['ElementName'] == volumename:
                     volumeinstance = vol_instance
         except Exception:
-            volumeinstance = None
+            isSuccess = False
             LOG.debug('_find_lun, '
                       'Cannot get volume instance from provider location, '
                       'Search all volume using EnumerateInstanceNames.')
 
-        if not volumeinstance:
+        if not isSuccess and self.model_name == CONSTANTS.DX_S2:
             # For old version.
             LOG.debug('_find_lun, '
                       'volumename: %(volumename)s.',
