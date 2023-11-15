@@ -27,7 +27,7 @@ import string
 import tempfile
 import time
 import typing
-from typing import Callable, List, Optional, Tuple, Union  # noqa: H301
+from typing import Callable, List, Optional, Tuple, Union
 
 from castellan import key_manager
 from os_brick.remotefs import remotefs as remotefs_brick

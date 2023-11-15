@@ -33,8 +33,8 @@ import tempfile
 import time
 import types
 import typing
-from typing import Any, BinaryIO, Callable, IO  # noqa: H301
-from typing import Optional, Union  # noqa: H301
+from typing import Any, BinaryIO, Callable, IO
+from typing import Optional, Union
 import uuid
 
 from castellan.common.credentials import keystone_password

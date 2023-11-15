@@ -32,7 +32,7 @@ import math
 import os
 import re
 import tempfile
-from typing import ContextManager, Generator, Optional  # noqa: H301
+from typing import ContextManager, Generator, Optional
 
 import cryptography
 from cursive import exception as cursive_exception

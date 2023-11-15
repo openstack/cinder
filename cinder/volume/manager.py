@@ -40,7 +40,7 @@ from __future__ import annotations  # Remove when only supporting Python 3.9+
 import functools
 import time
 import typing
-from typing import Any, Optional, Union  # noqa: H301
+from typing import Any, Optional, Union
 
 from castellan import key_manager
 from oslo_config import cfg

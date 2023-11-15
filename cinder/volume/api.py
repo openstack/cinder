@@ -21,7 +21,7 @@ from __future__ import annotations
 import ast
 import collections
 import datetime
-from typing import (Any, DefaultDict, Iterable, Optional, Union)  # noqa: H301
+from typing import (Any, DefaultDict, Iterable, Optional, Union)
 
 from castellan import key_manager
 from oslo_config import cfg

@@ -15,7 +15,7 @@ from __future__ import annotations
 import binascii
 import traceback
 import typing
-from typing import Any, Optional  # noqa: H301
+from typing import Any, Optional
 
 from castellan import key_manager
 import os_brick.initiator.connectors

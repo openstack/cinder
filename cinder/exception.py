@@ -22,7 +22,7 @@ SHOULD include dedicated exception logging.
 
 """
 
-from typing import Optional, Union  # noqa: H301
+from typing import Optional, Union
 
 from oslo_log import log as logging
 from oslo_versionedobjects import exception as obj_exc

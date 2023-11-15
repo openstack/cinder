@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional  # noqa: H301
+from typing import Any, Optional
 
 from oslo_log import log as logging
 # For more information please visit: https://wiki.openstack.org/wiki/TaskFlow

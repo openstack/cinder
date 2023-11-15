@@ -25,7 +25,7 @@ import shutil
 import sys
 import textwrap
 import time
-from typing import (Any, Callable, Iterable, NoReturn, Optional)  # noqa: H301
+from typing import (Any, Callable, Iterable, NoReturn, Optional)
 import urllib
 import urllib.parse
 

@@ -44,8 +44,8 @@ import stat
 import sys
 import tempfile
 import typing
-from typing import Callable, Iterable, Iterator  # noqa: H301
-from typing import Optional, Type, Union  # noqa: H301
+from typing import Callable, Iterable, Iterator
+from typing import Optional, Type, Union
 
 import eventlet
 from eventlet import tpool

@@ -22,7 +22,7 @@ Weighing Functions.
 
 from __future__ import annotations
 
-from typing import (Optional, Union)  # noqa: H301
+from typing import (Optional, Union)
 
 from oslo_config import cfg
 from oslo_log import log as logging

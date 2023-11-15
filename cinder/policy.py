@@ -17,7 +17,7 @@
 
 import sys
 import typing
-from typing import Optional, Type  # noqa: H301
+from typing import Optional, Type
 
 from oslo_config import cfg
 from oslo_log import log as logging

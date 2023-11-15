@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Generator, Iterable, Optional, Union  # noqa: H301
+from typing import Any, Generator, Iterable, Optional, Union
 
 from keystoneauth1 import exceptions as ks_exc
 from keystoneauth1 import identity

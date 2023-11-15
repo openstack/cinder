@@ -21,7 +21,7 @@ import inspect
 import os
 import re
 import sys
-from typing import Callable, Optional  # noqa: H301
+from typing import Callable, Optional
 import uuid
 
 import decorator

@@ -13,7 +13,7 @@
 
 from __future__ import annotations  # Remove when only supporting python 3.9+
 
-from typing import Any, Optional, Type, Union  # noqa: H301
+from typing import Any, Optional, Type, Union
 
 from oslo_config import cfg
 from oslo_log import log as logging

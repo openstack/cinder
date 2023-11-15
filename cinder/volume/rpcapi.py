@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Union  # noqa: H301
+from typing import Optional, Union
 
 from cinder.common import constants
 from cinder import context
