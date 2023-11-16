@@ -266,7 +266,7 @@ class FJDXCLI(object):
                 if clidata[0] == 'FFFF':
                     break
                 data += int(clidata[7], 16)
-            provision = data / 2097152
+            provision = data / 2048
 
             output['message'] = provision
         except Exception as ex:

@@ -131,6 +131,8 @@ MAP_STAT = '0'
 VOL_STAT = '0'
 
 FAKE_CAPACITY = 1170368102400
+FAKE_REMAIN = 1168220618752
+FAKE_PROVISION = 1024
 # Volume1 in pool abcd1234_TPP
 FAKE_LUN_ID1 = '600000E00D2A0000002A011500140000'
 FAKE_LUN_NO1 = '0x0014'
@@ -145,37 +147,38 @@ FAKE_LUN_ID_QOS = '600000E00D2A0000002A011500140000'
 FAKE_LUN_NO_QOS = '0x0014'
 FAKE_SYSTEM_NAME = 'ET603SA4621302115'
 # abcd1234_TPP pool
-FAKE_USEGB = 2.0
+FAKE_USEGB = 1
 # abcd1234_RG pool
-FAKE_USEGB2 = 1.0
+FAKE_USEGB2 = 2
 FAKE_POOLS = [{
     'path': {'InstanceID': 'FUJITSU:TPP0004'},
     'pool_name': 'abcd1234_TPP',
-    'useable_capacity_gb': (FAKE_CAPACITY / units.Gi) * 20 - FAKE_USEGB,
-    'multiattach': False,
+    'useable_capacity_gb': int(
+        (FAKE_CAPACITY / units.Mi * 20 - FAKE_PROVISION) / 1024),
+    'multiattach': True,
     'thick_provisioning_support': False,
     'provisioned_capacity_gb': FAKE_USEGB,
-    'total_volumes': 2,
     'thin_provisioning_support': True,
-    'free_capacity_gb': FAKE_CAPACITY / units.Gi - FAKE_USEGB,
-    'total_capacity_gb': FAKE_CAPACITY / units.Gi,
+    'free_capacity_gb': int(FAKE_CAPACITY / units.Gi - FAKE_USEGB),
+    'total_capacity_gb': int(FAKE_CAPACITY / units.Gi),
     'max_over_subscription_ratio': '20.0',
 }, {
     'path': {'InstanceID': 'FUJITSU:RSP0005'},
     'pool_name': 'abcd1234_RG',
-    'useable_capacity_gb': FAKE_CAPACITY / units.Gi - FAKE_USEGB2,
-    'multiattach': False,
+    'useable_capacity_gb': int(FAKE_CAPACITY / units.Gi - FAKE_USEGB2),
+    'multiattach': True,
     'thick_provisioning_support': True,
     'provisioned_capacity_gb': FAKE_USEGB2,
-    'total_volumes': 1,
+    'total_volumes': 2,
     'thin_provisioning_support': False,
-    'free_capacity_gb': FAKE_CAPACITY / units.Gi - FAKE_USEGB2,
-    'total_capacity_gb': FAKE_CAPACITY / units.Gi,
+    'free_capacity_gb': int((FAKE_REMAIN * 1.0 / units.Mi) / 1024),
+    'total_capacity_gb': int(FAKE_CAPACITY / units.Gi),
+    'fragment_capacity_mb': FAKE_REMAIN * 1.0 / units.Mi,
     'max_over_subscription_ratio': 1,
 }]
 
 FAKE_STATS = {
-    'driver_version': '1.4.2',
+    'driver_version': '1.4.3',
     'storage_protocol': 'iSCSI',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -185,7 +188,7 @@ FAKE_STATS = {
     'pools': FAKE_POOLS,
 }
 FAKE_STATS2 = {
-    'driver_version': '1.4.2',
+    'driver_version': '1.4.3',
     'storage_protocol': 'FC',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -756,8 +759,8 @@ class FakeEternusConnection(object):
             pool['InstanceID'] = 'FUJITSU:RSP0004'
             pool['CreationClassName'] = 'FUJITSU_RAIDStoragePool'
             pool['ElementName'] = 'abcd1234_OSVD'
-            pool['TotalManagedSpace'] = 1170368102400
-            pool['RemainingManagedSpace'] = 1170368102400 - 1 * units.Gi
+            pool['TotalManagedSpace'] = FAKE_CAPACITY
+            pool['RemainingManagedSpace'] = FAKE_CAPACITY - 1 * units.Gi
             pool.path = FJ_StoragePool()
             pool.path['InstanceID'] = 'FUJITSU:RSP0004'
             pool.path.classname = 'FUJITSU_RAIDStoragePool'
@@ -766,8 +769,8 @@ class FakeEternusConnection(object):
             pool2['InstanceID'] = 'FUJITSU:RSP0005'
             pool2['CreationClassName'] = 'FUJITSU_RAIDStoragePool'
             pool2['ElementName'] = 'abcd1234_RG'
-            pool2['TotalManagedSpace'] = 1170368102400
-            pool2['RemainingManagedSpace'] = 1170368102400 - 1 * units.Gi
+            pool2['TotalManagedSpace'] = FAKE_CAPACITY
+            pool2['RemainingManagedSpace'] = FAKE_CAPACITY - 2 * units.Gi
             pool2.path = FJ_StoragePool()
             pool2.path['InstanceID'] = 'FUJITSU:RSP0005'
             pool2.path.classname = 'FUJITSU_RAIDStoragePool'
@@ -776,8 +779,8 @@ class FakeEternusConnection(object):
             pool['InstanceID'] = 'FUJITSU:TPP0004'
             pool['CreationClassName'] = 'FUJITSU_ThinProvisioningPool'
             pool['ElementName'] = 'abcd1234_TPP'
-            pool['TotalManagedSpace'] = 1170368102400
-            pool['RemainingManagedSpace'] = 1170368102400 - 2 * units.Gi
+            pool['TotalManagedSpace'] = FAKE_CAPACITY
+            pool['RemainingManagedSpace'] = FAKE_CAPACITY - 1 * units.Gi
             pool.path = FJ_StoragePool()
             pool.path['InstanceID'] = 'FUJITSU:TPP0004'
             pool.path.classname = 'FUJITSU_ThinProvisioningPool'
@@ -1022,12 +1025,6 @@ class FJFCDriverTestCase(test.TestCase):
                    '\t00000000\t0050\tFF\t00\tFF'
                    '\tFF\t20\tFF\tFFFF\t00'
                    '\t600000E00D2A0000002A011500140000'
-                   '\t00\t00\tFF\tFF\tFFFFFFFF\t00'
-                   '\t00\tFF\r\n0001\tFJosv_OgEZj1mSvKRvIKOExKktlg=='
-                   '\tA001\t0B\t00\t0000\tabcd1234_OSVD'
-                   '\t0000000000200000\t00\t00\t00000000'
-                   '\t0050\tFF\t00\tFF\tFF\t20\tFF\tFFFF'
-                   '\t00\t600000E00D2A0000002A0115001E0000'
                    '\t00\t00\tFF\tFF\tFFFFFFFF\t00'
                    '\t00\tFF' % exec_cmdline)
         elif exec_cmdline.startswith('show enclosure-status'):
@@ -1281,12 +1278,6 @@ class FJISCSIDriverTestCase(test.TestCase):
                    '\t00000000\t0050\tFF\t00\tFF'
                    '\tFF\t20\tFF\tFFFF\t00'
                    '\t600000E00D2A0000002A011500140000'
-                   '\t00\t00\tFF\tFF\tFFFFFFFF\t00'
-                   '\t00\tFF\r\n0001\tFJosv_OgEZj1mSvKRvIKOExKktlg=='
-                   '\tA001\t0B\t00\t0000\tabcd1234_OSVD'
-                   '\t0000000000200000\t00\t00\t00000000'
-                   '\t0050\tFF\t00\tFF\tFF\t20\tFF\tFFFF'
-                   '\t00\t600000E00D2A0000002A0115001E0000'
                    '\t00\t00\tFF\tFF\tFFFFFFFF\t00'
                    '\t00\tFF' % exec_cmdline)
         elif exec_cmdline.startswith('show enclosure-status'):
@@ -1664,7 +1655,7 @@ class FJCLITestCase(test.TestCase):
         FAKE_POOL_PROVIOSN_OPTION = self.create_fake_options(
             pool_name='abcd1234_TPP')
 
-        FAKE_PROVISION = {**FAKE_CLI_OUTPUT, 'message': FAKE_USEGB}
+        FAKE_PROVISION = {**FAKE_CLI_OUTPUT, 'message': 2048.0}
 
         proviosn = self.cli._show_pool_provision(**FAKE_POOL_PROVIOSN_OPTION)
         self.assertEqual(FAKE_PROVISION, proviosn)

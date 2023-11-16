@@ -68,10 +68,11 @@ class FJDXCommon(object):
     1.4.0 - Add support for QoS.
     1.4.1 - Add the method for expanding RAID volumes by CLI.
     1.4.2 - Add the secondary check for copy-sessions when deleting volumes.
+    1.4.3 - Add fragment capacity information of RAID Group.
 
     """
 
-    VERSION = "1.4.2"
+    VERSION = "1.4.3"
     stats = {
         'driver_version': VERSION,
         'storage_protocol': None,
@@ -273,7 +274,8 @@ class FJDXCommon(object):
 
         return element_path, metadata
 
-    def create_pool_info(self, pool_instance, volume_count, pool_type):
+    def create_pool_info(self, pool_instance, volume_count, pool_type,
+                         **kwargs):
         """Create pool information from pool instance."""
         LOG.debug('create_pool_info, pool_instance: %(pool)s, '
                   'volume_count: %(volcount)s, pool_type: %(ptype)s.',
@@ -285,32 +287,38 @@ class FJDXCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        total_gb = pool_instance['TotalManagedSpace'] / units.Gi
-        free_gb = pool_instance['RemainingManagedSpace'] / units.Gi
+        total_mb = pool_instance['TotalManagedSpace'] * 1.0 / units.Mi
+        free_mb = pool_instance['RemainingManagedSpace'] * 1.0 / units.Mi
+        fragment_mb = free_mb
 
-        if hasattr(pool_instance, 'provisioned_capacity_gb'):
-            prov_gb = pool_instance.provisioned_capacity_gb
+        if kwargs.get('provisioned_capacity_mb'):
+            prov_mb = kwargs.get('provisioned_capacity_mb')
         else:
-            prov_gb = total_gb - free_gb
+            prov_mb = total_mb - free_mb
 
         if pool_type == 'RAID':
-            useable_gb = free_gb
+            useable_mb = free_mb
+            if kwargs.get('fragment_size'):
+                if kwargs.get('fragment_size') != -1:
+                    fragment_mb = kwargs.get('fragment_size') / (2 * 1024)
+                else:
+                    fragment_mb = useable_mb
         else:
-            # If the ratio is less than the value on ETERNUS,
-            # useable_gb may be negative. Avoid over-allocation.
-            max_capacity = total_gb * float(
+            max_capacity_mb = total_mb * float(
                 self.configuration.max_over_subscription_ratio)
-            useable_gb = max_capacity - prov_gb
+            useable_mb = max_capacity_mb - prov_mb
 
         pool = {
             'name': pool_instance['ElementName'],
             'path': pool_instance.path,
-            'total_capacity_gb': total_gb,
-            'free_capacity_gb': free_gb,
+            'total_capacity_gb': int(total_mb / 1024),
+            'free_capacity_gb': int(free_mb / 1024),
             'type': pool_type,
             'volume_count': volume_count,
-            'provisioned_capacity_gb': prov_gb,
-            'useable_capacity_gb': useable_gb
+            'provisioned_capacity_gb': int(prov_mb / 1024),
+            'useable_capacity_gb': int(useable_mb / 1024),
+            'useable_capacity_mb': useable_mb,
+            'fragment_capacity_mb': fragment_mb,
         }
 
         LOG.debug('create_pool_info, pool: %s.', pool)
@@ -1335,8 +1343,8 @@ class FJDXCommon(object):
         return poollist
 
     def _find_pools(self, poolname_list, conn):
-        """Find Instance or InstanceName of pool by pool name on ETERNUS."""
-        LOG.debug('_find_pool, pool name: %s.', poolname_list)
+        """Find pool instances by using pool name on ETERNUS."""
+        LOG.debug('_find_pools, pool names: %s.', poolname_list)
 
         target_poolname = list(poolname_list)
         pools = []
@@ -1344,40 +1352,23 @@ class FJDXCommon(object):
         # Get pools info from CIM instance(include info about instance path).
         poollist = self._find_all_pools_instances(conn)
 
-        # One eternus backend has only one special pool name
-        # so just use pool name can get the target pool.
         for pool, ptype in poollist:
             poolname = pool['ElementName']
 
             LOG.debug('_find_pools, '
                       'pool: %(pool)s, ptype: %(ptype)s.',
                       {'pool': poolname, 'ptype': ptype})
+            volume_count = None
+            provisioned_capacity_mb = None
+            fragment_size = None
             if poolname in target_poolname:
-                try:
-                    volume_list = self._assoc_eternus_names(
-                        pool.path,
-                        conn=conn,
-                        AssocClass='FUJITSU_AllocatedFromStoragePool',
-                        ResultClass='FUJITSU_StorageVolume')
-
-                    volume_count = len(volume_list)
-                except Exception:
-                    msg = (_('_find_pools, '
-                             'poolname: %(poolname)s, '
-                             'pooltype: %(ptype)s, '
-                             'Associator Names, '
-                             'cannot connect to ETERNUS.')
-                           % {'ptype': ptype,
-                              'poolname': poolname})
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
-
                 if ptype == 'TPP':
                     param_dict = {
                         'pool-name': poolname
                     }
                     rc, errordesc, data = self._exec_eternus_cli(
-                        'show_pool_provision', **param_dict)
+                        'show_pool_provision',
+                        **param_dict)
 
                     if rc != 0:
                         msg = (_('_find_pools, show_pool_provision, '
@@ -1391,10 +1382,70 @@ class FJDXCommon(object):
                                   'job': data})
                         LOG.error(msg)
                         raise exception.VolumeBackendAPIException(data=msg)
+                    provisioned_capacity_mb = data
+                elif ptype == 'RAID':
+                    # Get volume number and fragment capacity information
+                    # only at creation time.
+                    try:
+                        volume_list = self._assoc_eternus_names(
+                            pool.path,
+                            conn=conn,
+                            AssocClass='FUJITSU_AllocatedFromStoragePool',
+                            ResultClass='FUJITSU_StorageVolume')
 
-                    pool.provisioned_capacity_gb = data
+                        volume_count = len(volume_list)
+                    except Exception:
+                        msg = (_('_find_pools, '
+                                 'poolname: %(poolname)s, '
+                                 'pooltype: %(ptype)s, '
+                                 'Associator Names, '
+                                 'cannot connect to ETERNUS.')
+                               % {'ptype': ptype,
+                                  'poolname': poolname})
+                        LOG.error(msg)
+                        raise exception.VolumeBackendAPIException(data=msg)
 
-                poolinfo = self.create_pool_info(pool, volume_count, ptype)
+                    try:
+                        sdpv_list = self._assoc_eternus_names(
+                            pool.path,
+                            conn=conn,
+                            AssocClass='FUJITSU_AllocatedFromStoragePool',
+                            ResultClass='FUJITSU_SDPVPool')
+                        volume_count += len(sdpv_list)
+                    except Exception:
+                        msg = (_('_find_pools, '
+                                 'pool name: %(poolname)s, '
+                                 'Associator Names FUJITSU_SDPVPool, '
+                                 'cannot connect to ETERNUS.')
+                               % {'poolname': poolname})
+                        LOG.error(msg)
+                        raise exception.VolumeBackendAPIException(data=msg)
+
+                    try:
+                        fragment_list = self._assoc_eternus(
+                            pool.path,
+                            conn=conn,
+                            PropertyList=['NumberOfBlocks'],
+                            AssocClass='FUJITSU_AssociatedRemainingExtent',
+                            ResultClass='FUJITSU_FreeExtent')
+
+                        if fragment_list:
+                            fragment_size = max(
+                                fragment_list,
+                                key=lambda x: x['NumberOfBlocks'])
+                        else:
+                            fragment_size = {'NumberOfBlocks': 0}
+                    except Exception:
+                        # S2 models do not support this query.
+                        fragment_size = {'NumberOfBlocks': -1}
+                    fragment_size = fragment_size['NumberOfBlocks']
+
+                poolinfo = self.create_pool_info(
+                    pool,
+                    volume_count,
+                    ptype,
+                    provisioned_capacity_mb=provisioned_capacity_mb,
+                    fragment_size=fragment_size)
 
                 target_poolname.remove(poolname)
                 pools.append((poolinfo, poolname))
@@ -1404,9 +1455,8 @@ class FJDXCommon(object):
 
         if not pools:
             LOG.warning('_find_pools, all the EternusPools in driver '
-                        'configuration file do not exist. '
-                        'Please edit the driver configuration file '
-                        'to include EternusPool names.')
+                        'configuration file are not exist. '
+                        'Please edit driver configuration file.')
 
         # Sort pools in the order defined in driver configuration file.
         sorted_pools = (
@@ -1427,12 +1477,14 @@ class FJDXCommon(object):
             else:
                 thin_enabled = False
                 max_ratio = 1
+                single_pool['total_volumes'] = pool['volume_count']
+                single_pool['fragment_capacity_mb'] = \
+                    pool['fragment_capacity_mb']
 
             single_pool.update(dict(
                 path=pool['path'],
                 pool_name=pool['name'],
                 total_capacity_gb=pool['total_capacity_gb'],
-                total_volumes=pool['volume_count'],
                 free_capacity_gb=pool['free_capacity_gb'],
                 provisioned_capacity_gb=pool['provisioned_capacity_gb'],
                 useable_capacity_gb=pool['useable_capacity_gb'],
@@ -1440,7 +1492,7 @@ class FJDXCommon(object):
                 thick_provisioning_support=not thin_enabled,
                 max_over_subscription_ratio=max_ratio,
             ))
-            single_pool['multiattach'] = False
+            single_pool['multiattach'] = True
             pools_stats['pools'].append(single_pool)
 
         self.stats['shared_targets'] = True

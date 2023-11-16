@@ -1,0 +1,31 @@
+---
+features:
+  - |
+    Fujitsu ETERNUS DX driver: Add fragment capacity information of RAID Group.
+
+    ETERNUS DX driver have two types of storage pools: RAID Group and
+    ThinProvisioning Pool. Volumes can not be created in RAID Groups for
+    the following situations:
+
+    * The maximum sequential physical free space is smaller than the volumes to
+      be created.
+
+    * 128 volumes have already been created in the RAID Group.
+
+    For the above reasons, to monitor the maximum sequential physical free
+    space and total volumes in the RAID Group, when updating pool information
+    using ``Get Volume Stats``, also update parameter ``total_volumes``
+    (volumes already created in the RAID Group) and introduce
+    ``fragment_capacity_mb`` (maximum sequential physical capacity) to the
+    backend pool information if the backend pool is a RAID Group.
+
+    Meanwhile, since creating volumes on ThinProvisioning Pool does not
+    encounter the above restrictions, parameter ``fragment_capacity_mb`` will
+    not be added into the information, and remove the ``total_volumes``
+    parameter from the backend pool information when the type of backend pool
+    is ThinProvisioning Pool.
+
+    These two parameters can be utilized in future implementations of functions
+    related to ``filter_function``.
+
+    This patch also enabled the ``multiattach`` in the driver information.
