@@ -34,9 +34,15 @@ class PurgeDeletedTest(test.TestCase):
 
     def setUp(self):
         super(PurgeDeletedTest, self).setUp()
+
         self.context = context.get_admin_context()
+
+        # enable foreign keys
         self.engine = db_api.get_engine()
-        self.conn = self.engine.connect()
+        if self.engine.url.get_dialect() == sqlite.dialect:
+            with self.engine.connect() as conn:
+                conn.connection.execute("PRAGMA foreign_keys = ON")
+
         self.volumes = sqlalchemyutils.get_table(
             self.engine, "volumes")
         # The volume_metadata table has a FK of volume_id
@@ -64,46 +70,48 @@ class PurgeDeletedTest(test.TestCase):
         self.uuidstrs = []
         for unused in range(6):
             self.uuidstrs.append(uuid.uuid4().hex)
+
         # Add 6 rows to table
-        for uuidstr in self.uuidstrs:
-            ins_stmt = self.volumes.insert().values(id=uuidstr,
-                                                    volume_type_id=uuidstr)
-            self.conn.execute(ins_stmt)
-            ins_stmt = self.vm.insert().values(volume_id=uuidstr)
-            self.conn.execute(ins_stmt)
-            ins_stmt = self.vgm.insert().values(
-                volume_id=uuidstr, key='image_name', value='test')
-            self.conn.execute(ins_stmt)
+        with db_api.main_context_manager.writer.using(self.context):
+            for uuidstr in self.uuidstrs:
+                ins_stmt = self.volumes.insert().values(id=uuidstr,
+                                                        volume_type_id=uuidstr)
+                self.context.session.execute(ins_stmt)
+                ins_stmt = self.vm.insert().values(volume_id=uuidstr)
+                self.context.session.execute(ins_stmt)
+                ins_stmt = self.vgm.insert().values(
+                    volume_id=uuidstr, key='image_name', value='test')
+                self.context.session.execute(ins_stmt)
 
-            ins_stmt = self.vol_types.insert().values(id=uuidstr)
-            self.conn.execute(ins_stmt)
-            ins_stmt = self.vol_type_proj.insert().\
-                values(volume_type_id=uuidstr)
-            self.conn.execute(ins_stmt)
+                ins_stmt = self.vol_types.insert().values(id=uuidstr)
+                self.context.session.execute(ins_stmt)
+                ins_stmt = self.vol_type_proj.insert().\
+                    values(volume_type_id=uuidstr)
+                self.context.session.execute(ins_stmt)
 
-            ins_stmt = self.snapshots.insert().values(
-                id=uuidstr, volume_id=uuidstr,
-                volume_type_id=uuidstr)
-            self.conn.execute(ins_stmt)
-            ins_stmt = self.sm.insert().values(snapshot_id=uuidstr)
-            self.conn.execute(ins_stmt)
+                ins_stmt = self.snapshots.insert().values(
+                    id=uuidstr, volume_id=uuidstr,
+                    volume_type_id=uuidstr)
+                self.context.session.execute(ins_stmt)
+                ins_stmt = self.sm.insert().values(snapshot_id=uuidstr)
+                self.context.session.execute(ins_stmt)
 
-            ins_stmt = self.vgm.insert().values(
-                snapshot_id=uuidstr, key='image_name', value='test')
-            self.conn.execute(ins_stmt)
+                ins_stmt = self.vgm.insert().values(
+                    snapshot_id=uuidstr, key='image_name', value='test')
+                self.context.session.execute(ins_stmt)
 
-            ins_stmt = self.qos.insert().values(
-                id=uuidstr, key='QoS_Specs_Name', value='test')
-            self.conn.execute(ins_stmt)
+                ins_stmt = self.qos.insert().values(
+                    id=uuidstr, key='QoS_Specs_Name', value='test')
+                self.context.session.execute(ins_stmt)
 
-            ins_stmt = self.vol_types.insert().values(
-                id=uuid.uuid4().hex, qos_specs_id=uuidstr)
-            self.conn.execute(ins_stmt)
+                ins_stmt = self.vol_types.insert().values(
+                    id=uuid.uuid4().hex, qos_specs_id=uuidstr)
+                self.context.session.execute(ins_stmt)
 
-            ins_stmt = self.qos.insert().values(
-                id=uuid.uuid4().hex, specs_id=uuidstr, key='desc',
-                value='test')
-            self.conn.execute(ins_stmt)
+                ins_stmt = self.qos.insert().values(
+                    id=uuid.uuid4().hex, specs_id=uuidstr, key='desc',
+                    value='test')
+                self.context.session.execute(ins_stmt)
 
         # Set 5 of them deleted
         # 2 are 60 days ago, 2 are 20 days ago, one is just now.
@@ -218,50 +226,48 @@ class PurgeDeletedTest(test.TestCase):
             self.vol_types.c.qos_specs_id.in_(self.uuidstrs[4:6])).values(
             deleted_at=older, deleted=True)
 
-        self.conn.execute(make_vol_now)
-        self.conn.execute(make_vol_old)
-        self.conn.execute(make_vol_older)
-        self.conn.execute(make_vol_meta_now)
-        self.conn.execute(make_vol_meta_old)
-        self.conn.execute(make_vol_meta_older)
+        with db_api.main_context_manager.writer.using(self.context):
+            self.context.session.execute(make_vol_now)
+            self.context.session.execute(make_vol_old)
+            self.context.session.execute(make_vol_older)
+            self.context.session.execute(make_vol_meta_now)
+            self.context.session.execute(make_vol_meta_old)
+            self.context.session.execute(make_vol_meta_older)
 
-        self.conn.execute(make_vol_types_now)
-        self.conn.execute(make_vol_types_old)
-        self.conn.execute(make_vol_types_older)
-        self.conn.execute(make_vol_type_proj_now)
-        self.conn.execute(make_vol_type_proj_old)
-        self.conn.execute(make_vol_type_proj_older)
+            self.context.session.execute(make_vol_types_now)
+            self.context.session.execute(make_vol_types_old)
+            self.context.session.execute(make_vol_types_older)
+            self.context.session.execute(make_vol_type_proj_now)
+            self.context.session.execute(make_vol_type_proj_old)
+            self.context.session.execute(make_vol_type_proj_older)
 
-        self.conn.execute(make_snap_now)
-        self.conn.execute(make_snap_old)
-        self.conn.execute(make_snap_older)
-        self.conn.execute(make_snap_meta_now)
-        self.conn.execute(make_snap_meta_old)
-        self.conn.execute(make_snap_meta_older)
+            self.context.session.execute(make_snap_now)
+            self.context.session.execute(make_snap_old)
+            self.context.session.execute(make_snap_older)
+            self.context.session.execute(make_snap_meta_now)
+            self.context.session.execute(make_snap_meta_old)
+            self.context.session.execute(make_snap_meta_older)
 
-        self.conn.execute(make_vol_glance_meta_now)
-        self.conn.execute(make_vol_glance_meta_old)
-        self.conn.execute(make_vol_glance_meta_older)
-        self.conn.execute(make_snap_glance_meta_now)
-        self.conn.execute(make_snap_glance_meta_old)
-        self.conn.execute(make_snap_glance_meta_older)
+            self.context.session.execute(make_vol_glance_meta_now)
+            self.context.session.execute(make_vol_glance_meta_old)
+            self.context.session.execute(make_vol_glance_meta_older)
+            self.context.session.execute(make_snap_glance_meta_now)
+            self.context.session.execute(make_snap_glance_meta_old)
+            self.context.session.execute(make_snap_glance_meta_older)
 
-        self.conn.execute(make_qos_now)
-        self.conn.execute(make_qos_old)
-        self.conn.execute(make_qos_older)
+            self.context.session.execute(make_qos_now)
+            self.context.session.execute(make_qos_old)
+            self.context.session.execute(make_qos_older)
 
-        self.conn.execute(make_qos_child_record_now)
-        self.conn.execute(make_qos_child_record_old)
-        self.conn.execute(make_qos_child_record_older)
+            self.context.session.execute(make_qos_child_record_now)
+            self.context.session.execute(make_qos_child_record_old)
+            self.context.session.execute(make_qos_child_record_older)
 
-        self.conn.execute(make_vol_types1_now)
-        self.conn.execute(make_vol_types1_old)
-        self.conn.execute(make_vol_types1_older)
+            self.context.session.execute(make_vol_types1_now)
+            self.context.session.execute(make_vol_types1_old)
+            self.context.session.execute(make_vol_types1_older)
 
     def test_purge_deleted_rows_in_zero_age_in(self):
-        dialect = self.engine.url.get_dialect()
-        if dialect == sqlite.dialect:
-            self.conn.exec_driver_sql("PRAGMA foreign_keys = ON")
         # Purge at age_in_days=0, should delete one more row
         db.purge_deleted_rows(self.context, age_in_days=0)
 
@@ -288,9 +294,6 @@ class PurgeDeletedTest(test.TestCase):
         self.assertEqual(2, qos_rows)
 
     def test_purge_deleted_rows_old(self):
-        dialect = self.engine.url.get_dialect()
-        if dialect == sqlite.dialect:
-            self.conn.exec_driver_sql("PRAGMA foreign_keys = ON")
         # Purge at 30 days old, should only delete 2 rows
         db.purge_deleted_rows(self.context, age_in_days=30)
 
@@ -317,9 +320,6 @@ class PurgeDeletedTest(test.TestCase):
         self.assertEqual(8, qos_rows)
 
     def test_purge_deleted_rows_older(self):
-        dialect = self.engine.url.get_dialect()
-        if dialect == sqlite.dialect:
-            self.conn.exec_driver_sql("PRAGMA foreign_keys = ON")
         # Purge at 10 days old now, should delete 2 more rows
         db.purge_deleted_rows(self.context, age_in_days=10)
 
@@ -354,25 +354,24 @@ class PurgeDeletedTest(test.TestCase):
                           age_in_days='ten')
 
     def test_purge_deleted_rows_integrity_failure(self):
-        dialect = self.engine.url.get_dialect()
-        if dialect == sqlite.dialect:
-            self.conn.exec_driver_sql("PRAGMA foreign_keys = ON")
-
         # add new entry in volume and volume_admin_metadata for
         # integrity check
         uuid_str = uuid.uuid4().hex
         ins_stmt = self.volumes.insert().values(id=uuid_str,
                                                 volume_type_id=uuid_str)
-        self.conn.execute(ins_stmt)
+        with db_api.main_context_manager.writer.using(self.context):
+            self.context.session.execute(ins_stmt)
         ins_stmt = self.vm.insert().values(volume_id=uuid_str)
-        self.conn.execute(ins_stmt)
+        with db_api.main_context_manager.writer.using(self.context):
+            self.context.session.execute(ins_stmt)
 
         # set volume record to deleted 20 days ago
         old = timeutils.utcnow() - datetime.timedelta(days=20)
         make_old = self.volumes.update().where(
             self.volumes.c.id.in_([uuid_str])).values(deleted_at=old,
                                                       deleted=True)
-        self.conn.execute(make_old)
+        with db_api.main_context_manager.writer.using(self.context):
+            self.context.session.execute(make_old)
 
         # Verify that purge_deleted_rows fails due to Foreign Key constraint
         self.assertRaises(db_exc.DBReferenceError, db.purge_deleted_rows,
