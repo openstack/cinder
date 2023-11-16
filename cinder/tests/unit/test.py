@@ -76,8 +76,12 @@ class Database(fixtures.Fixture):
         super().__init__()
 
         # Suppress logging for test runs
-        migrate_logger = logging.getLogger('migrate')
-        migrate_logger.setLevel(logging.WARNING)
+
+        alembic_logger = logging.getLogger('alembic.runtime.migration')
+        alembic_logger.setLevel(logging.WARNING)
+
+        db_logger = logging.getLogger('cinder.db.migration')
+        db_logger.setLevel(logging.WARNING)
 
     def setUp(self):
         super().setUp()
