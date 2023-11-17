@@ -159,3 +159,19 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
 
         LOG.debug('extend_volume, '
                   'used pool name: %s, Exit method.', used_pool_name)
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Update migrated volume."""
+        LOG.debug('update_migrated_volume, '
+                  'source volume id: %(s_id)s, '
+                  'target volume id: %(t_id)s, Enter method.',
+                  {'s_id': volume['id'], 't_id': new_volume['id']})
+
+        model_update = self.common.update_migrated_volume(
+            ctxt, volume, new_volume)
+
+        LOG.debug('update_migrated_volume, '
+                  'target volume meta: %s, Exit method.', model_update)
+
+        return model_update

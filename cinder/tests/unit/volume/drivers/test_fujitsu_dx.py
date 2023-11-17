@@ -19,6 +19,7 @@ from unittest import mock
 
 from oslo_utils import units
 
+from cinder import context
 from cinder import exception
 from cinder import ssh_utils
 from cinder.tests.unit import test
@@ -178,7 +179,7 @@ FAKE_POOLS = [{
 }]
 
 FAKE_STATS = {
-    'driver_version': '1.4.3',
+    'driver_version': '1.4.4',
     'storage_protocol': 'iSCSI',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -188,7 +189,7 @@ FAKE_STATS = {
     'pools': FAKE_POOLS,
 }
 FAKE_STATS2 = {
-    'driver_version': '1.4.3',
+    'driver_version': '1.4.4',
     'storage_protocol': 'FC',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -197,7 +198,6 @@ FAKE_STATS2 = {
     'backend_state': 'up',
     'pools': FAKE_POOLS,
 }
-
 
 # Volume1 in pool abcd1234_TPP
 FAKE_KEYBIND1 = {
@@ -1007,6 +1007,8 @@ class FJFCDriverTestCase(test.TestCase):
         driver = dx_fc.FJDXFCDriver(configuration=self.configuration)
         self.driver = driver
 
+        self.context = context.get_admin_context()
+
     def fake_exec_cli_with_eternus(self, exec_cmdline):
         if exec_cmdline == "show users":
             ret = ('\r\nCLI> %s\r\n00\r\n'
@@ -1219,6 +1221,42 @@ class FJFCDriverTestCase(test.TestCase):
         self.assertEqual(FAKE_MODEL_INFO_QOS, model_info)
         self.driver.common._set_qos.assert_called()
 
+    def test_update_migrated_volume(self):
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        volume_info = {}
+        for key in TEST_VOLUME:
+            if key == 'provider_location':
+                volume_info[key] = model_info[key]
+            elif key == 'metadata':
+                volume_info[key] = model_info[key]
+            else:
+                volume_info[key] = TEST_VOLUME[key]
+
+        model_info2 = self.driver.create_volume(TEST_VOLUME2)
+        self.assertEqual(FAKE_MODEL_INFO3, model_info2)
+
+        volume_info2 = {}
+        for key in TEST_VOLUME:
+            if key == 'provider_location':
+                volume_info2[key] = model_info2[key]
+            elif key == 'metadata':
+                volume_info2[key] = model_info2[key]
+            else:
+                volume_info2[key] = TEST_VOLUME2[key]
+
+        model_update = self.driver.update_migrated_volume(self.context,
+                                                          volume_info,
+                                                          volume_info2,
+                                                          'available')
+
+        FAKE_MIGRATED_MODEL_UPDATE = {
+            '_name_id': TEST_VOLUME2['id'],
+            'provider_location': model_info2['provider_location']
+        }
+        self.assertEqual(FAKE_MIGRATED_MODEL_UPDATE, model_update)
+
 
 class FJISCSIDriverTestCase(test.TestCase):
     def __init__(self, *args, **kwargs):
@@ -1259,6 +1297,8 @@ class FJISCSIDriverTestCase(test.TestCase):
         # Set iscsi driver to self.driver.
         driver = dx_iscsi.FJDXISCSIDriver(configuration=self.configuration)
         self.driver = driver
+
+        self.context = context.get_admin_context()
 
     def fake_exec_cli_with_eternus(self, exec_cmdline):
         if exec_cmdline == "show users":
@@ -1470,6 +1510,42 @@ class FJISCSIDriverTestCase(test.TestCase):
         model_info = self.driver.create_volume(TEST_VOLUME_QOS)
         self.assertEqual(FAKE_MODEL_INFO_QOS, model_info)
         self.driver.common._set_qos.assert_called()
+
+    def test_update_migrated_volume(self):
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        volume_info = {}
+        for key in TEST_VOLUME:
+            if key == 'provider_location':
+                volume_info[key] = model_info[key]
+            elif key == 'metadata':
+                volume_info[key] = model_info[key]
+            else:
+                volume_info[key] = TEST_VOLUME[key]
+
+        model_info2 = self.driver.create_volume(TEST_VOLUME2)
+        self.assertEqual(FAKE_MODEL_INFO3, model_info2)
+
+        volume_info2 = {}
+        for key in TEST_VOLUME:
+            if key == 'provider_location':
+                volume_info2[key] = model_info2[key]
+            elif key == 'metadata':
+                volume_info2[key] = model_info2[key]
+            else:
+                volume_info2[key] = TEST_VOLUME2[key]
+
+        model_update = self.driver.update_migrated_volume(self.context,
+                                                          volume_info,
+                                                          volume_info2,
+                                                          'available')
+
+        FAKE_MIGRATED_MODEL_UPDATE = {
+            '_name_id': TEST_VOLUME2['id'],
+            'provider_location': model_info2['provider_location']
+        }
+        self.assertEqual(FAKE_MIGRATED_MODEL_UPDATE, model_update)
 
 
 class FJCLITestCase(test.TestCase):
@@ -1765,6 +1841,8 @@ class FJCommonTestCase(test.TestCase):
         driver = dx_iscsi.FJDXISCSIDriver(configuration=self.configuration)
         self.driver = driver
 
+        self.context = context.get_admin_context()
+
     def fake_exec_cli_with_eternus(self, exec_cmdline):
         if exec_cmdline == "show users":
             ret = ('\r\nCLI> %s\r\n00\r\n'
@@ -1935,3 +2013,38 @@ class FJCommonTestCase(test.TestCase):
         }]
         copy_session_list = self.driver.common._get_copy_sessions_list()
         self.assertEqual(FAKE_COPY_SESSION, copy_session_list)
+
+    def test_update_migrated_volume(self):
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        volume_info = {}
+        for key in TEST_VOLUME:
+            if key == 'provider_location':
+                volume_info[key] = model_info[key]
+            elif key == 'metadata':
+                volume_info[key] = model_info[key]
+            else:
+                volume_info[key] = TEST_VOLUME[key]
+
+        model_info2 = self.driver.create_volume(TEST_VOLUME2)
+        self.assertEqual(FAKE_MODEL_INFO3, model_info2)
+
+        volume_info2 = {}
+        for key in TEST_VOLUME:
+            if key == 'provider_location':
+                volume_info2[key] = model_info2[key]
+            elif key == 'metadata':
+                volume_info2[key] = model_info2[key]
+            else:
+                volume_info2[key] = TEST_VOLUME2[key]
+
+        model_update = self.driver.common.update_migrated_volume(self.context,
+                                                                 volume_info,
+                                                                 volume_info2)
+
+        FAKE_MIGRATED_MODEL_UPDATE = {
+            '_name_id': TEST_VOLUME2['id'],
+            'provider_location': model_info2['provider_location']
+        }
+        self.assertEqual(FAKE_MIGRATED_MODEL_UPDATE, model_update)

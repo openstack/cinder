@@ -46,6 +46,7 @@ Supported operations
 * Clone a volume.
 * Extend a volume.
 * Get volume statistics.
+* Migrate Volume.
 
 Preparation
 ~~~~~~~~~~~
@@ -239,6 +240,65 @@ Configuration example
    By issuing these commands,
    the volume type ``DX_FC`` is associated with the ``FC``,
    and the type ``DX_ISCSI`` is associated with the ``ISCSI``.
+
+
+Supported Functions of the ETERNUS OpenStack VolumeDriver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Migrate Volume
+--------------
+
+Moves volumes to a different storage pool.
+
+#. ETERNUS AF/DX functions
+
+   * Creates migration destination volumes / deletes migration
+     source volumes.
+
+   * Sets access paths to migration volumes / deletes migration
+     access paths to migration source volumes.
+
+   * Uses Create Volume, Delete Volume, Attach Volume and Detach
+     Volume.
+
+#. Cinder operation
+
+   * Copies data in the migration source volume to the migration
+     destination volume.
+
+.. note::
+
+   Host information must be specified in Migrated Volume.
+
+   The input format is as follows:
+
+   ``Host-Name@Backend-Name#Pool-Name``
+
+   For the following environment or settings, specify
+   ``test.localhost@Backend1#PoolA`` for the host.
+
+   * PoolA is a  pool specified in ``/etc/cinder/cinder_fujitsu_eternus_dx.xml``.
+
+    .. code-block:: console
+
+      $ hostname
+        test.localhost
+
+      $ cat /etc/cinder/cinder.conf
+        (snip)
+        [Backend1]
+        volume_driver=cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_fc.FJDXFCDriver
+        cinder_eternus_config_file = /etc/cinder/cinder_fujitsu_eternus_dx.xml
+        volume_backend_name=volume_backend_name1
+
+.. warning::
+
+   There are some restrictions for volume migration:
+
+   #. You cannot migrate a volume that has snapshots.
+
+   #. You cannot use driver-assisted migration to move a volume to or from a
+      backend that does not use the ETERNUS OpenStack volume driver.
 
 
 Supplementary Information for the Supported Functions

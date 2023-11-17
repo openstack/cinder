@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Fujitsu ETERNUS DX driver: Added support for update migrated volume
+
+    Now we update the required values to successfully complete the migration.
+
+    See the `Fujitsu ETERNUS DX driver documentation
+    <https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/fujitsu-eternus-dx-driver.html>`_
+    for details.
