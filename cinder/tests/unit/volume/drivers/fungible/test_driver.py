@@ -102,7 +102,7 @@ class FungibleDriverTest(unittest.TestCase):
         volume.id = str(uuid.uuid4())
         volume.display_name = 'volume'
         volume.host = 'mock_host_name'
-        volume.volume_type_id = 'mock_volume_type_id'
+        volume.volume_type_id = fake_constants.VOLUME_TYPE_ID
         volume.metadata = {}
         return volume
 
@@ -190,14 +190,14 @@ class FungibleDriverTest(unittest.TestCase):
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_get_volume_stats_without_volume_type(self, mock_get_volume_type):
         volume = self.get_volume()
-        volume.volume_type_id = "mock_id"
+        volume.volume_type_id = fake_constants.VOLUME_TYPE_ID
         mock_get_volume_type.return_value = {"extra_specs": self.get_specs()}
         with self.assertRaises(exception.VolumeBackendAPIException):
             self.driver._get_volume_type_extra_specs(self, volume=volume)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_get_volume_stats_with_volume_type(self, mock_get_volume_type):
-        volume = {"volume_type_id": "mock_id"}
+        volume = {"volume_type_id": fake_constants.VOLUME_TYPE_ID}
         extra_specs = self.get_specs()
         extra_specs.update({constants.FSC_VOL_TYPE: constants.VOLUME_TYPE_RAW})
         mock_get_volume_type.return_value = {"extra_specs": extra_specs}
