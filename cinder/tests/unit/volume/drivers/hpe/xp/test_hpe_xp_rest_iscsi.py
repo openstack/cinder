@@ -490,6 +490,9 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
                     'ip': CONFIG_MAP['ipv4Address'],
                     'port': CONFIG_MAP['tcpPort']}},
             drv.common.storage_info['portals'])
+        self.assertEqual(CONFIG_MAP['host_grp_name'],
+                         drv.common.format_info['group_name_format'].format(
+                         ip=DEFAULT_CONNECTOR['ip']))
         self.assertEqual(1, brick_get_connector_properties.call_count)
         self.assertEqual(8, request.call_count)
         # stop the Loopingcall within the do_setup treatment
