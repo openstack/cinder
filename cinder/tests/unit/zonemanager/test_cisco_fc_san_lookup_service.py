@@ -61,6 +61,18 @@ class TestCiscoFCSanLookupService(cisco_lookup.CiscoFCSanLookupService,
     def __init__(self, *args, **kwargs):
         test.TestCase.__init__(self, *args, **kwargs)
 
+    @mock.patch.object(cisco_lookup.CiscoFCSanLookupService,
+                       '_get_switch_info')
+    def test_get_nameserver_info_exception_handling(self,
+                                                    mock_get_switch_info):
+        mock_get_switch_info.side_effect = \
+            exception.FCSanLookupServiceException(reason='some reason')
+        self.assertRaises(
+            exception.FCSanLookupServiceException,
+            self.get_nameserver_info,
+            self.fabric_vsan
+        )
+
     def create_configuration(self):
         fc_fabric_opts = []
         fc_fabric_opts.append(cfg.StrOpt('cisco_fc_fabric_address',
