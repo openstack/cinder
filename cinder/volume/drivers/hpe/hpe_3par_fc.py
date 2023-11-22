@@ -115,10 +115,11 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
                 failover. bug #1773069
         4.0.6 - Set NSP for single path attachments. Bug #1809249
         4.0.7 - Added Peer Persistence feature
+        4.0.8 - For PP, return LUN ids from both arrays. Bug #2044255
 
     """
 
-    VERSION = "4.0.7"
+    VERSION = "4.0.8"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -279,9 +280,16 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
 
             common._destroy_replication_client(remote_client)
 
+            len_main_wwn = len(info['data']['target_wwn'])
+            target_luns = []
+            target_luns = [info['data']['target_lun']] * len_main_wwn
+
+            len_backup_wwn = len(info_peer['data']['target_wwn'])
+            target_luns += [info_peer['data']['target_lun']] * len_backup_wwn
+
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {'encrypted': info['data']['encrypted'],
-                             'target_lun': info['data']['target_lun'],
+                             'target_luns': target_luns,
                              'target_discovered': True,
                              'target_wwn': info['data']['target_wwn'] +
                              info_peer['data']['target_wwn'],
