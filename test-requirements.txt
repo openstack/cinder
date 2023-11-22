@@ -13,7 +13,7 @@ ddt>=1.4.4 # MIT
 fixtures>=3.0.0 # Apache-2.0/BSD
 oslotest>=4.5.0 # Apache-2.0
 PyMySQL>=0.10.0 # MIT License
-psycopg2>=2.8.5 # LGPL/ZPL
+psycopg2-binary>=2.8.5 # LGPL/ZPL
 SQLAlchemy-Utils>=0.37.8 # BSD License
 testtools>=2.4.0 # MIT
 
