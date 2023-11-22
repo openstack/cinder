@@ -146,6 +146,15 @@ class ShardFilter(filters.BaseBackendFilter):
 
         return self._PROJECT_SHARD_CACHE.get(project_id)
 
+    def _extract_shard_from_host(self, host):
+        """Extract the shard from the host."""
+
+        # get the string starting with the shard from the host
+        # vc-d-X@backend#pool
+        shard_plus = host[host.find(self._SHARD_PREFIX):]
+        # Now get only the shard. This is the string until the next @
+        return shard_plus[:shard_plus.find('@')]
+
     def _is_vmware(self, backend_state):
         if backend_state.vendor_name != 'VMware':
             return False
@@ -237,6 +246,16 @@ class ShardFilter(filters.BaseBackendFilter):
             # if we don't know where the volume is needed.
             LOG.debug('Ignoring find_backend_for_connector scheduling.')
             return True
+
+        if spec.get('operation') == 'retype_volume':
+            # The backend can only be on the same shard as
+            # the volume is currently on.
+            vol_shard = self._extract_shard_from_host(vol['host'])
+            backend_shard = self._extract_shard_from_host(backend_state.host)
+            if vol_shard == backend_shard:
+                return True
+            else:
+                return False
 
         # allow an override of the automatic shard-detection like nova does for
         # its compute-hosts
