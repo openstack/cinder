@@ -876,8 +876,6 @@ def calculate_max_over_subscription_ratio(
     # If thin provisioning is not supported the capacity filter will not use
     # the value we return, no matter what it is.
     if not thin_provisioning_support:
-        LOG.debug("Trying to retrieve max_over_subscription_ratio from a "
-                  "service that does not support thin provisioning")
         return 1.0
 
     # Again, if total or free capacity is infinite or unknown, the capacity
