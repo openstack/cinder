@@ -831,14 +831,26 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         if disk_less:
             # create a disk-less backing-- disk can be added later; for e.g.,
             # by copying an image
-            return self.volumeops.create_backing_disk_less(
-                backing_name,
-                folder,
-                resource_pool,
-                host_ref,
-                summary.name,
-                profileId=profile_id,
-                extra_config=extra_config)
+            try:
+                return self.volumeops.create_backing_disk_less(
+                    backing_name,
+                    folder,
+                    resource_pool,
+                    host_ref,
+                    summary.name,
+                    profileId=profile_id,
+                    extra_config=extra_config)
+            except exceptions.DuplicateName:
+                # The backing could have already been created by a
+                # previous (failed) migration attempt.
+                backing = self.volumeops.get_backing_by_uuid(volume['id'])
+                disk_devices = self.volumeops._get_disk_devices(backing)
+                if not disk_devices:
+                    LOG.info("Reusing existing diskless backing %(volume_id)s",
+                             {'volume_id': volume['id']})
+                    return backing
+                else:
+                    raise
 
         # create a backing with single disk
         disk_type = VMwareVcVmdkDriver._get_disk_type(volume)
