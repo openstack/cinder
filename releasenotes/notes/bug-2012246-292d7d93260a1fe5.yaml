@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #2008017 <https://bugs.launchpad.net/cinder/+bug/2012246>`_: Hide
+    value of the `[coordination] backend_url` option from logs because it can
+    contain credential.
