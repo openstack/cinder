@@ -58,6 +58,8 @@ class WindowsISCSIDriver(driver.ISCSIDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Microsoft_iSCSI_CI"
 
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(WindowsISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration = kwargs.get('configuration', None)

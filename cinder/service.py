@@ -666,6 +666,8 @@ class WindowsProcessLauncher(object):
         self._signal_handler = service.SignalHandler()
         self._add_signal_handlers()
 
+        LOG.warning("Support for Windows operating systems is deprecated.")
+
     def add_process(self, cmd):
         LOG.info("Starting subprocess: %s", cmd)
 

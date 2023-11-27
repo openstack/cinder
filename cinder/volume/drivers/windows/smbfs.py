@@ -89,6 +89,8 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Cloudbase_Cinder_SMB3_CI"
 
+    SUPPORTED = False
+
     _MINIMUM_QEMU_IMG_VERSION = '1.6'
 
     _SUPPORTED_IMAGE_FORMATS = [_DISK_FORMAT_VHD,
