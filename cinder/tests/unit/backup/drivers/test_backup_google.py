@@ -635,59 +635,33 @@ class GoogleBackupDriverTestCase(test.TestCase):
         self.assertEqual('none', result[0])
         self.assertEqual(already_compressed_data, result[1])
 
-    @mock.patch.object(google_dr, '_get_dist_version')
-    @mock.patch.object(google_dr.client.GoogleCredentials, 'from_stream')
-    @mock.patch.object(google_dr.discovery, 'build')
-    @mock.patch.object(google_dr, 'service_account')
-    def test_non_google_auth_version(self, account, build, from_stream,
-                                     get_dist_version):
-        # Prior to v1.6.0 Google api client doesn't support google-auth library
-        get_dist_version.return_value = '1.5.5'
-        google_dr.CONF.set_override('backup_gcs_credential_file',
-                                    'credentials_file')
-
-        google_dr.GoogleBackupDriver(self.ctxt)
-
-        get_dist_version.assert_called_once_with('google-api-python-client')
-        from_stream.assert_called_once_with('credentials_file')
-        account.Credentials.from_service_account_file.assert_not_called()
-        build.assert_called_once_with('storage', 'v1', cache_discovery=False,
-                                      credentials=from_stream.return_value)
-
-    @mock.patch.object(google_dr, '_get_dist_version')
     @mock.patch.object(google_dr.client.GoogleCredentials, 'from_stream')
     @mock.patch.object(google_dr.discovery, 'build')
     @mock.patch.object(google_dr, 'service_account', None)
-    def test_no_httplib2_auth(self, build, from_stream, get_dist_version):
+    def test_no_httplib2_auth(self, build, from_stream):
         # Google api client requires google-auth-httplib2 if not present we
         # use legacy credentials
-        get_dist_version.return_value = '1.6.6'
         google_dr.CONF.set_override('backup_gcs_credential_file',
                                     'credentials_file')
 
         google_dr.GoogleBackupDriver(self.ctxt)
 
-        get_dist_version.assert_called_once_with('google-api-python-client')
         from_stream.assert_called_once_with('credentials_file')
         build.assert_called_once_with('storage', 'v1', cache_discovery=False,
                                       credentials=from_stream.return_value)
 
-    @mock.patch.object(google_dr, '_get_dist_version')
     @mock.patch.object(google_dr, 'gexceptions', mock.Mock())
     @mock.patch.object(google_dr.client.GoogleCredentials, 'from_stream')
     @mock.patch.object(google_dr.discovery, 'build')
     @mock.patch.object(google_dr, 'service_account')
-    def test_google_auth_used(self, account, build, from_stream,
-                              get_dist_version):
+    def test_google_auth_used(self, account, build, from_stream):
         # Google api client requires google-auth-httplib2 if not present we
         # use legacy credentials
-        get_dist_version.return_value = '1.6.6'
         google_dr.CONF.set_override('backup_gcs_credential_file',
                                     'credentials_file')
 
         google_dr.GoogleBackupDriver(self.ctxt)
 
-        get_dist_version.assert_called_once_with('google-api-python-client')
         from_stream.assert_not_called()
         create_creds = account.Credentials.from_service_account_file
         create_creds.assert_called_once_with('credentials_file')
