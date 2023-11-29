@@ -4327,6 +4327,7 @@ class PowerMaxCommon(object):
         resume_original_sg_dict = dict()
         rdf_pair_broken = False
         resume_original_sg = False
+        rep_extra_specs = dict()
         is_partitioned = False
         if (was_rep_enabled and not is_rep_enabled) or backend_ids_differ:
             if self.promotion:
