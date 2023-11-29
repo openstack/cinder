@@ -96,6 +96,7 @@ all = [
     "hpe-storage-flowkit-py>=0.9.3", # Apache-2.0
     # For backup drivers
     "boto3>=1.18.49", # Apache-2.0
+    "google-api-python-client>=1.11.0", # Apache-2.0
 ]
 # For volume drivers
 datacore = [
@@ -153,6 +154,9 @@ hpe_alletramp = [
 # For backup drivers
 s3 = [
     "boto3>=1.18.49", # Apache-2.0
+]
+gcs = [
+    "google-api-python-client>=1.11.0", # Apache-2.0
 ]
 
 [tool.setuptools]

@@ -174,11 +174,6 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
             OAUTH_EXCEPTIONS = (gexceptions.RefreshError,
                                 gexceptions.DefaultCredentialsError)
         else:
-            # NOTE(tkajinam): google-api-python-client is now in requirements
-            #                 and google-auth-httplib2 is its dependency. So
-            #                 this error should not be raised now. But it's
-            #                 kept now in case the client library is moved to
-            #                 extra dependencies
             msg = _('google-api-python-client not found')
             raise exception.BackupDriverException(reason=msg)
 
