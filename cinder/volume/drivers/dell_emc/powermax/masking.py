@@ -39,11 +39,12 @@ class PowerMaxMasking(object):
     Masking code to dynamically create a masking view.
     It supports VMAX 3, All Flash and PowerMax arrays.
     """
-    def __init__(self, prtcl, rest):
+    def __init__(self, prtcl, rest, configuration):
         self.protocol = prtcl
         self.utils = utils.PowerMaxUtils()
         self.rest = rest
-        self.provision = provision.PowerMaxProvision(self.rest)
+        self.provision = provision.PowerMaxProvision(self.rest,
+                                                     configuration)
 
     def setup_masking_view(
             self, serial_number, volume, masking_view_dict, extra_specs):

@@ -1,0 +1,32 @@
+---
+fixes:
+  - |
+    Dell PowerMax Driver `Bug #2045230
+    <https://bugs.launchpad.net/cinder/+bug/2045230>`_: Fixed
+    the issue that Dell PowerMax SnapVx link fails as the linked device is not
+    yet fully defined.
+
+    Previously, the below operations could fail if the linked device was not
+    yet fully defined at the time of the call.
+    Now, when ``snapvx_unlink_symforce`` is enabled, those operations are not
+    interrupted by not fully defined devices.
+
+    By default, ``snapvx_unlink_symforce`` is ``False``. Use extreme caution
+    with this option. If used when a link is copy in progress or when a restore
+    is restore in progress, this will cause an incomplete copy and data on the
+    copy target would not be usable.
+
+    Impacted operations:
+
+    * Clone a volume
+    * Create a volume from a snapshot
+    * Create volume snapshots
+    * Delete volume snapshots
+    * Revert volume to snapshot
+    * Create generic volume group from source
+    * Unmanage volumes
+upgrade:
+  - |
+    Dell PowerMax Driver: introduced a new configuration option,
+    ``snapvx_unlink_symforce``, to address Bug #2045230.  See the Bug Fixes
+    section for details.

@@ -179,6 +179,7 @@ LOAD_LOOKBACK = 'load_look_back'
 LOAD_LOOKBACK_RT = 'load_look_back_real_time'
 PORT_GROUP_LOAD_METRIC = 'port_group_load_metric'
 PORT_LOAD_METRIC = 'port_load_metric'
+SNAPVX_UNLINK_SYMFORCE = 'snapvx_unlink_symforce'
 
 # One minute in milliseconds
 ONE_MINUTE = 60000

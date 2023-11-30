@@ -154,7 +154,12 @@ powermax_opts = [
     cfg.IntOpt(utils.REST_API_READ_TIMEOUT,
                default=30, min=1,
                help='Use this value to specify read '
-                    'timeout value (in seconds) for rest call.')]
+                    'timeout value (in seconds) for rest call.'),
+    cfg.BoolOpt(utils.SNAPVX_UNLINK_SYMFORCE,
+                default=False,
+                help='Enable SnapVx unlink symforce, which forces '
+                     'the operation to execute when normally it is rejected.'),
+]
 
 
 CONF.register_opts(powermax_opts, group=configuration.SHARED_CONF_GROUP)
@@ -195,11 +200,8 @@ class PowerMaxCommon(object):
 
         self.rest = rest.PowerMaxRest()
         self.utils = utils.PowerMaxUtils()
-        self.masking = masking.PowerMaxMasking(prtcl, self.rest)
-        self.provision = provision.PowerMaxProvision(self.rest)
         self.volume_metadata = volume_metadata.PowerMaxVolumeMetadata(
             self.rest, version, LOG.isEnabledFor(logging.DEBUG))
-        self.migrate = migrate.PowerMaxMigrate(prtcl, self.rest)
 
         # Configuration/Attributes
         self.protocol = prtcl
@@ -219,6 +221,14 @@ class PowerMaxCommon(object):
         self.powermax_port_group_name_template = None
         if active_backend_id == utils.PMAX_FAILOVER_START_ARRAY_PROMOTION:
             self.promotion = True
+
+        # Init provision, masking and migrate instances
+        self.provision = provision.PowerMaxProvision(
+            self.rest, self.configuration)
+        self.masking = masking.PowerMaxMasking(
+            prtcl, self.rest, self.configuration)
+        self.migrate = migrate.PowerMaxMigrate(
+            prtcl, self.rest, self.configuration)
 
         # Gather environment info
         self._get_replication_info()
