@@ -171,7 +171,7 @@ class PowerMaxProvisionTest(test.TestCase):
             mock_unlink.assert_called_once_with(
                 array, source_device_id, target_device_id,
                 snap_name, extra_specs, snap_id=self.data.snap_id,
-                list_volume_pairs=None, loop=True)
+                list_volume_pairs=None, loop=True, symforce=False)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=test_utils.ZeroIntervalLoopingCall)
@@ -184,7 +184,8 @@ class PowerMaxProvisionTest(test.TestCase):
             mock_mod.assert_called_once_with(
                 self.data.array, self.data.device_id, self.data.device_id2,
                 self.data.snap_location['snap_name'], self.data.extra_specs,
-                snap_id=self.data.snap_id, list_volume_pairs=None, unlink=True)
+                snap_id=self.data.snap_id, list_volume_pairs=None, unlink=True,
+                symforce=False)
 
             mock_mod.reset_mock()
             self.provision._unlink_volume(
@@ -194,7 +195,8 @@ class PowerMaxProvisionTest(test.TestCase):
             mock_mod.assert_called_once_with(
                 self.data.array, self.data.device_id, self.data.device_id2,
                 self.data.snap_location['snap_name'], self.data.extra_specs,
-                snap_id=self.data.snap_id, list_volume_pairs=None, unlink=True)
+                snap_id=self.data.snap_id, list_volume_pairs=None, unlink=True,
+                symforce=False)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=test_utils.ZeroIntervalLoopingCall)
@@ -556,9 +558,12 @@ class PowerMaxProvisionTest(test.TestCase):
 
     @mock.patch.object(
         rest.PowerMaxRest, 'get_snap_linked_device_list',
-        side_effect=[[{'targetDevice': tpd.PowerMaxData.device_id2}],
-                     [{'targetDevice': tpd.PowerMaxData.device_id2},
-                      {'targetDevice': tpd.PowerMaxData.device_id3}]])
+        side_effect=[[{'targetDevice': tpd.PowerMaxData.device_id2,
+                       'defined': False}],
+                     [{'targetDevice': tpd.PowerMaxData.device_id2,
+                       'defined': False},
+                      {'targetDevice': tpd.PowerMaxData.device_id3,
+                       'defined': False}]])
     @mock.patch.object(provision.PowerMaxProvision, '_unlink_volume')
     def test_delete_volume_snap_check_for_links(self, mock_unlink, mock_tgts):
         self.provision.delete_volume_snap_check_for_links(
@@ -568,7 +573,8 @@ class PowerMaxProvisionTest(test.TestCase):
             self.data.array, "", "", self.data.test_snapshot_snap_name,
             self.data.extra_specs, snap_id=self.data.snap_id,
             list_volume_pairs=[
-                (self.data.device_id, tpd.PowerMaxData.device_id2)])
+                (self.data.device_id, tpd.PowerMaxData.device_id2)],
+            symforce=False)
         mock_unlink.reset_mock()
         self.provision.delete_volume_snap_check_for_links(
             self.data.array, self.data.test_snapshot_snap_name,

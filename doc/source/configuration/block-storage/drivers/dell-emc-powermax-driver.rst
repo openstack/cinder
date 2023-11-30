@@ -3243,6 +3243,9 @@ options are detailed in the table below.
     |                             |                |                 | | load calculation, minimum of 1       |
     |                             |                |                 | | maximum of 60 (24 hours).            |
     +-----------------------------+----------------+-----------------+----------------------------------------+
+    | ``snapvx_unlink_symforce``  | ``True/False`` | ``False``       | | Enable/disable symforce              |
+    |                             |                |                 | | for SnapVx unlink.                   |
+    +-----------------------------+----------------+-----------------+----------------------------------------+
     | ``port_group_load_metric``  | See below      | ``PercentBusy`` | | Metric used for port group load      |
     |                             |                |                 | | calculation.                         |
     +-----------------------------+----------------+-----------------+----------------------------------------+

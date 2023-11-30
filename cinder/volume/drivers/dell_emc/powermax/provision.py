@@ -36,9 +36,11 @@ class PowerMaxProvision(object):
 
     It supports VMAX 3, All Flash and PowerMax arrays.
     """
-    def __init__(self, rest):
+    def __init__(self, rest, configuration):
         self.utils = utils.PowerMaxUtils()
         self.rest = rest
+        self.snapvx_unlink_symforce = configuration.safe_get(
+            utils.SNAPVX_UNLINK_SYMFORCE) or False
 
     def create_storage_group(
             self, array, storagegroup_name, srp, slo, workload,
@@ -183,6 +185,9 @@ class PowerMaxProvision(object):
                   {'delta': self.utils.get_time_delta(start_time,
                                                       time.time())})
 
+    def _is_symforce_enabled(self, defined):
+        return self.snapvx_unlink_symforce and (not defined)
+
     def unlink_snapvx_tgt_volume(
             self, array, target_device_id, source_device_id, snap_name,
             extra_specs, snap_id, loop=True):
@@ -197,20 +202,33 @@ class PowerMaxProvision(object):
         :param loop: if looping call is required for handling retries
         """
         @coordination.synchronized("emc-snapvx-{src_device_id}")
-        def do_unlink_volume(src_device_id):
+        def do_unlink_volume(src_device_id, symforce=False):
             LOG.debug("Break snap vx link relationship between: %(src)s "
                       "and: %(tgt)s.",
                       {'src': src_device_id, 'tgt': target_device_id})
 
             self._unlink_volume(array, src_device_id, target_device_id,
                                 snap_name, extra_specs, snap_id=snap_id,
-                                list_volume_pairs=None, loop=loop)
+                                list_volume_pairs=None, loop=loop,
+                                symforce=symforce)
 
-        do_unlink_volume(source_device_id)
+        # Get the link defined status
+        defined = True
+        linked_list = self.rest.get_snap_linked_device_list(
+            array, source_device_id, snap_name, snap_id)
+        for link in linked_list:
+            if target_device_id == link['targetDevice']:
+                if not link['defined']:
+                    defined = False
+                break
+        LOG.debug("The link defined status: %s", defined)
+        do_unlink_volume(
+            source_device_id, symforce=self._is_symforce_enabled(defined))
 
     def _unlink_volume(
             self, array, source_device_id, target_device_id, snap_name,
-            extra_specs, snap_id=None, list_volume_pairs=None, loop=True):
+            extra_specs, snap_id=None, list_volume_pairs=None, loop=True,
+            symforce=False):
         """Unlink a target volume from its source volume.
 
         :param array: the array serial number
@@ -221,6 +239,7 @@ class PowerMaxProvision(object):
         :param snap_id: the unique snap id of the SnapVX
         :param list_volume_pairs: list of volume pairs, optional
         :param loop: if looping call is required for handling retries
+        :param symforce: if symforce is enabled
         :returns: return code
         """
         def _unlink_vol():
@@ -234,7 +253,8 @@ class PowerMaxProvision(object):
                 if not kwargs['modify_vol_success']:
                     self.rest.modify_volume_snap(
                         array, source_device_id, target_device_id, snap_name,
-                        extra_specs, snap_id=snap_id, unlink=True,
+                        extra_specs, snap_id=snap_id,
+                        unlink=True, symforce=symforce,
                         list_volume_pairs=list_volume_pairs)
                     kwargs['modify_vol_success'] = True
             except exception.VolumeBackendAPIException:
@@ -250,7 +270,8 @@ class PowerMaxProvision(object):
         if not loop:
             self.rest.modify_volume_snap(
                 array, source_device_id, target_device_id, snap_name,
-                extra_specs, snap_id=snap_id, unlink=True,
+                extra_specs, snap_id=snap_id,
+                unlink=True, symforce=symforce,
                 list_volume_pairs=list_volume_pairs)
         else:
             kwargs = {'retries': 0,
@@ -387,6 +408,7 @@ class PowerMaxProvision(object):
         :param snap_id: the unique snap id of the SnapVX
         """
         list_device_pairs = []
+        list_device_pairs_defined = True
         if not isinstance(source_devices, list):
             source_devices = [source_devices]
         for source_device in source_devices:
@@ -398,6 +420,8 @@ class PowerMaxProvision(object):
             if len(linked_list) == 1:
                 target_device = linked_list[0]['targetDevice']
                 list_device_pairs.append((source_device, target_device))
+                if not linked_list[0]['defined']:
+                    list_device_pairs_defined = False
             else:
                 for link in linked_list:
                     # If a single source volume has multiple targets,
@@ -405,11 +429,13 @@ class PowerMaxProvision(object):
                     target_device = link['targetDevice']
                     self._unlink_volume(
                         array, source_device, target_device, snap_name,
-                        extra_specs, snap_id=snap_id)
+                        extra_specs, snap_id=snap_id,
+                        symforce=self._is_symforce_enabled(link['defined']))
         if list_device_pairs:
             self._unlink_volume(
                 array, "", "", snap_name, extra_specs, snap_id=snap_id,
-                list_volume_pairs=list_device_pairs)
+                list_volume_pairs=list_device_pairs,
+                symforce=self._is_symforce_enabled(list_device_pairs_defined))
         if source_devices:
             self.delete_volume_snap(
                 array, snap_name, source_devices, snap_id, restored=False)
@@ -703,6 +729,14 @@ class PowerMaxProvision(object):
         self.rest.modify_volume_snap(
             array, None, None, snap_name, extra_specs, snap_id=snap_id,
             link=True, list_volume_pairs=list_volume_pairs)
+        # Get the link defined status
+        defined = True
+        for src, dst in list_volume_pairs:
+            linked_list = self.rest.get_snap_linked_device_list(
+                array, src, snap_name, snap_id)
+            if not linked_list[0]['defined']:
+                defined = False
+                break
         # Unlink the snapshot
         LOG.debug("Unlinking Snap Vx snapshot: source group: %(srcGroup)s "
                   "targetGroup: %(tgtGroup)s.",
@@ -710,7 +744,8 @@ class PowerMaxProvision(object):
                    'tgtGroup': target_group_name})
         self._unlink_volume(
             array, None, None, snap_name, extra_specs, snap_id=snap_id,
-            list_volume_pairs=list_volume_pairs)
+            list_volume_pairs=list_volume_pairs,
+            symforce=self._is_symforce_enabled(defined))
         # Delete the snapshot if necessary
         if delete_snapshot:
             LOG.debug("Deleting Snap Vx snapshot: source group: %(srcGroup)s "
