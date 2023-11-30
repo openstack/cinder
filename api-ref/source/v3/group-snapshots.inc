@@ -116,6 +116,7 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all-tenants
+   - sort: sort_group_snapshot
    - sort_key: sort_key_group_snapshot
    - sort_dir: sort_dir_group_snapshot
    - limit: limit_group_snapshot
@@ -172,6 +173,7 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all-tenants
+   - sort: sort_group_snapshot
    - sort_key: sort_key_group_snapshot
    - sort_dir: sort_dir_group_snapshot
    - limit: limit_group_snapshot

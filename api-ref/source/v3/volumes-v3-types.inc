@@ -440,6 +440,8 @@ Request
    - project_id: project_id_path
    - is_public: is_public_volume_type_query
    - sort: sort
+   - sort_key: sort_key
+   - sort_dir: sort_dir
    - limit: limit
    - offset: offset
    - marker: marker
