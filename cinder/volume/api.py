@@ -214,7 +214,7 @@ class API(base.Base):
         specs = volume_type.get('extra_specs', {})
         if 'encryption' not in specs:
             return False
-        return specs.get('encryption', {}) is not {}
+        return specs.get('encryption', {}) != {}
 
     def create(self,
                context: context.RequestContext,
