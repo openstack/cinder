@@ -359,8 +359,8 @@ class PowerMaxISCSITest(test.TestCase):
                 self.data.test_volume, new_type, host)
 
     def test_failover_host(self):
-        with mock.patch.object(self.common, 'failover_host',
-                               return_value={}) as mock_fo:
+        with mock.patch.object(self.common, 'failover',
+                               return_value=(None, [], [])) as mock_fo:
             self.driver.failover_host({}, [self.data.test_volume])
             mock_fo.assert_called_once_with([self.data.test_volume], None,
                                             None)

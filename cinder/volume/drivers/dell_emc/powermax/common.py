@@ -204,7 +204,7 @@ class PowerMaxCommon(object):
         self.next_gen = False
         self.replication_enabled = False
         self.rep_devices = []
-        self.failover = True if active_backend_id else False
+        self.failedover = True if active_backend_id else False
         self.promotion = False
         self.powermax_array_tag_list = None
         self.powermax_short_host_name_template = None
@@ -1350,7 +1350,7 @@ class PowerMaxCommon(object):
         array_info_list = self.pool_info['arrays_info']
         already_queried = False
         for array_info in array_info_list:
-            if self.failover:
+            if self.failedover:
                 rep_config = self.rep_configs[0]
                 array_info = self.get_secondary_stats_info(
                     rep_config, array_info)
@@ -5540,7 +5540,7 @@ class PowerMaxCommon(object):
 
         return rdf_group_no, remote_array
 
-    def failover_host(self, volumes, secondary_id=None, groups=None):
+    def failover(self, volumes, secondary_id=None, groups=None):
         """Fails over the volumes on a host back and forth.
 
         Driver needs to update following info for failed-over volume:
@@ -5557,35 +5557,52 @@ class PowerMaxCommon(object):
         primary_array = self.configuration.safe_get(utils.POWERMAX_ARRAY)
         array_list = self.rest.get_arrays_list()
         is_valid, msg = self.utils.validate_failover_request(
-            self.failover, secondary_id, self.rep_configs, primary_array,
+            self.failedover, secondary_id, self.rep_configs, primary_array,
             array_list, self.promotion)
         if not is_valid:
             LOG.error(msg)
             raise exception.InvalidReplicationTarget(msg)
 
         group_fo = None
-        if not self.failover:
-            self.failover = True
+        if not self.failedover:
+            self.failedover = True
             if not secondary_id:
                 secondary_id = utils.RDF_FAILEDOVER_STATE
         elif secondary_id == 'default':
-            self.failover = False
+            self.failedover = False
             group_fo = 'default'
 
-        if secondary_id == utils.PMAX_FAILOVER_START_ARRAY_PROMOTION:
-            self.promotion = True
-            LOG.info("Enabled array promotion.")
-        else:
+        if secondary_id != utils.PMAX_FAILOVER_START_ARRAY_PROMOTION:
             volume_update_list, group_update_list = (
                 self._populate_volume_and_group_update_lists(
                     volumes, groups, group_fo))
 
-        if secondary_id == 'default' and self.promotion:
-            self.promotion = False
-            LOG.info("Disabled array promotion.")
-
-        LOG.info("Failover host complete.")
+        LOG.info("Failover host completed.")
         return secondary_id, volume_update_list, group_update_list
+
+    def failover_completed(self, secondary_id=None, isAA=False):
+        """This method is called after failover for clustered backends."""
+        if secondary_id == utils.PMAX_FAILOVER_START_ARRAY_PROMOTION:
+            self.promotion = True
+            LOG.info("Enabled array promotion.")
+        else:
+            if isAA:
+                if secondary_id == 'failed over':
+                    self.failedover = True
+                elif not secondary_id:
+                    self.failedover = False
+                    if self.promotion:
+                        self.promotion = False
+                        LOG.info("Disabled array promotion.")
+            else:
+                if not secondary_id:
+                    self.failedover = True
+                elif secondary_id == 'default':
+                    self.failedover = False
+                    if self.promotion:
+                        self.promotion = False
+                        LOG.info("Disabled array promotion.")
+        LOG.info('Failover completion completed.')
 
     def _populate_volume_and_group_update_lists(
             self, volumes, groups, group_fo):
@@ -5675,7 +5692,7 @@ class PowerMaxCommon(object):
                         'volume_id': vol.id,
                         'updates': {
                             'replication_status': REPLICATION_DISABLED}})
-            elif self.failover:
+            elif self.failedover:
                 # Since the array has been failed-over,
                 # volumes without replication should be in error.
                 for vol in non_rep_vol_list:
@@ -6347,7 +6364,7 @@ class PowerMaxCommon(object):
         if self.promotion:
             self._update_group_promotion(
                 group, add_volumes, remove_volumes)
-        elif self.failover:
+        elif self.failedover:
             msg = _('Cannot perform group updates during failover, please '
                     'either failback or perform a promotion operation.')
             raise exception.VolumeBackendAPIException(msg)

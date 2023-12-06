@@ -2937,7 +2937,7 @@ class PowerMaxCommonTest(test.TestCase):
         group = self.data.test_group_1
         add_vols = []
         remove_vols = [self.data.test_volume_group_member]
-        self.mock_object(self.common, 'failover', True)
+        self.mock_object(self.common, 'failedover', True)
         self.assertRaises(
             exception.VolumeBackendAPIException, self.common.update_group,
             group, add_vols, remove_vols)
