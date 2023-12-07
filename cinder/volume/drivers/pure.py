@@ -177,6 +177,11 @@ HOST_CREATE_MAX_RETRIES = 5
 
 USER_AGENT_BASE = 'OpenStack Cinder'
 
+MIN_IOPS = 100
+MAX_IOPS = 100000000  # 100M
+MIN_BWS = 1048576  # 1 MB/s
+MAX_BWS = 549755813888  # 512 GB/s
+
 
 class PureDriverException(exception.VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")
@@ -346,20 +351,20 @@ class PureBaseVolumeDriver(san.SanDriver):
             array.patch_volumes(names=[vol_name],
                                 volume=flasharray.VolumePatch(
                                     qos=flasharray.Qos(
-                                        iops_limit=100000000,
-                                        bandwidth_limit=549755813888)))
+                                        iops_limit=MAX_IOPS,
+                                        bandwidth_limit=MAX_BWS)))
         elif qos['maxIOPS'] == 0:
             array.patch_volumes(names=[vol_name],
                                 volume=flasharray.VolumePatch(
                                     qos=flasharray.Qos(
-                                        iops_limit=100000000,
+                                        iops_limit=MAX_IOPS,
                                         bandwidth_limit=qos['maxBWS'])))
         elif qos['maxBWS'] == 0:
             array.patch_volumes(names=[vol_name],
                                 volume=flasharray.VolumePatch(
                                     qos=flasharray.Qos(
                                         iops_limit=qos['maxIOPS'],
-                                        bandwidth_limit=549755813888)))
+                                        bandwidth_limit=MAX_BWS)))
         else:
             array.patch_volumes(names=[vol_name],
                                 volume=flasharray.VolumePatch(
@@ -367,6 +372,75 @@ class PureBaseVolumeDriver(san.SanDriver):
                                         iops_limit=qos['maxIOPS'],
                                         bandwidth_limit=qos['maxBWS'])))
         return
+
+    @pure_driver_debug_trace
+    def create_from_snap_in_vgroup(self,
+                                   array,
+                                   vol_name,
+                                   snap_name,
+                                   vgroup,
+                                   vg_iop,
+                                   vg_bw):
+        if not (MIN_IOPS <= int(vg_iop) <= MAX_IOPS):
+            msg = (_('vg_maxIOPS QoS error. Must be more than '
+                     '%(min_iops)s and less than %(max_iops)s') %
+                   {'min_iops': MIN_IOPS, 'max_iops': MAX_IOPS})
+            raise exception.InvalidQoSSpecs(message=msg)
+        if not (MIN_BWS <= int(vg_bw) <= MAX_BWS):
+            msg = (_('vg_maxBWS QoS error. Must be between '
+                     '%(min_bws)s and %(max_bws)s') %
+                   {'min_bws': MIN_BWS, 'max_bws': MAX_BWS})
+            raise exception.InvalidQoSSpecs(message=msg)
+        self._create_volume_group_if_not_exist(array,
+                                               vgroup,
+                                               int(vg_iop),
+                                               int(vg_bw))
+        vg_volname = vgroup + "/" + vol_name
+        if self._array.safemode:
+            array.post_volumes(names=[vg_volname],
+                               with_default_protection=False,
+                               volume=flasharray.VolumePost(
+                                   source=flasharray.Reference(
+                                       name=snap_name)))
+        else:
+            array.post_volumes(names=[vg_volname],
+                               volume=flasharray.VolumePost(
+                               source=flasharray.Reference(name=snap_name)))
+        return vg_volname
+
+    @pure_driver_debug_trace
+    def create_in_vgroup(self,
+                         array,
+                         vol_name,
+                         vol_size,
+                         vgroup,
+                         vg_iop,
+                         vg_bw):
+        if not (MIN_IOPS <= int(vg_iop) <= MAX_IOPS):
+            msg = (_('vg_maxIOPS QoS error. Must be more than '
+                     '%(min_iops)s and less than %(max_iops)s') %
+                   {'min_iops': MIN_IOPS, 'max_iops': MAX_IOPS})
+            raise exception.InvalidQoSSpecs(message=msg)
+        if not (MIN_BWS <= int(vg_bw) <= MAX_BWS):
+            msg = (_('vg_maxBWS QoS error. Must be between '
+                     '%(min_bws)s and %(max_bws)s') %
+                   {'min_bws': MIN_BWS, 'max_bws': MAX_BWS})
+            raise exception.InvalidQoSSpecs(message=msg)
+        self._create_volume_group_if_not_exist(array,
+                                               vgroup,
+                                               int(vg_iop),
+                                               int(vg_bw))
+        vg_volname = vgroup + "/" + vol_name
+        if self._array.safemode:
+            array.post_volumes(names=[vg_volname],
+                               with_default_protection=False,
+                               volume=flasharray.VolumePost(
+                               provisioned=vol_size))
+        else:
+            array.post_volumes(names=[vg_volname],
+                               volume=flasharray.VolumePost(
+                               provisioned=vol_size))
+        return vg_volname
 
     @pure_driver_debug_trace
     def create_with_qos(self, array, vol_name, vol_size, qos):
@@ -630,7 +704,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         :return None
         """
         vol_name = self._generate_purity_vol_name(volume)
-        if snapshot['cgsnapshot']:
+        if snapshot['group_snapshot'] or snapshot['cgsnapshot']:
             snap_name = self._get_pgroup_snap_name_from_snapshot(snapshot)
         else:
             snap_name = self._get_snap_name(snapshot)
@@ -647,7 +721,16 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     @pure_driver_debug_trace
     def create_volume(self, volume):
-        """Creates a volume."""
+        """Creates a volume.
+
+        Note that if a vgroup is specified in the volume type
+        extra_spec then we do not apply volume level qos as this is
+        incompatible with volume group qos settings.
+
+        We will force a volume group to have the maximum qos settings
+        if not specified in the volume type extra_spec as this can
+        cause retyping issues in the future if not defined.
+        """
         qos = None
         vol_name = self._generate_purity_vol_name(volume)
         vol_size = volume["size"] * units.Gi
@@ -656,7 +739,26 @@ class PureBaseVolumeDriver(san.SanDriver):
         current_array = self._get_current_array()
         if type_id is not None:
             volume_type = volume_types.get_volume_type(ctxt, type_id)
-            qos = self._get_qos_settings(volume_type)
+            vg_iops = self._get_volume_type_extra_spec(type_id,
+                                                       'vg_maxIOPS',
+                                                       default_value=MAX_IOPS)
+            vg_bws = self._get_volume_type_extra_spec(type_id,
+                                                      'vg_maxBWS',
+                                                      default_value=MAX_BWS)
+            vgroup = self._get_volume_type_extra_spec(type_id, 'vg_name')
+            if vgroup:
+                vgroup = INVALID_CHARACTERS.sub("-", vgroup)
+                vg_volname = self.create_in_vgroup(current_array,
+                                                   vol_name,
+                                                   vol_size,
+                                                   vgroup,
+                                                   vg_iops,
+                                                   vg_bws)
+                return self._setup_volume(current_array,
+                                          volume,
+                                          vg_volname)
+            else:
+                qos = self._get_qos_settings(volume_type)
         if qos is not None:
             self.create_with_qos(current_array, vol_name, vol_size, qos)
         else:
@@ -687,7 +789,26 @@ class PureBaseVolumeDriver(san.SanDriver):
         type_id = volume.get('volume_type_id')
         if type_id is not None:
             volume_type = volume_types.get_volume_type(ctxt, type_id)
-            qos = self._get_qos_settings(volume_type)
+            vg_iops = self._get_volume_type_extra_spec(type_id,
+                                                       'vg_maxIOPS',
+                                                       default_value=MAX_IOPS)
+            vg_bws = self._get_volume_type_extra_spec(type_id,
+                                                      'vg_maxBWS',
+                                                      default_value=MAX_BWS)
+            vgroup = self._get_volume_type_extra_spec(type_id, 'vg_name')
+            if vgroup:
+                vgroup = INVALID_CHARACTERS.sub("-", vgroup)
+                vg_volname = self.create_from_snap_in_vgroup(current_array,
+                                                             vol_name,
+                                                             snap_name,
+                                                             vgroup,
+                                                             vg_iops,
+                                                             vg_bws)
+                return self._setup_volume(current_array,
+                                          volume,
+                                          vg_volname)
+            else:
+                qos = self._get_qos_settings(volume_type)
 
         if self._array.safemode:
             current_array.post_volumes(names=[vol_name],
@@ -710,8 +831,8 @@ class PureBaseVolumeDriver(san.SanDriver):
             current_array.patch_volumes(names=[vol_name],
                                         volume=flasharray.VolumePatch(
                                             qos=flasharray.Qos(
-                                                iops_limit=100000000,
-                                                bandwidth_limit=549755813888)))
+                                                iops_limit=MAX_IOPS,
+                                                bandwidth_limit=MAX_BWS)))
 
         return self._setup_volume(current_array, volume, vol_name)
 
@@ -854,6 +975,33 @@ class PureBaseVolumeDriver(san.SanDriver):
                     ctxt.reraise = False
                     LOG.warning("Volume deletion failed with message: %s",
                                 res.errors[0].message)
+        # Now check to see if deleting this volume left an empty volume
+        # group. If so, we delete / eradicate the volume group
+        if "/" in vol_name:
+            vgroup = vol_name.split("/")[0]
+            self._delete_vgroup_if_empty(current_array, vgroup)
+
+    @pure_driver_debug_trace
+    def _delete_vgroup_if_empty(self, array, vgroup):
+        """Delete volume group if empty"""
+
+        vgroup_volumes = list(array.get_volume_groups(
+            names=[vgroup]).items)[0].volume_count
+        if vgroup_volumes == 0:
+            # Delete the volume group
+            array.patch_volume_groups(
+                names=[vgroup],
+                volume_group=flasharray.VolumeGroupPatch(
+                    destroyed=True))
+            if self.configuration.pure_eradicate_on_delete:
+                # Eradciate the volume group
+                res = array.delete_volume_groups(names=[vgroup])
+                if res.status_code == 400:
+                    with excutils.save_and_reraise_exception() as ctxt:
+                        ctxt.reraise = False
+                        LOG.warning("Volume group deletion failed "
+                                    "with message: %s",
+                                    res.errors[0].message)
 
     @pure_driver_debug_trace
     def create_snapshot(self, snapshot):
@@ -1517,12 +1665,12 @@ class PureBaseVolumeDriver(san.SanDriver):
         else:
             ref_vol_name = existing_ref['source-name']
 
-        if not is_snap and '::' in ref_vol_name:
-            # Don't allow for managing volumes in a pod
-            raise exception.ManageExistingInvalidReference(
-                _("Unable to manage volume in a Pod"))
-
         current_array = self._get_current_array()
+        if not is_snap and self._pod_check(current_array, ref_vol_name):
+            # Don't allow for managing volumes in a replicated pod
+            raise exception.ManageExistingInvalidReference(
+                _("Unable to manage volume in a Replicated Pod"))
+
         volres = current_array.get_volumes(names=[ref_vol_name])
         if volres.status_code == 200:
             volume_info = list(volres.items)[0]
@@ -1743,8 +1891,54 @@ class PureBaseVolumeDriver(san.SanDriver):
             current_array.patch_volumes(
                 names=[new_vol_name],
                 volume=flasharray.VolumePatch(
-                    qos=flasharray.Qos(iops_limit=100000000,
-                                       bandwidth_limit=549755813888)))
+                    qos=flasharray.Qos(iops_limit=MAX_IOPS,
+                                       bandwidth_limit=MAX_BWS)))
+        # If we are managing to a volume type that is a volume group
+        # make sure that the target volume group exists with the
+        # correct QoS settings.
+        if self._get_volume_type_extra_spec(volume.volume_type['id'],
+                                            'vg_name'):
+            target_vg = self._get_volume_type_extra_spec(
+                volume.volume_type['id'],
+                'vg_name')
+            target_vg = INVALID_CHARACTERS.sub("-", target_vg)
+            vg_iops = self._get_volume_type_extra_spec(
+                volume.volume_type['id'],
+                'vg_maxIOPS',
+                default_value=MAX_IOPS)
+            vg_bws = self._get_volume_type_extra_spec(
+                volume.volume_type['id'],
+                'vg_maxBWS',
+                default_value=MAX_BWS)
+            if not (MIN_IOPS <= int(vg_iops) <= MAX_IOPS):
+                msg = (_('vg_maxIOPS QoS error. Must be more than '
+                         '%(min_iops)s and less than %(max_iops)s') %
+                       {'min_iops': MIN_IOPS, 'max_iops': MAX_IOPS})
+                raise exception.InvalidQoSSpecs(message=msg)
+            if not (MIN_BWS <= int(vg_bws) <= MAX_BWS):
+                msg = (_('vg_maxBWS QoS error. Must be between '
+                         '%(min_bws)s and less than %(max_bws)s') %
+                       {'min_bws': MIN_BWS, 'max_bws': MAX_BWS})
+                raise exception.InvalidQoSSpecs(message=msg)
+            self._create_volume_group_if_not_exist(current_array,
+                                                   target_vg,
+                                                   vg_iops,
+                                                   vg_bws)
+            res = current_array.patch_volumes(
+                names=[new_vol_name],
+                volume=flasharray.VolumePatch(
+                    volume_group=flasharray.Reference(
+                        name=target_vg)))
+            if res.status_code != 200:
+                LOG.warning("Failed to move volume %(vol)s, to volume "
+                            "group %(vg)s. Error: %(mess)s", {
+                                "vol": new_vol_name,
+                                "vg": target_vg,
+                                "mess": res.errors[0].message})
+            new_vol_name = target_vg + "/" + new_vol_name
+        if "/" in ref_vol_name:
+            source_vg = ref_vol_name.split('/')[0]
+            self._delete_vgroup_if_empty(current_array, source_vg)
         # Check if the volume_type has QoS settings and if so
         # apply them to the newly managed volume
         qos = None
@@ -1775,6 +1969,20 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return size
 
+    def _pod_check(self, array, volume):
+        """Check if volume is in a replicated pod."""
+        if "::" in volume:
+            pod = volume.split("::")[0]
+            pod_info = list(array.get_pods(names=[pod]).items)[0]
+            if (pod_info.link_source_count == 0
+                    and pod_info.link_target_count == 0
+                    and pod_info.array_count == 1):
+                return False
+            else:
+                return True
+        else:
+            return False
+
     def _rename_volume_object(self,
                               old_name,
                               new_name,
@@ -1782,7 +1990,12 @@ class PureBaseVolumeDriver(san.SanDriver):
                               snapshot=False):
         """Rename a volume object (could be snapshot) in Purity.
 
-        This will not raise an exception if the object does not exist
+        This will not raise an exception if the object does not exist.
+
+        We need to ensure that if we are renaming to a different
+        container in the backend, eg a pod, volume group, or just
+        the main array container, we have to rename first and then
+        move the object.
         """
         current_array = self._get_current_array()
         if snapshot:
@@ -1790,6 +2003,45 @@ class PureBaseVolumeDriver(san.SanDriver):
                 names=[old_name],
                 volume_snapshot=flasharray.VolumePatch(name=new_name))
         else:
+            if "/" in old_name and "::" not in old_name:
+                interim_name = old_name.split("/")[1]
+                res = current_array.patch_volumes(
+                    names=[old_name],
+                    volume=flasharray.VolumePatch(
+                        volume_group=flasharray.Reference(name="")))
+                if res.status_code == 400:
+                    LOG.warning("Unable to move %(old_name)s, error "
+                                "message: %(error)s",
+                                {"old_name": old_name,
+                                 "error": res.errors[0].message})
+                old_name = interim_name
+            if "/" not in old_name and "::" in old_name:
+                interim_name = old_name.split("::")[1]
+                res = current_array.patch_volumes(
+                    names=[old_name],
+                    volume=flasharray.VolumePatch(
+                        pod=flasharray.Reference(name="")))
+                if res.status_code == 400:
+                    LOG.warning("Unable to move %(old_name)s, error "
+                                "message: %(error)s",
+                                {"old_name": old_name,
+                                 "error": res.errors[0].message})
+                old_name = interim_name
+            if "/" in old_name and "::" in old_name:
+                # This is a VVOL which can't be moved, so have
+                # to take a copy
+                interim_name = old_name.split("/")[1]
+                res = current_array.post_volumes(
+                    names=[interim_name],
+                    volume=flasharray.VolumePost(
+                        source=flasharray.Reference(name=old_name)))
+                if res.status_code == 400:
+                    LOG.warning("Unable to copy %(old_name)s, error "
+                                "message: %(error)s",
+                                {"old_name": old_name,
+                                 "error": res.errors[0].message})
+                old_name = interim_name
+
             res = current_array.patch_volumes(
                 names=[old_name],
                 volume=flasharray.VolumePatch(name=new_name))
@@ -1896,7 +2148,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         connected_vols = {}
         for connect in range(0, len(connections)):
             connected_vols[connections[connect].volume.name] = \
-                connections[connect].host.name
+                getattr(connections[connect].host, "name", None)
 
         # Put together a map of existing cinder volumes on the array
         # so we can lookup cinder id's by purity volume names
@@ -1910,7 +2162,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             cinder_id = existing_vols.get(vol_name)
             not_safe_msgs = []
             host = connected_vols.get(vol_name)
-            in_pod = ("::" in vol_name)
+            in_pod = self._pod_check(array, vol_name)
             is_deleted = pure_vols[pure_vol].destroyed
 
             if host:
@@ -1920,7 +2172,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                 not_safe_msgs.append(_('Volume already managed'))
 
             if in_pod:
-                not_safe_msgs.append(_('Volume is in a Pod'))
+                not_safe_msgs.append(_('Volume is in a Replicated Pod'))
 
             if is_deleted:
                 not_safe_msgs.append(_('Volume is deleted'))
@@ -2081,6 +2333,46 @@ class PureBaseVolumeDriver(san.SanDriver):
                 return REPLICATION_TYPE_ASYNC
         return None
 
+    def _get_volume_type_extra_spec(self, type_id, spec_key,
+                                    possible_values=None,
+                                    default_value=None):
+        """Get extra spec value.
+
+        If the spec value is not present in the input possible_values, then
+        default_value will be returned.
+        If the type_id is None, then default_value is returned.
+
+        The caller must not consider scope and the implementation adds/removes
+        scope. the scope used here is 'flasharray' e.g. key
+        'flasharray:vg_name' and so the caller must pass vg_name as an
+        input ignoring the scope.
+
+        :param type_id: volume type id
+        :param spec_key: extra spec key
+        :param possible_values: permitted values for the extra spec if known
+        :param default_value: default value for the extra spec incase of an
+                              invalid value or if the entry does not exist
+        :return: extra spec value
+        """
+        if not type_id:
+            return default_value
+
+        spec_key = ('flasharray:%s') % spec_key
+        spec_value = volume_types.get_volume_type_extra_specs(type_id).get(
+            spec_key, False)
+        if not spec_value:
+            LOG.debug("Returning default spec value: %s.", default_value)
+            return default_value
+
+        if possible_values is None:
+            return spec_value
+
+        if spec_value in possible_values:
+            LOG.debug("Returning spec value %s", spec_value)
+            return spec_value
+
+        LOG.debug("Invalid spec value: %s specified.", spec_value)
+
     def _get_qos_settings(self, volume_type):
         """Get extra_specs and qos_specs of a volume_type.
 
@@ -2106,16 +2398,18 @@ class PureBaseVolumeDriver(san.SanDriver):
         if qos == {}:
             return None
         else:
-            # Chack set vslues are within limits
+            # Check set vslues are within limits
             iops_qos = int(qos.get('maxIOPS', 0))
-            bw_qos = int(qos.get('maxBWS', 0)) * 1048576
-            if iops_qos != 0 and not (100 <= iops_qos <= 100000000):
-                msg = _('maxIOPS QoS error. Must be more than '
-                        '100 and less than 100000000')
+            bw_qos = int(qos.get('maxBWS', 0)) * MIN_BWS
+            if iops_qos != 0 and not (MIN_IOPS <= iops_qos <= MAX_IOPS):
+                msg = (_('maxIOPS QoS error. Must be more than '
+                         '%(min_iops)s and less than %(max_iops)s') %
+                       {'min_iops': MIN_IOPS, 'max_iops': MAX_IOPS})
                 raise exception.InvalidQoSSpecs(message=msg)
-            if bw_qos != 0 and not (1048576 <= bw_qos <= 549755813888):
-                msg = _('maxBWS QoS error. Must be between '
-                        '1 and 524288')
+            if bw_qos != 0 and not (MIN_BWS <= bw_qos <= MAX_BWS):
+                msg = (_('maxBWS QoS error. Must be between '
+                         '%(min_bws)s and %(max_bws)s') %
+                       {'min_bws': MIN_BWS, 'max_bws': MAX_BWS})
                 raise exception.InvalidQoSSpecs(message=msg)
 
             qos['maxIOPS'] = iops_qos
@@ -2142,8 +2436,15 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         repl_type = self._get_replication_type_from_vol_type(
             volume.volume_type)
+        vgroup_type = self._get_volume_type_extra_spec(volume.volume_type_id,
+                                                       'vg_name')
         if repl_type in [REPLICATION_TYPE_SYNC, REPLICATION_TYPE_TRISYNC]:
-            base_name = self._replication_pod_name + "::" + base_name
+            if vgroup_type:
+                raise exception.InvalidVolumeType(
+                    reason=_("Synchronously replicated volume group volumes "
+                             "are not supported"))
+            else:
+                base_name = self._replication_pod_name + "::" + base_name
 
         return base_name + "-cinder"
 
@@ -2265,6 +2566,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                         ERR_MSG_ALREADY_EXISTS in res.errors[0].message):
                     # Happens if the volume is already connected to the host.
                     # Treat this as a success.
+                    ctxt.reraise = False
                     LOG.debug("Volume connection already exists for Purity "
                               "host with message: %s", res.errors[0].message)
 
@@ -2309,6 +2611,8 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         prev_repl_type = None
         new_repl_type = None
+        source_vg = False
+        target_vg = False
 
         # See if the type specifies the replication type. If we know it is
         # replicated but doesn't specify a type assume that it is async rep
@@ -2381,10 +2685,82 @@ class PureBaseVolumeDriver(san.SanDriver):
                         self._get_current_array(), volume
                     )
 
+        current_array = self._get_current_array()
+        # Now check if we are retyping to/from a type with volume groups
+        if "/" in self._get_vol_name(volume):
+            source_vg = self._get_vol_name(volume).split('/')[0]
+        if self._get_volume_type_extra_spec(new_type['id'], 'vg_name'):
+            target_vg = self._get_volume_type_extra_spec(new_type['id'],
+                                                         'vg_name')
+        if source_vg or target_vg:
+            if target_vg:
+                target_vg = INVALID_CHARACTERS.sub("-", target_vg)
+                vg_iops = self._get_volume_type_extra_spec(
+                    new_type['id'],
+                    'vg_maxIOPS',
+                    default_value=MAX_IOPS)
+                vg_bws = self._get_volume_type_extra_spec(
+                    new_type['id'],
+                    'vg_maxBWS',
+                    default_value=MAX_BWS)
+                if not (MIN_IOPS <= int(vg_iops) <= MAX_IOPS):
+                    msg = (_('vg_maxIOPS QoS error. Must be more than '
+                             '%(min_iops)s and less than %(max_iops)s') %
+                           {'min_iops': MIN_IOPS, 'max_iops': MAX_IOPS})
+                    raise exception.InvalidQoSSpecs(message=msg)
+                if not (MIN_BWS <= int(vg_bws) <= MAX_BWS):
+                    msg = (_('vg_maxBWS QoS error. Must be more than '
+                             '%(min_bws)s and less than %(max_bws)s') %
+                           {'min_bws': MIN_BWS, 'max_bws': MAX_BWS})
+                    raise exception.InvalidQoSSpecs(message=msg)
+                self._create_volume_group_if_not_exist(current_array,
+                                                       target_vg,
+                                                       vg_iops,
+                                                       vg_bws)
+                current_array.patch_volumes(
+                    names=[self._get_vol_name(volume)],
+                    volume=flasharray.VolumePatch(
+                        volume_group=flasharray.Reference(
+                            name=target_vg)))
+                vol_name = self._get_vol_name(volume)
+                if source_vg:
+                    target_vol_name = (target_vg +
+                                       "/" +
+                                       vol_name.split('/')[1])
+                else:
+                    target_vol_name = (target_vg +
+                                       "/" +
+                                       vol_name)
+                model_update = {
+                    'id': volume.id,
+                    'provider_id': target_vol_name,
+                    'metadata': {**volume.metadata,
+                                 'array_volume_name': target_vol_name,
+                                 'array_name': self._array.array_name}
+                }
+                # If we have empied a VG by retyping out of it then delete VG
+                if source_vg:
+                    self._delete_vgroup_if_empty(current_array, source_vg)
+            else:
+                current_array.patch_volumes(
+                    names=[self._get_vol_name(volume)],
+                    volume=flasharray.VolumePatch(
+                        volume_group=flasharray.Reference(
+                            name="")))
+                target_vol_name = self._get_vol_name(volume).split('/')[1]
+                model_update = {
+                    'id': volume.id,
+                    'provider_id': target_vol_name,
+                    'metadata': {**volume.metadata,
+                                 'array_volume_name': target_vol_name,
+                                 'array_name': self._array.array_name}
+                }
+                if source_vg:
+                    self._delete_vgroup_if_empty(current_array, source_vg)
+            return True, model_update
         # If we are moving to a volume type with QoS settings then
         # make sure the volume gets the correct new QoS settings.
         # This could mean removing existing QoS settings.
-        current_array = self._get_current_array()
         qos = self._get_qos_settings(new_type)
         vol_name = self._generate_purity_vol_name(volume)
         if qos is not None:
@@ -2393,8 +2769,8 @@ class PureBaseVolumeDriver(san.SanDriver):
             current_array.patch_volumes(names=[vol_name],
                                         volume=flasharray.VolumePatch(
                                             qos=flasharray.Qos(
-                                                iops_limit=100000000,
-                                                bandwidth_limit=549755813888)))
+                                                iops_limit=MAX_IOPS,
+                                                bandwidth_limit=MAX_BWS)))
 
         return True, model_update
 
@@ -2445,10 +2821,14 @@ class PureBaseVolumeDriver(san.SanDriver):
         # Manager sets the active_backend to '' when secondary_id was default,
         # but the driver failover_host method calls us with "default"
         elif not active_backend_id or active_backend_id == 'default':
-            LOG.info('Failing back to %s', self._failed_over_primary_array)
-            self._swap_replication_state(current,
-                                         self._failed_over_primary_array,
-                                         failback=True)
+            if self._failed_over_primary_array is not None:
+                LOG.info('Failing back to %s', self._failed_over_primary_array)
+                self._swap_replication_state(current,
+                                             self._failed_over_primary_array,
+                                             failback=True)
+            else:
+                LOG.info('Failover not occured - secondary array '
+                         'cannot be same as primary')
         else:
             secondary = self._get_secondary(active_backend_id)
             LOG.info('Failing over to %s', secondary.backend_id)
@@ -2607,7 +2987,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             # part of the ActiveCluster and we need to reflect this in our
             # capabilities.
             self._is_active_cluster_enabled = False
-            self._is_replication_enabled = False
+            self._is_replication_enabled = True
 
         if secondary_array.uniform:
             if secondary_array in self._uniform_active_cluster_target_arrays:
@@ -2787,13 +3167,16 @@ class PureBaseVolumeDriver(san.SanDriver):
         snap_name = "%s:%s" % (source_array_name, pgroup_name)
         LOG.debug("Looking for snap %(snap)s on array id %(array_id)s",
                   {"snap": snap_name, "array_id": target_array.array_id})
-        pg_snaps = list(
-            target_array.get_protection_group_snapshots_transfer(
-                names=[snap_name],
-                destroyed=False,
-                filter='progress="1.0"',
-                sort=["started-"]).items)
-        pg_snap = pg_snaps[0] if pg_snaps else None
+        try:
+            pg_snaps = list(
+                target_array.get_protection_group_snapshots_transfer(
+                    names=[snap_name],
+                    destroyed=False,
+                    filter='progress="1.0"',
+                    sort=["started-"]).items)
+            pg_snap = pg_snaps[0] if pg_snaps else None
+        except AttributeError:
+            pg_snap = None
 
         LOG.debug("Selecting snapshot %(pg_snap)s for failover.",
                   {"pg_snap": pg_snap})
@@ -2821,6 +3204,52 @@ class PureBaseVolumeDriver(san.SanDriver):
                                 " eradicated - will recreate.", name)
                     source_array.delete_pods(names=[name])
                     self._create_pod_if_not_exist(source_array, name)
+
+    @pure_driver_debug_trace
+    def _create_volume_group_if_not_exist(self,
+                                          source_array,
+                                          vgname,
+                                          vg_iops,
+                                          vg_bws):
+        res = source_array.post_volume_groups(
+            names=[vgname],
+            volume_group=flasharray.VolumeGroupPost(
+                qos=flasharray.Qos(
+                    bandwidth_limit=vg_bws,
+                    iops_limit=vg_iops)))
+        if res.status_code == 400:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if ERR_MSG_ALREADY_EXISTS in res.errors[0].message:
+                    # Happens if the vg already exists
+                    ctxt.reraise = False
+                    LOG.warning("Skipping creation of vg %s since it "
+                                "already exists. Resetting QoS", vgname)
+                    res = source_array.patch_volume_groups(
+                        names=[vgname],
+                        volume_group=flasharray.VolumeGroupPatch(
+                            qos=flasharray.Qos(
+                                bandwidth_limit=vg_bws,
+                                iops_limit=vg_iops)))
+                    if res.status_code == 400:
+                        with excutils.save_and_reraise_exception() as ctxt:
+                            if ERR_MSG_NOT_EXIST in res.errors[0].message:
+                                ctxt.reraise = False
+                                LOG.warning("Unable to change %(vgroup)s QoS, "
+                                            "error message: %(error)s",
+                                            {"vgroup": vgname,
+                                             "error": res.errors[0].message})
+                    return
+                if list(source_array.get_volume_groups(
+                        names=[vgname]).items)[0].destroyed:
+                    ctxt.reraise = False
+                    LOG.warning("Volume group %s is deleted but not"
+                                " eradicated - will recreate.", vgname)
+                    source_array.delete_volume_groups(names=[vgname])
+
+                    self._create_volume_group_if_not_exist(source_array,
+                                                           vgname,
+                                                           vg_iops,
+                                                           vg_bws)
 
     @pure_driver_debug_trace
     def _create_protection_group_if_not_exist(self, source_array, pgname):
@@ -2948,6 +3377,21 @@ class PureBaseVolumeDriver(san.SanDriver):
                 LOG.debug('Creating volume %(vol)s from replicated snapshot '
                           '%(snap)s', {'vol': vol_name,
                                        'snap': volume_snaps[snap].name})
+                if "/" in vol_name:
+                    # We have to create the target vgroup with assosiated QoS
+                    vg_iops = self._get_volume_type_extra_spec(
+                        vol.volume_type_id,
+                        'vg_maxIOPS',
+                        default_value=MAX_IOPS)
+                    vg_bws = self._get_volume_type_extra_spec(
+                        vol.volume_type_id,
+                        'vg_maxBWS',
+                        default_value=MAX_BWS)
+                    self._create_volume_group_if_not_exist(
+                        secondary_array,
+                        vol_name.split("/")[0],
+                        int(vg_iops),
+                        int(vg_bws))
                 if secondary_safemode:
                     secondary_array.post_volumes(
                         with_default_protection=False,
@@ -2967,8 +3411,9 @@ class PureBaseVolumeDriver(san.SanDriver):
                         overwrite=True)
             else:
                 LOG.debug('Ignoring unmanaged volume %(vol)s from replicated '
-                          'snapshot %(snap)s.', {'vol': vol_name,
-                                                 'snap': snap['name']})
+                          'snapshot %(snap)s.',
+                          {'vol': vol_name,
+                           'snap': volume_snaps[snap].name})
         # The only volumes remaining in the vol_names set have been left behind
         # on the array and should be considered as being in an error state.
         model_updates = []

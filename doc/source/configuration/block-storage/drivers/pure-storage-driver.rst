@@ -404,3 +404,18 @@ set in `cinder.conf`:
    :config-target: Pure
 
    cinder.volume.drivers.pure
+
+Pure Storage-supported extra specs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Extra specs are associated with Block Storage volume types. When users request
+volumes of a particular volume type, the volumes are created on storage
+backends that meet the list of requirements. In the case of Pure Storage, these
+vendor-specific extra specs can be used to bring all volumes of a specific
+volume type into a construct known as a volume group. Additionally, the
+storage quality of service limits can be applied to the volume group.
+Use the specs in the following table to configure volume groups and
+associate with a volume type. Define Block Storage volume types by using
+the :command:`openstack volume type set` command.
+
+.. include:: ../../tables/manual/cinder-pure_storage_extraspecs.inc
