@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Lightbits driver:  Added a new configuration option
+    ``lightos_use_ipacl``, defaulting to true. When set to true, the
+    Cinder driver will restrict access to each volume to the IP
+    addresses of the host machine that the volume is attached to.
