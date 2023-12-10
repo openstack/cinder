@@ -188,16 +188,9 @@
     name: cinder-plugin-ceph-tempest
     parent: devstack-plugin-ceph-tempest-py3
     roles:
-      - zuul: opendev.org/openstack/cinderlib
       - zuul: opendev.org/openstack/cinder-tempest-plugin
-    run: playbooks/tempest-and-cinderlib-run.yaml
-    post-run: playbooks/post-cinderlib.yaml
-    required-projects:
-      - opendev.org/openstack/cinderlib
     vars:
       configure_swap_size: 4096
-      zuul_additional_subunit_dirs:
-        - "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
       devstack_localrc:
         CEPH_MIN_CLIENT_VERSION: "mimic"
         # NOTE: if jobs are having memory problems, may want
@@ -225,16 +218,9 @@
     name: cinder-plugin-ceph-tempest-mn-aa
     parent: devstack-plugin-ceph-multinode-tempest-py3
     roles:
-      - zuul: opendev.org/openstack/cinderlib
       - zuul: opendev.org/openstack/cinder-tempest-plugin
-    run: playbooks/tempest-and-cinderlib-run.yaml
-    post-run: playbooks/post-cinderlib.yaml
-    required-projects:
-      - opendev.org/openstack/cinderlib
     vars:
       configure_swap_size: 4096
-      zuul_additional_subunit_dirs:
-        - "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
       devstack_localrc:
         TEMPEST_VOLUME_REVERT_TO_SNAPSHOT: True
         # NOTE: if jobs are having memory problems, may want
