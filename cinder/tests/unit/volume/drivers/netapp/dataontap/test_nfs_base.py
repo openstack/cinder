@@ -299,7 +299,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         else:
             mock_clone_call.assert_called_once_with(expected_source, volume)
             mock_do_qos.assert_not_called()
-            mock_super_create.not_called()
+            mock_super_create.assert_not_called()
 
     @ddt.data(True, False)
     def test_create_cloned_volume(self, is_flexgroup):
@@ -331,7 +331,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         else:
             mock_clone_call.assert_called_once_with(src_vref, volume)
             mock_do_qos.assert_not_called()
-            mock_super_create.not_called()
+            mock_super_create.assert_not_called()
 
     def test_do_qos_for_file_flexgroup(self):
         volume = {'provider_location': 'fake'}
