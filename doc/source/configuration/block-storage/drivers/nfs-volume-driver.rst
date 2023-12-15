@@ -131,7 +131,7 @@ This example assumes access to the following NFS servers and mount points:
 
    .. code-block:: console
 
-      $ openstack volume create --size 5 MYVOLUME
+      $ openstack volume create --size 5
       # ls /var/lib/cinder/nfs/46c5db75dc3a3a50a10bfd1a456a9f3f
       volume-a8862558-e6d6-4648-b5df-bb84f31c8935
 
