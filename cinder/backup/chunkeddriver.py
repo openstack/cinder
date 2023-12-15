@@ -44,6 +44,8 @@ from cinder.volume import volume_utils
 
 if sys.platform == 'win32':
     from os_win import utilsfactory as os_win_utilsfactory
+else:
+    os_win_utilsfactory = None
 
 LOG = logging.getLogger(__name__)
 
