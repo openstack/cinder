@@ -44,3 +44,8 @@ class QOSSampleJsonTest(test_base.VolumesSampleBase):
         res = jsonutils.loads(self.response.content)['qos_specs']
         response = self._do_get('qos-specs/%s/associations' % res['id'])
         self._verify_response('qos_show_response', {}, response, 200)
+
+    def test_qos_disassociate_all(self):
+        res = jsonutils.loads(self.response.content)['qos_specs']
+        response = self._do_get('qos-specs/%s/disassociate_all' % res['id'])
+        self.assertEqual(202, response.status_code)
