@@ -27,15 +27,9 @@ Server-centric flow is used for authentication.
 """
 
 import base64
+import importlib.metadata as importlib_metadata
 import io
 import os
-
-try:
-    # For python 3.8 and later
-    import importlib.metadata as importlib_metadata
-except ImportError:
-    # For everyone else
-    import importlib_metadata
 
 try:
     from google.auth import exceptions as gexceptions
