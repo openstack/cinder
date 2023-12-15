@@ -665,8 +665,7 @@ class PowerMaxMasking(object):
             return
 
         @coordination.synchronized(
-            "emc-sg-{source_storage_group_name}-{serial_number}")
-        @coordination.synchronized(
+            "emc-sg-{source_storage_group_name}-{serial_number}",
             "emc-sg-{target_storage_group_name}-{serial_number}")
         def do_move_volume_between_storage_groups(
                 serial_number, source_storage_group_name,
