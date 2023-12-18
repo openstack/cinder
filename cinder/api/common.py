@@ -20,7 +20,7 @@ import json
 import os
 import re
 import typing
-from typing import Any, Iterable, Optional, Union  # noqa: H301
+from typing import Any, Iterable, Optional, Union
 import urllib
 
 from oslo_config import cfg

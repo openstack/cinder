@@ -48,7 +48,7 @@ import os
 import re
 import subprocess
 import time
-from typing import Dict, List, Optional, Tuple  # noqa: H301
+from typing import Dict, List, Optional, Tuple
 
 import eventlet
 from os_brick.initiator import linuxrbd

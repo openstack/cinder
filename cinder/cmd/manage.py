@@ -63,7 +63,7 @@ import re
 import sys
 import time
 import typing
-from typing import Any, Callable, Optional, Tuple, Union  # noqa: H301
+from typing import Any, Callable, Optional, Tuple, Union
 
 from oslo_config import cfg
 from oslo_db import exception as db_exc

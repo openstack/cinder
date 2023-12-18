@@ -20,7 +20,7 @@
 from __future__ import annotations
 
 import copy
-from typing import Any, Optional  # noqa: H301
+from typing import Any, Optional
 
 from keystoneauth1.access import service_catalog as ksa_service_catalog
 from keystoneauth1 import plugin

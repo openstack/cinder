@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional, Union   # noqa: H301
+from typing import Any, Iterable, Optional, Union
 
 from oslo_config import cfg
 from oslo_db import exception as db_exc

@@ -23,7 +23,7 @@ import math
 import os
 import tempfile
 import typing
-from typing import Any, Optional, Union  # noqa: H301
+from typing import Any, Optional, Union
 import urllib.parse
 
 from castellan import key_manager

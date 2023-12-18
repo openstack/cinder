@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections import abc
 import random
 import typing
-from typing import (Any, Iterable, Optional, Type, Union)  # noqa: H301
+from typing import (Any, Iterable, Optional, Type, Union)
 
 from oslo_config import cfg
 from oslo_log import log as logging
