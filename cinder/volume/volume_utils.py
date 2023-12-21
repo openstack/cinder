@@ -886,7 +886,6 @@ def paginate_entries_list(entries: list[dict],
                  for (key, multiplier) in zip(sort_keys, sort_dirs)]
 
     def comparer(left, right) -> int:
-        fn: Callable
         for fn, d in comparers:
             left_val = fn(left)
             right_val = fn(right)
