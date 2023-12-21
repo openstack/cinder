@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    [Pure Storage] ``user_agent`` string changed from reporting kernel
+    version to operating system distro and version.

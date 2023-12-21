@@ -20,10 +20,10 @@ This driver requires Purity version 4.0.0 or later.
 import functools
 import ipaddress
 import math
-import platform
 import re
 import uuid
 
+import distro
 from os_brick import constants as brick_constants
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -257,7 +257,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             'base': USER_AGENT_BASE,
             'class': self.__class__.__name__,
             'version': self.VERSION,
-            'platform': platform.platform()
+            'platform': distro.name(pretty=True)
         }
 
     @classmethod
@@ -2895,7 +2895,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     the underlying storage connectivity with the FlashArray.
     """
 
-    VERSION = "17.0.iscsi"
+    VERSION = "18.0.iscsi"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -3120,7 +3120,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     supports the Cinder Fibre Channel Zone Manager.
     """
 
-    VERSION = "17.0.fc"
+    VERSION = "18.0.fc"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -3318,7 +3318,7 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
     FlashArray.
     """
 
-    VERSION = "17.0.nvme"
+    VERSION = "18.0.nvme"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
