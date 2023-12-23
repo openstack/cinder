@@ -657,10 +657,9 @@ def get_qemu_data(image_id: str,
         if has_meta:
             if not disk_format_raw:
                 raise exception.ImageUnacceptable(
-                    reason=_("qemu-img is not installed and image is of "
-                             "type %s.  Only RAW images can be used if "
-                             "qemu-img is not installed.") %
-                    disk_format_raw,
+                    reason=_("qemu-img is not installed and image is not of "
+                             "type RAW.  Only RAW images can be used if "
+                             "qemu-img is not installed."),
                     image_id=image_id)
         else:
             raise exception.ImageUnacceptable(
