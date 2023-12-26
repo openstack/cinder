@@ -98,9 +98,7 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.reimage')
     @ddt.data('available', 'error')
     def test_volume_reimage_api(self, status, mock_reimage, mock_check):
-        volume = tests_utils.create_volume(self.context)
-        volume.status = status
-        volume.save()
+        volume = tests_utils.create_volume(self.context, status=status)
         self.assertEqual(volume.status, status)
         # The available or error volume can be reimaged directly
         self.volume_api.reimage(self.context, volume, self.image_meta['id'])
@@ -113,9 +111,7 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
     @ddt.data('available', 'error')
     def test_volume_reimage_check_meta_exception(self, status, mock_reimage,
                                                  mock_check):
-        volume = tests_utils.create_volume(self.context)
-        volume.status = status
-        volume.save()
+        volume = tests_utils.create_volume(self.context, status=status)
         self.assertEqual(volume.status, status)
         mock_check.side_effect = exception.ImageUnacceptable(
             image_id=self.image_meta['id'], reason='')
@@ -128,11 +124,9 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.reimage')
     def test_volume_reimage_api_with_reimage_reserved(self, mock_reimage,
                                                       mock_check):
-        volume = tests_utils.create_volume(self.context)
         # The reserved volume can not be reimaged directly, and only can
         # be reimaged with reimage_reserved flag
-        volume.status = 'reserved'
-        volume.save()
+        volume = tests_utils.create_volume(self.context, status='reserved')
         self.assertEqual(volume.status, 'reserved')
         self.volume_api.reimage(self.context, volume, self.image_meta['id'],
                                 reimage_reserved=True)
@@ -141,12 +135,9 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
                                              self.image_meta)
 
     def test_volume_reimage_api_with_invaild_status(self):
-        volume = tests_utils.create_volume(self.context)
         # The reserved volume can not be reimaged directly, and only can
         # be reimaged with reimage_reserved flag
-
-        volume.status = 'reserved'
-        volume.save()
+        volume = tests_utils.create_volume(self.context, status='reserved')
         self.assertEqual(volume.status, 'reserved')
         ex = self.assertRaises(exception.InvalidVolume,
                                self.volume_api.reimage,
