@@ -302,14 +302,15 @@ class StorPoolDriver(driver.VolumeDriver):
                        ) for t in templates]
 
         self._stats = {
+            # Basic driver properties
             'volume_backend_name': self.configuration.safe_get(
                 'volume_backend_name') or 'storpool',
             'vendor_name': 'StorPool',
             'driver_version': self.VERSION,
             'storage_protocol': constants.STORPOOL,
-
+            # Driver capabilities
             'sparse_copy_volume': True,
-
+            # The actual pools data
             'pools': pools
         }
 
