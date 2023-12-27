@@ -294,12 +294,12 @@ def service_create(context, values):
     return IMPL.service_create(context, values)
 
 
-def service_update(context, service_id, values):
+def service_update(context, service_id, values, retry=True):
     """Set the given properties on an service and update it.
 
     Raises NotFound if service does not exist.
     """
-    return IMPL.service_update(context, service_id, values)
+    return IMPL.service_update(context, service_id, values, retry)
 
 
 def service_get_by_uuid(context, service_uuid):

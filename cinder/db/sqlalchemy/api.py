@@ -948,21 +948,32 @@ def service_create(context, values):
 
 
 @require_admin_context
-@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @main_context_manager.writer
-def service_update(context, service_id, values):
-    query = _service_query(context, id=service_id)
+def service_update(context, service_id, values, retry=True):
+    def _service_update(context, service_id, values):
+        query = _service_query(context, id=service_id)
 
-    if 'disabled' in values:
-        entity = query.column_descriptions[0]['entity']
+        if 'disabled' in values:
+            entity = query.column_descriptions[0]['entity']
 
-        values = values.copy()
-        values['modified_at'] = values.get('modified_at', timeutils.utcnow())
-        values['updated_at'] = values.get('updated_at', entity.updated_at)
+            values = values.copy()
+            values['modified_at'] = values.get('modified_at',
+                                               timeutils.utcnow())
+            values['updated_at'] = values.get('updated_at',
+                                              entity.updated_at)
 
-    result = query.update(values)
-    if not result:
-        raise exception.ServiceNotFound(service_id=service_id)
+        result = query.update(values)
+        if not result:
+            raise exception.ServiceNotFound(service_id=service_id)
+
+    @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+    def _service_update_retry(context, service_id, values):
+        _service_update(context, service_id, values)
+
+    if retry:
+        _service_update_retry(context, service_id, values)
+    else:
+        _service_update(context, service_id, values)
 
 
 ###################

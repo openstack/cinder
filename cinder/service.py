@@ -486,7 +486,7 @@ class Service(service.Service):
             if self.availability_zone != service_ref.availability_zone:
                 service_ref.availability_zone = self.availability_zone
 
-            service_ref.save()
+            service_ref.save(retry=False)
 
             # TODO(termie): make this pattern be more elegant.
             if getattr(self, 'model_disconnected', False):

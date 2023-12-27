@@ -153,13 +153,13 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         db_service = db.service_create(self._context, updates)
         self._from_db_object(self._context, self, db_service)
 
-    def save(self):
+    def save(self, retry=True):
         updates = self.cinder_obj_get_changes()
         if 'cluster' in updates:
             raise exception.ObjectActionError(
                 action='save', reason=_('cluster changed'))
         if updates:
-            db.service_update(self._context, self.id, updates)
+            db.service_update(self._context, self.id, updates, retry)
             self.obj_reset_changes()
 
     def destroy(self):

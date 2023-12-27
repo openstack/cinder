@@ -77,7 +77,7 @@ class TestService(test_objects.BaseObjectsTestCase):
         service.topic = 'foobar'
         service.save()
         service_update.assert_called_once_with(self.context, service.id,
-                                               {'topic': 'foobar'})
+                                               {'topic': 'foobar'}, True)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
     @mock.patch('cinder.db.sqlalchemy.api.service_destroy')
