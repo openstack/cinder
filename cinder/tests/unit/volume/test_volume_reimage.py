@@ -110,6 +110,22 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
 
     @mock.patch('cinder.volume.volume_utils.check_image_metadata')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.reimage')
+    @ddt.data('available', 'error')
+    def test_volume_reimage_check_meta_exception(self, status, mock_reimage,
+                                                 mock_check):
+        volume = tests_utils.create_volume(self.context)
+        volume.status = status
+        volume.save()
+        self.assertEqual(volume.status, status)
+        mock_check.side_effect = exception.ImageUnacceptable(
+            image_id=self.image_meta['id'], reason='')
+        # The available or error volume can be reimaged directly
+        self.assertRaises(exception.ImageUnacceptable, self.volume_api.reimage,
+                          self.context, volume, self.image_meta['id'])
+        self.assertEqual(status, volume.status)
+
+    @mock.patch('cinder.volume.volume_utils.check_image_metadata')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.reimage')
     def test_volume_reimage_api_with_reimage_reserved(self, mock_reimage,
                                                       mock_check):
         volume = tests_utils.create_volume(self.context)

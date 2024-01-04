@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #2036994 <https://bugs.launchpad.net/cinder/+bug/2036994>`_: Fixed
+    rollback of volume status if the reimage operation fails while
+    checking image metadata.

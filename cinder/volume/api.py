@@ -2675,7 +2675,22 @@ class API(base.Base):
                     'status': volume.status})
             raise exception.InvalidVolume(reason=msg)
         image_meta = self.image_service.show(context, image_id)
-        volume_utils.check_image_metadata(image_meta, volume['size'])
+        try:
+            volume_utils.check_image_metadata(image_meta, volume['size'])
+        # Currently we only raise InvalidInput and ImageUnacceptable
+        # exceptions in the check_image_metadata call but having Exception
+        # here makes it more generic since we want to roll back to original
+        # state in any case and we re-raise anyway.
+        # Also this helps makes adding new exceptions easier in the future.
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception("Failed to reimage volume %(volume_id)s with "
+                              "image %(image_id)s",
+                              {'volume_id': volume.id, 'image_id': image_id})
+                volume.conditional_update(
+                    {'status': volume.model.previous_status,
+                     'previous_status': None},
+                    {'status': 'downloading'})
         self.volume_rpcapi.reimage(context,
                                    volume,
                                    image_meta)
