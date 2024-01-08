@@ -80,8 +80,6 @@
             irrelevant-files: *gate-irrelevant-files
         - grenade:
             irrelevant-files: *gate-irrelevant-files
-        - grenade-skip-level:
-            irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
         - openstacksdk-functional-devstack:
