@@ -75,10 +75,11 @@ class FJDXCommon(object):
     1.4.4 - Add support for update migrated volume.
     1.4.5 - Add metadata for snapshot.
     1.4.6 - Add parameter fujitsu_use_cli_copy.
+    1.4.7 - Add support for revert-to-snapshot.
 
     """
 
-    VERSION = "1.4.6"
+    VERSION = "1.4.7"
     stats = {
         'driver_version': VERSION,
         'storage_protocol': None,
@@ -3437,6 +3438,129 @@ class FJDXCommon(object):
                       'clidata': clidata})
             LOG.warning(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+    def revert_to_snapshot(self, volume, snapshot):
+        """Revert volume to snapshot."""
+        LOG.debug('revert_to_snapshot, Enter method, '
+                  'volume id: %(vid)s, '
+                  'snapshot id: %(sid)s. ',
+                  {'vid': volume['id'], 'sid': snapshot['id']})
+
+        vol_instance = self._find_lun(volume)
+        sdv_instance = self._find_lun(snapshot)
+        volume_no = self._get_volume_number(vol_instance)
+        snapshot_no = self._get_volume_number(sdv_instance)
+
+        # Check the existence of volume.
+        if not vol_instance:
+            msg = (_('revert_to_snapshot, '
+                     'source volume not found on ETERNUS, '
+                     'volume: %(volume)s. ')
+                   % {'volume': volume})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        # Check the existence of sdv.
+        if not sdv_instance:
+            msg = (_('revert_to_snapshot, '
+                     'snapshot volume not found on ETERNUS. '
+                     'snapshot: %(snapshot)s. ')
+                   % {'snapshot': snapshot})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        sdvsession = None
+        cpsessionlist = self._find_copysession(vol_instance)
+
+        LOG.debug('revert_to_snapshot, '
+                  'cpsessionlist: %(cpsessionlist)s. ',
+                  {'cpsessionlist': cpsessionlist})
+
+        for cpsession in cpsessionlist:
+            if (cpsession['SystemElement'].keybindings.get('DeviceID') ==
+                    vol_instance.path.keybindings.get('DeviceID')):
+                if (cpsession['SyncedElement'].keybindings.get('DeviceID') ==
+                        sdv_instance.path.keybindings.get('DeviceID')):
+                    sdvsession = cpsession
+                    break
+
+        if sdvsession:
+            LOG.debug('revert_to_snapshot, '
+                      'sdvsession: %(sdvsession)s. ',
+                      {'sdvsession': sdvsession})
+
+            repservice = self._find_eternus_service(
+                "FUJITSU_ReplicationService")
+
+            if repservice is None:
+                msg = _('revert_to_snapshot, '
+                        'Replication Service not found. ')
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            # Invoke method for revert to snapshot
+            rc, errordesc, job = self._exec_eternus_service(
+                'ModifyReplicaSynchronization',
+                repservice,
+                Operation=self._pywbem_uint(15, '16'),
+                WaitForCopyState=self._pywbem_uint(8, '16'),
+                Synchronization=sdvsession)
+
+            if rc != 0:
+                msg = (_('revert_to_snapshot, '
+                         '_exec_eternus_service error, '
+                         'volume: %(volume)s, '
+                         'Return code: %(rc)lu, '
+                         'Error: %(errordesc)s, '
+                         'Message: %(job)s.')
+                       % {'volume': volume['id'],
+                          'rc': rc,
+                          'errordesc': errordesc,
+                          'job': job})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            else:
+                LOG.debug('revert_to_snapshot, '
+                          'successfully. ')
+        else:
+            is_find = False
+            cp_session_list = self._get_copy_sessions_list()
+            for cp in cp_session_list:
+                if (cp['Source Num'] == int(volume_no, 16) and
+                    cp['Dest Num'] == int(snapshot_no, 16) and
+                        cp['Type'] == 'Snap'):
+                    is_find = True
+                    break
+
+            if is_find is True:
+                param_dict = (
+                    {'source-volume-number': int(snapshot_no, 16),
+                     'destination-volume-number': int(volume_no, 16)})
+
+                rc, emsg, clidata = self._exec_eternus_cli(
+                    'start_copy_opc',
+                    **param_dict)
+
+                if rc != 0:
+                    msg = (_('revert_to_snapshot, '
+                             'start_copy_opc failed. '
+                             'Return code: %(rc)lu, '
+                             'Error: %(errormsg)s, '
+                             'Message: %(clidata)s.')
+                           % {'rc': rc,
+                              'errormsg': emsg,
+                              'clidata': clidata})
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+            else:
+                msg = (_('revert_to_snapshot, '
+                         'snapshot volume not found on ETERNUS. '
+                         'snapshot: %(snapshot)s. ')
+                       % {'snapshot': snapshot})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('revert_to_snapshot, Exit method. ')
 
     def _get_copy_sessions_list(self, **param):
         """Get copy sessions list."""

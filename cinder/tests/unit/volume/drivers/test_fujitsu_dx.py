@@ -181,7 +181,7 @@ FAKE_POOLS = [{
 }]
 
 FAKE_STATS = {
-    'driver_version': '1.4.6',
+    'driver_version': '1.4.7',
     'storage_protocol': 'iSCSI',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -191,7 +191,7 @@ FAKE_STATS = {
     'pools': FAKE_POOLS,
 }
 FAKE_STATS2 = {
-    'driver_version': '1.4.6',
+    'driver_version': '1.4.7',
     'storage_protocol': 'FC',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -425,7 +425,7 @@ class FakeEternusConnection(object):
                      SourceElement=None, TargetElement=None,
                      Operation=None, CopyType=None,
                      Synchronization=None, ProtocolControllers=None,
-                     TargetPool=None):
+                     TargetPool=None, WaitForCopyState=None):
         global MAP_STAT, VOL_STAT
         if MethodName == 'CreateOrModifyElementFromStoragePool':
             VOL_STAT = '1'
@@ -630,6 +630,35 @@ class FakeEternusConnection(object):
 
     def _ref_storage_sync(self):
         syncnames = []
+
+        cpsessions = {}
+
+        synced = FakeCIMInstanceName()
+        synced_keybindings = {}
+        synced_keybindings['CreationClassName'] = STOR_VOL
+        synced_keybindings['DeviceID'] = FAKE_LUN_ID2
+        synced_keybindings['SystemCreationClassName'] = \
+            'FUJITSU_StorageComputerSystem'
+        synced_keybindings['SystemName'] = STORAGE_SYSTEM
+        synced['ClassName'] = STOR_VOL
+        synced.keybindings = synced_keybindings
+        cpsessions['SyncedElement'] = synced
+
+        system = FakeCIMInstanceName()
+        system_keybindings = {}
+        system_keybindings['CreationClassName'] = STOR_VOL
+        system_keybindings['DeviceID'] = FAKE_LUN_ID1
+        system_keybindings['SystemCreationClassName'] = \
+            'FUJITSU_StorageComputerSystem'
+        system_keybindings['SystemName'] = STORAGE_SYSTEM
+        system['ClassName'] = STOR_VOL
+        system.keybindings = system_keybindings
+        cpsessions['SystemElement'] = system
+
+        cpsessions['classname'] = STOR_SYNC
+
+        syncnames.append(cpsessions)
+
         return syncnames
 
     def _default_ref(self, objectpath):
@@ -842,6 +871,7 @@ class FakeEternusConnection(object):
             },
         }
         volume['provider_location'] = str(name)
+        volume.path.keybindings = name['keybindings']
         volumes.append(volume)
 
         volume3 = FJ_StorageVolume()
@@ -867,6 +897,7 @@ class FakeEternusConnection(object):
             },
         }
         volume3['provider_location'] = str(name3)
+        volume3.path.keybindings = name3['keybindings']
         volumes.append(volume3)
 
         snap_vol = FJ_StorageVolume()
@@ -891,6 +922,7 @@ class FakeEternusConnection(object):
             },
         }
         snap_vol['provider_location'] = str(name2)
+        snap_vol.path.keybindings = name2['keybindings']
         volumes.append(snap_vol)
 
         snap_vol2 = FJ_StorageVolume()
@@ -927,6 +959,18 @@ class FakeEternusConnection(object):
         clone_vol['SystemCreationClassName'] = 'FUJITSU_StorageComputerSystem'
         clone_vol.path = clone_vol
         clone_vol.path.classname = clone_vol['CreationClassName']
+
+        name_clone = {
+            'classname': 'FUJITSU_StorageVolume',
+            'keybindings': {
+                'CreationClassName': 'FUJITSU_StorageVolume',
+                'SystemName': STORAGE_SYSTEM,
+                'DeviceID': clone_vol['DeviceID'],
+                'SystemCreationClassName': 'FUJITSU_StorageComputerSystem',
+            },
+        }
+        clone_vol['provider_location'] = str(name_clone)
+        clone_vol.path.keybindings = name_clone['keybindings']
         volumes.append(clone_vol)
 
         return volumes
@@ -1318,6 +1362,23 @@ class FJFCDriverTestCase(test.TestCase):
         }
         self.assertEqual(FAKE_MIGRATED_MODEL_UPDATE, model_update)
 
+    def test_revert_to_snapshot(self):
+        self.driver.common.revert_to_snapshot = mock.Mock()
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        snap_info = self.driver.create_snapshot(TEST_SNAP)
+        self.volume_update(TEST_SNAP, snap_info)
+        self.assertEqual(FAKE_SNAP_INFO, snap_info)
+
+        self.driver.revert_to_snapshot(self.context,
+                                       TEST_VOLUME,
+                                       TEST_SNAP)
+
+        self.driver.common.revert_to_snapshot.assert_called_with(TEST_VOLUME,
+                                                                 TEST_SNAP)
+
 
 class FJISCSIDriverTestCase(test.TestCase):
     def __init__(self, *args, **kwargs):
@@ -1618,6 +1679,23 @@ class FJISCSIDriverTestCase(test.TestCase):
         }
         self.assertEqual(FAKE_MIGRATED_MODEL_UPDATE, model_update)
 
+    def test_revert_to_snapshot(self):
+        self.driver.common.revert_to_snapshot = mock.Mock()
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        snap_info = self.driver.create_snapshot(TEST_SNAP)
+        self.volume_update(TEST_SNAP, snap_info)
+        self.assertEqual(FAKE_SNAP_INFO, snap_info)
+
+        self.driver.revert_to_snapshot(self.context,
+                                       TEST_VOLUME,
+                                       TEST_SNAP)
+
+        self.driver.common.revert_to_snapshot.assert_called_with(TEST_VOLUME,
+                                                                 TEST_SNAP)
+
 
 class FJCLITestCase(test.TestCase):
     def __init__(self, *args, **kwargs):
@@ -1700,6 +1778,8 @@ class FJCLITestCase(test.TestCase):
         elif exec_cmdline.startswith('delete volume'):
             ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('start copy-snap-opc'):
+            ret = '%s\r\n00\r\n0019\r\nCLI> ' % exec_cmdline
+        elif exec_cmdline.startswith('start copy-opc'):
             ret = '%s\r\n00\r\n0019\r\nCLI> ' % exec_cmdline
         else:
             ret = None
@@ -1883,6 +1963,19 @@ class FJCLITestCase(test.TestCase):
         stop_output = self.cli._stop_copy_session(
             **FAKE_STOP_COPY_SESSION_OPTION)
         self.assertEqual(FAKE_STOP_OUTPUT, stop_output)
+
+    def test_start_copy_opc(self):
+        FAKE_SNAP_OPC_OPTION = self.create_fake_options(
+            source_volume_number=31,
+            destination_volume_number=39,
+        )
+
+        FAKE_OPC_ID = '0019'
+        FAKE_OPC_INFO = {**FAKE_CLI_OUTPUT,
+                         'message': [FAKE_OPC_ID]}
+
+        opc_id = self.cli._start_copy_opc(**FAKE_SNAP_OPC_OPTION)
+        self.assertEqual(FAKE_OPC_INFO, opc_id)
 
     def test_delete_volume(self):
         FAKE_VOLUME_NAME = 'FJosv_0qJ4rpOHgFE8ipcJOMfBmg=='

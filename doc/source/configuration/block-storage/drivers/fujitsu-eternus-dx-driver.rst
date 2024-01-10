@@ -47,6 +47,7 @@ Supported operations
 * Extend a volume.
 * Get volume statistics.
 * Migrate Volume.
+* Revert a volume to snapshot.
 
 Preparation
 ~~~~~~~~~~~
