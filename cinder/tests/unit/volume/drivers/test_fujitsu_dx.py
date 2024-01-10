@@ -48,6 +48,7 @@ CONF = """<?xml version='1.0' encoding='UTF-8'?>
 <EternusPool>abcd1234_TPP</EternusPool>
 <EternusPool>abcd1234_RG</EternusPool>
 <EternusSnapPool>abcd1234_OSVD</EternusSnapPool>
+<EternusSnapPool>abcd1234_TPP</EternusSnapPool>
 </FUJITSU>"""
 
 TEST_VOLUME = {
@@ -180,7 +181,7 @@ FAKE_POOLS = [{
 }]
 
 FAKE_STATS = {
-    'driver_version': '1.4.5',
+    'driver_version': '1.4.6',
     'storage_protocol': 'iSCSI',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -190,7 +191,7 @@ FAKE_STATS = {
     'pools': FAKE_POOLS,
 }
 FAKE_STATS2 = {
-    'driver_version': '1.4.5',
+    'driver_version': '1.4.6',
     'storage_protocol': 'FC',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -307,10 +308,25 @@ FAKE_SNAP_META = {
     'FJ_Pool_Name': 'abcd1234_OSVD',
     'FJ_SDV_Name': u'FJosv_OgEZj1mSvKRvIKOExKktlg==',
     'FJ_SDV_No': FAKE_SDV_NO,
+    'FJ_Pool_Type': 2
+}
+
+# Snapshot created on controller@113#abcd1234_TPP
+FAKE_SNAP_META2 = {
+    'FJ_Pool_Name': 'abcd1234_TPP',
+    'FJ_SDV_Name': 'FJosv_OgEZj1mSvKRvIKOExKktlg==',
+    'FJ_SDV_No': FAKE_SDV_NO,
+    'FJ_Pool_Type': 5
 }
 
 FAKE_SNAP_INFO = {
     'metadata': FAKE_SNAP_META,
+    'provider_location': str(FAKE_LOCATION2)
+}
+
+# Snapshot created on controller@113#abcd1234_TPP
+FAKE_SNAP_INFO2 = {
+    'metadata': FAKE_SNAP_META2,
     'provider_location': str(FAKE_LOCATION2)
 }
 
@@ -418,7 +434,10 @@ class FakeEternusConnection(object):
             if InPool.get('InstanceID') == 'FUJITSU:RSP0005':
                 job = {'TheElement': vol[1].path}
             else:
-                job = {'TheElement': vol[0].path}
+                if ElementName == 'FJosv_OgEZj1mSvKRvIKOExKktlg==':
+                    job = {'TheElement': vol[3].path}
+                else:
+                    job = {'TheElement': vol[0].path}
         elif MethodName == 'ReturnToStoragePool':
             VOL_STAT = '0'
             rc = 0
@@ -874,6 +893,30 @@ class FakeEternusConnection(object):
         snap_vol['provider_location'] = str(name2)
         volumes.append(snap_vol)
 
+        snap_vol2 = FJ_StorageVolume()
+        snap_vol2['name'] = TEST_SNAP['name']
+        snap_vol2['poolpath'] = 'FUJITSU:TPP0004'
+        snap_vol2['CreationClassName'] = 'FUJITSU_StorageVolume'
+        snap_vol2['Name'] = FAKE_LUN_ID2
+        snap_vol2['DeviceID'] = FAKE_LUN_ID2
+        snap_vol2['SystemCreationClassName'] = 'FUJITSU_StorageComputerSystem'
+        snap_vol2['SystemName'] = STORAGE_SYSTEM
+        snap_vol2['ElementName'] = 'FJosv_OgEZj1mSvKRvIKOExKktlg=='
+        snap_vol2.path = snap_vol
+        snap_vol2.path.classname = snap_vol['CreationClassName']
+
+        name4 = {
+            'classname': 'FUJITSU_StorageVolume',
+            'keybindings': {
+                'CreationClassName': 'FUJITSU_StorageVolume',
+                'SystemName': STORAGE_SYSTEM,
+                'DeviceID': snap_vol['DeviceID'],
+                'SystemCreationClassName': 'FUJITSU_StorageComputerSystem',
+            },
+        }
+        snap_vol2['provider_location'] = str(name4)
+        volumes.append(snap_vol2)
+
         clone_vol = FJ_StorageVolume()
         clone_vol['name'] = TEST_CLONE['name']
         clone_vol['poolpath'] = 'FUJITSU:TPP0004'
@@ -996,6 +1039,7 @@ class FJFCDriverTestCase(test.TestCase):
         self.configuration.cinder_eternus_config_file = self.config_file.name
         self.configuration.safe_get = self.fake_safe_get
         self.configuration.max_over_subscription_ratio = '20.0'
+        self.configuration.fujitsu_use_cli_copy = False
 
         self.mock_object(dx_common.FJDXCommon, '_get_eternus_connection',
                          self.fake_eternus_connection)
@@ -1102,6 +1146,8 @@ class FJFCDriverTestCase(test.TestCase):
             ret = '%s\r\n00\r\n0001\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('stop copy-session'):
             ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
+        elif exec_cmdline.startswith('start copy-snap-opc'):
+            ret = '%s\r\n00\r\n0019\r\nCLI> ' % exec_cmdline
         else:
             ret = None
         return ret
@@ -1170,7 +1216,7 @@ class FJFCDriverTestCase(test.TestCase):
 
         self.driver.delete_volume(TEST_VOLUME)
 
-    def test_create_and_delete_snapshot(self):
+    def test_create_and_delete_snapshot_using_smis(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
         self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
@@ -1178,6 +1224,25 @@ class FJFCDriverTestCase(test.TestCase):
         snap_info = self.driver.create_snapshot(TEST_SNAP)
         self.volume_update(TEST_SNAP, snap_info)
         self.assertEqual(FAKE_SNAP_INFO, snap_info)
+
+        self.driver.delete_snapshot(TEST_SNAP)
+        self.driver.delete_volume(TEST_VOLUME)
+
+    @mock.patch.object(dx_common, 'LOG')
+    def test_create_and_delete_snapshot_using_cli(self, mock_log):
+        self.configuration.fujitsu_use_cli_copy = True
+        driver = dx_fc.FJDXFCDriver(configuration=self.configuration)
+        self.driver = driver
+
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        warning_msg = '_create_snapshot, Can not create SDV by SMI-S.'
+        snap_info = self.driver.create_snapshot(TEST_SNAP)
+        self.volume_update(TEST_SNAP, snap_info)
+        self.assertEqual(FAKE_SNAP_INFO2, snap_info)
+        mock_log.warning.assert_called_with(warning_msg)
 
         self.driver.delete_snapshot(TEST_SNAP)
         self.driver.delete_volume(TEST_VOLUME)
@@ -1272,6 +1337,7 @@ class FJISCSIDriverTestCase(test.TestCase):
         self.configuration.cinder_eternus_config_file = self.config_file.name
         self.configuration.safe_get = self.fake_safe_get
         self.configuration.max_over_subscription_ratio = '20.0'
+        self.configuration.fujitsu_use_cli_copy = False
 
         self.mock_object(dx_common.FJDXCommon, '_get_eternus_connection',
                          self.fake_eternus_connection)
@@ -1379,6 +1445,8 @@ class FJISCSIDriverTestCase(test.TestCase):
                    '\r\nCLI> ' % exec_cmdline)
         elif exec_cmdline.startswith('set qos-bandwidth-limit'):
             ret = '%s\r\n00\r\n0001\r\nCLI> ' % exec_cmdline
+        elif exec_cmdline.startswith('start copy-snap-opc'):
+            ret = '%s\r\n00\r\n0019\r\nCLI> ' % exec_cmdline
         else:
             ret = None
         return ret
@@ -1448,7 +1516,7 @@ class FJISCSIDriverTestCase(test.TestCase):
                                          None)
         self.driver.delete_volume(TEST_VOLUME)
 
-    def test_create_and_delete_snapshot(self):
+    def test_create_and_delete_snapshot_using_smis(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
         self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
@@ -1456,6 +1524,25 @@ class FJISCSIDriverTestCase(test.TestCase):
         snap_info = self.driver.create_snapshot(TEST_SNAP)
         self.volume_update(TEST_SNAP, snap_info)
         self.assertEqual(FAKE_SNAP_INFO, snap_info)
+
+        self.driver.delete_snapshot(TEST_SNAP)
+        self.driver.delete_volume(TEST_VOLUME)
+
+    @mock.patch.object(dx_common, 'LOG')
+    def test_create_and_delete_snapshot_using_cli(self, mock_log):
+        self.configuration.fujitsu_use_cli_copy = True
+        driver = dx_fc.FJDXFCDriver(configuration=self.configuration)
+        self.driver = driver
+
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        warning_msg = '_create_snapshot, Can not create SDV by SMI-S.'
+        snap_info = self.driver.create_snapshot(TEST_SNAP)
+        self.volume_update(TEST_SNAP, snap_info)
+        self.assertEqual(FAKE_SNAP_INFO2, snap_info)
+        mock_log.warning.assert_called_with(warning_msg)
 
         self.driver.delete_snapshot(TEST_SNAP)
         self.driver.delete_volume(TEST_VOLUME)
@@ -1612,6 +1699,8 @@ class FJCLITestCase(test.TestCase):
             ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('delete volume'):
             ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
+        elif exec_cmdline.startswith('start copy-snap-opc'):
+            ret = '%s\r\n00\r\n0019\r\nCLI> ' % exec_cmdline
         else:
             ret = None
         return ret
@@ -1769,6 +1858,23 @@ class FJCLITestCase(test.TestCase):
         versioninfo = self.cli._show_enclosure_status()
         self.assertEqual(FAKE_VERSION_INFO, versioninfo)
 
+    def test_start_copy_snap_opc(self):
+        FAKE_SNAP_OPC_OPTION = self.create_fake_options(
+            mode='normal',
+            source_volume_number=31,
+            destination_volume_number=39,
+            source_lba=0,
+            destination=0,
+            size=1
+        )
+
+        FAKE_OPC_ID = '0019'
+        FAKE_OPC_INFO = {**FAKE_CLI_OUTPUT,
+                         'message': [FAKE_OPC_ID]}
+
+        opc_id = self.cli._start_copy_snap_opc(**FAKE_SNAP_OPC_OPTION)
+        self.assertEqual(FAKE_OPC_INFO, opc_id)
+
     def test_stop_copy_session(self):
         FAKE_SESSION_ID = '0001'
         FAKE_STOP_OUTPUT = {**FAKE_CLI_OUTPUT, 'message': []}
@@ -1806,6 +1912,7 @@ class FJCommonTestCase(test.TestCase):
         self.configuration.cinder_eternus_config_file = self.config_file.name
         self.configuration.safe_get = self.fake_safe_get
         self.configuration.max_over_subscription_ratio = '20.0'
+        self.configuration.fujitsu_use_cli_copy = False
 
         self.mock_object(dx_common.FJDXCommon, '_get_eternus_connection',
                          self.fake_eternus_connection)

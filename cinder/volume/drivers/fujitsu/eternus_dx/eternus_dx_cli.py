@@ -53,6 +53,7 @@ class FJDXCLI(object):
             'show_copy_sessions': self._show_copy_sessions,
             'show_volume_qos': self._show_volume_qos,
             'show_enclosure_status': self._show_enclosure_status,
+            'start_copy_snap_opc': self._start_copy_snap_opc,
             'stop_copy_session': self._stop_copy_session,
             'delete_volume': self._delete_volume
         }
@@ -481,6 +482,10 @@ class FJDXCLI(object):
                       'message': "Show enclosure status error: %s" % ex}
 
         return output
+
+    def _start_copy_snap_opc(self, **option):
+        """Exec start copy-snap-opc."""
+        return self._exec_cli("start copy-snap-opc", **option)
 
     def _stop_copy_session(self, **option):
         """Exec stop copy-session."""

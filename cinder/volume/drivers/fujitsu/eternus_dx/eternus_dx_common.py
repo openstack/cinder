@@ -53,6 +53,9 @@ FJ_ETERNUS_DX_OPT_opts = [
     cfg.StrOpt('cinder_eternus_config_file',
                default='/etc/cinder/cinder_fujitsu_eternus_dx.xml',
                help='Config file for cinder eternus_dx volume driver.'),
+    cfg.BoolOpt('fujitsu_use_cli_copy',
+                default=False,
+                help='If True use CLI command to create snapshot.'),
 ]
 
 CONF.register_opts(FJ_ETERNUS_DX_OPT_opts, group=conf.SHARED_CONF_GROUP)
@@ -71,10 +74,11 @@ class FJDXCommon(object):
     1.4.3 - Add fragment capacity information of RAID Group.
     1.4.4 - Add support for update migrated volume.
     1.4.5 - Add metadata for snapshot.
+    1.4.6 - Add parameter fujitsu_use_cli_copy.
 
     """
 
-    VERSION = "1.4.5"
+    VERSION = "1.4.6"
     stats = {
         'driver_version': VERSION,
         'storage_protocol': None,
@@ -92,6 +96,7 @@ class FJDXCommon(object):
         self.configuration.append_config_values(FJ_ETERNUS_DX_OPT_opts)
 
         self.conn = None
+        self.use_cli_copy = self.configuration.fujitsu_use_cli_copy
         self.fjdxcli = {}
         self.model_name = self._get_eternus_model()
         self._check_user()
@@ -136,7 +141,7 @@ class FJDXCommon(object):
                   {'vid': volume['id'], 'vsize': volume['size']})
 
         self.conn = self._get_eternus_connection()
-        volumesize = int(volume['size']) * units.Gi
+        volumesize = volume['size'] * units.Gi
         volumename = self._get_volume_name(volume, use_id=True)
 
         LOG.debug('_create_volume, volumename: %(volumename)s, '
@@ -664,112 +669,226 @@ class FJDXCommon(object):
     @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
     def _create_snapshot(self, snapshot):
 
-        LOG.debug('create_snapshot, '
+        LOG.debug('_create_snapshot, '
                   'snapshot id: %(sid)s, volume id: %(vid)s.',
                   {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
 
-        self.conn = self._get_eternus_connection()
         snapshotname = snapshot['name']
         volume = snapshot['volume']
         volumename = snapshot['volume_name']
         d_volumename = self._get_volume_name(snapshot, use_id=True)
-        s_volumename = self._get_volume_name(volume)
         vol_instance = self._find_lun(volume)
-        smis_service = self._find_eternus_service(CONSTANTS.REPL)
+        service_name = (CONSTANTS.REPL
+                        if self.model_name != CONSTANTS.DX_S2
+                        else CONSTANTS.STOR_CONF)
 
-        # Check the existence of volume.
-        if not vol_instance:
-            # Volume not found on ETERNUS.
-            msg = (_('create_snapshot, '
-                     'volumename: %(s_volumename)s, '
-                     'source volume not found on ETERNUS.')
-                   % {'s_volumename': s_volumename})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        volume_size = snapshot['volume']['size'] * 1024
+
+        smis_service = self._find_eternus_service(service_name)
 
         if not smis_service:
-            msg = (_('create_snapshot, '
+            msg = (_('_create_snapshot, '
                      'volumename: %(volumename)s, '
-                     'Replication Service not found.')
-                   % {'volumename': volumename})
+                     '%(servicename)s not found.')
+                   % {'volumename': volumename,
+                      'servicename': service_name})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        # Get poolname from driver configuration file.
-        eternus_pool = self._get_drvcfg('EternusSnapPool')
-        # Check the existence of pool
-        pool = self._find_pool(eternus_pool)
-        if not pool:
-            msg = (_('create_snapshot, '
-                     'eternus_pool: %(eternus_pool)s, '
-                     'pool not found.')
-                   % {'eternus_pool': eternus_pool})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        # Get all pools information on ETERNUS.
+        pools_instance_list = self._find_all_pools_instances(self.conn)
+        # Get the user specified pool name.
+        pool_name_list = self._get_drvcfg('EternusSnapPool', multiple=True)
 
-        LOG.debug('create_snapshot, '
-                  'snapshotname: %(snapshotname)s, '
-                  'source volume name: %(volumename)s, '
-                  'vol_instance.path: %(vol_instance)s, '
-                  'dest_volumename: %(d_volumename)s, '
-                  'pool: %(pool)s, '
-                  'Invoke CreateElementReplica.',
-                  {'snapshotname': snapshotname,
-                   'volumename': volumename,
-                   'vol_instance': vol_instance.path,
-                   'd_volumename': d_volumename,
-                   'pool': pool})
+        poollen = len(pool_name_list)
+        for i in range(poollen):
+            # Traverse the user specified pool one by one.
+            pool_instances, notfound_poolnames = self._find_pools(
+                [pool_name_list[i]], self.conn,
+                poolinstances_list=pools_instance_list)
 
-        if self.model_name != CONSTANTS.DX_S2:
-            smis_method = 'CreateElementReplica'
-            params = {
-                'ElementName': d_volumename,
-                'TargetPool': pool,
-                'SyncType': self._pywbem_uint(7, '16'),
-                'SourceElement': vol_instance.path
-            }
+            if pool_instances['pools']:
+                useable = pool_instances['pools'][0]['useable_capacity_mb']
+                poolname = pool_instances['pools'][0]['pool_name']
+                istpp = pool_instances['pools'][0]['thin_provisioning_support']
+                if useable < 24 + volume_size:
+                    continue
+                if not istpp:
+                    # If it is a RAID Group pool, we need to determine
+                    # the number of volumes and fragmentation capacity.
+                    # The number of RAID Group pool volumes cannot exceed 128.
+                    # The minimum space required for snapshot is 24MB.
+                    fragment = pool_instances['pools'][0][
+                        'fragment_capacity_mb']
+                    volcnt = pool_instances['pools'][0]['total_volumes']
+                    if volcnt >= 128 or fragment < 24 + volume_size:
+                        LOG.debug('_create_volume, The pool: %(poolname)s '
+                                  'can not create volume. '
+                                  'Volume Count: %(volcnt)s, '
+                                  'Maximum fragment capacity: %(frag)s.',
+                                  {'poolname': poolname,
+                                   'volcnt': volcnt, 'frag': fragment})
+                        continue
+
+                pool_instance = pool_instances['pools'][0]
+                eternus_pool = pool_instance['pool_name']
+                pool = pool_instance['path']
+                if 'RSP' in pool['InstanceID']:
+                    pooltype = CONSTANTS.RAIDGROUP
+                else:
+                    pooltype = CONSTANTS.TPPOOL
+
+                if self.use_cli_copy is False:
+                    LOG.debug('_create_snapshot, '
+                              'snapshotname: %(snapshotname)s, '
+                              'source volume name: %(volumename)s, '
+                              'vol_instance.path: %(vol_instance)s, '
+                              'dest_volumename: %(d_volumename)s, '
+                              'pool: %(pool)s, '
+                              'Invoke CreateElementReplica.',
+                              {'snapshotname': snapshotname,
+                               'volumename': volumename,
+                               'vol_instance': vol_instance.path,
+                               'd_volumename': d_volumename,
+                               'pool': eternus_pool})
+
+                    if self.model_name != CONSTANTS.DX_S2:
+                        smis_method = 'CreateElementReplica'
+                        params = {
+                            'ElementName': d_volumename,
+                            'TargetPool': pool,
+                            'SyncType': self._pywbem_uint(7, '16'),
+                            'SourceElement': vol_instance.path
+                        }
+                    else:
+                        smis_method = 'CreateReplica'
+                        params = {
+                            'ElementName': d_volumename,
+                            'TargetPool': pool,
+                            'CopyType': self._pywbem_uint(4, '16'),
+                            'SourceElement': vol_instance.path
+                        }
+                    # Invoke method for create snapshot.
+                    rc, errordesc, job = self._exec_eternus_service(
+                        smis_method, smis_service,
+                        **params)
+
+                    if rc != 0:
+                        LOG.warning('_create_snapshot, '
+                                    'snapshotname: %(snapshotname)s, '
+                                    'source volume name: %(volumename)s, '
+                                    'vol_instance.path: %(vol_instance)s, '
+                                    'dest volume name: %(d_volumename)s, '
+                                    'pool: %(pool)s, Return code: %(rc)lu, '
+                                    'Error: %(errordesc)s.',
+                                    {'snapshotname': snapshotname,
+                                     'volumename': volumename,
+                                     'vol_instance': vol_instance.path,
+                                     'd_volumename': d_volumename,
+                                     'pool': eternus_pool,
+                                     'rc': rc,
+                                     'errordesc': errordesc})
+                        continue
+                    else:
+                        element = job['TargetElement']
+                        d_volume_no = self._get_volume_number(element)
+                        break
+
+                else:
+                    if pooltype == CONSTANTS.RAIDGROUP:
+                        LOG.warning('_create_snapshot, '
+                                    'Can not create SDV by SMI-S.')
+                        continue
+                    configservice = self._find_eternus_service(
+                        CONSTANTS.STOR_CONF)
+                    vol_size = snapshot['volume']['size'] * units.Gi
+
+                    LOG.debug('_create_snapshot, '
+                              'CreateOrModifyElementFromStoragePool, '
+                              'ConfigService: %(service)s, '
+                              'ElementName: %(volumename)s, '
+                              'InPool: %(eternus_pool)s, '
+                              'ElementType: %(pooltype)u, '
+                              'Size: %(volumesize)u.',
+                              {'service': configservice,
+                               'volumename': d_volumename,
+                               'eternus_pool': pool,
+                               'pooltype': pooltype,
+                               'volumesize': vol_size})
+
+                    # Invoke method for create volume.
+                    rc, errordesc, job = self._exec_eternus_service(
+                        'CreateOrModifyElementFromStoragePool',
+                        configservice,
+                        ElementName=d_volumename,
+                        InPool=pool,
+                        ElementType=self._pywbem_uint(pooltype, '16'),
+                        Size=self._pywbem_uint(vol_size, '64'))
+
+                    if rc == 32769:
+                        LOG.warning('_create_snapshot, RAID Group pool: %s. '
+                                    'Maximum number of Logical Volume in a '
+                                    'RAID Group has been reached. '
+                                    'Try other pool.',
+                                    pool)
+                        continue
+                    elif rc != 0:
+                        msg = (_('_create_volume, '
+                                 'volumename: %(volumename)s, '
+                                 'poolname: %(eternus_pool)s, '
+                                 'Return code: %(rc)lu, '
+                                 'Error: %(errordesc)s.')
+                               % {'volumename': volumename,
+                                  'eternus_pool': pool,
+                                  'rc': rc,
+                                  'errordesc': errordesc})
+                        LOG.error(msg)
+                        raise exception.VolumeBackendAPIException(data=msg)
+                    else:
+                        element = job['TheElement']
+                        d_volume_no = self._get_volume_number(element)
+                        volume_no = self._get_volume_number(vol_instance)
+                        volume_lba = int(vol_size / 512)
+                        param_dict = (
+                            {'mode': 'normal',
+                             'source-volume-number': int(volume_no, 16),
+                             'destination-volume-number': int(d_volume_no, 16),
+                             'source-lba': 0,
+                             'destination-lba': 0,
+                             'size': volume_lba})
+
+                        rc, emsg, clidata = self._exec_eternus_cli(
+                            'start_copy_snap_opc',
+                            **param_dict)
+
+                        if rc != 0:
+                            msg = (_('_create_snapshot, '
+                                     'create_volume failed. '
+                                     'Return code: %(rc)lu, '
+                                     'Error: %(errormsg)s, '
+                                     'Message: %(clidata)s.')
+                                   % {'rc': rc,
+                                      'errormsg': emsg,
+                                      'clidata': clidata})
+                            LOG.error(msg)
+                            raise exception.VolumeBackendAPIException(data=msg)
+                        break
+            else:
+                if notfound_poolnames:
+                    LOG.warning('_create_snapshot, '
+                                'pool names: %(notfound_poolnames)s '
+                                'are not found.',
+                                {'notfound_poolnames': notfound_poolnames})
         else:
-            smis_method = 'CreateReplica'
-            params = {
-                'ElementName': d_volumename,
-                'TargetPool': pool,
-                'CopyType': self._pywbem_uint(4, '16'),
-                'SourceElement': vol_instance.path
-            }
-        # Invoke method for create snapshot
-        rc, errordesc, job = self._exec_eternus_service(
-            smis_method, smis_service,
-            **params)
-
-        if rc != 0:
-            msg = (_('create_snapshot, '
-                     'snapshotname: %(snapshotname)s, '
-                     'source volume name: %(volumename)s, '
-                     'vol_instance.path: %(vol_instance)s, '
-                     'dest volume name: %(d_volumename)s, '
-                     'pool: %(pool)s, '
-                     'Return code: %(rc)lu, '
-                     'Error: %(errordesc)s.')
-                   % {'snapshotname': snapshotname,
-                      'volumename': volumename,
-                      'vol_instance': vol_instance.path,
-                      'd_volumename': d_volumename,
-                      'pool': pool,
-                      'rc': rc,
-                      'errordesc': errordesc})
+            # It means that all RAID Group pools do not meet
+            # the volume limit (<128), and the creation request of
+            # this volume will be rejected.
+            # If there is a thin pool available, it will not enter this branch.
+            msg = (_('_create_snapshot, volume id: %(sid)s, '
+                     'All pools cannot create this volume.')
+                   % {'sid': snapshot['id']})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
-        else:
-            element = job['TargetElement']
-            d_volume_no = self._get_volume_number(element)
-
-        LOG.debug('create_snapshot, '
-                  'volumename:%(volumename)s, '
-                  'Return code:%(rc)lu, '
-                  'Error:%(errordesc)s.',
-                  {'volumename': volumename,
-                   'rc': rc,
-                   'errordesc': errordesc})
 
         # Create return value.
         element_path = {
@@ -781,9 +900,12 @@ class FJDXCommon(object):
             'vol_name': d_volumename,
         }
 
-        metadata = {'FJ_SDV_Name': d_volumename,
-                    'FJ_SDV_No': d_volume_no,
-                    'FJ_Pool_Name': eternus_pool}
+        metadata = {
+            'FJ_SDV_Name': d_volumename,
+            'FJ_SDV_No': d_volume_no,
+            'FJ_Pool_Name': eternus_pool,
+            'FJ_Pool_Type': pooltype
+        }
         d_metadata = self.get_metadata(snapshot)
         d_metadata.update(metadata)
 
@@ -1386,7 +1508,8 @@ class FJDXCommon(object):
         LOG.debug('_find_all_pools_instances, poollist: %s', len(poollist))
         return poollist
 
-    def _find_pools(self, poolname_list, conn):
+    def _find_pools(self, poolname_list, conn,
+                    poolinstances_list=None):
         """Find pool instances by using pool name on ETERNUS."""
         LOG.debug('_find_pools, pool names: %s.', poolname_list)
 
@@ -1394,7 +1517,12 @@ class FJDXCommon(object):
         pools = []
 
         # Get pools info from CIM instance(include info about instance path).
-        poollist = self._find_all_pools_instances(conn)
+        if not poolinstances_list:
+            poollist = self._find_all_pools_instances(conn)
+            is_create = False
+        else:
+            poollist = poolinstances_list
+            is_create = True
 
         for pool, ptype in poollist:
             poolname = pool['ElementName']
@@ -1536,6 +1664,10 @@ class FJDXCommon(object):
                 thick_provisioning_support=not thin_enabled,
                 max_over_subscription_ratio=max_ratio,
             ))
+
+            if is_create:
+                single_pool['useable_capacity_mb'] = \
+                    pool['useable_capacity_mb']
             single_pool['multiattach'] = True
             pools_stats['pools'].append(single_pool)
 
