@@ -326,7 +326,8 @@ class SPDKDriver(driver.VolumeDriver):
         if volume.size > src_volume.size:
             self.extend_volume(volume, volume.size)
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch the image from image_service and write it to the volume."""
 
         volume['provider_location'] = (
@@ -350,7 +351,8 @@ class SPDKDriver(driver.VolumeDriver):
                                      image_id,
                                      device_info['path'],
                                      self.configuration.volume_dd_blocksize,
-                                     size=volume['size'])
+                                     size=volume['size'],
+                                     disable_sparse=disable_sparse)
 
         finally:
             target_connector.disconnect_volume(connection_data, volume)

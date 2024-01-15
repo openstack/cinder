@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    `Bug #2045431 <https://bugs.launchpad.net/cinder/+bug/2045431>`_: Fixed
+    a data leak scenario where we preserve sparseness when reimaging the
+    volume.
+
+    We currently do a sparse copy when writing an image on the volume. This
+    could be a potential data leak scenario where the zero blocks of the new
+    image are not written on the existing volume and the data from the old
+    image still exists on the volume. We fix the scenario by not doing sparse
+    copy when reimaging the volume.

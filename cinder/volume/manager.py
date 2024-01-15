@@ -5350,7 +5350,8 @@ class VolumeManager(manager.CleanableManager,
 
             volume_utils.copy_image_to_volume(self.driver, context, volume,
                                               image_meta, image_location,
-                                              image_service)
+                                              image_service,
+                                              disable_sparse=True)
 
             self._refresh_volume_glance_meta(context, volume, image_meta)
             volume.status = volume.previous_status

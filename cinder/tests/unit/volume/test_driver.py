@@ -465,7 +465,7 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
             self.context, attach_info, encryption)
         mock_fetch_to_raw.assert_called_once_with(
             self.context, image_service, fake.IMAGE_ID,
-            local_path, '1M', size=2)
+            local_path, '1M', size=2, disable_sparse=False)
         mock_detach_encryptor.assert_called_once_with(
             attach_info, encryption)
         mock_detach_volume.assert_called_once_with(
@@ -567,7 +567,8 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
             self.context, attach_info, encryption)
         mock_fetch_to_raw.assert_called_once_with(
             self.context, image_service, fake.IMAGE_ID,
-            local_path, '1M', size=2)
+            local_path, '1M', size=2,
+            disable_sparse=False)
         mock_detach_encryptor.assert_called_once_with(
             attach_info, encryption)
         mock_detach_volume.assert_called_once_with(

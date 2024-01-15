@@ -195,10 +195,12 @@ class HBSDFCDriver(driver.FibreChannelDriver):
             ctxt, volume, new_volume, original_volume_status)
 
     @volume_utils.trace
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch the image from image_service and write it to the volume."""
         super(HBSDFCDriver, self).copy_image_to_volume(
-            context, volume, image_service, image_id)
+            context, volume, image_service, image_id,
+            disable_sparse=disable_sparse)
         self.common.discard_zero_page(volume)
 
     @volume_utils.trace

@@ -46,7 +46,8 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
             self.volume.reimage(self.context, volume, self.image_meta)
             mock_cp_img.assert_called_once_with(self.context, volume,
                                                 fake_image.FakeImageService(),
-                                                self.image_meta['id'])
+                                                self.image_meta['id'],
+                                                disable_sparse=True)
         self.assertEqual(volume.status, 'available')
 
     def test_volume_reimage_raise_exception(self):

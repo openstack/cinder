@@ -1170,7 +1170,8 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
 
         fake_driver.create_volume.assert_called_once_with(volume)
         fake_driver.copy_image_to_encrypted_volume.assert_called_once_with(
-            self.ctxt, volume, fake_image_service, image_id)
+            self.ctxt, volume, fake_image_service, image_id,
+            disable_sparse=False)
         mock_prepare_image_cache.assert_not_called()
         mock_handle_bootable.assert_called_once_with(self.ctxt, volume,
                                                      image_id=image_id,
@@ -1220,7 +1221,8 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
         fake_driver.create_volume.assert_called_once_with(volume)
         fake_driver.copy_image_to_encrypted_volume.assert_not_called()
         fake_driver.copy_image_to_volume.assert_called_once_with(
-            self.ctxt, volume, fake_image_service, image_id)
+            self.ctxt, volume, fake_image_service, image_id,
+            disable_sparse=False)
         mock_handle_bootable.assert_called_once_with(self.ctxt, volume,
                                                      image_id=image_id,
                                                      image_meta=image_meta)

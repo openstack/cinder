@@ -314,6 +314,24 @@ class TestConvertImage(test.TestCase):
         mock_exec.assert_called_once_with(*exec_args,
                                           run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.utils.is_blk_device', return_value=False)
+    def test_convert_disable_sparse(self, mock_isblk,
+                                    mock_exec, mock_info):
+        source = mock.sentinel.source
+        dest = mock.sentinel.dest
+        out_format = mock.sentinel.out_format
+        mock_info.return_value.virtual_size = 1048576
+
+        output = image_utils.convert_image(source, dest, out_format,
+                                           disable_sparse=True)
+
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('qemu-img', 'convert',
+                                          '-O', out_format, '-S', '0', source,
+                                          dest, run_as_root=True)
+
     @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1013,7 +1031,8 @@ class TestFetchToVhd(test.TestCase):
                                               volume_subformat=out_subformat,
                                               user_id=None,
                                               project_id=None,
-                                              run_as_root=True)
+                                              run_as_root=True,
+                                              disable_sparse=False)
 
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.fetch_to_volume_format')
@@ -1039,7 +1058,8 @@ class TestFetchToVhd(test.TestCase):
                                               volume_subformat=out_subformat,
                                               user_id=user_id,
                                               project_id=project_id,
-                                              run_as_root=run_as_root)
+                                              run_as_root=run_as_root,
+                                              disable_sparse=False)
 
 
 class TestFetchToRaw(test.TestCase):
@@ -1057,7 +1077,8 @@ class TestFetchToRaw(test.TestCase):
         mock_fetch_to.assert_called_once_with(ctxt, image_service, image_id,
                                               dest, 'raw', blocksize,
                                               user_id=None, project_id=None,
-                                              size=None, run_as_root=True)
+                                              size=None, run_as_root=True,
+                                              disable_sparse=False)
 
     @mock.patch('cinder.image.image_utils.check_available_space')
     @mock.patch('cinder.image.image_utils.fetch_to_volume_format')
@@ -1081,7 +1102,8 @@ class TestFetchToRaw(test.TestCase):
                                               dest, 'raw', blocksize,
                                               user_id=user_id, size=size,
                                               project_id=project_id,
-                                              run_as_root=run_as_root)
+                                              run_as_root=run_as_root,
+                                              disable_sparse=False)
 
 
 class FakeImageService(object):
@@ -1147,7 +1169,8 @@ class TestFetchToVolumeFormat(test.TestCase):
                                              run_as_root=True,
                                              src_format=disk_format,
                                              image_id=image_id,
-                                             data=data)
+                                             data=data,
+                                             disable_sparse=False)
 
     @mock.patch('cinder.image.image_utils.check_virtual_size')
     @mock.patch('cinder.image.image_utils.check_available_space')
@@ -1203,7 +1226,8 @@ class TestFetchToVolumeFormat(test.TestCase):
                                              run_as_root=run_as_root,
                                              src_format=qemu_img_format,
                                              image_id=image_id,
-                                             data=data)
+                                             data=data,
+                                             disable_sparse=False)
         mock_check_size.assert_called_once_with(data.virtual_size,
                                                 size, image_id)
 
@@ -1289,7 +1313,8 @@ class TestFetchToVolumeFormat(test.TestCase):
                                              run_as_root=run_as_root,
                                              src_format=expect_format,
                                              image_id=image_id,
-                                             data=data)
+                                             data=data,
+                                             disable_sparse=False)
 
     @mock.patch('cinder.image.image_utils.check_virtual_size')
     @mock.patch('cinder.image.image_utils.check_available_space')
@@ -1344,7 +1369,8 @@ class TestFetchToVolumeFormat(test.TestCase):
                                              run_as_root=run_as_root,
                                              src_format=expect_format,
                                              image_id=image_id,
-                                             data=data)
+                                             data=data,
+                                             disable_sparse=False)
 
     @mock.patch('cinder.image.image_utils.check_available_space',
                 new=mock.Mock())
@@ -1385,7 +1411,8 @@ class TestFetchToVolumeFormat(test.TestCase):
             output = image_utils.fetch_to_volume_format(ctxt, image_service,
                                                         image_id, dest,
                                                         volume_format,
-                                                        blocksize)
+                                                        blocksize,
+                                                        disable_sparse=False)
 
         self.assertIsNone(output)
         self.assertEqual(2, mock_temp.call_count)
@@ -1402,7 +1429,8 @@ class TestFetchToVolumeFormat(test.TestCase):
                                              run_as_root=True,
                                              src_format=qemu_img_format,
                                              image_id=image_id,
-                                             data=data)
+                                             data=data,
+                                             disable_sparse=False)
 
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
@@ -1702,7 +1730,8 @@ class TestFetchToVolumeFormat(test.TestCase):
                                              run_as_root=run_as_root,
                                              src_format=qemu_img_format,
                                              image_id=image_id,
-                                             data=data)
+                                             data=data,
+                                             disable_sparse=False)
 
     @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info',
@@ -1858,7 +1887,8 @@ class TestFetchToVolumeFormat(test.TestCase):
                                              run_as_root=True,
                                              src_format=qemu_img_format,
                                              image_id=image_id,
-                                             data=data)
+                                             data=data,
+                                             disable_sparse=False)
         mock_engine.decompress_img.assert_called()
 
 
