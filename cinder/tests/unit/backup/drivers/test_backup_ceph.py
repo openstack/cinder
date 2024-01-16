@@ -157,6 +157,10 @@ class BackupCephTestCase(test.TestCase):
                 self.callstack.append('communicate')
                 return retval
 
+            def wait(mock_inst):
+                self.callstack.append('wait')
+                return retval
+
         subprocess.Popen.side_effect = MockPopen
 
     def setUp(self):
@@ -522,7 +526,8 @@ class BackupCephTestCase(test.TestCase):
                                               'popen_init',
                                               'write',
                                               'stdout_close',
-                                              'communicate'], self.callstack)
+                                              'communicate',
+                                              'wait'], self.callstack)
 
                             self.assertFalse(mock_full_backup.called)
                             self.assertFalse(mock_get_backup_snaps.called)
@@ -1412,8 +1417,8 @@ class BackupCephTestCase(test.TestCase):
         mock_fcntl.return_value = 0
         self._setup_mock_popen(['out', 'err'])
         self.service._piped_execute(['foo'], ['bar'])
-        self.assertEqual(['popen_init', 'popen_init',
-                          'stdout_close', 'communicate'], self.callstack)
+        self.assertEqual(['popen_init', 'popen_init', 'stdout_close',
+                          'communicate', 'wait'], self.callstack)
 
     @common_mocks
     def test_restore_metdata(self):
