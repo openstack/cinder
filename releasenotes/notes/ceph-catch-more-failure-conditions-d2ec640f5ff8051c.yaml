@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    `Bug #2031897 <https://bugs.launchpad.net/cinder/+bug/2031897>`_: Fixed
+    issues for volume backups with the Ceph driver where failures of the first
+    process ("rbd export-diff") were not caught. Instead, only the return code
+    of the second process ("rbd import-diff") was recognized.
+
+    This change also preserves the stderr that was lost previously
+    in order to ease debugging.
