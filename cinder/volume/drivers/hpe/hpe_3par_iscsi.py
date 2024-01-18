@@ -130,10 +130,11 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.5 - Added Primera array check. bug #1849525
         4.0.6 - Allow iSCSI support for Primera 4.2 onwards
         4.0.7 - Use vlan iscsi ips. Bug #2015034
+        4.0.8 - Add ipv6 support. Bug #2045411
 
     """
 
-    VERSION = "4.0.7"
+    VERSION = "4.0.8"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -189,11 +190,25 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         if len(backend_conf['hpe3par_iscsi_ips']) > 0:
             # add port values to ip_addr, if necessary
             for ip_addr in backend_conf['hpe3par_iscsi_ips']:
-                ip = ip_addr.split(':')
-                if len(ip) == 1:
-                    temp_iscsi_ip[ip_addr] = {'ip_port': DEFAULT_ISCSI_PORT}
-                elif len(ip) == 2:
-                    temp_iscsi_ip[ip[0]] = {'ip_port': ip[1]}
+                if "." in ip_addr:
+                    # v4
+                    ip = ip_addr.split(':')
+                    if len(ip) == 1:
+                        temp_iscsi_ip[ip_addr] = (
+                            {'ip_port': DEFAULT_ISCSI_PORT})
+                    elif len(ip) == 2:
+                        temp_iscsi_ip[ip[0]] = {'ip_port': ip[1]}
+                elif ":" in ip_addr:
+                    # v6
+                    if "]" in ip_addr:
+                        ip = ip_addr.split(']:')
+                        ip_addr_v6 = ip[0]
+                        ip_addr_v6 = ip_addr_v6.strip('[')
+                        port_v6 = ip[1]
+                        temp_iscsi_ip[ip_addr_v6] = {'ip_port': port_v6}
+                    else:
+                        temp_iscsi_ip[ip_addr] = (
+                            {'ip_port': DEFAULT_ISCSI_PORT})
                 else:
                     LOG.warning("Invalid IP address format '%s'", ip_addr)
 
@@ -280,8 +295,15 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
             if lun_id is None:
                 lun_id = vlun['lun']
 
-        iscsi_ip_port = "%s:%s" % (
-            iscsi_ip, iscsi_ips[iscsi_ip]['ip_port'])
+        if ":" in iscsi_ip:
+            # v6
+            iscsi_ip_port = "[%s]:%s" % (
+                iscsi_ip, iscsi_ips[iscsi_ip]['ip_port'])
+        else:
+            # v4
+            iscsi_ip_port = "%s:%s" % (
+                iscsi_ip, iscsi_ips[iscsi_ip]['ip_port'])
+        LOG.debug("iscsi_ip_port: %(var)s", {'var': iscsi_ip_port})
         target_portals.append(iscsi_ip_port)
         target_iqns.append(port['iSCSIName'])
         target_luns.append(vlun['lun'])
@@ -490,9 +512,17 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
 
                 iscsi_ip_port = iscsi_ips[iscsi_ip]['ip_port']
                 iscsi_target_iqn = iscsi_ips[iscsi_ip]['iqn']
+                if ":" in iscsi_ip:
+                    # v6
+                    target_portal = "[%s]:%s" % (
+                        iscsi_ip, iscsi_ip_port)
+                else:
+                    # v4
+                    target_portal = "%s:%s" % (
+                        iscsi_ip, iscsi_ip_port)
+                LOG.debug("target_portal: %(var)s", {'var': target_portal})
                 info = {'driver_volume_type': 'iscsi',
-                        'data': {'target_portal': "%s:%s" %
-                                 (iscsi_ip, iscsi_ip_port),
+                        'data': {'target_portal': target_portal,
                                  'target_iqn': iscsi_target_iqn,
                                  'target_lun': vlun['lun'],
                                  'target_discovered': True

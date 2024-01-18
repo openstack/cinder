@@ -163,6 +163,14 @@ class HPE3PARBaseDriver(test.TestCase):
                                      '21810002ac00383d'),
                        'linkState': 4}
 
+    FAKE_ISCSI_PORT_V6 = {'portPos': {'node': 8, 'slot': 1, 'cardPort': 2},
+                          'protocol': 2,
+                          'mode': 2,
+                          'IPAddr': '2001:db8:abcd:12:ffff:ffff:ffff:ff02',
+                          'iSCSIName': ('iqn.2000-05.com.3pardata:'
+                                        '21810002ac00383e'),
+                          'linkState': 4}
+
     volume_snapshot = {'name': VOLUME_NAME,
                        'id': VOLUME_ID,
                        'display_name': 'Foo Volume',
@@ -463,7 +471,7 @@ class HPE3PARBaseDriver(test.TestCase):
         'CHAP_INITIATOR': 1,
         'CHAP_TARGET': 2,
         'getPorts.return_value': {
-            'members': FAKE_FC_PORTS + [FAKE_ISCSI_PORT]
+            'members': FAKE_FC_PORTS + [FAKE_ISCSI_PORT] + [FAKE_ISCSI_PORT_V6]
         }
     }
 
@@ -8781,6 +8789,15 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             'target_luns': [TARGET_LUN],
             'target_portals': ['1.1.1.2:1234']}}
 
+    multipath_properties_v6 = {
+        'driver_volume_type': 'iscsi',
+        'data':
+        {'encrypted': False,
+            'target_discovered': True,
+            'target_iqns': [TARGET_IQN],
+            'target_luns': [TARGET_LUN],
+            'target_portals': ['[2001:db8:abcd:12:ffff:ffff:ffff:ff02]:3260']}}
+
     def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
 
         self.ctxt = context.get_admin_context()
@@ -9265,6 +9282,75 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 self.standard_logout)
 
             self.assertDictEqual(self.multipath_properties, result)
+
+    def test_initialize_connection_v6(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        conf = self.setup_configuration()
+        conf.hpe3par_iscsi_ips = ["2001:db8:abcd:12:ffff:ffff:ffff:ff02"]
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.getHost.side_effect = [
+            hpeexceptions.HTTPNotFound('fake'),
+            {'name': self.FAKE_HOST}]
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': self.FAKE_HOST
+            }]
+        }
+
+        mock_client.getHostVLUNs.side_effect = [
+            hpeexceptions.HTTPNotFound('fake'),
+            [{'active': True,
+              'volumeName': self.VOLUME_3PAR_NAME,
+              'lun': self.TARGET_LUN, 'type': 0,
+              'portPos': {'node': 8, 'slot': 1, 'cardPort': 2}}]]
+
+        location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
+                    {'volume_name': self.VOLUME_3PAR_NAME,
+                     'lun_id': self.TARGET_LUN,
+                     'host': self.FAKE_HOST,
+                     'nsp': 'something'})
+        mock_client.createVLUN.return_value = location
+
+        mock_client.getiSCSIPorts.return_value = [{
+            'IPAddr': '2001:db8:abcd:12:ffff:ffff:ffff:ff02',
+            'iSCSIName': self.TARGET_IQN,
+        }]
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            volume = copy.deepcopy(self.volume)
+            volume.replication_status = 'disabled'
+            result = self.driver.initialize_connection(
+                volume,
+                self.connector_multipath_enabled)
+
+            expected = [
+                mock.call.getVolume(self.VOLUME_3PAR_NAME),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.getiSCSIPorts(
+                    state=self.mock_client_conf['PORT_STATE_READY']),
+                mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.createVLUN(
+                    self.VOLUME_3PAR_NAME,
+                    auto=True,
+                    hostname=self.FAKE_HOST,
+                    portPos=self.FAKE_ISCSI_PORT_V6['portPos'],
+                    lun=None),
+                mock.call.getHostVLUNs(self.FAKE_HOST)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            self.assertDictEqual(self.multipath_properties_v6, result)
 
     def test_terminate_connection_for_clear_chap_creds_not_found(self):
         # setup_mock_client drive with default configuration
@@ -10764,11 +10850,16 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
         mock_client.assert_has_calls(expected)
         self.assertDictEqual(expected_model, model)
 
-    def test_initialize_iscsi_ports_with_iscsi_ip_and_port(self):
+    # (i) ip_addr is default i.e v4
+    # (ii) ip_addr is v6
+    @ddt.data({'ip_addr': '10.10.220.252:1234'},
+              {'ip_addr': '[2001:db8:abcd:12:ffff:ffff:ffff:ff02]:5678'})
+    @ddt.unpack
+    def test_initialize_iscsi_ports_with_iscsi_ip_and_port(self, ip_addr):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         conf = self.setup_configuration()
-        conf.hpe3par_iscsi_ips = ["10.10.220.252:1234"]
+        conf.hpe3par_iscsi_ips = [ip_addr]
         mock_client = self.setup_driver(config=conf)
 
         mock_client.getPorts.return_value = PORTS_RET
@@ -11168,7 +11259,16 @@ PORTS_RET = ({'members':
                 'iSCSIName': 'iqn.2000-05.com.3pardata:21810002ac00383d',
                 'mode': 2,
                 'HWAddr': '2C27D75375D6',
-                'type': 8}]})
+                'type': 8},
+               {'portPos': {'node': 1, 'slot': 8, 'cardPort': 3},
+                'protocol': 2,
+                'IPAddr': '2001:db8:abcd:12:ffff:ffff:ffff:ff02',  # v6 address
+                'linkState': 4,
+                'device': [],
+                'iSCSIName': 'iqn.2000-05.com.3pardata:21810002ac00383d',
+                'mode': 2,
+                'HWAddr': '2C27D75375D8',
+                'type': 3}]})
 
 PORTS_VLAN_RET = ({'members':
                    [{'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},

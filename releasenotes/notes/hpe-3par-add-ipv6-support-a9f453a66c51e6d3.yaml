@@ -1,0 +1,4 @@
+fixes:
+  - |
+    HPE 3PAR driver `Bug #2045411 <https://bugs.launchpad.net/cinder/+bug/2045411>`_:
+    Added support for ipv6 address in the 3PAR iSCSI driver.
