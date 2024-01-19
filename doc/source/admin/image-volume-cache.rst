@@ -18,6 +18,8 @@ instead of downloading the image contents and copying data to the volume.
 The cache itself is configurable per back end and will contain the most
 recently used images.
 
+.. _internal-tenant:
+
 Configure the Internal Tenant
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -88,6 +90,20 @@ cache entries will be configured as:
 
    image_volume_cache_max_size_gb = 200
    image_volume_cache_max_count = 50
+
+.. note::
+
+   As mentioned above, the :ref:`internal tenant<internal-tenant>` configured
+   as the cache owner does not require any special permissions and is subject
+   to quotas like any other user.  Hence, it is possible that the quotas for
+   the internal tenant may need to be adjusted to allow the internal tenant
+   to hold at least ``image_volume_cache_max_count`` volumes not exceeding
+   ``image_volume_cache_max_size_gb`` total size.  Thus, although the default
+   value for these image volume cache settings is ``0`` (unlimited), in
+   practice, these will be limited by the quotas that apply to the internal
+   tenant.
+
+   See :doc:`../cli/cli-cinder-quotas` for more information.
 
 Notifications
 ~~~~~~~~~~~~~
