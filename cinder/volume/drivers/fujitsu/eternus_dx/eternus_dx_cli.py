@@ -47,6 +47,7 @@ class FJDXCLI(object):
         self.ce_support = False
         self.CMD_dic = {
             'check_user_role': self._check_user_role,
+            'expand_volume': self._expand_volume,
             'show_pool_provision': self._show_pool_provision,
             'show_qos_bandwidth_limit': self._show_qos_bandwidth_limit,
             'set_qos_bandwidth_limit': self._set_qos_bandwidth_limit,
@@ -238,6 +239,10 @@ class FJDXCLI(object):
                 'message': msg
             }
         return output
+
+    def _expand_volume(self, **option):
+        """Exec expand volume."""
+        return self._exec_cli("expand volume", **option)
 
     def _set_volume_qos(self, **option):
         """Exec set volume-qos."""

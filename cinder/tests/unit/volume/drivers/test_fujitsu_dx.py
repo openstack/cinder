@@ -176,7 +176,7 @@ FAKE_POOLS = [{
 }]
 
 FAKE_STATS = {
-    'driver_version': '1.4.0',
+    'driver_version': '1.4.1',
     'storage_protocol': 'iSCSI',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -186,7 +186,7 @@ FAKE_STATS = {
     'pools': FAKE_POOLS,
 }
 FAKE_STATS2 = {
-    'driver_version': '1.4.0',
+    'driver_version': '1.4.1',
     'storage_protocol': 'FC',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -1008,6 +1008,8 @@ class FJFCDriverTestCase(test.TestCase):
                    '3B\r\nf.ce\tMaintainer\t01\t00'
                    '\t00\t00\r\ntestuser\tSoftware'
                    '\t01\t01\t00\t00\r\nCLI> ' % exec_cmdline)
+        elif exec_cmdline.startswith('expand volume'):
+            ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('set volume-qos'):
             ret = '%s\r\n00\r\n0001\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('show volumes'):
@@ -1176,19 +1178,27 @@ class FJFCDriverTestCase(test.TestCase):
         self.driver.delete_volume(TEST_VOLUME)
 
     def test_extend_volume(self):
-        model_info = self.driver.create_volume(TEST_VOLUME)
-        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+        # Test the extension of volume created on RaidGroup and
+        # ThinProvisioningPool separately.
+        TEST_VOLUME_LIST = [TEST_VOLUME, TEST_VOLUME2]
+        FAKE_MODEL_INFO_LIST = [FAKE_MODEL_INFO1, FAKE_MODEL_INFO3]
+        model_info_list = []
+        for i in range(len(TEST_VOLUME_LIST)):
+            model_info = self.driver.create_volume(TEST_VOLUME_LIST[i])
+            self.assertEqual(FAKE_MODEL_INFO_LIST[i], model_info)
+            model_info_list.append(model_info)
 
-        volume_info = {}
-        for key in TEST_VOLUME:
-            if key == 'provider_location':
-                volume_info[key] = model_info[key]
-            elif key == 'metadata':
-                volume_info[key] = model_info[key]
-            else:
-                volume_info[key] = TEST_VOLUME[key]
+        for i in range(len(TEST_VOLUME_LIST)):
+            volume_info = {}
+            for key in TEST_VOLUME_LIST[i]:
+                if key == 'provider_location':
+                    volume_info[key] = model_info_list[i][key]
+                elif key == 'metadata':
+                    volume_info[key] = model_info_list[i][key]
+                else:
+                    volume_info[key] = TEST_VOLUME_LIST[i][key]
 
-        self.driver.extend_volume(volume_info, 10)
+            self.driver.extend_volume(volume_info, 10)
 
     def test_create_volume_with_qos(self):
         self.driver.common._get_qos_specs = mock.Mock()
@@ -1245,6 +1255,8 @@ class FJISCSIDriverTestCase(test.TestCase):
                    '3B\r\nf.ce\tMaintainer\t01\t00'
                    '\t00\t00\r\ntestuser\tSoftware'
                    '\t01\t01\t00\t00\r\nCLI> ' % exec_cmdline)
+        elif exec_cmdline.startswith('expand volume'):
+            ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('set volume-qos'):
             ret = '%s\r\n00\r\n0001\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('show volumes'):
@@ -1414,19 +1426,27 @@ class FJISCSIDriverTestCase(test.TestCase):
         self.driver.delete_volume(TEST_VOLUME)
 
     def test_extend_volume(self):
-        model_info = self.driver.create_volume(TEST_VOLUME)
-        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+        # Test the extension of volume created on RaidGroup and
+        # ThinProvisioningPool separately.
+        TEST_VOLUME_LIST = [TEST_VOLUME, TEST_VOLUME2]
+        FAKE_MODEL_INFO_LIST = [FAKE_MODEL_INFO1, FAKE_MODEL_INFO3]
+        model_info_list = []
+        for i in range(len(TEST_VOLUME_LIST)):
+            model_info = self.driver.create_volume(TEST_VOLUME_LIST[i])
+            self.assertEqual(FAKE_MODEL_INFO_LIST[i], model_info)
+            model_info_list.append(model_info)
 
-        volume_info = {}
-        for key in TEST_VOLUME:
-            if key == 'provider_location':
-                volume_info[key] = model_info[key]
-            elif key == 'metadata':
-                volume_info[key] = model_info[key]
-            else:
-                volume_info[key] = TEST_VOLUME[key]
+        for i in range(len(TEST_VOLUME_LIST)):
+            volume_info = {}
+            for key in TEST_VOLUME_LIST[i]:
+                if key == 'provider_location':
+                    volume_info[key] = model_info_list[i][key]
+                elif key == 'metadata':
+                    volume_info[key] = model_info_list[i][key]
+                else:
+                    volume_info[key] = TEST_VOLUME_LIST[i][key]
 
-        self.driver.extend_volume(volume_info, 10)
+            self.driver.extend_volume(volume_info, 10)
 
     def test_create_volume_with_qos(self):
         self.driver.common._get_qos_specs = mock.Mock()
@@ -1467,6 +1487,8 @@ class FJCLITestCase(test.TestCase):
                    '3B\r\nf.ce\tMaintainer\t01\t00'
                    '\t00\t00\r\ntestuser\tSoftware'
                    '\t01\t01\t00\t00\r\nCLI> ' % exec_cmdline)
+        elif exec_cmdline.startswith('expand volume'):
+            ret = '%s\r\n00\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('set volume-qos'):
             ret = '%s\r\n00\r\n0001\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('show volumes'):
@@ -1560,6 +1582,19 @@ class FJCLITestCase(test.TestCase):
 
         role = self.cli._check_user_role()
         self.assertEqual(FAKE_ROLE, role)
+
+    def test_expand_volume(self):
+        FAKE_VOLME_NAME = 'FJosv_0qJ4rpOHgFE8ipcJOMfBmg=='
+        FAKE_RG_NAME = 'abcd1234_RG'
+        FAKE_SIZE = '10gb'
+        FAKE_EXPAND_OPTION = self.create_fake_options(
+            volume_name=FAKE_VOLME_NAME,
+            rg_name=FAKE_RG_NAME,
+            size=FAKE_SIZE)
+
+        EXPAND_OUTPUT = self.cli._expand_volume(**FAKE_EXPAND_OPTION)
+        FAKE_EXPAND_OUTPUT = {**FAKE_CLI_OUTPUT, 'message': []}
+        self.assertEqual(FAKE_EXPAND_OUTPUT, EXPAND_OUTPUT)
 
     def test_set_volume_qos(self):
         FAKE_VOLUME_NAME = 'FJosv_0qJ4rpOHgFE8ipcJOMfBmg=='

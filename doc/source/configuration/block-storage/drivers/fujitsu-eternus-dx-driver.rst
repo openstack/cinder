@@ -44,10 +44,8 @@ Supported operations
 * Copy an image to a volume.
 * Copy a volume to an image.
 * Clone a volume.
-* Extend a volume. (\*1)
+* Extend a volume.
 * Get volume statistics.
-
-(\*1): It is executable only when you use TPP as a storage pool.
 
 Preparation
 ~~~~~~~~~~~

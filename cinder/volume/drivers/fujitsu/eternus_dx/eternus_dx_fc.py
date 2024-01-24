@@ -157,7 +157,13 @@ class FJDXFCDriver(driver.FibreChannelDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend volume."""
-        self.common.extend_volume(volume, new_size)
+        LOG.debug('extend_volume, '
+                  'volume id: %s, Enter method.', volume['id'])
+
+        used_pool_name = self.common.extend_volume(volume, new_size)
+
+        LOG.debug('extend_volume, '
+                  'used pool name: %s, Exit method.', used_pool_name)
 
     def _get_metadata(self, volume):
         v_metadata = volume.get('volume_metadata')

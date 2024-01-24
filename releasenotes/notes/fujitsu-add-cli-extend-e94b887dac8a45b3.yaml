@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Fujitsu ETERNUS DX driver: Added support to extend a volume on RAID Group
+    using CLI.
+
+    Revised the 'Extend Volume' process on the RAID Group to improve processing
+    speed as follows:
+
+    * When extending a volume created on ThinProvisionPool, the process will
+      still use SMI-S for volume extension.
+
+    * When extending a volume created on RaidGroup, the process has been
+      updated to use CLI for volume extension.

@@ -67,10 +67,11 @@ class FJDXCommon(object):
     1.0   - Initial driver
     1.3.0 - Community base version
     1.4.0 - Add support for QoS.
+    1.4.1 - Add the method for expanding RAID volumes by CLI.
 
     """
 
-    VERSION = "1.4.0"
+    VERSION = "1.4.1"
     stats = {
         'driver_version': VERSION,
         'storage_protocol': None,
@@ -821,32 +822,33 @@ class FJDXCommon(object):
                    'size': volume['size'], 'nsize': new_size})
 
         self.conn = self._get_eternus_connection()
-        volumesize = new_size * units.Gi
         volumename = self._get_volume_name(volume)
 
-        # Get source volume instance.
-        vol_instance = self._find_lun(volume)
-        if vol_instance is None:
+        # Get volume instance.
+        volume_instance = self._find_lun(volume)
+        if not volume_instance:
             msg = (_('extend_volume, '
                      'volumename: %(volumename)s, '
-                     'volume not found.')
+                     'not found.')
                    % {'volumename': volumename})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
         LOG.debug('extend_volume, volumename: %(volumename)s, '
                   'volumesize: %(volumesize)u, '
-                  'volume instance: %(vol_instance)s.',
+                  'volume instance: %(volume_instance)s.',
                   {'volumename': volumename,
-                   'volumesize': volumesize,
-                   'vol_instance': vol_instance.path})
+                   'volumesize': new_size,
+                   'volume_instance': volume_instance.path})
 
         # Get poolname from driver configuration file.
-        pool_name, pool = self._find_pool_from_volume(vol_instance)
-        if pool is None:
+        pool_name, pool = self._find_pool_from_volume(volume_instance)
+
+        # Check the existence of pool.
+        if not pool:
             msg = (_('extend_volume, '
                      'eternus_pool: %(eternus_pool)s, '
-                     'pool not found.')
+                     'not found.')
                    % {'eternus_pool': pool_name})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -857,56 +859,84 @@ class FJDXCommon(object):
         else:
             pooltype = CONSTANTS.TPPOOL
 
-        configservice = self._find_eternus_service(CONSTANTS.STOR_CONF)
-        if not configservice:
-            msg = (_('extend_volume, volume: %(volume)s, '
-                     'volumename: %(volumename)s, '
-                     'eternus_pool: %(eternus_pool)s, '
-                     'Storage Configuration Service not found.')
-                   % {'volume': volume,
-                      'volumename': volumename,
-                      'eternus_pool': pool_name})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        if pooltype == CONSTANTS.RAIDGROUP:
+            extend_size = str(new_size - volume['size']) + 'gb'
+            param_dict = {
+                'volume-name': volumename,
+                'rg-name': pool_name,
+                'size': extend_size
+            }
+            rc, errordesc, data = self._exec_eternus_cli(
+                'expand_volume',
+                **param_dict)
 
-        LOG.debug('extend_volume, '
-                  'CreateOrModifyElementFromStoragePool, '
-                  'ConfigService: %(service)s, '
-                  'ElementName: %(volumename)s, '
-                  'InPool: %(eternus_pool)s, '
-                  'ElementType: %(pooltype)u, '
-                  'Size: %(volumesize)u, '
-                  'TheElement: %(vol_instance)s.',
-                  {'service': configservice,
-                   'volumename': volumename,
-                   'eternus_pool': pool_name,
-                   'pooltype': pooltype,
-                   'volumesize': volumesize,
-                   'vol_instance': vol_instance.path})
+            if rc != 0:
+                msg = (_('extend_volume, '
+                         'volumename: %(volumename)s, '
+                         'Return code: %(rc)lu, '
+                         'Error: %(errordesc)s, '
+                         'Message: %(job)s, '
+                         'PoolType: %(pooltype)s.')
+                       % {'volumename': volumename,
+                          'rc': rc,
+                          'errordesc': errordesc,
+                          'pooltype': CONSTANTS.POOL_TYPE_dic[pooltype],
+                          'job': data})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
-        # Invoke method for extend volume
-        rc, errordesc, job = self._exec_eternus_service(
-            'CreateOrModifyElementFromStoragePool',
-            configservice,
-            ElementName=volumename,
-            InPool=pool,
-            ElementType=self._pywbem_uint(pooltype, '16'),
-            Size=self._pywbem_uint(volumesize, '64'),
-            TheElement=vol_instance.path)
+        else:  # Pooltype is TPPOOL.
+            volumesize = new_size * units.Gi
+            configservice = self._find_eternus_service(CONSTANTS.STOR_CONF)
+            if not configservice:
+                msg = (_('extend_volume, volume: %(volume)s, '
+                         'volumename: %(volumename)s, '
+                         'eternus_pool: %(eternus_pool)s, '
+                         'Storage Configuration Service not found.')
+                       % {'volume': volume,
+                          'volumename': volumename,
+                          'eternus_pool': pool_name})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
-        if rc != 0:
-            msg = (_('extend_volume, '
-                     'volumename: %(volumename)s, '
-                     'Return code: %(rc)lu, '
-                     'Error: %(errordesc)s, '
-                     'PoolType: %(pooltype)s.')
-                   % {'volumename': volumename,
-                      'rc': rc,
-                      'errordesc': errordesc,
-                      'pooltype': CONSTANTS.POOL_TYPE_dic[pooltype]})
+            LOG.debug('extend_volume, '
+                      'CreateOrModifyElementFromStoragePool, '
+                      'ConfigService: %(service)s, '
+                      'ElementName: %(volumename)s, '
+                      'InPool: %(eternus_pool)s, '
+                      'ElementType: %(pooltype)u, '
+                      'Size: %(volumesize)u, '
+                      'TheElement: %(vol_instance)s.',
+                      {'service': configservice,
+                       'volumename': volumename,
+                       'eternus_pool': pool_name,
+                       'pooltype': pooltype,
+                       'volumesize': volumesize,
+                       'vol_instance': volume_instance.path})
 
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            # Invoke method for extend volume.
+            rc, errordesc, _x = self._exec_eternus_service(
+                'CreateOrModifyElementFromStoragePool',
+                configservice,
+                ElementName=volumename,
+                InPool=pool,
+                ElementType=self._pywbem_uint(pooltype, '16'),
+                Size=self._pywbem_uint(volumesize, '64'),
+                TheElement=volume_instance.path)
+
+            if rc != 0:
+                msg = (_('extend_volume, '
+                         'volumename: %(volumename)s, '
+                         'Return code: %(rc)lu, '
+                         'Error: %(errordesc)s, '
+                         'PoolType: %(pooltype)s.')
+                       % {'volumename': volumename,
+                          'rc': rc,
+                          'errordesc': errordesc,
+                          'pooltype': CONSTANTS.POOL_TYPE_dic[pooltype]})
+
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
         LOG.debug('extend_volume, '
                   'volumename: %(volumename)s, '
