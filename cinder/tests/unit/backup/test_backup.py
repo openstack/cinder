@@ -443,7 +443,7 @@ class BackupTestCase(BaseBackupTest):
                                                  previous_status='available')
         volume = db.volume_get(self.ctxt, volume_id)
 
-        self.backup_mgr._cleanup_one_volume(self.ctxt, volume)
+        self.backup_mgr._cleanup_one_volume(self.ctxt, volume_id)
 
         volume = db.volume_get(self.ctxt, volume_id)
         self.assertEqual('available', volume['status'])
@@ -454,10 +454,29 @@ class BackupTestCase(BaseBackupTest):
         volume_id = self._create_volume_db_entry(status='restoring-backup')
         volume = db.volume_get(self.ctxt, volume_id)
 
-        self.backup_mgr._cleanup_one_volume(self.ctxt, volume)
+        self.backup_mgr._cleanup_one_volume(self.ctxt, volume_id)
 
         volume = db.volume_get(self.ctxt, volume_id)
         self.assertEqual('error_restoring', volume['status'])
+
+    @ddt.data(fields.BackupStatus.CREATING,
+              fields.BackupStatus.RESTORING)
+    def test_cleanup_one_backup_with_deleted_volume(self, backup_status):
+        """Test cleanup_one_backup for non-existing volume."""
+
+        volume_id = str(uuid.uuid4())
+        backup = self._create_backup_db_entry(
+            status=backup_status,
+            volume_id=volume_id,
+            restore_volume_id=volume_id
+        )
+
+        mock_log = self.mock_object(manager, 'LOG')
+        self.backup_mgr._cleanup_one_backup(self.ctxt, backup)
+
+        mock_log.info.assert_called_with(
+            'Volume %s does not exist anymore. Ignoring.', volume_id
+        )
 
     def test_cleanup_one_creating_backup(self):
         """Test cleanup_one_backup for volume status 'creating'."""
