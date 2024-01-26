@@ -197,10 +197,6 @@ class ShardFilter(filters.BaseBackendFilter):
         if not results:
             return backends
 
-        # Allowing new volumes to be created only in the dominant shard
-        if spec.get('operation') == 'create_volume':
-            results = results[:1]
-
         k8s_hosts = dict(results)
 
         def _is_k8s_host(b):
