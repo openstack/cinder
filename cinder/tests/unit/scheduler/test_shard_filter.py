@@ -261,6 +261,7 @@ class ShardFilterTestCase(BackendFiltersTestCase):
 
         mock_get_hosts.assert_called_once_with(
             key=CSI_KEY, value=fake_meta[CSI_KEY], filters={
+                'project_id': 'baz',
                 'availability_zone': 'az-1'
             })
         self.assertEqual(len(filtered), 1)

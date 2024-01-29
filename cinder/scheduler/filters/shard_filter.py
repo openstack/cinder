@@ -184,10 +184,10 @@ class ShardFilter(filters.BaseBackendFilter):
         if not cluster_name:
             return backends
 
+        query_filters = {'project_id': project_id}
         availability_zone = filter_properties.get('availability_zone')
-        query_filters = None
         if availability_zone:
-            query_filters = {'availability_zone': availability_zone}
+            query_filters['availability_zone'] = availability_zone
 
         results = db.get_hosts_by_volume_metadata(
             key=CSI_CLUSTER_METADATA_KEY,

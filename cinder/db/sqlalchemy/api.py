@@ -2197,6 +2197,10 @@ def get_hosts_by_volume_metadata(meta_key, meta_value, filters=None):
         if az:
             query = query.filter(
                 models.Volume.availability_zone == az)
+        project_id = filters.get('project_id')
+        if project_id:
+            query = query.filter(
+                models.Volume.project_id == project_id)
 
     query = query.group_by("h")\
         .order_by(desc(count_label))
