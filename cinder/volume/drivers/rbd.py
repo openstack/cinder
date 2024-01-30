@@ -69,9 +69,9 @@ RBD_OPTS = [
                help='The name of ceph cluster'),
     cfg.StrOpt('rbd_pool',
                default='rbd',
-               help='The RADOS pool where rbd volumes are stored'),
+               help='The RADOS pool where RBD volumes are stored'),
     cfg.StrOpt('rbd_user',
-               help='The RADOS client name for accessing rbd volumes '
+               help='The RADOS client name for accessing RBD volumes '
                     '- only set when using cephx authentication'),
     cfg.StrOpt('rbd_ceph_conf',
                default='',  # default determined by librados
@@ -204,7 +204,7 @@ class RBDDriverException(exception.VolumeDriverException):
 
 
 class RBDVolumeProxy(object):
-    """Context manager for dealing with an existing rbd volume.
+    """Context manager for dealing with an existing RBD volume.
 
     This handles connecting to rados and opening an ioctx automatically, and
     otherwise acts like a librbd Image object.
@@ -1177,7 +1177,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             volume_update = self._setup_volume(volume)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error('Error creating rbd image %(vol)s.',
+                LOG.error('Error creating RBD image %(vol)s.',
                           {'vol': vol_name})
                 self.RBDProxy().remove(client.ioctx, vol_name)
 
@@ -1535,14 +1535,14 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             self._delete_volume(volume, client)
 
     def create_snapshot(self, snapshot: Snapshot) -> None:
-        """Creates an rbd snapshot."""
+        """Creates an RBD snapshot."""
         with RBDVolumeProxy(self, snapshot.volume_name) as volume:
             snap = snapshot.name
             volume.create_snap(snap)
             volume.protect_snap(snap)
 
     def delete_snapshot(self, snapshot: Snapshot) -> None:
-        """Deletes an rbd snapshot."""
+        """Deletes an RBD snapshot."""
         volume_name = snapshot.volume_name
         snap_name = snapshot.name
 
@@ -1889,7 +1889,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     def _parse_location(location: str) -> list[str]:
         prefix = 'rbd://'
         if not location.startswith(prefix):
-            reason = _('Not stored in rbd')
+            reason = _('Not stored in RBD')
             raise exception.ImageUnacceptable(image_id=location, reason=reason)
         pieces = [urllib.parse.unquote(loc)
                   for loc in location[len(prefix):].split('/')]
@@ -1897,7 +1897,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             reason = _('Blank components')
             raise exception.ImageUnacceptable(image_id=location, reason=reason)
         if len(pieces) != 4:
-            reason = _('Not an rbd snapshot')
+            reason = _('Not an RBD snapshot')
             raise exception.ImageUnacceptable(image_id=location, reason=reason)
         return pieces
 
@@ -1930,7 +1930,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             return False
 
         if image_meta['disk_format'] != 'raw':
-            LOG.debug("rbd image clone requires image format to be "
+            LOG.debug("RBD image clone requires image format to be "
                       "'raw' but image %(image)s is '%(format)s'",
                       {"image": image_location,
                        "format": image_meta['disk_format']})
@@ -2125,7 +2125,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             volume ref info to be set
         :param existing_ref:
             existing_ref is a dictionary of the form:
-            {'source-name': <name of rbd image>}
+            {'source-name': <name of RBD image>}
         """
         # Raise an exception if we didn't find a suitable rbd image.
         with RADOSClient(self) as client:
@@ -2143,7 +2143,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             volume ref info to be set
         :param existing_ref:
             existing_ref is a dictionary of the form:
-            {'source-name': <name of rbd image>}
+            {'source-name': <name of RBD image>}
         """
 
         # Check that the reference is valid
@@ -2162,7 +2162,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                            read_only=True)
             except self.rbd.ImageNotFound:
                 kwargs = {'existing_ref': rbd_name,
-                          'reason': 'Specified rbd image does not exist.'}
+                          'reason': 'Specified RBD image does not exist.'}
                 raise exception.ManageExistingInvalidReference(**kwargs)
 
             image_size = rbd_image.size()
@@ -2356,7 +2356,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                     source.copy(target.ioctx, volume.name)
                 except Exception:
                     with excutils.save_and_reraise_exception():
-                        LOG.error('Error copying rbd image %(vol)s to target '
+                        LOG.error('Error copying RBD image %(vol)s to target '
                                   'pool %(pool)s.',
                                   {'vol': volume.name, 'pool': rbd_pool})
                         self.RBDProxy().remove(target.ioctx, volume.name)
@@ -2437,7 +2437,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             snapshot ref info to be set
         :param existing_ref:
             existing_ref is a dictionary of the form:
-            {'source-name': <name of rbd snapshot>}
+            {'source-name': <name of RBD snapshot>}
         """
         if not isinstance(existing_ref, dict):
             existing_ref = {"source-name": existing_ref}
@@ -2537,7 +2537,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                            for k in rbd_image.config_list()}
                 return current
         except Exception as e:
-            msg = (_("Failed to get qos specs for rbd image "
+            msg = (_("Failed to get qos specs for RBD image "
                      "%(rbd_image_name)s, due to "
                      "%(error)s.")
                    % {'rbd_image_name': volume.name,
@@ -2563,7 +2563,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                      'qos_value': qos_val})
         except Exception as e:
             msg = (_('Failed to set qos spec %(qos_key)s '
-                     'for rbd image %(rbd_image_name)s, '
+                     'for RBD image %(rbd_image_name)s, '
                      'due to %(error)s.')
                    % {'qos_key': qos_key,
                       'rbd_image_name': volume.name,
@@ -2581,7 +2581,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                               {'qos_key': key})
         except Exception as e:
             msg = (_("Failed to delete qos keys %(qos_key)s "
-                     "for rbd image %(rbd_image_name)s, "
+                     "for RBD image %(rbd_image_name)s, "
                      "due to %(error)s.")
                    % {'qos_key': key,
                       'rbd_image_name': volume.name,
