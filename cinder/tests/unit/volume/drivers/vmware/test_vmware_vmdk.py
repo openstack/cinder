@@ -215,7 +215,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             objects = [props()]
 
         datastores = {"datastore-85": {"summary": summary,
-                                       "storage_profile": "Gold"}}
+                                       "storage_profile": {"name": "Gold"}}}
         return result(), datastores
 
     @mock.patch('cinder.volume.drivers.vmware.datastore.'

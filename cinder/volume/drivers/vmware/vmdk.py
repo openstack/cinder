@@ -576,6 +576,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             for ds_name in datastores:
                 datastore = datastores[ds_name]
                 summary = datastore["summary"]
+                storage_profile = datastore["storage_profile"].get("name")
 
                 pool_state = 'down'
                 pool_down_reason = 'Datastore not usable'
@@ -626,7 +627,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         'datastore_type': summary.type,
                         'location_url': summary.url,
                         'location_info': location_info,
-                        'storage_profile': datastore["storage_profile"],
+                        'storage_profile': storage_profile,
                         'connection_capabilities': connection_capabilities,
                         'backend_state': backend_state,
                         'pool_state': pool_state,
