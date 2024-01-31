@@ -18,6 +18,7 @@
 
 from cinder.i18n import _
 from cinder import ssh_utils
+from cinder.volume.drivers.fujitsu.eternus_dx import constants as CONSTANTS
 
 
 class FJDXCLI(object):
@@ -59,12 +60,6 @@ class FJDXCLI(object):
             'delete_volume': self._delete_volume
         }
 
-        self.SMIS_dic = {
-            '0000': '0',  # Success.
-            '0060': '32787',  # The device is in busy state.
-            '0100': '4097'
-        }  # Size not supported.
-
     def done(self, command, **option):
         func = self.CMD_dic.get(command, self._default_func)
         return func(**option)
@@ -105,7 +100,7 @@ class FJDXCLI(object):
                    'stdoutlist': stdoutlist})
 
         if status == 0:
-            rc = '0'
+            rc = str(CONSTANTS.RC_OK)
             for outline in stdoutlist[lineno:]:
                 if 0 <= outline.find('CLI>'):
                     continue
@@ -124,8 +119,11 @@ class FJDXCLI(object):
                 if outline is None:
                     continue
                 output.append(outline)
-
-            rc, message = self._create_error_message(code, output)
+            if cmd != "show cli-error-code":
+                rc, message = self._create_error_message(code, output)
+            else:
+                rc = 'E' + code
+                message = output
 
         return {'result': 0, 'rc': rc, 'message': message}
 
@@ -160,22 +158,29 @@ class FJDXCLI(object):
                 self.ssh_pool.remove(ssh)
         return stdoutdata
 
+    def _show_cli_error_message(self, **option):
+        """Get error messages by error code."""
+        output = self._exec_cli("show cli-error-code",
+                                **option)
+        rc = output['rc']
+        if rc != str(CONSTANTS.RC_OK):
+            raise Exception(_('_show_cli_error_message failed. '
+                              'Return code: %lu') % rc)
+        message = output['message'][1]
+        output['message'] = message.split('\t')[1]
+        return output
+
     def _create_error_message(self, code, msg):
         """Create error code and message using arguements."""
         message = None
-        if code in self.SMIS_dic:
-            rc = self.SMIS_dic[code]
-        else:
-            rc = 'E' + code
-
-            # TODO(whfnst): we will have a dic to store errors.
-            if rc == "E0001":
-                message = "Bad value: %s" % msg
-            elif rc == "ED184":
-                message = "Because OPC is being executed, "
-                "the processing was discontinued."
-            else:
-                message = msg
+        rc = 'E' + code
+        try:
+            option = {
+                'error-code': code
+            }
+            message = self._show_cli_error_message(**option)['message']
+        except Exception:
+            message = CONSTANTS.CLIRETCODE_dic.get(rc, msg)
 
         return rc, message
 
@@ -214,7 +219,7 @@ class FJDXCLI(object):
                                     **option)
             # Return error.
             rc = output['rc']
-            if rc != "0":
+            if rc != str(CONSTANTS.RC_OK):
                 return output
 
             userlist = output.get('message')
@@ -237,7 +242,7 @@ class FJDXCLI(object):
                 msg = str(ex)
             output = {
                 'result': 0,
-                'rc': '4',
+                'rc': str(CONSTANTS.RC_FAILED),
                 'message': msg
             }
         return output
@@ -257,7 +262,7 @@ class FJDXCLI(object):
 
             rc = output['rc']
 
-            if rc != "0":
+            if rc != str(CONSTANTS.RC_OK):
                 return output
 
             clidatalist = output.get('message')
@@ -274,7 +279,7 @@ class FJDXCLI(object):
         except Exception as ex:
             output = {
                 'result': 0,
-                'rc': '4',
+                'rc': str(CONSTANTS.RC_FAILED),
                 'message': "show pool provision capacity error: %s" % ex
             }
 
@@ -288,7 +293,7 @@ class FJDXCLI(object):
             # return error
             rc = output['rc']
 
-            if rc != "0":
+            if rc != str(CONSTANTS.RC_OK):
                 return output
 
             cpsdatalist = []
@@ -360,7 +365,7 @@ class FJDXCLI(object):
             output['message'] = cpsdatalist
         except Exception as ex:
             output = {'result': 0,
-                      'rc': '4',
+                      'rc': str(CONSTANTS.RC_FAILED),
                       'message': "Show copy sessions error: %s"
                                  % str(ex)}
 
@@ -375,7 +380,7 @@ class FJDXCLI(object):
             # return error
             rc = output['rc']
 
-            if rc != "0":
+            if rc != str(CONSTANTS.RC_OK):
                 return output
 
             qoslist = []
@@ -399,13 +404,13 @@ class FJDXCLI(object):
             msg = ('The results returned by cli are not as expected. '
                    'Exception string: %s' % clidata)
             output = {'result': 0,
-                      'rc': '4',
+                      'rc': str(CONSTANTS.RC_FAILED),
                       'message': "Show qos bandwidth limit error: %s. %s"
                                  % (ex, msg)}
 
         except Exception as ex:
             output = {'result': 0,
-                      'rc': '4',
+                      'rc': str(CONSTANTS.RC_FAILED),
                       'message': "Show qos bandwidth limit error: %s" % ex}
 
         return output
@@ -423,7 +428,7 @@ class FJDXCLI(object):
             # return error
             rc = output['rc']
 
-            if rc != "0":
+            if rc != str(CONSTANTS.RC_OK):
                 return output
 
             vqosdatalist = []
@@ -441,12 +446,12 @@ class FJDXCLI(object):
             msg = ('The results returned by cli are not as expected. '
                    'Exception string: %s' % clidata)
             output = {'result': 0,
-                      'rc': '4',
+                      'rc': str(CONSTANTS.RC_FAILED),
                       'message': "Show volume qos error: %s. %s" % (ex, msg)}
 
         except Exception as ex:
             output = {'result': 0,
-                      'rc': '4',
+                      'rc': str(CONSTANTS.RC_FAILED),
                       'message': "Show volume qos error: %s" % ex}
 
         return output
@@ -460,7 +465,7 @@ class FJDXCLI(object):
             # return error
             rc = output['rc']
 
-            if rc != "0":
+            if rc != str(CONSTANTS.RC_OK):
                 return output
 
             clidatalist = output.get('message')
@@ -473,13 +478,13 @@ class FJDXCLI(object):
             msg = ('The results returned by cli are not as expected. '
                    'Exception string: %s' % clidata)
             output = {'result': 0,
-                      'rc': '4',
+                      'rc': str(CONSTANTS.RC_FAILED),
                       'message': "Show enclosure status error: %s. %s"
                                  % (ex, msg)}
 
         except Exception as ex:
             output = {'result': 0,
-                      'rc': '4',
+                      'rc': str(CONSTANTS.RC_FAILED),
                       'message': "Show enclosure status error: %s" % ex}
 
         return output
