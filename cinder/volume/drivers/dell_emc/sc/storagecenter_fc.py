@@ -74,6 +74,8 @@ class SCFCDriver(storagecenter_common.SCCommonDriver,
 
     CI_WIKI_NAME = "DellEMC_SC_CI"
 
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(SCFCDriver, self).__init__(*args, **kwargs)
         self.backend_name =\

@@ -437,6 +437,8 @@ class XtremIOVolumeDriver(san.SanDriver):
     driver_name = 'XtremIO'
     MIN_XMS_VERSION = [3, 0, 0]
 
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(XtremIOVolumeDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(XTREMIO_OPTS)

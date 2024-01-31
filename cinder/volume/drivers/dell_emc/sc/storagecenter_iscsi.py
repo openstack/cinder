@@ -72,6 +72,8 @@ class SCISCSIDriver(storagecenter_common.SCCommonDriver,
     VERSION = '4.1.2'
     CI_WIKI_NAME = "DellEMC_SC_CI"
 
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(SCISCSIDriver, self).__init__(*args, **kwargs)
         self.backend_name = (
