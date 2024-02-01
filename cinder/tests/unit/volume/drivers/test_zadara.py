@@ -17,9 +17,9 @@ Tests for Zadara VPSA volume driver
 """
 import copy
 from unittest import mock
+from urllib import parse
 
 import requests
-from six.moves.urllib import parse
 
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
