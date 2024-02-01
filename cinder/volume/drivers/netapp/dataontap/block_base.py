@@ -27,14 +27,12 @@ Volume driver library for NetApp 7/C-mode block storage systems.
 
 import copy
 import math
-import sys
 import uuid
 
 from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import excutils
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -70,8 +68,8 @@ class NetAppLun(object):
                self.handle, self.name, self.size, self.metadata)
 
 
-@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
-class NetAppBlockStorageLibrary(object):
+class NetAppBlockStorageLibrary(
+        object, metaclass=volume_utils.TraceWrapperMetaclass):
     """NetApp block storage library for Data ONTAP."""
 
     # do not increment this as it may be used in volume type definitions
@@ -438,14 +436,13 @@ class NetAppBlockStorageLibrary(object):
                         {'ig_nm': igroup_name, 'ig_os': ig_host_os})
         try:
             return self.zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
-        except netapp_api.NaApiError:
-            exc_info = sys.exc_info()
+        except netapp_api.NaApiError as e:
             (_igroup, lun_id) = self._find_mapped_lun_igroup(path,
                                                              initiator_list)
             if lun_id is not None:
                 return lun_id
             else:
-                six.reraise(*exc_info)
+                raise e
 
     def _unmap_lun(self, path, initiator_list):
         """Unmaps a LUN from given initiator."""
@@ -496,7 +493,7 @@ class NetAppBlockStorageLibrary(object):
     def _create_igroup_add_initiators(self, initiator_group_type,
                                       host_os_type, initiator_list):
         """Creates igroup and adds initiators."""
-        igroup_name = na_utils.OPENSTACK_PREFIX + six.text_type(uuid.uuid4())
+        igroup_name = na_utils.OPENSTACK_PREFIX + str(uuid.uuid4())
         self.zapi_client.create_igroup(igroup_name, initiator_group_type,
                                        host_os_type)
         for initiator in initiator_list:
@@ -600,8 +597,8 @@ class NetAppBlockStorageLibrary(object):
         name = volume['name']
         lun = self._get_lun_from_table(name)
         path = lun.metadata['Path']
-        curr_size_bytes = six.text_type(lun.size)
-        new_size_bytes = six.text_type(int(new_size) * units.Gi)
+        curr_size_bytes = str(lun.size)
+        new_size_bytes = str(int(new_size) * units.Gi)
         # Reused by clone scenarios.
         # Hence comparing the stored size.
         if curr_size_bytes == new_size_bytes:
@@ -1076,7 +1073,7 @@ class NetAppBlockStorageLibrary(object):
 
         # get WWPNs from controller and strip colons
         all_target_wwpns = self._get_fc_target_wwpns()
-        all_target_wwpns = [six.text_type(wwpn).replace(':', '')
+        all_target_wwpns = [str(wwpn).replace(':', '')
                             for wwpn in all_target_wwpns]
 
         target_wwpns = []

@@ -28,7 +28,6 @@ import uuid
 import ddt
 from oslo_log import versionutils
 from oslo_utils import units
-import six
 
 from cinder import context
 from cinder import exception
@@ -1235,7 +1234,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                         fake.LUN_METADATA)
         mock_get_lun_from_table = self.mock_object(
             self.library, '_get_lun_from_table', return_value=fake_lun)
-        fake_lun_geometry = {'max_resize': six.text_type(max_size_bytes)}
+        fake_lun_geometry = {'max_resize': str(max_size_bytes)}
         mock_get_lun_geometry = self.mock_object(
             self.library.zapi_client, 'get_lun_geometry',
             return_value=fake_lun_geometry)
@@ -1257,9 +1256,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             mock_get_lun_geometry.assert_not_called()
 
         mock_do_direct_resize.assert_called_once_with(
-            fake.LUN_METADATA['Path'], six.text_type(new_size_bytes))
+            fake.LUN_METADATA['Path'], str(new_size_bytes))
         self.assertFalse(mock_do_sub_clone_resize.called)
-        self.assertEqual(six.text_type(new_size_bytes),
+        self.assertEqual(str(new_size_bytes),
                          self.library.lun_table[fake.VOLUME['name']].size)
 
     @ddt.data((9, 4, 0), (9, 6, 0))
@@ -1284,7 +1283,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                         fake.LUN_METADATA)
         mock_get_lun_from_table = self.mock_object(
             self.library, '_get_lun_from_table', return_value=fake_lun)
-        fake_lun_geometry = {'max_resize': six.text_type(max_size_bytes)}
+        fake_lun_geometry = {'max_resize': str(max_size_bytes)}
         mock_get_lun_geometry = self.mock_object(
             self.library.zapi_client, 'get_lun_geometry',
             return_value=fake_lun_geometry)
@@ -1306,9 +1305,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             mock_get_lun_geometry.assert_not_called()
 
         mock_do_direct_resize.assert_called_once_with(
-            fake.LUN_METADATA['Path'], six.text_type(new_size_bytes))
+            fake.LUN_METADATA['Path'], str(new_size_bytes))
         self.assertFalse(mock_do_sub_clone_resize.called)
-        self.assertEqual(six.text_type(new_size_bytes),
+        self.assertEqual(str(new_size_bytes),
                          self.library.lun_table[volume_copy['name']].size)
 
     @ddt.data((9, 4, 0), (9, 6, 0))
@@ -1330,7 +1329,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                         fake.LUN_METADATA)
         mock_get_lun_from_table = self.mock_object(
             self.library, '_get_lun_from_table', return_value=fake_lun)
-        fake_lun_geometry = {'max_resize': six.text_type(max_size_bytes)}
+        fake_lun_geometry = {'max_resize': str(max_size_bytes)}
         mock_get_lun_geometry = self.mock_object(
             self.library.zapi_client, 'get_lun_geometry',
             return_value=fake_lun_geometry)
@@ -1350,15 +1349,15 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             mock_get_lun_geometry.assert_called_once_with(
                 fake.LUN_METADATA['Path'])
             mock_do_sub_clone_resize.assert_called_once_with(
-                fake.LUN_METADATA['Path'], six.text_type(new_size_bytes),
+                fake.LUN_METADATA['Path'], str(new_size_bytes),
                 qos_policy_group_name='fake_qos_policy')
         else:
             mock_get_lun_geometry.assert_not_called()
             mock_do_sub_clone_resize.assert_not_called()
             mock_do_direct_resize.assert_called_once_with(
-                fake.LUN_METADATA['Path'], six.text_type(new_size_bytes))
+                fake.LUN_METADATA['Path'], str(new_size_bytes))
 
-        self.assertEqual(six.text_type(new_size_bytes),
+        self.assertEqual(str(new_size_bytes),
                          self.library.lun_table[fake.VOLUME['name']].size)
 
     @ddt.data((9, 4, 0), (9, 6, 0))
@@ -1378,11 +1377,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             return_value=ontap_version)
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
                                         fake.LUN_ID,
-                                        six.text_type(current_size_bytes),
+                                        str(current_size_bytes),
                                         fake.LUN_METADATA)
         mock_get_lun_from_table = self.mock_object(
             self.library, '_get_lun_from_table', return_value=fake_lun)
-        fake_lun_geometry = {'max_resize': six.text_type(max_size_bytes)}
+        fake_lun_geometry = {'max_resize': str(max_size_bytes)}
         mock_get_lun_geometry = self.mock_object(
             self.library.zapi_client, 'get_lun_geometry',
             return_value=fake_lun_geometry)
@@ -1403,16 +1402,16 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             self.assertFalse(mock_do_sub_clone_resize.called)
             mock_get_lun_geometry.assert_called_once_with(
                 fake.LUN_METADATA['Path'])
-            self.assertEqual(six.text_type(current_size_bytes),
+            self.assertEqual(str(current_size_bytes),
                              self.library.lun_table[volume_copy['name']].size)
         else:
             self.library._extend_volume(volume_copy,
                                         new_size, fake.QOS_POLICY_GROUP_NAME)
             mock_do_direct_resize.assert_called_once_with(
-                fake.LUN_METADATA['Path'], six.text_type(new_size_bytes))
+                fake.LUN_METADATA['Path'], str(new_size_bytes))
             mock_do_sub_clone_resize.assert_not_called()
             mock_get_lun_geometry.assert_not_called()
-            self.assertEqual(six.text_type(new_size_bytes),
+            self.assertEqual(str(new_size_bytes),
                              self.library.lun_table[volume_copy['name']].size)
 
         mock_get_ontap_version.assert_called_once_with(cached=True)
@@ -1438,7 +1437,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                         fake.LUN_METADATA)
         mock_get_lun_from_table = self.mock_object(
             self.library, '_get_lun_from_table', return_value=fake_lun)
-        fake_lun_geometry = {'max_resize': six.text_type(max_size_bytes)}
+        fake_lun_geometry = {'max_resize': str(max_size_bytes)}
         mock_get_lun_geometry = self.mock_object(
             self.library.zapi_client, 'get_lun_geometry',
             return_value=fake_lun_geometry)

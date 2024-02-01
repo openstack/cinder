@@ -15,11 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import sys
-
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -34,8 +31,7 @@ DELETED_PREFIX = 'deleted_cinder_'
 MAX_SIZE_FOR_A_LUN = '17555678822400'
 
 
-@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
-class Client(object):
+class Client(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
     def __init__(self, **kwargs):
         host = kwargs['hostname']
@@ -155,7 +151,7 @@ class Client(object):
                            'ex': ex})
 
         if ontap_version < (9, 5, 0):
-            self.do_direct_resize(path, six.text_type(size))
+            self.do_direct_resize(path, str(size))
             if metadata['SpaceReserved'] == 'true':
                 self.set_lun_space_reservation(path, True)
 
@@ -205,7 +201,6 @@ class Client(object):
         try:
             self.connection.invoke_successfully(lun_unmap, True)
         except netapp_api.NaApiError as e:
-            exc_info = sys.exc_info()
             LOG.warning("Error unmapping LUN. Code :%(code)s, Message: "
                         "%(message)s", {'code': e.code,
                                         'message': e.message})
@@ -213,7 +208,7 @@ class Client(object):
             if e.code == '13115' or e.code == '9016':
                 pass
             else:
-                six.reraise(*exc_info)
+                raise e
 
     def create_igroup(self, igroup, igroup_type='iscsi', os_type='default'):
         """Creates igroup with specified args."""
@@ -263,7 +258,7 @@ class Client(object):
                 "max-resize-size")
         except Exception as e:
             LOG.error("LUN %(path)s geometry failed. Message - %(msg)s",
-                      {'path': path, 'msg': six.text_type(e)})
+                      {'path': path, 'msg': str(e)})
         return geometry
 
     def get_volume_options(self, volume_name):

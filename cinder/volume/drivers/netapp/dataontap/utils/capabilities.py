@@ -20,7 +20,6 @@ import copy
 import re
 
 from oslo_log import log as logging
-import six
 
 
 LOG = logging.getLogger(__name__)
@@ -137,11 +136,11 @@ class CapabilitiesLibrary(object):
         is_flexgroup = volume_info.get('style-extended') == 'flexgroup'
 
         return {
-            'netapp_thin_provisioned': six.text_type(not netapp_thick).lower(),
+            'netapp_thin_provisioned': str(not netapp_thick).lower(),
             'thick_provisioning_support': thick,
             'thin_provisioning_support': not thick,
             'netapp_aggregate': volume_info.get('aggregate')[0],
-            'netapp_is_flexgroup': six.text_type(is_flexgroup).lower(),
+            'netapp_is_flexgroup': str(is_flexgroup).lower(),
         }
 
     def _get_thick_provisioning_support(self, netapp_thick):
@@ -174,8 +173,8 @@ class CapabilitiesLibrary(object):
             compression = dedupe_info.get('compression')
 
         return {
-            'netapp_dedup': six.text_type(dedupe).lower(),
-            'netapp_compression': six.text_type(compression).lower(),
+            'netapp_dedup': str(dedupe).lower(),
+            'netapp_compression': str(compression).lower(),
         }
 
     def _get_ssc_encryption_info(self, flexvol_name):
@@ -183,7 +182,7 @@ class CapabilitiesLibrary(object):
         encrypted = self.zapi_client.is_flexvol_encrypted(
             flexvol_name, self.vserver_name)
 
-        return {'netapp_flexvol_encryption': six.text_type(encrypted).lower()}
+        return {'netapp_flexvol_encryption': str(encrypted).lower()}
 
     def _get_ssc_qos_min_info(self, node_name):
         """Gather Qos minimum info and recast into SSC-style stats."""
@@ -201,7 +200,7 @@ class CapabilitiesLibrary(object):
             supported = self.zapi_client.is_qos_min_supported(is_nfs,
                                                               node_name)
 
-        return {'netapp_qos_min_support': six.text_type(supported).lower()}
+        return {'netapp_qos_min_support': str(supported).lower()}
 
     def _get_ssc_mirror_info(self, flexvol_name):
         """Gather SnapMirror info and recast into SSC-style volume stats."""
@@ -209,7 +208,7 @@ class CapabilitiesLibrary(object):
         mirrored = self.zapi_client.is_flexvol_mirrored(
             flexvol_name, self.vserver_name)
 
-        return {'netapp_mirrored': six.text_type(mirrored).lower()}
+        return {'netapp_mirrored': str(mirrored).lower()}
 
     def _get_ssc_aggregate_info(self, aggregate_name, is_flexgroup=False):
         """Gather aggregate info and recast into SSC-style volume stats.
@@ -233,9 +232,8 @@ class CapabilitiesLibrary(object):
                 aggregate = self.zapi_client.get_aggregate(aggr)
                 node_name.add(aggregate.get('node-name'))
                 raid_type.add(aggregate.get('raid-type'))
-                hybrid.add((six.text_type(
-                    aggregate.get('is-hybrid')).lower()
-                    if 'is-hybrid' in aggregate else None))
+                hybrid.add(str(aggregate.get('is-hybrid')).lower()
+                           if 'is-hybrid' in aggregate else None)
                 disks = set(self.zapi_client.get_aggregate_disk_types(aggr))
                 disk_types = disk_types.union(disks)
             node_name = list(node_name)
@@ -246,7 +244,7 @@ class CapabilitiesLibrary(object):
             aggregate = self.zapi_client.get_aggregate(aggregate_name)
             node_name = aggregate.get('node-name')
             raid_type = aggregate.get('raid-type')
-            hybrid = (six.text_type(aggregate.get('is-hybrid')).lower()
+            hybrid = (str(aggregate.get('is-hybrid')).lower()
                       if 'is-hybrid' in aggregate else None)
             disk_types = self.zapi_client.get_aggregate_disk_types(
                 aggregate_name)
@@ -314,7 +312,7 @@ class CapabilitiesLibrary(object):
 
         for key, value in extra_specs.items():
 
-            if isinstance(value, six.string_types):
+            if isinstance(value, str):
                 if re.match(r'<is>\s+True', value, re.I):
                     modified_extra_specs[key] = True
                 elif re.match(r'<is>\s+False', value, re.I):

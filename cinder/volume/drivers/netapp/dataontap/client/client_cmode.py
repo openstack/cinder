@@ -23,7 +23,6 @@ import re
 from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -60,8 +59,7 @@ SSC_API_MAP = {
 }
 
 
-@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
-class Client(client_base.Client):
+class Client(client_base.Client, metaclass=volume_utils.TraceWrapperMetaclass):
 
     def __init__(self, **kwargs):
         super(Client, self).__init__(**kwargs)
@@ -199,8 +197,7 @@ class Client(client_base.Client):
             num_records += self._get_record_count(next_result)
             next_tag = next_result.get_child_content('next-tag')
 
-        result.get_child_by_name('num-records').set_content(
-            six.text_type(num_records))
+        result.get_child_by_name('num-records').set_content(str(num_records))
         result.get_child_by_name('next-tag').set_content('')
         return result
 
@@ -733,12 +730,9 @@ class Client(client_base.Client):
                     block_range =\
                         netapp_api.NaElement.create_node_with_children(
                             'block-range',
-                            **{'source-block-number':
-                               six.text_type(src_block),
-                               'destination-block-number':
-                               six.text_type(dest_block),
-                               'block-count':
-                               six.text_type(int(block_count))})
+                            **{'source-block-number': str(src_block),
+                               'destination-block-number': str(dest_block),
+                               'block-count': str(int(block_count))})
                     block_ranges.add_child_elem(block_range)
                     src_block += int(block_count)
                     dest_block += int(block_count)
@@ -1764,8 +1758,7 @@ class Client(client_base.Client):
         if language is not None:
             api_args['language-code'] = language
         if snapshot_reserve is not None:
-            api_args['percentage-snapshot-reserve'] = six.text_type(
-                snapshot_reserve)
+            api_args['percentage-snapshot-reserve'] = str(snapshot_reserve)
 
         result = self.connection.send_request('volume-create-async', api_args)
         job_info = {
@@ -1785,7 +1778,7 @@ class Client(client_base.Client):
         """Creates a volume."""
         api_args = {
             'containing-aggr-name': aggregate_name,
-            'size': six.text_type(size_gb) + 'g',
+            'size': str(size_gb) + 'g',
             'volume': flexvol_name,
             'volume-type': volume_type,
         }
@@ -1800,8 +1793,7 @@ class Client(client_base.Client):
         if language is not None:
             api_args['language-code'] = language
         if snapshot_reserve is not None:
-            api_args['percentage-snapshot-reserve'] = six.text_type(
-                snapshot_reserve)
+            api_args['percentage-snapshot-reserve'] = str(snapshot_reserve)
         self.connection.send_request('volume-create', api_args)
 
         # cDOT compression requires that deduplication be enabled.
@@ -2490,8 +2482,7 @@ class Client(client_base.Client):
                 'true' if strutils.bool_from_string(
                     is_unauthenticated_access_permitted) else 'false')
         if passphrase_minimum_length is not None:
-            api_args['passphrase-minlength'] = six.text_type(
-                passphrase_minimum_length)
+            api_args['passphrase-minlength'] = str(passphrase_minimum_length)
 
         self.connection.send_request('cluster-peer-policy-modify', api_args)
 

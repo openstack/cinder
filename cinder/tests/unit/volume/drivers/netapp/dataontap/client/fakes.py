@@ -14,9 +14,9 @@
 #    under the License.
 
 from unittest import mock
+import urllib
 
 from lxml import etree
-from six.moves import urllib
 
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 import cinder.volume.drivers.netapp.dataontap.client.api as netapp_api

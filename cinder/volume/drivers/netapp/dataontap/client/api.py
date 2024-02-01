@@ -20,6 +20,7 @@
 Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
 import random
+import urllib
 
 from eventlet import greenthread
 from eventlet import semaphore
@@ -31,8 +32,6 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests import auth
 from requests.packages.urllib3.util.retry import Retry
-import six
-from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
@@ -150,8 +149,7 @@ class NaServer(object):
         try:
             self._api_major_version = int(major)
             self._api_minor_version = int(minor)
-            self._api_version = six.text_type(major) + "." + \
-                six.text_type(minor)
+            self._api_version = str(major) + "." + str(minor)
         except ValueError:
             raise ValueError('Major and minor versions must be integers')
         self._refresh_conn = True
@@ -168,7 +166,7 @@ class NaServer(object):
             int(port)
         except ValueError:
             raise ValueError('Port must be integer')
-        self._port = six.text_type(port)
+        self._port = str(port)
         self._refresh_conn = True
 
     def set_timeout(self, seconds):
@@ -425,9 +423,7 @@ class NaElement(object):
                               pretty_print=pretty)
 
     def __str__(self):
-        xml = self.to_string(pretty=True)
-        if six.PY3:
-            xml = xml.decode('utf-8')
+        xml = self.to_string(pretty=True).decode('utf-8')
         return xml
 
     def __eq__(self, other):
@@ -471,8 +467,8 @@ class NaElement(object):
                     child = NaElement(key)
                     child.add_child_elem(value)
                     self.add_child_elem(child)
-                elif isinstance(value, six.integer_types + (str, float)):
-                    self.add_new_child(key, six.text_type(value))
+                elif isinstance(value, (str, int, float)):
+                    self.add_new_child(key, str(value))
                 elif isinstance(value, (list, tuple, dict)):
                     child = NaElement(key)
                     child.translate_struct(value)
@@ -538,7 +534,7 @@ class NaElement(object):
                     child.translate_struct(data_struct[k])
                 else:
                     if data_struct[k]:
-                        child.set_content(six.text_type(data_struct[k]))
+                        child.set_content(str(data_struct[k]))
                 self.add_child_elem(child)
         else:
             raise ValueError(_('Type cannot be converted into NaElement.'))
