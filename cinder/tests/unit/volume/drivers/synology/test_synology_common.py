@@ -16,6 +16,7 @@
 """Tests for the Synology iSCSI volume driver."""
 
 import copy
+from http import HTTPStatus
 import json
 import math
 from unittest import mock
@@ -26,8 +27,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 import ddt
 from oslo_utils import units
 import requests
-from six.moves import http_client
-from six import string_types
 
 from cinder import context
 from cinder import exception
@@ -155,7 +154,7 @@ class MockResponse(object):
 
 class SynoSessionTestCase(test.TestCase):
     @mock.patch('requests.post', return_value=MockResponse(
-        {'data': {'sid': 'sid'}, 'success': True}, http_client.OK))
+        {'data': {'sid': 'sid'}, 'success': True}, HTTPStatus.OK))
     def setUp(self, _mock_post):
         super(SynoSessionTestCase, self).setUp()
 
@@ -196,12 +195,12 @@ class SynoSessionTestCase(test.TestCase):
                     FAKE_API: out
                 },
                 'success': True
-            }, http_client.OK),
+            }, HTTPStatus.OK),
             MockResponse({
                 'data': {
                     FAKE_API: out
                 }
-            }, http_client.OK),
+            }, HTTPStatus.OK),
         ])
 
         result = self.session.query(FAKE_API)
@@ -393,7 +392,7 @@ class SynoAPIRequestTestCase(test.TestCase):
         }
         self.request._jsonFormat = True
         result = self.request._encode_param(param)
-        self.assertIsInstance(result, string_types)
+        self.assertIsInstance(result, str)
 
     def test_request(self):
         version = 1
@@ -402,12 +401,12 @@ class SynoAPIRequestTestCase(test.TestCase):
         self.request._encode_param = mock.Mock(side_effect=lambda x: x)
         self.request.new_session = mock.Mock()
         requests.post = mock.Mock(side_effect=[
-            MockResponse({'success': True}, http_client.OK),
-            MockResponse({'error': {'code': http_client.SWITCHING_PROTOCOLS},
-                          'success': False}, http_client.OK),
-            MockResponse({'error': {'code': http_client.SWITCHING_PROTOCOLS}},
-                         http_client.OK),
-            MockResponse({}, http_client.INTERNAL_SERVER_ERROR)
+            MockResponse({'success': True}, HTTPStatus.OK),
+            MockResponse({'error': {'code': HTTPStatus.SWITCHING_PROTOCOLS},
+                          'success': False}, HTTPStatus.OK),
+            MockResponse({'error': {'code': HTTPStatus.SWITCHING_PROTOCOLS}},
+                         HTTPStatus.OK),
+            MockResponse({}, HTTPStatus.INTERNAL_SERVER_ERROR)
         ])
 
         result = self.request.request(FAKE_API, FAKE_METHOD, version)
@@ -415,7 +414,7 @@ class SynoAPIRequestTestCase(test.TestCase):
 
         result = self.request.request(FAKE_API, FAKE_METHOD, version)
         self.assertDictEqual(
-            {'error': {'code': http_client.SWITCHING_PROTOCOLS},
+            {'error': {'code': HTTPStatus.SWITCHING_PROTOCOLS},
              'success': False}, result)
 
         self.assertRaises(exception.MalformedResponse,
@@ -426,7 +425,7 @@ class SynoAPIRequestTestCase(test.TestCase):
 
         result = self.request.request(FAKE_API, FAKE_METHOD, version)
         self.assertDictEqual(
-            {'http_status': http_client.INTERNAL_SERVER_ERROR}, result)
+            {'http_status': HTTPStatus.INTERNAL_SERVER_ERROR}, result)
 
     @mock.patch.object(common.LOG, 'debug')
     @ddt.data(105, 119)
@@ -440,7 +439,7 @@ class SynoAPIRequestTestCase(test.TestCase):
                                   MockResponse({
                                       'error': {'code': _code},
                                       'success': False
-                                  }, http_client.OK))
+                                  }, HTTPStatus.OK))
 
         self.assertRaises(common.SynoAuthError,
                           self.request.request,
@@ -1259,7 +1258,7 @@ class SynoCommonTestCase(test.TestCase):
         version = 1
         resp = {}
         bad_resp = {
-            'http_status': http_client.INTERNAL_SERVER_ERROR
+            'http_status': HTTPStatus.INTERNAL_SERVER_ERROR
         }
         expected = copy.deepcopy(resp)
         expected.update(api_info={'api': api,
