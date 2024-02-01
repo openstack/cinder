@@ -24,6 +24,7 @@ Supported operations
 - Clone a Consistency Group.
 - Create a Consistency Group from a Consistency Group snapshot.
 - Quality of Service (QoS)
+- Cinder volume active/active support.
 
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~

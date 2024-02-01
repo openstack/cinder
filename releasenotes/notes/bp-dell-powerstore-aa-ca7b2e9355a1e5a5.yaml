@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Dell PowerStore driver: Enabled cinder volume active/active support.
+    This allows users to configure Dell PowerStore backends in cinder
+    clustered environments.
