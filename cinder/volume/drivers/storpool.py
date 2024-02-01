@@ -21,7 +21,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import units
-import six
 
 from cinder.common import constants
 from cinder import exception
@@ -109,7 +108,7 @@ class StorPoolDriver(driver.VolumeDriver):
         return storpool_opts
 
     def _backendException(self, e):
-        return exception.VolumeBackendAPIException(data=six.text_type(e))
+        return exception.VolumeBackendAPIException(data=str(e))
 
     def _template_from_volume(self, volume):
         default = self.configuration.storpool_template
