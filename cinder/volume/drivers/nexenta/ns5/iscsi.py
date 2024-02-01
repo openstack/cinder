@@ -20,7 +20,6 @@ import uuid
 
 from oslo_log import log as logging
 from oslo_utils import units
-import six
 
 from cinder.common import constants
 from cinder import context
@@ -425,7 +424,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         host_addresses = []
         items = self.nef.netaddrs.list()
         for item in items:
-            ip_cidr = six.text_type(item['address'])
+            ip_cidr = str(item['address'])
             ip_addr, ip_mask = ip_cidr.split('/')
             ip_obj = ipaddress.ip_address(ip_addr)
             if not ip_obj.is_loopback:
@@ -1012,7 +1011,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         :returns: return True, if database entry with specified
                   snapshot id exists, otherwise return False
         """
-        if not isinstance(snapshot_id, six.string_types):
+        if not isinstance(snapshot_id, str):
             return False
         try:
             uuid.UUID(snapshot_id, version=4)

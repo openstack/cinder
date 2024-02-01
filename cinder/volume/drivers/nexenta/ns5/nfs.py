@@ -21,7 +21,6 @@ import uuid
 from oslo_log import log as logging
 from oslo_utils.secretutils import md5
 from oslo_utils import units
-import six
 
 from cinder.common import constants
 from cinder import context
@@ -769,7 +768,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param volume: volume reference
         """
         share = self._get_volume_share(volume)
-        if isinstance(share, six.text_type):
+        if isinstance(share, str):
             share = share.encode('utf-8')
         path = md5(share, usedforsecurity=False).hexdigest()
         return os.path.join(self.mount_point_base, path)
@@ -913,7 +912,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :returns: return True, if database entry with specified
                   snapshot id exists, otherwise return False
         """
-        if not isinstance(snapshot_id, six.string_types):
+        if not isinstance(snapshot_id, str):
             return False
         try:
             uuid.UUID(snapshot_id, version=4)
