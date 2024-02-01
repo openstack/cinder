@@ -20,7 +20,6 @@ from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -155,7 +154,7 @@ class InStorageMCSReplication(object):
                     vref.name)
                 opts['iogrp'] = src_attr['IO_group_id']
                 self.target_assistant.create_vdisk(target_vol_name,
-                                                   six.text_type(vref['size']),
+                                                   str(vref['size']),
                                                    'gb', pool, opts)
 
             system_info = self.target_assistant.get_system_info()
@@ -191,7 +190,7 @@ class InStorageMCSReplication(object):
             except Exception as e:
                 msg = (_('Unable to fail-over the volume %(id)s to the '
                          'secondary back-end, error: %(error)s') %
-                       {"id": vref.id, "error": six.text_type(e)})
+                       {"id": vref.id, "error": str(e)})
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
 
@@ -207,7 +206,7 @@ class InStorageMCSReplication(object):
             except Exception as e:
                 msg = (_('Unable to fail-back the volume:%(vol)s to the '
                          'master back-end, error:%(error)s') %
-                       {"vol": volume.name, "error": six.text_type(e)})
+                       {"vol": volume.name, "error": str(e)})
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
 
