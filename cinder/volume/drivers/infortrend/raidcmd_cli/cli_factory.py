@@ -23,7 +23,6 @@ import time
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_utils import strutils
-import six
 
 from cinder import utils
 
@@ -146,8 +145,7 @@ def content_lines_to_dict(content_lines):
     return result
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseCommand(object):
+class BaseCommand(object, metaclass=abc.ABCMeta):
 
     """The BaseCommand abstract class."""
 
