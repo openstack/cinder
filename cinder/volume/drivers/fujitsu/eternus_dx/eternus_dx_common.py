@@ -28,7 +28,6 @@ from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils.secretutils import md5
 from oslo_utils import units
-import six
 
 from cinder import context
 from cinder import exception
@@ -1223,7 +1222,7 @@ class FJDXCommon(object):
 
         # Pylint: disable=E1121.
         volumename = base64.urlsafe_b64encode(m.digest()).decode()
-        vol_name = CONSTANTS.VOL_PREFIX + six.text_type(volumename)
+        vol_name = CONSTANTS.VOL_PREFIX + str(volumename)
 
         if self.model_name == CONSTANTS.DX_S2:
             LOG.debug('_get_volume_name, volume name is 16 digit.')
@@ -1423,7 +1422,7 @@ class FJDXCommon(object):
 
         try:
             services = self._enum_eternus_instance_names(
-                six.text_type(classname))
+                str(classname))
         except Exception:
             msg = (_('_find_eternus_service, '
                      'classname: %(classname)s, '
@@ -1477,7 +1476,7 @@ class FJDXCommon(object):
             msg = _('Device is in Busy state')
             raise exception.VolumeBackendAPIException(data=msg)
 
-        errordesc = CONSTANTS.RETCODE_dic.get(six.text_type(rc),
+        errordesc = CONSTANTS.RETCODE_dic.get(str(rc),
                                               CONSTANTS.UNDEF_MSG)
 
         ret = (rc, errordesc, retdata)
@@ -2532,7 +2531,7 @@ class FJDXCommon(object):
                   {'systemname': systemname,
                    'model': systemname[4]})
 
-        if six.text_type(systemname[4]) == '2':
+        if str(systemname[4]) == '2':
             ret = CONSTANTS.DX_S2
 
         return ret
