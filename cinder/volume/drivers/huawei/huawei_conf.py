@@ -25,7 +25,6 @@ import re
 
 from lxml import etree as ET
 from oslo_log import log as logging
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -85,17 +84,20 @@ class HuaweiConf(object):
 
         need_encode = False
         if name_node is not None and not name_node.text.startswith('!$$$'):
-            encoded = base64.b64encode(six.b(name_node.text)).decode()
+            encoded = base64.b64encode(
+                name_node.text.encode('latin-1')).decode()
             name_node.text = '!$$$' + encoded
             need_encode = True
 
         if pwd_node is not None and not pwd_node.text.startswith('!$$$'):
-            encoded = base64.b64encode(six.b(pwd_node.text)).decode()
+            encoded = base64.b64encode(
+                pwd_node.text.encode('latin-1')).decode()
             pwd_node.text = '!$$$' + encoded
             need_encode = True
 
         if vstore_node is not None and not vstore_node.text.startswith('!$$$'):
-            encoded = base64.b64encode(six.b(vstore_node.text)).decode()
+            encoded = base64.b64encode(
+                vstore_node.text.encode('latin-1')).decode()
             vstore_node.text = '!$$$' + encoded
             need_encode = True
 
@@ -119,7 +121,7 @@ class HuaweiConf(object):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        user = base64.b64decode(six.b(text[4:])).decode()
+        user = base64.b64decode(text[4:].encode('latin-1')).decode()
         setattr(self.conf, 'san_user', user)
 
     def _san_password(self, xml_root):
@@ -129,14 +131,14 @@ class HuaweiConf(object):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        pwd = base64.b64decode(six.b(text[4:])).decode()
+        pwd = base64.b64decode(text[4:].encode('latin-1')).decode()
         setattr(self.conf, 'san_password', pwd)
 
     def _san_vstore(self, xml_root):
         vstore = None
         text = xml_root.findtext('Storage/vStoreName')
         if text:
-            vstore = base64.b64decode(six.b(text[4:])).decode()
+            vstore = base64.b64decode(text[4:].encode('latin-1')).decode()
         setattr(self.conf, 'vstore_name', vstore)
 
     def _ssl_cert_path(self, xml_root):

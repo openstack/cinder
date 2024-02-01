@@ -20,7 +20,6 @@ import time
 from oslo_log import log as logging
 from oslo_utils import excutils
 import requests
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -95,7 +94,7 @@ class RestClient(object):
             res.raise_for_status()
         except requests.HTTPError as exc:
             return {"error": {"code": exc.response.status_code,
-                              "description": six.text_type(exc)}}
+                              "description": str(exc)}}
 
         res_json = res.json()
         if not log_filter_flag:
@@ -1988,9 +1987,9 @@ class RestClient(object):
 
     def change_hostlun_id(self, map_info, hostlun_id):
         url = "/mappingview"
-        view_id = six.text_type(map_info['view_id'])
-        lun_id = six.text_type(map_info['lun_id'])
-        hostlun_id = six.text_type(hostlun_id)
+        view_id = str(map_info['view_id'])
+        lun_id = str(map_info['lun_id'])
+        hostlun_id = str(hostlun_id)
         data = {"TYPE": 245,
                 "ID": view_id,
                 "ASSOCIATEOBJTYPE": 11,
