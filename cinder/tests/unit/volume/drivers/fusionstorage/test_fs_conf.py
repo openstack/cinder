@@ -12,13 +12,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import configparser
 import os
 import shutil
 import tempfile
 from unittest import mock
 
 import ddt
-from six.moves import configparser
 
 from cinder.tests.unit import test
 from cinder.volume.drivers.fusionstorage import fs_conf

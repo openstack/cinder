@@ -14,11 +14,10 @@
 #    under the License.
 
 import base64
+import configparser
 import os
 
 from oslo_log import log as logging
-import six
-from six.moves import configparser
 
 from cinder import exception
 from cinder.i18n import _
@@ -56,12 +55,12 @@ class FusionStorageConf(object):
 
         need_encode = False
         if name_node is not None and not name_node.startswith('!&&&'):
-            encoded = base64.b64encode(six.b(name_node)).decode()
+            encoded = base64.b64encode(name_node.encode('latin-1')).decode()
             name_node = '!&&&' + encoded
             need_encode = True
 
         if pwd_node is not None and not pwd_node.startswith('!&&&'):
-            encoded = base64.b64encode(six.b(pwd_node)).decode()
+            encoded = base64.b64encode(pwd_node.encode('latin-1')).decode()
             pwd_node = '!&&&' + encoded
             need_encode = True
 
@@ -96,7 +95,7 @@ class FusionStorageConf(object):
         setattr(self.configuration, 'san_address', address)
 
     def _decode_text(self, text):
-        return (base64.b64decode(six.b(text[4:])).decode() if
+        return (base64.b64decode(text[4:].encode('latin-1')).decode() if
                 text.startswith('!&&&') else text)
 
     def _san_user(self):
