@@ -21,7 +21,6 @@ import uuid
 
 from oslo_config import cfg
 from oslo_log import log as logging
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -55,8 +54,7 @@ CONF.register_opts(common_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(iscsi_opts, group=configuration.SHARED_CONF_GROUP)
 
 
-@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
-class STXCommon(object):
+class STXCommon(object, metaclass=volume_utils.TraceWrapperMetaclass):
     VERSION = "2.0"
 
     stats = {}
@@ -95,7 +93,7 @@ class STXCommon(object):
             msg = _("Failed to connect to %(vendor_name)s Array %(host)s: "
                     "%(err)s") % {'vendor_name': self.vendor_name,
                                   'host': self.config.san_ip,
-                                  'err': six.text_type(ex)}
+                                  'err': str(ex)}
             LOG.error(msg)
             raise stx_exception.ConnectionError(message=msg)
         except stx_exception.AuthenticationError:
@@ -146,9 +144,7 @@ class STXCommon(object):
         """
         uuid_str = name.replace("-", "")
         vol_uuid = uuid.UUID('urn:uuid:%s' % uuid_str)
-        vol_encoded = base64.urlsafe_b64encode(vol_uuid.bytes)
-        if six.PY3:
-            vol_encoded = vol_encoded.decode('ascii')
+        vol_encoded = base64.urlsafe_b64encode(vol_uuid.bytes).decode('ascii')
         return vol_encoded[:19]
 
     def check_flags(self, options, required_flags):
