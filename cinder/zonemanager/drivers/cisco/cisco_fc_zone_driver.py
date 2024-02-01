@@ -34,7 +34,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -270,7 +269,7 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                             statusmap_from_fabric)
                     conn.cleanup()
                 except c_exception.CiscoZoningCliException as cisco_ex:
-                    msg = _("Exception: %s") % six.text_type(cisco_ex)
+                    msg = _("Exception: %s") % str(cisco_ex)
                     raise exception.FCZoneDriverException(msg)
                 except Exception:
                     msg = _("Failed to add zoning configuration.")

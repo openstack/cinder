@@ -34,7 +34,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -475,7 +474,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                 LOG.exception("Error getting name server info.")
         except Exception as e:
             msg = (_("Failed to retrieve active zoning configuration %s")
-                   % six.text_type(e))
+                   % str(e))
             LOG.error(msg)
             raise exception.FCZoneDriverException(msg)
         LOG.debug("Active zone set from fabric: %(cfgmap)s",

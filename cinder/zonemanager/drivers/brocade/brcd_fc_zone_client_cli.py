@@ -26,7 +26,6 @@ from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -195,7 +194,7 @@ class BrcdFCZoneClientCLI(object):
             self._cfg_trans_abort()
             msg = _("Creating and activating zone set failed: "
                     "(Zone set=%(cfg_name)s error=%(err)s)."
-                    ) % {'cfg_name': cfg_name, 'err': six.text_type(e)}
+                    ) % {'cfg_name': cfg_name, 'err': str(e)}
             LOG.error(msg)
             raise b_exception.BrocadeZoningCliException(reason=msg)
 
@@ -260,7 +259,7 @@ class BrcdFCZoneClientCLI(object):
             self._cfg_trans_abort()
             msg = _("Activating zone set failed: "
                     "(Zone set=%(cfg_name)s error=%(err)s)."
-                    ) % {'cfg_name': cfg_name, 'err': six.text_type(e)}
+                    ) % {'cfg_name': cfg_name, 'err': str(e)}
             LOG.error(msg)
             raise b_exception.BrocadeZoningCliException(reason=msg)
 
@@ -314,7 +313,7 @@ class BrcdFCZoneClientCLI(object):
                 self._cfg_save()
         except Exception as e:
             msg = _("Deleting zones failed: (command=%(cmd)s error=%(err)s)."
-                    ) % {'cmd': cmd, 'err': six.text_type(e)}
+                    ) % {'cmd': cmd, 'err': str(e)}
             LOG.error(msg)
             self._cfg_trans_abort()
             raise b_exception.BrocadeZoningCliException(reason=msg)
@@ -410,7 +409,7 @@ class BrcdFCZoneClientCLI(object):
                 return False
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
-                    "error=%(err)s).") % {'cmd': cmd, 'err': six.text_type(e)}
+                    "error=%(err)s).") % {'cmd': cmd, 'err': str(e)}
             LOG.error(msg)
             raise b_exception.BrocadeZoningCliException(reason=msg)
 
@@ -424,7 +423,7 @@ class BrcdFCZoneClientCLI(object):
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
                     "error=%(err)s).") % {'cmd': cmd_list,
-                                          'err': six.text_type(e)}
+                                          'err': str(e)}
             LOG.error(msg)
             raise b_exception.BrocadeZoningCliException(reason=msg)
 
