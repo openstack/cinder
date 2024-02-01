@@ -47,7 +47,6 @@ from oslo_serialization import base64
 from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
-import six
 import taskflow.engines
 from taskflow.patterns import linear_flow
 
@@ -510,7 +509,7 @@ class HPE3PARCommon(object):
             try:
                 self.client_login()
                 info = self.client.getStorageSystemInfo()
-                self.client.id = six.text_type(info['id'])
+                self.client.id = str(info['id'])
             except Exception:
                 self.client.id = 0
             finally:
@@ -621,7 +620,7 @@ class HPE3PARCommon(object):
                 'replication_status': fields.ReplicationStatus.ENABLED})
 
         self.client.createVolumeSet(cg_name, domain=domain,
-                                    comment=six.text_type(extra))
+                                    comment=str(extra))
 
         return model_update
 
@@ -665,7 +664,7 @@ class HPE3PARCommon(object):
         for i in range(0, len(volumes)):
             # In case of group created from group,we are mapping
             # source volume with it's snapshot
-            snap_name = snap_base + "-" + six.text_type(i)
+            snap_name = snap_base + "-" + str(i)
             snap_detail = self.client.getVolume(snap_name)
             vol_name = snap_detail.get('copyOf')
             src_vol_name = vol_name
@@ -908,7 +907,7 @@ class HPE3PARCommon(object):
                                                   optional=optional)
         except Exception as ex:
             msg = (_('There was an error creating the cgsnapshot: %s'),
-                   six.text_type(ex))
+                   str(ex))
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
@@ -932,7 +931,7 @@ class HPE3PARCommon(object):
         for i, snapshot in enumerate(snapshots):
             snapshot_update = {'id': snapshot['id']}
             try:
-                snap_name = cgsnap_name + "-" + six.text_type(i)
+                snap_name = cgsnap_name + "-" + str(i)
                 self.client.deleteVolume(snap_name)
                 snapshot_update['status'] = fields.SnapshotStatus.DELETED
             except hpeexceptions.HTTPNotFound as ex:
@@ -946,7 +945,7 @@ class HPE3PARCommon(object):
                 LOG.error("There was an error deleting snapshot %(id)s: "
                           "%(error)s.",
                           {'id': snapshot['id'],
-                           'error': six.text_type(ex)})
+                           'error': str(ex)})
                 snapshot_update['status'] = fields.SnapshotStatus.ERROR
             snapshot_model_updates.append(snapshot_update)
 
@@ -1483,7 +1482,7 @@ class HPE3PARCommon(object):
 
     def _get_3par_remote_rcg_name(self, volume, provider_location):
         return self._get_3par_rcg_name(volume) + ".r" + (
-            six.text_type(provider_location))
+            str(provider_location))
 
     @staticmethod
     def _encode_name(name):
@@ -1994,7 +1993,7 @@ class HPE3PARCommon(object):
     def _get_boolean_key_value(self, hpe3par_keys, key, default=False):
         value = self._get_key_value(
             hpe3par_keys, key, default)
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             if value.lower() == 'true':
                 value = True
             else:
@@ -2650,7 +2649,7 @@ class HPE3PARCommon(object):
                         self.client.deleteVolume(vol_name)
                         dbg = {'volume': vol_name,
                                'vvs_name': vvs_name,
-                               'err': six.text_type(ex)}
+                               'err': str(ex)}
                         msg = _("Failed to add volume '%(volume)s' to vvset "
                                 "'%(vvs_name)s' because '%(err)s'") % dbg
                         LOG.error(msg)
@@ -3604,7 +3603,7 @@ class HPE3PARCommon(object):
                          'compression': compression,
                          'conversionOperation': cop})
             except hpeexceptions.HTTPBadRequest as ex:
-                if ex.get_code() == 40 and "keepVV" in six.text_type(ex):
+                if ex.get_code() == 40 and "keepVV" in str(ex):
                     # Cannot retype with snapshots because we don't want to
                     # use keepVV and have straggling volumes.  Log additional
                     # info and then raise.
@@ -3867,7 +3866,7 @@ class HPE3PARCommon(object):
                 self.client.stopRemoteCopy(rcg_name)
             except Exception as ex:
                 msg = (_("There was an error stopping remote copy: %s.") %
-                       six.text_type(ex))
+                       str(ex))
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
@@ -3895,7 +3894,7 @@ class HPE3PARCommon(object):
                 self.client.startRemoteCopy(rcg_name)
             except Exception as ex:
                 msg = (_("There was an error starting remote copy: %s.") %
-                       six.text_type(ex))
+                       str(ex))
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4157,9 +4156,9 @@ class HPE3PARCommon(object):
                 try:
                     cl = self._create_replication_client(remote_array)
                     info = cl.getStorageSystemInfo()
-                    remote_array['id'] = six.text_type(info['id'])
+                    remote_array['id'] = str(info['id'])
                     if array_id and array_id == info['id']:
-                        self._active_backend_id = six.text_type(info['name'])
+                        self._active_backend_id = str(info['name'])
 
                     wsapi_version = cl.getWsApiVersion()['build']
 
@@ -4492,7 +4491,7 @@ class HPE3PARCommon(object):
             except Exception as ex:
                 msg = (_("There was an error creating the remote copy "
                          "group: %s.") %
-                       six.text_type(ex))
+                       str(ex))
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4514,7 +4513,7 @@ class HPE3PARCommon(object):
             except Exception as ex:
                 msg = (_("There was an error adding the volume to the remote "
                          "copy group: %s.") %
-                       six.text_type(ex))
+                       str(ex))
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4528,7 +4527,7 @@ class HPE3PARCommon(object):
                 except Exception as ex:
                     msg = (_("There was an error setting the sync period for "
                              "the remote copy group: %s.") %
-                           six.text_type(ex))
+                           str(ex))
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4549,7 +4548,7 @@ class HPE3PARCommon(object):
                         self.client.modifyRemoteCopyGroup(rcg_name, pp_params)
                     except Exception as ex:
                         msg = (_("There was an error while modifying remote "
-                                 "copy group: %s.") % six.text_type(ex))
+                                 "copy group: %s.") % str(ex))
                         LOG.error(msg)
                         raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4558,7 +4557,7 @@ class HPE3PARCommon(object):
                 self.client.startRemoteCopy(rcg_name)
             except Exception as ex:
                 msg = (_("There was an error starting remote copy: %s.") %
-                       six.text_type(ex))
+                       str(ex))
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4568,7 +4567,7 @@ class HPE3PARCommon(object):
             msg = (_("There was an error setting up a remote copy group "
                      "on the 3PAR arrays: ('%s'). The volume will not be "
                      "recognized as replication type.") %
-                   six.text_type(ex))
+                   str(ex))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4636,7 +4635,7 @@ class HPE3PARCommon(object):
             self._do_volume_replication_destroy(volume, rcg_name)
         except Exception as ex:
             msg = (_("The failed-over volume could not be deleted: %s") %
-                   six.text_type(ex))
+                   str(ex))
             LOG.error(msg)
             raise exception.VolumeIsBusy(message=msg)
         finally:
@@ -4680,7 +4679,7 @@ class HPE3PARCommon(object):
 
     def _get_3par_remote_rcg_name_of_group(self, group_id, provider_location):
         return self._get_3par_rcg_name_of_group(group_id) + ".r" + (
-            six.text_type(provider_location))
+            str(provider_location))
 
     def _get_hpe3par_tiramisu_value(self, volume_type):
         hpe3par_tiramisu = False
@@ -4710,7 +4709,7 @@ class HPE3PARCommon(object):
             self.client.startRemoteCopy(rcg_name)
         except Exception as ex:
             msg = (_("There was an error starting remote copy: %s.") %
-                   six.text_type(ex))
+                   str(ex))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4824,7 +4823,7 @@ class HPE3PARCommon(object):
             msg = (_("There was an error removing a volume: %(volume)s from "
                      "Group: %(group)s : %(err)s") %
                    {'volume': volume.get('id'), 'group': group.id,
-                    'err': six.text_type(ex)})
+                    'err': str(ex)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4854,7 +4853,7 @@ class HPE3PARCommon(object):
             msg = (_("There was an error adding a volume: %(volume)s to "
                      "Group: %(group)s : %(err)s") %
                    {'volume': volume.get('id'), 'group': group.id,
-                    'err': six.text_type(ex)})
+                    'err': str(ex)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4885,7 +4884,7 @@ class HPE3PARCommon(object):
                 except Exception as ex:
                     msg = (_("There was an error setting the sync period for "
                              "the remote copy group: %s.") %
-                           six.text_type(ex))
+                           str(ex))
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4913,7 +4912,7 @@ class HPE3PARCommon(object):
         except Exception as ex:
             msg = (_("There was an error modifying the remote copy "
                      "group: %s.") %
-                   six.text_type(ex))
+                   str(ex))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -4935,7 +4934,7 @@ class HPE3PARCommon(object):
         except Exception as ex:
             msg = (_("There was an error adding the volume to the remote "
                      "copy group: %s.") %
-                   six.text_type(ex))
+                   str(ex))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -5054,7 +5053,7 @@ class HPE3PARCommon(object):
         except Exception as ex:
             msg = (_("There was an error creating the remote copy "
                      "group: %s.") %
-                   six.text_type(ex))
+                   str(ex))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -5097,7 +5096,7 @@ class HPE3PARCommon(object):
         except Exception as ex:
             msg = (_("There was a problem with the failover: "
                      "(%(error)s) and it was unsuccessful.") %
-                   {'err': six.text_type(ex)})
+                   {'err': str(ex)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         finally:
@@ -5113,7 +5112,7 @@ class HPE3PARCommon(object):
         except Exception as ex:
             msg = (_("There was a problem with the failback: "
                      "(%(error)s) and it was unsuccessful.") %
-                   {'err': six.text_type(ex)})
+                   {'err': str(ex)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         finally:
