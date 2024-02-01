@@ -25,7 +25,6 @@ from oslo_utils import versionutils
 from oslo_vmware import exceptions
 from oslo_vmware import image_transfer
 from oslo_vmware import vim_util
-import six
 
 from cinder import context
 from cinder import exception as cinder_exceptions
@@ -1155,7 +1154,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         rp = mock.sentinel.rp
         folder = mock.sentinel.folder
         # NOTE(mriedem): The summary.name gets logged so it has to be a string
-        summary = mock.Mock(name=six.text_type(mock.sentinel.ds_name))
+        summary = mock.Mock(name=str(mock.sentinel.ds_name))
         select_ds_for_volume.return_value = (host, rp, folder, summary)
 
         profile_id = mock.sentinel.profile_id
