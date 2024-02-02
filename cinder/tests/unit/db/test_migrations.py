@@ -16,6 +16,9 @@ the test case runs a series of test cases to ensure that migrations work
 properly and that no data loss occurs if possible.
 """
 
+import functools
+from unittest import mock
+
 from alembic import command as alembic_api
 from alembic import script as alembic_script
 import fixtures
@@ -31,6 +34,52 @@ from cinder.db import migration
 from cinder.db.sqlalchemy import api
 from cinder.db.sqlalchemy import models
 from cinder.tests import fixtures as cinder_fixtures
+
+
+def prevent_drop_alter(func):
+    """Decorator to prevent dropping or altering tables and columns.
+
+    With rolling upgrades we shouldn't blindly allow dropping or altering
+    tables and columns, since that can easily break them.
+
+    Dropping and altering should be done in a backward-compatible manner.  A
+    more detailed explanation is provided in Cinder's developer documentation.
+
+    To properly work, the first parameter of the decorated method must be a
+    class or instance with the DROP_ALTER_EXCEPTIONS and FORBIDDEN_METHODS
+    attribute, and the second parameter must be the version (legacy migrations)
+    or revision (alembic migrations).
+
+    Reviewers should be very careful when adding exceptions to
+    DROP_ALTER_EXCEPTIONS and make sure that in the previous release there was
+    nothing using that column, not even an ORM model (unless the whole ORM
+    model was not being used)
+    """
+
+    @functools.wraps(func)
+    def wrapper(self, revision, *args, **kwargs):
+        exceptions = getattr(self, 'DROP_ALTER_EXCEPTIONS', [])
+        do_ban = revision not in exceptions
+
+        patchers = []
+
+        if do_ban:
+            forbidden = getattr(self, 'FORBIDDEN_METHODS', [])
+            for path in forbidden:
+                txt = (f'Migration {revision}: Operation {path}() is not '
+                       'allowed in a DB migration')
+                patcher = mock.patch(path, autospec=True,
+                                     side_effect=Exception(txt))
+                patcher.start()
+                patchers.append(patcher)
+
+        try:
+            return func(self, revision, *args, **kwargs)
+        finally:
+            for patcher in patchers:
+                patcher.stop()
+
+    return wrapper
 
 
 class CinderModelsMigrationsSync(test_migrations.ModelsMigrationsSync):
@@ -122,6 +171,25 @@ class MigrationsWalk(
     TIMEOUT_SCALING_FACTOR = 4
     BOOL_TYPE = sqlalchemy.types.BOOLEAN
 
+    # NOTE: List of migrations where we allow dropping/altring things.
+    # Reviewers: DO NOT ALLOW THINGS TO BE ADDED HERE WITHOUT CARE, and make
+    # sure that in the previous release there was nothing using that column,
+    # not even an ORM model (unless the whole ORM model was not being used)
+    # See prevent_drop_alter method docstring.
+    DROP_ALTER_EXCEPTIONS = [
+        # Drops and alters from initial migration have already been accepted
+        '921e1a36b076',
+        # Making shared_targets explicitly nullable (DB already allowed it)
+        'c92a3e68beed',
+        # Migration 89aa6f9639f9 doesn't fail because it's for a SQLAlquemy
+        # internal table, and we only check Cinder's tables.
+    ]
+    FORBIDDEN_METHODS = ('alembic.operations.Operations.alter_column',
+                         'alembic.operations.Operations.drop_column',
+                         'alembic.operations.Operations.drop_table',
+                         'alembic.operations.BatchOperations.alter_column',
+                         'alembic.operations.BatchOperations.drop_column')
+
     def setUp(self):
         super().setUp()
         self.engine = enginefacade.writer.get_engine()
@@ -129,6 +197,7 @@ class MigrationsWalk(
         self.config = migration._find_alembic_conf()
         self.init_version = '921e1a36b076'
 
+    @prevent_drop_alter
     def _migrate_up(self, revision, connection):
         check_method = getattr(self, f'_check_{revision}', None)
         if revision != self.init_version:  # no tests for the initial revision
