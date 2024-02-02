@@ -36,9 +36,9 @@ To configure the use of a SolidFire cluster with Block Storage, modify your
 
    The SolidFire driver creates names for volumes on the back end using the
    format UUID-<cinder-id>. This works well, but there is a possibility of a
-   UUID collision for customers running multiple clouds against the same
-   cluster. In Mitaka the ability was added to eliminate the possibility of
-   collisions by introducing the **sf_volume_prefix** configuration variable.
+   UUID collision for users running multiple clouds against the same cluster.
+   In Mitaka the ability was added to eliminate the possibility of collisions
+   by introducing the **sf_volume_prefix** configuration variable.
    On the SolidFire cluster each volume will be labeled with the prefix,
    providing the ability to configure unique volume names for each cloud.
    The default prefix is 'UUID-'.
