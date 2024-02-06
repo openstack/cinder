@@ -656,17 +656,6 @@ def _sync_gigabytes(
     return {key: vol_gigs + snap_gigs}
 
 
-def _sync_consistencygroups(
-    context,
-    project_id,
-    volume_type_id=None,
-    volume_type_name=None,
-):
-    _, groups = _consistencygroup_data_get_for_project(context, project_id)
-    key = 'consistencygroups'
-    return {key: groups}
-
-
 def _sync_backup_gigabytes(
     context,
     project_id,
@@ -697,7 +686,6 @@ QUOTA_SYNC_FUNCTIONS = {
     '_sync_volumes': _sync_volumes,
     '_sync_snapshots': _sync_snapshots,
     '_sync_gigabytes': _sync_gigabytes,
-    '_sync_consistencygroups': _sync_consistencygroups,
     '_sync_backups': _sync_backups,
     '_sync_backup_gigabytes': _sync_backup_gigabytes,
     '_sync_groups': _sync_groups,

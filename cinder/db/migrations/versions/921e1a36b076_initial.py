@@ -44,7 +44,6 @@ CONF = cfg.CONF
 CONF.import_opt('quota_volumes', 'cinder.quota')
 CONF.import_opt('quota_snapshots', 'cinder.quota')
 CONF.import_opt('quota_gigabytes', 'cinder.quota')
-CONF.import_opt('quota_consistencygroups', 'cinder.quota')
 
 CLASS_NAME = 'default'
 CREATED_AT = datetime.datetime.now()  # noqa
@@ -992,13 +991,6 @@ def upgrade():
                 'class_name': CLASS_NAME,
                 'resource': 'gigabytes',
                 'hard_limit': CONF.quota_gigabytes,
-                'deleted': False,
-            },
-            {
-                'created_at': CREATED_AT,
-                'class_name': CLASS_NAME,
-                'resource': 'consistencygroups',
-                'hard_limit': CONF.quota_consistencygroups,
                 'deleted': False,
             },
             {

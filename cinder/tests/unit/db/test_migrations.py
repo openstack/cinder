@@ -369,6 +369,18 @@ class MigrationsWalk(
         snapshots = db_utils.get_table(connection, 'snapshots')
         self.assertFalse(snapshots.c.use_quota.nullable)
 
+    def _check_b7b88f50aab5(self, connection):
+        """Test consistencygroups quota was removed."""
+        quota_classes = db_utils.get_table(connection, 'quota_classes')
+        res = connection.execute(
+            quota_classes.select().where(
+                sqlalchemy.and_(
+                    quota_classes.c.resource == 'consistencygroups',
+                    ~quota_classes.c.deleted,
+                    quota_classes.c.class_name == 'default')
+            )).all()
+        self.assertListEqual([], res)
+
     # TODO: (D Release) Uncomment method _check_afd7494d43b7 and create a
     # migration with hash afd7494d43b7 using the following command:
     #   $ tox -e venv -- alembic -c cinder/db/alembic.ini revision \
