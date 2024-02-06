@@ -381,6 +381,21 @@ class MigrationsWalk(
             )).all()
         self.assertListEqual([], res)
 
+    def _check_9c74c1c6971f(self, connection):
+        """Test backup related quota was added."""
+        quota_classes = db_utils.get_table(connection, 'quota_classes')
+        res = connection.execute(
+            sqlalchemy.select(quota_classes.c.resource).where(
+                sqlalchemy.and_(
+                    quota_classes.c.resource.startswith('backup'),
+                    ~quota_classes.c.deleted,
+                    quota_classes.c.class_name == 'default')
+            )).all()
+
+        self.assertEqual(2, len(res))
+        self.assertEqual({'backups', 'backup_gigabytes'},
+                         {r[0] for r in res})
+
     # TODO: (D Release) Uncomment method _check_afd7494d43b7 and create a
     # migration with hash afd7494d43b7 using the following command:
     #   $ tox -e venv -- alembic -c cinder/db/alembic.ini revision \
