@@ -26,10 +26,7 @@ from unittest import mock
 import zlib
 
 from eventlet import tpool
-try:
-    from moto import mock_aws
-except ImportError:
-    from moto import mock_s3 as mock_aws
+from moto import mock_aws
 from oslo_utils import units
 
 from cinder.backup.drivers import s3 as s3_dr
