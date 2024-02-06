@@ -26,7 +26,10 @@ from unittest import mock
 import zlib
 
 from eventlet import tpool
-from moto import mock_s3
+try:
+    from moto import mock_aws
+except ImportError:
+    from moto import mock_s3 as mock_aws
 from oslo_utils import units
 
 from cinder.backup.drivers import s3 as s3_dr
@@ -139,12 +142,12 @@ class BackupS3TestCase(test.TestCase):
         self.flags(backup_s3_store_secret_key='s3cindersecretkey')
         self.flags(backup_s3_sse_customer_key='s3aeskey')
 
-    @mock_s3
+    @mock_aws
     def test_backup_correctly_configured(self):
         self.service = s3_dr.S3BackupDriver(self.ctxt)
         self.assertIsInstance(self.service, s3_dr.S3BackupDriver)
 
-    @mock_s3
+    @mock_aws
     def test_backup(self):
         volume_id = 'b09b1ad4-5f0e-4d3f-8b9e-0000004f5ec2'
         container_name = 'test-bucket'
@@ -155,7 +158,7 @@ class BackupS3TestCase(test.TestCase):
         result = service.backup(backup, self.volume_file)
         self.assertIsNone(result)
 
-    @mock_s3
+    @mock_aws
     def test_backup_uncompressed(self):
         volume_id = '2b9f10a3-42b4-4fdf-b316-000000ceb039'
         backup = self._create_backup_db_entry(volume_id=volume_id)
@@ -164,7 +167,7 @@ class BackupS3TestCase(test.TestCase):
         self.volume_file.seek(0)
         service.backup(backup, self.volume_file)
 
-    @mock_s3
+    @mock_aws
     def test_backup_bz2(self):
         volume_id = 'dc0fee35-b44e-4f13-80d6-000000e1b50c'
         backup = self._create_backup_db_entry(volume_id=volume_id)
@@ -173,7 +176,7 @@ class BackupS3TestCase(test.TestCase):
         self._write_effective_compression_file(self.size_volume_file)
         service.backup(backup, self.volume_file)
 
-    @mock_s3
+    @mock_aws
     def test_backup_zlib(self):
         volume_id = '5cea0535-b6fb-4531-9a38-000000bea094'
         backup = self._create_backup_db_entry(volume_id=volume_id)
@@ -182,7 +185,7 @@ class BackupS3TestCase(test.TestCase):
         self._write_effective_compression_file(self.size_volume_file)
         service.backup(backup, self.volume_file)
 
-    @mock_s3
+    @mock_aws
     def test_backup_zstd(self):
         volume_id = '471910a0-a197-4259-9c50-0fc3d6a07dbc'
         backup = self._create_backup_db_entry(volume_id=volume_id)
@@ -191,7 +194,7 @@ class BackupS3TestCase(test.TestCase):
         self._write_effective_compression_file(self.size_volume_file)
         service.backup(backup, self.volume_file)
 
-    @mock_s3
+    @mock_aws
     def test_backup_default_container(self):
         volume_id = '9552017f-c8b9-4e4e-a876-00000053349c'
         backup = self._create_backup_db_entry(volume_id=volume_id,
@@ -201,7 +204,7 @@ class BackupS3TestCase(test.TestCase):
         service.backup(backup, self.volume_file)
         self.assertEqual('volumebackups', backup.container)
 
-    @mock_s3
+    @mock_aws
     def test_backup_custom_container(self):
         volume_id = '1da9859e-77e5-4731-bd58-000000ca119e'
         container_name = 'fake99'
@@ -212,7 +215,7 @@ class BackupS3TestCase(test.TestCase):
         service.backup(backup, self.volume_file)
         self.assertEqual(container_name, backup.container)
 
-    @mock_s3
+    @mock_aws
     def test_backup_shafile(self):
         volume_id = '6465dad4-22af-48f7-8a1a-000000218907'
 
@@ -226,7 +229,7 @@ class BackupS3TestCase(test.TestCase):
         self.assertEqual(64 * units.Ki / content1['chunk_size'],
                          len(content1['sha256s']))
 
-    @mock_s3
+    @mock_aws
     def test_backup_cmp_shafiles(self):
         volume_id = '1a99ac67-c534-4fe3-b472-0000001785e2'
 
@@ -250,7 +253,7 @@ class BackupS3TestCase(test.TestCase):
         self.assertEqual(len(content1['sha256s']), len(content2['sha256s']))
         self.assertEqual(set(content1['sha256s']), set(content2['sha256s']))
 
-    @mock_s3
+    @mock_aws
     def test_backup_delta_two_objects_change(self):
         volume_id = '30dab288-265a-4583-9abe-000000d42c67'
 
@@ -282,7 +285,7 @@ class BackupS3TestCase(test.TestCase):
         self.assertNotEqual(content1['sha256s'][16], content2['sha256s'][16])
         self.assertNotEqual(content1['sha256s'][32], content2['sha256s'][32])
 
-    @mock_s3
+    @mock_aws
     def test_backup_delta_two_blocks_in_object_change(self):
         volume_id = 'b943e84f-aa67-4331-9ab2-000000cf19ba'
 
@@ -314,7 +317,7 @@ class BackupS3TestCase(test.TestCase):
         self.assertNotEqual(content1['sha256s'][16], content2['sha256s'][16])
         self.assertNotEqual(content1['sha256s'][20], content2['sha256s'][20])
 
-    @mock_s3
+    @mock_aws
     @mock.patch('cinder.backup.drivers.s3.S3BackupDriver.'
                 '_send_progress_end')
     @mock.patch('cinder.backup.drivers.s3.S3BackupDriver.'
@@ -359,7 +362,7 @@ class BackupS3TestCase(test.TestCase):
         self.assertTrue(_send_progress.called)
         self.assertTrue(_send_progress_end.called)
 
-    @mock_s3
+    @mock_aws
     @mock.patch.object(s3_dr.S3BackupDriver, '_backup_metadata',
                        fake_backup_metadata)
     def test_backup_backup_metadata_fail(self):
@@ -380,7 +383,7 @@ class BackupS3TestCase(test.TestCase):
                           service.backup,
                           backup, self.volume_file)
 
-    @mock_s3
+    @mock_aws
     @mock.patch.object(s3_dr.S3BackupDriver, '_backup_metadata',
                        fake_backup_metadata)
     @mock.patch.object(s3_dr.S3BackupDriver, 'delete_backup',
@@ -403,7 +406,7 @@ class BackupS3TestCase(test.TestCase):
                           service.backup,
                           backup, self.volume_file)
 
-    @mock_s3
+    @mock_aws
     def test_delete(self):
         volume_id = '9ab256c8-3175-4ad8-baa1-0000007f9d31'
         object_prefix = 'test_prefix'
@@ -412,7 +415,7 @@ class BackupS3TestCase(test.TestCase):
         service = s3_dr.S3BackupDriver(self.ctxt)
         service.delete_backup(backup)
 
-    @mock_s3
+    @mock_aws
     @mock.patch.object(s3_dr.S3BackupDriver, 'delete_object',
                        _fake_delete_object)
     def test_delete_without_object_prefix(self):
@@ -421,7 +424,7 @@ class BackupS3TestCase(test.TestCase):
         service = s3_dr.S3BackupDriver(self.ctxt)
         service.delete_backup(backup)
 
-    @mock_s3
+    @mock_aws
     def test_get_compressor(self):
         service = s3_dr.S3BackupDriver(self.ctxt)
         compressor = service._get_compressor('None')
@@ -434,7 +437,7 @@ class BackupS3TestCase(test.TestCase):
         self.assertIsInstance(compressor, tpool.Proxy)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
 
-    @mock_s3
+    @mock_aws
     def test_prepare_output_data_effective_compression(self):
         """Test compression works on a native thread."""
         # Use dictionary to share data between threads
@@ -458,7 +461,7 @@ class BackupS3TestCase(test.TestCase):
         self.assertNotEqual(threading.current_thread(),
                             thread_dict['compress'])
 
-    @mock_s3
+    @mock_aws
     def test_prepare_output_data_no_compression(self):
         self.flags(backup_compression_algorithm='none')
         service = s3_dr.S3BackupDriver(self.ctxt)
@@ -470,7 +473,7 @@ class BackupS3TestCase(test.TestCase):
         self.assertEqual('none', result[0])
         self.assertEqual(fake_data, result[1])
 
-    @mock_s3
+    @mock_aws
     def test_prepare_output_data_ineffective_compression(self):
         service = s3_dr.S3BackupDriver(self.ctxt)
         # Set up buffer of 128 zeroed bytes
@@ -483,7 +486,7 @@ class BackupS3TestCase(test.TestCase):
         self.assertEqual('none', result[0])
         self.assertEqual(already_compressed_data, result[1])
 
-    @mock_s3
+    @mock_aws
     def test_no_config_option(self):
         # With no config option to connect driver should raise exception.
         self.flags(backup_s3_endpoint_url=None)
@@ -517,7 +520,7 @@ class BackupS3TestCase(test.TestCase):
                           service.backup,
                           backup, self.volume_file)
 
-    @mock_s3
+    @mock_aws
     def test_restore(self):
         volume_id = 'c2a81f09-f480-4325-8424-00000071685b'
         backup = self._create_backup_db_entry(
@@ -530,7 +533,7 @@ class BackupS3TestCase(test.TestCase):
         with tempfile.NamedTemporaryFile() as volume_file:
             service.restore(backup, volume_id, volume_file, False)
 
-    @mock_s3
+    @mock_aws
     def test_restore_delta(self):
         volume_id = '04d83506-bcf7-4ff5-9c65-00000051bd2e'
         self.flags(backup_s3_object_size=8 * units.Ki)
@@ -585,7 +588,7 @@ class BackupS3TestCase(test.TestCase):
                               service.restore,
                               backup, volume_id, volume_file, False)
 
-    @mock_s3
+    @mock_aws
     def test_backup_md5_validation(self):
         volume_id = 'c0a79eb2-ef56-4de2-b3b9-3861fcdf7fad'
         self.flags(backup_s3_md5_validation=True)
@@ -594,7 +597,7 @@ class BackupS3TestCase(test.TestCase):
         self.volume_file.seek(0)
         service.backup(backup, self.volume_file)
 
-    @mock_s3
+    @mock_aws
     def test_backup_sse(self):
         volume_id = 'c0a79eb2-ef56-4de2-b3b9-3861fcdf7fad'
         self.flags(backup_s3_sse_customer_algorithm='AES256')
@@ -604,7 +607,7 @@ class BackupS3TestCase(test.TestCase):
         self.volume_file.seek(0)
         service.backup(backup, self.volume_file)
 
-    @mock_s3
+    @mock_aws
     def test_restore_sse(self):
         volume_id = 'c0a79eb2-ef56-4de2-b3b9-3861fcdf7fad'
         self.flags(backup_s3_sse_customer_algorithm='AES256')
