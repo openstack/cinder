@@ -424,6 +424,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             self.context,
             availability_zone=CONF.storage_availability_zone,
             migration_status='target:123',
+            use_quota=False,
             **self.volume_params)
         volume_id = volume['id']
 

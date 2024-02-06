@@ -325,11 +325,11 @@ class Volume(BASE, CinderBase):
 
     id = sa.Column(sa.String(36), primary_key=True)
     _name_id = sa.Column(sa.String(36))  # Don't access/modify this directly!
-    # TODO: (Y release) Change nullable to False
     use_quota = Column(
         sa.Boolean,
-        nullable=True,
+        nullable=False,
         default=True,
+        server_default=sa.true(),
         doc='Ignore volume in quota usage',
     )
 
@@ -917,11 +917,11 @@ class Snapshot(BASE, CinderBase):
     )
 
     id = sa.Column(sa.String(36), primary_key=True)
-    # TODO: (Y release) Change nullable to False
     use_quota = Column(
         sa.Boolean,
-        nullable=True,
+        nullable=False,
         default=True,
+        server_default=sa.true(),
         doc='Ignore volume in quota usage',
     )
 

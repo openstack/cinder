@@ -1358,8 +1358,6 @@ class BaseVD(object, metaclass=abc.ABCMeta):
             'availability_zone': volume.availability_zone,
             'volume_type_id': volume.volume_type_id,
             'use_quota': False,  # Don't count for quota
-            # TODO: (Y release) Remove admin_metadata and only use use_quota
-            'admin_metadata': {'temporary': 'True'},
         }
         kwargs.update(volume_options or {})
         temp_vol_ref = objects.Volume(context=context.elevated(), **kwargs)

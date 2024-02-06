@@ -562,7 +562,8 @@ class DBAPIVolumeTestCase(BaseTest):
                                      'size': ONE_HUNDREDS,
                                      'host': 'h-%d' % i,
                                      'volume_type_id': fake.VOLUME_TYPE_ID,
-                                     'migration_status': 'target:vol-id'})
+                                     'migration_status': 'target:vol-id',
+                                     'use_quota': False})
         # This one will not be counted
         db.volume_create(self.ctxt, {'project_id': 'project',
                                      'size': ONE_HUNDREDS,
@@ -591,7 +592,7 @@ class DBAPIVolumeTestCase(BaseTest):
                                      'size': ONE_HUNDREDS,
                                      'host': 'h-%d' % i,
                                      'volume_type_id': fake.VOLUME_TYPE_ID,
-                                     'admin_metadata': {'temporary': 'True'}})
+                                     'use_quota': False})
 
         with sqlalchemy_api.main_context_manager.reader.using(self.ctxt):
             result = sqlalchemy_api._volume_data_get_for_project(
@@ -3902,96 +3903,75 @@ class DBAPIGroupTypeTestCase(BaseTest):
 
 
 class OnlineMigrationTestCase(BaseTest):
-    # TODO: (Y Release) remove method and this comment
+    # TODO: (A Release) remove method and this comment
     @mock.patch.object(sqlalchemy_api,
-                       'snapshot_use_quota_online_data_migration')
-    def test_db_snapshot_use_quota_online_data_migration(self, migration_mock):
+                       'remove_temporary_admin_metadata_data_migration')
+    def test_db_remove_temporary_admin_metadata_data_migration(self,
+                                                               migration_mock):
+        """Test that DB layer method properly calls implementation layer."""
         params = (mock.sentinel.ctxt, mock.sentinel.max_count)
-        db.snapshot_use_quota_online_data_migration(*params)
+        db.remove_temporary_admin_metadata_data_migration(*params)
         migration_mock.assert_called_once_with(*params)
 
-    # TODO: (Y Release) remove method and this comment
-    @mock.patch.object(sqlalchemy_api,
-                       'volume_use_quota_online_data_migration')
-    def test_db_volume_use_quota_online_data_migration(self, migration_mock):
-        params = (mock.sentinel.ctxt, mock.sentinel.max_count)
-        db.volume_use_quota_online_data_migration(*params)
-        migration_mock.assert_called_once_with(*params)
-
-    # TODO: (Y Release) remove method and this comment
-    @mock.patch.object(sqlalchemy_api, 'use_quota_online_data_migration')
-    def test_snapshot_use_quota_online_data_migration(self, migration_mock):
-        sqlalchemy_api.snapshot_use_quota_online_data_migration(
-            self.ctxt, mock.sentinel.max_count)
-        migration_mock.assert_called_once_with(self.ctxt,
-                                               mock.sentinel.max_count,
-                                               'Snapshot',
-                                               mock.ANY)
-        calculation_method = migration_mock.call_args[0][3]
-        # Confirm we always set the field to True regardless of what we pass
-        self.assertTrue(calculation_method(None))
-
-    # TODO: (Y Release) remove method and this comment
-    @mock.patch.object(sqlalchemy_api, 'use_quota_online_data_migration')
-    def test_volume_use_quota_online_data_migration(self, migration_mock):
-
-        class FakeAdminMeta:
-            def __init__(self, value):
-                self.key = 'temporary'
-                self.value = value
-        sqlalchemy_api.volume_use_quota_online_data_migration(
-            self.ctxt, mock.sentinel.max_count)
-        migration_mock.assert_called_once_with(self.ctxt,
-                                               mock.sentinel.max_count,
-                                               'Volume',
-                                               mock.ANY)
-        calculation_method = migration_mock.call_args[0][3]
-
-        # Confirm we set use_quota field to False for temporary volumes
-        temp_volume = mock.Mock(volume_admin_metadata=[FakeAdminMeta('True')])
-        self.assertFalse(calculation_method(temp_volume))
-
-        # Confirm we set use_quota field to False for migrating volumes
-        migration_dest_volume = mock.Mock(migration_status='target:123',
-                                          volume_admin_metadata=[])
-        self.assertFalse(calculation_method(migration_dest_volume))
-
-        # Confirm we set use_quota field to True for non-migrating volumes
-        non_migrating_volume = mock.Mock(migration_status=None,
-                                         volume_admin_metadata=[])
-        self.assertTrue(calculation_method(non_migrating_volume))
-
-        # Confirm we set use_quota field to True in other cases
-        volume = mock.Mock(volume_admin_metadata=[FakeAdminMeta('False')],
-                           migration_status='success')
-        self.assertTrue(calculation_method(volume))
-
-    # TODO: (Y Release) remove method and this comment
+    # TODO: (A Release) remove method and this comment
     @mock.patch.object(sqlalchemy_api, 'models')
     @mock.patch.object(sqlalchemy_api, 'model_query')
-    def test_use_quota_online_data_migration(self, query_mock, models_mock):
-        calculate_method = mock.Mock()
-        resource1 = mock.Mock()
-        resource2 = mock.Mock()
-        query = query_mock.return_value.filter_by.return_value
-        query_all = query.limit.return_value.with_for_update.return_value.all
-        query_all.return_value = [resource1, resource2]
-
-        result = sqlalchemy_api.use_quota_online_data_migration(
-            self.ctxt, mock.sentinel.max_count, 'resource_name',
-            calculate_method)
+    def test_remove_temporary_admin_metadata_data_migration_mocked(
+            self, query_mock, models_mock):
+        """Test method implementation."""
+        result = sqlalchemy_api.remove_temporary_admin_metadata_data_migration(
+            self.ctxt, mock.sentinel.max_count)
 
         query_mock.assert_called_once_with(self.ctxt,
-                                           models_mock.resource_name)
-        query_mock.return_value.filter_by.assert_called_once_with(
-            use_quota=None)
+                                           models_mock.VolumeAdminMetadata)
+        filter_by = query_mock.return_value.filter_by
+        filter_by.assert_called_once_with(key='temporary')
+        query = filter_by.return_value
         query.count.assert_called_once_with()
         query.limit.assert_called_once_with(mock.sentinel.max_count)
-        query.limit.return_value.with_for_update.assert_called_once_with()
-        query_all.assert_called_once_with()
+        del_vals_mock = models_mock.VolumeAdminMetadata.delete_values
+        del_vals_mock.assert_called_once_with()
 
-        calculate_method.assert_has_calls((mock.call(resource1),
-                                           mock.call(resource2)))
-        self.assertEqual(calculate_method.return_value, resource1.use_quota)
-        self.assertEqual(calculate_method.return_value, resource2.use_quota)
-        self.assertEqual((query.count.return_value, 2), result)
+        update = query.limit.return_value.update
+        update.assert_called_once_with(del_vals_mock.return_value)
+
+        self.assertEqual((query.count.return_value, update.return_value),
+                         result)
+
+    # TODO: (D Release) remove method and this comment
+    def test_remove_temporary_admin_metadata_data_migration(self):
+        """Test migration's full implementation."""
+        if not utils.is_db_dialect('mysql'):
+            raise test.testtools.TestCase.skipException(
+                'Only MySQL supports UPDATE on a LIMIT query')
+
+        vol1_admin_meta = {'temporary_not': 'false'}
+        vol1 = utils.create_volume(self.ctxt, display_name='normal',
+                                   admin_metadata=vol1_admin_meta)
+
+        vol2_meta = {'temporary': True}
+        vol2 = utils.create_volume(self.ctxt, display_name='metadata',
+                                   metadata=vol2_meta)
+
+        vol3_admin_meta = {'temporary': 'true', 'temp': 'true'}
+        vol3 = utils.create_volume(
+            self.ctxt, display_name='admin_metadata', use_quota=False,
+            admin_metadata=vol3_admin_meta)
+
+        # Should only  remove "temporary" admin metadata
+        result = sqlalchemy_api.remove_temporary_admin_metadata_data_migration(
+            self.ctxt, 4)
+        self.assertEqual(1, result)
+
+        vol1.refresh()
+        self.assertEqual(({}, vol1_admin_meta),
+                         (vol1.metadata, vol1.admin_metadata))
+
+        vol2.refresh()
+        self.assertEqual((vol2_meta, {}),
+                         (vol2.metadata, vol2.admin_metadata))
+
+        vol3.refresh()
+        vol3_admin_meta.pop('temporary')
+        self.assertEqual(({}, vol3_admin_meta),
+                         (vol3.metadata, vol2.admin_metadata))

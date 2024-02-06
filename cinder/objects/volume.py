@@ -14,7 +14,6 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -85,8 +84,7 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         'user_id': fields.StringField(nullable=True),
         'project_id': fields.StringField(nullable=True),
 
-        # TODO: (Y release) Change nullable to False
-        'use_quota': fields.BooleanField(default=True, nullable=True),
+        'use_quota': fields.BooleanField(default=True, nullable=False),
         'snapshot_id': fields.UUIDField(nullable=True),
 
         'cluster_name': fields.StringField(nullable=True),
@@ -236,8 +234,6 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
 
     @classmethod
     def _obj_from_primitive(cls, context, objver, primitive):
-        # TODO: (Y release) remove next line
-        cls._ensure_use_quota_is_set(primitive['versioned_object.data'])
         obj = super(Volume, Volume)._obj_from_primitive(context, objver,
                                                         primitive)
         obj._reset_metadata_tracking()
@@ -269,14 +265,6 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
 
         return changes
 
-    def obj_make_compatible(self, primitive, target_version):
-        """Make a Volume representation compatible with a target version."""
-        super(Volume, self).obj_make_compatible(primitive, target_version)
-        target_version = versionutils.convert_version_to_tuple(target_version)
-        # TODO: (Y release) remove next 2 lines & method if nothing else below
-        if target_version < (1, 9):
-            primitive.pop('use_quota', None)
-
     @classmethod
     def _from_db_object(cls, context, volume, db_volume, expected_attrs=None):
         if expected_attrs is None:
@@ -298,6 +286,13 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
             metadata = db_volume.get('volume_admin_metadata', [])
             volume.admin_metadata = {item['key']: item['value']
                                      for item in metadata}
+            # TODO: (A release): Remove code of temporary admin metadata delete
+            if 'temporary' in volume.admin_metadata:
+                volume.admin_metadata.pop('temporary')
+                # Admin metadata deletion requires admin context, but since
+                # read also requires it we know our context is admin.
+                db.volume_admin_metadata_delete(context,
+                                                volume.id, 'temporary')
         if 'glance_metadata' in expected_attrs:
             metadata = db_volume.get('volume_glance_metadata', [])
             volume.glance_metadata = {item['key']: item['value']
@@ -350,20 +345,6 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         volume.obj_reset_changes()
         return volume
 
-    # TODO: (Z release): Remove method and leave the default of False from DB
-    @staticmethod
-    def _ensure_use_quota_is_set(updates, warning=False):
-        if updates.get('use_quota') is None:
-            use_quota = not (
-                (updates.get('migration_status') or ''
-                 ).startswith('target:') or
-                (updates.get('admin_metadata') or {}
-                 ).get('temporary') == 'True')
-            if warning and not use_quota:
-                LOG.warning('Ooooops, we forgot to set the use_quota field to '
-                            'False!!  Fix code here')
-            updates['use_quota'] = use_quota
-
     def populate_consistencygroup(self):
         """Populate CG fields based on group fields.
 
@@ -404,19 +385,11 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
             updates['volume_type_id'] = (
                 volume_types.get_default_volume_type()['id'])
 
-        # TODO: (Y release) Remove this call since we should have already made
-        # all methods in Cinder make the call with the right values.
-        self._ensure_use_quota_is_set(updates, warning=True)
-
         db_volume = db.volume_create(self._context, updates)
         expected_attrs = self._get_expected_attrs(self._context)
         self._from_db_object(self._context, self, db_volume, expected_attrs)
 
     def save(self):
-        # TODO: (Y release) Remove this online migration code
-        # Pass self directly since it's a CinderObjectDictCompat
-        self._ensure_use_quota_is_set(self)
-
         updates = self.cinder_obj_get_changes()
         if updates:
             # NOTE(xyang): Allow this to pass if 'consistencygroup' is

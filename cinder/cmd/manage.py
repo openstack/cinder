@@ -159,13 +159,8 @@ class DbCommands(object):
     #    db.service_uuids_online_data_migration,
     online_migrations: Tuple[Callable[[context.RequestContext, int],
                                       Tuple[int, int]], ...] = (
-        # TODO: (Z Release) Remove next line and this comment
-        # TODO: (Y Release) Uncomment next line and remove this comment
-        # db.remove_temporary_admin_metadata_data_migration,
-
-        # TODO: (Y Release) Remove next 2 line and this comment
-        db.volume_use_quota_online_data_migration,
-        db.snapshot_use_quota_online_data_migration,
+        # TODO: (D Release) Remove next line and this comment
+        db.remove_temporary_admin_metadata_data_migration,
     )
 
     def __init__(self):

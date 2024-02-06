@@ -1869,9 +1869,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                           self.mock_image_service)
 
         self.assertTrue(mock_cleanup_cg.called)
-        # Online migration of the use_quota field
-        mock_volume_update.assert_any_call(self.ctxt, volume.id,
-                                           {'size': 1, 'use_quota': True})
+        mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 1})
         self.assertEqual(volume_size, volume.size)
 
     @mock.patch('cinder.image.image_utils.check_available_space')
@@ -2008,9 +2006,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         )
 
         # The volume size should be reduced to virtual_size and then put back
-        # Online migration of the use_quota field
-        mock_volume_update.assert_any_call(self.ctxt, volume.id,
-                                           {'size': 2, 'use_quota': True})
+        mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 2})
         mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 10})
 
         # Make sure created a new cache entry
@@ -2088,9 +2084,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         # The volume size should be reduced to virtual_size and then put back,
         # especially if there is an exception while creating the volume.
         self.assertEqual(2, mock_volume_update.call_count)
-        # Online migration of the use_quota field
-        mock_volume_update.assert_any_call(self.ctxt, volume.id,
-                                           {'size': 2, 'use_quota': True})
+        mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 2})
         mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 10})
 
         # Make sure we didn't try and create a cache entry
