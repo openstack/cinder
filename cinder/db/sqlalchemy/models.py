@@ -804,8 +804,6 @@ class Quota(BASE, CinderBase):
 
     resource = sa.Column(sa.String(300), nullable=False)
     hard_limit = sa.Column(sa.Integer, nullable=True)
-    # TODO: (X release): Remove allocated, belonged to nested quotas
-    allocated = sa.Column(sa.Integer, default=0)
 
 
 class QuotaClass(BASE, CinderBase):
@@ -880,10 +878,6 @@ class Reservation(BASE, CinderBase):
     usage_id = sa.Column(
         sa.Integer, sa.ForeignKey('quota_usages.id'), nullable=True, index=True
     )
-    # TODO: (X release): Remove allocated_id, belonged to nested quotas
-    allocated_id = sa.Column(
-        sa.Integer, sa.ForeignKey('quotas.id'), nullable=True, index=True
-    )
 
     project_id = sa.Column(sa.String(255), index=True)
     resource = sa.Column(sa.String(300))
@@ -897,12 +891,6 @@ class Reservation(BASE, CinderBase):
         foreign_keys=usage_id,
         primaryjoin='and_(Reservation.usage_id == QuotaUsage.id,'
         'QuotaUsage.deleted == False)',
-    )
-    # TODO: (X release): Remove allocated_id, belonged to nested quotas
-    quota = relationship(
-        "Quota",
-        foreign_keys=allocated_id,
-        primaryjoin='and_(Reservation.allocated_id == Quota.id)',
     )
 
 
