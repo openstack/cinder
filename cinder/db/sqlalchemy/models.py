@@ -802,7 +802,7 @@ class Quota(BASE, CinderBase):
     # TODO(stephenfin): Add index=True
     project_id = sa.Column(sa.String(255))
 
-    resource = sa.Column(sa.String(255), nullable=False)
+    resource = sa.Column(sa.String(300), nullable=False)
     hard_limit = sa.Column(sa.Integer, nullable=True)
     # TODO: (X release): Remove allocated, belonged to nested quotas
     allocated = sa.Column(sa.Integer, default=0)
@@ -822,7 +822,7 @@ class QuotaClass(BASE, CinderBase):
 
     class_name = sa.Column(sa.String(255), index=True)
 
-    resource = sa.Column(sa.String(255))
+    resource = sa.Column(sa.String(300))
     hard_limit = sa.Column(sa.Integer, nullable=True)
 
 
@@ -886,7 +886,7 @@ class Reservation(BASE, CinderBase):
     )
 
     project_id = sa.Column(sa.String(255), index=True)
-    resource = sa.Column(sa.String(255))
+    resource = sa.Column(sa.String(300))
 
     delta = sa.Column(sa.Integer, nullable=False)
     # TODO(stephenfin): Add nullable=False
