@@ -41,6 +41,8 @@ from oslo_vmware import vim_util
 
 from cinder import context
 from cinder import exception
+# This is needed to register the SAP config options
+from cinder.common import sap # noqa
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
@@ -355,6 +357,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # PBM is enabled only for vCenter versions 5.5 and above
     PBM_ENABLED_VC_VERSION = '5.5'
 
+    # flag this driver as supporting independent snapshots
+    has_independent_snapshots = True
+
     def __init__(self, *args, **kwargs):
         super(VMwareVcVmdkDriver, self).__init__(*args, **kwargs)
 
@@ -560,13 +565,19 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             snapshot_type = 'clone'
 
         backend_state = 'up'
+        if CONF.sap_allow_independent_snapshots:
+            independent_snapshot = 'true' if self.has_independent_snapshots \
+                else 'false'
+        else:
+            independent_snapshot = 'false'
         data = {'volume_backend_name': backend_name,
                 'vendor_name': 'VMware',
                 'driver_version': self.VERSION,
                 'storage_protocol': 'vmdk',
                 'location_info': location_info,
                 'backend_state': backend_state,
-                'snapshot_type': snapshot_type
+                'snapshot_type': snapshot_type,
+                'has_independent_snapshots': independent_snapshot,
                 }
 
         result, datastores = self._collect_backend_stats()
@@ -636,6 +647,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         'pool_state': pool_state,
                         'pool_down_reason': pool_down_reason,
                         'custom_attributes': custom_attributes,
+                        'independent_snapshots': independent_snapshot,
                         }
 
                 pools.append(pool)

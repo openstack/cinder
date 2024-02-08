@@ -34,6 +34,8 @@ from oslo_utils import timeutils
 from oslo_utils import versionutils
 
 from cinder.backup import rpcapi as backup_rpcapi
+# This is needed to register the SAP config options
+from cinder.common import sap # noqa
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -63,14 +65,6 @@ scheduler_manager_opts = [
                min=1,
                help='Maximum time in seconds to wait for the driver to '
                     'report as ready'),
-    cfg.BoolOpt('sap_allow_independent_snapshots',
-                default=False,
-                help='Allow cinder to schedule snapshot creations on pools '
-                     'other than the source volume pool.'),
-    cfg.BoolOpt('sap_allow_independent_clone',
-                default=False,
-                help='Allow cinder to schedule a clone volume on a pool '
-                     'other than the source volume pool.'),
 ]
 
 CONF = cfg.CONF
@@ -248,10 +242,21 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         """
         self._wait_for_scheduler()
 
+        do_independent_snapshots = False
+
         if CONF.sap_allow_independent_snapshots:
             # We allow snapshots to be created on a pool
             # separate from the volume's pool.
-            backend = vol_utils.extract_host(volume['host'])
+            # This is only available for volume types that
+            # have the extra spec 'independent_snapshots' set to True.
+            volume_type = volume.get('volume_type')
+            if volume_type:
+                extra_specs = volume_type.get('extra_specs')
+                if (extra_specs and
+                        extra_specs.get('independent_snapshots', False)):
+                    LOG.info("Allowing a snapshot to be created on any pool.")
+                    backend = vol_utils.extract_host(volume['host'])
+                    do_independent_snapshots = True
 
         try:
             tgt_backend = self.driver.backend_passes_filters(
@@ -266,7 +271,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                                                 fields.SnapshotStatus.ERROR,
                                                 ctxt, ex, request_spec)
         else:
-            if CONF.sap_allow_independent_snapshots:
+            if do_independent_snapshots:
                 # Set this in the metadata of the snap
                 key = snapshot_obj.SAP_HIDDEN_BACKEND_KEY
                 if snapshot.metadata:

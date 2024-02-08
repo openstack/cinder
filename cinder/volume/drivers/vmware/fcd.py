@@ -59,6 +59,9 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
     STORAGE_TYPE = constants.VSTORAGE
 
+    # flag this driver as not supporting independent snapshots
+    has_independent_snapshots = False
+
     # FCD Cross vcenter migration is available in 8.0.3
     FCD_CROSS_VC_MIGRATION_VC_VERSION = '8.0.3'
 

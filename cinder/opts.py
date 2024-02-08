@@ -45,6 +45,7 @@ from cinder.backup import manager as cinder_backup_manager
 from cinder.cmd import backup as cinder_cmd_backup
 from cinder.cmd import volume as cinder_cmd_volume
 from cinder.common import config as cinder_common_config
+from cinder.common import sap as cinder_common_sap
 import cinder.compute
 from cinder.compute import nova as cinder_compute_nova
 from cinder import context as cinder_context
@@ -262,6 +263,7 @@ def list_opts():
                 cinder_common_config.image_opts,
                 cinder_common_config.global_opts,
                 cinder_common_config.compression_opts,
+                cinder_common_sap.sap_custom_opts,
                 cinder.compute.compute_opts,
                 cinder_context.context_opts,
                 cinder_db_api.db_opts,
