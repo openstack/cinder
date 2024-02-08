@@ -20,3 +20,4 @@ testtools>=2.4.0 # MIT
 doc8>=0.8.1 # Apache-2.0
 mypy>=1.7.0 # MIT
 moto>=2.2.5 # Apache-2.0
+distro>=1.8.0 # Apache-2.0

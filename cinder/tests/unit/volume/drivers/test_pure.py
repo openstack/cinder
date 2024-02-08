@@ -737,11 +737,11 @@ class PureDriverTestCase(test.TestCase):
                               func, *args, **kwargs)
             mock_func.side_effect = original_side_effect
 
-    @mock.patch('platform.platform')
-    def test_for_user_agent(self, mock_platform):
-        mock_platform.return_value = 'MyFavoritePlatform'
+    @mock.patch('distro.name')
+    def test_for_user_agent(self, mock_distro):
+        mock_distro.return_value = 'MyFavouriteDistro'
         driver = pure.PureBaseVolumeDriver(configuration=self.mock_config)
-        expected_agent = "OpenStack Cinder %s/%s (MyFavoritePlatform)" % (
+        expected_agent = "OpenStack Cinder %s/%s (MyFavouriteDistro)" % (
             driver.__class__.__name__,
             driver.VERSION
         )

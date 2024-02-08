@@ -11,6 +11,7 @@ krest>=1.3.0 # Apache-2.0
 
 # Pure Storage
 purestorage>=1.17.0 # BSD
+distro # Apache-2.0
 
 # Dell EMC VMAX, IBM DS8K
 pyOpenSSL>=1.0.0 # Apache-2.0
