@@ -7,7 +7,11 @@
       - publish-openstack-docs-pti
       - periodic-stable-jobs
       - check-requirements
-      - integrated-gate-storage
+      # NOTE: we no longer run the integrated-gate-storage template
+      # because it includes grenade.  The other jobs in the template,
+      # tempest-integrated-storage and openstacksdk-functional-devstack
+      # are configured explicitly below for check and gate.
+      # - integrated-gate-storage
       - release-notes-jobs-python3
     check:
       jobs:
@@ -60,8 +64,6 @@
             irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-plugin-lvm-lio-barbican:
             irrelevant-files: *gate-irrelevant-files
-        - cinder-grenade-mn-sub-volbak:
-            irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-lvm-multibackend:
             voting: false
             irrelevant-files: *gate-irrelevant-files
@@ -74,23 +76,15 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
-        - grenade:
-            irrelevant-files: *gate-irrelevant-files
-        - grenade-skip-level:
-            irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
         - openstacksdk-functional-devstack:
             irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
-        - cinder-grenade-mn-sub-volbak:
-            irrelevant-files: *gate-irrelevant-files
         - cinder-plugin-ceph-tempest:
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
-            irrelevant-files: *gate-irrelevant-files
-        - grenade:
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
@@ -99,10 +93,6 @@
     experimental:
       jobs:
         - cinder-multibackend-matrix-migration:
-            irrelevant-files: *gate-irrelevant-files
-        - cinder-grenade-mn-sub-volschbak:
-            irrelevant-files: *gate-irrelevant-files
-        - cinder-grenade-mn-sub-bak:
             irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-ceph-tempest-py3:
             irrelevant-files: *gate-irrelevant-files
@@ -194,6 +184,84 @@
               cluster: ceph
 
 - job:
+    name: cinder-tempest-lvm-multibackend
+    parent: devstack-tempest
+    description: |
+      Cinder tempest job based on LVM and multiple backends.
+      Former names for this job were:
+        * legacy-tempest-dsvm-lvm-multibackend
+    timeout: 10800
+    required-projects:
+      - opendev.org/openstack/cinder-tempest-plugin
+    vars:
+      tox_envlist: all
+      tempest_test_regex: '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario)|(^cinder_tempest_plugin))'
+      tempest_plugins:
+        - cinder-tempest-plugin
+      devstack_localrc:
+        CINDER_ENABLED_BACKENDS: 'lvm:lvmdriver-1,lvm:lvmdriver-2'
+        CINDER_VOLUME_CLEAR: none
+    irrelevant-files: *gate-irrelevant-files
+
+- job:
+    name: cinder-mypy
+    parent: openstack-tox
+    vars:
+      tox_envlist: mypy
+      tox_inline_comments: false
+
+- job:
+    name: cinder-for-glance-optimized
+    parent: cinder-tempest-plugin-basic
+    description: |
+      Configures glance with cinder as a backend for multiple glance cinder
+      stores and with cinder configured to use the optimized workflow of
+      moving image data directly in the backend.
+    vars:
+      devstack_localrc:
+        USE_CINDER_FOR_GLANCE: True
+        GLANCE_ENABLE_MULTIPLE_STORES: True
+        CINDER_ENABLED_BACKENDS: lvm:lvmdriver-1
+        GLANCE_CINDER_DEFAULT_BACKEND: lvmdriver-1
+        GLANCE_SHOW_DIRECT_URL: True
+        GLANCE_SHOW_MULTIPLE_LOCATIONS: True
+        CINDER_ALLOWED_DIRECT_URL_SCHEMES: cinder
+
+- job:
+    name: cinder-multibackend-matrix-migration
+    parent: devstack-tempest
+    description: |
+      Run migration tests between several combinations of backends
+      (LVM, Ceph, NFS)
+      Former names for this job were:
+        * legacy-tempest-dsvm-multibackend-matrix
+    timeout: 10800
+    required-projects:
+      - opendev.org/openstack/devstack-plugin-ceph
+      - opendev.org/openstack/devstack-plugin-nfs
+    run: playbooks/cinder-multibackend-matrix.yaml
+    host-vars:
+      controller:
+        devstack_plugins:
+          devstack-plugin-ceph: https://opendev.org/openstack/devstack-plugin-ceph
+          devstack-plugin-nfs: https://opendev.org/openstack/devstack-plugin-nfs
+    vars:
+      devstack_localrc:
+        CINDER_ENABLED_BACKENDS: lvm:lvm,nfs:nfs,ceph:ceph
+        ENABLE_NFS_CINDER: true
+      devstack_local_conf:
+        test-config:
+          $TEMPEST_CONFIG:
+            volume:
+              build_timeout: 900
+
+# FIXME: the following grenade-based job definitions are not currently
+# being used because upgrades from Unmaintained branches are not required
+# to be supported by the Cinder project team (and the stable/yoga branch
+# no longer exists.  They're being left here in case the maintainers
+# of the Unmaintained branches want to get them working and possibly
+# add them as non-voting jobs for stable/zed.
+- job:
     name: cinder-grenade-mn-sub-bak
     parent: grenade-multinode
     description: |
@@ -266,75 +334,3 @@
           c-bak: true
           c-sch: true
           c-vol: true
-
-- job:
-    name: cinder-tempest-lvm-multibackend
-    parent: devstack-tempest
-    description: |
-      Cinder tempest job based on LVM and multiple backends.
-      Former names for this job were:
-        * legacy-tempest-dsvm-lvm-multibackend
-    timeout: 10800
-    required-projects:
-      - opendev.org/openstack/cinder-tempest-plugin
-    vars:
-      tox_envlist: all
-      tempest_test_regex: '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario)|(^cinder_tempest_plugin))'
-      tempest_plugins:
-        - cinder-tempest-plugin
-      devstack_localrc:
-        CINDER_ENABLED_BACKENDS: 'lvm:lvmdriver-1,lvm:lvmdriver-2'
-        CINDER_VOLUME_CLEAR: none
-    irrelevant-files: *gate-irrelevant-files
-
-- job:
-    name: cinder-mypy
-    parent: openstack-tox
-    vars:
-      tox_envlist: mypy
-      tox_inline_comments: false
-
-- job:
-    name: cinder-for-glance-optimized
-    parent: cinder-tempest-plugin-basic
-    description: |
-      Configures glance with cinder as a backend for multiple glance cinder
-      stores and with cinder configured to use the optimized workflow of
-      moving image data directly in the backend.
-    vars:
-      devstack_localrc:
-        USE_CINDER_FOR_GLANCE: True
-        GLANCE_ENABLE_MULTIPLE_STORES: True
-        CINDER_ENABLED_BACKENDS: lvm:lvmdriver-1
-        GLANCE_CINDER_DEFAULT_BACKEND: lvmdriver-1
-        GLANCE_SHOW_DIRECT_URL: True
-        GLANCE_SHOW_MULTIPLE_LOCATIONS: True
-        CINDER_ALLOWED_DIRECT_URL_SCHEMES: cinder
-
-- job:
-    name: cinder-multibackend-matrix-migration
-    parent: devstack-tempest
-    description: |
-      Run migration tests between several combinations of backends
-      (LVM, Ceph, NFS)
-      Former names for this job were:
-        * legacy-tempest-dsvm-multibackend-matrix
-    timeout: 10800
-    required-projects:
-      - opendev.org/openstack/devstack-plugin-ceph
-      - opendev.org/openstack/devstack-plugin-nfs
-    run: playbooks/cinder-multibackend-matrix.yaml
-    host-vars:
-      controller:
-        devstack_plugins:
-          devstack-plugin-ceph: https://opendev.org/openstack/devstack-plugin-ceph
-          devstack-plugin-nfs: https://opendev.org/openstack/devstack-plugin-nfs
-    vars:
-      devstack_localrc:
-        CINDER_ENABLED_BACKENDS: lvm:lvm,nfs:nfs,ceph:ceph
-        ENABLE_NFS_CINDER: true
-      devstack_local_conf:
-        test-config:
-          $TEMPEST_CONFIG:
-            volume:
-              build_timeout: 900
