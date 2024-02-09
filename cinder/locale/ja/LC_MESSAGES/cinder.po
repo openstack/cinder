@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2023-09-13 17:38+0000\n"
+"POT-Creation-Date: 2024-02-08 21:09+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2909,15 +2909,6 @@ msgstr ""
 "イメージの仮想サイズは %(image_size)dGB であり、サイズ %(volume_size)dGB のボ"
 "リュームに適合しません。"
 
-msgid ""
-"ImageBusy error raised while deleting rbd volume. This may have been caused "
-"by a connection from a client that has crashed and, if so, may be resolved "
-"by retrying the delete after 30 seconds has elapsed."
-msgstr ""
-"rbd ボリュームの削除中に ImageBusy エラーが発生しました。これは、異常終了した"
-"クライアントからの接続が原因である可能性があります。その場合、30 秒経過後に削"
-"除を再試行すると、解決できることがあります。"
-
 msgid "Incremental backups exist for this backup."
 msgstr "このバックアップには増分バックアップが存在します。"
 
@@ -3728,9 +3719,6 @@ msgstr "API テストメソッドに非ゲッター API が渡されました。
 msgid "Not a valid value for NaElement."
 msgstr "NaElement に無効な値です。"
 
-msgid "Not an rbd snapshot"
-msgstr "rbd スナップショットではありません。"
-
 #, python-format
 msgid "Not authorized for image %(image_id)s."
 msgstr "イメージ %(image_id)s では許可されません。"
@@ -3741,9 +3729,6 @@ msgstr "許可されていません。"
 #, python-format
 msgid "Not enough space on backend (%(backend)s)"
 msgstr "バックエンド容量が不十分です (%(backend)s)"
-
-msgid "Not stored in rbd"
-msgstr "rbd 内に保管されていません。"
 
 msgid "Nova returned \"error\" status while creating snapshot."
 msgstr ""
@@ -6225,11 +6210,6 @@ msgstr ""
 "はありません"
 
 #, python-format
-msgid "extend_volume, eternus_pool: %(eternus_pool)s, pool not found."
-msgstr ""
-"extend_volume、eternus_pool: %(eternus_pool)s、プールが見つかりません。"
-
-#, python-format
 msgid ""
 "extend_volume, volume: %(volume)s, volumename: %(volumename)s, eternus_pool: "
 "%(eternus_pool)s, Storage Configuration Service not found."
@@ -6244,11 +6224,6 @@ msgid ""
 msgstr ""
 "extend_volume、ボリューム名: %(volumename)s、戻りコード: %(rc)lu、エラー: "
 "%(errordesc)s、プールタイプ: %(pooltype)s。"
-
-#, python-format
-msgid "extend_volume, volumename: %(volumename)s, volume not found."
-msgstr ""
-"extend_volume、ボリューム名: %(volumename)s、ボリュームが見つかりません。"
 
 msgid "fake"
 msgstr "偽"
@@ -6464,14 +6439,6 @@ msgid ""
 msgstr ""
 "qemu-img %(minimum_version)s 以降がこのボリュームドライバーに必要です。現在"
 "の qemu-img バージョン: %(current_version)s"
-
-#, python-format
-msgid ""
-"qemu-img is not installed and image is of type %s.  Only RAW images can be "
-"used if qemu-img is not installed."
-msgstr ""
-"qemu-img がインストールされていません。また、イメージのタイプは %s です。"
-"qemu-img がインストールされていない場合は、RAW イメージのみが使用可能です。"
 
 msgid ""
 "qemu-img is not installed and the disk format is not specified.  Only RAW "

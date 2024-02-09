@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder Release Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-09-13 17:34+0000\n"
+"POT-Creation-Date: 2024-02-08 21:05+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -355,6 +355,9 @@ msgstr ""
 msgid "20.0.0"
 msgstr "20.0.0"
 
+msgid "20.0.0.0rc1"
+msgstr "20.0.0.0rc1"
+
 msgid "20.0.1"
 msgstr "20.0.1"
 
@@ -366,9 +369,6 @@ msgstr "20.2.0"
 
 msgid "20.3.0"
 msgstr "20.3.0"
-
-msgid "20.3.0-7"
-msgstr "20.3.0-7"
 
 msgid "2023.1 Series Release Notes"
 msgstr "2023.1 Series Release Notes"
@@ -385,17 +385,11 @@ msgstr "21.2.0"
 msgid "21.3.0"
 msgstr "21.3.0"
 
-msgid "21.3.0-6"
-msgstr "21.3.0-6"
-
 msgid "22.0.0"
 msgstr "22.0.0"
 
 msgid "22.1.0"
 msgstr "22.1.0"
-
-msgid "22.1.0-5"
-msgstr "22.1.0-5"
 
 msgid ""
 "3. The ``utilization`` capability is not calculated to FlexGroup pools, it "
