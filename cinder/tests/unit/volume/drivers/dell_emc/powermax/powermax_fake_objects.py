@@ -54,7 +54,7 @@ class FakeRequestsSession(object):
     def __init__(self, *args, **kwargs):
         self.data = tpd.PowerMaxData()
 
-    def request(self, method, url, params=None, data=None):
+    def request(self, method, url, params=None, data=None, timeout=None):
         return_object = ''
         status_code = 200
         if method == 'GET':
@@ -68,6 +68,12 @@ class FakeRequestsSession(object):
 
         elif method == 'TIMEOUT':
             raise requests.Timeout
+
+        elif method == 'READTIMEOUT' and timeout is not None:
+            raise requests.ReadTimeout
+
+        elif method == 'CONNECTTIMEOUT' and timeout is not None:
+            raise requests.ConnectTimeout
 
         elif method == 'EXCEPTION':
             raise Exception
@@ -326,6 +332,8 @@ class FakeConfiguration(object):
         self.initiator_check = False
         self.powermax_service_level = None
         self.vmax_workload = None
+        self.rest_api_connect_timeout = 30
+        self.rest_api_read_timeout = 30
         if replication_device:
             self.replication_device = replication_device
         for key, value in kwargs.items():
@@ -422,3 +430,9 @@ class FakeConfiguration(object):
 
     def append_config_values(self, values):
         pass
+
+    def set_rest_api_connect_timeout(self, value):
+        self.rest_api_connect_timeout = value
+
+    def set_rest_api_read_timeout(self, value):
+        self.rest_api_read_timeout = value

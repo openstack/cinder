@@ -63,6 +63,14 @@ class PowerMaxRestTest(test.TestCase):
         self.assertRaises(requests.exceptions.Timeout,
                           self.rest.request, '', 'TIMEOUT')
 
+    def test_rest_request_read_timeout_exception(self):
+        self.assertRaises(requests.exceptions.ReadTimeout,
+                          self.rest.request, '', 'READTIMEOUT', (60, 60))
+
+    def test_rest_request_connect_timeout_exception(self):
+        self.assertRaises(requests.exceptions.ConnectTimeout,
+                          self.rest.request, '', 'CONNECTTIMEOUT', (60, 60))
+
     def test_rest_request_connection_exception(self):
         self.assertRaises(requests.exceptions.ConnectionError,
                           self.rest.request, '', 'CONNECTION')

@@ -3217,7 +3217,8 @@ class PowerMaxCommonTest(test.TestCase):
             {'RestServerIp': '1.1.1.1', 'RestServerPort': 8443,
              'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
              'SerialNumber': self.data.array, 'srpName': 'SRP_1',
-             'PortGroup': [self.data.port_group_name_i]})
+             'PortGroup': [self.data.port_group_name_i],
+             'RestAPIConnectTimeout': 30, 'RestAPIReadTimeout': 30})
         old_conf = tpfo.FakeConfiguration(None, 'CommonTests', 1, 1)
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
@@ -3236,7 +3237,8 @@ class PowerMaxCommonTest(test.TestCase):
             {'RestServerIp': '1.1.1.1', 'RestServerPort': 3448,
              'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
              'SerialNumber': self.data.array, 'srpName': 'SRP_1',
-             'PortGroup': [self.data.port_group_name_i]})
+             'PortGroup': [self.data.port_group_name_i],
+             'RestAPIConnectTimeout': 30, 'RestAPIReadTimeout': 30})
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             powermax_array=self.data.array, powermax_srp='SRP_1',
@@ -3251,7 +3253,8 @@ class PowerMaxCommonTest(test.TestCase):
             {'RestServerIp': '1.1.1.1', 'RestServerPort': 8443,
              'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
              'SerialNumber': self.data.array, 'srpName': 'SRP_1',
-             'PortGroup': [self.data.port_group_name_i]})
+             'PortGroup': [self.data.port_group_name_i],
+             'RestAPIConnectTimeout': 30, 'RestAPIReadTimeout': 30})
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             powermax_array=self.data.array, powermax_srp='SRP_1',
@@ -3606,7 +3609,8 @@ class PowerMaxCommonTest(test.TestCase):
             'RestServerIp': '1.1.1.1', 'RestServerPort': 8443,
             'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
             'SerialNumber': '000197800123', 'srpName': 'SRP_1',
-            'PortGroup': ['OS-fibre-PG']}
+            'PortGroup': ['OS-fibre-PG'],
+            'RestAPIConnectTimeout': 30, 'RestAPIReadTimeout': 30}
 
         self.mock_object(self.common.configuration, 'powermax_service_level',
                          None)
@@ -3662,7 +3666,9 @@ class PowerMaxCommonTest(test.TestCase):
                 'RestServerIp': '1.1.1.1', 'RestServerPort': 8443,
                 'RestUserName': 'test', 'RestPassword': 'test',
                 'SerialNumber': '000197800123', 'srpName': 'SRP_1',
-                'PortGroup': None, 'SSLVerify': True}}
+                'PortGroup': None,
+                'RestAPIConnectTimeout': 30, 'RestAPIReadTimeout': 30,
+                'SSLVerify': True}}
         self.mock_object(self.common, 'configuration', configuration)
         self.common._get_u4p_failover_info()
         self.assertIsNotNone(self.rest.u4p_failover_targets)
@@ -4839,3 +4845,58 @@ class PowerMaxCommonTest(test.TestCase):
                 self.data.remote_array, self.data.srp, 'Diamond', 'DSS',
                 self.data.rep_extra_specs_rep_config, False, is_re=True,
                 rep_mode='Synchronous')
+
+    def test_get_connect_timeout_from_cinder_config(self):
+        kwargs_expected = (
+            {'RestServerIp': '1.1.1.1', 'RestServerPort': 3448,
+             'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
+             'SerialNumber': self.data.array, 'srpName': 'SRP_1',
+             'PortGroup': [self.data.port_group_name_i],
+             'RestAPIConnectTimeout': 120, 'RestAPIReadTimeout': 30})
+        configuration = tpfo.FakeConfiguration(
+            None, 'CommonTests',
+            1, 1, san_ip='1.1.1.1', san_login='smc',
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=3448,
+            powermax_port_groups=[self.data.port_group_name_i])
+        configuration.set_rest_api_connect_timeout(120)
+        self.mock_object(self.common, 'configuration', configuration)
+        kwargs_returned = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(kwargs_expected, kwargs_returned)
+
+    def test_get_read_timeout_from_cinder_config(self):
+        kwargs_expected = (
+            {'RestServerIp': '1.1.1.1', 'RestServerPort': 3448,
+             'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
+             'SerialNumber': self.data.array, 'srpName': 'SRP_1',
+             'PortGroup': [self.data.port_group_name_i],
+             'RestAPIConnectTimeout': 30, 'RestAPIReadTimeout': 120})
+        configuration = tpfo.FakeConfiguration(
+            None, 'CommonTests',
+            1, 1, san_ip='1.1.1.1', san_login='smc',
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=3448,
+            powermax_port_groups=[self.data.port_group_name_i])
+        configuration.set_rest_api_read_timeout(120)
+        self.mock_object(self.common, 'configuration', configuration)
+        kwargs_returned = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(kwargs_expected, kwargs_returned)
+
+    def test_get_connect_and_read_timeout_from_cinder_config(self):
+        kwargs_expected = (
+            {'RestServerIp': '1.1.1.1', 'RestServerPort': 3448,
+             'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
+             'SerialNumber': self.data.array, 'srpName': 'SRP_1',
+             'PortGroup': [self.data.port_group_name_i],
+             'RestAPIConnectTimeout': 90, 'RestAPIReadTimeout': 90})
+        configuration = tpfo.FakeConfiguration(
+            None, 'CommonTests',
+            1, 1, san_ip='1.1.1.1', san_login='smc',
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=3448,
+            powermax_port_groups=[self.data.port_group_name_i])
+        configuration.set_rest_api_connect_timeout(90)
+        configuration.set_rest_api_read_timeout(90)
+        self.mock_object(self.common, 'configuration', configuration)
+        kwargs_returned = self.common.get_attributes_from_cinder_config()
+        self.assertEqual(kwargs_expected, kwargs_returned)

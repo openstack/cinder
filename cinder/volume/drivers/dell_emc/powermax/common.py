@@ -146,7 +146,15 @@ powermax_opts = [
                help='Metric used for port group load calculation.'),
     cfg.StrOpt(utils.PORT_LOAD_METRIC,
                default='PercentBusy',
-               help='Metric used for port load calculation.')]
+               help='Metric used for port load calculation.'),
+    cfg.IntOpt(utils.REST_API_CONNECT_TIMEOUT,
+               default=30, min=1,
+               help='Use this value to specify connect '
+                    'timeout value (in seconds) for rest call.'),
+    cfg.IntOpt(utils.REST_API_READ_TIMEOUT,
+               default=30, min=1,
+               help='Use this value to specify read '
+                    'timeout value (in seconds) for rest call.')]
 
 
 CONF.register_opts(powermax_opts, group=configuration.SHARED_CONF_GROUP)
@@ -7122,6 +7130,10 @@ class PowerMaxCommon(object):
             workload = self.configuration.safe_get(utils.VMAX_WORKLOAD)
             port_groups = self.configuration.safe_get(
                 utils.POWERMAX_PORT_GROUPS)
+            rest_api_connect_timeout = (
+                self.configuration.safe_get(utils.REST_API_CONNECT_TIMEOUT))
+            rest_api_read_timeout = (
+                self.configuration.safe_get(utils.REST_API_READ_TIMEOUT))
 
             kwargs = (
                 {'RestServerIp': self.configuration.safe_get(
@@ -7131,7 +7143,9 @@ class PowerMaxCommon(object):
                  'RestPassword': password,
                  'SerialNumber': serial_number,
                  'srpName': srp_name,
-                 'PortGroup': port_groups})
+                 'PortGroup': port_groups,
+                 utils.REST_API_CONNECT_TIMEOUT_KEY: rest_api_connect_timeout,
+                 utils.REST_API_READ_TIMEOUT_KEY: rest_api_read_timeout})
 
             if self.configuration.safe_get('driver_ssl_cert_verify'):
                 if self.configuration.safe_get('driver_ssl_cert_path'):
