@@ -1980,4 +1980,5 @@ def attachment_specs_update_or_create(context,
 
 # TODO: (D Release) remove method and this comment
 def remove_temporary_admin_metadata_data_migration(context, max_count):
-    IMPL.remove_temporary_admin_metadata_data_migration(context, max_count)
+    return IMPL.remove_temporary_admin_metadata_data_migration(
+        context, max_count)
