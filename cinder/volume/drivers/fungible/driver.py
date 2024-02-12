@@ -1016,7 +1016,8 @@ class FungibleDriver(driver.BaseVD):
                 ignore_errors=True
             )
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch the image from image_service and write it to the volume."""
         LOG.info(
             "Copy image %s from image service %s "
@@ -1047,6 +1048,7 @@ class FungibleDriver(driver.BaseVD):
                 attach_info["device"]["path"],
                 self.configuration.volume_dd_blocksize,
                 size=volume["size"],
+                disable_sparse=disable_sparse,
             )
             LOG.debug(
                 "Copy image %s to volume %s complete",

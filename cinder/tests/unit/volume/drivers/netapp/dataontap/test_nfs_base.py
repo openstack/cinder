@@ -572,7 +572,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
         mock_copy_image.assert_called_once_with(
             'fake_context', fake.NFS_VOLUME, 'fake_img_service',
-            fake.IMAGE_FILE_ID)
+            fake.IMAGE_FILE_ID, disable_sparse=False)
         self.assertEqual(1, mock_log.info.call_count)
         mock_register_image.assert_called_once_with(
             fake.NFS_VOLUME, fake.IMAGE_FILE_ID)

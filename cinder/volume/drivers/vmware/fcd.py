@@ -181,13 +181,16 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             LOG.error(msg)
             raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch the image from image_service and write it to the volume.
 
         :param context: Security/policy info for the request.
         :param volume: The volume to create.
         :param image_service: The image service to use.
         :param image_id: The image identifier.
+        :param disable_sparse: Enable or disable sparse copy. Default=False.
+                               This parameter is ignored by VMware driver.
         :returns: Model updates.
         """
         metadata = image_service.show(context, image_id)

@@ -253,14 +253,16 @@ class WindowsISCSIDriver(driver.ISCSIDriver):
         target_name = self._get_target_name(volume)
         self._tgt_utils.delete_iscsi_target(target_name)
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
+    def copy_image_to_volume(self, context, volume, image_service, image_id,
+                             disable_sparse=False):
         """Fetch the image from image_service and create a volume using it."""
         # Convert to VHD and file back to VHD
         vhd_type = self._tgt_utils.get_supported_vhd_type()
         with image_utils.temporary_file(suffix='.vhd') as tmp:
             volume_path = self.local_path(volume)
             image_utils.fetch_to_vhd(context, image_service, image_id, tmp,
-                                     self.configuration.volume_dd_blocksize)
+                                     self.configuration.volume_dd_blocksize,
+                                     disable_sparse=disable_sparse)
             # The vhd must be disabled and deleted before being replaced with
             # the desired image.
             self._tgt_utils.change_wt_disk_status(volume.name,
