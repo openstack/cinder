@@ -20,7 +20,6 @@ from unittest import mock
 
 import ddt
 from oslo_utils import units
-import six
 
 
 fakeStorPool = mock.Mock()
@@ -266,7 +265,7 @@ class StorPoolTestCase(test.TestCase):
 
         self.driver.create_volume({'id': '1', 'name': 'v1', 'size': 1,
                                    'volume_type': None})
-        six.assertCountEqual(self, [volumeName('1')], volumes.keys())
+        self.assertCountEqual([volumeName('1')], volumes.keys())
         self.assertVolumeNames(('1',))
         v = volumes[volumeName('1')]
         self.assertEqual(1 * units.Gi, v['size'])
@@ -340,9 +339,8 @@ class StorPoolTestCase(test.TestCase):
                                    'volume_type': None})
         self.driver.create_volume({'id': '2', 'name': 'v2', 'size': 1,
                                    'volume_type': None})
-        six.assertCountEqual(self,
-                             [volumeName('1'), volumeName('2')],
-                             volumes.keys())
+        self.assertCountEqual([volumeName('1'), volumeName('2')],
+                              volumes.keys())
         self.assertVolumeNames(('1', '2',))
 
         # Failure: the "migrated" volume does not even exist
@@ -362,9 +360,8 @@ class StorPoolTestCase(test.TestCase):
                                                  {'id': '2', '_name_id': '3'},
                                                  'available')
         self.assertDictEqual({'_name_id': None}, res)
-        six.assertCountEqual(self,
-                             [volumeName('1'), volumeName('3')],
-                             volumes.keys())
+        self.assertCountEqual([volumeName('1'), volumeName('3')],
+                              volumes.keys())
         self.assertVolumeNames(('1', '3',))
 
         for vid in ('1', '3'):
