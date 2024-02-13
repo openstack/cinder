@@ -16,13 +16,13 @@
 """
 Rest Client for Hedvig Openstack implementation.
 """
+from http import HTTPStatus
 import json
 import random
+import urllib
 
 from oslo_log import log as logging
 from oslo_utils import units
-from six.moves import http_client
-from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
@@ -113,7 +113,7 @@ class RestClient(object):
                     self.nodeMap[node_] = self.get_session_id(node_)
 
             except urllib.error.HTTPError as e:
-                if e.code == http_client.NOT_FOUND:
+                if e.code == HTTPStatus.NOT_FOUND:
                     LOG.debug("Client not found")
                 else:
                     LOG.debug("Client not available")
