@@ -20,7 +20,6 @@ This driver requires VPSA with API version 15.07 or higher.
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import strutils
-import six
 
 from cinder.common import constants
 from cinder import exception as cinder_exception
@@ -519,7 +518,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                 manageable_snapshots, marker, limit, offset,
                 sort_keys, sort_dirs)
         except Exception as e:
-            msg = (_('Exception: %s') % six.text_type(e))
+            msg = (_('Exception: %s') % str(e))
             LOG.error(msg)
             raise
 
