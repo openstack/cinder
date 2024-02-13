@@ -15,6 +15,7 @@
 
 import collections
 from unittest import mock
+import urllib
 
 from ddt import data
 from ddt import ddt
@@ -23,8 +24,6 @@ import eventlet
 from lxml import etree as ET
 from oslo_utils import units
 import requests
-import six
-from six.moves import urllib
 
 from cinder import exception
 from cinder.tests.unit import test
@@ -613,7 +612,7 @@ class QnapDriverBaseTestCase(test.TestCase):
     @staticmethod
     def sanitize(params):
         sanitized = {_key: str(_value)
-                     for _key, _value in six.iteritems(params)
+                     for _key, _value in params.items()
                      if _value is not None}
         sanitized = utils.create_ordereddict(sanitized)
         return urllib.parse.urlencode(sanitized)

@@ -13,11 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Tests for macrosan drivers."""
+from collections import UserDict
 import os
 import socket
 from unittest import mock
-
-from six.moves import UserDict
 
 from cinder import exception
 from cinder.tests.unit import test
