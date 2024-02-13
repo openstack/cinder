@@ -18,7 +18,6 @@ import tempfile
 from unittest import mock
 
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder import ssh_utils
@@ -275,17 +274,17 @@ FAKE_LUN_META_QOS = {
 
 # Volume1
 FAKE_MODEL_INFO1 = {
-    'provider_location': six.text_type(FAKE_LOCATION1),
+    'provider_location': str(FAKE_LOCATION1),
     'metadata': FAKE_LUN_META1,
 }
 # Volume2
 FAKE_MODEL_INFO3 = {
-    'provider_location': six.text_type(FAKE_LOCATION3),
+    'provider_location': str(FAKE_LOCATION3),
     'metadata': FAKE_LUN_META3,
 }
 # VoluemQOS
 FAKE_MODEL_INFO_QOS = {
-    'provider_location': six.text_type(FAKE_LOCATION_QOS),
+    'provider_location': str(FAKE_LOCATION_QOS),
     'metadata': FAKE_LUN_META_QOS,
 }
 
@@ -301,7 +300,7 @@ FAKE_LOCATION2 = {
 }
 
 FAKE_SNAP_INFO = {
-    'provider_location': six.text_type(FAKE_LOCATION2)
+    'provider_location': str(FAKE_LOCATION2)
 }
 
 FAKE_LUN_META2 = {
@@ -321,7 +320,7 @@ FAKE_CLONE_LUN_META = {
 }
 
 FAKE_MODEL_INFO2 = {
-    'provider_location': six.text_type(FAKE_CLONE_LOCATION),
+    'provider_location': str(FAKE_CLONE_LOCATION),
     'metadata': FAKE_CLONE_LUN_META,
 }
 

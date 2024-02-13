@@ -16,8 +16,6 @@
 
 """Cinder Volume driver for Fujitsu ETERNUS DX S3 series."""
 
-import six
-
 from cinder.i18n import _
 from cinder import ssh_utils
 
@@ -225,14 +223,14 @@ class FJDXCLI(object):
 
             output['message'] = role
         except Exception as ex:
-            if 'show users' in six.text_type(ex):
+            if 'show users' in str(ex):
                 msg = ("Specified user(%s) does not have Software role"
                        % self.user)
-            elif 'Error connecting' in six.text_type(ex):
-                msg = (six.text_type(ex)[34:] +
+            elif 'Error connecting' in str(ex):
+                msg = (str(ex)[34:] +
                        ', Please check fujitsu_private_key_path or .xml file')
             else:
-                msg = six.text_type(ex)
+                msg = str(ex)
             output = {
                 'result': 0,
                 'rc': '4',
