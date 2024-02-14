@@ -17,7 +17,6 @@ import json
 
 from oslo_log import log as logging
 import requests
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -78,7 +77,7 @@ class RestCommon(object):
             result.raise_for_status()
         except requests.HTTPError as exc:
             return {"error": {"code": exc.response.status_code,
-                              "description": six.text_type(exc)}}
+                              "description": str(exc)}}
 
         if not filter_flag:
             LOG.info('''
