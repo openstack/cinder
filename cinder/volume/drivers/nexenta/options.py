@@ -58,7 +58,10 @@ NEXENTA_EDGE_OPTS = [
     cfg.BoolOpt('nexenta_encryption',
                 default=False,
                 help='Defines whether NexentaEdge iSCSI LUN object '
-                     'has encryption enabled.')
+                     'has encryption enabled.',
+                deprecated_for_removal=True,
+                deprecated_since="2024.2",
+                deprecated_reason="Unused option")
 ]
 
 NEXENTA_CONNECTION_OPTS = [
