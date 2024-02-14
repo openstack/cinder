@@ -30,7 +30,6 @@ from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
 import paramiko
-import six
 
 from cinder.common import constants
 from cinder import context
@@ -420,7 +419,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         pool = volume_utils.extract_host(volume.host, 'pool')
 
         opts['iogrp'] = self._assistant.select_io_group(self._state, opts)
-        self._assistant.create_vdisk(volume.name, six.text_type(volume.size),
+        self._assistant.create_vdisk(volume.name, str(volume.size),
                                      'gb', pool, opts)
         if opts['qos']:
             self._assistant.add_vdisk_qos(volume.name, opts['qos'])
@@ -563,7 +562,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                 msg = (_('Failed to extend a volume with remote copy '
                          '%(volume)s. Exception: '
                          '%(err)s.') % {'volume': volume.id,
-                                        'err': six.text_type(e)})
+                                        'err': str(e)})
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
         else:
@@ -2010,7 +2009,7 @@ class InStorageAssistant(object):
         # Before we start, make sure host name is a string and that we have
         # one port at least .
         host_name = connector['host']
-        if not isinstance(host_name, six.string_types):
+        if not isinstance(host_name, str):
             msg = _('create_host: Host name is not unicode or string.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -2027,7 +2026,7 @@ class InStorageAssistant(object):
             raise exception.VolumeDriverException(message=msg)
 
         # Build a host name for the InStorage host - first clean up the name
-        if isinstance(host_name, six.text_type):
+        if isinstance(host_name, str):
             host_name = unicodedata.normalize('NFKD', host_name).encode(
                 'ascii', 'replace').decode('ascii')
 
@@ -2884,7 +2883,7 @@ class InStorageAssistant(object):
             # CMMVC5959E is the code in InStorage, meaning that
             # there is a relationship that already has this name on the
             # master cluster.
-            if 'CMMVC5959E' not in six.text_type(e):
+            if 'CMMVC5959E' not in str(e):
                 # If there is no relation between the primary and the
                 # secondary back-end storage, the exception is raised.
                 raise
@@ -3335,15 +3334,15 @@ class InStorageSSH(object):
     def mkippartnership(self, ip_v4, bandwidth=1000, backgroundcopyrate=50):
         ssh_cmd = ['mcsop', 'mkippartnership', '-type', 'ipv4',
                    '-clusterip', ip_v4, '-linkbandwidthmbits',
-                   six.text_type(bandwidth),
-                   '-backgroundcopyrate', six.text_type(backgroundcopyrate)]
+                   str(bandwidth),
+                   '-backgroundcopyrate', str(backgroundcopyrate)]
         return self.run_ssh_assert_no_output(ssh_cmd)
 
     def mkfcpartnership(self, system_name, bandwidth=1000,
                         backgroundcopyrate=50):
         ssh_cmd = ['mcsop', 'mkfcpartnership', '-linkbandwidthmbits',
-                   six.text_type(bandwidth),
-                   '-backgroundcopyrate', six.text_type(backgroundcopyrate),
+                   str(bandwidth),
+                   '-backgroundcopyrate', str(backgroundcopyrate),
                    system_name]
         return self.run_ssh_assert_no_output(ssh_cmd)
 
@@ -3371,7 +3370,7 @@ class InStorageSSH(object):
 
     def mkvdisk(self, name, size, units, pool, opts, params):
         ssh_cmd = ['mcsop', 'mkvdisk', '-name', name, '-mdiskgrp',
-                   '"%s"' % pool, '-iogrp', six.text_type(opts['iogrp']),
+                   '"%s"' % pool, '-iogrp', str(opts['iogrp']),
                    '-size', size, '-unit', units] + params
         try:
             return self.run_ssh_check_created(ssh_cmd)
@@ -3404,7 +3403,7 @@ class InStorageSSH(object):
 
     def expandvdisksize(self, vdisk, amount):
         ssh_cmd = (
-            ['mcsop', 'expandvdisksize', '-size', six.text_type(amount),
+            ['mcsop', 'expandvdisksize', '-size', str(amount),
              '-unit', 'gb', '"%s"' % vdisk])
         self.run_ssh_assert_no_output(ssh_cmd)
 
@@ -3414,7 +3413,7 @@ class InStorageSSH(object):
         if not full_copy:
             ssh_cmd.extend(['-copyrate', '0'])
         else:
-            ssh_cmd.extend(['-copyrate', six.text_type(copy_rate)])
+            ssh_cmd.extend(['-copyrate', str(copy_rate)])
         if consistgrp:
             ssh_cmd.extend(['-consistgrp', consistgrp])
         out, err = self._ssh(ssh_cmd, check_exit_code=False)
@@ -3518,7 +3517,7 @@ class CLIParser(object):
             vs = []
             for k in keys:
                 v = a.get(k, None)
-                if isinstance(v, six.string_types) or v is None:
+                if isinstance(v, str) or v is None:
                     v = [v]
                 if isinstance(v, list):
                     vs.append(v)
@@ -3553,7 +3552,7 @@ class CLIParser(object):
                 else:
                     yield []
 
-        if isinstance(self.raw, six.string_types):
+        if isinstance(self.raw, str):
             stdout, stderr = self.raw, ''
         else:
             stdout, stderr = self.raw

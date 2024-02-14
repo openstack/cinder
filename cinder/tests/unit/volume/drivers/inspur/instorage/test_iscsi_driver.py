@@ -18,7 +18,6 @@
 from unittest import mock
 
 from eventlet import greenthread
-import six
 
 from cinder import context
 import cinder.db
@@ -327,7 +326,7 @@ class InStorageMCSISCSIDriverTestCase(test.TestCase):
         for k, v in exp_m_path['data'].items():
             if k in ('target_iqns', 'target_portals'):
                 # These are randomly ordered lists
-                six.assertCountEqual(self, v, ret['data'][k])
+                self.assertCountEqual(v, ret['data'][k])
             else:
                 self.assertEqual(v, ret['data'][k])
 
@@ -403,8 +402,7 @@ class InStorageMCSISCSIDriverTestCase(test.TestCase):
             for host_exists in ['yes-auth', 'yes-noauth', 'no']:
                 self._set_flag('instorage_mcs_iscsi_chap_enabled',
                                auth_enabled)
-                case = 'en' + six.text_type(
-                    auth_enabled) + 'ex' + six.text_type(host_exists)
+                case = 'en' + str(auth_enabled) + 'ex' + str(host_exists)
                 conn_na = {'initiator': 'test:init:%s' % 56789,
                            'ip': '11.11.11.11',
                            'host': 'host-%s' % case}

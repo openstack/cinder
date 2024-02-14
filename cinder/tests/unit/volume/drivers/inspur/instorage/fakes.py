@@ -19,7 +19,6 @@ import re
 
 from oslo_concurrency import processutils
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder import utils
@@ -277,8 +276,8 @@ class FakeInStorage(object):
         ids.sort()
         for index, n in enumerate(ids):
             if n > index:
-                return six.text_type(index)
-        return six.text_type(len(ids))
+                return str(index)
+        return str(len(ids))
 
     # Check if name is valid
     @staticmethod
@@ -426,7 +425,7 @@ class FakeInStorage(object):
             num = num * 1024
             unit_index += 1
 
-        return six.text_type(num)
+        return str(num)
 
     def _cmd_lslicense(self, **kwargs):
         rows = [None] * 3
@@ -476,7 +475,7 @@ class FakeInStorage(object):
         for i in range(pool_num):
             row_data = [str(i + 1),
                         self._flags['instorage_mcs_volpool_name'][i], 'online',
-                        '1', six.text_type(len(self._volumes_list)),
+                        '1', str(len(self._volumes_list)),
                         '3573412790272', '256', '3529926246400',
                         '1693247906775',
                         '26843545600', '38203734097', '47', '80', 'auto',
@@ -774,7 +773,7 @@ port_speed!N/A
                     cap = self._convert_bytes_units(vol['capacity'])
                 else:
                     cap = vol['capacity']
-                rows.append([six.text_type(vol['id']), vol['name'],
+                rows.append([str(vol['id']), vol['name'],
                              vol['IO_group_id'],
                              vol['IO_group_name'], 'online', '0',
                              get_test_pool(),
@@ -799,7 +798,7 @@ port_speed!N/A
                     item = self._convert_bytes_units(item)
             rows = []
 
-            rows.append(['id', six.text_type(vol['id'])])
+            rows.append(['id', str(vol['id'])])
             rows.append(['name', vol['name']])
             rows.append(['IO_group_id', vol['IO_group_id']])
             rows.append(['IO_group_name', vol['IO_group_name']])
@@ -1018,7 +1017,7 @@ port_speed!N/A
         filter_value = kwargs['filtervalue'].split('=')[1]
         to_delete = []
         for k, v in self._lcmappings_list.items():
-            if six.text_type(v[filter_key]) == filter_value:
+            if str(v[filter_key]) == filter_value:
                 source = self._volumes_list[v['source']]
                 target = self._volumes_list[v['target']]
                 self._state_transition('wait', v)
@@ -1065,16 +1064,16 @@ port_speed!N/A
                 if self._lcconsistgrp_list[cg_id]['name'] == kwargs['obj']:
                     lcconsistgrp = self._lcconsistgrp_list[cg_id]
             rows = []
-            rows.append(['id', six.text_type(cg_id)])
+            rows.append(['id', str(cg_id)])
             rows.append(['name', lcconsistgrp['name']])
             rows.append(['status', lcconsistgrp['status']])
             rows.append(['autodelete',
-                         six.text_type(lcconsistgrp['autodelete'])])
+                         str(lcconsistgrp['autodelete'])])
             rows.append(['start_time',
-                         six.text_type(lcconsistgrp['start_time'])])
+                         str(lcconsistgrp['start_time'])])
 
             for lcmap_id in lcconsistgrp['lcmaps'].keys():
-                rows.append(['FC_mapping_id', six.text_type(lcmap_id)])
+                rows.append(['FC_mapping_id', str(lcmap_id)])
                 rows.append(['FC_mapping_name',
                              lcconsistgrp['lcmaps'][lcmap_id]])
 
@@ -1170,7 +1169,7 @@ port_speed!N/A
         filter_key = kwargs['filtervalue'].split('=')[0]
         filter_value = kwargs['filtervalue'].split('=')[1]
         for k, v in self._rcrelationship_list.items():
-            if six.text_type(v[filter_key]) == filter_value:
+            if str(v[filter_key]) == filter_value:
                 self._rc_state_transition('wait', v)
 
                 if self._next_cmd_error['lsrcrelationship'] == 'speed_up':
@@ -1232,7 +1231,7 @@ port_speed!N/A
         filter_key = kwargs['filtervalue'].split('=')[0]
         filter_value = kwargs['filtervalue'].split('=')[1]
         for k, v in self._partnership_list.items():
-            if six.text_type(v[filter_key]) == filter_value:
+            if str(v[filter_key]) == filter_value:
                 rows.append([v['id'], v['name'], v['location'],
                              v['partnership'], v['type'], v['cluster_ip'],
                              v['event_log_sequence']])
@@ -1377,7 +1376,7 @@ port_speed!N/A
         curr_size = int(self._volumes_list[vol_name]['capacity'])
         addition = size * units.Gi
         self._volumes_list[vol_name]['capacity'] = (
-            six.text_type(curr_size + addition))
+            str(curr_size + addition))
         return ('', '')
 
     def _add_port_to_host(self, host_info, **kwargs):
@@ -1408,7 +1407,7 @@ port_speed!N/A
         if 'name' in kwargs:
             host_name = kwargs['name'].strip('\'\"')
         else:
-            host_name = 'host' + six.text_type(host_info['id'])
+            host_name = 'host' + str(host_info['id'])
 
         if self._is_invalid_name(host_name):
             return self._errors['CMMVC6527E']
