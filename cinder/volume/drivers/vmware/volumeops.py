@@ -18,14 +18,13 @@ Implements operations on volumes residing on VMware datastores.
 """
 
 import json
+import urllib
 
 from oslo_log import log as logging
 from oslo_utils import units
 from oslo_vmware import exceptions
 from oslo_vmware.objects import datastore as ds_obj
 from oslo_vmware import vim_util
-import six
-from six.moves import urllib
 
 from cinder.i18n import _
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
@@ -1652,7 +1651,7 @@ class VMwareVolumeOps(object):
             self._session.vim,
             'CopyDatastoreFile_Task',
             self._session.vim.service_content.fileManager,
-            sourceName=six.text_type(src_path),
+            sourceName=str(src_path),
             sourceDatacenter=src_dc_ref,
             destinationName=dest_ds_file_path,
             destinationDatacenter=dest_dc_ref)
