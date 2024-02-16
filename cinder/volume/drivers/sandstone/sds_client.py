@@ -21,7 +21,6 @@ import time
 
 from oslo_log import log as logging
 import requests
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -98,7 +97,7 @@ class RestCmd(object):
                     raise exception.VolumeBackendAPIException(msg)
             else:
                 return {"error": {"code": exc.response.status_code,
-                                  "description": six.text_type(exc)}}
+                                  "description": str(exc)}}
 
         if not filter_flag:
             LOG.info('''
