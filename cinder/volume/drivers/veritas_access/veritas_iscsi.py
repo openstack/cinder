@@ -16,6 +16,7 @@ Veritas Access Driver for ISCSI.
 
 """
 import ast
+from http import HTTPStatus
 import json
 from random import randint
 from xml.dom import minidom
@@ -29,7 +30,6 @@ from oslo_utils import strutils
 from oslo_utils import units
 import requests
 import requests.auth
-from six.moves import http_client
 
 from cinder.common import constants
 from cinder import exception
@@ -820,7 +820,7 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
                                                      self._user, self._pwd)
             response = self.session.request(method, full_url, **kwargs)
 
-        if response.status_code != http_client.OK:
+        if response.status_code != HTTPStatus.OK:
             LOG.error('Access API operation failed with HTTP error code %s.',
                       str(response.status_code))
             return False
@@ -837,7 +837,7 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
                                 % (address, self._port),
                                 data={'username': username,
                                       'password': password})
-        if response.status_code != http_client.OK:
+        if response.status_code != HTTPStatus.OK:
             LOG.error('Failed to authenticate to remote cluster at %s as %s.',
                       address, username)
             raise exception.NotAuthorized(_('Authentication failure.'))
