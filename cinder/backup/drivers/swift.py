@@ -449,7 +449,8 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                         "possible we could have problems because of it.")
             return
         conn = swift.Connection(retries=CONF.backup_swift_retry_attempts,
-                                preauthurl=CONF.backup_swift_url)
+                                preauthurl=CONF.backup_swift_url,
+                                cacert=CONF.backup_swift_ca_cert_file)
         try:
             conn.get_capabilities()
             # TODO(e0ne) catch less general exception
