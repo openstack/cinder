@@ -30,7 +30,7 @@ from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api import microversions as mv
-from cinder.api.v2.views.volumes import ViewBuilder
+from cinder.api.v3.views import volumes as view
 from cinder.api.v3 import volumes
 from cinder.backup import api as backup_api
 from cinder.common import constants as cinder_constants
@@ -314,7 +314,7 @@ class VolumeApiTest(BaseVolumeTest):
     def test_list_volume_with_count_param(self, method, display_param):
         self._create_multiple_volumes_with_different_project()
 
-        self.mock_object(ViewBuilder, '_get_volume_type',
+        self.mock_object(view.ViewBuilder, '_get_volume_type',
                          v2_fakes.fake_volume_type_name_get)
         is_detail = True if 'detail' in method else False
         show_count = strutils.bool_from_string(display_param, strict=True)
@@ -365,7 +365,7 @@ class VolumeApiTest(BaseVolumeTest):
         self._create_multiple_volumes_with_different_project()
         test_utils.create_volume(self.ctxt, metadata=metadata)
 
-        self.mock_object(ViewBuilder, '_get_volume_type',
+        self.mock_object(view.ViewBuilder, '_get_volume_type',
                          v2_fakes.fake_volume_type_name_get)
         # Request with 'all_tenants' and 'metadata'
         req = fakes.HTTPRequest.blank(
@@ -381,7 +381,7 @@ class VolumeApiTest(BaseVolumeTest):
         self._create_multiple_volumes_with_different_project()
         test_utils.create_volume(self.ctxt)
 
-        self.mock_object(ViewBuilder, '_get_volume_type',
+        self.mock_object(view.ViewBuilder, '_get_volume_type',
                          v2_fakes.fake_volume_type_name_get)
 
         req = fakes.HTTPRequest.blank(
@@ -1128,7 +1128,7 @@ class VolumeApiTest(BaseVolumeTest):
         # get_attachments should only return attachments with the
         # attached status = ATTACHED
         context.is_admin = True
-        attachments = ViewBuilder()._get_attachments(fake_volume, context)
+        attachments = view.ViewBuilder()._get_attachments(fake_volume, context)
 
         self.assertEqual(1, len(attachments))
         self.assertEqual(fake.UUID3, attachments[0]['attachment_id'])
@@ -1140,13 +1140,13 @@ class VolumeApiTest(BaseVolumeTest):
 
         # When admin context is false (non-admin), host_name will be None
         context.is_admin = False
-        attachments = ViewBuilder()._get_attachments(fake_volume, context)
+        attachments = view.ViewBuilder()._get_attachments(fake_volume, context)
         self.assertIsNone(attachments[0]['host_name'])
 
         # When the request is coming from another service (glance),
         # We should be able to see 'host_name'
         context.roles.append('service')
-        attachments = ViewBuilder()._get_attachments(fake_volume, context)
+        attachments = view.ViewBuilder()._get_attachments(fake_volume, context)
         self.assertEqual('host1', attachments[0]['host_name'])
 
     @ddt.data(('created_at=gt:', 0), ('created_at=lt:', 2))
@@ -1257,7 +1257,7 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
 
         self.mock_object(objects.VolumeType, 'get_by_id',
                          self.fake_volume_type_get)
-        self.mock_object(ViewBuilder, '_get_volume_type',
+        self.mock_object(view.ViewBuilder, '_get_volume_type',
                          v2_fakes.fake_volume_type_name_get)
 
     def fake_volume_type_get(self, context, id, *args, **kwargs):
