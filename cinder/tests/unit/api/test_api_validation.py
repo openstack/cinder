@@ -303,8 +303,10 @@ class StringLengthTestCase(APIValidationTestCase):
                                    req=FakeRequest()))
 
     def test_validate_string_length_fails(self):
+        # checks for jsonschema output from 3.2.x and 4.21.x
         detail = ("Invalid input for field/attribute foo. Value: ."
-                  " '' is too short")
+                  " '' "
+                  "(is too short|should be non-empty)")
         self.check_validation_error(self.post, body={'foo': ''},
                                     expected_detail=detail)
 
