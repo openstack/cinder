@@ -44,7 +44,7 @@ from cinder.objects import fields
 from cinder.policies import volumes as vol_policy
 from cinder import quota
 from cinder.tests import fake_driver
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
@@ -112,7 +112,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                                    project_id=fake.PROJECT_ID)
         elevated = context.get_admin_context()
         db.volume_type_create(elevated,
-                              v2_fakes.fake_default_type_get(
+                              v3_fakes.fake_default_type_get(
                                   id=fake.VOLUME_TYPE2_ID))
         self.vol_type = db.volume_type_get_by_name(elevated, '__DEFAULT__')
         self._setup_volume_types()

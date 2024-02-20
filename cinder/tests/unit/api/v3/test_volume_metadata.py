@@ -29,7 +29,7 @@ from cinder import objects
 from cinder.objects import base as obj_base
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
@@ -123,7 +123,7 @@ class BaseVolumeMetadataTest(test.TestCase):
                          return_volume_metadata)
         self.patch(
             'cinder.db.service_get_all', autospec=True,
-            return_value=v2_fakes.fake_service_get_all_by_topic(None, None))
+            return_value=v3_fakes.fake_service_get_all_by_topic(None, None))
 
         self.mock_object(self.volume_api, 'update_volume_metadata',
                          fake_update_volume_metadata)

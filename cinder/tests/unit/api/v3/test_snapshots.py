@@ -35,7 +35,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -116,7 +116,7 @@ class SnapshotApiTest(test.TestCase):
         super().setUp()
         self.mock_object(volume.api.API, 'get', fake_volume_get)
         self.mock_object(db.sqlalchemy.api, 'volume_type_get',
-                         v2_fakes.fake_volume_type_get)
+                         v3_fakes.fake_volume_type_get)
         self.patch('cinder.quota.QUOTAS.reserve')
         self.mock_object(scheduler_rpcapi.SchedulerAPI, 'create_snapshot')
         self.controller = snapshots.SnapshotsController()
@@ -652,7 +652,7 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
         db.volume_destroy(self.ctx, volume.id)
 
     @mock.patch.object(volume.api.API, "update_snapshot",
-                       side_effect=v2_fakes.fake_snapshot_update)
+                       side_effect=v3_fakes.fake_snapshot_update)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.db.volume_get')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -700,7 +700,7 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
         self.assertEqual(2, len(self.notifier.notifications))
 
     @mock.patch.object(volume.api.API, "update_snapshot",
-                       side_effect=v2_fakes.fake_snapshot_update)
+                       side_effect=v3_fakes.fake_snapshot_update)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.db.volume_get')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -759,7 +759,7 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
                           req, 'not-the-uuid', body=body)
 
     @mock.patch.object(volume.api.API, "update_snapshot",
-                       side_effect=v2_fakes.fake_snapshot_update)
+                       side_effect=v3_fakes.fake_snapshot_update)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.db.volume_get')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -807,7 +807,7 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
         self.assertEqual(2, len(self.notifier.notifications))
 
     @mock.patch.object(volume.api.API, "delete_snapshot",
-                       side_effect=v2_fakes.fake_snapshot_update)
+                       side_effect=v3_fakes.fake_snapshot_update)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -908,9 +908,9 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
         self.assertEqual(UUID, resp_snapshot['id'])
 
     @mock.patch.object(db, 'snapshot_get_all_by_project',
-                       v2_fakes.fake_snapshot_get_all_by_project)
+                       v3_fakes.fake_snapshot_get_all_by_project)
     @mock.patch.object(db, 'snapshot_get_all',
-                       v2_fakes.fake_snapshot_get_all)
+                       v3_fakes.fake_snapshot_get_all)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_admin_list_snapshots_limited_to_project(self,
                                                      snapshot_metadata_get):
@@ -1095,9 +1095,9 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
         self._assert_list_next(limit=1, marker=snaps[1].id)
 
     @mock.patch.object(db, 'snapshot_get_all_by_project',
-                       v2_fakes.fake_snapshot_get_all_by_project)
+                       v3_fakes.fake_snapshot_get_all_by_project)
     @mock.patch.object(db, 'snapshot_get_all',
-                       v2_fakes.fake_snapshot_get_all)
+                       v3_fakes.fake_snapshot_get_all)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_admin_list_snapshots_all_tenants(self, snapshot_metadata_get):
         req = fakes.HTTPRequest.blank('/v3/%s/snapshots?all_tenants=1' %
@@ -1114,7 +1114,7 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
         def get_all(context, filters=None, marker=None, limit=None,
                     sort_keys=None, sort_dirs=None, offset=None):
             if 'project_id' in filters and 'tenant1' in filters['project_id']:
-                return [v2_fakes.fake_snapshot(fake.VOLUME_ID,
+                return [v3_fakes.fake_snapshot(fake.VOLUME_ID,
                                                tenant_id='tenant1')]
             else:
                 return []
@@ -1129,7 +1129,7 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
         self.assertEqual(1, len(res['snapshots']))
 
     @mock.patch.object(db, 'snapshot_get_all_by_project',
-                       v2_fakes.fake_snapshot_get_all_by_project)
+                       v3_fakes.fake_snapshot_get_all_by_project)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_all_tenants_non_admin_gets_all_tenants(self,
                                                     snapshot_metadata_get):
@@ -1140,9 +1140,9 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
         self.assertEqual(1, len(res['snapshots']))
 
     @mock.patch.object(db, 'snapshot_get_all_by_project',
-                       v2_fakes.fake_snapshot_get_all_by_project)
+                       v3_fakes.fake_snapshot_get_all_by_project)
     @mock.patch.object(db, 'snapshot_get_all',
-                       v2_fakes.fake_snapshot_get_all)
+                       v3_fakes.fake_snapshot_get_all)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_non_admin_get_by_project(self, snapshot_metadata_get):
         req = fakes.HTTPRequest.blank('/v3/%s/snapshots' % fake.PROJECT_ID)

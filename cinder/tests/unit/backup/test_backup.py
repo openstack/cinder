@@ -39,7 +39,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import quota
 from cinder.tests import fake_driver
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import known_issues as issues
 from cinder.tests.unit import test
@@ -229,7 +229,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                        'check_for_setup_error')
     @mock.patch.object(cinder.db.sqlalchemy.api, '_volume_type_get_by_name',
-                       v2_fakes.fake_volume_type_get)
+                       v3_fakes.fake_volume_type_get)
     @mock.patch('cinder.context.get_admin_context')
     def test_init_host(self, mock_get_admin_context, mock_check, mock_setup,
                        mock_set_initialized):
@@ -2366,7 +2366,7 @@ class BackupAPITestCase(BaseBackupTest):
             filters={'project_id': 'fake_project'})
 
     @mock.patch('cinder.db.backup_get_all_by_volume',
-                return_value=[v2_fakes.fake_backup('fake-1')])
+                return_value=[v3_fakes.fake_backup('fake-1')])
     @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
     @mock.patch.object(api.API, '_get_available_backup_service_host',
                        return_value='fake_host')

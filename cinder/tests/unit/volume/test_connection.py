@@ -26,7 +26,7 @@ from cinder.message import message_field
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests import fake_driver
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
@@ -43,7 +43,7 @@ class DiscardFlagTestCase(base.BaseVolumeTestCase):
         super(DiscardFlagTestCase, self).setUp()
         self.volume.driver = mock.MagicMock()
         db.volume_type_create(self.context,
-                              v2_fakes.fake_default_type_get(
+                              v3_fakes.fake_default_type_get(
                                   fake.VOLUME_TYPE2_ID))
         self.vol_type = db.volume_type_get_by_name(self.context,
                                                    'vol_type_name')
@@ -113,7 +113,7 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
     def setUp(self, *args, **kwargs):
         super(VolumeConnectionTestCase, self).setUp()
         db.volume_type_create(self.context,
-                              v2_fakes.fake_default_type_get(
+                              v3_fakes.fake_default_type_get(
                                   fake.VOLUME_TYPE2_ID))
         self.vol_type = db.volume_type_get_by_name(self.context,
                                                    'vol_type_name')
@@ -432,7 +432,7 @@ class VolumeAttachDetachTestCase(base.BaseVolumeTestCase):
         self.user_context = context.RequestContext(user_id=fake.USER_ID,
                                                    project_id=fake.PROJECT_ID)
         db.volume_type_create(self.context,
-                              v2_fakes.fake_default_type_get(
+                              v3_fakes.fake_default_type_get(
                                   fake.VOLUME_TYPE2_ID))
         self.vol_type = db.volume_type_get_by_name(self.context,
                                                    'vol_type_name')
