@@ -26,6 +26,8 @@ import webob
 from cinder.api.contrib import volume_manage
 from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
+from cinder.api import urlmap
+from cinder.api.v3 import router
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
@@ -39,8 +41,8 @@ CONF = cfg.CONF
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = fakes.router_v3.APIRouter()
-    mapper = fakes.urlmap.URLMap()
+    api = router.APIRouter()
+    mapper = urlmap.URLMap()
     mapper['/v3'] = api
     return mapper
 

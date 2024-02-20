@@ -26,6 +26,7 @@ from oslo_serialization import jsonutils
 from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import strutils
+import routes
 import webob
 import webob.exc
 
@@ -1281,6 +1282,22 @@ class Controller(object, metaclass=ControllerMetaclass):
                                       max_length=max_length)
         except exception.InvalidInput as error:
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
+
+
+class APIMapper(routes.Mapper):
+    def routematch(self, url=None, environ=None):
+        if url == "":
+            result = self._match("", environ)
+            return result[0], result[1]
+        return routes.Mapper.routematch(self, url, environ)
+
+    def connect(self, *args, **kwargs):
+        # NOTE(inhye): Default the format part of a route to only accept json
+        # so it doesn't eat all characters after a '.' in the url.
+        kwargs.setdefault('requirements', {})
+        if not kwargs['requirements'].get('format'):
+            kwargs['requirements']['format'] = 'json'
+        return routes.Mapper.connect(self, *args, **kwargs)
 
 
 class Fault(webob.exc.HTTPException):

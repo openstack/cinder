@@ -19,8 +19,13 @@
 WSGI middleware for OpenStack Volume API.
 """
 
+from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_service import wsgi as base_wsgi
+import routes
+
 from cinder.api import extensions
-import cinder.api.openstack
+from cinder.api.openstack import wsgi
 from cinder.api.v3 import attachments
 from cinder.api.v3 import backups
 from cinder.api.v3 import clusters
@@ -44,10 +49,119 @@ from cinder.api.v3 import volumes
 from cinder.api.v3 import workers
 from cinder.api import versions
 
+CONF = cfg.CONF
+LOG = logging.getLogger(__name__)
 
-class APIRouter(cinder.api.openstack.APIRouter):
+
+class ProjectMapper(wsgi.APIMapper):
+    def resource(self, member_name, collection_name, **kwargs):
+        """Base resource path handler
+
+        This method is compatible with resource paths that include a
+        project_id and those that don't. Including project_id in the URLs
+        was a legacy API requirement; and making API requests against
+        such endpoints won't work for users that don't belong to a
+        particular project.
+        """
+        # NOTE: project_id parameter is only valid if its hex or hex + dashes
+        # (note, integers are a subset of this). This is required to handle
+        # our overlapping routes issues.
+        project_id_regex = CONF.project_id_regex
+        project_id_token = '{project_id:%s}' % project_id_regex
+
+        if 'parent_resource' not in kwargs:
+            kwargs['path_prefix'] = '%s/' % project_id_token
+        else:
+            parent_resource = kwargs['parent_resource']
+            p_collection = parent_resource['collection_name']
+            p_member = parent_resource['member_name']
+            kwargs['path_prefix'] = '%s/%s/:%s_id' % (
+                project_id_token, p_collection, p_member
+            )
+
+        routes.Mapper.resource(
+            self, member_name, collection_name, **kwargs
+        )
+
+        # Add additional routes without project_id.
+        if 'parent_resource' not in kwargs:
+            del kwargs['path_prefix']
+        else:
+            parent_resource = kwargs['parent_resource']
+            p_collection = parent_resource['collection_name']
+            p_member = parent_resource['member_name']
+            kwargs['path_prefix'] = '%s/:%s_id' % (p_collection, p_member)
+
+        routes.Mapper.resource(
+            self, member_name, collection_name, **kwargs
+        )
+
+
+class APIRouter(base_wsgi.Router):
     """Routes requests on the API to the appropriate controller and method."""
-    ExtensionManager = extensions.ExtensionManager
+    def __init__(self, ext_mgr=None):
+        ext_mgr = ext_mgr or extensions.ExtensionManager()
+        mapper = ProjectMapper()
+        self.resources = {}
+        self._setup_routes(mapper, ext_mgr)
+        self._setup_ext_routes(mapper, ext_mgr)
+        self._setup_extensions(ext_mgr)
+        super().__init__(mapper)
+
+    @classmethod
+    def factory(cls, global_config, **local_config):
+        """Simple paste factory.
+
+        :class:`oslo_service.wsgi.Router` doesn't have this.
+        """
+        return cls()
+
+    def _setup_ext_routes(self, mapper, ext_mgr):
+        for resource in ext_mgr.get_resources():
+            LOG.debug('Extended resource: %s', resource.collection)
+
+            wsgi_resource = wsgi.Resource(resource.controller)
+            self.resources[resource.collection] = wsgi_resource
+            kargs = dict(
+                controller=wsgi_resource,
+                collection=resource.collection_actions,
+                member=resource.member_actions)
+
+            if resource.parent:
+                kargs['parent_resource'] = resource.parent
+
+            mapper.resource(resource.collection, resource.collection, **kargs)
+
+            if resource.custom_routes_fn:
+                resource.custom_routes_fn(mapper, wsgi_resource)
+
+    def _setup_extensions(self, ext_mgr):
+        for extension in ext_mgr.get_controller_extensions():
+            collection = extension.collection
+            controller = extension.controller
+
+            if collection not in self.resources:
+                LOG.warning(
+                    'Extension %(ext_name)s: Cannot extend '
+                    'resource %(collection)s: No such resource',
+                    {
+                        'ext_name': extension.extension.name,
+                        'collection': collection,
+                    },
+                )
+                continue
+
+            LOG.debug(
+                'Extension %(ext_name)s extending resource: %(collection)s',
+                {
+                    'ext_name': extension.extension.name,
+                    'collection': collection,
+                },
+            )
+
+            resource = self.resources[collection]
+            resource.register_actions(controller)
+            resource.register_extensions(controller)
 
     def _setup_routes(self, mapper, ext_mgr):
         self.resources['versions'] = versions.create_resource()

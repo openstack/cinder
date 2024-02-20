@@ -28,7 +28,7 @@ from cinder.api.middleware import rate_limit
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.openstack import wsgi as os_wsgi
 from cinder.api import urlmap
-from cinder.api.v3 import router as router_v3
+from cinder.api.v3 import router
 from cinder.api import versions
 from cinder import context
 from cinder.tests.unit import fake_constants as fake
@@ -43,7 +43,7 @@ class Context(object):
 
 
 class FakeRouter(wsgi.Router):
-    def __init__(self, ext_mgr=None):
+    def __init__(self):
         pass
 
     @webob.dec.wsgify
@@ -60,11 +60,11 @@ def fake_wsgi(self, req):
 
 
 def wsgi_app(inner_app_v2=None, fake_auth=True, fake_auth_context=None,
-             use_no_auth=False, ext_mgr=None,
+             use_no_auth=False,
              inner_app_v3=None):
 
     if not inner_app_v3:
-        inner_app_v3 = router_v3.APIRouter(ext_mgr)
+        inner_app_v3 = router.APIRouter()
 
     if fake_auth:
         if fake_auth_context is not None:

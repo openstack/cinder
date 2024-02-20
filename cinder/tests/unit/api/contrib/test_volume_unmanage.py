@@ -18,11 +18,12 @@ from unittest import mock
 from oslo_serialization import jsonutils
 import webob
 
+from cinder.api import urlmap
+from cinder.api.v3 import router
 from cinder import context
 from cinder import db
 from cinder import objects
 from cinder.objects import fields
-from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 from cinder.tests.unit import utils
@@ -46,8 +47,8 @@ class VolumeUnmanageTest(test.TestCase):
         super(VolumeUnmanageTest, self).setUp()
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
-        api = fakes.router_v3.APIRouter()
-        self.app = fakes.urlmap.URLMap()
+        api = router.APIRouter()
+        self.app = urlmap.URLMap()
         self.app['/v3'] = api
 
     def _get_resp(self, volume_id):

@@ -21,15 +21,14 @@ from oslo_serialization import jsonutils
 import webob
 
 from cinder.api import microversions as mv
-from cinder.api.v3 import router as router_v3
+from cinder.api import urlmap
+from cinder.api.v3 import router
 from cinder.api.v3 import workers
 from cinder.common import constants
 from cinder import context
 from cinder import objects
-from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
-
 
 SERVICES = (
     [objects.Service(id=1, host='host1', binary=constants.VOLUME_BINARY,
@@ -45,8 +44,8 @@ SERVICES = (
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = router_v3.APIRouter()
-    mapper = fakes.urlmap.URLMap()
+    api = router.APIRouter()
+    mapper = urlmap.URLMap()
     mapper['/v3'] = api
     return mapper
 
