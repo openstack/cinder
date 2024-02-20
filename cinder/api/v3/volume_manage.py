@@ -14,14 +14,15 @@
 
 from http import HTTPStatus
 
-from cinder.api.contrib import volume_manage as volume_manage_v2
+from cinder.api.contrib import volume_manage
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3 import resource_common_manage as common
 
 
-class VolumeManageController(common.ManageResource,
-                             volume_manage_v2.VolumeManageController):
+class VolumeManageController(
+    common.ManageResource, volume_manage.VolumeManageController
+):
     def __init__(self, *args, **kwargs):
         super(VolumeManageController, self).__init__(*args, **kwargs)
         self._set_resource_type('volume')

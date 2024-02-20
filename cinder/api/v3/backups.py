@@ -17,7 +17,7 @@
 
 from oslo_log import log as logging
 
-from cinder.api.contrib import backups as backups_v2
+from cinder.api.contrib import backups
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.schemas import backups as backup
@@ -29,7 +29,7 @@ from cinder.policies import backups as policy
 LOG = logging.getLogger(__name__)
 
 
-class BackupsController(backups_v2.BackupsController):
+class BackupsController(backups.BackupsController):
     """The backups API controller for the OpenStack API V3."""
 
     _view_builder_class = backup_views.ViewBuilder
