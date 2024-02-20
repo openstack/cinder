@@ -773,6 +773,33 @@ class TestGlanceImageService(test.TestCase):
         self.assertEqual(self.NOW_DATETIME, image_meta['created_at'])
         self.assertEqual(self.NOW_DATETIME, image_meta['updated_at'])
 
+    @mock.patch.object(glance.GlanceClientWrapper, 'call')
+    def test_add_location(self, mock_call):
+        image_id = mock.sentinel.image_id
+        service = glance.GlanceImageService(client=mock_call)
+        url = 'cinder://fake-store/c984be2b-8789-4b9e-bf71-19164f537e63'
+        metadata = {'store': 'fake-store'}
+
+        service.add_location(self.context, image_id, url, metadata)
+        mock_call.assert_called_once_with(
+            self.context, 'add_image_location', image_id, url, metadata)
+
+    @mock.patch.object(glance.GlanceClientWrapper, 'call')
+    def test_add_location_old(self, mock_call):
+        mock_call.side_effect = [glanceclient.exc.HTTPNotImplemented, None]
+        image_id = mock.sentinel.image_id
+        service = glance.GlanceImageService(client=mock_call)
+        url = 'cinder://fake-store/c984be2b-8789-4b9e-bf71-19164f537e63'
+        metadata = {'store': 'fake-store'}
+
+        service.add_location(self.context, image_id, url, metadata)
+        calls = [
+            mock.call.call(
+                self.context, 'add_image_location', image_id, url, metadata),
+            mock.call.call(
+                self.context, 'add_location', image_id, url, metadata)]
+        mock_call.assert_has_calls(calls)
+
     def test_download_with_retries(self):
         tries = [0]
 
