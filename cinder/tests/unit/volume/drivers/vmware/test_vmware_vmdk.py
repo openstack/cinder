@@ -2572,6 +2572,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             [dev_change_disk_remove]
 
         tmp_name = mock.sentinel.tmp_name
+        expected_tmp_name = "TEMP_BACKING-%s" % mock.sentinel.tmp_name
         generate_uuid.return_value = tmp_name
 
         tmp_backing = mock.sentinel.tmp_backing
@@ -2594,8 +2595,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         get_volume_device_uuid.assert_called_once_with(instance,
                                                        src_vref['id'])
         vops.clone_backing.assert_called_once_with(
-            tmp_name, instance, None, volumeops.FULL_CLONE_TYPE, datastore,
-            host=host, resource_pool=rp, folder=folder,
+            expected_tmp_name, instance, None, volumeops.FULL_CLONE_TYPE,
+            datastore, host=host, resource_pool=rp, folder=folder,
             device_changes=[dev_change_disk_remove],
             extra_config={'nvp.vm-uuid': ''})
 
