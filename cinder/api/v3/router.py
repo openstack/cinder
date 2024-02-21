@@ -179,8 +179,7 @@ class APIRouter(base_wsgi.Router):
 
         self.resources['messages'] = messages.create_resource(ext_mgr)
         mapper.resource("message", "messages",
-                        controller=self.resources['messages'],
-                        collection={'detail': 'GET'})
+                        controller=self.resources['messages'])
 
         self.resources['clusters'] = clusters.create_resource()
         mapper.resource('cluster', 'clusters',
@@ -194,8 +193,7 @@ class APIRouter(base_wsgi.Router):
 
         self.resources['group_types'] = group_types.create_resource()
         mapper.resource("group_type", "group_types",
-                        controller=self.resources['group_types'],
-                        member={'action': 'POST'})
+                        controller=self.resources['group_types'])
 
         self.resources['group_specs'] = group_specs.create_resource()
         mapper.resource("group_spec", "group_specs",
