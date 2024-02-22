@@ -21,6 +21,8 @@ from oslo_utils import units
 from packaging import version
 
 LOG = logging.getLogger(__name__)
+POWERFLEX_REST_CONNECT_TIMEOUT = "rest_api_connect_timeout"
+POWERFLEX_REST_READ_TIMEOUT = "rest_api_read_timeout"
 
 
 def version_gte(ver1, ver2):

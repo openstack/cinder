@@ -12,8 +12,10 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from unittest import mock
 
 import ddt
+import requests.exceptions
 
 from cinder import exception
 from cinder.tests.unit.volume.drivers.dell_emc import powerflex
@@ -91,3 +93,15 @@ class TestMultipleVersions(powerflex.TestPowerFlexDriver):
                 self.driver.primary_client.query_rest_api_version(False),
                 vers
             )
+
+    @mock.patch("requests.get")
+    def test_get_version_connect_timeout_request(self, mock_request):
+        mock_request.side_effect = requests.exceptions.ConnectTimeout()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.test_version)
+
+    @mock.patch("requests.get")
+    def test_get_version_read_timeout_request(self, mock_request):
+        mock_request.side_effect = requests.exceptions.ReadTimeout()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.test_version)

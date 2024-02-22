@@ -16,6 +16,7 @@
 from unittest import mock
 
 import ddt
+import requests.exceptions
 
 from cinder import context
 from cinder import exception
@@ -102,5 +103,17 @@ class TestCreateVolume(powerflex.TestPowerFlexDriver):
         extraspecs = {'provisioning:type': 'other'}
         self.driver._get_volumetype_extraspecs = mock.MagicMock()
         self.driver._get_volumetype_extraspecs.return_value = extraspecs
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.test_create_volume)
+
+    @mock.patch("requests.post")
+    def test_volume_post_connect_timeout_request(self, mock_request):
+        mock_request.side_effect = requests.exceptions.ConnectTimeout()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.test_create_volume)
+
+    @mock.patch("requests.post")
+    def test_volume_post_read_timeout_request(self, mock_request):
+        mock_request.side_effect = requests.exceptions.ReadTimeout()
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_volume)

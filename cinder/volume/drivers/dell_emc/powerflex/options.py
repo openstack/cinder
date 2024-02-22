@@ -19,6 +19,8 @@ named Dell EMC VxFlex OS).
 
 from oslo_config import cfg
 
+from cinder.volume.drivers.dell_emc.powerflex import utils as flex_utils
+
 # deprecated options
 VXFLEXOS_REST_SERVER_PORT = "vxflexos_rest_server_port"
 VXFLEXOS_ROUND_VOLUME_CAPACITY = "vxflexos_round_volume_capacity"
@@ -147,4 +149,12 @@ actual_opts = [
                 default=False,
                 help='Allow volume migration during rebuild.',
                 deprecated_name=VXFLEXOS_ALLOW_MIGRATION_DURING_REBUILD),
+    cfg.IntOpt(flex_utils.POWERFLEX_REST_CONNECT_TIMEOUT,
+               default=30, min=1,
+               help='Use this value to specify connect '
+                    'timeout value (in seconds) for rest call.'),
+    cfg.IntOpt(flex_utils.POWERFLEX_REST_READ_TIMEOUT,
+               default=30, min=1,
+               help='Use this value to specify read '
+                    'timeout value (in seconds) for rest call.')
 ]
