@@ -1216,9 +1216,9 @@ class Worker(BASE, CinderBase):
 
     # Type of the resource we are working on (Volume, Snapshot, Backup) it must
     # match the Versioned Object class name.
-    resource_type = sa.Column(sa.String(40), primary_key=True, nullable=False)
+    resource_type = sa.Column(sa.String(40), nullable=False)
     # UUID of the resource we are working on
-    resource_id = sa.Column(sa.String(36), primary_key=True, nullable=False)
+    resource_id = sa.Column(sa.String(36), nullable=False)
 
     # Status that should be cleaned on service failure
     status = sa.Column(sa.String(255), nullable=False)
