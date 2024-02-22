@@ -8579,14 +8579,21 @@ def worker_destroy(context, **filters):
 ###############################
 
 
-# TODO: (A Release) remove method and this comment
+# TODO: (D Release) remove method and this comment
 @enginefacade.writer
 def remove_temporary_admin_metadata_data_migration(context, max_count):
+    admin_meta_table = models.VolumeAdminMetadata
     query = model_query(context,
-                        models.VolumeAdminMetadata).filter_by(key='temporary')
+                        admin_meta_table.id).filter_by(key='temporary')
     total = query.count()
-    updated = query.limit(max_count).update(
-        models.VolumeAdminMetadata.delete_values())
+    ids_query = query.limit(max_count).subquery()
+    update_args = {'synchronize_session': False}
+
+    # We cannot use limit with update or delete so create a new query
+    updated = model_query(context, admin_meta_table).\
+        filter(admin_meta_table.id.in_(ids_query)).\
+        update(admin_meta_table.delete_values(), **update_args)
+
     return total, updated
 
 

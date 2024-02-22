@@ -3903,7 +3903,8 @@ class DBAPIGroupTypeTestCase(BaseTest):
 
 
 class OnlineMigrationTestCase(BaseTest):
-    # TODO: (A Release) remove method and this comment
+
+    # TODO: (D Release) remove method and this comment
     @mock.patch.object(sqlalchemy_api,
                        'remove_temporary_admin_metadata_data_migration')
     def test_db_remove_temporary_admin_metadata_data_migration(self,
@@ -3913,30 +3914,35 @@ class OnlineMigrationTestCase(BaseTest):
         db.remove_temporary_admin_metadata_data_migration(*params)
         migration_mock.assert_called_once_with(*params)
 
-    # TODO: (A Release) remove method and this comment
+    # TODO: (D Release) remove method and this comment
     @mock.patch.object(sqlalchemy_api, 'models')
     @mock.patch.object(sqlalchemy_api, 'model_query')
     def test_remove_temporary_admin_metadata_data_migration_mocked(
             self, query_mock, models_mock):
         """Test method implementation."""
-        result = sqlalchemy_api.remove_temporary_admin_metadata_data_migration(
-            self.ctxt, mock.sentinel.max_count)
 
-        query_mock.assert_called_once_with(self.ctxt,
-                                           models_mock.VolumeAdminMetadata)
+        # Call DB API layer directly to test return values
+        total, updated = db.remove_temporary_admin_metadata_data_migration(
+            self.ctxt, mock.sentinel.max_count)
+        self.assertEqual(2, query_mock.call_count)
+        query_mock.assert_called_with(self.ctxt,
+                                      models_mock.VolumeAdminMetadata)
         filter_by = query_mock.return_value.filter_by
         filter_by.assert_called_once_with(key='temporary')
         query = filter_by.return_value
         query.count.assert_called_once_with()
         query.limit.assert_called_once_with(mock.sentinel.max_count)
+        subquery = query.limit.return_value.subquery
+        subquery.assert_called_once_with()
         del_vals_mock = models_mock.VolumeAdminMetadata.delete_values
         del_vals_mock.assert_called_once_with()
-
-        update = query.limit.return_value.update
-        update.assert_called_once_with(del_vals_mock.return_value)
-
-        self.assertEqual((query.count.return_value, update.return_value),
-                         result)
+        filter_subquery = query_mock.return_value.filter
+        filter_subquery.assert_called_once_with(
+            models_mock.VolumeAdminMetadata.id.in_(filter_subquery))
+        update = filter_subquery.return_value.update
+        update_args = {'synchronize_session': False}
+        update.assert_called_once_with(del_vals_mock.return_value,
+                                       **update_args)
 
     # TODO: (D Release) remove method and this comment
     def test_remove_temporary_admin_metadata_data_migration(self):
@@ -3958,10 +3964,10 @@ class OnlineMigrationTestCase(BaseTest):
             self.ctxt, display_name='admin_metadata', use_quota=False,
             admin_metadata=vol3_admin_meta)
 
-        # Should only  remove "temporary" admin metadata
-        result = sqlalchemy_api.remove_temporary_admin_metadata_data_migration(
+        # Call DB API layer directly to test return values
+        total, updated = db.remove_temporary_admin_metadata_data_migration(
             self.ctxt, 4)
-        self.assertEqual(1, result)
+        self.assertEqual(1, updated)
 
         vol1.refresh()
         self.assertEqual(({}, vol1_admin_meta),
