@@ -29,6 +29,7 @@ import eventlet
 import os_brick.initiator.connectors.iscsi
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils.fixture import uuidsentinel as uuids
 from oslo_utils import imageutils
 from taskflow.engines.action_engine import engine
 
@@ -2804,7 +2805,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             with mock.patch.object(
                     self.volume.message_api, 'create') as mock_create:
                 volume['status'] = 'extending'
-                self.volume.extend_volume(self.context, volume, '4',
+                self.volume.extend_volume(self.context, volume, 4,
                                           fake_reservations)
                 volume.refresh()
                 self.assertEqual(2, volume.size)
@@ -2832,7 +2833,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             with mock.patch.object(QUOTAS, 'commit') as quotas_commit:
                 extend_volume.return_value = fake_extend
                 volume.status = 'extending'
-                self.volume.extend_volume(self.context, volume, '4',
+                self.volume.extend_volume(self.context, volume, 4,
                                           fake_reservations)
                 volume.refresh()
                 self.assertEqual(4, volume.size)
@@ -2945,6 +2946,77 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             volumes_reserved = 0
 
         self.assertEqual(100, volumes_reserved)
+
+    @mock.patch('cinder.compute.nova.API.extend_volume')
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                'extend_volume_completion')
+    def test_extend_volume_no_wait_for_nova_available(self,
+                                                      extend_completion,
+                                                      nova_extend):
+        volume = tests_utils.create_volume(self.context, size=2,
+                                           status='extending')
+
+        with mock.patch.object(self.volume.driver, 'extend_volume'):
+            self.volume.extend_volume(self.context, volume, 4,
+                                      [uuids.reservation])
+
+            extend_completion.assert_called_once_with(self.context,
+                                                      volume,
+                                                      4,
+                                                      [uuids.reservation],
+                                                      error=False)
+            nova_extend.assert_not_called()
+            self.assertNotIn('extend_new_size', volume.admin_metadata)
+            self.assertNotIn('extend_reservations', volume.admin_metadata)
+
+    @mock.patch('cinder.compute.nova.API.extend_volume')
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                'extend_volume_completion')
+    def test_extend_volume_no_wait_for_nova_attached(self,
+                                                     extend_completion,
+                                                     nova_extend):
+        volume = tests_utils.create_volume(self.context, size=2)
+        tests_utils.attach_volume(self.context, volume.id, uuids.instance,
+                                  'fake-host', '/dev/vda')
+        db.volume_update(self.context, volume.id, {'status': 'extending'})
+        volume.refresh()
+
+        with mock.patch.object(self.volume.driver, 'extend_volume'):
+            self.volume.extend_volume(self.context, volume, 4,
+                                      [uuids.reservation])
+
+            extend_completion.assert_called_once_with(self.context,
+                                                      volume,
+                                                      4,
+                                                      [uuids.reservation],
+                                                      error=False)
+            nova_extend.assert_called_once_with(self.context,
+                                                [uuids.instance],
+                                                volume.id)
+            self.assertNotIn('extend_new_size', volume.admin_metadata)
+            self.assertNotIn('extend_reservations', volume.admin_metadata)
+
+    @mock.patch('cinder.compute.nova.API.extend_volume', return_value=False)
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                'extend_volume_completion')
+    def test_extend_volume_no_wait_for_nova_fail_to_send(self,
+                                                         extend_completion,
+                                                         nova_extend):
+        volume = tests_utils.create_volume(self.context, size=2)
+        tests_utils.attach_volume(self.context, volume.id, uuids.instance,
+                                  'fake-host', '/dev/vda')
+        db.volume_update(self.context, volume.id, {'status': 'extending'})
+        volume.refresh()
+
+        with mock.patch.object(self.volume.driver, 'extend_volume'):
+            self.volume.extend_volume(self.context, volume, 4,
+                                      [uuids.reservation])
+
+            extend_completion.assert_called_once_with(self.context,
+                                                      volume,
+                                                      4,
+                                                      [uuids.reservation],
+                                                      error=False)
 
     def test_create_volume_from_sourcevol(self):
         """Test volume can be created from a source volume."""

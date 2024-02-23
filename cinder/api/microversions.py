@@ -179,6 +179,8 @@ SHARED_TARGETS_TRISTATE = '3.69'
 
 TRANSFER_ENCRYPTED_VOLUME = '3.70'
 
+EXTEND_VOLUME_COMPLETION = '3.71'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

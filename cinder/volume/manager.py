@@ -2910,8 +2910,6 @@ class VolumeManager(manager.CleanableManager,
                 volume.status = 'error_extending'
                 volume.save()
 
-        project_id = volume.project_id
-        size_increase = (int(new_size)) - volume.size
         self._notify_about_volume_usage(context, volume, "resize.start")
         try:
             self.driver.extend_volume(volume, new_size)
@@ -2921,6 +2919,38 @@ class VolumeManager(manager.CleanableManager,
         except Exception:
             LOG.exception("Extend volume failed.",
                           resource=volume)
+            self.extend_volume_completion(context, volume, new_size,
+                                          reservations, error=True)
+            return
+
+        self.extend_volume_completion(context, volume, new_size,
+                                      reservations, error=False)
+
+        attachments = volume.volume_attachment or []
+        # If instance_uuid field is None on attachment, it means that the
+        # volume is used by Glance Cinder store
+        instance_uuids = [attachment.instance_uuid
+                          for attachment in attachments
+                          if attachment.instance_uuid]
+
+        # If the volume is not attached to any instances, we should not send
+        # external events to Nova
+        if instance_uuids:
+            nova_api = compute.API()
+            nova_api.extend_volume(context, instance_uuids, volume.id)
+
+    def extend_volume_completion(self,
+                                 context: context.RequestContext,
+                                 volume: objects.Volume,
+                                 new_size: int,
+                                 reservations: list[str],
+                                 error: bool) -> None:
+
+        project_id = volume.project_id
+        size_increase = new_size - volume.size
+
+        if error:
+            LOG.error("Failed to extend volume.", resource=volume)
             self.message_api.create(
                 context,
                 message_field.Action.EXTEND_VOLUME,
@@ -2938,26 +2968,13 @@ class VolumeManager(manager.CleanableManager,
 
         QUOTAS.commit(context, reservations, project_id=project_id)
 
-        attachments = volume.volume_attachment
-        if not attachments:
+        if not volume.volume_attachment:
             orig_volume_status = 'available'
         else:
             orig_volume_status = 'in-use'
 
         volume.update({'size': int(new_size), 'status': orig_volume_status})
         volume.save()
-
-        if orig_volume_status == 'in-use':
-            nova_api = compute.API()
-            # If instance_uuid field is None on attachment, it means the
-            # request is coming from glance and not nova
-            instance_uuids = [attachment.instance_uuid
-                              for attachment in attachments
-                              if attachment.instance_uuid]
-            # If we are using glance cinder store, we should not send any
-            # external events to nova
-            if instance_uuids:
-                nova_api.extend_volume(context, instance_uuids, volume.id)
 
         pool = volume_utils.extract_host(volume.host, 'pool')
         if pool is None:

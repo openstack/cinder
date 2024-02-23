@@ -1400,6 +1400,12 @@ event_id:
   in: body
   required: true
   type: string
+extend_completion_error:
+  description: |
+    Used to indicate that the extend operation has failed outside of cinder.
+  in: body
+  required: false
+  type: boolean
 extra_info:
   description: |
     More information about the resource.
@@ -2355,6 +2361,12 @@ os-ext-snap-attr:project_id:
 os-extend:
   description: |
     The ``os-extend`` action.
+  in: body
+  required: true
+  type: object
+os-extend_volume_completion:
+  description: |
+    The ``os-extend_volume_completion`` action.
   in: body
   required: true
   type: object

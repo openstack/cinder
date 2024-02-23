@@ -26,6 +26,7 @@ from typing import (Any, DefaultDict, Iterable, Optional, Union)
 from castellan import key_manager
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
@@ -1674,6 +1675,48 @@ class API(base.Base):
         context.authorize(vol_action_policy.EXTEND_ATTACHED_POLICY,
                           target_obj=volume)
         self._extend(context, volume, new_size, attached=True)
+
+    def extend_volume_completion(self,
+                                 context: context.RequestContext,
+                                 volume: objects.Volume,
+                                 error: bool):
+        context.authorize(vol_action_policy.EXTEND_COMPLETE_POLICY,
+                          target_obj=volume)
+
+        if volume.status != 'extending':
+            msg = _('Volume is not being extended.')
+            raise exception.InvalidVolume(reason=msg)
+
+        try:
+            with volume.obj_as_admin():
+                new_size = int(volume.admin_metadata['extend_new_size'])
+                reservations = jsonutils.loads(
+                    volume.admin_metadata['extend_reservations'])
+        except (KeyError, ValueError, jsonutils.json.decoder.JSONDecodeError):
+            msg = _('Required volume admin metadata is malformed or missing.')
+            raise exception.InvalidVolume(reason=msg)
+
+        if new_size <= volume.size:
+            msg = _('The target volume size provided in volume admin metadata '
+                    '%(size)s is smaller or equal to the current volume size.'
+                    % volume.admin_metadata["extend_new_size"])
+            raise exception.InvalidVolume(reason=msg)
+
+        if type(reservations) is not list:
+            msg = _('The stored quota reservations for extending the volume '
+                    'must be in a list format.')
+            raise exception.InvalidVolume(reason=msg)
+
+        with volume.obj_as_admin():
+            del volume.admin_metadata['extend_new_size']
+            del volume.admin_metadata['extend_reservations']
+            volume.save()
+
+        self.volume_rpcapi.extend_volume_completion(context, volume, new_size,
+                                                    reservations, error)
+
+        LOG.info("Extend volume completion issued successfully.",
+                 resource=volume)
 
     def migrate_volume(self,
                        context: context.RequestContext,

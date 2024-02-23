@@ -283,6 +283,19 @@ class VolumeAdminController(AdminController):
                                                         new_volume, error)
         return {'save_volume_id': ret}
 
+    @wsgi.response(HTTPStatus.ACCEPTED)
+    @wsgi.action('os-extend_volume_completion')
+    @validation.schema(admin_actions.extend_volume_completion)
+    def _extend_volume_completion(self, req, id, body):
+        """Complete an in-progress extend operation."""
+        context = req.environ['cinder.context']
+        # Not found exception will be handled at the wsgi level
+        volume = self._get(context, id)
+        self.authorize(context, 'extend_volume_completion', target_obj=volume)
+        params = body['os-extend_volume_completion']
+        error = params.get('error', False)
+        self.volume_api.extend_volume_completion(context, volume, error)
+
 
 class SnapshotAdminController(AdminController):
     """AdminController for Snapshots."""

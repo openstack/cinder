@@ -77,6 +77,55 @@ Request Example
    :language: javascript
 
 
+Complete extending a volume
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. rest_method::  POST /v3/{project_id}/volumes/{volume_id}/action
+
+Specify the ``os-extend_volume_completion`` action in the request body.
+
+Complete extending an attached volume that has been left in status
+``extending`` after notifying the compute agent.
+Depending on the value of the ``error`` parameter, the extend operation
+will be either rolled back or finalized.
+
+**Preconditions**
+
+* The volume must have the status ``extending``.
+* The volume's admin metadata must contain a set of keys indicating that
+  Cinder was waiting for external feedback on the success of the operation.
+
+**Asynchronous Postconditions**
+
+If the ``error`` parameter is ``false`` or missing, and the extend operation
+was successfully finalized, the volume status will be ``in-use``.
+Otherwise, the volume status will be ``error_extending``.
+
+Response codes
+--------------
+
+.. rest_status_code:: success ../status.yaml
+
+   - 202
+
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - volume_id: volume_id_path
+   - project_id: project_id_path
+   - os-extend_volume_completion: os-extend_volume_completion
+   - error: extend_completion_error
+
+Request Example
+---------------
+
+.. literalinclude:: ./samples/volume-os-extend_volume_completion-request.json
+   :language: javascript
+
+
 Reset a volume's statuses
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
