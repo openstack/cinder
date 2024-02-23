@@ -117,6 +117,12 @@ class FilterScheduler(driver.Scheduler):
         # context is not serializable
         filter_properties.pop('context', None)
 
+        # SAP
+        # Update all the aggregate allocated_capacity_gb accounting
+        # for the new volume size.
+        self.host_manager.consume_from_volume_aggregate(
+            backend, request_spec['volume_properties']['size'])
+
         self.volume_rpcapi.create_volume(context, updated_volume, request_spec,
                                          filter_properties,
                                          allow_reschedule=True)
