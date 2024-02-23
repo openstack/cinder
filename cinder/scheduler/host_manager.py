@@ -428,6 +428,11 @@ class HostManager(object):
         self.service_states = {}  # { <host|cluster>: {<service>: {cap k : v}}}
         self.backend_state_map = {}
         self.backup_service_states = {}
+        # SAP keep track of original stats from backends that have
+        # an aggregate pool. This is used to calculate the stats
+        # {<backend>: {<agg_id>: {allocated_capacity_gb: 0,
+        #                         pool_name: 'pool_name'}}}
+        self.aggregate_service_states = {}
         self.filter_handler = filters.BackendFilterHandler('cinder.scheduler.'
                                                            'filters')
         self.filter_classes = self.filter_handler.get_all_classes()
@@ -517,6 +522,120 @@ class HostManager(object):
         LOG.debug("Weighed %s", weighed_backends)
         return weighed_backends
 
+    def _propagate_aggregate_stats(self, backend, capabilities):
+        """Propagate the aggregate stats to the backend capabilities.
+
+        This method is used to propagate the aggregate stats from all other
+        backends that have the same aggregate_id to the capabilities for
+        the current backend specified.
+
+        Loop through every aggregate pool and add the allocated_capacity_gb
+        from all the other backends that have the same aggregate pool. Also,
+        keep a copy of the relevant stats for each aggregate pool from the
+        driver so the stats are accurate.
+        """
+        # {agg_id: {allocated_capacity_gb: 0, pool_name: 'pool_name'}}
+        _agg_caps = {}
+        # only because of pep8 line too long
+        _agg_states = self.aggregate_service_states
+        if capabilities.get('pools'):
+            for pool in capabilities['pools']:
+                if pool.get('aggregate_id'):
+                    # First save the existing capabilities of the backend
+                    # in our aggregate_service_states
+                    agg_id = pool['aggregate_id']
+                    info = {
+                        "allocated_capacity_gb": pool['allocated_capacity_gb'],
+                        "pool_name": pool['pool_name']}
+                    _agg_caps[agg_id] = info
+                    # Now loop through all the other backends and add up
+                    # the allocated_capacity_gb for the same aggregate_id
+                    for tmp_backend in _agg_states:
+                        if tmp_backend == backend:
+                            continue
+                        for tmp_agg_id in _agg_states[tmp_backend]:
+                            if tmp_agg_id == agg_id:
+                                _caps = _agg_states[tmp_backend][tmp_agg_id]
+                                pool['allocated_capacity_gb'] += \
+                                    _caps['allocated_capacity_gb']
+        else:
+            # Backend doesn't have pools, so the stats are in the caps.
+            agg_id = capabilities.get('aggregate_id')
+            if agg_id:
+                # Because pep8 line too long
+                orig_caps = capabilities
+                info = {
+                    "allocated_capacity_gb":
+                        orig_caps['allocated_capacity_gb']}
+                _agg_caps[agg_id] = info
+                for tmp_back in _agg_states:
+                    if tmp_back == backend:
+                        continue
+                    for tmp_agg_id in _agg_states[tmp_back]:
+                        if tmp_agg_id == agg_id:
+                            _caps = _agg_states[tmp_back][tmp_agg_id]
+                            orig_caps['allocated_capacity_gb'] += \
+                                _caps['allocated_capacity_gb']
+
+        # Save the relevant stats from the original capabilities
+        # {<backend>: {<agg_id>: {allocated_capacity_gb: 0,
+        #                         pool_name: 'pool_name'}}}
+        self.aggregate_service_states[backend] = _agg_caps
+        return capabilities
+
+    def consume_from_volume_aggregate(self, backend, size):
+        """Update all the pools that match an aggregate.
+
+        This will go through all the backends that have the same aggregate
+        and update the state of the pool allocated_capacity_gb.
+
+        This is to ensure all the pool stats for the same aggregate
+        id are up to date between each call to update_service_capabilities,
+        which happens about every 60 seconds or so.
+
+        The backend passed in here has a pool assigned to the host, so we
+        know which pool just got new provisioned space against it.
+        """
+        current_backend = volume_utils.extract_host(backend.host, 'backend')
+        if current_backend not in self.aggregate_service_states:
+            # We don't have any aggregate pools to update
+            return
+
+        current_backend_host = backend.host
+        current_pool = volume_utils.extract_host(backend.host, 'pool')
+        current_agg_id = None
+
+        # Now look for an aggregate_id in the capabilities of the pool
+        if current_backend in self.backend_state_map:
+            backend_state = self.backend_state_map[current_backend]
+            caps = backend_state.pools[current_pool].capabilities
+            if "aggregate_id" in caps:
+                current_agg_id = caps['aggregate_id']
+
+        if not current_agg_id:
+            return
+
+        # we know we have an aggregate_id, so now we need to loop through
+        # all other backends and update the allocated_capacity for all the
+        # same pools with the same aggregate id.
+        for backend_key, state in self.backend_state_map.items():
+            for key in state.pools:
+                pool_state = state.pools[key]
+                if current_backend_host == "#".join([backend_key,
+                                                     pool_state.pool_name]):
+                    continue
+
+                agg_id = pool_state.capabilities.get('aggregate_id')
+                if agg_id == current_agg_id:
+                    LOG.info("Consuming %(size)s from '%(backend_key)s'"
+                             "pool '%(pool_name)s' aggregate_id "
+                             "'%(aggregate_id)s'",
+                             {'size': size, 'pool_name': pool_state.pool_name,
+                              'backend_key': backend_key,
+                              'aggregate_id': current_agg_id})
+                    pool_state.consume_from_volume({'size': size},
+                                                   update_time=False)
+
     def update_service_capabilities(self, service_name, host, capabilities,
                                     cluster_name, timestamp):
         """Update the per-service capabilities based on this notification."""
@@ -547,6 +666,14 @@ class HostManager(object):
                       {'service_name': service_name, 'host': host,
                        'cap': capabilities})
             return
+
+        if capabilities.get("has_aggregate_pool", False):
+            # This backend has an aggregate pool.
+            # We need to update the capabilities of the aggregate pool.
+            LOG.debug("Backend %s has an aggregate pool.", backend)
+            LOG.debug("Aggregate pool capabilities: %s", capabilities)
+            capab_copy = self._propagate_aggregate_stats(backend, capab_copy)
+            LOG.debug("Updated aggregate stats: %s", capab_copy)
 
         capab_old = self.service_states.get(backend, {"timestamp": 0})
         capab_last_update = self.service_states_last_update.get(

@@ -582,6 +582,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         result, datastores = self._collect_backend_stats()
         connection_capabilities = self._get_connection_capabilities()
+        has_aggregate_pool = False
         if not datastores:
             backend_state = 'down'
             data['backend_state'] = backend_state
@@ -615,6 +616,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
                 # Add any custom attributes associated with the datastore
                 custom_attributes = {}
+                aggregate_id = None
                 if "custom_attributes" in datastore:
                     custom_attributes = datastore['custom_attributes']
 
@@ -626,6 +628,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                 cinder_pool_state.lower() == 'drain'):
                             pool_state = 'down'
                             pool_down_reason = 'Datastore marked as draining'
+                    if 'cinder_aggregate_id' in custom_attributes:
+                        has_aggregate_pool = True
+                        aggregate_id = \
+                            custom_attributes['cinder_aggregate_id']
 
                 pool = {'pool_name': summary.name,
                         'total_capacity_gb': round(
@@ -649,9 +655,14 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         'custom_attributes': custom_attributes,
                         'independent_snapshots': independent_snapshot,
                         }
+                if aggregate_id:
+                    pool['aggregate_id'] = aggregate_id
 
                 pools.append(pool)
             data['pools'] = pools
+            # To help the scheduler know this backend has
+            # at least 1 aggregate based pool.
+            data['has_aggregate_pool'] = has_aggregate_pool
             return data
 
         if (self._storage_policy_enabled and self._storage_profiles):
