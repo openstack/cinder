@@ -93,6 +93,8 @@ class PowerMaxRest(object):
         self.ucode_minor_level = None
         self.is_snap_id = False
         self.u4p_version = None
+        self.rest_api_connect_timeout = 30
+        self.rest_api_read_timeout = 30
 
     def set_rest_credentials(self, array_info):
         """Given the array record set the rest server credentials.
@@ -108,6 +110,14 @@ class PowerMaxRest(object):
         self.base_uri = ("https://%(ip_port)s/univmax/restapi" % {
             'ip_port': ip_port})
         self.session = self._establish_rest_session()
+        new_connect_timeout = (
+            int(array_info.get(utils.REST_API_CONNECT_TIMEOUT_KEY, 0)))
+        if new_connect_timeout > 0:
+            self.rest_api_connect_timeout = new_connect_timeout
+        new_read_timeout = (
+            int(array_info.get(utils.REST_API_READ_TIMEOUT_KEY, 0)))
+        if new_read_timeout > 0:
+            self.rest_api_read_timeout = new_read_timeout
 
     def set_residuals(self, serial_number):
         """Set ucode and snapid information.
@@ -243,18 +253,19 @@ class PowerMaxRest(object):
             url = ("%(self.base_uri)s%(target_uri)s" % {
                 'self.base_uri': self.base_uri,
                 'target_uri': target_uri})
-
+            timeout = (self.rest_api_connect_timeout,
+                       self.rest_api_read_timeout)
             if request_object:
                 response = self.session.request(
                     method=method, url=url,
                     data=json.dumps(request_object, sort_keys=True,
-                                    indent=4))
+                                    indent=4), timeout=timeout)
             elif params:
                 response = self.session.request(
-                    method=method, url=url, params=params)
+                    method=method, url=url, params=params, timeout=timeout)
             else:
                 response = self.session.request(
-                    method=method, url=url)
+                    method=method, url=url, timeout=timeout)
 
             status_code = response.status_code
             if retry and status_code and status_code in [STATUS_200,
@@ -289,6 +300,10 @@ class PowerMaxRest(object):
 
         except (r_exc.Timeout, r_exc.ConnectionError,
                 r_exc.HTTPError) as e:
+            if isinstance(e, r_exc.Timeout):
+                msg = _("The %s request to URL %s failed with timeout "
+                        "exception %s" % (method, url, str(e)))
+                LOG.error(msg)
             if self.u4p_failover_enabled or u4p_check:
                 if not u4p_check:
                     # Failover process

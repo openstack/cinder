@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    PowerMax Driver `bug #2051830
+    <https://bugs.launchpad.net/cinder/+bug/2051830>`_: REST
+    API calls to the PowerMax backend did not have a timeout
+    set, which could result in cinder waiting forever.
+    This fix introduces two configuration options,
+    ``rest_api_connect_timeout`` and ``rest_api_read_timeout``,
+    to control timeouts when connecting to the backend.
+    The default value of each is 30 seconds.

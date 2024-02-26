@@ -136,6 +136,10 @@ POWERMAX_ARRAY_TAG_LIST = 'powermax_array_tag_list'
 POWERMAX_SHORT_HOST_NAME_TEMPLATE = 'powermax_short_host_name_template'
 POWERMAX_PORT_GROUP_NAME_TEMPLATE = 'powermax_port_group_name_template'
 PORT_GROUP_LABEL = 'port_group_label'
+REST_API_CONNECT_TIMEOUT = 'rest_api_connect_timeout'
+REST_API_READ_TIMEOUT = 'rest_api_read_timeout'
+REST_API_CONNECT_TIMEOUT_KEY = 'RestAPIConnectTimeout'
+REST_API_READ_TIMEOUT_KEY = 'RestAPIReadTimeout'
 
 # Array Models, Service Levels & Workloads
 VMAX_HYBRID_MODELS = ['VMAX100K', 'VMAX200K', 'VMAX400K']
