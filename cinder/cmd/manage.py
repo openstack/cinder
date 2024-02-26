@@ -341,7 +341,7 @@ class QuotaCommands(object):
         pass
 
     @args('--project-id', default=None,
-          help=('The ID of the project where we want to sync the quotas '
+          help=('The ID of the project where we want to check the quotas '
                 '(defaults to all projects).'))
     def check(self, project_id: Optional[str]) -> None:
         """Check if quotas and reservations are correct
@@ -381,13 +381,13 @@ class QuotaCommands(object):
 
     @db_api.main_context_manager.reader
     def _get_quota_projects(self,
-                            context: context.RequestContext,
+                            ctxt: context.RequestContext,
                             project_id: Optional[str]) -> list[str]:
         """Get project ids that have quota_usage entries."""
         if project_id:
             model = models.QuotaUsage
             # If the project does not exist
-            if not context.session.query(
+            if not ctxt.session.query(
                 db_api.sql.exists()
                 .where(
                     db_api.and_(
@@ -404,7 +404,7 @@ class QuotaCommands(object):
             return [project_id]
 
         projects = db_api.model_query(
-            context,
+            ctxt,
             models.QuotaUsage,
             read_deleted="no"
         ).with_entities('project_id').distinct().all()
@@ -417,10 +417,10 @@ class QuotaCommands(object):
                     project_id: str) -> list:
         """Get data necessary to check out of sync quota usage.
 
-        Returns a list QuotaUsage instances for the specific project
+        Returns a list of QuotaUsage instances for the specific project
         """
         usages = db_api.model_query(
-            context,
+            ctxt,
             db_api.models.QuotaUsage,
             read_deleted="no",
         ).filter_by(project_id=project_id).with_for_update().all()
@@ -433,7 +433,7 @@ class QuotaCommands(object):
         """Get reservations for a given project and usage id."""
         reservations = (
             db_api.model_query(
-                context,
+                ctxt,
                 models.Reservation,
                 read_deleted="no",
             )
@@ -444,7 +444,7 @@ class QuotaCommands(object):
         return reservations
 
     def _check_duplicates(self,
-                          context: context.RequestContext,
+                          ctxt: context.RequestContext,
                           usages,
                           do_fix: bool) -> tuple[list, bool]:
         """Look for duplicated quota used entries (bug#1484343)
@@ -471,7 +471,7 @@ class QuotaCommands(object):
                     reassigned = 0
                     for usage in resource_usages[1:]:
                         reservations = self._get_reservations(
-                            context,
+                            ctxt,
                             usage.project_id,
                             usage.id,
                         )
@@ -480,7 +480,7 @@ class QuotaCommands(object):
                             reservation.usage_id = keep_usage.id
                         keep_usage.in_use += usage.in_use
                         keep_usage.reserved += usage.reserved
-                        usage.delete(context.session)
+                        usage.delete(ctxt.session)
                     print('duplicates removed & %s reservations reassigned' %
                           reassigned)
                 else:
@@ -515,7 +515,7 @@ class QuotaCommands(object):
 
     @db_api.main_context_manager.reader
     def _check_project_sync(self,
-                            context: context.RequestContext,
+                            ctxt: context.RequestContext,
                             project: str,
                             do_fix: bool,
                             resources) -> bool:
@@ -529,11 +529,11 @@ class QuotaCommands(object):
         # running Cinder services.
 
         # We only want to sync existing quota usage rows
-        usages = self._get_usages(context, resources, project)
+        usages = self._get_usages(ctxt, resources, project)
 
         # Check for duplicated entries (bug#1484343)
         usages, duplicates_found = self._check_duplicates(
-            context, usages, do_fix,
+            ctxt, usages, do_fix,
         )
         if duplicates_found:
             discrepancy = True
@@ -543,7 +543,7 @@ class QuotaCommands(object):
             resource_name = usage.resource
             # Get the correct value for this quota usage resource
             updates = db_api._get_sync_updates(
-                context,
+                ctxt,
                 project,
                 resources,
                 resource_name,
@@ -559,7 +559,7 @@ class QuotaCommands(object):
                     usage.in_use = in_use
 
             reservations = self._get_reservations(
-                context,
+                ctxt,
                 project,
                 usage.id,
             )
