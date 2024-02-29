@@ -357,6 +357,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # PBM is enabled only for vCenter versions 5.5 and above
     PBM_ENABLED_VC_VERSION = '5.5'
 
+    # flag this driver as supporting independent snapshots
+    has_independent_snapshots = True
+
     def __init__(self, *args, **kwargs):
         super(VMwareVcVmdkDriver, self).__init__(*args, **kwargs)
 
@@ -560,7 +563,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         backend_state = 'up'
         if CONF.sap_allow_independent_snapshots:
-            independent_snapshot = 'true'
+            independent_snapshot = 'true' if self.has_independent_snapshots \
+                else 'false'
         else:
             independent_snapshot = 'false'
         data = {'volume_backend_name': backend_name,
@@ -570,6 +574,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 'location_info': location_info,
                 'backend_state': backend_state,
                 'snapshot_type': snapshot_type,
+                'has_independent_snapshots': independent_snapshot,
                 }
 
         result, datastores = self._collect_backend_stats()

@@ -58,6 +58,9 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
     STORAGE_TYPE = 'vstorageobject'
 
+    # flag this driver as not supporting independent snapshots
+    has_independent_snapshots = False
+
     def do_setup(self, context):
         """Any initialization the volume driver needs to do while starting.
 

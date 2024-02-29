@@ -642,7 +642,10 @@ class VolumeManager(manager.CleanableManager,
             # for clone based snapshots.  This only counts snapshots against
             # the snapshot/source volume's pool if the snapshot is a clone
             # of the source volume.
-            if self.driver.capabilities.get('snapshot_type') == 'clone':
+            independent_snapshots = self.driver.capabilities.get(
+                'has_independent_snapshots')
+            if (self.driver.capabilities.get('snapshot_type') == 'clone' and
+                    independent_snapshots == 'true'):
                 try:
                     for snapshot in snapshots:
                         host = None
