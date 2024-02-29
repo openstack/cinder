@@ -1,0 +1,19 @@
+---
+features:
+  - |
+    Dell EMC PowerMax driver: Added SRDF ``powermax:disable_protected_snap``
+    volume-type extra-spec property for the purpose of avoiding
+    overconsumption on both source and target storage arrays.
+
+    An operator may enable this functionality by creating a specific volume
+    type with the property::
+
+        "powermax:disable_protected_snap": "<is> True"
+
+    When disabled (which is the default and current behavior), a
+    replicated source volume will be protected with a snapshot of the
+    same volume type.
+
+    When enabled, snapshots of replicated source volumes will be treated
+    as regular, non-replicated devices.
+
