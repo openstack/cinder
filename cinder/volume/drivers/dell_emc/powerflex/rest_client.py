@@ -21,6 +21,7 @@ import urllib.parse
 from oslo_log import log as logging
 from oslo_utils import units
 import requests
+from requests.exceptions import Timeout
 
 from cinder import exception
 from cinder.i18n import _
@@ -60,6 +61,8 @@ class RestClient(object):
         self.certificate_path = None
         self.base_url = None
         self.is_configured = False
+        self.rest_api_connect_timeout = 30
+        self.rest_api_read_timeout = 30
 
     @staticmethod
     def _get_headers():
@@ -103,6 +106,12 @@ class RestClient(object):
         )
         self.rest_username = get_config_value("san_login")
         self.rest_password = get_config_value("san_password")
+        self.rest_api_connect_timeout = (
+            get_config_value(flex_utils.POWERFLEX_REST_CONNECT_TIMEOUT)
+            or self.rest_api_connect_timeout)
+        self.rest_api_read_timeout = (
+            get_config_value(flex_utils.POWERFLEX_REST_READ_TIMEOUT)
+            or self.rest_api_read_timeout)
         if self.verify_certificate:
             self.certificate_path = (
                 get_config_value("sio_server_certificate_path") or
@@ -125,13 +134,17 @@ class RestClient(object):
                              "server_port": self.rest_port
                          })
         LOG.info("REST server IP: %(ip)s, port: %(port)s, "
-                 "username: %(user)s. Verify server's certificate: "
+                 "username: %(user)s, rest connect timeout: "
+                 "%(rest_api_connect_timeout)s, rest read timeout: "
+                 "%(rest_api_read_timeout)s. Verify server's certificate: "
                  "%(verify_cert)s.",
                  {
                      "ip": self.rest_ip,
                      "port": self.rest_port,
                      "user": self.rest_username,
                      "verify_cert": self.verify_certificate,
+                     "rest_api_connect_timeout": self.rest_api_connect_timeout,
+                     "rest_api_read_timeout": self.rest_api_read_timeout
                  })
         self.is_configured = True
 
@@ -454,29 +467,50 @@ class RestClient(object):
         return verify_cert
 
     def execute_powerflex_get_request(self, url, **url_params):
-        request = self.base_url + url % url_params
-        r = requests.get(request,
-                         auth=(self.rest_username, self.rest_token),
-                         verify=self._get_verify_cert())
-        r = self._check_response(r, request)
-        response = r.json()
+        r = requests.Response
+        try:
+            request = self.base_url + url % url_params
+            timeout = (self.rest_api_connect_timeout,
+                       self.rest_api_read_timeout)
+            r = requests.get(request,
+                             auth=(self.rest_username, self.rest_token),
+                             verify=self._get_verify_cert(), timeout=timeout)
+            r = self._check_response(r, request)
+            response = r.json()
+        except Timeout as e:
+            r.status_code = http_client.INTERNAL_SERVER_ERROR
+            msg = _("The request to URL %s failed with timeout "
+                    "exception %s" % (url, str(e)))
+            LOG.error(msg)
+            response = {'errorCode': http_client.INTERNAL_SERVER_ERROR,
+                        'message': msg}
         return r, response
 
     def execute_powerflex_post_request(self, url, params=None, **url_params):
-        if not params:
-            params = {}
-        request = self.base_url + url % url_params
-        r = requests.post(request,
-                          data=json.dumps(params),
-                          headers=self._get_headers(),
-                          auth=(self.rest_username, self.rest_token),
-                          verify=self._get_verify_cert())
-        r = self._check_response(r, request, False, params)
-        response = None
+        r = requests.Response
         try:
-            response = r.json()
-        except ValueError:
-            response = None
+            if not params:
+                params = {}
+            request = self.base_url + url % url_params
+            timeout = (self.rest_api_connect_timeout,
+                       self.rest_api_read_timeout)
+            r = requests.post(request,
+                              data=json.dumps(params),
+                              headers=self._get_headers(),
+                              auth=(self.rest_username, self.rest_token),
+                              verify=self._get_verify_cert(), timeout=timeout)
+            r = self._check_response(r, request, False, params)
+            try:
+                response = r.json()
+            except ValueError:
+                response = None
+        except Timeout as e:
+            r.status_code = http_client.INTERNAL_SERVER_ERROR
+            msg = _("The request to URL %s failed with timeout "
+                    "exception %s" % (url, str(e)))
+            LOG.error(msg)
+            response = {'errorCode': http_client.INTERNAL_SERVER_ERROR,
+                        'message': msg}
         return r, response
 
     def _check_response(self,
@@ -492,9 +526,11 @@ class RestClient(object):
                      "a new one.")
             login_request = self.base_url + login_url
             verify_cert = self._get_verify_cert()
+            timeout = (self.rest_api_connect_timeout,
+                       self.rest_api_read_timeout)
             r = requests.get(login_request,
                              auth=(self.rest_username, self.rest_password),
-                             verify=verify_cert)
+                             verify=verify_cert, timeout=timeout)
             token = r.json()
             self.rest_token = token
             # Repeat request with valid token.
@@ -506,7 +542,8 @@ class RestClient(object):
                                             self.rest_username,
                                             self.rest_token
                                         ),
-                                        verify=verify_cert)
+                                        verify=verify_cert,
+                                        timeout=timeout)
             else:
                 response = requests.post(request,
                                          data=json.dumps(params),
@@ -515,7 +552,8 @@ class RestClient(object):
                                              self.rest_username,
                                              self.rest_token
                                          ),
-                                         verify=verify_cert)
+                                         verify=verify_cert,
+                                         timeout=timeout)
         level = logging.DEBUG
         # for anything other than an OK from the REST API, log an error
         if response.status_code != http_client.OK:
