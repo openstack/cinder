@@ -1641,6 +1641,7 @@ class VolumeManager(manager.CleanableManager,
             new_vol_values['attach_status'] = (
                 fields.VolumeAttachStatus.DETACHED)
             new_vol_values['status'] = 'creating'
+            new_vol_values['user_id'] = ctx.user_id
             new_vol_values['project_id'] = ctx.project_id
             new_vol_values['display_name'] = 'image-%s' % image_meta['id']
             new_vol_values['source_volid'] = volume.id

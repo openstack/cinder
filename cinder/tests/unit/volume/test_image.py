@@ -518,6 +518,14 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
                                              gigabytes_vol_type_name=vol.size)
         mock_commit.assert_called_once_with(self.context, ["RESERVATION"],
                                             project_id=vol.project_id)
+        # Validate that correct properties are set in the clone volume
+        self.assertEqual(vol.volume_type_id, result.volume_type_id)
+        self.assertEqual('detached', result.attach_status)
+        self.assertEqual('available', result.status)
+        self.assertEqual(self.context.user_id, result.user_id)
+        self.assertEqual(self.context.project_id, result.project_id)
+        self.assertEqual('image-%s' % fake.VOLUME_ID, result.display_name)
+        self.assertEqual(vol.id, result.source_volid)
 
     @mock.patch('cinder.quota.QUOTAS.rollback')
     @mock.patch('cinder.quota.QUOTAS.commit')
