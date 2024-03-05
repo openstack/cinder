@@ -23,6 +23,7 @@
               - ^cinder/tests/unit.*$
               - ^doc/.*$
               - ^releasenotes/.*$
+              - ^reno.yaml$
         - openstack-tox-functional-py310:
             irrelevant-files: *functional-irrelevant-files
         - cinder-rally-task:
@@ -39,6 +40,7 @@
               - ^cinder/tests/unit.*$
               - ^doc/.*$
               - ^releasenotes/.*$
+              - ^reno.yaml$
         - cinder-plugin-ceph-tempest:
             irrelevant-files: &gate-irrelevant-files
               - ^(test-|)requirements.txt$
@@ -51,6 +53,7 @@
               - ^cinder/tests/unit.*$
               - ^doc/.*$
               - ^releasenotes/.*$
+              - ^reno.yaml$
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
@@ -71,6 +74,7 @@
               - ^cinder/tests/unit.*$
               - ^doc/.*$
               - ^releasenotes/.*$
+              - ^reno.yaml$
               - ^tools/.*$
         - cinder-tempest-plugin-lvm-lio-barbican-fips:
             voting: false
@@ -150,6 +154,7 @@
       - ^cinder/locale/.*$
       - ^doc/.*$
       - ^releasenotes/.*$
+      - ^reno.yaml$
       - ^setup.cfg$
       - ^tools/.*$
       - ^tox.ini$
