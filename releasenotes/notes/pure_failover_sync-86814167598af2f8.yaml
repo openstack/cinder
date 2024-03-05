@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Pure Storage driver: Allow synchronously replicated volumes
+    to be created during a replication failover event. These will
+    remain viable volumes when the replication is failed back to
+    its original state.
+fixes:
+  - |
+    [Pure Storage] `Bug #2035404 <https://bugs.launchpad.net/cinder/+bug/2035404>`_:
+    Fixed issue with missing replication pod causing driver to fail on restart.
