@@ -860,3 +860,62 @@ class RestClient(object):
             msg = (_("Failed to set SDC limits: %s.") % response["message"])
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+    """
+       BEGIN - Methods for NVMe-TCP support
+    """
+
+    def query_system_id_nqn(self):
+        url = "/types/System/instances"
+
+        r, response = self.execute_powerflex_get_request(url)
+        if r.status_code != http_client.OK and "errorCode" in response:
+            msg = (_("Failed to query system nqn: %s.") % response["message"])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response[0]["id"], response[0]["systemNqn"]
+
+    def query_SDTs(self):
+        url = "/types/Sdt/instances"
+
+        r, response = self.execute_powerflex_get_request(url)
+        if r.status_code != http_client.OK and "errorCode" in response:
+            msg = (_("Failed to query SDTs: %s.") % response["message"])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response
+
+    def query_hosts(self):
+        url = "/types/Host/instances"
+
+        r, response = self.execute_powerflex_get_request(url)
+        if r.status_code != http_client.OK and "errorCode" in response:
+            msg = (_("Failed to query hosts: %s.") % response["message"])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response
+
+    def query_host_by_nqn(self, nqn):
+        response = self.query_hosts()
+        for host in response:
+            if host["nqn"] and host["nqn"].lower() == nqn.lower():
+                return host["id"]
+        return None
+
+    def create_nvme_host(self, name, nqn):
+        url = "/types/Host/instances"
+
+        params = {
+            "nqn": nqn,
+            "name": name,
+        }
+        r, response = self.execute_powerflex_post_request(url, params)
+        if r.status_code != http_client.OK and "errorCode" in response:
+            msg = (_("Failed to create nvme host: %s.") % response["message"])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response["id"]
+
+    """
+       END - Methods for NVMe-TCP support
+    """

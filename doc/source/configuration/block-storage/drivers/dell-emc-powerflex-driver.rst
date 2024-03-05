@@ -57,8 +57,9 @@ Deployment prerequisites
   and the Gateway section in PowerFlex Deployment Guide. See
   :ref:`powerflex_docs`.
 
-* PowerFlex Storage Data Client (SDC) must be installed
-  on all OpenStack nodes.
+* PowerFlex supports SDC and NVMe-oF connectivity.
+  The PowerFlex Storage Data Client (SDC) must be installed
+  on all OpenStack nodes when using SDC connectivity.
 
 .. note:: Ubuntu users must follow the specific instructions in the PowerFlex
           OS Deployment Guide for Ubuntu environments. See the ``Deploying
@@ -112,9 +113,19 @@ PowerFlex driver name
 
 Configure the driver name by adding the following parameter:
 
-.. code-block:: ini
+#. SDC connectivity
 
-   volume_driver = cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver
+   .. code-block:: ini
+
+      volume_driver = cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver
+
+#. NVMe-oF connectivity
+
+   .. code-block:: ini
+
+      volume_driver = cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexNVMeDriver
+
+   .. note:: PowerFlex supports NVMe over TCP since version 4.0.
 
 PowerFlex Gateway server IP
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -204,7 +215,7 @@ For a configuration example, see:
 Configuration example
 ~~~~~~~~~~~~~~~~~~~~~
 
-**cinder.conf example file**
+**cinder.conf example file for SDC connectivity:**
 
 You can update the ``cinder.conf`` file by editing the necessary
 parameters as follows:
@@ -221,7 +232,24 @@ parameters as follows:
    powerflex_storage_pools = Domain1:Pool1,Domain2:Pool2
    san_login = POWERFLEX_USER
    san_password = POWERFLEX_PASSWD
-   san_thin_provision = false
+
+**cinder.conf example file for NVMe-oF connectivity:**
+
+You can update the ``cinder.conf`` file by editing the necessary
+parameters as follows:
+
+.. code-block:: ini
+
+   [DEFAULT]
+   enabled_backends = powerflex
+
+   [powerflex]
+   volume_driver = cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexNVMeDriver
+   volume_backend_name = powerflex
+   san_ip = GATEWAY_IP
+   powerflex_storage_pools = Domain1:Pool1,Domain2:Pool2
+   san_login = POWERFLEX_USER
+   san_password = POWERFLEX_PASSWD
 
 Connector configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -316,6 +344,8 @@ of the volume type, as follows:
 PowerFlex QoS support
 ~~~~~~~~~~~~~~~~~~~~~
 
+.. note:: PowerFlex does not support QoS of volumes mapped to NVMe hosts.
+
 QoS support for the PowerFlex driver includes the ability to set the
 following capabilities:
 
@@ -399,6 +429,8 @@ PowerFlex replication support
 -----------------------------
 
 Starting from version 3.5, PowerFlex supports volume replication.
+
+.. note:: PowerFlex does not support replication of volumes mapped to NVMe hosts.
 
 Prerequisites
 ~~~~~~~~~~~~~

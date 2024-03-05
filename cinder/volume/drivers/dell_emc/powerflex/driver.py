@@ -29,6 +29,7 @@ from oslo_utils import units
 
 from cinder.common import constants
 from cinder import context
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -66,10 +67,11 @@ QOS_BANDWIDTH_PER_GB = "maxBWSperGB"
 BLOCK_SIZE = 8
 MIN_BWS_SCALING_SIZE = 128
 POWERFLEX_MAX_OVERSUBSCRIPTION_RATIO = 10.0
+POWERFLEX_VENDOR_ID = "0x64B94E"
 
 
 @interface.volumedriver
-class PowerFlexDriver(driver.VolumeDriver):
+class PowerFlexBaseDriver(driver.VolumeDriver):
     """Cinder PowerFlex(formerly named Dell EMC VxFlex OS) Driver
 
     .. code-block:: none
@@ -93,9 +95,10 @@ class PowerFlexDriver(driver.VolumeDriver):
           3.5.8 - Added Cinder active/active support.
           3.6.0 - Improved secret handling.
           3.6.1 - Fix for Bug #2138280 volume detach issue.
+          4.0.0 - Add NVMe-TCP support.
     """
 
-    VERSION = "3.6.1"
+    VERSION = "4.0.0"
     SUPPORTS_ACTIVE_ACTIVE = True
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerFlex_CI"
@@ -106,7 +109,7 @@ class PowerFlexDriver(driver.VolumeDriver):
                           QOS_BANDWIDTH_PER_GB)
 
     def __init__(self, *args, **kwargs):
-        super(PowerFlexDriver, self).__init__(*args, **kwargs)
+        super(PowerFlexBaseDriver, self).__init__(*args, **kwargs)
 
         self.active_backend_id = kwargs.get("active_backend_id")
         self.configuration.append_config_values(san.san_opts)
@@ -114,6 +117,8 @@ class PowerFlexDriver(driver.VolumeDriver):
         self.statisticProperties = None
         self.storage_pools = None
         self.provisioning_type = None
+        # storage protocol: scaleio or NVMe-TCP
+        self.storage_protocol = None
         self.replication_enabled = None
         self.replication_device = None
         self.failover_choices = None
@@ -884,7 +889,7 @@ class PowerFlexDriver(driver.VolumeDriver):
         self._get_client().remove_volume(snapshot.provider_id)
 
     def initialize_connection(self, volume, connector, **kwargs):
-        res = self._initialize_connection(volume, connector, volume.size)
+        res = self._initialize_connection(volume, connector)
 
         # TODO: Should probably be enabled for SSDs as well
         # It is recommended not to trim volumes that contain snapshots as the
@@ -893,57 +898,8 @@ class PowerFlexDriver(driver.VolumeDriver):
             res['data']['discard'] = True
         return res
 
-    def _initialize_connection(self, vol_or_snap, connector, vol_size):
-        """Initialize connection and return connection info.
-
-        PowerFlex driver returns a driver_volume_type of 'scaleio'.
-        """
-
-        try:
-            sdc_guid = connector["sdc_guid"]
-        except Exception:
-            msg = "SDC guid is not configured."
-            raise exception.InvalidHost(reason=msg)
-
-        LOG.info("Initialize connection for %(vol_id)s to SDC %(sdc)s.",
-                 {"vol_id": vol_or_snap.id, "sdc": sdc_guid})
-        connection_properties = {}
-        volume_name = flex_utils.id_to_base64(vol_or_snap.id)
-        connection_properties["scaleIO_volname"] = volume_name
-        connection_properties["scaleIO_volume_id"] = vol_or_snap.provider_id
-        # This will be required when calling initialize connection on cinder
-        # side for operation like creating bootable volume from image.
-        # This indicates that handling for detach is done on the driver
-        # side and not on os-brick side.
-        connection_properties["sdc_guid"] = sdc_guid
-
-        # map volume
-        sdc_id = self._get_client().query_sdc_id_by_guid(sdc_guid)
-        self._attach_volume_to_host(vol_or_snap, sdc_id)
-
-        # verify volume is mapped
-        self._check_volume_mapped(sdc_id, vol_or_snap.provider_id)
-
-        if vol_size is not None:
-            extra_specs = self._get_volumetype_extraspecs(vol_or_snap)
-            qos_specs = self._get_volumetype_qos(vol_or_snap)
-            storage_type = extra_specs.copy()
-            storage_type.update(qos_specs)
-            round_volume_size = flex_utils.round_to_num_gran(vol_size)
-            iops_limit = self._get_iops_limit(round_volume_size, storage_type)
-            bandwidth_limit = self._get_bandwidth_limit(round_volume_size,
-                                                        storage_type)
-            LOG.info("IOPS limit: %s.", iops_limit)
-            LOG.info("Bandwidth limit: %s.", bandwidth_limit)
-
-        # Set QoS settings after map was performed
-        if iops_limit is not None or bandwidth_limit is not None:
-            self._get_client().set_sdc_limits(vol_or_snap.provider_id, sdc_id,
-                                              bandwidth_limit, iops_limit)
-        return {
-            "driver_volume_type": "scaleio",
-            "data": connection_properties,
-        }
+    def _initialize_connection(self, vol_or_snap, connector):
+        raise NotImplementedError
 
     def _attach_volume_to_host(self, volume, sdc_id):
         """Attach PowerFlex volume to host.
@@ -1005,101 +961,12 @@ class PowerFlexDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(msg)
         LOG.info("Volume %s is mapped to SDC %s.", volume_id, sdc_id)
 
-    @staticmethod
-    def _get_bandwidth_limit(size, storage_type):
-        try:
-            max_bandwidth = storage_type.get(QOS_BANDWIDTH_LIMIT)
-            if max_bandwidth is not None:
-                max_bandwidth = flex_utils.round_to_num_gran(
-                    int(max_bandwidth),
-                    units.Ki
-                )
-                max_bandwidth = str(max_bandwidth)
-            LOG.info("Max bandwidth: %s.", max_bandwidth)
-            bw_per_gb = storage_type.get(QOS_BANDWIDTH_PER_GB)
-            LOG.info("Bandwidth per GB: %s.", bw_per_gb)
-            if bw_per_gb is None:
-                return max_bandwidth
-            # Since PowerFlex volumes size is in 8GB granularity
-            # and BWS limitation is in 1024 KBs granularity, we need to make
-            # sure that scaled_bw_limit is in 128 granularity.
-            scaled_bw_limit = (
-                size * flex_utils.round_to_num_gran(int(bw_per_gb),
-                                                    MIN_BWS_SCALING_SIZE)
-            )
-            if max_bandwidth is None or scaled_bw_limit < int(max_bandwidth):
-                return str(scaled_bw_limit)
-            else:
-                return str(max_bandwidth)
-        except ValueError:
-            msg = _("None numeric BWS QoS limitation.")
-            raise exception.InvalidInput(reason=msg)
-
-    @staticmethod
-    def _get_iops_limit(size, storage_type):
-        max_iops = storage_type.get(QOS_IOPS_LIMIT_KEY)
-        LOG.info("Max IOPS: %s.", max_iops)
-        iops_per_gb = storage_type.get(QOS_IOPS_PER_GB)
-        LOG.info("IOPS per GB: %s.", iops_per_gb)
-        try:
-            if iops_per_gb is None:
-                if max_iops is not None:
-                    return str(max_iops)
-                else:
-                    return None
-            scaled_iops_limit = size * int(iops_per_gb)
-            if max_iops is None or scaled_iops_limit < int(max_iops):
-                return str(scaled_iops_limit)
-            else:
-                return str(max_iops)
-        except ValueError:
-            msg = _("None numeric IOPS QoS limitation.")
-            raise exception.InvalidInput(reason=msg)
-
+    @coordination.synchronized("powerflex-vol-{volume.id}")
     def terminate_connection(self, volume, connector, **kwargs):
         self._terminate_connection(volume, connector)
 
-    def _terminate_connection(self, volume_or_snap, connector):
-        """Terminate connection to volume or snapshot.
-
-        With PowerFlex, snaps and volumes are terminated identically.
-        """
-
-        if connector is None:
-            self._detach_volume_from_host(volume_or_snap)
-            return
-
-        if "sdc_guid" in connector:
-            sdc_guid = connector["sdc_guid"]
-            LOG.info("Terminate connection for %(vol_id)s to SDC %(sdc)s.",
-                     {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
-            if isinstance(volume_or_snap, Volume):
-                is_multiattached = self._is_multiattached_to_host(
-                    volume_or_snap.volume_attachment,
-                    connector["host"]
-                )
-                if is_multiattached:
-                    # Do not detach volume if it is attached to more than one
-                    # instance on the same host.
-                    LOG.info("Will not terminate connection for "
-                             "%(vol_id)s to initiator at %(sdc)s "
-                             "because it's multiattach.",
-                             {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
-                    return
-
-            # unmap volume
-            host_id = self._get_client().query_sdc_id_by_guid(sdc_guid)
-            self._detach_volume_from_host(volume_or_snap, host_id)
-
-            self._check_volume_unmapped(host_id, volume_or_snap.provider_id)
-
-            LOG.info("Terminated connection for %(vol_id)s to SDC %(sdc)s.",
-                     {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
-
-        else:
-            LOG.info("Terminate legacy volume connection for "
-                     "%(vol_id)s done at os-brick side.",
-                     {"vol_id": volume_or_snap.id})
+    def _terminate_connection(self, vol_or_snap, connector):
+        raise NotImplementedError
 
     @staticmethod
     def _is_multiattached_to_host(volume_attachment, host_name):
@@ -1126,7 +993,7 @@ class PowerFlexDriver(driver.VolumeDriver):
         return len(attachments) > 1
 
     def _detach_volume_from_host(self, volume, sdc_id=None):
-        """Detach PowerFlex volume from nvme host.
+        """Detach PowerFlex volume from SDC or nvme host.
 
         :param volume: OpenStack volume object
         :param sdc_id: PowerFlex SDC id
@@ -1225,7 +1092,7 @@ class PowerFlexDriver(driver.VolumeDriver):
         stats["volume_backend_name"] = backend_name or "powerflex"
         stats["vendor_name"] = "Dell EMC"
         stats["driver_version"] = self.VERSION
-        stats["storage_protocol"] = constants.SCALEIO
+        stats["storage_protocol"] = self.storage_protocol
         stats["reserved_percentage"] = 0
         stats["QoS_support"] = True
         stats["consistent_group_snapshot_enabled"] = True
@@ -2064,16 +1931,12 @@ class PowerFlexDriver(driver.VolumeDriver):
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
         """Initialize connection and return connection info."""
 
-        try:
-            vol_size = snapshot.volume_size
-        except Exception:
-            vol_size = None
-        return self._initialize_connection(snapshot, connector, vol_size)
+        return self._initialize_connection(snapshot, connector)
 
     def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
         """Terminate connection to snapshot."""
 
-        return self._terminate_connection(snapshot, connector)
+        self._terminate_connection(snapshot, connector)
 
     def create_export_snapshot(self, context, volume, connector):
         """Driver entry point to get export info for snapshot."""
@@ -2085,3 +1948,360 @@ class PowerFlexDriver(driver.VolumeDriver):
 
     def backup_use_temp_snapshot(self):
         return True
+
+
+@interface.volumedriver
+class PowerFlexDriver(PowerFlexBaseDriver):
+
+    def do_setup(self, context):
+        super(PowerFlexDriver, self).do_setup(context)
+
+        self.storage_protocol = constants.SCALEIO
+        LOG.info("Storage protocol: %s.", self.storage_protocol)
+
+    def _initialize_connection(self, vol_or_snap, connector):
+        """Initialize connection and return connection info.
+
+        PowerFlex driver returns a driver_volume_type of 'scaleio'.
+        """
+
+        try:
+            sdc_guid = connector["sdc_guid"]
+        except Exception:
+            msg = "SDC guid is not configured."
+            raise exception.InvalidHost(reason=msg)
+
+        LOG.info("Initialize %(protocol)s connection for %(vol_id)s to "
+                 "SDC %(sdc)s.",
+                 {"protocol": self.storage_protocol,
+                  "vol_id": vol_or_snap.id, "sdc": sdc_guid})
+        connection_properties = {}
+        volume_name = flex_utils.id_to_base64(vol_or_snap.id)
+        connection_properties["scaleIO_volname"] = volume_name
+        connection_properties["scaleIO_volume_id"] = vol_or_snap.provider_id
+        # This will be required when calling initialize connection on cinder
+        # side for operation like creating bootable volume from image.
+        # This indicates that handling for detach is done on the driver
+        # side and not on os-brick side.
+        connection_properties["sdc_guid"] = sdc_guid
+
+        # map volume
+        sdc_id = self._get_client().query_sdc_id_by_guid(sdc_guid)
+        self._attach_volume_to_host(vol_or_snap, sdc_id)
+
+        # verify volume is mapped
+        self._check_volume_mapped(sdc_id, vol_or_snap.provider_id)
+
+        if isinstance(vol_or_snap, objects.Volume):
+            vol_size = vol_or_snap.size
+        else:
+            vol_size = getattr(vol_or_snap, "volume_size", None)
+
+        if vol_size is not None:
+            extra_specs = self._get_volumetype_extraspecs(vol_or_snap)
+            qos_specs = self._get_volumetype_qos(vol_or_snap)
+            storage_type = extra_specs.copy()
+            storage_type.update(qos_specs)
+            round_volume_size = flex_utils.round_to_num_gran(vol_size)
+            iops_limit = self._get_iops_limit(round_volume_size, storage_type)
+            bandwidth_limit = self._get_bandwidth_limit(round_volume_size,
+                                                        storage_type)
+            LOG.info("IOPS limit: %s.", iops_limit)
+            LOG.info("Bandwidth limit: %s.", bandwidth_limit)
+
+            # Set QoS settings after map was performed
+            if iops_limit is not None or bandwidth_limit is not None:
+                self._get_client().set_sdc_limits(vol_or_snap.provider_id,
+                                                  sdc_id, bandwidth_limit,
+                                                  iops_limit)
+        return {
+            "driver_volume_type": self.storage_protocol,
+            "data": connection_properties,
+        }
+
+    @staticmethod
+    def _get_bandwidth_limit(size, storage_type):
+        try:
+            max_bandwidth = storage_type.get(QOS_BANDWIDTH_LIMIT)
+            if max_bandwidth is not None:
+                max_bandwidth = flex_utils.round_to_num_gran(
+                    int(max_bandwidth),
+                    units.Ki
+                )
+                max_bandwidth = str(max_bandwidth)
+            LOG.info("Max bandwidth: %s.", max_bandwidth)
+            bw_per_gb = storage_type.get(QOS_BANDWIDTH_PER_GB)
+            LOG.info("Bandwidth per GB: %s.", bw_per_gb)
+            if bw_per_gb is None:
+                return max_bandwidth
+            # Since PowerFlex volumes size is in 8GB granularity
+            # and BWS limitation is in 1024 KBs granularity, we need to make
+            # sure that scaled_bw_limit is in 128 granularity.
+            scaled_bw_limit = (
+                size * flex_utils.round_to_num_gran(int(bw_per_gb),
+                                                    MIN_BWS_SCALING_SIZE)
+            )
+            if max_bandwidth is None or scaled_bw_limit < int(max_bandwidth):
+                return str(scaled_bw_limit)
+            else:
+                return str(max_bandwidth)
+        except ValueError:
+            msg = _("None numeric BWS QoS limitation.")
+            raise exception.InvalidInput(reason=msg)
+
+    @staticmethod
+    def _get_iops_limit(size, storage_type):
+        max_iops = storage_type.get(QOS_IOPS_LIMIT_KEY)
+        LOG.info("Max IOPS: %s.", max_iops)
+        iops_per_gb = storage_type.get(QOS_IOPS_PER_GB)
+        LOG.info("IOPS per GB: %s.", iops_per_gb)
+        try:
+            if iops_per_gb is None:
+                if max_iops is not None:
+                    return str(max_iops)
+                else:
+                    return None
+            scaled_iops_limit = size * int(iops_per_gb)
+            if max_iops is None or scaled_iops_limit < int(max_iops):
+                return str(scaled_iops_limit)
+            else:
+                return str(max_iops)
+        except ValueError:
+            msg = _("None numeric IOPS QoS limitation.")
+            raise exception.InvalidInput(reason=msg)
+
+    def _terminate_connection(self, volume_or_snap, connector):
+        """Terminate connection to volume or snapshot.
+
+        With PowerFlex, snaps and volumes are terminated identically.
+        """
+
+        if connector is None:
+            self._detach_volume_from_host(volume_or_snap)
+            return
+
+        if "sdc_guid" in connector:
+            sdc_guid = connector["sdc_guid"]
+            LOG.info("Terminate connection for %(vol_id)s to SDC %(sdc)s.",
+                     {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
+            if isinstance(volume_or_snap, Volume):
+                is_multiattached = self._is_multiattached_to_host(
+                    volume_or_snap.volume_attachment,
+                    connector["host"]
+                )
+                if is_multiattached:
+                    # Do not detach volume if it is attached to more than one
+                    # instance on the same host.
+                    LOG.info("Will not terminate %(protocol)s connection for "
+                             "%(vol_id)s to SDC at %(sdc)s "
+                             "because it's multiattach.",
+                             {"protocol": self.storage_protocol,
+                              "vol_id": volume_or_snap.id, "sdc": sdc_guid})
+                    return
+
+            # unmap volume
+            host_id = self._get_client().query_sdc_id_by_guid(sdc_guid)
+            self._detach_volume_from_host(volume_or_snap, host_id)
+
+            self._check_volume_unmapped(host_id, volume_or_snap.provider_id)
+
+            LOG.info("Terminated %(protocol)s connection for %(vol_id)s to "
+                     "SDC %(sdc)s.",
+                     {"protocol": self.storage_protocol,
+                      "vol_id": volume_or_snap.id, "sdc": sdc_guid})
+
+        else:
+            LOG.info("Terminate legacy volume connection for "
+                     "%(vol_id)s done at os-brick side.",
+                     {"vol_id": volume_or_snap.id})
+
+
+@interface.volumedriver
+class PowerFlexNVMeDriver(PowerFlexBaseDriver):
+
+    def do_setup(self, context):
+        super(PowerFlexNVMeDriver, self).do_setup(context)
+
+        self.storage_protocol = constants.NVMEOF_TCP
+        LOG.info("Storage protocol: %s.", self.storage_protocol)
+
+    def check_for_setup_error(self):
+        super(PowerFlexNVMeDriver, self).check_for_setup_error()
+        # validate nvmeof configuration
+        self._validate_nvme()
+
+    def _validate_nvme(self):
+        primary_version = self.primary_client.query_rest_api_version()
+        if not flex_utils.version_gte(primary_version, "4.0"):
+            msg = (_("PowerFlex version %s does not support NVMe-TCP."
+                     ) % primary_version)
+            raise exception.VolumeDriverException(message=msg)
+        if self.secondary_client.is_configured:
+            msg = ("PowerFlex does not support attaching "
+                   "replicated volumes to NVMe-TCP hosts.")
+            raise exception.InvalidInput(reason=msg)
+
+    def _initialize_connection(self, vol_or_snap, connector):
+        """Initialize connection and return connection info.
+
+        PowerFlex driver returns a driver_volume_type of 'nvmeof'.
+        """
+
+        try:
+            nqn = connector["nqn"]
+        except Exception:
+            msg = "Host nqn is not configured."
+            raise exception.InvalidHost(reason=msg)
+
+        LOG.info(
+            "Initialize %(protocol)s connection for %(vol_id)s "
+            "to initiator %(initiator)s.",
+            {"protocol": self.storage_protocol,
+             "vol_id": vol_or_snap.id, "initiator": nqn})
+        self._create_host_and_attach(connector, vol_or_snap)
+        return self._get_nvme_connection_properties(vol_or_snap.provider_id)
+
+    def _get_nvme_connection_properties(self, volume_provider_id):
+        """Fill connection properties dict with data to attach volume.
+
+        :param volume_provider_id: attached volume provider id
+        :return: connection properties
+        """
+        portals, system_id, system_nqn = self._get_nvme_targets()
+        return {
+            "driver_volume_type": constants.NVMEOF_VARIANT_2,
+            "data": {
+                "portals": portals,
+                "target_nqn": system_nqn,
+                "volume_nguid": self._get_volume_nguid(
+                    volume_provider_id, system_id),
+                "discard": True,
+            },
+        }
+
+    def _get_nvme_targets(self):
+        """Get available NVMe portals and subsystem info.
+
+        :return: NVMe portals, system ID and NQN
+        """
+
+        portals = []
+        sdts = self._get_client().query_SDTs()
+        for sdt in sdts:
+            port = sdt.get("nvmePort", 4420)
+            for ip in sdt["ipList"]:
+                portal = (ip["ip"], port, "tcp")
+                if portal not in portals:
+                    portals.append(portal)
+
+        if not portals:
+            msg = _("There are no accessible NVMe targets on the "
+                    "system.")
+            raise exception.VolumeBackendAPIException(data=msg)
+        id, nqn = self._get_client().query_system_id_nqn()
+        return portals, id, nqn
+
+    def _create_host_and_attach(self, connector, volume):
+        """Create PowerFlex host and attach volume.
+
+        :param connector: connection properties
+        :param volume: OpenStack volume object
+        """
+        nqn = connector["nqn"]
+        host_id = self._create_host_if_not_exist(nqn, connector)
+        self._attach_volume_to_host(volume, host_id)
+        self._check_volume_mapped(host_id, volume.provider_id)
+
+    @coordination.synchronized("PowerFlex-create-host-{nqn}")
+    def _create_host_if_not_exist(self, nqn, connector):
+        """Create PowerFlex host if it does not exist.
+
+        :param connector: connection properties
+        :return: PowerFlex host id
+        """
+        host_id = self._get_client().query_host_by_nqn(nqn)
+        if not host_id:
+            host_name = self._powerflex_host_name(
+                connector,
+                self.storage_protocol
+            )
+            LOG.debug("Create PowerFlex host %(host_name)s. "
+                      "nqn: %(nqn)s.",
+                      {
+                          "host_name": host_name,
+                          "nqn": nqn,
+                      })
+
+            host_id = self._get_client().create_nvme_host(host_name, nqn)
+            LOG.debug("Successfully created PowerFlex host %(host_name)s. "
+                      "nqn: %(nqn)s. PowerFlex host id: "
+                      "%(host_provider_id)s.",
+                      {
+                          "host_name": host_name,
+                          "nqn": nqn,
+                          "host_provider_id": host_id,
+                      })
+        return host_id
+
+    @staticmethod
+    def _get_volume_nguid(volume_id, system_id):
+        return "%s%s%s" % (volume_id,
+                           POWERFLEX_VENDOR_ID[2:].lower(),
+                           system_id[-10:])
+
+    @staticmethod
+    def _powerflex_host_name(connector, protocol):
+        """Generate PowerFlex host name for connector.
+
+        :param connector: connection properties
+        :param protocol: storage protocol (scaleio or NVMe-TCP)
+        :return: unique host name
+        """
+
+        return ("%(host)s-%(protocol)s" %
+                {"host": connector["host"],
+                 "protocol": protocol, })
+
+    def _terminate_connection(self, volume_or_snap, connector):
+        """Terminate connection to nvme volume or snapshot.
+
+        With PowerFlex, snaps and volumes are terminated identically.
+        """
+
+        if connector is None:
+            self._detach_volume_from_host(volume_or_snap)
+            return
+
+        try:
+            nqn = connector["nqn"]
+        except Exception:
+            msg = "Host nqn is not configured."
+            raise exception.InvalidHost(reason=msg)
+
+        LOG.info("Terminate %(protocol)s connection for "
+                 "%(vol_id)s to initiator at %(initiator)s.",
+                 {"protocol": self.storage_protocol,
+                  "vol_id": volume_or_snap.id, "initiator": nqn})
+        if isinstance(volume_or_snap, Volume):
+            is_multiattached = self._is_multiattached_to_host(
+                volume_or_snap.volume_attachment,
+                connector["host"]
+            )
+            if is_multiattached:
+                # Do not detach volume if it is attached to more than one
+                # instance on the same host.
+                LOG.info("Will not terminate %(protocol)s connection for "
+                         "%(vol_id)s to initiator at %(initiator)s "
+                         "because it's multiattach.",
+                         {"protocol": self.storage_protocol,
+                          "vol_id": volume_or_snap.id, "initiator": nqn})
+                return
+
+        # unmap volume
+        host_id = self._get_client().query_host_by_nqn(nqn)
+        self._detach_volume_from_host(volume_or_snap, host_id)
+        self._check_volume_unmapped(host_id, volume_or_snap.provider_id)
+        LOG.info("Terminated %(protocol)s connection for "
+                 "%(vol_id)s to initiator at %(initiator)s.",
+                 {"protocol": self.storage_protocol,
+                  "vol_id": volume_or_snap.id, "initiator": nqn})

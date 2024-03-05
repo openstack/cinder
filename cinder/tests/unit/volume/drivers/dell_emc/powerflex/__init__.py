@@ -61,7 +61,7 @@ class CustomResponseMode(object):
         self.test_instance.HTTPS_MOCK_RESPONSES = self.current_responses
 
 
-class TestPowerFlexDriver(test.TestCase):
+class TestPowerFlexBaseDriver(test.TestCase):
     """Base ``TestCase`` subclass for the ``PowerFlexDriver``"""
     RESPONSE_MODE = type(str('ResponseMode'), (object, ), dict(
         Valid='0',
@@ -118,26 +118,16 @@ class TestPowerFlexDriver(test.TestCase):
     def setUp(self):
         """Setup a test case environment.
 
-        Creates a ``PowerFlexDriver`` instance
         Mocks the ``requests.get/post`` methods to return
                   ``MockHTTPSResponse``'s instead.
         """
-        super(TestPowerFlexDriver, self).setUp()
+        super(TestPowerFlexBaseDriver, self).setUp()
         self.configuration = conf.Configuration(driver.powerflex_opts,
                                                 conf.SHARED_CONF_GROUP)
         self._set_overrides()
-        self.driver = mocks.PowerFlexDriver(configuration=self.configuration)
-        self.driver.primary_client = mocks.PowerFlexClient(self.configuration)
-        self.driver.secondary_client = mocks.PowerFlexClient(
-            self.configuration,
-            is_primary=False)
-        self.driver.do_setup({})
 
         self.mock_object(requests, 'get', self.do_request)
         self.mock_object(requests, 'post', self.do_request)
-
-        self.driver.primary_client.do_setup()
-        self.driver.secondary_client.do_setup()
 
     def _set_overrides(self):
         # Override the defaults to fake values
@@ -209,3 +199,39 @@ class TestPowerFlexDriver(test.TestCase):
 
     def custom_response_mode(self, **kwargs):
         return CustomResponseMode(self, **kwargs)
+
+
+class TestPowerFlexDriver(TestPowerFlexBaseDriver):
+
+    def setUp(self):
+        """Setup a test case environment.
+
+        Creates a ``PowerFlexDriver`` instance
+        """
+        super(TestPowerFlexDriver, self).setUp()
+        self.driver = mocks.PowerFlexDriver(configuration=self.configuration)
+        self.driver.do_setup({})
+        self.driver.primary_client = mocks.PowerFlexClient(self.configuration)
+        self.driver.secondary_client = mocks.PowerFlexClient(
+            self.configuration,
+            is_primary=False)
+
+        self.driver.primary_client.do_setup()
+        self.driver.secondary_client.do_setup()
+
+
+class TestPowerFlexNVMeDriver(TestPowerFlexBaseDriver):
+
+    def setUp(self):
+        """Setup a test case environment.
+
+        Creates a ``PowerFlexNVMeDriver`` instance
+        Mocks the ``requests.get/post`` methods to return
+                  ``MockHTTPSResponse``'s instead.
+        """
+        super(TestPowerFlexNVMeDriver, self).setUp()
+        self.driver = mocks.PowerFlexNVMeDriver(
+            configuration=self.configuration)
+        self.driver.do_setup({})
+        self.driver.primary_client = mocks.PowerFlexClient(self.configuration)
+        self.driver.primary_client.do_setup()

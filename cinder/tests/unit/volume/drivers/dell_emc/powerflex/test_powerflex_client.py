@@ -55,6 +55,12 @@ class TestPowerFlexClient(test.TestCase):
         self.sdc_id = "01f7117d0000000b"
         self.sdc_guid = "028888FA-502A-4FAC-A888-1FA3B256358C"
         self.volume_id = "3bd1f78800000019"
+        self.system_id = "1250de83018c2d0f"
+        self.system_nqn = "nqn.1988-11.com.dell:powerflex:00:1250de83018c2d0f"
+        self.host_id = "13bf228a00010001"
+        self.host_nqn = "nqn.2014-08.org.nvmexpress:uuid:" \
+            "fc9aaff0-09bb-4825-b590-4897d1a4eade"
+        self.host_name = "hostname"
 
     def _set_overrides(self):
         # Override the defaults to fake values
@@ -382,3 +388,114 @@ class TestPowerFlexClient(test.TestCase):
             self.assertIn(
                 "Failed to set SDC limits: Error message.",
                 ex.msg)
+
+    def test_query_system_id_nqn_success(self):
+        response = self._getJsonFile("query_system_id_nqn_response.json")
+
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_ok, response)):
+            id, nqn = self.client.query_system_id_nqn()
+            self.assertEqual(id, self.system_id)
+            self.assertEqual(nqn, self.system_nqn)
+            self.client.execute_powerflex_get_request.assert_called_with(
+                "/types/System/instances"
+            )
+
+    def test_query_system_id_nqn_failure(self):
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_bad,
+                                             self.response_error)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.query_system_id_nqn)
+            self.assertIn("Failed to query system nqn: Error message.", ex.msg)
+
+    def test_query_SDTs_success(self):
+        response = self._getJsonFile("query_sdts_response.json")
+
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_ok,
+                                             response)):
+            result = self.client.query_SDTs()
+            self.assertEqual(result, response)
+            self.assertEqual(result[0]["nvmePort"], 4420)
+            self.assertIsNotNone(result[0]["ipList"])
+            self.client.execute_powerflex_get_request.assert_called_with(
+                "/types/Sdt/instances"
+            )
+
+    def test_query_SDTs_failure(self):
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_bad,
+                                             self.response_error)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.query_SDTs)
+            self.assertIn("Failed to query SDTs: Error message.", ex.msg)
+
+    def test_query_hosts_successful(self):
+        response = self._getJsonFile("query_hosts_response.json")
+
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_ok,
+                                             response)):
+            result = self.client.query_hosts()
+            self.assertEqual(result, response)
+            self.client.execute_powerflex_get_request.assert_called_with(
+                "/types/Host/instances"
+            )
+
+    def test_query_hosts_failure(self):
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_bad,
+                                             self.response_error)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.query_hosts)
+            self.assertIn("Failed to query hosts: Error message.", ex.msg)
+
+    def test_query_host_by_nqn_existing_nqn(self):
+        response = self._getJsonFile("query_hosts_response.json")
+
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_ok,
+                                             response)):
+            result = self.client.query_host_by_nqn(self.host_nqn)
+            self.assertEqual(result, self.host_id)
+
+    def test_query_host_by_nqn_non_existing_nqn(self):
+        nqn = "invalid_nqn"
+        response = self._getJsonFile("query_hosts_response.json")
+
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_ok,
+                                             response)):
+            self.assertIsNone(self.client.query_host_by_nqn(nqn))
+
+    def test_create_nvme_host_success(self):
+        with mock.patch.object(self.client,
+                               'execute_powerflex_post_request',
+                               return_value=(self.status_code_ok,
+                                             {"id": self.host_id})):
+            result = self.client.create_nvme_host(
+                self.host_name, self.host_nqn)
+            self.assertEqual(result, self.host_id)
+            self.client.execute_powerflex_post_request.assert_called_with(
+                "/types/Host/instances",
+                {"nqn": self.host_nqn, "name": self.host_name}
+            )
+
+    def test_create_nvme_host_failure(self):
+        with mock.patch.object(self.client,
+                               'execute_powerflex_post_request',
+                               return_value=(self.status_code_bad,
+                                             self.response_error)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.create_nvme_host,
+                                   self.host_nqn, self.host_name)
+            self.assertIn("Failed to create nvme host: Error message.", ex.msg)

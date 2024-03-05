@@ -26,6 +26,34 @@ class PowerFlexDriver(driver.PowerFlexDriver):
     Provides some fake configuration options
     """
     def do_setup(self, context):
+        super(PowerFlexDriver, self).do_setup(context)
+        self.provisioning_type = (
+            "thin" if self.configuration.san_thin_provision else "thick"
+        )
+        self.configuration.max_over_subscription_ratio = (
+            self.configuration.powerflex_max_over_subscription_ratio
+        )
+
+    def local_path(self, volume):
+        pass
+
+    def reenable_replication(self, context, volume):
+        pass
+
+    def promote_replica(self, context, volume):
+        pass
+
+    def unmanage(self, volume):
+        pass
+
+
+class PowerFlexNVMeDriver(driver.PowerFlexNVMeDriver):
+    """Mock PowerFlex NVMe Driver class.
+
+    Provides some fake configuration options
+    """
+    def do_setup(self, context):
+        super(PowerFlexNVMeDriver, self).do_setup(context)
         self.provisioning_type = (
             "thin" if self.configuration.san_thin_provision else "thick"
         )
