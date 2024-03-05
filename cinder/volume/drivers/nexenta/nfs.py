@@ -21,7 +21,6 @@ from oslo_log import log as logging
 from oslo_utils import fileutils
 from oslo_utils.secretutils import md5
 from oslo_utils import units
-import six
 
 from cinder.common import constants
 from cinder import context
@@ -715,7 +714,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
                               '%(count)d attempts.',
                               {'share': nfs_share,
                                'count': num_attempts})
-                    raise exception.NfsException(six.text_type(e))
+                    raise exception.NfsException(str(e))
                 LOG.warning(
                     'Mount attempt %(attempt)d failed: %(error)s. '
                     'Retrying mount ...',

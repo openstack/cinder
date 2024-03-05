@@ -14,10 +14,9 @@
 #    under the License.
 
 import re
+from urllib import parse as urlparse
 
 from oslo_utils import units
-import six
-import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.i18n import _
@@ -38,7 +37,7 @@ def str2size(s, scale=1024):
     if not s:
         return 0
 
-    if isinstance(s, six.integer_types):
+    if isinstance(s, int):
         return s
 
     match = re.match(r'^([\.\d]+)\s*([BbKkMmGgTtPpEeZzYy]?)', s)
@@ -67,13 +66,13 @@ def get_rrmgr_cmd(src, dst, compression=None, tcp_buf_size=None,
     """Returns rrmgr command for source and destination."""
     cmd = ['rrmgr', '-s', 'zfs']
     if compression:
-        cmd.extend(['-c', six.text_type(compression)])
+        cmd.extend(['-c', str(compression)])
     cmd.append('-q')
     cmd.append('-e')
     if tcp_buf_size:
-        cmd.extend(['-w', six.text_type(tcp_buf_size)])
+        cmd.extend(['-w', str(tcp_buf_size)])
     if connections:
-        cmd.extend(['-n', six.text_type(connections)])
+        cmd.extend(['-n', str(connections)])
     cmd.extend([src, dst])
     return ' '.join(cmd)
 

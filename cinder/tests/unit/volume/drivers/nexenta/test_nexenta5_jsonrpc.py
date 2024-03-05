@@ -18,11 +18,11 @@ import copy
 import json
 import posixpath
 from unittest import mock
+import urllib
 import uuid
 
 from oslo_utils.secretutils import md5
 import requests
-import six
 
 from cinder.tests.unit import test
 from cinder.volume import configuration as conf
@@ -808,7 +808,7 @@ class TestNefCollections(test.TestCase):
     def test_path(self):
         path = 'path/to/item name + - & # $ = 0'
         result = self.instance.path(path)
-        quoted_path = six.moves.urllib.parse.quote_plus(path)
+        quoted_path = urllib.parse.quote_plus(path)
         expected = posixpath.join(self.instance.root, quoted_path)
         self.assertEqual(expected, result)
 
@@ -1184,9 +1184,7 @@ class TestNefProxy(test.TestCase):
         settings = {'value': guid}
         get_settings.return_value = settings
         self.assertIsNone(self.proxy.update_lock())
-        path = '%s:%s' % (guid, self.proxy.path)
-        if isinstance(path, six.text_type):
-            path = path.encode('utf-8')
+        path = ('%s:%s' % (guid, self.proxy.path)).encode('utf-8')
         expected = md5(path, usedforsecurity=False).hexdigest()
         self.assertEqual(expected, self.proxy.lock)
 
