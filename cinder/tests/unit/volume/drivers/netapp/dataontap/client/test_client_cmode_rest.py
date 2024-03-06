@@ -854,6 +854,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'uuid': fake.UUID1,
             'fields': 'svm.name,location.volume.name,space.size,'
                       'location.qtree.name,name,os_type,'
+                      'space.scsi_thin_provisioning_support_enabled,'
                       'space.guarantee.requested,uuid'
         }
 
@@ -884,6 +885,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'name': path,
             'fields': 'svm.name,location.volume.name,space.size,'
                       'location.qtree.name,name,os_type,'
+                      'space.scsi_thin_provisioning_support_enabled,'
                       'space.guarantee.requested,uuid'
         }
 
@@ -1678,6 +1680,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'space.size': str(initial_size),
             'os_type': metadata['OsType'],
             'space.guarantee.requested': metadata['SpaceReserved'],
+            'space.scsi_thin_provisioning_support_enabled':
+                metadata['SpaceAllocated'],
             'qos_policy.name': fake.QOS_POLICY_GROUP_NAME
         }
 

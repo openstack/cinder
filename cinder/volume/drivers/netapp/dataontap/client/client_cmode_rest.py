@@ -663,6 +663,7 @@ class RestClient(object):
             'svm.name': self.vserver,
             'fields': 'svm.name,location.volume.name,space.size,'
                       'location.qtree.name,name,os_type,'
+                      'space.scsi_thin_provisioning_support_enabled,'
                       'space.guarantee.requested,uuid'
         }
 
@@ -683,6 +684,8 @@ class RestClient(object):
             lun_info['Path'] = lun['name']
             lun_info['OsType'] = lun['os_type']
             lun_info['SpaceReserved'] = lun['space']['guarantee']['requested']
+            lun_info['SpaceAllocated'] = \
+                lun['space']['scsi_thin_provisioning_support_enabled']
             lun_info['UUID'] = lun['uuid']
 
             lun_list.append(lun_info)
@@ -695,6 +698,7 @@ class RestClient(object):
         query = {
             'fields': 'svm.name,location.volume.name,space.size,'
                       'location.qtree.name,name,os_type,'
+                      'space.scsi_thin_provisioning_support_enabled,'
                       'space.guarantee.requested,uuid'
         }
 
@@ -723,6 +727,8 @@ class RestClient(object):
             lun_info['Path'] = lun['name']
             lun_info['OsType'] = lun['os_type']
             lun_info['SpaceReserved'] = lun['space']['guarantee']['requested']
+            lun_info['SpaceAllocated'] = \
+                lun['space']['scsi_thin_provisioning_support_enabled']
             lun_info['UUID'] = lun['uuid']
 
             # NOTE(nahimsouza): Currently, ONTAP REST API does not have the
@@ -1305,13 +1311,15 @@ class RestClient(object):
 
         path = f'/vol/{volume_name}/{lun_name}'
         space_reservation = metadata['SpaceReserved']
+        space_allocation = metadata['SpaceAllocated']
         initial_size = size
 
         body = {
             'name': path,
             'space.size': str(initial_size),
             'os_type': metadata['OsType'],
-            'space.guarantee.requested': space_reservation
+            'space.guarantee.requested': space_reservation,
+            'space.scsi_thin_provisioning_support_enabled': space_allocation
         }
 
         if qos_policy_group_name:

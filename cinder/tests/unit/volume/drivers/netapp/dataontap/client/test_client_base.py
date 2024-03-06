@@ -55,7 +55,8 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.fake_volume = six.text_type(uuid.uuid4())
         self.fake_lun = six.text_type(uuid.uuid4())
         self.fake_size = '1024'
-        self.fake_metadata = {'OsType': 'linux', 'SpaceReserved': 'true'}
+        self.fake_metadata = {'OsType': 'linux', 'SpaceReserved': 'true',
+                              'SpaceAllocated': 'true'}
         self.mock_send_request = self.mock_object(
             self.client.connection, 'send_request')
 
@@ -89,14 +90,23 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.assertIsNone(self.client.check_is_naelement(element))
         self.assertRaises(ValueError, self.client.check_is_naelement, None)
 
-    @ddt.data({'ontap_version': (9, 4, 0), 'space_reservation': 'true'},
-              {'ontap_version': (9, 4, 0), 'space_reservation': 'false'},
-              {'ontap_version': (9, 6, 0), 'space_reservation': 'true'},
-              {'ontap_version': (9, 6, 0), 'space_reservation': 'false'})
+    @ddt.data({'ontap_version': (9, 4, 0),
+               'space_reservation': 'true',
+               'space_alloc': 'true'},
+              {'ontap_version': (9, 4, 0),
+               'space_reservation': 'false',
+               'space_alloc': 'false'},
+              {'ontap_version': (9, 6, 0),
+               'space_reservation': 'true',
+               'space_alloc': 'true'},
+              {'ontap_version': (9, 6, 0),
+               'space_reservation': 'false',
+               'space_alloc': 'false'}, )
     @ddt.unpack
-    def test_create_lun(self, ontap_version, space_reservation):
+    def test_create_lun(self, ontap_version, space_reservation, space_alloc):
         expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
         self.fake_metadata['SpaceReserved'] = space_reservation
+        self.fake_metadata['SpaceAllocated'] = space_alloc
         expected_space_reservation = space_reservation
         self.mock_object(self.client, 'get_ontap_version',
                          return_value=ontap_version)
@@ -127,7 +137,9 @@ class NetAppBaseClientTestCase(test.TestCase):
                    'size': initial_size,
                    'ostype': self.fake_metadata['OsType'],
                    'space-reservation-enabled':
-                       expected_space_reservation})
+                       expected_space_reservation,
+                   'space-allocation-enabled':
+                       space_alloc})
             self.connection.invoke_successfully.assert_called_with(
                 mock.ANY, True)
 
@@ -141,15 +153,25 @@ class NetAppBaseClientTestCase(test.TestCase):
         else:
             mock_set_space_reservation.assert_not_called()
 
-    @ddt.data({'ontap_version': (9, 4, 0), 'space_reservation': 'true'},
-              {'ontap_version': (9, 4, 0), 'space_reservation': 'false'},
-              {'ontap_version': (9, 6, 0), 'space_reservation': 'true'},
-              {'ontap_version': (9, 6, 0), 'space_reservation': 'false'})
+    @ddt.data({'ontap_version': (9, 4, 0),
+               'space_reservation': 'true',
+               'space_alloc': 'true'},
+              {'ontap_version': (9, 4, 0),
+               'space_reservation': 'false',
+               'space_alloc': 'false'},
+              {'ontap_version': (9, 6, 0),
+               'space_reservation': 'true',
+               'space_alloc': 'true'},
+              {'ontap_version': (9, 6, 0),
+               'space_reservation': 'false',
+               'space_alloc': 'false'}, )
     @ddt.unpack
-    def test_create_lun_exact_size(self, ontap_version, space_reservation):
+    def test_create_lun_exact_size(self, ontap_version,
+                                   space_reservation, space_alloc):
         expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
         self.connection.get_api_version.return_value = (1, 110)
         self.fake_metadata['SpaceReserved'] = space_reservation
+        self.fake_metadata['SpaceAllocated'] = space_alloc
         expected_space_reservation = self.fake_metadata['SpaceReserved']
         self.mock_object(self.client, 'get_ontap_version',
                          return_value=ontap_version)
@@ -181,7 +203,9 @@ class NetAppBaseClientTestCase(test.TestCase):
                    'ostype': self.fake_metadata['OsType'],
                    'use-exact-size': 'true',
                    'space-reservation-enabled':
-                       expected_space_reservation})
+                       expected_space_reservation,
+                   'space-allocation-enabled':
+                       space_alloc})
             self.connection.invoke_successfully.assert_called_with(
                 mock.ANY, True)
 
@@ -195,18 +219,27 @@ class NetAppBaseClientTestCase(test.TestCase):
         else:
             mock_set_space_reservation.assert_not_called()
 
-    @ddt.data({'ontap_version': (9, 4, 0), 'space_reservation': 'true'},
-              {'ontap_version': (9, 4, 0), 'space_reservation': 'false'},
-              {'ontap_version': (9, 6, 0), 'space_reservation': 'true'},
-              {'ontap_version': (9, 6, 0), 'space_reservation': 'false'})
+    @ddt.data({'ontap_version': (9, 4, 0),
+               'space_reservation': 'true',
+               'space_alloc': 'true'},
+              {'ontap_version': (9, 4, 0),
+               'space_reservation': 'false',
+               'space_alloc': 'false'},
+              {'ontap_version': (9, 6, 0),
+               'space_reservation': 'true',
+               'space_alloc': 'true'},
+              {'ontap_version': (9, 6, 0),
+               'space_reservation': 'false',
+               'space_alloc': 'false'}, )
     @ddt.unpack
     def test_create_lun_with_qos_policy_group_name(
-            self, ontap_version, space_reservation):
+            self, ontap_version, space_reservation, space_alloc):
         expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
         expected_qos_group_name = 'qos_1'
         mock_request = mock.Mock()
 
         self.fake_metadata['SpaceReserved'] = space_reservation
+        self.fake_metadata['SpaceAllocated'] = space_alloc
         expected_space_reservation = self.fake_metadata['SpaceReserved']
         self.mock_object(self.client, 'get_ontap_version',
                          return_value=ontap_version)
@@ -237,9 +270,11 @@ class NetAppBaseClientTestCase(test.TestCase):
             mock_create_node.assert_called_with(
                 'lun-create-by-size',
                 **{'path': expected_path, 'size': initial_size,
-                    'ostype': self.fake_metadata['OsType'],
-                    'space-reservation-enabled':
-                        expected_space_reservation})
+                   'ostype': self.fake_metadata['OsType'],
+                   'space-reservation-enabled':
+                       expected_space_reservation,
+                   'space-allocation-enabled':
+                       space_alloc})
             mock_request.add_new_child.assert_called_with(
                 'qos-policy-group', expected_qos_group_name)
             self.connection.invoke_successfully.assert_called_with(

@@ -130,6 +130,10 @@ class Client(object):
         params = {'path': path, 'size': str(initial_size),
                   'ostype': metadata['OsType'],
                   'space-reservation-enabled': space_reservation}
+
+        if "SpaceAllocated" in metadata:
+            params['space-allocation-enabled'] = metadata['SpaceAllocated']
+
         version = self.get_ontapi_version()
         if version >= (1, 110):
             params['use-exact-size'] = 'true'

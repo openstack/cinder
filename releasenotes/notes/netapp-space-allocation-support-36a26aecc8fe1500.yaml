@@ -1,0 +1,9 @@
+features:
+  - |
+    NetApp iSCSI/FCP drivers: NetApp space allocation feature allows ONTAP
+    and host to see the actual space correctly when host deletes data.
+    It also notifies the host when the LUN cannot accept write data due
+    to lack of space on the volume, and makes the LUN read-only
+    (rather than going offline). This feature can be enabled or
+    disabled on cinder volumes by using volume type extra specs with
+    the ``netapp:space_allocation`` property.
