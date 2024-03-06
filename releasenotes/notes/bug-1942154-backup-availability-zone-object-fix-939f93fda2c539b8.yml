@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Backup `Bug #1942154 <https://bugs.launchpad.net/cinder/+bug/1942154>`_:
+    Fixed backup.availability_zone to be populated with availability zone of
+    the service that is creating the backup, if it was not provided as argument
+    when creating the backup. This indirectly fixes selecting the proper host
+    when restoring the backup as the availability zone field is now populated.
