@@ -86,6 +86,8 @@ Supported operations
 
 * OpenStack replication v2.1 support
 
+* Cinder volume active/active support
+
 PowerFlex Block Storage driver configuration
 --------------------------------------------
 

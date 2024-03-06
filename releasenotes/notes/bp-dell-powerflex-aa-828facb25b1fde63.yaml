@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Dell PowerFlex driver:
+    Enabled cinder volume active/active support.
+    This allows users to configure Dell PowerFlex backends
+    in cinder clustered environments.

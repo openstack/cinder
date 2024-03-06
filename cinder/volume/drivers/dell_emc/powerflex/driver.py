@@ -95,9 +95,11 @@ class PowerFlexDriver(driver.VolumeDriver):
           3.5.6 - Fix for Bug #1897598 when volume can be migrated without
                   conversion of its type.
           3.5.7 - Report trim/discard support.
+          3.5.8 - Added Cinder active/active support.
     """
 
-    VERSION = "3.5.7"
+    VERSION = "3.5.8"
+    SUPPORTS_ACTIVE_ACTIVE = True
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerFlex_CI"
 
@@ -429,6 +431,14 @@ class PowerFlexDriver(driver.VolumeDriver):
             self._get_client(secondary=True).remove_volume(remote_vol_id)
 
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
+        active_backend_id, model_updates, group_update_list = (
+            self.failover(context, volumes, secondary_id, groups))
+        self.failover_completed(context, secondary_id)
+        return active_backend_id, model_updates, group_update_list
+
+    def failover(self, context, volumes, secondary_id=None, groups=None):
+        """Like failover but for a host that is clustered."""
+        LOG.info("Invoking failover with target %s.", secondary_id)
         if secondary_id not in self._available_failover_choices:
             msg = (_("Target %(target)s is not valid choice. "
                      "Valid choices: %(choices)s.") %
@@ -462,9 +472,34 @@ class PowerFlexDriver(driver.VolumeDriver):
                                                    failover_status,
                                                    is_failback)
             model_updates.append({"volume_id": volume.id, "updates": updates})
-        self.active_backend_id = secondary_id
-        self.replication_enabled = is_failback
+        LOG.info("Failover host completed.")
         return secondary_id, model_updates, []
+
+    def failover_completed(self, context, active_backend_id=None):
+        """This method is called after failover for clustered backends."""
+        LOG.info("Invoking failover_completed with target %s.",
+                 active_backend_id)
+        if (not active_backend_id
+                or active_backend_id
+                == manager.VolumeManager.FAILBACK_SENTINEL):
+            # failback operation
+            self.active_backend_id = manager.VolumeManager.FAILBACK_SENTINEL
+            self.replication_enabled = True
+        elif (active_backend_id == self.replication_device["backend_id"]
+                or active_backend_id == "failed over"):
+            # failover operation
+            self.active_backend_id = self.replication_device["backend_id"]
+            self.replication_enabled = False
+        else:
+            msg = f"Target {active_backend_id} is not valid."
+            LOG.error(msg)
+            raise exception.InvalidReplicationTarget(reason=msg)
+
+        LOG.info("Failover completion completed: "
+                 "active_backend_id = %s, "
+                 "replication_enabled = %s.",
+                 self.active_backend_id,
+                 self.replication_enabled)
 
     def _failover_replication_cg(self, rcg_name, is_failback):
         """Failover/failback Replication Consistency Group on storage backend.
