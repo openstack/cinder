@@ -266,4 +266,8 @@ class PowerStoreDriver(driver.VolumeDriver):
         conf["rest_password"] = get_value("san_password")
         conf["verify_certificate"] = get_value("driver_ssl_cert_verify")
         conf["certificate_path"] = get_value("driver_ssl_cert_path")
+        conf["rest_api_connect_timeout"] = (
+            self.configuration.safe_get(utils.POWERSTORE_REST_CONNECT_TIMEOUT))
+        conf["rest_api_read_timeout"] = (
+            self.configuration.safe_get(utils.POWERSTORE_REST_READ_TIMEOUT))
         return conf

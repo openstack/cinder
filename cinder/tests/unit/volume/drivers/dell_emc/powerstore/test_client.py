@@ -17,6 +17,7 @@ from unittest import mock
 import uuid
 
 import ddt
+import requests.exceptions
 
 from cinder import exception
 from cinder.tests.unit import test
@@ -31,7 +32,9 @@ CLIENT_OPTIONS = {
     "rest_username": "fake_user",
     "rest_password": "fake_password",
     "verify_certificate": False,
-    "certificate_path": None
+    "certificate_path": None,
+    "rest_api_connect_timeout": 60,
+    "rest_api_read_timeout": 60
 }
 
 ISCSI_IP_POOL_RESP = [
@@ -277,3 +280,52 @@ class TestClient(test.TestCase):
                           self.client.update_qos_io_rule,
                           "io-rule-6b6e5489-4b5b-4468-a1f7-32cec2ffa3bf",
                           QOS_UPDATE_IO_RULE_PARAMS)
+
+    @mock.patch("requests.request")
+    def test_get_request_timeout_exception(self, mock_request):
+        mock_request.return_value = MockResponse(
+            rc=501
+        )
+        error = self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.client.get_array_version)
+        self.assertEqual('Bad or unexpected response from the '
+                         'storage volume backend API: Failed to '
+                         'query PowerStore array version.',
+                         error.msg)
+
+    @mock.patch("requests.request")
+    def test_send_get_request_connect_timeout_exception(self,
+                                                        mock_request):
+        mock_request.side_effect = requests.exceptions.ConnectTimeout()
+        r, resp = self.client._send_request("GET",
+                                            "/api/version")
+        self.assertEqual(500, r.status_code)
+
+    @mock.patch("requests.request")
+    def test_send_get_request_read_timeout_exception(self,
+                                                     mock_request):
+        mock_request.side_effect = requests.exceptions.ReadTimeout()
+        r, resp = self.client._send_request("GET",
+                                            "/api/version")
+        self.assertEqual(500, r.status_code)
+
+    @mock.patch("requests.request")
+    def test_send_post_request_connect_timeout_exception(self,
+                                                         mock_request):
+        params = {}
+        mock_request.side_effect = requests.exceptions.ConnectTimeout()
+        r, resp = self.client._send_request("POST",
+                                            "/metrics/generate",
+                                            params)
+        self.assertEqual(500, r.status_code)
+
+    @mock.patch("requests.request")
+    def test_send_post_request_read_timeout_exception(self,
+                                                      mock_request):
+        params = {}
+        mock_request.side_effect = requests.exceptions.ReadTimeout()
+        r, resp = self.client._send_request("POST",
+                                            "/metrics/generate",
+                                            params)
+        self.assertEqual(500, r.status_code)

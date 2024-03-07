@@ -38,6 +38,8 @@ PROTOCOL_NVME = "NVMe"
 POWERSTORE_PP_KEY = "powerstore:protection_policy"
 VOLUME_ATTACH_OPERATION = 1
 VOLUME_DETACH_OPERATION = 2
+POWERSTORE_REST_CONNECT_TIMEOUT = "rest_api_call_connect_timeout"
+POWERSTORE_REST_READ_TIMEOUT = "rest_api_call_read_timeout"
 
 
 def bytes_to_gib(size_in_bytes):
