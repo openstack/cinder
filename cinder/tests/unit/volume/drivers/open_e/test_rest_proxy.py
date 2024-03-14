@@ -41,7 +41,7 @@ CONFIG_OK = {
     'jovian_ignore_tpath': [],
     'target_port': 3260,
     'jovian_pool': 'Pool-0',
-    'iscsi_target_prefix': 'iqn.2020-04.com.open-e.cinder:',
+    'target_prefix': 'iqn.2020-04.com.open-e.cinder:',
     'chap_password_len': 12,
     'san_thin_provision': False,
     'jovian_block_size': '128K'
@@ -61,7 +61,7 @@ CONFIG_BAD_IP = {
     'jovian_ignore_tpath': [],
     'target_port': 3260,
     'jovian_pool': 'Pool-0',
-    'iscsi_target_prefix': 'iqn.2020-04.com.open-e.cinder:',
+    'target_prefix': 'iqn.2020-04.com.open-e.cinder:',
     'chap_password_len': 12,
     'san_thin_provision': False,
     'jovian_block_size': '128K'
@@ -81,7 +81,7 @@ CONFIG_MULTIHOST = {
     'jovian_ignore_tpath': [],
     'target_port': 3260,
     'jovian_pool': 'Pool-0',
-    'iscsi_target_prefix': 'iqn.2020-04.com.open-e.cinder:',
+    'target_prefix': 'iqn.2020-04.com.open-e.cinder:',
     'chap_password_len': 12,
     'san_thin_provision': False,
     'jovian_block_size': '128K'
@@ -102,12 +102,12 @@ class TestOpenEJovianRESTProxy(test.TestCase):
     def test_init(self):
 
         self.assertRaises(exception.InvalidConfigurationValue,
-                          rest_proxy.JovianRESTProxy,
+                          rest_proxy.JovianDSSRESTProxy,
                           CONFIG_BAD_IP)
 
     def test_get_base_url(self):
 
-        proxy = rest_proxy.JovianRESTProxy(CONFIG_OK)
+        proxy = rest_proxy.JovianDSSRESTProxy(CONFIG_OK)
 
         url = proxy._get_base_url()
 
@@ -119,7 +119,7 @@ class TestOpenEJovianRESTProxy(test.TestCase):
 
     def test_next_host(self):
 
-        proxy = rest_proxy.JovianRESTProxy(CONFIG_MULTIHOST)
+        proxy = rest_proxy.JovianDSSRESTProxy(CONFIG_MULTIHOST)
 
         self.assertEqual(0, proxy.active_host)
         proxy._next_host()
@@ -134,7 +134,7 @@ class TestOpenEJovianRESTProxy(test.TestCase):
 
     def test_request(self):
 
-        proxy = rest_proxy.JovianRESTProxy(CONFIG_MULTIHOST)
+        proxy = rest_proxy.JovianDSSRESTProxy(CONFIG_MULTIHOST)
 
         patches = [
             mock.patch.object(requests, "Request", return_value="request"),
@@ -153,7 +153,7 @@ class TestOpenEJovianRESTProxy(test.TestCase):
 
     def test_request_host_failure(self):
 
-        proxy = rest_proxy.JovianRESTProxy(CONFIG_MULTIHOST)
+        proxy = rest_proxy.JovianDSSRESTProxy(CONFIG_MULTIHOST)
 
         patches = [
             mock.patch.object(requests, "Request", return_value="request"),
@@ -185,7 +185,7 @@ class TestOpenEJovianRESTProxy(test.TestCase):
 
     def test_pool_request(self):
 
-        proxy = rest_proxy.JovianRESTProxy(CONFIG_OK)
+        proxy = rest_proxy.JovianDSSRESTProxy(CONFIG_OK)
 
         patches = [mock.patch.object(proxy, "request")]
 
@@ -199,7 +199,7 @@ class TestOpenEJovianRESTProxy(test.TestCase):
 
     def test_send(self):
 
-        proxy = rest_proxy.JovianRESTProxy(CONFIG_MULTIHOST)
+        proxy = rest_proxy.JovianDSSRESTProxy(CONFIG_MULTIHOST)
 
         json_data = {"data": [{"available": "949998694400",
                                "status": 26,
@@ -236,69 +236,51 @@ class TestOpenEJovianRESTProxy(test.TestCase):
         self.assertEqual(json_data['error'], ret['error'])
         self.stop_patches(patches)
 
-    def test_send_connection_error(self):
-
-        proxy = rest_proxy.JovianRESTProxy(CONFIG_MULTIHOST)
-
-        json_data = {"data": None,
-                     "error": None}
-
-        session_ret = mock.Mock()
-        session_ret.text = json.dumps(json_data)
-        session_ret.status_code = 200
-        patches = [mock.patch.object(proxy.session, "send")]
-
-        pr = 'prepared_request'
-
+    def test_request_host_change(self):
+        proxy = rest_proxy.JovianDSSRESTProxy(CONFIG_MULTIHOST)
+        patches = [
+            mock.patch.object(requests, "Request", return_value="request"),
+            mock.patch.object(proxy.session,
+                              "prepare_request",
+                              return_value="out_data"),
+            mock.patch.object(proxy, "_send", return_value="out_data")]
+        request_expected = [
+            mock.call('GET',
+                      'https://192.168.0.2:82/api/v3/pools/Pool-0'),
+            mock.call('GET',
+                      'https://192.168.0.3:82/api/v3/pools/Pool-0'),
+            mock.call('GET',
+                      'https://192.168.0.4:82/api/v3/pools/Pool-0'),
+            mock.call('GET',
+                      'https://192.168.0.2:82/api/v3/pools/Pool-0')]
         self.start_patches(patches)
-
-        side_effect = [requests.exceptions.ConnectionError()] * 4
-        side_effect += [session_ret]
-
-        proxy.session.send.side_effect = side_effect
-
-        send_expected = [mock.call(pr)] * 4
-
-        ret = proxy._send(pr)
-
-        proxy.session.send.assert_has_calls(send_expected)
-
+        proxy._send.side_effect = [
+            requests.exceptions.ConnectionError(),
+            requests.exceptions.ConnectionError(),
+            requests.exceptions.ConnectionError(),
+            "out_data"]
+        proxy.request('GET', '/pools/Pool-0')
         self.assertEqual(0, proxy.active_host)
-
-        self.assertEqual(200, ret['code'])
-        self.assertEqual(json_data['data'], ret['data'])
-        self.assertEqual(json_data['error'], ret['error'])
+        requests.Request.assert_has_calls(request_expected)
         self.stop_patches(patches)
 
-    def test_send_mixed_error(self):
-
-        proxy = rest_proxy.JovianRESTProxy(CONFIG_MULTIHOST)
-
-        json_data = {"data": None,
-                     "error": None}
+    def test_send_jsondecode_error(self):
+        proxy = rest_proxy.JovianDSSRESTProxy(CONFIG_MULTIHOST)
 
         session_ret = mock.Mock()
-        session_ret.text = json.dumps(json_data)
+        session_ret.text = "{ some-bad-json"
         session_ret.status_code = 200
-        patches = [mock.patch.object(proxy.session, "send")]
 
+        patches = [mock.patch.object(proxy.session, "send")]
         pr = 'prepared_request'
 
         self.start_patches(patches)
-
-        side_effect = [requests.exceptions.ConnectionError()] * 4
-        side_effect += [jexc.JDSSOSException()] * 4
-        side_effect += [session_ret]
-
+        side_effect = [session_ret] * 3
         proxy.session.send.side_effect = side_effect
+        send_expected = [mock.call(pr)] * 3
 
-        send_expected = [mock.call(pr)] * 7
-
-        self.assertRaises(jexc.JDSSOSException, proxy._send, pr)
-
+        self.assertRaises(json.JSONDecodeError, proxy._send, pr)
         proxy.session.send.assert_has_calls(send_expected)
-
-        self.assertEqual(0, proxy.active_host)
 
     def test_handle_500(self):
 
@@ -314,7 +296,7 @@ class TestOpenEJovianRESTProxy(test.TestCase):
         session_ret.status_code = 500
 
         self.assertRaises(jexc.JDSSOSException,
-                          rest_proxy.JovianRESTProxy._handle_500,
+                          rest_proxy.JovianDSSRESTProxy._handle_500,
                           session_ret)
 
         session_ret.status_code = 200
@@ -322,4 +304,5 @@ class TestOpenEJovianRESTProxy(test.TestCase):
                      "error": None}
 
         session_ret.text = json.dumps(json_data)
-        self.assertIsNone(rest_proxy.JovianRESTProxy._handle_500(session_ret))
+        self.assertIsNone(
+            rest_proxy.JovianDSSRESTProxy._handle_500(session_ret))

@@ -18,7 +18,6 @@ from unittest import mock
 from oslo_utils import units as o_units
 
 from cinder import context
-from cinder import exception
 from cinder.tests.unit import test
 from cinder.volume.drivers.open_e.jovian_common import exception as jexc
 from cinder.volume.drivers.open_e.jovian_common import jdss_common as jcom
@@ -27,6 +26,10 @@ from cinder.volume.drivers.open_e.jovian_common import rest
 UUID_1 = '12345678-1234-1234-1234-000000000001'
 UUID_2 = '12345678-1234-1234-1234-000000000002'
 UUID_3 = '12345678-1234-1234-1234-000000000003'
+
+UUID_S1 = '12345678-1234-1234-1234-100000000001'
+UUID_S2 = '12345678-1234-1234-1234-100000000002'
+UUID_S3 = '12345678-1234-1234-1234-100000000003'
 
 CONFIG_OK = {
     'san_hosts': ['192.168.0.2'],
@@ -39,7 +42,7 @@ CONFIG_OK = {
     'jovian_ignore_tpath': [],
     'target_port': 3260,
     'jovian_pool': 'Pool-0',
-    'iscsi_target_prefix': 'iqn.2020-04.com.open-e.cinder:',
+    'target_prefix': 'iqn.2020-04.com.open-e.cinder:',
     'chap_password_len': 12,
     'san_thin_provision': False,
     'jovian_block_size': '128K'
@@ -408,7 +411,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
         delete_lun_expected += [mock.call('DELETE', addr)]
         jrest.rproxy.pool_request.return_value = resp
         self.assertRaises(
-            exception.VolumeIsBusy,
+            jexc.JDSSResourceIsBusyException,
             jrest.delete_lun,
             'v_' + UUID_1)
 
@@ -424,7 +427,6 @@ class TestOpenEJovianRESTAPI(test.TestCase):
                 'error': None,
                 'code': 204}
         req = {'recursively_children': True,
-               'recursively_dependents': True,
                'force_umount': True}
 
         delete_lun_expected = [mock.call('DELETE', addr, json_data=req)]
@@ -432,7 +434,6 @@ class TestOpenEJovianRESTAPI(test.TestCase):
         self.assertIsNone(
             jrest.delete_lun('v_' + UUID_1,
                              recursively_children=True,
-                             recursively_dependents=True,
                              force_umount=True))
 
         jrest.rproxy.pool_request.assert_has_calls(delete_lun_expected)
@@ -441,7 +442,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
 
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         addr = '/san/iscsi/targets/{}'.format(tname)
         data = {'incoming_users_active': True,
                 'name': tname,
@@ -483,7 +484,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         # Create OK
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         addr = '/san/iscsi/targets'
         data = {'incoming_users_active': True,
                 'name': tname,
@@ -506,7 +507,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
         self.assertIsNone(jrest.create_target(tname))
 
         # Target exists
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         addr = '/san/iscsi/targets'
         data = {'incoming_users_active': True,
                 'name': tname,
@@ -541,7 +542,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
                           jrest.create_target, tname)
 
         # Unknown error
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         addr = "/san/iscsi/targets"
 
         resp = {'data': data,
@@ -576,7 +577,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         # Delete OK
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         addr = '/san/iscsi/targets/{}'.format(tname)
 
         resp = {'data': None,
@@ -628,7 +629,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         # Modify OK
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         addr = '/san/iscsi/targets/{}/incoming-users'.format(tname)
 
         chap_cred = {"name": "chapuser",
@@ -682,7 +683,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         # Get OK
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         addr = '/san/iscsi/targets/{}/incoming-users'.format(tname)
 
         chap_users = {"name": "chapuser"}
@@ -736,7 +737,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         # Delete OK
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         user = "chapuser"
         addr = '/san/iscsi/targets/{}/incoming-users/chapuser'.format(tname)
 
@@ -791,7 +792,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         # lun present
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         vname = jcom.vname(UUID_1)
         addr = '/san/iscsi/targets/{target}/luns/{lun}'.format(
             target=tname, lun=vname)
@@ -852,7 +853,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         # attach ok
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         vname = jcom.vname(UUID_1)
 
         addr = '/san/iscsi/targets/{}/luns'.format(tname)
@@ -875,7 +876,38 @@ class TestOpenEJovianRESTAPI(test.TestCase):
             mock.call('POST', addr, json_data=jbody)]
         self.assertIsNone(jrest.attach_target_vol(tname, vname))
 
+        # attach with mode and lun
+        jrest, ctx = self.get_rest(CONFIG_OK)
+
+        tname = CONFIG_OK['target_prefix'] + UUID_1
+        vname = jcom.vname(UUID_1)
+
+        addr = '/san/iscsi/targets/{}/luns'.format(tname)
+        jbody = {"name": vname, "lun": 1, "mode": 'ro'}
+
+        data = {"block_size": 512,
+                "device_handler": "vdisk_fileio",
+                "lun": 0,
+                "mode": "ro",
+                "name": vname,
+                "prod_id": "Storage",
+                "scsi_id": "99e2c883331edf87"}
+
+        resp = {'data': data,
+                'error': None,
+                'code': 201}
+
+        jrest.rproxy.pool_request.return_value = resp
+        attach_target_vol_expected = [
+            mock.call('POST', addr, json_data=jbody)]
+        self.assertIsNone(jrest.attach_target_vol(tname, vname,
+                                                  lun_id=1, mode='ro'))
+        jrest.rproxy.pool_request.assert_has_calls(attach_target_vol_expected)
+
         # lun attached already
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        jbody = {"name": vname, "lun": 0}
+
         url = 'http://85.14.118.246:11582/api/v3/pools/Pool-0/{}'.format(addr)
         msg = 'Volume /dev/Pool-0/{} is already used.'.format(vname)
         err = {"class": "opene.exceptions.ItemConflictError",
@@ -893,6 +925,9 @@ class TestOpenEJovianRESTAPI(test.TestCase):
                           jrest.attach_target_vol, tname, vname)
 
         # no such target
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        jbody = {"name": vname, "lun": 0}
+
         url = 'http://85.14.118.246:11582/api/v3/pools/Pool-0/{}'.format(addr)
         msg = 'Target {} not exists.'.format(vname)
         err = {"class": "opene.exceptions.ItemNotFoundError",
@@ -904,12 +939,14 @@ class TestOpenEJovianRESTAPI(test.TestCase):
                 'code': 404}
 
         jrest.rproxy.pool_request.return_value = resp
-        attach_target_vol_expected += [
+        attach_target_vol_expected = [
             mock.call('POST', addr, json_data=jbody)]
         self.assertRaises(jexc.JDSSResourceNotFoundException,
                           jrest.attach_target_vol, tname, vname)
 
         # error unknown
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        jbody = {"name": vname, "lun": 0}
         url = 'http://85.14.118.246:11582/api/v3/pools/Pool-0/{}'.format(addr)
         msg = 'Target {} not exists.'.format(vname)
 
@@ -923,17 +960,28 @@ class TestOpenEJovianRESTAPI(test.TestCase):
                 'code': 500}
 
         jrest.rproxy.pool_request.return_value = resp
-        attach_target_vol_expected += [
+        attach_target_vol_expected = [
             mock.call('POST', addr, json_data=jbody)]
         self.assertRaises(jexc.JDSSException,
                           jrest.attach_target_vol, tname, vname)
         jrest.rproxy.pool_request.assert_has_calls(attach_target_vol_expected)
 
+        # error incorrect mode
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        jbody = {"name": vname, "lun": 0}
+        url = 'http://85.14.118.246:11582/api/v3/pools/Pool-0/{}'.format(addr)
+
+        attach_target_vol_expected = [
+            mock.call('POST', addr, json_data=jbody)]
+        self.assertRaises(jexc.JDSSException,
+                          jrest.attach_target_vol, tname, vname, mode='bad')
+        jrest.rproxy.pool_request.assert_not_called()
+
     def test_detach_target_vol(self):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         # detach target vol ok
-        tname = CONFIG_OK['iscsi_target_prefix'] + UUID_1
+        tname = CONFIG_OK['target_prefix'] + UUID_1
         vname = jcom.vname(UUID_1)
 
         addr = '/san/iscsi/targets/{tar}/luns/{vol}'.format(
@@ -989,9 +1037,9 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         vname = jcom.vname(UUID_1)
-        sname = jcom.sname(UUID_2)
+        sname = jcom.sname(UUID_S1, UUID_1)
 
-        data = {'name': jcom.sname(UUID_2)}
+        data = {'name': jcom.sname(UUID_S2, UUID_1)}
         resp = {'data': data,
                 'error': None,
                 'code': 201}
@@ -1003,7 +1051,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         vname = jcom.vname(UUID_1)
-        sname = jcom.sname(UUID_2)
+        sname = jcom.sname(UUID_S1, UUID_1)
 
         addr = '/volumes/{vol}/snapshots'.format(vol=vname)
         req = {'snapshot_name': sname}
@@ -1066,7 +1114,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         vname = jcom.vname(UUID_1)
-        sname = jcom.sname(UUID_2)
+        sname = jcom.sname(UUID_S1, UUID_1)
         cname = jcom.vname(UUID_3)
 
         addr = '/volumes/{vol}/clone'.format(vol=vname)
@@ -1101,7 +1149,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         vname = jcom.vname(UUID_1)
-        sname = jcom.sname(UUID_2)
+        sname = jcom.sname(UUID_S2, UUID_2)
         cname = jcom.vname(UUID_3)
 
         addr = '/volumes/{vol}/clone'.format(vol=vname)
@@ -1177,7 +1225,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         vname = jcom.vname(UUID_1)
-        sname = jcom.sname(UUID_2)
+        sname = jcom.sname(UUID_S2, UUID_2)
 
         req = ('/volumes/{vol}/snapshots/'
                '{snap}/rollback').format(vol=vname, snap=sname)
@@ -1198,7 +1246,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         vname = jcom.vname(UUID_1)
-        sname = jcom.sname(UUID_2)
+        sname = jcom.sname(UUID_S2, UUID_2)
 
         req = ('/volumes/{vol}/snapshots/'
                '{snap}/rollback').format(vol=vname,
@@ -1253,13 +1301,12 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         vname = jcom.vname(UUID_1)
-        sname = jcom.sname(UUID_2)
+        sname = jcom.sname(UUID_S2, UUID_2)
 
         addr = '/volumes/{vol}/snapshots/{snap}'.format(vol=vname, snap=sname)
 
         jbody = {
             'recursively_children': True,
-            'recursively_dependents': True,
             'force_umount': True
         }
 
@@ -1268,7 +1315,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
                 'code': 204}
 
         jrest.rproxy.pool_request.return_value = resp
-        delete_snapshot_expected = [mock.call('DELETE', addr)]
+        delete_snapshot_expected = [mock.call('DELETE', addr, json_data={})]
         self.assertIsNone(jrest.delete_snapshot(vname, sname))
 
         delete_snapshot_expected += [
@@ -1276,7 +1323,6 @@ class TestOpenEJovianRESTAPI(test.TestCase):
         self.assertIsNone(jrest.delete_snapshot(vname,
                                                 sname,
                                                 recursively_children=True,
-                                                recursively_dependents=True,
                                                 force_umount=True))
 
         jrest.rproxy.pool_request.assert_has_calls(delete_snapshot_expected)
@@ -1285,8 +1331,8 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest, ctx = self.get_rest(CONFIG_OK)
         vname = jcom.vname(UUID_1)
-        sname = jcom.sname(UUID_2)
-        cname = jcom.sname(UUID_3)
+        sname = jcom.sname(UUID_S2, UUID_1)
+        cname = jcom.sname(UUID_S3, UUID_1)
 
         addr = '/volumes/{vol}/snapshots/{snap}'.format(vol=vname, snap=sname)
 
@@ -1307,7 +1353,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         jrest.rproxy.pool_request.return_value = resp
         delete_snapshot_expected = [
-            mock.call('DELETE', addr)]
+            mock.call('DELETE', addr, json_data={})]
 
         self.assertRaises(jexc.JDSSSnapshotIsBusyException,
                           jrest.delete_snapshot,
@@ -1325,7 +1371,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
                 'code': 500}
 
         jrest.rproxy.pool_request.return_value = resp
-        delete_snapshot_expected += [mock.call('DELETE', addr)]
+        delete_snapshot_expected += [mock.call('DELETE', addr, json_data={})]
         self.assertRaises(jexc.JDSSException,
                           jrest.delete_snapshot, vname, sname)
 
@@ -1340,7 +1386,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
 
         data = {"results": 2,
                 "entries": {"referenced": "65536",
-                            "name": jcom.sname(UUID_2),
+                            "name": jcom.sname(UUID_S1, UUID_1),
                             "defer_destroy": "off",
                             "userrefs": "0",
                             "primarycache": "all",

@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from datetime import datetime
+
 from cinder import exception
 from cinder.i18n import _
 
@@ -30,13 +32,16 @@ def is_snapshot(name):
 
 
 def idname(name):
-    """Convert id into name"""
+    """Extract UUID from physical volume name"""
 
-    if name.startswith(('s_', 'v_', 't_')):
+    if name.startswith(('v_', 't_')):
         return name[2:]
 
+    if name.startswith(('s_')):
+        return sid_from_sname(name)
+
     msg = _('Object name %s is incorrect') % name
-    raise exception.VolumeBackendAPIException(message=msg)
+    raise exception.VolumeDriverException(message=msg)
 
 
 def vname(name):
@@ -47,30 +52,46 @@ def vname(name):
 
     if name.startswith('s_'):
         msg = _('Attempt to use snapshot %s as a volume') % name
-        raise exception.VolumeBackendAPIException(message=msg)
+        raise exception.VolumeDriverException(message=msg)
 
     if name.startswith('t_'):
         msg = _('Attempt to use deleted object %s as a volume') % name
-        raise exception.VolumeBackendAPIException(message=msg)
+        raise exception.VolumeDriverException(message=msg)
 
-    return 'v_' + name
+    return f'v_{name}'
 
 
-def sname(name):
-    """Convert id into snapshot name"""
+def sname_to_id(sname):
 
-    if name.startswith('s_'):
-        return name
+    spl = sname.split('_')
 
-    if name.startswith('v_'):
-        msg = _('Attempt to use volume %s as a snapshot') % name
-        raise exception.VolumeBackendAPIException(message=msg)
+    if len(spl) == 2:
+        return (spl[1], None)
 
-    if name.startswith('t_'):
-        msg = _('Attempt to use deleted object %s as a snapshot') % name
-        raise exception.VolumeBackendAPIException(message=msg)
+    return (spl[1], spl[2])
 
-    return 's_' + name
+
+def sid_from_sname(name):
+    return sname_to_id(name)[0]
+
+
+def vid_from_sname(name):
+    return sname_to_id(name)[1]
+
+
+def sname(sid, vid):
+    """Convert id into snapshot name
+
+    :param: vid: volume id
+    :param: sid: snapshot id
+    """
+    if vid is None:
+        return 's_%(sid)s' % {'sid': sid}
+    return 's_%(sid)s_%(vid)s' % {'sid': sid, 'vid': vid}
+
+
+def sname_from_snap(snapshot_struct):
+    return snapshot_struct['name']
 
 
 def is_hidden(name):
@@ -83,22 +104,33 @@ def is_hidden(name):
     return False
 
 
-def origin_snapshot(origin_str):
-    """Extracts original physical snapshot name from origin record"""
-
-    return origin_str.split("@")[1]
-
-
-def origin_volume(origin_str):
-    """Extracts original physical volume name from origin record"""
-
-    return origin_str.split("@")[0].split("/")[1]
+def origin_snapshot(vol):
+    """Extracts original physical snapshot name from volume dict"""
+    if 'origin' in vol and vol['origin'] is not None:
+        return vol['origin'].split("@")[1]
+    return None
 
 
-def full_name_volume(name):
-    """Get volume id from full_name"""
+def origin_volume(vol):
+    """Extracts original physical volume name from volume dict"""
 
-    return name.split('/')[1]
+    if 'origin' in vol and vol['origin'] is not None:
+        return vol['origin'].split("@")[0].split("/")[1]
+    return None
+
+
+def snapshot_clones(snap):
+    """Return list of clones associated with snapshot or return empty list"""
+    out = []
+    clones = []
+    if 'clones' not in snap:
+        return out
+    else:
+        clones = snap['clones'].split(',')
+
+    for clone in clones:
+        out.append(clone.split('/')[1])
+    return out
 
 
 def hidden(name):
@@ -110,3 +142,14 @@ def hidden(name):
     if name[:2] == 'v_' or name[:2] == 's_':
         return 't_' + name[2:]
     return 't_' + name
+
+
+def get_newest_snapshot_name(snapshots):
+    newest_date = None
+    sname = None
+    for snap in snapshots:
+        current_date = datetime.strptime(snap['creation'], "%Y-%m-%d %H:%M:%S")
+        if newest_date is None or current_date > newest_date:
+            newest_date = current_date
+            sname = snap['name']
+    return sname
