@@ -95,6 +95,8 @@ class VNXDriver(driver.ManageableVD,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "DellEMC_VNX_CI"
 
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(VNXDriver, self).__init__(*args, **kwargs)
         utils.init_ops(self.configuration)

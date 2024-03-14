@@ -1,0 +1,19 @@
+---
+upgrade:
+  - |
+    The ``enable_unsupported_driver`` option will need to be set to ``True`` in
+    the driver's section in cinder.conf to continue to use the following
+    three drivers.
+
+    - Dell SC Series Storage Driver (iSCSI, FC)
+    - Dell VNX Storage Driver (FC, iSCSI)
+    - Dell XtremeIO Storage Driver (iSCSI, FC)
+
+deprecations:
+  - |
+    The following three drivers were marked unsupported. These drivers are
+    deprecated and will be removed in a future release.
+
+    - Dell SC Series Storage Driver (iSCSI, FC)
+    - Dell VNX Storage Driver (FC, iSCSI)
+    - Dell XtremeIO Storage Driver (iSCSI, FC)
