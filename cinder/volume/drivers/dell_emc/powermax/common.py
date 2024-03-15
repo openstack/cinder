@@ -1574,7 +1574,8 @@ class PowerMaxCommon(object):
                 if rep_config.get(utils.METROBIAS):
                     extra_specs[utils.METROBIAS] = (
                         rep_config[utils.METROBIAS])
-
+                extra_specs[utils.DISABLE_PROTECTED_SNAP] =\
+                    self.utils.is_protected_snap_disabled(extra_specs)
         return extra_specs, qos_specs
 
     def _get_replicated_volume_backend_id(self, volume):
@@ -2074,14 +2075,23 @@ class PowerMaxCommon(object):
             return volume_name
 
         array = extra_specs[utils.ARRAY]
-        if self.utils.is_replication_enabled(extra_specs):
-            self._validate_rdfg_status(array, extra_specs)
+        dps = self.utils.is_protected_snap_disabled(extra_specs)
+        # If a volume is not replicated and has the
+        # powermax:disable_protected_snap set to True,
+        # then clean up the volume without replication cleanup.
+        if dps and volume.replication_status is None:
+            self.masking.remove_and_reset_members(
+                array, volume, device_id, volume_name, extra_specs, False)
+            self._cleanup_device_retry(array, device_id, extra_specs)
+        else:
+            if self.utils.is_replication_enabled(extra_specs):
+                self._validate_rdfg_status(array, extra_specs)
 
-        self._cleanup_device_retry(array, device_id, extra_specs)
+            self._cleanup_device_retry(array, device_id, extra_specs)
 
-        # Remove from any storage groups and cleanup replication
-        self._remove_vol_and_cleanup_replication(
-            array, device_id, volume_name, extra_specs, volume)
+            # Remove from any storage groups and cleanup replication
+            self._remove_vol_and_cleanup_replication(
+                array, device_id, volume_name, extra_specs, volume)
         self._delete_from_srp(
             array, device_id, volume_name, extra_specs)
         return volume_name
@@ -2898,6 +2908,10 @@ class PowerMaxCommon(object):
         create_snap, copy_mode, rep_extra_specs = False, False, dict()
         volume_dict = self.rest.get_volume(array, source_device_id)
         replication_enabled = self.utils.is_replication_enabled(extra_specs)
+        if self.utils.is_protected_snap_disabled(extra_specs):
+            extra_specs.pop(utils.IS_RE, None)
+            replication_enabled = False
+
         if replication_enabled:
             copy_mode = True
             __, rep_extra_specs, __, __ = (
@@ -5778,6 +5792,9 @@ class PowerMaxCommon(object):
             bias = True if rep_config.get(utils.METROBIAS) else False
             rep_extra_specs[utils.METROBIAS] = bias
 
+        rep_extra_specs[utils.DISABLE_PROTECTED_SNAP] =\
+            self.utils.is_protected_snap_disabled(extra_specs)
+
         # If disable compression is set, check if target array is all flash
         do_disable_compression = self.utils.is_compression_disabled(
             extra_specs)
@@ -7800,3 +7817,20 @@ class PowerMaxCommon(object):
                      'dev_ident': dev_id_from_identifier})
                 self.rest.rename_volume(
                     array, dev_id_from_identifier, None)
+
+    @staticmethod
+    def get_vendor_properties(self):
+        """Retrieves the vendor properties for the powermax driver.
+
+        :param self: The object instance.
+        :return: A tuple containing the properties dictionary and the
+          driver name.
+        """
+        properties = {}
+        self._set_property(
+            properties,
+            utils.DISABLE_PROTECTED_SNAP,
+            "Disable protected snap",
+            _("Prevent protected snap being created on SRDF device."),
+            "boolean")
+        return properties, "powermax"

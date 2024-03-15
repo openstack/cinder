@@ -450,6 +450,7 @@ class PowerMaxData(object):
     rep_extra_specs['sync_retries'] = 200
     rep_extra_specs['rdf_group_label'] = rdf_group_name_1
     rep_extra_specs['rdf_group_no'] = rdf_group_no_1
+    rep_extra_specs[utils.DISABLE_PROTECTED_SNAP] = False
     rep_extra_specs2 = deepcopy(rep_extra_specs)
     rep_extra_specs2[utils.PORTGROUPNAME] = port_group_name_f
     rep_extra_specs3 = deepcopy(rep_extra_specs)

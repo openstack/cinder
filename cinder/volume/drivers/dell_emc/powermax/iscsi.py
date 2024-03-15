@@ -139,9 +139,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         4.4.1 - Report trim/discard support
         4.5.0 - Add PowerMax v4 support
         4.5.1 - Add active/active compliance
+        4.5.2 - Add 'disable_protected_snap' option
     """
 
-    VERSION = "4.5.1"
+    VERSION = "4.5.2"
     SUPPORTS_ACTIVE_ACTIVE = True
 
     # ThirdPartySystems wiki
@@ -170,6 +171,9 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
 
     def check_for_setup_error(self):
         pass
+
+    def _init_vendor_properties(self):
+        return self.common.get_vendor_properties(self)
 
     def create_volume(self, volume):
         """Creates a PowerMax/VMAX volume.
@@ -255,7 +259,6 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         :param context: the context
         :param volume_id: the volume id
         """
-        pass
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
@@ -461,15 +464,15 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         data['driver_version'] = self.VERSION
         self._stats = data
 
-    def manage_existing(self, volume, external_ref):
+    def manage_existing(self, volume, existing_ref):
         """Manages an existing PowerMax/VMAX Volume (import to Cinder).
 
         Renames the Volume to match the expected name for the volume.
         Also need to consider things like QoS, Emulation, account/tenant.
         """
-        return self.common.manage_existing(volume, external_ref)
+        return self.common.manage_existing(volume, existing_ref)
 
-    def manage_existing_get_size(self, volume, external_ref):
+    def manage_existing_get_size(self, volume, existing_ref):
         """Return size of an existing PowerMax/VMAX volume to manage_existing.
 
         :param self: reference to class
@@ -477,7 +480,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         :param external_ref: reference to the existing volume
         :returns: size of the volume in GB
         """
-        return self.common.manage_existing_get_size(volume, external_ref)
+        return self.common.manage_existing_get_size(volume, existing_ref)
 
     def unmanage(self, volume):
         """Export PowerMax/VMAX volume from Cinder.
@@ -550,10 +553,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         return self.common.get_manageable_snapshots(marker, limit, offset,
                                                     sort_keys, sort_dirs)
 
-    def retype(self, ctxt, volume, new_type, diff, host):
+    def retype(self, context, volume, new_type, diff, host):
         """Migrate volume to another host using retype.
 
-        :param ctxt: context
+        :param context: context
         :param volume: the volume object including the volume_type_id
         :param new_type: the new volume type.
         :param diff: difference between old and new volume types.

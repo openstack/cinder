@@ -134,9 +134,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
         4.4.1 - Report trim/discard support
         4.5.0 - Add PowerMax v4 support
         4.5.1 - Add active/active compliance
+        4.5.2 - Add 'disable_protected_snap' option
     """
 
-    VERSION = "4.5.1"
+    VERSION = "4.5.2"
     SUPPORTS_ACTIVE_ACTIVE = True
 
     # ThirdPartySystems wiki
@@ -165,6 +166,9 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
 
     def check_for_setup_error(self):
         pass
+
+    def _init_vendor_properties(self):
+        return self.common.get_vendor_properties(self)
 
     def create_volume(self, volume):
         """Creates a PowerMax/VMAX volume.

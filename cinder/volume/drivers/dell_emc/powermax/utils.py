@@ -140,6 +140,7 @@ REST_API_CONNECT_TIMEOUT = 'rest_api_connect_timeout'
 REST_API_READ_TIMEOUT = 'rest_api_read_timeout'
 REST_API_CONNECT_TIMEOUT_KEY = 'RestAPIConnectTimeout'
 REST_API_READ_TIMEOUT_KEY = 'RestAPIReadTimeout'
+DISABLE_PROTECTED_SNAP = 'powermax:disable_protected_snap'
 
 # Array Models, Service Levels & Workloads
 VMAX_HYBRID_MODELS = ['VMAX100K', 'VMAX200K', 'VMAX400K']
@@ -529,6 +530,15 @@ class PowerMaxUtils(object):
         host = volume.host
         host_list = host.split('+')
         return host_list[-1]
+
+    def is_protected_snap_disabled(self, extra_specs):
+        """Check is the disable_protected_snap flag set.
+
+        :param extra_specs: extra specifications :returns: boolean
+        """
+        if extra_specs.get(DISABLE_PROTECTED_SNAP, False) in IS_TRUE:
+            return True
+        return False
 
     def is_compression_disabled(self, extra_specs):
         """Check is compression is to be disabled.
