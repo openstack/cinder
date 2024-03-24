@@ -34,11 +34,11 @@ class PowerMaxMigrate(object):
     It supports VMAX 3 and VMAX All Flash and PowerMax arrays.
 
     """
-    def __init__(self, prtcl, rest):
+    def __init__(self, prtcl, rest, configuration):
         self.rest = rest
         self.utils = utils.PowerMaxUtils()
-        self.masking = masking.PowerMaxMasking(prtcl, self.rest)
-        self.provision = provision.PowerMaxProvision(self.rest)
+        self.masking = masking.PowerMaxMasking(prtcl, self.rest, configuration)
+        self.provision = provision.PowerMaxProvision(self.rest, configuration)
 
     def do_migrate_if_candidate(
             self, array, srp, device_id, volume, connector):

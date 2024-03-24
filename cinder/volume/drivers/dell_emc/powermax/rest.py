@@ -2197,7 +2197,7 @@ class PowerMaxRest(object):
     def modify_volume_snap(self, array, source_id, target_id, snap_name,
                            extra_specs, snap_id=None, link=False, unlink=False,
                            rename=False, new_snap_name=None, restore=False,
-                           list_volume_pairs=None, copy=False):
+                           list_volume_pairs=None, copy=False, symforce=False):
         """Modify a snapvx snapshot
 
         :param array: the array serial number
@@ -2248,7 +2248,7 @@ class PowerMaxRest(object):
                        "copy": copy, "action": action,
                        "star": 'false', "force": force,
                        "exact": 'false', "remote": 'false',
-                       "symforce": 'false'}
+                       "symforce": str(symforce).lower()}
         elif action == "Rename":
             operation = 'Rename snapVx snapshot'
             payload = {"deviceNameListSource": [{"name": source_id}],
