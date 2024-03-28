@@ -1216,6 +1216,23 @@ class PowerMaxMaskingTest(test.TestCase):
             utils.PowerMaxUtils.truncate_string.assert_called_once_with(
                 'OptimizedNONE', 10)
 
+    @mock.patch.object(masking.PowerMaxMasking,
+                       '_clean_up_child_storage_group')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'move_volume_between_storage_groups')
+    @mock.patch.object(masking.PowerMaxMasking,
+                       '_return_volume_to_fast_managed_group')
+    def test_pre_multiattach_pool_no_pool_name(self, mock_return, mck_move,
+                                               mck_clean):
+        with mock.patch.object(utils.PowerMaxUtils, 'truncate_string',
+                               return_value='DiamondDSS'):
+            self.mask.pre_multiattach(
+                self.data.array, self.data.device_id,
+                self.data.masking_view_dict_multiattach,
+                self.data.extra_specs_no_pool_name)
+            utils.PowerMaxUtils.truncate_string.assert_called_once_with(
+                'DiamondDSS', 10)
+
     @mock.patch.object(
         rest.PowerMaxRest, 'get_storage_group_list',
         side_effect=[
