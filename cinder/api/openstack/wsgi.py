@@ -640,6 +640,7 @@ class Resource(wsgi.Application):
         """
 
         self.controller = controller
+        self.extension_controllers = set()
 
         default_deserializers = dict(json=JSONDeserializer)
         default_deserializers.update(deserializers)
@@ -668,6 +669,12 @@ class Resource(wsgi.Application):
 
     def register_extensions(self, controller):
         """Registers controller extensions with this resource."""
+
+        self.extension_controllers.add(controller)
+
+        actions = getattr(controller, 'wsgi_actions', {})
+        for key, method_name in actions.items():
+            self.wsgi_actions[key] = getattr(controller, method_name)
 
         extensions = getattr(controller, 'wsgi_extensions', [])
         for method_name, action_name in extensions:
