@@ -32,59 +32,32 @@ from cinder import objects
 from cinder import volume
 from cinder.volume import volume_utils
 
-
 LOG = logging.getLogger(__name__)
 
 
-class AdminController(wsgi.Controller):
-    """Abstract base class for AdminControllers."""
-
-    collection = None  # api collection to extend
-
-    # FIXME(clayg): this will be hard to keep up-to-date
-    # Concrete classes can expand or over-ride
+class VolumeAdminController(wsgi.Controller):
+    """AdminController for Volumes."""
 
     def __init__(self, *args, **kwargs):
-        super(AdminController, self).__init__(*args, **kwargs)
-        # singular name of the resource
-        self.resource_name = self.collection.rstrip('s')
+        super().__init__(*args, **kwargs)
         self.volume_api = volume.API()
-        self.backup_api = backup.API()
-
-    def _update(self, *args, **kwargs):
-        raise NotImplementedError()
-
-    def _get(self, *args, **kwargs):
-        raise NotImplementedError()
-
-    def _delete(self, *args, **kwargs):
-        raise NotImplementedError()
-
-    def validate_update(self, req, body):
-        raise NotImplementedError()
-
-    def _notify_reset_status(self, context, id, message):
-        raise NotImplementedError()
 
     def authorize(self, context, action_name, target_obj=None):
         context.authorize(
-            'volume_extension:%(resource)s_admin_actions:%(action)s' %
-            {'resource': self.resource_name,
-             'action': action_name}, target_obj=target_obj)
+            'volume_extension:volume_admin_actions:%(action)s' %
+            {'action': action_name}, target_obj=target_obj
+        )
 
-    def _remove_worker(self, context, id):
-        # Remove the cleanup worker from the DB when we change a resource
-        # status since it renders useless the entry.
-        res = db.worker_destroy(context, resource_type=self.collection.title(),
-                                resource_id=id)
-        if res:
-            LOG.debug('Worker entry for %s with id %s has been deleted.',
-                      self.collection, id)
+    def _notify_reset_status(self, context, id, message):
+        volume = objects.Volume.get_by_id(context, id)
+        volume_utils.notify_about_volume_usage(context, volume,
+                                               message)
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reset_status')
+    @validation.schema(admin_actions.reset)
     def _reset_status(self, req, id, body):
-        """Reset status on the resource."""
+        """Reset status on the volume."""
 
         def _clean_volume_attachment(context, id):
             attachments = (
@@ -94,54 +67,6 @@ class AdminController(wsgi.Controller):
             db.volume_admin_metadata_delete(context.elevated(), id,
                                             'attached_mode')
 
-        context = req.environ['cinder.context']
-        update = self.validate_update(req, body=body)
-        msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
-        LOG.debug(msg, {'resource': self.resource_name, 'id': id,
-                        'update': update})
-
-        self._notify_reset_status(context, id, 'reset_status.start')
-
-        # Not found exception will be handled at the wsgi level
-        self._update(context, id, update)
-        self._remove_worker(context, id)
-        if update.get('attach_status') == 'detached':
-            _clean_volume_attachment(context, id)
-
-        self._notify_reset_status(context, id, 'reset_status.end')
-
-    @wsgi.response(HTTPStatus.ACCEPTED)
-    @wsgi.action('os-force_delete')
-    def _force_delete(self, req, id, body):
-        """Delete a resource, bypassing the check that it must be available."""
-        context = req.environ['cinder.context']
-        # Not found exception will be handled at the wsgi level
-        resource = self._get(context, id)
-        self.authorize(context, 'force_delete', target_obj=resource)
-        self._delete(context, resource, force=True)
-
-
-class VolumeAdminController(AdminController):
-    """AdminController for Volumes."""
-
-    collection = 'volumes'
-
-    def _notify_reset_status(self, context, id, message):
-        volume = objects.Volume.get_by_id(context, id)
-        volume_utils.notify_about_volume_usage(context, volume,
-                                               message)
-
-    def _update(self, *args, **kwargs):
-        db.volume_update(*args, **kwargs)
-
-    def _get(self, *args, **kwargs):
-        return self.volume_api.get(*args, **kwargs)
-
-    def _delete(self, *args, **kwargs):
-        return self.volume_api.delete(*args, **kwargs)
-
-    @validation.schema(admin_actions.reset)
-    def validate_update(self, req, body):
         update = {}
         body = body['os-reset_status']
         status = body.get('status', None)
@@ -159,24 +84,8 @@ class VolumeAdminController(AdminController):
             if update['migration_status'] == 'none':
                 update['migration_status'] = None
 
-        return update
-
-    @wsgi.response(HTTPStatus.ACCEPTED)
-    @wsgi.action('os-reset_status')
-    def _reset_status(self, req, id, body):
-        """Reset status on the volume."""
-
-        def _clean_volume_attachment(context, id):
-            attachments = (
-                db.volume_attachment_get_all_by_volume_id(context, id))
-            for attachment in attachments:
-                db.volume_detached(context.elevated(), id, attachment.id)
-            db.volume_admin_metadata_delete(context.elevated(), id,
-                                            'attached_mode')
-
-        # any exceptions raised will be handled at the wsgi level
-        update = self.validate_update(req, body=body)
         context = req.environ['cinder.context']
+        # any exceptions raised will be handled at the wsgi level
         volume = objects.Volume.get_by_id(context, id)
         self.authorize(context, 'reset_status', target_obj=volume)
 
@@ -196,13 +105,20 @@ class VolumeAdminController(AdminController):
                         "because volume does not have any attachments.")
                 raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
-        LOG.debug(msg, {'resource': self.resource_name, 'id': id,
-                  'update': update})
+        msg = "Updating volume '%(id)s' with '%(update)r'"
+        LOG.debug(msg, {'id': id, 'update': update})
         self._notify_reset_status(context, id, 'reset_status.start')
 
-        self._update(context, id, update)
-        self._remove_worker(context, id)
+        db.volume_update(context, id, update)
+
+        # Remove the cleanup worker from the DB when we change a resource
+        # status since it renders useless the entry.
+        res = db.worker_destroy(context, resource_type='VOLUME',
+                                resource_id=id)
+        if res:
+            LOG.debug('Worker entry for volume with id %s has been deleted.',
+                      id)
+
         if update.get('attach_status') == 'detached':
             _clean_volume_attachment(context, id)
 
@@ -212,10 +128,10 @@ class VolumeAdminController(AdminController):
     @wsgi.action('os-force_detach')
     @validation.schema(admin_actions.force_detach)
     def _force_detach(self, req, id, body):
-        """Roll back a bad detach after the volume been disconnected."""
+        """Roll-back a bad detach after the volume been disconnected."""
         context = req.environ['cinder.context']
         # Not found exception will be handled at the wsgi level
-        volume = self._get(context, id)
+        volume = self.volume_api.get(context, id)
         self.authorize(context, 'force_detach', target_obj=volume)
         connector = body['os-force_detach'].get('connector', None)
 
@@ -253,7 +169,7 @@ class VolumeAdminController(AdminController):
         """Migrate a volume to the specified host."""
         context = req.environ['cinder.context']
         # Not found exception will be handled at the wsgi level
-        volume = self._get(context, id)
+        volume = self.volume_api.get(context, id)
         self.authorize(context, 'migrate_volume', target_obj=volume)
         params = body['os-migrate_volume']
 
@@ -272,12 +188,12 @@ class VolumeAdminController(AdminController):
         """Complete an in-progress migration."""
         context = req.environ['cinder.context']
         # Not found exception will be handled at the wsgi level
-        volume = self._get(context, id)
+        volume = self.volume_api.get(context, id)
         self.authorize(context, 'migrate_volume_completion', target_obj=volume)
         params = body['os-migrate_volume_completion']
         new_volume_id = params['new_volume']
         # Not found exception will be handled at the wsgi level
-        new_volume = self._get(context, new_volume_id)
+        new_volume = self.volume_api.get(context, new_volume_id)
         error = params.get('error', False)
         ret = self.volume_api.migrate_volume_completion(context, volume,
                                                         new_volume, error)
@@ -290,78 +206,139 @@ class VolumeAdminController(AdminController):
         """Complete an in-progress extend operation."""
         context = req.environ['cinder.context']
         # Not found exception will be handled at the wsgi level
-        volume = self._get(context, id)
+        volume = self.volume_api.get(context, id)
         self.authorize(context, 'extend_volume_completion', target_obj=volume)
         params = body['os-extend_volume_completion']
         error = params.get('error', False)
         self.volume_api.extend_volume_completion(context, volume, error)
 
+    @wsgi.response(HTTPStatus.ACCEPTED)
+    @wsgi.action('os-force_delete')
+    def _force_delete(self, req, id, body):
+        """Delete a volume, bypassing the check that it must be available."""
+        context = req.environ['cinder.context']
+        # Not found exception will be handled at the wsgi level
+        resource = self.volume_api.get(context, id)
+        self.authorize(context, 'force_delete', target_obj=resource)
+        self.volume_api.delete(context, resource, force=True)
 
-class SnapshotAdminController(AdminController):
+
+class SnapshotAdminController(wsgi.Controller):
     """AdminController for Snapshots."""
 
-    collection = 'snapshots'
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.volume_api = volume.API()
+
+    def authorize(self, context, action_name, target_obj=None):
+        context.authorize(
+            'volume_extension:snapshot_admin_actions:%(action)s' %
+            {'action': action_name}, target_obj=target_obj
+        )
 
     def _notify_reset_status(self, context, id, message):
         snapshot = objects.Snapshot.get_by_id(context, id)
         volume_utils.notify_about_snapshot_usage(context, snapshot,
                                                  message)
 
+    @wsgi.response(HTTPStatus.ACCEPTED)
+    @wsgi.action('os-reset_status')
     @validation.schema(admin_actions.reset_status_snapshot)
-    def validate_update(self, req, body):
+    def _reset_status(self, req, id, body):
+        """Reset status on the snapshot."""
+
+        def _clean_volume_attachment(context, id):
+            attachments = (
+                db.volume_attachment_get_all_by_volume_id(context, id))
+            for attachment in attachments:
+                db.volume_detached(context.elevated(), id, attachment.id)
+            db.volume_admin_metadata_delete(context.elevated(), id,
+                                            'attached_mode')
+
+        context = req.environ['cinder.context']
         status = body['os-reset_status']['status']
         update = {'status': status.lower()}
-        return update
+        msg = "Updating snapshot '%(id)s' with '%(update)r'"
+        LOG.debug(msg, {'id': id, 'update': update})
 
-    def _update(self, *args, **kwargs):
-        context = args[0]
-        snapshot_id = args[1]
-        fields = args[2]
-        snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
+        self._notify_reset_status(context, id, 'reset_status.start')
+
+        # Not found exception will be handled at the wsgi level
+        snapshot = objects.Snapshot.get_by_id(context, id)
         self.authorize(context, 'reset_status', target_obj=snapshot)
-        snapshot.update(fields)
+        snapshot.update(update)
         snapshot.save()
 
-    def _get(self, *args, **kwargs):
-        return self.volume_api.get_snapshot(*args, **kwargs)
+        # Remove the cleanup worker from the DB when we change a resource
+        # status since it renders useless the entry.
+        res = db.worker_destroy(context, resource_type='SNAPSHOT',
+                                resource_id=id)
+        if res:
+            LOG.debug('Worker entry for snapshot with id %s has been deleted.',
+                      id)
 
-    def _delete(self, *args, **kwargs):
-        return self.volume_api.delete_snapshot(*args, **kwargs)
+        if update.get('attach_status') == 'detached':
+            _clean_volume_attachment(context, id)
+
+        self._notify_reset_status(context, id, 'reset_status.end')
+
+    @wsgi.response(HTTPStatus.ACCEPTED)
+    @wsgi.action('os-force_delete')
+    def _force_delete(self, req, id, body):
+        """Delete a snapshot, bypassing the check that it must be available."""
+        context = req.environ['cinder.context']
+        # Not found exception will be handled at the wsgi level
+        resource = self.volume_api.get_snapshot(context, id)
+        self.authorize(context, 'force_delete', target_obj=resource)
+        self.volume_api.delete_snapshot(context, resource, force=True)
 
 
-class BackupAdminController(AdminController):
+class BackupAdminController(wsgi.Controller):
     """AdminController for Backups."""
 
-    collection = 'backups'
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.backup_api = backup.API()
+
+    def authorize(self, context, action_name, target_obj=None):
+        context.authorize(
+            'volume_extension:backup_admin_actions:%(action)s' %
+            {'action': action_name}, target_obj=target_obj
+        )
 
     def _notify_reset_status(self, context, id, message):
         backup = objects.Backup.get_by_id(context, id)
         volume_utils.notify_about_backup_usage(context, backup,
                                                message)
 
-    def _get(self, *args, **kwargs):
-        return self.backup_api.get(*args, **kwargs)
-
-    def _delete(self, *args, **kwargs):
-        return self.backup_api.delete(*args, **kwargs)
-
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reset_status')
     @validation.schema(admin_actions.reset_status_backup)
     def _reset_status(self, req, id, body):
-        """Reset status on the resource."""
+        """Reset status on the backup."""
         context = req.environ['cinder.context']
         status = body['os-reset_status']['status']
         update = {'status': status.lower()}
-        msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
-        LOG.debug(msg, {'resource': self.resource_name, 'id': id,
-                        'update': update})
+        msg = "Updating backup '%(id)s' with '%(update)r'"
+        LOG.debug(msg, {'id': id, 'update': update})
 
         self._notify_reset_status(context, id, 'reset_status.start')
 
         # Not found exception will be handled at the wsgi level
         self.backup_api.reset_status(context=context, backup_id=id,
                                      status=update['status'])
+
+        # the backup API takes care of the reset_status.end notification
+
+    @wsgi.response(HTTPStatus.ACCEPTED)
+    @wsgi.action('os-force_delete')
+    def _force_delete(self, req, id, body):
+        """Delete a backup, bypassing the check that it must be available."""
+        context = req.environ['cinder.context']
+        # Not found exception will be handled at the wsgi level
+        resource = self.backup_api.get(context, id)
+        self.authorize(context, 'force_delete', target_obj=resource)
+        self.backup_api.delete(context, resource, force=True)
 
 
 class Admin_actions(extensions.ExtensionDescriptor):
@@ -372,11 +349,11 @@ class Admin_actions(extensions.ExtensionDescriptor):
     updated = "2012-08-25T00:00:00+00:00"
 
     def get_controller_extensions(self):
-        exts = []
-        for class_ in (VolumeAdminController, SnapshotAdminController,
-                       BackupAdminController):
-            controller = class_()
-            extension = extensions.ControllerExtension(
-                self, class_.collection, controller)
-            exts.append(extension)
-        return exts
+        return [
+            extensions.ControllerExtension(
+                self, 'volumes', VolumeAdminController()),
+            extensions.ControllerExtension(
+                self, 'snapshots', SnapshotAdminController()),
+            extensions.ControllerExtension(
+                self, 'backups', BackupAdminController()),
+        ]
