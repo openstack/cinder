@@ -23,7 +23,7 @@ from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import group_types as group_type
+from cinder.api.schemas import group_types as schema
 from cinder.api.v3.views import group_types as views_types
 from cinder.api import validation
 from cinder import exception
@@ -53,7 +53,7 @@ class GroupTypesController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_TYPE)
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(group_type.create)
+    @validation.schema(schema.create)
     def create(self, req, body):
         """Creates a new group type."""
         context = req.environ['cinder.context']
@@ -89,7 +89,7 @@ class GroupTypesController(wsgi.Controller):
         return self._view_builder.show(req, grp_type)
 
     @wsgi.Controller.api_version(mv.GROUP_TYPE)
-    @validation.schema(group_type.update)
+    @validation.schema(schema.update)
     def update(self, req, id, body):
         # Update description for a given group type.
         context = req.environ['cinder.context']

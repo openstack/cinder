@@ -20,7 +20,7 @@ from oslo_log import log as logging
 from cinder.api.contrib import backups
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import backups as backup
+from cinder.api.schemas import backups as schema
 from cinder.api.v3.views import backups as backup_views
 from cinder.api import validation
 from cinder.policies import backups as policy
@@ -35,9 +35,9 @@ class BackupsController(backups.BackupsController):
     _view_builder_class = backup_views.ViewBuilder
 
     @wsgi.Controller.api_version(mv.BACKUP_UPDATE)
-    @validation.schema(backup.update, mv.BACKUP_UPDATE,
+    @validation.schema(schema.update, mv.BACKUP_UPDATE,
                        mv.get_prior_version(mv.BACKUP_METADATA))
-    @validation.schema(backup.update_backup_v343, mv.BACKUP_METADATA)
+    @validation.schema(schema.update_backup_v343, mv.BACKUP_METADATA)
     def update(self, req, id, body):
         """Update a backup."""
         context = req.environ['cinder.context']

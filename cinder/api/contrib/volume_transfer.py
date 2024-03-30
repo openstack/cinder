@@ -21,7 +21,7 @@ from webob import exc
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import volume_transfer
+from cinder.api.schemas import volume_transfer as schema
 from cinder.api import validation
 from cinder.api.views import transfers as transfer_view
 from cinder import exception
@@ -79,7 +79,7 @@ class VolumeTransferController(wsgi.Controller):
         return transfers
 
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(volume_transfer.create)
+    @validation.schema(schema.create)
     def create(self, req, body):
         """Create a new volume transfer."""
         LOG.debug('Creating new volume transfer %s', body)
@@ -108,7 +108,7 @@ class VolumeTransferController(wsgi.Controller):
         return transfer
 
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(volume_transfer.accept)
+    @validation.schema(schema.accept)
     def accept(self, req, id, body):
         """Accept a new volume transfer."""
         transfer_id = id

@@ -27,7 +27,7 @@ from cinder.api import common
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import backups as backup
+from cinder.api.schemas import backups as schema
 from cinder.api import validation
 from cinder.api.views import backups as backup_views
 from cinder import backup as backupAPI
@@ -145,11 +145,11 @@ class BackupsController(wsgi.Controller):
     #   immediately
     # - maybe also do validation of swift container name
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(backup.create, mv.BASE_VERSION,
+    @validation.schema(schema.create, mv.BASE_VERSION,
                        mv.get_prior_version(mv.BACKUP_METADATA))
-    @validation.schema(backup.create_backup_v343, mv.BACKUP_METADATA,
+    @validation.schema(schema.create_backup_v343, mv.BACKUP_METADATA,
                        mv.get_prior_version(mv.BACKUP_AZ))
-    @validation.schema(backup.create_backup_v351, mv.BACKUP_AZ)
+    @validation.schema(schema.create_backup_v351, mv.BACKUP_AZ)
     def create(self, req, body):
         """Create a new backup."""
         LOG.debug('Creating new backup %s', body)
@@ -202,7 +202,7 @@ class BackupsController(wsgi.Controller):
         return retval
 
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(backup.restore)
+    @validation.schema(schema.restore)
     def restore(self, req, id, body):
         """Restore an existing backup to a volume."""
         LOG.debug('Restoring backup %(backup_id)s (%(body)s)',
@@ -253,7 +253,7 @@ class BackupsController(wsgi.Controller):
         return retval
 
     @wsgi.response(HTTPStatus.CREATED)
-    @validation.schema(backup.import_record)
+    @validation.schema(schema.import_record)
     def import_record(self, req, body):
         """Import a backup."""
         LOG.debug('Importing record from %s.', body)

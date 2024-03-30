@@ -20,6 +20,7 @@ from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import consistencygroups
 from cinder import context
+from cinder import exception
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit.api import fakes
@@ -84,7 +85,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "remove_volumes": None, }}
         res_dict = self.controller.update(req,
                                           consistencygroup.id,
-                                          body)
+                                          body=body)
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
         self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
@@ -111,7 +112,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                "and remove_volumes can not be all "
                                "empty in the request body.",
                                self.controller.update,
-                               req, consistencygroup.id, body)
+                               req, consistencygroup.id, body=body)
         consistencygroup.destroy()
 
     def test_update_consistencygroup_all_empty_parameters_version_36(self):
@@ -133,7 +134,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                "one or more of the following keys to "
                                "update: name, description, add_volumes, "
                                "remove_volumes.", self.controller.update,
-                               req, consistencygroup.id, body)
+                               req, consistencygroup.id, body=body)
         consistencygroup.destroy()
 
     def test_update_consistencygroup_all_empty_parameters_not_version_ok(self):
@@ -158,7 +159,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                "add_volumes, and remove_volumes can not be "
                                "all empty in the request body.",
                                self.controller.update,
-                               req, consistencygroup.id, body)
+                               req, consistencygroup.id, body=body)
         consistencygroup.destroy()
 
     def test_update_consistencygroup_no_body(self):
@@ -176,10 +177,10 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
 
         body = None
-        self.assertRaisesRegex(webob.exc.HTTPBadRequest,
-                               "Missing request body",
+        self.assertRaisesRegex(exception.ValidationError,
+                               "None is not of type 'object'",
                                self.controller.update,
-                               req, consistencygroup.id, body)
+                               req, consistencygroup.id, body=body)
         consistencygroup.destroy()
 
     def test_update_consistencygroups_no_empty_parameters(self):

@@ -1020,9 +1020,9 @@ class VolumeApiTest(BaseVolumeTest):
         req.api_version_request = mv.get_api_version(
             mv.VOLUME_REVERT)
 
+        body = {'revert': {'snapshot_id': 'fake_snapshot_id'}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.revert,
-                          req, 'fake_id', {'revert': {'snapshot_id':
-                                                      'fake_snapshot_id'}})
+                          req, 'fake_id', body=body)
 
     @mock.patch.object(objects.Volume, 'get_latest_snapshot')
     @mock.patch.object(volume_api.API, 'get_volume')
@@ -1037,9 +1037,9 @@ class VolumeApiTest(BaseVolumeTest):
         req.api_version_request = mv.get_api_version(
             mv.VOLUME_REVERT)
 
+        body = {'revert': {'snapshot_id': 'fake_snapshot_id'}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.revert,
-                          req, 'fake_id', {'revert': {'snapshot_id':
-                                                      'fake_snapshot_id'}})
+                          req, 'fake_id', body=body)
 
     @mock.patch.object(objects.Volume, 'get_latest_snapshot')
     @mock.patch('cinder.objects.base.'
@@ -1062,18 +1062,19 @@ class VolumeApiTest(BaseVolumeTest):
         # update volume's status failed
         mock_update.side_effect = [False, True]
 
+        body = {'revert': {'snapshot_id': fake_snapshot['id']}}
         self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.revert,
                           req,
                           fake_volume['id'],
-                          {'revert': {'snapshot_id': fake_snapshot['id']}})
+                          body=body)
 
         # update snapshot's status failed
         mock_update.side_effect = [True, False]
 
+        body = {'revert': {'snapshot_id': fake_snapshot['id']}}
         self.assertRaises(webob.exc.HTTPConflict, self.controller.revert,
-                          req, fake_volume['id'], {'revert': {'snapshot_id':
-                                                   fake_snapshot['id']}})
+                          req, fake_volume['id'], body=body)
 
     @mock.patch.object(objects.Volume, 'get_latest_snapshot')
     @mock.patch.object(volume_api.API, 'get_volume')
@@ -1089,9 +1090,10 @@ class VolumeApiTest(BaseVolumeTest):
         req.headers = mv.get_mv_header(mv.VOLUME_REVERT)
         req.api_version_request = mv.get_api_version(
             mv.VOLUME_REVERT)
+        body = {'revert': {'snapshot_id': fake_snapshot['id']}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.revert,
                           req, fake_volume['id'],
-                          {'revert': {'snapshot_id': fake_snapshot['id']}})
+                          body=body)
 
     def test_view_get_attachments(self):
         req = fakes.HTTPRequest.blank('/v3/volumes')

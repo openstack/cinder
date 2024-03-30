@@ -25,6 +25,8 @@ import webob.exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import hosts as schema
+from cinder.api import validation
 from cinder.common import constants
 from cinder import db
 from cinder import exception
@@ -104,6 +106,7 @@ class HostController(wsgi.Controller):
         return {'hosts': _list_hosts(req)}
 
     @check_host
+    @validation.schema(schema.update)
     def update(self, req, id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.MANAGE_POLICY)

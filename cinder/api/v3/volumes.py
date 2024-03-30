@@ -25,7 +25,7 @@ from cinder.api import common
 from cinder.api.contrib import scheduler_hints
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import volumes
+from cinder.api.schemas import volumes as schema
 from cinder.api.v3.views import volumes as volume_views_v3
 from cinder.api import validation
 from cinder.backup import api as backup_api
@@ -247,6 +247,7 @@ class VolumeController(wsgi.Controller):
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.Controller.api_version(mv.VOLUME_REVERT)
     @wsgi.action('revert')
+    @validation.schema(schema.revert)
     def revert(self, req, id, body):
         """revert a volume to a snapshot"""
 
@@ -348,14 +349,14 @@ class VolumeController(wsgi.Controller):
             return image_snapshot
 
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(volumes.create, mv.BASE_VERSION,
+    @validation.schema(schema.create, mv.BASE_VERSION,
                        mv.get_prior_version(mv.GROUP_VOLUME))
-    @validation.schema(volumes.create_volume_v313, mv.GROUP_VOLUME,
+    @validation.schema(schema.create_volume_v313, mv.GROUP_VOLUME,
                        mv.get_prior_version(mv.VOLUME_CREATE_FROM_BACKUP))
-    @validation.schema(volumes.create_volume_v347,
+    @validation.schema(schema.create_volume_v347,
                        mv.VOLUME_CREATE_FROM_BACKUP,
                        mv.get_prior_version(mv.SUPPORT_VOLUME_SCHEMA_CHANGES))
-    @validation.schema(volumes.create_volume_v353,
+    @validation.schema(schema.create_volume_v353,
                        mv.SUPPORT_VOLUME_SCHEMA_CHANGES)
     def create(self, req, body):
         """Creates a new volume.
@@ -475,9 +476,9 @@ class VolumeController(wsgi.Controller):
         retval = self._view_builder.detail(req, new_volume)
         return retval
 
-    @validation.schema(volumes.update, mv.BASE_VERSION,
+    @validation.schema(schema.update, mv.BASE_VERSION,
                        mv.get_prior_version(mv.SUPPORT_VOLUME_SCHEMA_CHANGES))
-    @validation.schema(volumes.update_volume_v353,
+    @validation.schema(schema.update_v353,
                        mv.SUPPORT_VOLUME_SCHEMA_CHANGES)
     def update(self, req, id, body):
         """Update a volume."""

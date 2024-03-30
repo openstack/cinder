@@ -22,7 +22,7 @@ import webob.exc
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import services as os_services
+from cinder.api.schemas import services as schema
 from cinder.api import validation
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
@@ -126,7 +126,7 @@ class ServiceController(wsgi.Controller):
 
     # TODO: This currently returns HTTP 200 but it should return HTTP 204 since
     # there's no content
-    @validation.schema(os_services.freeze_and_thaw)
+    @validation.schema(schema.freeze_and_thaw)
     def freeze(self, req, body):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)
@@ -138,7 +138,7 @@ class ServiceController(wsgi.Controller):
 
     # TODO: This currently returns HTTP 200 but it should return HTTP 204 since
     # there's no content
-    @validation.schema(os_services.freeze_and_thaw)
+    @validation.schema(schema.freeze_and_thaw)
     def thaw(self, req, body):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)
@@ -148,7 +148,7 @@ class ServiceController(wsgi.Controller):
         return self._volume_api_proxy(self.volume_api.thaw_host, context,
                                       host, cluster_name)
 
-    @validation.schema(os_services.failover_host)
+    @validation.schema(schema.failover_host)
     def failover_host(self, req, body):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)
@@ -186,7 +186,7 @@ class ServiceController(wsgi.Controller):
         return binaries, services
 
     @wsgi.Controller.api_version(mv.LOG_LEVEL)
-    @validation.schema(os_services.set_log)
+    @validation.schema(schema.set_log)
     def set_log(self, req, body):
         """Set log levels of services dynamically."""
         context = req.environ['cinder.context']
@@ -208,7 +208,7 @@ class ServiceController(wsgi.Controller):
         return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.LOG_LEVEL)
-    @validation.schema(os_services.get_log)
+    @validation.schema(schema.get_log)
     def get_log(self, req, body):
         """Get current log levels for services."""
         context = req.environ['cinder.context']
@@ -239,7 +239,7 @@ class ServiceController(wsgi.Controller):
 
         return {'log_levels': result}
 
-    @validation.schema(os_services.disable_log_reason)
+    @validation.schema(schema.disable_log_reason)
     def disable_log_reason(self, req, body):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)
@@ -273,7 +273,7 @@ class ServiceController(wsgi.Controller):
             'disabled_reason': disabled_reason,
         }
 
-    @validation.schema(os_services.enable_and_disable)
+    @validation.schema(schema.enable_and_disable)
     def enable(self, req, body):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)
@@ -298,7 +298,7 @@ class ServiceController(wsgi.Controller):
             'disabled': False,
         }
 
-    @validation.schema(os_services.enable_and_disable)
+    @validation.schema(schema.enable_and_disable)
     def disable(self, req, body):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)

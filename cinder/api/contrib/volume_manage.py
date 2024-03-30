@@ -23,7 +23,7 @@ from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import volume_manage
+from cinder.api.schemas import volume_manage as schema
 from cinder.api.v3.views import volumes as volume_views
 from cinder.api import validation
 from cinder.api.views import manageable_volumes as list_manageable_view
@@ -47,9 +47,9 @@ class VolumeManageController(wsgi.Controller):
         self._list_manageable_view = list_manageable_view.ViewBuilder()
 
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(volume_manage.volume_manage_create, mv.BASE_VERSION,
+    @validation.schema(schema.volume_manage_create, mv.BASE_VERSION,
                        mv.get_prior_version(mv.VOLUME_MIGRATE_CLUSTER))
-    @validation.schema(volume_manage.volume_manage_create_v316,
+    @validation.schema(schema.volume_manage_create_v316,
                        mv.VOLUME_MIGRATE_CLUSTER)
     def create(self, req, body):
         """Instruct Cinder to manage a storage object.

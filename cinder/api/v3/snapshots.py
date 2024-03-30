@@ -27,7 +27,7 @@ from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import snapshots as snapshot
+from cinder.api.schemas import snapshots as schema
 from cinder.api.v3.views import snapshots as snapshot_views
 from cinder.api import validation
 from cinder import utils
@@ -181,7 +181,7 @@ class SnapshotsController(wsgi.Controller):
         return self._items(req, is_detail=True)
 
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(snapshot.create)
+    @validation.schema(schema.create)
     def create(self, req, body):
         """Creates a new snapshot."""
         kwargs = {}
@@ -232,7 +232,7 @@ class SnapshotsController(wsgi.Controller):
 
         return self._view_builder.detail(req, new_snapshot)
 
-    @validation.schema(snapshot.update)
+    @validation.schema(schema.update)
     def update(self, req, id, body):
         """Update a snapshot."""
         context = req.environ['cinder.context']

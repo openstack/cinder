@@ -20,6 +20,15 @@ Schema for V3 volume image metadata API.
 
 from cinder.api.validation import parameter_types
 
+# TODO: Restrict the value to 'null' in a future API version
+index = {
+    'type': 'object',
+    'properties': {
+        'os-show_image_metadata': {},
+    },
+    'required': ['os-show_image_metadata'],
+    'additionalProperties': False,
+}
 
 set_image_metadata = {
     'type': 'object',
@@ -36,7 +45,6 @@ set_image_metadata = {
     'required': ['os-set_image_metadata'],
     'additionalProperties': False,
 }
-
 
 unset_image_metadata = {
     'type': 'object',

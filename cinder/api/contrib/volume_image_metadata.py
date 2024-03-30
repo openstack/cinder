@@ -21,7 +21,7 @@ import webob
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import volume_image_metadata
+from cinder.api.schemas import volume_image_metadata as schema
 from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
@@ -85,7 +85,7 @@ class VolumeImageMetadataController(wsgi.Controller):
                 self._add_image_metadata(context, volumes)
 
     @wsgi.action("os-set_image_metadata")
-    @validation.schema(volume_image_metadata.set_image_metadata)
+    @validation.schema(schema.set_image_metadata)
     def create(self, req, id, body):
         context = req.environ['cinder.context']
         volume = objects.Volume.get_by_id(context, id)
@@ -121,12 +121,13 @@ class VolumeImageMetadataController(wsgi.Controller):
             raise webob.exc.HTTPRequestEntityTooLarge(explanation=error.msg)
 
     @wsgi.action("os-show_image_metadata")
+    @validation.schema(schema.index)
     def index(self, req, id, body):
         context = req.environ['cinder.context']
         return {'metadata': self._get_image_metadata(context, id)[1]}
 
     @wsgi.action("os-unset_image_metadata")
-    @validation.schema(volume_image_metadata.unset_image_metadata)
+    @validation.schema(schema.unset_image_metadata)
     def delete(self, req, id, body):
         """Deletes an existing image metadata."""
         context = req.environ['cinder.context']

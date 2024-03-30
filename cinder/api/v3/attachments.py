@@ -20,7 +20,7 @@ from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import attachments as attachment
+from cinder.api.schemas import attachments as schema
 from cinder.api.v3.views import attachments as attachment_views
 from cinder.api import validation
 from cinder import context as cinder_context
@@ -107,9 +107,9 @@ class AttachmentsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.NEW_ATTACH)
     @wsgi.response(HTTPStatus.OK)
-    @validation.schema(attachment.create, mv.NEW_ATTACH,
+    @validation.schema(schema.create, mv.NEW_ATTACH,
                        mv.get_prior_version(mv.ATTACHMENT_CREATE_MODE_ARG))
-    @validation.schema(attachment.create_v354, mv.ATTACHMENT_CREATE_MODE_ARG)
+    @validation.schema(schema.create_v354, mv.ATTACHMENT_CREATE_MODE_ARG)
     def create(self, req, body):
         """Create an attachment.
 
@@ -211,7 +211,7 @@ class AttachmentsController(wsgi.Controller):
         return attachment_views.ViewBuilder.detail(attachment_ref)
 
     @wsgi.Controller.api_version(mv.NEW_ATTACH)
-    @validation.schema(attachment.update)
+    @validation.schema(schema.update)
     def update(self, req, id, body):
         """Update an attachment record.
 
@@ -285,6 +285,7 @@ class AttachmentsController(wsgi.Controller):
     @wsgi.response(HTTPStatus.NO_CONTENT)
     @wsgi.Controller.api_version(mv.NEW_ATTACH_COMPLETION)
     @wsgi.action('os-complete')
+    @validation.schema(schema.complete)
     def complete(self, req, id, body):
         """Mark a volume attachment process as completed (in-use)."""
         context = req.environ['cinder.context']

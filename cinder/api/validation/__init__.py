@@ -35,7 +35,6 @@ def schema(request_body_schema, min_version=None, max_version=None):
                         version of the JSON-Schema to validate against.
     :param max_version: A string of two numerals. X.Y indicating the maximum
                         version of the JSON-Schema to validate against.
-
     """
 
     def add_validator(func):
@@ -59,6 +58,9 @@ def schema(request_body_schema, min_version=None, max_version=None):
                 schema_validator.validate(kwargs['body'])
 
             return func(*args, **kwargs)
+
+        wrapper._request_schema = request_body_schema
+
         return wrapper
 
     return add_validator

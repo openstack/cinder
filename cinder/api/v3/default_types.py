@@ -21,7 +21,7 @@ from webob import exc
 from cinder.api import api_utils as utils
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import default_types
+from cinder.api.schemas import default_types as schema
 from cinder.api.v3.views import default_types as default_types_view
 from cinder.api import validation
 from cinder import db
@@ -38,7 +38,7 @@ class DefaultTypesController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.OK)
     @wsgi.Controller.api_version(mv.DEFAULT_TYPE_OVERRIDES)
-    @validation.schema(default_types.create_or_update)
+    @validation.schema(schema.create_or_update)
     def create_update(self, req, id, body):
         """Set a default volume type for the specified project."""
         context = req.environ['cinder.context']

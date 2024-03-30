@@ -25,6 +25,7 @@ from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.objects import service
+from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
@@ -83,11 +84,6 @@ def stub_utcnow(with_timezone=False):
     return datetime.datetime(2013, 7, 3, 0, 0, 2, tzinfo=tzinfo)
 
 
-class FakeRequest(object):
-    environ = {'cinder.context': context.get_admin_context()}
-    GET = {}
-
-
 class FakeRequestWithcinderZone(object):
     environ = {'cinder.context': context.get_admin_context()}
     GET = {'zone': 'cinder'}
@@ -99,59 +95,77 @@ class HostTestCase(test.TestCase):
     def setUp(self):
         super(HostTestCase, self).setUp()
         self.controller = os_hosts.HostController()
-        self.req = FakeRequest()
         self.patch('cinder.db.service_get_all', autospec=True,
                    return_value=SERVICE_LIST)
         self.mock_object(timeutils, 'utcnow', stub_utcnow)
 
     def _test_host_update(self, host, key, val, expected_value):
+        url = '/v3/%s/os-hosts/%s' % (fake_constants.PROJECT_ID, host)
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
         body = {key: val}
-        result = self.controller.update(self.req, host, body=body)
+
+        result = self.controller.update(req, host, body=body)
         self.assertEqual(expected_value, result[key])
 
     def test_list_hosts(self):
         """Verify that the volume hosts are returned."""
-        hosts = os_hosts._list_hosts(self.req)
+        url = '/v3/%s/os-hosts' % fake_constants.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
+
+        hosts = os_hosts._list_hosts(req)
         self.assertEqual(LIST_RESPONSE, hosts)
 
-        cinder_hosts = os_hosts._list_hosts(self.req, constants.VOLUME_BINARY)
+        cinder_hosts = os_hosts._list_hosts(req, constants.VOLUME_BINARY)
         expected = [host for host in LIST_RESPONSE
                     if host['service'] == constants.VOLUME_BINARY]
         self.assertEqual(expected, cinder_hosts)
 
     def test_list_hosts_with_zone(self):
-        req = FakeRequestWithcinderZone()
+        url = '/v3/%s/os-hosts?zone=cinder' % fake_constants.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
         hosts = os_hosts._list_hosts(req)
         self.assertEqual(LIST_RESPONSE, hosts)
 
     def test_bad_status_value(self):
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'test.host.1', body={'status': 'bad'})
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        url = '/v3/%s/os-hosts/test.host.1' % fake_constants.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
+
+        self.assertRaises(exception.ValidationError, self.controller.update,
+                          req, 'test.host.1', body={'status': 'bad'})
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
-                          self.req,
+                          req,
                           'test.host.1',
                           body={'status': 'disablabc'})
 
     def test_bad_update_key(self):
+        url = '/v3/%s/os-hosts/test.host.1' % fake_constants.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
         bad_body = {'crazy': 'bad'}
+
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'test.host.1', body=bad_body)
+                          req, 'test.host.1', body=bad_body)
 
     def test_bad_update_key_and_correct_udpate_key(self):
+        url = '/v3/%s/os-hosts/test.host.1' % fake_constants.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
         bad_body = {'status': 'disable', 'crazy': 'bad'}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'test.host.1', body=bad_body)
+                          req, 'test.host.1', body=bad_body)
 
-    def test_good_udpate_keys(self):
+    def test_good_update_keys(self):
+        url = '/v3/%s/os-hosts/test.host.1' % fake_constants.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
         body = {'status': 'disable'}
         self.assertRaises(NotImplementedError, self.controller.update,
-                          self.req, 'test.host.1', body=body)
+                          req, 'test.host.1', body=body)
 
     def test_bad_host(self):
+        url = '/v3/%s/os-hosts/test.host.1' % fake_constants.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
         self.assertRaises(exception.HostNotFound,
                           self.controller.update,
-                          self.req,
+                          req,
                           'bogus_host_name',
                           body={'disabled': 0})
 
@@ -175,7 +189,9 @@ class HostTestCase(test.TestCase):
         test_utils.create_volume(ctxt2, host='fake_host', size=1)
         test_utils.create_snapshot(ctxt1, volume_id=volume1.id)
 
-        resp = self.controller.show(self.req, host)
+        url = '/v3/%s/os-hosts/%s' % (fake_constants.PROJECT_ID, host)
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
+        resp = self.controller.show(req, host)
 
         host_resp = resp['host']
         # There are 3 resource list: total, project1, project2
@@ -213,17 +229,18 @@ class HostTestCase(test.TestCase):
             host_resp, key=lambda h: h['resource']['project']))
 
     def test_show_forbidden(self):
-        self.req.environ['cinder.context'].is_admin = False
-        dest = 'dummydest'
+        host = 'dummydest'
+        url = '/v3/%s/os-hosts/%s' % (fake_constants.PROJECT_ID, host)
+        req = fakes.HTTPRequest.blank(url, use_admin_context=False)
         self.assertRaises(exception.PolicyNotAuthorized,
                           self.controller.show,
-                          self.req, dest)
-        self.req.environ['cinder.context'].is_admin = True
+                          req, host)
 
     def test_show_host_not_exist(self):
         """A host given as an argument does not exists."""
-        self.req.environ['cinder.context'].is_admin = True
-        dest = 'dummydest'
+        host = 'dummydest'
+        url = '/v3/%s/os-hosts/%s' % (fake_constants.PROJECT_ID, host)
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
         self.assertRaises(exception.ServiceNotFound,
                           self.controller.show,
-                          self.req, dest)
+                          req, host)

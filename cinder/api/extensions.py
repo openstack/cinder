@@ -106,12 +106,6 @@ class ExtensionsResource(wsgi.Resource):
 
         return dict(extension=self._translate(ext))
 
-    def delete(self, req, id):
-        raise webob.exc.HTTPNotFound()
-
-    def create(self, req):
-        raise webob.exc.HTTPNotFound()
-
 
 class ExtensionManager(object):
     """Load extensions from the configured extension path.

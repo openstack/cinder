@@ -18,7 +18,7 @@ from oslo_log import log as logging
 from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import snapshot_manage
+from cinder.api.schemas import snapshot_manage as schema
 from cinder.api import validation
 from cinder.api.views import manageable_snapshots as list_manageable_view
 from cinder.api.views import snapshots as snapshot_views
@@ -39,7 +39,7 @@ class SnapshotManageController(wsgi.Controller):
         self._list_manageable_view = list_manageable_view.ViewBuilder()
 
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(snapshot_manage.create)
+    @validation.schema(schema.create)
     def create(self, req, body):
         """Instruct Cinder to manage a storage snapshot object.
 

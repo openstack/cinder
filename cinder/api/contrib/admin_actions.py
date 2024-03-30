@@ -22,7 +22,7 @@ from cinder.api import common
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import admin_actions
+from cinder.api.schemas import admin_actions as schema
 from cinder.api import validation
 from cinder import backup
 from cinder import db
@@ -55,7 +55,7 @@ class VolumeAdminController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reset_status')
-    @validation.schema(admin_actions.reset)
+    @validation.schema(schema.reset_status_volume)
     def _reset_status(self, req, id, body):
         """Reset status on the volume."""
 
@@ -126,7 +126,7 @@ class VolumeAdminController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-force_detach')
-    @validation.schema(admin_actions.force_detach)
+    @validation.schema(schema.force_detach)
     def _force_detach(self, req, id, body):
         """Roll-back a bad detach after the volume been disconnected."""
         context = req.environ['cinder.context']
@@ -161,9 +161,9 @@ class VolumeAdminController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-migrate_volume')
-    @validation.schema(admin_actions.migrate_volume, mv.BASE_VERSION,
+    @validation.schema(schema.migrate_volume, mv.BASE_VERSION,
                        mv.get_prior_version(mv.VOLUME_MIGRATE_CLUSTER))
-    @validation.schema(admin_actions.migrate_volume_v316,
+    @validation.schema(schema.migrate_volume_v316,
                        mv.VOLUME_MIGRATE_CLUSTER)
     def _migrate_volume(self, req, id, body):
         """Migrate a volume to the specified host."""
@@ -183,7 +183,7 @@ class VolumeAdminController(wsgi.Controller):
                                        force_host_copy, lock_volume)
 
     @wsgi.action('os-migrate_volume_completion')
-    @validation.schema(admin_actions.migrate_volume_completion)
+    @validation.schema(schema.migrate_volume_completion)
     def _migrate_volume_completion(self, req, id, body):
         """Complete an in-progress migration."""
         context = req.environ['cinder.context']
@@ -201,7 +201,7 @@ class VolumeAdminController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-extend_volume_completion')
-    @validation.schema(admin_actions.extend_volume_completion)
+    @validation.schema(schema.extend_volume_completion)
     def _extend_volume_completion(self, req, id, body):
         """Complete an in-progress extend operation."""
         context = req.environ['cinder.context']
@@ -214,6 +214,7 @@ class VolumeAdminController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-force_delete')
+    @validation.schema(schema.force_delete_volume)
     def _force_delete(self, req, id, body):
         """Delete a volume, bypassing the check that it must be available."""
         context = req.environ['cinder.context']
@@ -243,7 +244,7 @@ class SnapshotAdminController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reset_status')
-    @validation.schema(admin_actions.reset_status_snapshot)
+    @validation.schema(schema.reset_status_snapshot)
     def _reset_status(self, req, id, body):
         """Reset status on the snapshot."""
 
@@ -284,6 +285,7 @@ class SnapshotAdminController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-force_delete')
+    @validation.schema(schema.force_delete_snapshot)
     def _force_delete(self, req, id, body):
         """Delete a snapshot, bypassing the check that it must be available."""
         context = req.environ['cinder.context']
@@ -313,7 +315,7 @@ class BackupAdminController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reset_status')
-    @validation.schema(admin_actions.reset_status_backup)
+    @validation.schema(schema.reset_status_backup)
     def _reset_status(self, req, id, body):
         """Reset status on the backup."""
         context = req.environ['cinder.context']
@@ -332,6 +334,7 @@ class BackupAdminController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-force_delete')
+    @validation.schema(schema.force_delete_backup)
     def _force_delete(self, req, id, body):
         """Delete a backup, bypassing the check that it must be available."""
         context = req.environ['cinder.context']

@@ -14,13 +14,14 @@
 #    under the License.
 
 """The volume types encryption extension."""
+
 from http import HTTPStatus
 
 import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import volume_type_encryption
+from cinder.api.schemas import volume_type_encryption as schema
 from cinder.api import validation
 from cinder import db
 from cinder import exception
@@ -64,7 +65,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         self._check_type(context, type_id)
         return self._get_volume_type_encryption(context, type_id)
 
-    @validation.schema(volume_type_encryption.create)
+    @validation.schema(schema.create)
     def create(self, req, type_id, body):
         """Create encryption specs for an existing volume type."""
         context = req.environ['cinder.context']
@@ -92,7 +93,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         notifier.info(context, 'volume_type_encryption.create', notifier_info)
         return body
 
-    @validation.schema(volume_type_encryption.update)
+    @validation.schema(schema.update)
     def update(self, req, type_id, id, body):
         """Update encryption specs for a given volume type."""
         context = req.environ['cinder.context']

@@ -19,6 +19,8 @@ from webob import exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import snapshot_unmanage as schema
+from cinder.api import validation
 from cinder import exception
 from cinder.policies import manageable_snapshots as policy
 from cinder import volume
@@ -33,6 +35,7 @@ class SnapshotUnmanageController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-unmanage')
+    @validation.schema(schema.unmanage)
     def unmanage(self, req, id, body):
         """Stop managing a snapshot.
 

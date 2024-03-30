@@ -305,8 +305,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
         self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        self.assertEqual("Missing required element 'cgsnapshot' in "
-                         "request body.",
+        self.assertEqual("None is not of type 'object'",
                          res_dict['badRequest']['message'])
 
     @mock.patch.object(groupAPI.API, 'create_group_snapshot',

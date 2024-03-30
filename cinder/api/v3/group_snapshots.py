@@ -23,7 +23,7 @@ from webob import exc
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import group_snapshots as snapshot
+from cinder.api.schemas import group_snapshots as schema
 from cinder.api.v3.views import group_snapshots as group_snapshot_views
 from cinder.api import validation
 from cinder import exception
@@ -148,7 +148,7 @@ class GroupSnapshotsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(snapshot.create)
+    @validation.schema(schema.create)
     def create(self, req, body):
         """Create a new group_snapshot."""
         LOG.debug('Creating new group_snapshot %s', body)
@@ -181,7 +181,7 @@ class GroupSnapshotsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_SNAPSHOT_RESET_STATUS)
     @wsgi.action("reset_status")
-    @validation.schema(snapshot.reset_status)
+    @validation.schema(schema.reset_status)
     def reset_status(self, req, id, body):
         return self._reset_status(req, id, body)
 

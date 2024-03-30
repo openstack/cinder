@@ -14,6 +14,7 @@
 #    under the License.
 
 """The cgsnapshots api."""
+
 from http import HTTPStatus
 
 from oslo_log import log as logging
@@ -24,6 +25,8 @@ from webob import exc
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import cgsnapshots as schema
+from cinder.api import validation
 from cinder.api.views import cgsnapshots as cgsnapshot_views
 from cinder import exception
 from cinder import group as group_api
@@ -116,6 +119,7 @@ class CgsnapshotsController(wsgi.Controller):
         return grp_snapshots
 
     @wsgi.response(HTTPStatus.ACCEPTED)
+    @validation.schema(schema.create)
     def create(self, req, body):
         """Create a new cgsnapshot."""
         versionutils.report_deprecated_feature(LOG, DEPRECATE_CGSNAP_API_MSG)

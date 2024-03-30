@@ -17,7 +17,7 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import quota_classes as quota_class
+from cinder.api.schemas import quota_classes as schema
 from cinder.api import validation
 from cinder import db
 from cinder import exception
@@ -51,7 +51,7 @@ class QuotaClassSetsController(wsgi.Controller):
 
         return self._format_quota_set(id, quota_set)
 
-    @validation.schema(quota_class.update_quota_class)
+    @validation.schema(schema.update_quota_class)
     def update(self, req, id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)

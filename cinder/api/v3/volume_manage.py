@@ -17,7 +17,9 @@ from http import HTTPStatus
 from cinder.api.contrib import volume_manage
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_manage as schema
 from cinder.api.v3 import resource_common_manage as common
+from cinder.api import validation
 
 
 class VolumeManageController(
@@ -28,6 +30,10 @@ class VolumeManageController(
         self._set_resource_type('volume')
 
     @wsgi.response(HTTPStatus.ACCEPTED)
+    @validation.schema(schema.volume_manage_create, mv.BASE_VERSION,
+                       mv.get_prior_version(mv.VOLUME_MIGRATE_CLUSTER))
+    @validation.schema(schema.volume_manage_create_v316,
+                       mv.VOLUME_MIGRATE_CLUSTER)
     def create(self, req, body):
         self._ensure_min_version(req, mv.MANAGE_EXISTING_LIST)
         return super(VolumeManageController, self).create(req, body=body)
