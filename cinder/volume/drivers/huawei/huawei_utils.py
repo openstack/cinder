@@ -19,7 +19,6 @@ import math
 from oslo_log import log as logging
 from oslo_utils.secretutils import md5
 from oslo_utils import strutils
-import six
 
 from cinder import context
 from cinder import exception
@@ -45,7 +44,7 @@ def encode_name(name):
 
 def old_encode_name(name):
     pre_name = name.split("-")[0]
-    vol_encoded = six.text_type(hash(name))
+    vol_encoded = str(hash(name))
     if vol_encoded.startswith('-'):
         newuuid = pre_name + vol_encoded
     else:
@@ -63,7 +62,7 @@ def encode_host_name(name):
 
 def old_encode_host_name(name):
     if name and len(name) > constants.MAX_NAME_LENGTH:
-        name = six.text_type(hash(name))
+        name = str(hash(name))
     return name
 
 
@@ -201,7 +200,7 @@ def _get_opts_from_specs(specs):
         opt_key = _get_opt_key(spec_key)
         opts[opt_key] = opts_capability[spec_key][1]
 
-    for key, value in six.iteritems(specs):
+    for key, value in specs.items():
         if key not in opts_capability:
             continue
         func = opts_capability[key][0]
@@ -337,7 +336,7 @@ def get_volume_private_data(volume):
         return info
 
     # To keep compatible with old driver version
-    return {'huawei_lun_id': six.text_type(info),
+    return {'huawei_lun_id': str(info),
             'huawei_lun_wwn': volume.admin_metadata.get('huawei_lun_wwn'),
             'huawei_sn': volume.metadata.get('huawei_sn'),
             'hypermetro_id': volume.metadata.get('hypermetro_id'),
@@ -370,7 +369,7 @@ def get_snapshot_private_data(snapshot):
         return info
 
     # To keep compatible with old driver version
-    return {'huawei_snapshot_id': six.text_type(info),
+    return {'huawei_snapshot_id': str(info),
             'huawei_snapshot_wwn': snapshot.metadata.get(
                 'huawei_snapshot_wwn'),
             }

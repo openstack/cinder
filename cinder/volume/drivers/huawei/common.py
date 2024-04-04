@@ -22,7 +22,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
-import six
 
 from cinder import context
 from cinder import exception
@@ -291,7 +290,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                 smartcache.add(opts['cachename'], lun_id)
         except Exception as err:
             self._delete_lun_with_check(lun_id)
-            msg = _('Create volume error. Because %s.') % six.text_type(err)
+            msg = _('Create volume error. Because %s.') % str(err)
             raise exception.VolumeBackendAPIException(data=msg)
 
         return lun_params, lun_info, model_update
@@ -567,7 +566,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         pool_name = host['capabilities']['pool_name']
         pools = self.client.get_all_pools()
         pool_info = self.client.get_pool_info(pool_name, pools)
-        dst_volume_name = six.text_type(uuid.uuid4())
+        dst_volume_name = str(uuid.uuid4())
 
         lun_info = huawei_utils.get_lun_info(self.client, volume)
         if not lun_info:
@@ -1617,7 +1616,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                     'id': src_vol.id,
                     'provider_location': src_vol.provider_location,
                 }
-                snapshot_kwargs = {'id': six.text_type(uuid.uuid4()),
+                snapshot_kwargs = {'id': str(uuid.uuid4()),
                                    'volume': objects.Volume(**vol_kwargs),
                                    'volume_size': src_vol.size}
                 snapshot = objects.Snapshot(**snapshot_kwargs)
