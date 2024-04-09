@@ -139,9 +139,10 @@ class VolumeAPI(rpc.RPCAPI):
         3.17 - Make get_backup_device a cast (async)
         3.18 - Add reimage method
         3.19 - Add extend_volume_completion method
+        3.20 - Add image_snap parameter to reimage method
     """
 
-    RPC_API_VERSION = '3.19'
+    RPC_API_VERSION = '3.20'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = constants.VOLUME_BINARY
@@ -544,6 +545,11 @@ class VolumeAPI(rpc.RPCAPI):
                           group=group)
 
     @rpc.assert_min_rpc_version('3.18')
-    def reimage(self, ctxt, volume, image_meta):
-        cctxt = self._get_cctxt(volume.service_topic_queue, version='3.18')
-        cctxt.cast(ctxt, 'reimage', volume=volume, image_meta=image_meta)
+    def reimage(self, ctxt, volume, image_meta, image_snap=None):
+        cctxt = self._get_cctxt(
+            volume.service_topic_queue, version=('3.20', '3.18'))
+        if cctxt.can_send_version('3.20'):
+            cctxt.cast(ctxt, 'reimage', volume=volume, image_meta=image_meta,
+                       image_snap=image_snap)
+        else:
+            cctxt.cast(ctxt, 'reimage', volume=volume, image_meta=image_meta)

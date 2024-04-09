@@ -1592,8 +1592,11 @@ class VolumeImageActionsTest(test.TestCase):
         return req
 
     @ddt.data(None, False, True)
+    @mock.patch.object(volume_actions.VolumeActionsController,
+                       '_get_image_snapshot_and_check_size')
     @mock.patch.object(volume_api.API, "reimage")
-    def test_volume_reimage(self, reimage_reserved, mock_image):
+    def test_volume_reimage(
+            self, reimage_reserved, mock_image, mock_get_img_snap):
         vol = utils.create_volume(self.context)
         body = {"os-reimage": {"image_id": fake.IMAGE_ID}}
         if reimage_reserved is not None:
@@ -1619,7 +1622,9 @@ class VolumeImageActionsTest(test.TestCase):
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self.controller._reimage, req, vol.id, body=body)
 
-    def test_reimage_volume_invalid_status(self):
+    @mock.patch.object(volume_actions.VolumeActionsController,
+                       '_get_image_snapshot_and_check_size')
+    def test_reimage_volume_invalid_status(self, mock_get_img_snap):
         def fake_reimage_volume(*args, **kwargs):
             msg = "Volume status must be available."
             raise exception.InvalidVolume(reason=msg)
@@ -1633,8 +1638,11 @@ class VolumeImageActionsTest(test.TestCase):
                           self.controller._reimage, req,
                           vol.id, body=body)
 
+    @mock.patch.object(volume_actions.VolumeActionsController,
+                       '_get_image_snapshot_and_check_size')
     @mock.patch('cinder.context.RequestContext.authorize')
-    def test_reimage_volume_attach_more_than_one_server(self, mock_authorize):
+    def test_reimage_volume_attach_more_than_one_server(self, mock_authorize,
+                                                        mock_get_img_snap):
         vol = utils.create_volume(self.context)
         va_objs = [objects.VolumeAttachment(context=self.context, id=i)
                    for i in [fake.OBJECT_ID, fake.OBJECT2_ID, fake.OBJECT3_ID]]
@@ -1645,4 +1653,78 @@ class VolumeImageActionsTest(test.TestCase):
         body = {"os-reimage": {"image_id": fake.IMAGE_ID}}
         req = self._build_reimage_req(body, vol)
         self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller._reimage, req, vol.id, body=body)
+
+    @mock.patch.object(volume_api.API, 'get_snapshot')
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
+    @mock.patch.object(glance, 'get_default_image_service')
+    @mock.patch.object(volume_api.API, "reimage")
+    def test_volume_reimage_image_snapshot(
+            self, mock_image, mock_image_service, mock_get_snap):
+        vol = utils.create_volume(self.context)
+        image_meta = {
+            'properties': {
+                'block_device_mapping': [
+                    {
+                        'source_type': 'snapshot',
+                        'boot_index': 0,
+                        'volume_size': 1,
+                    }
+                ]
+            }
+        }
+        mock_image_service.return_value = mock.MagicMock()
+        mock_image_service.return_value.show.return_value = image_meta
+        body = {"os-reimage": {"image_id": fake.IMAGE_ID}}
+        req = self._build_reimage_req(body, vol.id)
+        self.controller._reimage(req, vol.id, body=body)
+
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
+    @mock.patch.object(glance, 'get_default_image_service')
+    @mock.patch.object(volume_api.API, "reimage")
+    def test_volume_reimage_image_snapshot_size_mismatch(
+            self, mock_image, mock_image_service):
+        vol = utils.create_volume(self.context)
+        image_meta = {
+            'properties': {
+                'block_device_mapping': [
+                    {
+                        'source_type': 'snapshot',
+                        'boot_index': 0,
+                        'volume_size': 2,
+                    }
+                ]
+            }
+        }
+        mock_image_service.return_value = mock.MagicMock()
+        mock_image_service.return_value.show.return_value = image_meta
+        body = {"os-reimage": {"image_id": fake.IMAGE_ID}}
+        req = self._build_reimage_req(body, vol.id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._reimage, req, vol.id, body=body)
+
+    @mock.patch.object(volume_api.API, 'get_snapshot')
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
+    @mock.patch.object(glance, 'get_default_image_service')
+    @mock.patch.object(volume_api.API, "reimage")
+    def test_volume_reimage_image_snapshot_snap_not_found(
+            self, mock_image, mock_image_service, mock_get_snap):
+        vol = utils.create_volume(self.context)
+        image_meta = {
+            'properties': {
+                'block_device_mapping': [
+                    {
+                        'source_type': 'snapshot',
+                        'boot_index': 0,
+                        'volume_size': 1,
+                    }
+                ]
+            }
+        }
+        mock_image_service.return_value = mock.MagicMock()
+        mock_image_service.return_value.show.return_value = image_meta
+        mock_get_snap.side_effect = exception.NotFound
+        body = {"os-reimage": {"image_id": fake.IMAGE_ID}}
+        req = self._build_reimage_req(body, vol.id)
+        self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller._reimage, req, vol.id, body=body)

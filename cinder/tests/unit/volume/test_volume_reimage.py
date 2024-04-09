@@ -50,6 +50,26 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
                                                 disable_sparse=True)
         self.assertEqual(volume.status, 'available')
 
+    def test_volume_reimage_image_snapshot(self):
+        volume = tests_utils.create_volume(self.context, status='downloading',
+                                           previous_status='available')
+        self.assertEqual(volume.status, 'downloading')
+        self.assertEqual(volume.previous_status, 'available')
+        self.volume.create_volume(self.context, volume)
+
+        with mock.patch.object(self.volume.driver, 'copy_image_to_volume'
+                               ) as mock_cp_img, \
+            mock.patch.object(self.volume, '_revert_to_snapshot_generic'
+                              ) as generic_revert:
+            fake_snap = mock.MagicMock(
+                id='08f850d7-8b43-4656-a71c-647c864a3599')
+            self.volume.reimage(
+                self.context, volume, self.image_meta, image_snap=fake_snap)
+            mock_cp_img.assert_not_called()
+            generic_revert.assert_called_once_with(
+                self.context, volume, fake_snap)
+        self.assertEqual(volume.status, 'available')
+
     def test_volume_reimage_raise_exception(self):
         volume = tests_utils.create_volume(self.context)
         self.volume.create_volume(self.context, volume)
@@ -107,7 +127,7 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
         self.volume_api.reimage(self.context, volume, self.image_meta['id'])
         mock_check.assert_called_once_with(self.image_meta, volume.size)
         mock_reimage.assert_called_once_with(self.context, volume,
-                                             self.image_meta)
+                                             self.image_meta, image_snap=None)
 
     @mock.patch('cinder.volume.volume_utils.check_image_metadata')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.reimage')
@@ -139,7 +159,7 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
                                 reimage_reserved=True)
         mock_check.assert_called_once_with(self.image_meta, volume.size)
         mock_reimage.assert_called_once_with(self.context, volume,
-                                             self.image_meta)
+                                             self.image_meta, image_snap=None)
 
     def test_volume_reimage_api_with_invaild_status(self):
         volume = tests_utils.create_volume(self.context)
@@ -167,3 +187,16 @@ class VolumeReimageTestCase(base.BaseVolumeTestCase):
         self.assertIn("status must be "
                       "available or error or reserved",
                       str(ex))
+
+    @mock.patch('cinder.volume.volume_utils.check_image_metadata')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.reimage')
+    def test_volume_reimage_api_image_snapshot(
+            self, mock_reimage, mock_check):
+        volume = tests_utils.create_volume(self.context)
+        self.volume_api.reimage(
+            self.context, volume, self.image_meta['id'],
+            image_snap='fake_snap')
+        mock_check.assert_called_once_with(self.image_meta, volume['size'])
+        mock_reimage.assert_called_once_with(self.context, volume,
+                                             self.image_meta,
+                                             image_snap='fake_snap')
