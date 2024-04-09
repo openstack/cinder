@@ -5350,19 +5350,29 @@ class VolumeManager(manager.CleanableManager,
         self.db.volume_glance_metadata_bulk_create(context, volume.id,
                                                    volume_meta)
 
-    def reimage(self, context, volume, image_meta):
+    def reimage(self, context, volume, image_meta, image_snap=None):
         """Reimage a volume with specific image."""
         image_id = None
         try:
-            image_id = image_meta['id']
-            image_service, _ = glance.get_remote_image_service(
-                context, image_meta['id'])
-            image_location = image_service.get_location(context, image_id)
+            if image_snap:
+                # We are not calling the driver method here since the snapshot
+                # could belong to a different volume.
+                # Even if the snapshot belongs to a different volume, we are
+                # doing generic revert where we create a volume out of the
+                # snapshot and do a copy so we are safe here.
+                # Size checks are already done on the API layer so we don't
+                # need to worry about the image fitting into the volume.
+                self._revert_to_snapshot_generic(context, volume, image_snap)
+            else:
+                image_id = image_meta['id']
+                image_service, _ = glance.get_remote_image_service(
+                    context, image_meta['id'])
+                image_location = image_service.get_location(context, image_id)
 
-            volume_utils.copy_image_to_volume(self.driver, context, volume,
-                                              image_meta, image_location,
-                                              image_service,
-                                              disable_sparse=True)
+                volume_utils.copy_image_to_volume(self.driver, context, volume,
+                                                  image_meta, image_location,
+                                                  image_service,
+                                                  disable_sparse=True)
 
             self._refresh_volume_glance_meta(context, volume, image_meta)
             volume.status = volume.previous_status
