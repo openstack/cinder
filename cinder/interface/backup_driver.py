@@ -140,5 +140,14 @@ class BackupDriver(base.CinderInterface):
         or try to connect to the storage to verify driver can do it without
         any issues.
 
+        A dummy default is provided. This method can be omitted from driver.
+
         :returns: None
+        :raises InvalidConfigurationValue: raise this if you detect a problem
+                                           during a configuration check
+        :raises BackupDriverException: raise this or one of its more specific
+                                       subclasses if you detect setup problems
+                                       other than invalid configuration
+        :raises Exception: refrain from raising generic exceptions, although
+                           we catch them for the benefit of legacy code
         """

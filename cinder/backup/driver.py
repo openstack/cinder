@@ -426,5 +426,10 @@ class BackupDriver(base.Base, metaclass=abc.ABCMeta):
         return
 
     def check_for_setup_error(self):
-        """Method for checking if backup backend is successfully installed."""
+        """Method for checking if backup backend is successfully installed.
+
+        Refer to
+        :obj:`cinder.interface.backup_driver.BackupDriver.check_for_setup_error`
+        for additional information.
+        """
         return

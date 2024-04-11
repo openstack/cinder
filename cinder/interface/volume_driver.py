@@ -35,7 +35,15 @@ class VolumeDriverCore(base.CinderInterface):
         Can be used to set up clients, check licenses, set up protocol
         specific helpers, etc.
 
-        :param context: The admin context.
+        If you choose to raise an exception here, the setup is considered
+        failed already and the check_for_setup_error() will not be called.
+
+        :param context: The admin context of type context.RequestContext.
+        :raises InvalidConfigurationValue: raise this if you detect a problem
+                                           during a configuration check
+        :raises VolumeDriverException: raise this or one of its more specific
+                                       subclasses if you detect setup problems
+                                       other than invalid configuration
         """
 
     def check_for_setup_error(self):
@@ -53,6 +61,8 @@ class VolumeDriverCore(base.CinderInterface):
         external dependencies are present and working.
 
         :raises VolumeBackendAPIException: in case of setup error.
+        :raises InvalidConfigurationValue: raise this if you detect a problem
+                                           during a configuration check
         """
 
     def get_volume_stats(self, refresh=False):
@@ -349,4 +359,64 @@ class VolumeDriverCore(base.CinderInterface):
         :param volume: The volume to be created.
         :param snapshot: The snapshot from which to create the volume.
         :returns: A dict of database updates for the new volume.
+        """
+
+    def set_initialized(self):
+        """Mark driver as initialized.
+
+        Do not implement this in a driver. Rely on the default implementation.
+        """
+
+    def initialized(self):
+        """Getter for driver's initialized status.
+
+        Do not implement this in a driver. Rely on the default implementation.
+        """
+
+    def supported(self):
+        """Getter for driver's supported status.
+
+        Do not implement this in a driver. Rely on the default implementation.
+        """
+
+    def set_throttle(self):
+        """Hook for initialization of cinder.volume.throttle.
+
+        This has not been necessary to re-implement or override in any
+        drivers thus far. The generic implementation does nothing unless
+        explicitly enabled.
+        """
+
+    def init_capabilities(self):
+        """Fetch and merge capabilities of the driver.
+
+        Do not override this, implement _init_vendor_properties instead.
+        """
+
+    def _init_vendor_properties(self):
+        """Create a dictionary of vendor unique properties.
+
+        Compose a dictionary by calling ``self._set_property``.
+
+        Select a prefix from the vendor, product, or device name.
+        Prefix must match the part of property name before colon (:).
+
+        :returns tuple (properties: dict, prefix: str)
+        """
+
+    def update_provider_info(self, volumes, snapshots):
+        """Get provider info updates from driver.
+
+        This retrieves a list of volumes and a list of snapshots that
+        changed their providers thanks to the initialization of the host,
+        so that Cinder can update this information in the volume database.
+
+        This is only implemented by drivers where such migration is possible.
+
+        :param volumes: List of Cinder volumes to check for updates
+        :param snapshots: List of Cinder snapshots to check for updates
+        :returns: tuple (volume_updates, snapshot_updates)
+
+        where volume updates {'id': uuid, provider_id: <provider-id>}
+        and snapshot updates {'id': uuid, provider_id: <provider-id>}
         """
