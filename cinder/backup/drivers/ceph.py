@@ -47,6 +47,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 import time
 from typing import Dict, List, Optional, Tuple
 
@@ -618,33 +619,40 @@ class CephBackupDriver(driver.BackupDriver):
         LOG.debug("Piping cmd1='%s' into...", ' '.join(cmd1))
         LOG.debug("cmd2='%s'", ' '.join(cmd2))
 
-        try:
-            p1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE,
-                                  close_fds=True)
-        except OSError as e:
-            LOG.error("Pipe1 failed - %s ", e)
-            raise
+        with tempfile.TemporaryFile() as errfile:
 
-        # NOTE(dosaboy): ensure that the pipe is blocking. This is to work
-        # around the case where evenlet.green.subprocess is used which seems to
-        # use a non-blocking pipe.
-        assert p1.stdout is not None
-        flags = fcntl.fcntl(p1.stdout, fcntl.F_GETFL) & (~os.O_NONBLOCK)
-        fcntl.fcntl(p1.stdout, fcntl.F_SETFL, flags)
+            try:
+                p1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE,
+                                      stderr=errfile,
+                                      close_fds=True)
+            except OSError as e:
+                LOG.error("Pipe1 failed - %s ", e)
+                raise
 
-        try:
-            p2 = subprocess.Popen(cmd2, stdin=p1.stdout,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE,
-                                  close_fds=True)
-        except OSError as e:
-            LOG.error("Pipe2 failed - %s ", e)
-            raise
+            # NOTE(dosaboy): ensure that the pipe is blocking. This is to work
+            # around the case where evenlet.green.subprocess is used which
+            # seems to use a non-blocking pipe.
+            assert p1.stdout is not None
+            flags = fcntl.fcntl(p1.stdout, fcntl.F_GETFL) & (~os.O_NONBLOCK)
+            fcntl.fcntl(p1.stdout, fcntl.F_SETFL, flags)
 
-        p1.stdout.close()
-        stdout, stderr = p2.communicate()
-        return p2.returncode, stderr
+            try:
+                p2 = subprocess.Popen(cmd2, stdin=p1.stdout,
+                                      stdout=subprocess.PIPE,
+                                      stderr=errfile,
+                                      close_fds=True)
+            except OSError as e:
+                LOG.error("Pipe2 failed - %s ", e)
+                raise
+
+            p1.stdout.close()
+            p2.communicate()
+            p1.wait()
+
+            errfile.seek(0)
+            px_stderr = errfile.read()
+
+        return p1.returncode or p2.returncode, px_stderr
 
     def _rbd_diff_transfer(self, src_name: str, src_pool: str,
                            dest_name: str, dest_pool: str,
