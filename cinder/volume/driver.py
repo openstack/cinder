@@ -88,23 +88,17 @@ volume_opts = [
     cfg.StrOpt('target_helper',
                default='tgtadm',
                choices=['tgtadm', 'lioadm', 'scstadmin', 'iscsictl',
-                        'ietadm', 'nvmet', 'spdk-nvmeof', 'fake'],
+                        'nvmet', 'spdk-nvmeof', 'fake'],
                help='Target user-land tool to use. tgtadm is default, '
                     'use lioadm for LIO iSCSI support, scstadmin for SCST '
-                    'target support, ietadm for iSCSI Enterprise Target, '
+                    'target support, '
                     'iscsictl for Chelsio iSCSI Target, nvmet for NVMEoF '
                     'support, spdk-nvmeof for SPDK NVMe-oF, '
-                    'or fake for testing. Note: The IET driver is deprecated '
-                    'and will be removed in the V release.'),
+                    'or fake for testing.'),
     cfg.StrOpt('volumes_dir',
                default='$state_path/volumes',
                help='Volume configuration file storage '
                'directory'),
-    cfg.StrOpt('iet_conf',
-               default='/etc/iet/ietd.conf',
-               deprecated_for_removal=True,
-               deprecated_reason='IET target driver is no longer supported.',
-               help='DEPRECATED: IET configuration file'),
     cfg.StrOpt('chiscsi_conf',
                default='/etc/chelsio-iscsi/chiscsi.conf',
                help='Chiscsi (CXT) global defaults configuration file'),
@@ -114,7 +108,11 @@ volume_opts = [
                help=('Sets the behavior of the iSCSI target '
                      'to either perform blockio or fileio '
                      'optionally, auto can be set and Cinder '
-                     'will autodetect type of backing device')),
+                     'will autodetect type of backing device'),
+               deprecated_for_removal=True,
+               deprecated_since='2024.2',
+               deprecated_reason='No longer used (was for ietadm).'
+               ),
     cfg.StrOpt('volume_dd_blocksize',
                default='1M',
                help='The default block size used when copying/clearing '
@@ -464,7 +462,6 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         # (intended for LVM, but others could use as well)
         self.target_mapping = {
             'fake': 'cinder.volume.targets.fake.FakeTarget',
-            'ietadm': 'cinder.volume.targets.iet.IetAdm',
             'lioadm': 'cinder.volume.targets.lio.LioAdm',
             'tgtadm': 'cinder.volume.targets.tgt.TgtAdm',
             'scstadmin': 'cinder.volume.targets.scst.SCSTAdm',
