@@ -1,0 +1,11 @@
+---
+deprecations:
+  - |
+    The following configuration options, which have been silently ignored since
+    the Mitaka release, are hereby deprecated for removal:
+
+    - ``num_iser_scan_tries``
+    - ``iser_target_prefix``
+    - ``iser_ip_address``
+    - ``iser_port``
+    - ``iser_helper``
