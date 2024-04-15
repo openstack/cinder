@@ -74,27 +74,41 @@ volume_opts = [
                help='The backend name for a given driver implementation'),
     cfg.StrOpt('volume_clear',
                default='zero',
-               choices=['none', 'zero'],
-               help='Method used to wipe old volumes'),
+               choices=[('none', 'Do not wipe volumes on deletion'),
+                        ('zero', '(default) Zero out volumes on deletion')],
+               help=
+               "This option is applicable *only* to the LVM driver when thick "
+               "volumes are being used.  See "
+               "https://cinder.openstack.org/admin/security.html#data-leakage "
+               "for more information. "
+               "Method used to wipe old volumes (LVM only)"),
     cfg.IntOpt('volume_clear_size',
                default=0,
                max=1024,
-               help='Size in MiB to wipe at start of old volumes. 1024 MiB '
-                    'at max. 0 => all'),
+               help=
+               "This option is applicable *only* to the LVM driver when thick "
+               "volumes are being used. "
+               "Size in MiB to wipe at start of old volumes (LVM only). 0 "
+               "means to wipe all"),
     cfg.StrOpt('volume_clear_ionice',
-               help='The flag to pass to ionice to alter the i/o priority '
-                    'of the process used to zero a volume after deletion, '
-                    'for example "-c3" for idle only priority.'),
+               help=
+               "This option is applicable *only* to the LVM driver when thick "
+               "volumes are being used. "
+               "The flag to pass to ionice to alter the i/o priority of the "
+               "process used to zero a volume after deletion (LVM only). "
+               "Example: pass \"-c3\" for idle only priority"),
     cfg.StrOpt('target_helper',
                default='tgtadm',
-               choices=['tgtadm', 'lioadm', 'scstadmin', 'iscsictl',
-                        'nvmet', 'spdk-nvmeof', 'fake'],
-               help='Target user-land tool to use. tgtadm is default, '
-                    'use lioadm for LIO iSCSI support, scstadmin for SCST '
-                    'target support, '
-                    'iscsictl for Chelsio iSCSI Target, nvmet for NVMEoF '
-                    'support, spdk-nvmeof for SPDK NVMe-oF, '
-                    'or fake for testing.'),
+               choices=[('tgtadm',
+                         ('(default) '
+                          'Linux SCSI Target Administration Utility')),
+                        ('lioadm', 'LIO iSCSI support'),
+                        ('scstadmin', 'SCST target support'),
+                        ('iscsictl', 'Chelsio iSCSI Target support'),
+                        ('nvmet', 'for NVMEoF support'),
+                        ('spdk-nvmeof', 'for SPDK NVMe-oF'),
+                        ('fake', 'for testing')],
+               help='Target user-land tool to use.'),
     cfg.StrOpt('volumes_dir',
                default='$state_path/volumes',
                help='Volume configuration file storage '
@@ -104,11 +118,11 @@ volume_opts = [
                help='Chiscsi (CXT) global defaults configuration file'),
     cfg.StrOpt('iscsi_iotype',
                default='fileio',
-               choices=['blockio', 'fileio', 'auto'],
-               help=('Sets the behavior of the iSCSI target '
-                     'to either perform blockio or fileio '
-                     'optionally, auto can be set and Cinder '
-                     'will autodetect type of backing device'),
+               choices=[('blockio', 'perform Block IO'),
+                        ('fileio', '(default) perform File IO'),
+                        ('auto',
+                         'Cinder will autodetect the type of backing device')],
+               help='For ietadm: sets the IO behavior of the iSCSI target',
                deprecated_for_removal=True,
                deprecated_since='2024.2',
                deprecated_reason='No longer used (was for ietadm).'
@@ -127,26 +141,27 @@ volume_opts = [
                     '0 => unlimited'),
     cfg.StrOpt('iscsi_write_cache',
                default='on',
-               choices=['on', 'off'],
-               help='Sets the behavior of the iSCSI target to either '
-                    'perform write-back(on) or write-through(off). '
+               choices=[('on', '(default) Perform write-back'),
+                        ('off', 'Perform write-through')],
+               help='For tgtadm: Sets the behavior of the iSCSI target to '
+                    'either perform write-back or write-through. '
                     'This parameter is valid if target_helper is set '
                     'to tgtadm.'),
     cfg.StrOpt('iscsi_target_flags',
                default='',
-               help='Sets the target-specific flags for the iSCSI target. '
+               help='For tgtadm: '
+                    'Sets the target-specific flags for the iSCSI target. '
                     'Only used for tgtadm to specify backing device flags '
                     'using bsoflags option. The specified string is passed '
                     'as is to the underlying tool.'),
     cfg.StrOpt('target_protocol',
                default='iscsi',
-               choices=['iscsi', 'iser', 'nvmet_rdma', 'nvmet_tcp'],
-               help='Determines the target protocol for new volumes, '
-                    'created with tgtadm, lioadm and nvmet target helpers. '
-                    'In order to enable RDMA, this parameter should be set '
-                    'with the value "iser". The supported iSCSI protocol '
-                    'values are "iscsi" and "iser", in case of nvmet target '
-                    'set to "nvmet_rdma" or "nvmet_tcp".'),
+               choices=[('iscsi', '(default) Use iSCSI target protocol'),
+                        ('iser', 'Use iSCSI Extensions for RDMA'),
+                        ('nvmet_rdma', 'Use RDMA with an nvmet target'),
+                        ('nvmet_tcp', 'Use TCP with an nvmet target')],
+               help='Determines the target protocol for new volumes '
+                    'created with tgtadm, lioadm and nvmet target helpers.'),
     cfg.StrOpt('driver_client_cert_key',
                help='The path to the client certificate key for verification, '
                     'if the driver supports it.'),
@@ -225,7 +240,8 @@ volume_opts = [
     cfg.StrOpt('storage_protocol',
                ignore_case=True,
                default=constants.ISCSI,
-               choices=[constants.ISCSI, constants.FC],
+               choices=[(constants.ISCSI, '(default) iSCSI'),
+                        (constants.FC, 'Fibre Channel')],
                help='Protocol for transferring data between host and '
                     'storage back-end.'),
     cfg.BoolOpt('enable_unsupported_driver',
