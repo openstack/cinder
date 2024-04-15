@@ -448,6 +448,18 @@ class BackupTestCase(BaseBackupTest):
         volume = db.volume_get(self.ctxt, volume_id)
         self.assertEqual('available', volume['status'])
 
+    def test_cleanup_one_backing_up_snapshot(self):
+        """Test cleanup_one_snapshot for snapshot status 'backing-up'."""
+
+        volume_id = str(uuid.uuid4())
+        snapshot_entry = self._create_snapshot_db_entry(status='backing-up',
+                                                        volume_id=volume_id)
+
+        self.backup_mgr._cleanup_one_snapshot(self.ctxt, snapshot_entry.id)
+
+        snapshot = db.snapshot_get(self.ctxt, snapshot_entry.id)
+        self.assertEqual('available', snapshot['status'])
+
     def test_cleanup_one_restoring_backup_volume(self):
         """Test cleanup_one_volume for volume status 'restoring-backup'."""
 
@@ -476,6 +488,27 @@ class BackupTestCase(BaseBackupTest):
 
         mock_log.info.assert_called_with(
             'Volume %s does not exist anymore. Ignoring.', volume_id
+        )
+
+    @ddt.data(fields.BackupStatus.CREATING,
+              fields.BackupStatus.RESTORING)
+    def test_cleanup_one_backup_with_deleted_snapshot(self, backup_status):
+        """Test cleanup_one_backup for non-existing volume."""
+
+        volume_id = str(uuid.uuid4())
+        snapshot_id = str(uuid.uuid4())
+        backup = self._create_backup_db_entry(
+            status=backup_status,
+            volume_id=volume_id,
+            restore_volume_id=volume_id,
+            snapshot_id=snapshot_id
+        )
+
+        mock_log = self.mock_object(manager, 'LOG')
+        self.backup_mgr._cleanup_one_backup(self.ctxt, backup)
+
+        mock_log.info.assert_called_with(
+            'Snapshot %s does not exist anymore. Ignoring.', snapshot_id
         )
 
     def test_cleanup_one_creating_backup(self):

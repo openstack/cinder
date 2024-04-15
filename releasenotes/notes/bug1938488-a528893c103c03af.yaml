@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1938488 <https://bugs.launchpad.net/cinder/+bug/1938488>`_:
+    When cleaning up a failed backup, clean up the snapshot status when the
+    backup source is a snapshot
