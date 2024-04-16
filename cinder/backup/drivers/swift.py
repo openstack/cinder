@@ -192,7 +192,8 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
 
         sa_plugin = service_auth.get_service_auth_plugin()
         if sa_plugin is not None:
-            result['X-Service-Token'] = sa_plugin.get_token()
+            sa_session = service_auth.get_service_session()
+            result['X-Service-Token'] = sa_plugin.get_token(session=sa_session)
 
         return result
 

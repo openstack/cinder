@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #2058596 <https://bugs.launchpad.net/cinder/+bug/2058596>`_: Fixed
+    broken ``backup_swift_service_auth=True`` which made swift backup driver
+    consistently fail during object data access.
