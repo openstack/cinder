@@ -419,6 +419,9 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                     headers=self._headers())
         except socket.error as err:
             raise exception.SwiftConnectionFailed(reason=err)
+        except swift_exc.ClientException as err:
+            if err.http_status != 404:
+                raise
 
     def _generate_object_name_prefix(self, backup):
         """Generates a Swift backup object name prefix."""
