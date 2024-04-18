@@ -23,7 +23,10 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import fileutils
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
 from cinder import compute
 from cinder import coordination
@@ -273,6 +276,10 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                             "setting will be ignored.")
 
     def check_for_setup_error(self):
+        if psutil is None:
+            msg = _("The python 'psutil' module is required by this driver.")
+            LOG.error(msg)
+            raise exception.VolumeDriverException(msg)
         if not self.configuration.quobyte_volume_url:
             msg = (_("There's no Quobyte volume configured (%s). Example:"
                      " quobyte://<DIR host>/<volume name>") %

@@ -34,7 +34,6 @@ packaging>=20.4
 paramiko>=2.7.2 # LGPLv2.1+
 Paste>=3.4.3 # MIT
 PasteDeploy>=2.1.0 # MIT
-psutil>=5.7.2 # BSD
 pyparsing>=2.4.7 # MIT
 python-barbicanclient>=5.0.1 # Apache-2.0
 python-glanceclient>=3.2.2 # Apache-2.0

@@ -31,6 +31,7 @@ import io
 import math
 import os
 import re
+import shutil
 import tempfile
 from typing import ContextManager, Generator, Optional
 
@@ -45,7 +46,6 @@ from oslo_utils import fileutils
 from oslo_utils import imageutils
 from oslo_utils import timeutils
 from oslo_utils import units
-import psutil
 
 from cinder import context
 from cinder import exception
@@ -1099,12 +1099,10 @@ def check_virtual_size(virtual_size: float,
 
 
 def check_available_space(dest: str, image_size: int, image_id: str) -> None:
-    # TODO(e0ne): replace psutil with shutil.disk_usage when we drop
-    # Python 2.7 support.
     if not os.path.isdir(dest):
         dest = os.path.dirname(dest)
 
-    free_space = psutil.disk_usage(dest).free
+    free_space = shutil.disk_usage(dest).free
     if free_space <= image_size:
         msg = ('There is no space on %(dest_dir)s to convert image. '
                'Requested: %(image_size)s, available: %(free_space)s.'
