@@ -185,14 +185,16 @@ class CephBackupDriver(driver.BackupDriver):
         self.chunk_size = CONF.backup_ceph_chunk_size
         self._execute = execute or utils.execute
 
+        self.rbd_stripe_count = 0
+        self.rbd_stripe_unit = 0
+
         if self._supports_stripingv2:
             self.rbd_stripe_unit = CONF.backup_ceph_stripe_unit
             self.rbd_stripe_count = CONF.backup_ceph_stripe_count
-        else:
+        elif (CONF.backup_ceph_stripe_unit != 0 or
+                CONF.backup_ceph_stripe_count != 0):
             LOG.info("RBD striping not supported - ignoring configuration "
                      "settings for rbd striping.")
-            self.rbd_stripe_count = 0
-            self.rbd_stripe_unit = 0
 
         self._ceph_backup_user = CONF.backup_ceph_user
         self._ceph_backup_pool = CONF.backup_ceph_pool
