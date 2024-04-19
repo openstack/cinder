@@ -158,7 +158,7 @@ Run this command to restore the state of a backup:
 
 .. code-block:: console
 
-   $ cinder backup-reset-state [--state STATE] BACKUP_ID-1 BACKUP_ID-2 ...
+   $ openstack volume backup set --state <state> BACKUP
 
 Run this command to create a backup of a snapshot:
 
