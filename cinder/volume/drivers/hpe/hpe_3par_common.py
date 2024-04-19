@@ -313,11 +313,12 @@ class HPE3PARCommon(object):
         4.0.23 - Fixed login/logout while accessing wsapi. Bug #2068795
         4.0.24 - Fixed retype volume - thin to deco. Bug #2080927
         4.0.25 - Update the calculation of free_capacity
+        4.0.26 - Added comment for cloned volumes. Bug #2062524
 
 
     """
 
-    VERSION = "4.0.25"
+    VERSION = "4.0.26"
 
     stats = {}
 
@@ -2506,7 +2507,7 @@ class HPE3PARCommon(object):
                                       hpe_tiramisu=hpe_tiramisu)
 
     def _copy_volume(self, src_name, dest_name, cpg, snap_cpg=None,
-                     tpvv=True, tdvv=False, compression=None):
+                     tpvv=True, tdvv=False, compression=None, comment=None):
         # Virtual volume sets are not supported with the -online option
         LOG.debug('Creating clone of a volume %(src)s to %(dest)s.',
                   {'src': src_name, 'dest': dest_name})
@@ -2521,6 +2522,9 @@ class HPE3PARCommon(object):
         if (compression is not None and
                 self.API_VERSION >= COMPRESSION_API_VERSION):
             optional['compression'] = compression
+
+        if comment:
+            optional['comment'] = comment
 
         body = self.client.copyVolume(src_name, dest_name, cpg, optional)
         return body['taskid']
@@ -2646,13 +2650,42 @@ class HPE3PARCommon(object):
 
                 compression_val = self.get_compression_policy(
                     type_info['hpe3par_keys'])
+
+                LOG.info("array version: %(ver)s",
+                         {'ver': self.API_VERSION})
+                comment_line = None
+                if self.API_VERSION >= 40600000:
+                    # comment can be added
+                    comments = {'volume_id': volume['id'],
+                                'name': volume['name'],
+                                'type': 'OpenStack'}
+
+                    volume_type = type_info['volume_type']
+                    type_id = volume.get('volume_type_id', None)
+                    if type_id:
+                        comments['volume_type_name'] = volume_type.get('name')
+                        comments['volume_type_id'] = type_id
+                        if vvs_name:
+                            comments['vvs'] = vvs_name
+                        else:
+                            comments['qos'] = qos
+
+                    display_name = volume.get('display_name', None)
+                    if display_name:
+                        comments['display_name'] = display_name
+
+                    comment_line = json.dumps(comments)
+                    LOG.debug("comment_line: %(comment)s",
+                              {'comment': comment_line})
+
                 # make the 3PAR copy the contents.
                 # can't delete the original until the copy is done.
                 self._copy_volume(snapshot['name'], vol_name, cpg=cpg,
                                   snap_cpg=type_info['snap_cpg'],
                                   tpvv=type_info['tpvv'],
                                   tdvv=type_info['tdvv'],
-                                  compression=compression_val)
+                                  compression=compression_val,
+                                  comment=comment_line)
 
                 if qos or vvs_name or flash_cache is not None:
                     try:

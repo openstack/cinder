@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    HPE 3PAR driver `bug #2062524
+    <https://bugs.launchpad.net/cinder/+bug/2062524>`_:
+    Fixed: Added comment for cloned volumes.
+
