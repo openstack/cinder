@@ -46,7 +46,7 @@ LOG = logging.getLogger(__name__)
 class ServiceController(wsgi.Controller):
     def __init__(self, ext_mgr=None):
         self.ext_mgr = ext_mgr
-        super(ServiceController, self).__init__()
+        super().__init__()
         self.volume_api = volume.API()
         self.rpc_apis = {
             constants.SCHEDULER_BINARY: scheduler_rpcapi.SchedulerAPI(),
@@ -130,7 +130,10 @@ class ServiceController(wsgi.Controller):
     # TODO: This currently returns HTTP 200 but it should return HTTP 204 since
     # there's no content
     @validation.schema(os_services.freeze_and_thaw)
-    def _freeze(self, req, context, body):
+    def freeze(self, req, body):
+        context = req.environ['cinder.context']
+        context.authorize(policy.UPDATE_POLICY)
+
         cluster_name, host = common.get_cluster_host(
             req, body, mv.REPLICATION_CLUSTER)
         return self._volume_api_proxy(self.volume_api.freeze_host, context,
@@ -139,14 +142,22 @@ class ServiceController(wsgi.Controller):
     # TODO: This currently returns HTTP 200 but it should return HTTP 204 since
     # there's no content
     @validation.schema(os_services.freeze_and_thaw)
-    def _thaw(self, req, context, body):
+    def thaw(self, req, body):
+        context = req.environ['cinder.context']
+        context.authorize(policy.UPDATE_POLICY)
+
         cluster_name, host = common.get_cluster_host(
             req, body, mv.REPLICATION_CLUSTER)
         return self._volume_api_proxy(self.volume_api.thaw_host, context,
                                       host, cluster_name)
 
     @validation.schema(os_services.failover_host)
-    def _failover(self, req, context, clustered, body):
+    def failover_host(self, req, body):
+        context = req.environ['cinder.context']
+        context.authorize(policy.UPDATE_POLICY)
+
+        clustered = req.api_version_request.matches(mv.REPLICATION_CLUSTER)
+
         # We set version to None to always get the cluster name from the body,
         # to False when we don't want to get it, and REPLICATION_CLUSTER  when
         # we only want it if the requested version is REPLICATION_CLUSTER  or
@@ -177,9 +188,13 @@ class ServiceController(wsgi.Controller):
 
         return binaries, services
 
+    @wsgi.Controller.api_version(mv.LOG_LEVEL)
     @validation.schema(os_services.set_log)
-    def _set_log(self, req, context, body):
+    def set_log(self, req, body):
         """Set log levels of services dynamically."""
+        context = req.environ['cinder.context']
+        context.authorize(policy.UPDATE_POLICY)
+
         prefix = body.get('prefix')
         level = body.get('level')
 
@@ -195,9 +210,13 @@ class ServiceController(wsgi.Controller):
 
         return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
+    @wsgi.Controller.api_version(mv.LOG_LEVEL)
     @validation.schema(os_services.get_log)
-    def _get_log(self, req, context, body):
+    def get_log(self, req, body):
         """Get current log levels for services."""
+        context = req.environ['cinder.context']
+        context.authorize(policy.UPDATE_POLICY)
+
         prefix = body.get('prefix')
         binaries, services = self._log_params_binaries_services(context, body)
 
@@ -224,64 +243,15 @@ class ServiceController(wsgi.Controller):
         return {'log_levels': result}
 
     @validation.schema(os_services.disable_log_reason)
-    def _disabled_log_reason(self, req, body):
-        reason = body.get('disabled_reason')
-        disabled = True
-        status = "disabled"
-        return reason, disabled, status
-
-    @validation.schema(os_services.enable_and_disable)
-    def _enable(self, req, body):
-        disabled = False
-        status = "enabled"
-        return disabled, status
-
-    @validation.schema(os_services.enable_and_disable)
-    def _disable(self, req, body):
-        disabled = True
-        status = "disabled"
-        return disabled, status
-
-    def update(self, req, id, body):
-        """Enable/Disable scheduling for a service.
-
-        Includes Freeze/Thaw which sends call down to drivers
-        and allows volume.manager for the specified host to
-        disable the service rather than accessing the service
-        directly in this API layer.
-        """
+    def disable_log_reason(self, req, body):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)
 
-        support_dynamic_log = req.api_version_request.matches(mv.LOG_LEVEL)
-        ext_loaded = self.ext_mgr.is_loaded('os-extended-services')
-        ret_val = {}
-        if id == "enable":
-            disabled, status = self._enable(req, body=body)
-        elif id == "disable":
-            disabled, status = self._disable(req, body=body)
-        elif id == "disable-log-reason" and ext_loaded:
-            disabled_reason, disabled, status = (
-                self._disabled_log_reason(req, body=body))
-            ret_val['disabled_reason'] = disabled_reason
-        elif id == "freeze":
-            return self._freeze(req, context, body=body)
-        elif id == "thaw":
-            return self._thaw(req, context, body=body)
-        elif id == "failover_host":
-            return self._failover(req, context, False, body=body)
-        elif (req.api_version_request.matches(mv.REPLICATION_CLUSTER) and
-              id == 'failover'):
-            return self._failover(req, context, True, body=body)
-        elif support_dynamic_log and id == 'set-log':
-            return self._set_log(req, context, body=body)
-        elif support_dynamic_log and id == 'get-log':
-            return self._get_log(req, context, body=body)
-        else:
-            raise exception.InvalidInput(reason=_("Unknown action"))
+        if not self.ext_mgr.is_loaded('os-extended-services'):
+            return exception.InvalidInput(reason=_('Unknown action'))
 
         host = common.get_cluster_host(req, body, False)[1]
-        ret_val['disabled'] = disabled
+        disabled_reason = body.get('disabled_reason')
 
         # NOTE(uni): deprecating service request key, binary takes precedence
         # Still keeping service key here for API compatibility sake.
@@ -292,14 +262,72 @@ class ServiceController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         svc = objects.Service.get_by_args(context, host, binary_key)
 
-        svc.disabled = ret_val['disabled']
-        if 'disabled_reason' in ret_val:
-            svc.disabled_reason = ret_val['disabled_reason']
+        svc.disabled = True
+        if disabled_reason:
+            svc.disabled_reason = disabled_reason
         svc.save()
 
-        ret_val.update({'host': host, 'service': service,
-                        'binary': binary, 'status': status})
-        return ret_val
+        return {
+            'host': host,
+            'service': service,
+            'binary': binary,
+            'status': 'disabled',
+            'disabled': True,
+            'disabled_reason': disabled_reason,
+        }
+
+    @validation.schema(os_services.enable_and_disable)
+    def enable(self, req, body):
+        context = req.environ['cinder.context']
+        context.authorize(policy.UPDATE_POLICY)
+
+        host = common.get_cluster_host(req, body, False)[1]
+
+        # NOTE(uni): deprecating service request key, binary takes precedence
+        # Still keeping service key here for API compatibility sake.
+        service = body.get('service', '')
+        binary = body.get('binary', '')
+        binary_key = binary or service
+
+        # Not found exception will be handled at the wsgi level
+        svc = objects.Service.get_by_args(context, host, binary_key)
+        svc.save()
+
+        return {
+            'host': host,
+            'service': service,
+            'binary': binary,
+            'status': 'enabled',
+            'disabled': False,
+        }
+
+    @validation.schema(os_services.enable_and_disable)
+    def disable(self, req, body):
+        context = req.environ['cinder.context']
+        context.authorize(policy.UPDATE_POLICY)
+
+        host = common.get_cluster_host(req, body, False)[1]
+
+        # NOTE(uni): deprecating service request key, binary takes precedence
+        # Still keeping service key here for API compatibility sake.
+        service = body.get('service', '')
+        binary = body.get('binary', '')
+        binary_key = binary or service
+
+        # Not found exception will be handled at the wsgi level
+        svc = objects.Service.get_by_args(context, host, binary_key)
+        svc.save()
+
+        return {
+            'host': host,
+            'service': service,
+            'binary': binary,
+            'status': 'disabled',
+            'disabled': True,
+        }
+
+    def update(self, req, id, body):
+        raise exception.InvalidInput(reason=_("Unknown action"))
 
 
 class Services(extensions.ExtensionDescriptor):
@@ -312,6 +340,20 @@ class Services(extensions.ExtensionDescriptor):
     def get_resources(self):
         resources = []
         controller = ServiceController(self.ext_mgr)
-        resource = extensions.ResourceExtension('os-services', controller)
+        resource = extensions.ResourceExtension(
+            'os-services',
+            controller,
+            collection_actions={
+                'update': 'PUT',
+                'freeze': 'PUT',
+                'thaw': 'PUT',
+                'failover_host': 'PUT',
+                'set-log': 'PUT',
+                'get-log': 'PUT',
+                'disable-log-reason': 'PUT',
+                'enable': 'PUT',
+                'disable': 'PUT',
+            },
+        )
         resources.append(resource)
         return resources

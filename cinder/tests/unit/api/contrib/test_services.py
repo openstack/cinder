@@ -278,21 +278,22 @@ class ServicesTest(test.TestCase):
 
     def test_failover_old_version(self):
         req = FakeRequest(version=mv.BACKUP_PROJECT)
-        self.assertRaises(exception.InvalidInput, self.controller.update, req,
-                          'failover', {'cluster': 'cluster1'})
+        self.assertRaises(
+            exception.InvalidInput, self.controller.failover_host, req,
+            body={'cluster': 'cluster1'})
 
     def test_failover_no_values(self):
         req = FakeRequest(version=mv.REPLICATION_CLUSTER)
         self.assertRaises(exception.InvalidInput,
-                          self.controller.update, req,
-                          'failover', {'backend_id': 'replica1'})
+                          self.controller.failover_host, req,
+                          body={'backend_id': 'replica1'})
 
     @ddt.data({'host': 'hostname'}, {'cluster': 'mycluster'})
     @mock.patch('cinder.volume.api.API.failover')
     def test_failover(self, body, failover_mock):
         req = FakeRequest(version=mv.REPLICATION_CLUSTER)
         body['backend_id'] = 'replica1'
-        res = self.controller.update(req, 'failover', body)
+        res = self.controller.failover_host(req, body=body)
         self.assertEqual(202, res.status_code)
         failover_mock.assert_called_once_with(req.environ['cinder.context'],
                                               body.get('host'),
@@ -304,7 +305,7 @@ class ServicesTest(test.TestCase):
         req = FakeRequest(version=mv.REPLICATION_CLUSTER)
         body['backend_id'] = 'replica1'
         self.assertRaises(exception.InvalidInput,
-                          self.controller.update, req, 'failover', body)
+                          self.controller.failover_host, req, body=body)
         failover_mock.assert_not_called()
 
     def test_services_list_with_cluster_name(self):
@@ -655,7 +656,7 @@ class ServicesTest(test.TestCase):
         body = {'host': 'host1', 'service': constants.VOLUME_BINARY}
         req = fakes.HTTPRequest.blank(
             '/v3/%s/os-services/enable' % fake.PROJECT_ID)
-        res_dict = self.controller.update(req, "enable", body)
+        res_dict = self.controller.enable(req, body=body)
 
         self.assertEqual('enabled', res_dict['status'])
 
@@ -663,7 +664,7 @@ class ServicesTest(test.TestCase):
         body = {'host': 'host1', 'binary': constants.VOLUME_BINARY}
         req = fakes.HTTPRequest.blank(
             '/v3/%s/os-services/enable' % fake.PROJECT_ID)
-        res_dict = self.controller.update(req, "enable", body)
+        res_dict = self.controller.enable(req, body=body)
 
         self.assertEqual('enabled', res_dict['status'])
 
@@ -671,7 +672,7 @@ class ServicesTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/v3/%s/os-services/disable' % fake.PROJECT_ID)
         body = {'host': 'host1', 'service': constants.VOLUME_BINARY}
-        res_dict = self.controller.update(req, "disable", body)
+        res_dict = self.controller.disable(req, body=body)
 
         self.assertEqual('disabled', res_dict['status'])
 
@@ -679,7 +680,7 @@ class ServicesTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/v3/%s/os-services/disable' % fake.PROJECT_ID)
         body = {'host': 'host1', 'binary': constants.VOLUME_BINARY}
-        res_dict = self.controller.update(req, "disable", body)
+        res_dict = self.controller.disable(req, body=body)
 
         self.assertEqual('disabled', res_dict['status'])
 
@@ -692,7 +693,7 @@ class ServicesTest(test.TestCase):
                 'binary': 'cinder-scheduler',
                 'disabled_reason': 'test-reason',
                 }
-        res_dict = self.controller.update(req, "disable-log-reason", body)
+        res_dict = self.controller.disable_log_reason(req, body=body)
 
         self.assertEqual('disabled', res_dict['status'])
         self.assertEqual('test-reason', res_dict['disabled_reason'])
@@ -706,7 +707,7 @@ class ServicesTest(test.TestCase):
                 'binary': 'cinder-scheduler',
                 'disabled_reason': 'test-reason',
                 }
-        res_dict = self.controller.update(req, "disable-log-reason", body)
+        res_dict = self.controller.disable_log_reason(req, body=body)
 
         self.assertEqual('disabled', res_dict['status'])
         self.assertEqual('test-reason', res_dict['disabled_reason'])
@@ -721,8 +722,8 @@ class ServicesTest(test.TestCase):
                 'disabled_reason': None,
                 }
         self.assertRaises(exception.ValidationError,
-                          self.controller.update,
-                          req, "disable-log-reason", body)
+                          self.controller.disable_log_reason,
+                          req, body=body)
 
     @ddt.data(' ' * 10, 'a' * 256, None)
     def test_invalid_reason_field(self, reason):
@@ -736,8 +737,8 @@ class ServicesTest(test.TestCase):
                 'disabled_reason': reason,
                 }
         self.assertRaises(exception.ValidationError,
-                          self.controller.update,
-                          req, "disable-log-reason", body)
+                          self.controller.disable_log_reason,
+                          req, body=body)
 
     def test_services_failover_host(self):
         url = '/v3/%s/os-services/failover_host' % fake.PROJECT_ID
@@ -746,7 +747,7 @@ class ServicesTest(test.TestCase):
                 'backend_id': 'fake_backend'}
         with mock.patch.object(self.controller.volume_api, 'failover') \
                 as failover_mock:
-            res = self.controller.update(req, 'failover_host', body)
+            res = self.controller.failover_host(req, body=body)
         failover_mock.assert_called_once_with(req.environ['cinder.context'],
                                               'fake_host',
                                               None,
@@ -766,12 +767,12 @@ class ServicesTest(test.TestCase):
         mock_get_all_services.return_value = []
         msg = 'No service found with host=%s' % 'fake_host'
         result = self.assertRaises(exception.InvalidInput,
-                                   self.controller.update,
-                                   req, method, body)
+                                   getattr(self.controller, method),
+                                   req, body=body)
         self.assertEqual(msg, result.msg)
 
-    @ddt.data(('failover', {'cluster': 'fake_cluster',
-                            'backend_id': 'fake_backend'}),
+    @ddt.data(('failover_host', {'cluster': 'fake_cluster',
+                                 'backend_id': 'fake_backend'}),
               ('freeze', {'cluster': 'fake_cluster'}),
               ('thaw', {'cluster': 'fake_cluster'}))
     @ddt.unpack
@@ -783,8 +784,8 @@ class ServicesTest(test.TestCase):
         mock_get_all_services.return_value = []
         msg = "No service found with cluster=fake_cluster"
         result = self.assertRaises(exception.InvalidInput,
-                                   self.controller.update, req,
-                                   method, body)
+                                   getattr(self.controller, method),
+                                   req, body=body)
         self.assertEqual(msg, result.msg)
 
     def test_services_freeze(self):
@@ -793,7 +794,7 @@ class ServicesTest(test.TestCase):
         body = {'host': 'fake_host'}
         with mock.patch.object(self.controller.volume_api, 'freeze_host') \
                 as freeze_mock:
-            res = self.controller.update(req, 'freeze', body)
+            res = self.controller.freeze(req, body=body)
         freeze_mock.assert_called_once_with(req.environ['cinder.context'],
                                             'fake_host', None)
         self.assertEqual(freeze_mock.return_value, res)
@@ -804,7 +805,7 @@ class ServicesTest(test.TestCase):
         body = {'host': 'fake_host'}
         with mock.patch.object(self.controller.volume_api, 'thaw_host') \
                 as thaw_mock:
-            res = self.controller.update(req, 'thaw', body)
+            res = self.controller.thaw(req, body=body)
         thaw_mock.assert_called_once_with(req.environ['cinder.context'],
                                           'fake_host', None)
         self.assertEqual(thaw_mock.return_value, res)
@@ -814,31 +815,123 @@ class ServicesTest(test.TestCase):
         url = '/v3/%s/os-services/%s' % (fake.PROJECT_ID, method)
         req = fakes.HTTPRequest.blank(url)
         self.assertRaises(exception.InvalidInput,
-                          self.controller.update, req, method, {})
+                          getattr(self.controller, method), req, body={})
 
-    @mock.patch('cinder.api.contrib.services.ServiceController._set_log')
-    def test_set_log(self, set_log_mock):
-        set_log_mock.return_value = None
-        req = FakeRequest(version=mv.LOG_LEVEL)
-        body = mock.sentinel.body
-        res = self.controller.update(req, 'set-log', body)
-        self.assertEqual(set_log_mock.return_value, res)
-        set_log_mock.assert_called_once_with(req, mock.ANY, body=body)
+    @mock.patch('cinder.utils.get_log_method')
+    @mock.patch('cinder.objects.ServiceList.get_all')
+    @mock.patch('cinder.utils.set_log_levels')
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.set_log_levels')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.set_log_levels')
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.set_log_levels')
+    def test_set_log(self, backup_rpc_mock, vol_rpc_mock, sch_rpc_mock,
+                     set_log_mock, get_all_mock, get_log_mock):
+        services = [
+            objects.Service(self.context, binary=constants.SCHEDULER_BINARY),
+            objects.Service(self.context, binary=constants.VOLUME_BINARY),
+            objects.Service(self.context, binary=constants.BACKUP_BINARY),
+        ]
+        get_all_mock.return_value = services
+        url = '/v3/%s/os-services/set-log' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, version=mv.LOG_LEVEL)
+        body = {'binary': '*', 'prefix': 'eventlet.', 'level': 'debug'}
+        log_level = objects.LogLevel(prefix=body['prefix'],
+                                     level=body['level'])
+        with mock.patch('cinder.objects.LogLevel') as log_level_mock:
+            log_level_mock.return_value = log_level
+            res = self.controller.set_log(req, body=body)
+            log_level_mock.assert_called_once_with(mock.ANY,
+                                                   prefix=body['prefix'],
+                                                   level=body['level'])
 
-    @mock.patch('cinder.api.contrib.services.ServiceController._get_log')
-    def test_get_log(self, get_log_mock):
-        get_log_mock.return_value = None
-        req = FakeRequest(version=mv.LOG_LEVEL)
-        body = mock.sentinel.body
-        res = self.controller.update(req, 'get-log', body)
-        self.assertEqual(get_log_mock.return_value, res)
-        get_log_mock.assert_called_once_with(req, mock.ANY, body=body)
+        self.assertEqual(202, res.status_code)
+
+        set_log_mock.assert_called_once_with(body['prefix'], body['level'])
+        sch_rpc_mock.assert_called_once_with(mock.ANY, services[0], log_level)
+        vol_rpc_mock.assert_called_once_with(mock.ANY, services[1], log_level)
+        backup_rpc_mock.assert_called_once_with(mock.ANY,
+                                                services[2], log_level)
+        get_log_mock.assert_called_once_with(body['level'])
+
+    @ddt.data((None, exception.InvalidInput),
+              ('', exception.InvalidInput),
+              ('wronglevel', exception.InvalidInput))
+    @ddt.unpack
+    def test_set_log_invalid_level(self, level, exceptions):
+        body = {'level': level}
+        url = '/v3/%s/os-services/set-log' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url)
+        req.api_version_request = api_version.APIVersionRequest("3.32")
+        self.assertRaises(exceptions,
+                          self.controller.set_log, req,
+                          body=body)
+
+    @mock.patch('cinder.objects.ServiceList.get_all')
+    @mock.patch('cinder.utils.get_log_levels')
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_log_levels')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_log_levels')
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.get_log_levels')
+    def test_get_log(self, backup_rpc_mock, vol_rpc_mock, sch_rpc_mock,
+                     get_log_mock, get_all_mock):
+        get_log_mock.return_value = mock.sentinel.api_levels
+        backup_rpc_mock.return_value = [
+            objects.LogLevel(prefix='p1', level='l1'),
+            objects.LogLevel(prefix='p2', level='l2')
+        ]
+        vol_rpc_mock.return_value = [
+            objects.LogLevel(prefix='p3', level='l3'),
+            objects.LogLevel(prefix='p4', level='l4')
+        ]
+        sch_rpc_mock.return_value = [
+            objects.LogLevel(prefix='p5', level='l5'),
+            objects.LogLevel(prefix='p6', level='l6')
+        ]
+
+        services = [
+            objects.Service(self.context, binary=constants.SCHEDULER_BINARY,
+                            host='host'),
+            objects.Service(self.context, binary=constants.VOLUME_BINARY,
+                            host='host@backend#pool'),
+            objects.Service(self.context, binary=constants.BACKUP_BINARY,
+                            host='host'),
+        ]
+        get_all_mock.return_value = services
+        url = '/v3/%s/os-services/get-log' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank(url, version=mv.LOG_LEVEL)
+        body = {'binary': '*', 'prefix': 'eventlet.'}
+
+        log_level = objects.LogLevel(prefix=body['prefix'])
+        with mock.patch('cinder.objects.LogLevel') as log_level_mock:
+            log_level_mock.return_value = log_level
+            res = self.controller.get_log(req, body=body)
+            log_level_mock.assert_called_once_with(mock.ANY,
+                                                   prefix=body['prefix'])
+
+        expected = {'log_levels': [
+            {'binary': 'cinder-api',
+             'host': CONF.host,
+             'levels': mock.sentinel.api_levels},
+            {'binary': 'cinder-scheduler', 'host': 'host',
+             'levels': {'p5': 'l5', 'p6': 'l6'}},
+            {'binary': constants.VOLUME_BINARY,
+             'host': 'host@backend#pool',
+             'levels': {'p3': 'l3', 'p4': 'l4'}},
+            {'binary': 'cinder-backup', 'host': 'host',
+             'levels': {'p1': 'l1', 'p2': 'l2'}},
+        ]}
+
+        self.assertDictEqual(expected, res)
+
+        get_log_mock.assert_called_once_with(body['prefix'])
+        sch_rpc_mock.assert_called_once_with(mock.ANY, services[0], log_level)
+        vol_rpc_mock.assert_called_once_with(mock.ANY, services[1], log_level)
+        backup_rpc_mock.assert_called_once_with(mock.ANY,
+                                                services[2], log_level)
 
     def test_get_log_wrong_binary(self):
         req = FakeRequest(version=mv.LOG_LEVEL)
         body = {'binary': 'wrong-binary'}
         self.assertRaises(exception.ValidationError,
-                          self.controller._get_log, req, self.context,
+                          self.controller.get_log, req,
                           body=body)
 
     def test_get_log_w_server_filter_same_host(self):
@@ -847,8 +940,7 @@ class ServicesTest(test.TestCase):
         body = {'binary': constants.API_BINARY, 'server': server_filter}
         req = FakeRequest(version=mv.LOG_LEVEL)
 
-        log_levels = self.controller._get_log(
-            req=req, context=mock.sentinel.context, body=body)
+        log_levels = self.controller.get_log(req=req, body=body)
         log_levels = log_levels['log_levels']
 
         self.assertEqual(1, len(log_levels))
@@ -864,8 +956,7 @@ class ServicesTest(test.TestCase):
         body = {'binary': constants.API_BINARY, 'server': server_filter}
         req = FakeRequest(version=mv.LOG_LEVEL)
 
-        log_levels = self.controller._get_log(
-            req=req, context=mock.sentinel.context, body=body)
+        log_levels = self.controller.get_log(req=req, body=body)
         log_levels = log_levels['log_levels']
 
         self.assertEqual(0, len(log_levels))
@@ -900,119 +991,3 @@ class ServicesTest(test.TestCase):
                 mock.sentinel.context,
                 filters={'host_or_cluster': body['server'], 'binary': binary,
                          'is_up': True})
-
-    @ddt.data((None, exception.InvalidInput),
-              ('', exception.InvalidInput),
-              ('wronglevel', exception.InvalidInput))
-    @ddt.unpack
-    def test__set_log_invalid_level(self, level, exceptions):
-        body = {'level': level}
-        url = '/v3/%s/os-services/set-log' % fake.PROJECT_ID
-        req = fakes.HTTPRequest.blank(url)
-        req.api_version_request = api_version.APIVersionRequest("3.32")
-        self.assertRaises(exceptions,
-                          self.controller._set_log, req, self.context,
-                          body=body)
-
-    @mock.patch('cinder.utils.get_log_method')
-    @mock.patch('cinder.objects.ServiceList.get_all')
-    @mock.patch('cinder.utils.set_log_levels')
-    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.set_log_levels')
-    @mock.patch('cinder.volume.rpcapi.VolumeAPI.set_log_levels')
-    @mock.patch('cinder.backup.rpcapi.BackupAPI.set_log_levels')
-    def test__set_log(self, backup_rpc_mock, vol_rpc_mock, sch_rpc_mock,
-                      set_log_mock, get_all_mock, get_log_mock):
-        services = [
-            objects.Service(self.context, binary=constants.SCHEDULER_BINARY),
-            objects.Service(self.context, binary=constants.VOLUME_BINARY),
-            objects.Service(self.context, binary=constants.BACKUP_BINARY),
-        ]
-        get_all_mock.return_value = services
-        url = '/v3/%s/os-services/set-log' % fake.PROJECT_ID
-        req = fakes.HTTPRequest.blank(url)
-        body = {'binary': '*', 'prefix': 'eventlet.', 'level': 'debug'}
-        log_level = objects.LogLevel(prefix=body['prefix'],
-                                     level=body['level'])
-        with mock.patch('cinder.objects.LogLevel') as log_level_mock:
-            log_level_mock.return_value = log_level
-            res = self.controller._set_log(req, mock.sentinel.context,
-                                           body=body)
-            log_level_mock.assert_called_once_with(mock.sentinel.context,
-                                                   prefix=body['prefix'],
-                                                   level=body['level'])
-
-        self.assertEqual(202, res.status_code)
-
-        set_log_mock.assert_called_once_with(body['prefix'], body['level'])
-        sch_rpc_mock.assert_called_once_with(mock.sentinel.context,
-                                             services[0], log_level)
-        vol_rpc_mock.assert_called_once_with(mock.sentinel.context,
-                                             services[1], log_level)
-        backup_rpc_mock.assert_called_once_with(mock.sentinel.context,
-                                                services[2], log_level)
-        get_log_mock.assert_called_once_with(body['level'])
-
-    @mock.patch('cinder.objects.ServiceList.get_all')
-    @mock.patch('cinder.utils.get_log_levels')
-    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_log_levels')
-    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_log_levels')
-    @mock.patch('cinder.backup.rpcapi.BackupAPI.get_log_levels')
-    def test__get_log(self, backup_rpc_mock, vol_rpc_mock, sch_rpc_mock,
-                      get_log_mock, get_all_mock):
-        get_log_mock.return_value = mock.sentinel.api_levels
-        backup_rpc_mock.return_value = [
-            objects.LogLevel(prefix='p1', level='l1'),
-            objects.LogLevel(prefix='p2', level='l2')
-        ]
-        vol_rpc_mock.return_value = [
-            objects.LogLevel(prefix='p3', level='l3'),
-            objects.LogLevel(prefix='p4', level='l4')
-        ]
-        sch_rpc_mock.return_value = [
-            objects.LogLevel(prefix='p5', level='l5'),
-            objects.LogLevel(prefix='p6', level='l6')
-        ]
-
-        services = [
-            objects.Service(self.context, binary=constants.SCHEDULER_BINARY,
-                            host='host'),
-            objects.Service(self.context, binary=constants.VOLUME_BINARY,
-                            host='host@backend#pool'),
-            objects.Service(self.context, binary=constants.BACKUP_BINARY,
-                            host='host'),
-        ]
-        get_all_mock.return_value = services
-        url = '/v3/%s/os-services/get-log' % fake.PROJECT_ID
-        req = fakes.HTTPRequest.blank(url)
-        body = {'binary': '*', 'prefix': 'eventlet.'}
-
-        log_level = objects.LogLevel(prefix=body['prefix'])
-        with mock.patch('cinder.objects.LogLevel') as log_level_mock:
-            log_level_mock.return_value = log_level
-            res = self.controller._get_log(req, mock.sentinel.context,
-                                           body=body)
-            log_level_mock.assert_called_once_with(mock.sentinel.context,
-                                                   prefix=body['prefix'])
-
-        expected = {'log_levels': [
-            {'binary': 'cinder-api',
-             'host': CONF.host,
-             'levels': mock.sentinel.api_levels},
-            {'binary': 'cinder-scheduler', 'host': 'host',
-             'levels': {'p5': 'l5', 'p6': 'l6'}},
-            {'binary': constants.VOLUME_BINARY,
-             'host': 'host@backend#pool',
-             'levels': {'p3': 'l3', 'p4': 'l4'}},
-            {'binary': 'cinder-backup', 'host': 'host',
-             'levels': {'p1': 'l1', 'p2': 'l2'}},
-        ]}
-
-        self.assertDictEqual(expected, res)
-
-        get_log_mock.assert_called_once_with(body['prefix'])
-        sch_rpc_mock.assert_called_once_with(mock.sentinel.context,
-                                             services[0], log_level)
-        vol_rpc_mock.assert_called_once_with(mock.sentinel.context,
-                                             services[1], log_level)
-        backup_rpc_mock.assert_called_once_with(mock.sentinel.context,
-                                                services[2], log_level)

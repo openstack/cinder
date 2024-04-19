@@ -1184,7 +1184,7 @@ class Controller(object, metaclass=ControllerMetaclass):
 
             return version_select
 
-        return object.__getattribute__(self, key)
+        return object.__getattribute__(self, key.replace('-', '_'))
 
     # NOTE(cyeoh): This decorator MUST appear first (the outermost
     # decorator) on an API method for it to work correctly
