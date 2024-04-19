@@ -327,6 +327,30 @@ people are unlikely to review a patch that is failing the CI system.
 * The unit, functional, and pep8 tests can all be run locally before you
   submit your patch for review.  By doing so, you can help conserve gate
   resources.
+* Other test failures: we also run integration tests in the gate that
+  run your changes in the context of an OpenStack deployment, where
+  cinder and os-brick interact with users, admins, and other services.
+  Sometimes these tests will fail, and it may not obviously be your patch's
+  fault.  Keep in mind, however, that the failure could still be a cinder
+  issue, for which the cinder project (which includes you, as a contributor)
+  is responsible.  So please take a few minutes to look over the logs
+  from the failing test job to see if you can identify the issue.
+
+  * If you're not sure how to do this, ask in the ``#openstack-cinder``
+    channel (or during open discussion at the weekly cinder meeting), and
+    someone will walk you through the basic process.
+  * You can tell Zuul to do a recheck, but first:
+
+    * Make sure you look at the job's build history, because if the job
+      is failing consistently, it's probably due to some particular issue
+      that must be fixed before the job will start passing again.  So a
+      recheck in this situation will just waste resources.  Check the
+      mailing list or ask in IRC or look at the comments on your patch
+      (sometimes a reviewer will leave a note saying not to recheck until
+      some other patch has merged).
+    * When you think a recheck is appropriate, make sure you follow the
+      OpenStack community guidelines for `How to Handle Test Failures
+      <https://docs.openstack.org/project-team-guide/testing.html#how-to-handle-test-failures>`_.
 
 How long it may take for your review to get attention will depend on the
 current project priorities.  For example, the feature freeze is at the
