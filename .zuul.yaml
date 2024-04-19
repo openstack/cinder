@@ -24,7 +24,7 @@
               - ^doc/.*$
               - ^releasenotes/.*$
               - ^reno.yaml$
-        - openstack-tox-functional-py310:
+        - openstack-tox-functional-py311:
             irrelevant-files: *functional-irrelevant-files
         - cinder-rally-task:
             voting: false
