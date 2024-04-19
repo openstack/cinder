@@ -67,10 +67,11 @@ class FJDXCommon(object):
     1.3.0 - Community base version
     1.4.0 - Add support for QoS.
     1.4.1 - Add the method for expanding RAID volumes by CLI.
+    1.4.2 - Add the secondary check for copy-sessions when deleting volumes.
 
     """
 
-    VERSION = "1.4.1"
+    VERSION = "1.4.2"
     stats = {
         'driver_version': VERSION,
         'storage_protocol': None,
@@ -261,7 +262,7 @@ class FJDXCommon(object):
             'vol_name': volumename,
         }
 
-        volume_no = "0x" + element['DeviceID'][24:28]
+        volume_no = self._get_volume_number(element)
         metadata = {
             'FJ_Backend': systemnamelist[0]['IdentifyingNumber'],
             'FJ_Volume_Name': volumename,
@@ -445,36 +446,37 @@ class FJDXCommon(object):
 
     def delete_volume(self, volume):
         """Delete volume on ETERNUS."""
-        LOG.debug('delete_volume, volume id: %s.', volume['id'])
+        LOG.debug('delete_volume, volume id: %(vid)s.',
+                  {'vid': volume['id']})
 
-        self.conn = self._get_eternus_connection()
         vol_exist = self._delete_volume_setting(volume)
 
         if not vol_exist:
             LOG.debug('delete_volume, volume not found in 1st check.')
-            return False
+            return
 
-        # Check volume existence on ETERNUS again
-        # because volume is deleted when SnapOPC copysession is deleted.
-        vol_instance = self._find_lun(volume)
-        if vol_instance is None:
-            LOG.debug('delete_volume, volume not found in 2nd check, '
-                      'but no problem.')
-            return True
-
-        self._delete_volume(vol_instance)
-        return True
+        try:
+            self._delete_volume(volume)
+        except Exception as ex:
+            msg = (_('delete_volume, '
+                     'delete volume failed, '
+                     'Error information: %s.')
+                   % ex)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
     @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
     def _delete_volume_setting(self, volume):
         """Delete volume setting (HostAffinity, CopySession) on ETERNUS."""
-        LOG.debug('_delete_volume_setting, volume id: %s.', volume['id'])
+        LOG.debug('_delete_volume_setting, '
+                  'volume id: %(vid)s.',
+                  {'vid': volume['id']})
 
         # Check the existence of volume.
         volumename = self._get_volume_name(volume)
         vol_instance = self._find_lun(volume)
 
-        if vol_instance is None:
+        if not vol_instance:
             LOG.info('_delete_volume_setting, volumename:%(volumename)s, '
                      'volume not found on ETERNUS.',
                      {'volumename': volumename})
@@ -514,6 +516,33 @@ class FJDXCommon(object):
         for cpsession in delete_copysession_list:
             self._delete_copysession(cpsession)
 
+        volume_no = self._get_volume_number(vol_instance)
+
+        cp_session_list = self._get_copy_sessions_list()
+        for cp in cp_session_list:
+            if cp['Dest Num'] != int(volume_no, 16):
+                continue
+            if cp['Type'] == 'Snap':
+                session_id = cp['Session ID']
+
+                param_dict = ({'session-id': session_id})
+                rc, emsg, clidata = self._exec_eternus_cli(
+                    'stop_copy_session',
+                    **param_dict)
+
+                if rc != 0:
+                    msg = (_('_delete_volume_setting, '
+                             'stop_copy_session failed. '
+                             'Return code: %(rc)lu, '
+                             'Error: %(errormsg)s, '
+                             'Message: %(clidata)s.')
+                           % {'rc': rc,
+                              'errormsg': emsg,
+                              'clidata': clidata})
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+                break
+
         LOG.debug('_delete_volume_setting, '
                   'wait_cpsession: %(wait_cpsession)s, '
                   'delete_cpsession: %(delete_cpsession)s, complete.',
@@ -522,15 +551,22 @@ class FJDXCommon(object):
         return True
 
     @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
-    def _delete_volume(self, vol_instance):
+    def _delete_volume(self, volume):
         """Delete volume on ETERNUS."""
-        LOG.debug('_delete_volume, volume name: %s.',
-                  vol_instance['ElementName'])
+        LOG.debug('_delete_volume, volume id: %(vid)s.',
+                  {'vid': volume['id']})
+
+        vol_instance = self._find_lun(volume)
+
+        if not vol_instance:
+            LOG.debug('_delete_volume, volume not found in 2nd check, '
+                      'but no problem.')
+            return
 
         volumename = vol_instance['ElementName']
 
         configservice = self._find_eternus_service(CONSTANTS.STOR_CONF)
-        if configservice is None:
+        if not configservice:
             msg = (_('_delete_volume, volumename: %(volumename)s, '
                      'Storage Configuration Service not found.')
                    % {'volumename': volumename})
@@ -698,7 +734,7 @@ class FJDXCommon(object):
             'vol_name': d_volumename,
         }
 
-        sdv_no = "0x" + element['DeviceID'][24:28]
+        sdv_no = self._get_volume_number(element)
         metadata = {'FJ_SDV_Name': d_volumename,
                     'FJ_SDV_No': sdv_no,
                     'FJ_Pool_Name': eternus_pool}
@@ -710,9 +746,7 @@ class FJDXCommon(object):
                   'snapshot id: %(sid)s, volume id: %(vid)s.',
                   {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
 
-        vol_exist = self.delete_volume(snapshot)
-        LOG.debug('delete_snapshot, vol_exist: %s.', vol_exist)
-        return vol_exist
+        self.delete_volume(snapshot)
 
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
@@ -1421,8 +1455,7 @@ class FJDXCommon(object):
                   'classname: %s.', classname)
 
         try:
-            services = self._enum_eternus_instance_names(
-                str(classname))
+            services = self._enum_eternus_instance_names(str(classname))
         except Exception:
             msg = (_('_find_eternus_service, '
                      'classname: %(classname)s, '
@@ -2426,7 +2459,7 @@ class FJDXCommon(object):
 
         for vol_instance in vollist:
             if src_id:
-                volume_no = "0x" + vol_instance['DeviceID'][24:28]
+                volume_no = self._get_volume_number(vol_instance)
                 try:
                     # Skip hidden tppv volumes.
                     if int(src_id) == int(volume_no, 16):
@@ -2534,6 +2567,22 @@ class FJDXCommon(object):
         if str(systemname[4]) == '2':
             ret = CONSTANTS.DX_S2
 
+        return ret
+
+    def _get_volume_number(self, vol):
+        """Get volume no(return a hex string)."""
+        if self.model_name == CONSTANTS.DX_S2:
+            volume_number = "0x%04X" % int(vol['DeviceID'][-5:])
+        else:
+            volume_number = "0x" + vol['DeviceID'][24:28]
+
+        LOG.debug('_get_volume_number: %s.', volume_number)
+        return volume_number
+
+    def _exec_eternus_smis_ReferenceNames(self, classname,
+                                          conn=None,
+                                          **param_dict):
+        ret = conn.ReferenceNames(classname, **param_dict)
         return ret
 
     def _check_user(self):
@@ -3131,3 +3180,30 @@ class FJDXCommon(object):
                       'clidata': clidata})
             LOG.warning(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+    def _get_copy_sessions_list(self, **param):
+        """Get copy sessions list."""
+        LOG.debug('_get_copy_sessions_list, Enter method.')
+
+        rc, emsg, clidata = self._exec_eternus_cli(
+            'show_copy_sessions',
+            **param
+        )
+
+        if rc != 0:
+            msg = (_('_get_copy_sessions_list, '
+                     'get copy sessions failed. '
+                     'Return code: %(rc)lu, '
+                     'Error: %(emsg)s, '
+                     'Message: %(clidata)s.')
+                   % {'rc': rc,
+                      'emsg': emsg,
+                      'clidata': clidata})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('_get_copy_sessions_list, Exit method, '
+                  'copy sessions list: %(clidata)s. ',
+                  {'clidata': clidata})
+
+        return clidata

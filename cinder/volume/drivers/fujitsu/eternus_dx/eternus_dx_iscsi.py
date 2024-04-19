@@ -94,7 +94,13 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
 
     def delete_volume(self, volume):
         """Delete volume on ETERNUS."""
+        LOG.debug('delete_volume, '
+                  'volume id: %s, Enter method.', volume['id'])
+
         self.common.delete_volume(volume)
+
+        LOG.debug('delete_volume, '
+                  'volume id: %s, delete succeed.', volume['id'])
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""

@@ -50,8 +50,10 @@ class FJDXCLI(object):
             'show_qos_bandwidth_limit': self._show_qos_bandwidth_limit,
             'set_qos_bandwidth_limit': self._set_qos_bandwidth_limit,
             'set_volume_qos': self._set_volume_qos,
+            'show_copy_sessions': self._show_copy_sessions,
             'show_volume_qos': self._show_volume_qos,
             'show_enclosure_status': self._show_enclosure_status,
+            'stop_copy_session': self._stop_copy_session,
             'delete_volume': self._delete_volume
         }
 
@@ -276,6 +278,92 @@ class FJDXCLI(object):
 
         return output
 
+    def _show_copy_sessions(self, **option):
+        """Get copy sessions."""
+        try:
+            output = self._exec_cli("show copy-sessions", **option)
+
+            # return error
+            rc = output['rc']
+
+            if rc != "0":
+                return output
+
+            cpsdatalist = []
+            clidatalist = output.get('message')
+
+            for clidataline in clidatalist[1:]:
+                clidata = clidataline.split('\t')
+                # Get CopyType
+                if clidata[2] == '01':
+                    # CopyKind: OPC
+                    if bin(int(clidata[3], 16) & 16) != 0:
+                        # eg. 0b10010000
+                        temp_type = 'Snap'
+                    elif bin(int(clidata[3], 16) & 64) != 0:
+                        # eg. 0b11000000
+                        temp_type = 'Snap+'
+                    else:
+                        temp_type = 'Other'
+                elif clidata[2] == '02':
+                    # CopyKind: EC
+                    if clidata[5] == 'FF':
+                        temp_type = 'EC'
+                    elif clidata[5] == '10':
+                        temp_type = 'Sync_REC'
+                    else:
+                        temp_type = 'Other'
+                else:
+                    temp_type = 'Other'
+
+                # Get Phases
+                if clidata[6] == '00':
+                    temp_phase = 'No_Pair'
+                elif clidata[6] == '01':
+                    temp_phase = 'Copying'
+                elif clidata[6] == '02':
+                    temp_phase = 'Equivalent'
+                elif clidata[6] == '03':
+                    temp_phase = 'Tracking'
+                elif clidata[6] == '04':
+                    temp_phase = 'Tracking_Copying'
+                elif clidata[6] == '06':
+                    temp_phase = 'Readying'
+                else:
+                    temp_phase = 'Other'
+
+                # Get CopyStatus
+                if clidata[7] == '00':
+                    temp_status = 'Idle'
+                elif clidata[7] == '01':
+                    temp_status = 'Reserve'
+                elif clidata[7] == '02':
+                    temp_status = 'Active'
+                elif clidata[7] == '03':
+                    temp_status = 'Error_Suspend'
+                elif clidata[7] == '04':
+                    temp_status = 'Suspend'
+                elif clidata[7] == '05':
+                    temp_status = 'Halt'
+                else:
+                    temp_status = 'Other'
+
+                cpsdatalist.append({'Source Num': int(clidata[13], 16),
+                                    'Dest Num': int(clidata[14], 16),
+                                    'Type': temp_type,
+                                    'Status': temp_status,
+                                    'Phase': temp_phase,
+                                    'Session ID': int(clidata[0], 16)})
+
+            output['message'] = cpsdatalist
+        except Exception as ex:
+            output = {'result': 0,
+                      'rc': '4',
+                      'message': "Show copy sessions error: %s"
+                                 % str(ex)}
+
+        return output
+
     def _show_qos_bandwidth_limit(self, **option):
         """Get qos bandwidth limit."""
         clidata = None
@@ -393,6 +481,10 @@ class FJDXCLI(object):
                       'message': "Show enclosure status error: %s" % ex}
 
         return output
+
+    def _stop_copy_session(self, **option):
+        """Exec stop copy-session."""
+        return self._exec_cli("stop copy-session", **option)
 
     def _delete_volume(self, **option):
         """Exec delete volume."""
