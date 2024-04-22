@@ -770,9 +770,16 @@ class CephBackupDriver(driver.BackupDriver):
 
         with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
                                   container)) as client:
-            base_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
-                                                           base_name,
-                                                           read_only=True))
+            try:
+                base_rbd = eventlet.tpool.Proxy(
+                    self.rbd.Image(client.ioctx, base_name, read_only=True))
+            except rbd.ImageNotFound:
+                msg = (_(
+                    "Can't find base name image %(base)s.") %
+                    {'base': base_name})
+                LOG.error(msg)
+                raise exception.BackupRBDOperationFailed(msg)
+
             try:
                 from_snap = self._get_backup_snap_name(base_rbd,
                                                        base_name,
