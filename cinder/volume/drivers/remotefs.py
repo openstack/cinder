@@ -1258,7 +1258,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
         LOG.info('Deleting stale snapshot: %s', snapshot.id)
         self._delete(snapshot_path)
-        del (snap_info[snapshot.id])
+        del snap_info[snapshot.id]
         self._write_info_file(info_path, snap_info)
 
     def _delete_snapshot(self, snapshot: objects.Snapshot) -> None:
@@ -1435,7 +1435,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                 self._rebase_img(higher_file_path, base_file, base_file_fmt)
 
         # Remove snapshot_file from info
-        del (snap_info[snapshot.id])
+        del snap_info[snapshot.id]
         self._write_info_file(info_path, snap_info)
 
     def _create_volume_from_snapshot(self,
@@ -1836,7 +1836,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                            'type': 'qcow2',
                            'volume_id': snapshot.volume.id}
 
-            del (snap_info[snapshot.id])
+            del snap_info[snapshot.id]
             update_format = True
         else:
             # blockCommit snapshot into base
@@ -1849,7 +1849,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                            'type': 'qcow2',
                            'volume_id': snapshot.volume.id}
 
-            del (snap_info[snapshot.id])
+            del snap_info[snapshot.id]
 
         self._nova_assisted_vol_snap_delete(context, snapshot, delete_info)
 

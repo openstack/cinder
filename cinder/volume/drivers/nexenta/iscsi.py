@@ -177,11 +177,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         target_names = self.targets.keys()
         if provider_location:
             target_name = provider_location.split(',1 ')[1].split(' ')[0]
-            if not (self.targets.get(target_name)):
+            if not self.targets.get(target_name):
                 self.targets[target_name] = []
-            if not (volume['name'] in self.targets[target_name]):
+            if not volume['name'] in self.targets[target_name]:
                 self.targets[target_name].append(volume['name'])
-        elif not (target_names):
+        elif not target_names:
             # create first target and target group
             target_name = self._create_target(0)
             self.targets[target_name].append(volume['name'])
@@ -193,7 +193,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             if len(self.targets[target_name]) >= 20:
                 # create new target and target group
                 target_name = self._create_target(len(target_names))
-            if not (volume['name'] in self.targets[target_name]):
+            if volume['name'] not in self.targets[target_name]:
                 self.targets[target_name].append(volume['name'])
         return target_name
 

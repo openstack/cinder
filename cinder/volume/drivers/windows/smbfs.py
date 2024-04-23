@@ -486,7 +486,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
             self._delete(merged_img_path)
 
             # TODO(lpetrut): drop snapshot info file usage.
-            del (snap_info[snapshot.id])
+            del snap_info[snapshot.id]
             self._write_info_file(info_path, snap_info)
 
         if not isinstance(snapshot, objects.Snapshot):

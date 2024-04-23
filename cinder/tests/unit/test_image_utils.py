@@ -2470,7 +2470,7 @@ class TestVmdkImageChecks(test.TestCase):
     def test_check_vmdk_image_handles_missing_info(self):
         expected = 'Unable to determine VMDK createType'
         # remove create-type
-        del (self.qdata_data['create-type'])
+        del self.qdata_data['create-type']
         iue = self.assertRaises(exception.ImageUnacceptable,
                                 image_utils.check_vmdk_image,
                                 fake.IMAGE_ID,
@@ -2478,7 +2478,7 @@ class TestVmdkImageChecks(test.TestCase):
         self.assertIn(expected, str(iue))
 
         # remove entire data section
-        del (self.qdata_data)
+        del self.qdata_data
         iue = self.assertRaises(exception.ImageUnacceptable,
                                 image_utils.check_vmdk_image,
                                 fake.IMAGE_ID,

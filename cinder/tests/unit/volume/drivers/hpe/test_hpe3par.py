@@ -5360,7 +5360,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
             conf = self._set_unique_fqdn_override(False, in_shared)
             my_connector = self.connector.copy()
-            del (my_connector['initiator'])
+            del my_connector['initiator']
             my_connector['host'] = "abc123abc123abc123abc123abc123abc123"
             safe_host = common._safe_hostname(my_connector, conf)
             self.assertEqual(fixed_hostname, safe_host)
