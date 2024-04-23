@@ -145,12 +145,26 @@ class FakeRequestWithHostBinary(FakeRequestWithBinary):
         super(FakeRequestWithHostBinary, self).__init__(**kwargs)
 
 
-def fake_service_get_all(context, **filters):
+def fake_db_api_service_get_all(context, backend_match_level=None, **filters):
     result = []
     host = filters.pop('host', None)
+    host_or_cluster = filters.pop('host_or_cluster', None)
+    filters.pop('is_up', None)
     for service in fake_services_list:
-        if (host and service['host'] != host and
-                not service['host'].startswith(host + '@')):
+        if (
+            host and service['host'] != host and
+            not service['host'].startswith(host + '@')
+        ):
+            continue
+
+        if (
+            host_or_cluster and (
+                (
+                    service['host'] != host_or_cluster and
+                    not service['host'].startswith(host_or_cluster + '@')
+                ) and service['cluster_name'] != host_or_cluster
+            )
+        ):
             continue
 
         if all(v is None or service.get(k) == v for k, v in filters.items()):
@@ -158,22 +172,24 @@ def fake_service_get_all(context, **filters):
     return result
 
 
-def fake_service_get(context, service_id=None, **filters):
-    result = fake_service_get_all(context, id=service_id, **filters)
+def fake_db_api_service_get(
+    context, service_id=None, backend_match_level=None, **filters
+):
+    result = fake_db_api_service_get_all(context, id=service_id, **filters)
     if not result:
         raise exception.ServiceNotFound(service_id=service_id)
     return result[0]
 
 
-def fake_service_get_by_id(value):
+def fake_db_api_service_get_by_id(value):
     for service in fake_services_list:
         if service['id'] == value:
             return service
     return None
 
 
-def fake_service_update(context, service_id, values, retry=True):
-    service = fake_service_get_by_id(service_id)
+def fake_db_api_service_update(context, service_id, values, retry=True):
+    service = fake_db_api_service_get_by_id(service_id)
     if service is None:
         raise exception.ServiceNotFound(service_id=service_id)
     else:
@@ -198,10 +214,11 @@ def fake_get_pools(ctxt, filters=None):
 
 @ddt.ddt
 @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools', fake_get_pools)
-@mock.patch('cinder.db.service_get_all', fake_service_get_all)
-@mock.patch('cinder.db.service_get', fake_service_get)
+@mock.patch('cinder.db.service_get_all', fake_db_api_service_get_all)
+@mock.patch('cinder.db.service_get', fake_db_api_service_get)
 @mock.patch('oslo_utils.timeutils.utcnow', fake_utcnow)
-@mock.patch('cinder.db.sqlalchemy.api.service_update', fake_service_update)
+@mock.patch(
+    'cinder.db.sqlalchemy.api.service_update', fake_db_api_service_update)
 @mock.patch('cinder.policy.authorize', fake_policy_authorize)
 class ServicesTest(test.TestCase):
 
