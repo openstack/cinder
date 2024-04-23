@@ -69,8 +69,7 @@ Request Example
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/qos-unset-response.json
-   :language: javascript
+There is no body content for the response of a successful PUT operation.
 
 
 Get all associations for QoS specification

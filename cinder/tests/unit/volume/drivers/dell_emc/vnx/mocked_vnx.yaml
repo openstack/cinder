@@ -1648,8 +1648,6 @@ test_delete_snapshot_adapter: *test_delete_snapshot
 
 test_restore_snapshot_adapter: *test_restore_snapshot
 
-test_create_cgsnapshot: *test_create_cg_snapshot
-
 test_do_create_cgsnap: *test_create_cg_snapshot
 
 test_do_delete_cgsnap:
@@ -1901,16 +1899,12 @@ test_terminate_connection:
       get_sg: *sg_terminate_connection
 
 test_terminate_connection_force_detach:
-  sg: &sg_terminate_connection_force_detach_1
-    _properties:
-      existed: True
-  sg: &sg_terminate_connection_force_detach_2
+  sg: &sg_terminate_connection_force_detach
     _properties:
       existed: True
   sgs: &sgs_terminate_connection_force_detach
     _methods:
-      shadow_copy: [*sg_terminate_connection_force_detach_1,
-                    *sg_terminate_connection_force_detach_2]
+      shadow_copy: [*sg_terminate_connection_force_detach]
   vnx:
     _methods:
       get_sg: *sgs_terminate_connection_force_detach
@@ -2140,8 +2134,6 @@ test_create_cloned_group:
 test_create_cg_from_cgsnapshot:
 
 test_create_group_from_group_snapshot:
-
-test_create_cgsnapshot:
 
 test_create_group_snapshot:
 

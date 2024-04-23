@@ -518,7 +518,7 @@ Preconditions
   belong to a group, have snapshots or be disassociated from
   snapshots after volume transfer.
 
-- The ``cascade`` option can be passed in the request if you want 
+- The ``cascade`` option can be passed in the request if you want
   all snapshots of this volume to be deleted automatically,
   which should allow the volume deletion to succeed.
 
