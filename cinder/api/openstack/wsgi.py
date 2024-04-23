@@ -21,6 +21,7 @@ import inspect
 import math
 import time
 
+from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import encodeutils
@@ -39,6 +40,7 @@ from cinder.i18n import _
 from cinder import utils
 from cinder.wsgi import common as wsgi
 
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 SUPPORTED_CONTENT_TYPES = (
@@ -1292,6 +1294,7 @@ class Controller(object, metaclass=ControllerMetaclass):
 
 
 class APIMapper(routes.Mapper):
+
     def routematch(self, url=None, environ=None):
         if url == "":
             result = self._match("", environ)
@@ -1305,6 +1308,26 @@ class APIMapper(routes.Mapper):
         if not kwargs['requirements'].get('format'):
             kwargs['requirements']['format'] = 'json'
         return routes.Mapper.connect(self, *args, **kwargs)
+
+    def create_route(self, path, method, controller, action):
+        # NOTE: project_id parameter is only valid if its hex or hex + dashes
+        # (note, integers are a subset of this). This is required to handle
+        # our overlapping routes issues.
+        project_id_regex = CONF.project_id_regex
+        project_id_token = '{project_id:%s}' % project_id_regex
+
+        self.connect(
+            '/%s%s' % (project_id_token, path),
+            conditions={"method": [method]},
+            controller=controller,
+            action=action,
+        )
+        self.connect(
+            path,
+            conditions={"method": [method]},
+            controller=controller,
+            action=action,
+        )
 
 
 class Fault(webob.exc.HTTPException):

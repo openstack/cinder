@@ -15,7 +15,7 @@
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import clusters as cluster
+from cinder.api.schemas import clusters as schema
 from cinder.api.v3.views import clusters as clusters_view
 from cinder.api import validation
 from cinder.common import constants
@@ -90,27 +90,13 @@ class ClusterController(wsgi.Controller):
         return clusters_view.ViewBuilder.list(clusters, detail,
                                               replication_data)
 
-    @wsgi.Controller.api_version(mv.CLUSTER_SUPPORT)
-    def update(self, req, id, body):
+    def _update(
+        self, context, name, binary, disabled, disabled_reason=None,
+        show_replication_data=False,
+    ):
         """Enable/Disable scheduling for a cluster."""
         # NOTE(geguileo): This method tries to be consistent with services
         # update endpoint API.
-
-        # Let the wsgi middleware convert NotAuthorized exceptions
-        context = req.environ['cinder.context']
-        context.authorize(policy.UPDATE_POLICY)
-
-        if id not in ('enable', 'disable'):
-            raise exception.NotFound(message=_("Unknown action"))
-
-        disabled = id != 'enable'
-        disabled_reason = self._disable_cluster(
-            req, body=body) if disabled else self._enable_cluster(
-            req, body=body)
-
-        name = body['name']
-
-        binary = body.get('binary', constants.VOLUME_BINARY)
 
         # Let wsgi handle NotFound exception
         cluster = objects.Cluster.get_by_id(context, None, binary=binary,
@@ -120,23 +106,56 @@ class ClusterController(wsgi.Controller):
         cluster.save()
 
         # We return summary data plus the disabled reason
-        replication_data = req.api_version_request.matches(
-            mv.REPLICATION_CLUSTER)
-        ret_val = clusters_view.ViewBuilder.summary(cluster, replication_data)
+        ret_val = clusters_view.ViewBuilder.summary(
+            cluster, show_replication_data,
+        )
         ret_val['cluster']['disabled_reason'] = disabled_reason
 
         return ret_val
 
-    @validation.schema(cluster.disable_cluster)
-    def _disable_cluster(self, req, body):
-        reason = body.get('disabled_reason')
-        if reason:
-            reason = reason.strip()
-        return reason
+    @wsgi.Controller.api_version(mv.CLUSTER_SUPPORT)
+    @validation.schema(schema.disable_cluster)
+    def disable(self, req, body):
+        # NOTE(geguileo): This method tries to be consistent with services
+        # disable endpoint API.
 
-    @validation.schema(cluster.enable_cluster)
-    def _enable_cluster(self, req, body):
-        pass
+        # Let the wsgi middleware convert NotAuthorized exceptions
+        context = req.environ['cinder.context']
+        context.authorize(policy.UPDATE_POLICY)
+
+        name = body['name']
+        binary = body.get('binary', constants.VOLUME_BINARY)
+        disabled_reason = body.get('disabled_reason')
+        if disabled_reason:
+            disabled_reason = disabled_reason.strip()
+
+        show_replication_data = req.api_version_request.matches(
+            mv.REPLICATION_CLUSTER)
+
+        return self._update(
+            context, name=name, binary=binary, disabled=True,
+            disabled_reason=disabled_reason,
+            show_replication_data=show_replication_data)
+
+    @wsgi.Controller.api_version(mv.CLUSTER_SUPPORT)
+    @validation.schema(schema.enable_cluster)
+    def enable(self, req, body):
+        # NOTE(geguileo): This method tries to be consistent with services
+        # enable endpoint API.
+
+        # Let the wsgi middleware convert NotAuthorized exceptions
+        context = req.environ['cinder.context']
+        context.authorize(policy.UPDATE_POLICY)
+
+        name = body['name']
+        binary = body.get('binary', constants.VOLUME_BINARY)
+
+        show_replication_data = req.api_version_request.matches(
+            mv.REPLICATION_CLUSTER)
+
+        return self._update(
+            context, name=name, binary=binary, disabled=False,
+            show_replication_data=show_replication_data)
 
 
 def create_resource():
