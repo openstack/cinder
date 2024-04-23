@@ -144,7 +144,7 @@ class BaseVolumeMetadataTest(test.TestCase):
         self.patch('cinder.objects.Service.get_minimum_rpc_version',
                    side_effect=_get_minimum_rpc_version_mock)
         self.volume_controller = volumes.VolumeController(self.ext_mgr)
-        self.controller = volume_metadata.Controller()
+        self.controller = volume_metadata.VolumeMetadataController()
         self.req_id = str(uuid.uuid4())
         self.url = '/v3/%s/volumes/%s/metadata' % (
             fake.PROJECT_ID, self.req_id)

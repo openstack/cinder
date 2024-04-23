@@ -95,7 +95,7 @@ class VolumeMetadataPolicyTest(base.BasePolicyTest):
     def setUp(self, enforce_scope=False, enforce_new_defaults=False,
               *args, **kwargs):
         super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
-        self.controller = volume_metadata.Controller()
+        self.controller = volume_metadata.VolumeMetadataController()
         self.image_controller = image_metadata.VolumeImageMetadataController()
         self.api_path = '/v3/%s/volumes' % (self.project_id)
         self.api_version = mv.BASE_VERSION

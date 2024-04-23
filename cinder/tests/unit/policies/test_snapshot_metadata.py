@@ -72,7 +72,7 @@ class SnapshotMetadataPolicyTest(base.BasePolicyTest):
     def setUp(self, enforce_scope=False, enforce_new_defaults=False,
               *args, **kwargs):
         super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
-        self.controller = snapshot_metadata.Controller()
+        self.controller = snapshot_metadata.SnapshotMetadataController()
         self.api_path = '/v3/%s/snapshots' % (self.project_id)
         self.api_version = mv.BASE_VERSION
         self.vol_type = test_utils.create_volume_type(

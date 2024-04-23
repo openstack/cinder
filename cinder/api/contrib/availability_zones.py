@@ -20,12 +20,12 @@ import cinder.exception
 import cinder.volume.api
 
 
-class Controller(wsgi.Controller):
+class AvailabilityZoneController(wsgi.Controller):
 
     _view_builder_class = cinder.api.views.availability_zones.ViewBuilder
 
     def __init__(self, *args, **kwargs):
-        super(Controller, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.volume_api = cinder.volume.api.API()
 
     def index(self, req):
@@ -42,7 +42,7 @@ class Availability_zones(extensions.ExtensionDescriptor):
     updated = '2013-06-27T00:00:00+00:00'
 
     def get_resources(self):
-        controller = Controller()
+        controller = AvailabilityZoneController()
         res = extensions.ResourceExtension(Availability_zones.alias,
                                            controller)
         return [res]

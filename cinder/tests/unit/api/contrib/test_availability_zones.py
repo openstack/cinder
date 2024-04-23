@@ -17,7 +17,7 @@ import datetime
 
 from oslo_utils import timeutils
 
-import cinder.api.contrib.availability_zones
+from cinder.api.contrib import availability_zones
 import cinder.context
 from cinder.tests.unit import test
 import cinder.volume.api
@@ -43,7 +43,7 @@ class ControllerTestCase(test.TestCase):
 
     def setUp(self):
         super(ControllerTestCase, self).setUp()
-        self.controller = cinder.api.contrib.availability_zones.Controller()
+        self.controller = availability_zones.AvailabilityZoneController()
         self.req = FakeRequest()
         self.mock_object(cinder.volume.api.API,
                          'list_availability_zones',
