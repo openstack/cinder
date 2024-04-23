@@ -38,6 +38,7 @@ from cinder.api.v3 import groups
 from cinder.api.v3 import limits
 from cinder.api.v3 import messages
 from cinder.api.v3 import resource_filters
+from cinder.api.v3 import services
 from cinder.api.v3 import snapshot_manage
 from cinder.api.v3 import snapshot_metadata
 from cinder.api.v3 import snapshots
@@ -353,3 +354,28 @@ class APIRouter(base_wsgi.Router):
                 controller=self.resources['default_types'],
                 action='delete',
                 conditions={"method": ['DELETE']})
+
+        # TODO: These really shouldn't be configurable nowadays, but removing
+        # this is a separate effort.
+
+        if ext_mgr.is_loaded('os-services'):
+            resource = services.create_resource(ext_mgr)
+            mapper.create_route(
+                '/os-services', 'GET', resource, 'index')
+            mapper.create_route(
+                '/os-services/enable', 'PUT', resource, 'enable')
+            mapper.create_route(
+                '/os-services/disable', 'PUT', resource, 'disable')
+            mapper.create_route(
+                '/os-services/disable-log-reason', 'PUT', resource,
+                'disable_log_reason')
+            mapper.create_route(
+                '/os-services/get-log', 'PUT', resource, 'get_log')
+            mapper.create_route(
+                '/os-services/set-log', 'PUT', resource, 'set_log')
+            mapper.create_route(
+                '/os-services/freeze', 'PUT', resource, 'freeze')
+            mapper.create_route(
+                '/os-services/thaw', 'PUT', resource, 'thaw')
+            mapper.create_route(
+                '/os-services/failover_host', 'PUT', resource, 'failover_host')

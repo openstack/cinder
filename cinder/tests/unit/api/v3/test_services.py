@@ -21,10 +21,10 @@ import ddt
 import iso8601
 from oslo_config import cfg
 
-from cinder.api.contrib import services
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
+from cinder.api.v3 import services
 from cinder.common import constants
 from cinder import context
 from cinder import exception
