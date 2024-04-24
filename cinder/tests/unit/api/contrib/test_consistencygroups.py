@@ -427,9 +427,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         for vol_type_id in res_dict['consistencygroups'][2]['volume_types']:
             self.assertIn(vol_type_id, vol_type_ids)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_create_consistencygroup_json(self, mock_validate):
+    def test_create_consistencygroup_json(self):
         group_id = fake.CONSISTENCY_GROUP_ID
 
         # Create volume type
@@ -451,7 +449,6 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['consistencygroup'])
-        self.assertTrue(mock_validate.called)
 
         group_id = res_dict['consistencygroup']['id']
         cg = objects.Group.get_by_id(self.ctxt, group_id)
@@ -780,9 +777,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_update_consistencygroup_success(self, mock_validate):
+    def test_update_consistencygroup_success(self):
         volume_type_id = utils.create_volume_type(
             context.get_admin_context(), self, name='my_vol_type')['id']
         fake_grp_type = {'id': fake.GROUP_TYPE_ID, 'name': 'fake_grp_type'}
@@ -858,16 +853,13 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
-        self.assertTrue(mock_validate.called)
         self.assertEqual(fields.ConsistencyGroupStatus.UPDATING,
                          consistencygroup.status)
 
         consistencygroup.destroy()
         cg2.destroy()
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_update_consistencygroup_sourcing_cg(self, mock_validate):
+    def test_update_consistencygroup_sourcing_cg(self):
         volume_type_id = fake.VOLUME_TYPE_ID
         consistencygroup = self._create_consistencygroup(
             status=fields.ConsistencyGroupStatus.AVAILABLE,
@@ -909,9 +901,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
         cg2.destroy()
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_update_consistencygroup_creating_cgsnapshot(self, mock_validate):
+    def test_update_consistencygroup_creating_cgsnapshot(self):
         volume_type_id = fake.VOLUME_TYPE_ID
         consistencygroup = self._create_consistencygroup(
             status=fields.ConsistencyGroupStatus.AVAILABLE,
@@ -1143,11 +1133,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup.destroy()
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
-    def test_create_consistencygroup_from_src_snap(self, mock_validate_host,
-                                                   mock_validate):
+    def test_create_consistencygroup_from_src_snap(self, mock_validate_host):
         self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
 
         consistencygroup = utils.create_group(
@@ -1184,7 +1171,6 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['consistencygroup'])
         self.assertEqual(test_cg_name, res_dict['consistencygroup']['name'])
-        self.assertTrue(mock_validate.called)
 
         cg_ref = objects.Group.get_by_id(
             self.ctxt.elevated(), res_dict['consistencygroup']['id'])

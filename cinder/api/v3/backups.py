@@ -45,7 +45,7 @@ class BackupsController(backups.BackupsController):
 
         backup_update = body['backup']
 
-        self.validate_name_and_description(backup_update, check_length=False)
+        self.clean_name_and_description(backup_update)
         update_dict = {}
         if 'name' in backup_update:
             update_dict['display_name'] = backup_update.pop('name')

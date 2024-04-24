@@ -207,7 +207,7 @@ class SnapshotsController(wsgi.Controller):
 
         LOG.info("Create snapshot from volume %s", volume_id)
 
-        self.validate_name_and_description(snapshot, check_length=False)
+        self.clean_name_and_description(snapshot)
         if 'name' in snapshot:
             snapshot['display_name'] = snapshot.pop('name')
 
@@ -237,8 +237,8 @@ class SnapshotsController(wsgi.Controller):
         """Update a snapshot."""
         context = req.environ['cinder.context']
         snapshot_body = body['snapshot']
-        self.validate_name_and_description(snapshot_body, check_length=False)
 
+        self.clean_name_and_description(snapshot_body)
         if 'name' in snapshot_body:
             snapshot_body['display_name'] = snapshot_body.pop('name')
 

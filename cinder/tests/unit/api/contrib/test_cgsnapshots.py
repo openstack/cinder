@@ -214,9 +214,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(), volume_id)
         consistencygroup.destroy()
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_create_cgsnapshot_json(self, mock_validate):
+    def test_create_cgsnapshot_json(self):
         vol_type = utils.create_volume_type(context.get_admin_context(),
                                             self, name='my_vol_type')
         consistencygroup = utils.create_group(
@@ -243,7 +241,6 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['cgsnapshot'])
-        self.assertTrue(mock_validate.called)
 
         cgsnapshot = objects.GroupSnapshot.get_by_id(
             context.get_admin_context(), res_dict['cgsnapshot']['id'])
@@ -251,10 +248,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(), volume_id)
         consistencygroup.destroy()
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_create_cgsnapshot_when_volume_in_error_status(self,
-                                                           mock_validate):
+    def test_create_cgsnapshot_when_volume_in_error_status(self):
         vol_type = utils.create_volume_type(context.get_admin_context(),
                                             self, name='my_vol_type')
         consistencygroup = utils.create_group(
@@ -286,7 +280,6 @@ class CgsnapshotsAPITestCase(test.TestCase):
             "is in error status.",
             res_dict['badRequest']['message']
         )
-        self.assertTrue(mock_validate.called)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
         consistencygroup.destroy()

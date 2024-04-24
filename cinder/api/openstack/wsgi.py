@@ -1239,37 +1239,14 @@ class Controller(object, metaclass=ControllerMetaclass):
         return decorator
 
     @staticmethod
-    def assert_valid_body(body, entity_name):
-        fail_msg = _(
-            "Missing required element '%s' in request body.") % entity_name
-
-        if not (body and entity_name in body):
-            raise webob.exc.HTTPBadRequest(explanation=fail_msg)
-
-        def is_dict(d):
-            try:
-                d.get(None)
-                return True
-            except AttributeError:
-                return False
-
-        if not is_dict(body[entity_name]):
-            raise webob.exc.HTTPBadRequest(explanation=fail_msg)
-
-    @staticmethod
-    def validate_name_and_description(body, check_length=True):
+    def clean_name_and_description(body):
+        """Strip whitespace from name and description fields."""
         for attribute in ['name', 'description',
                           'display_name', 'display_description']:
             value = body.get(attribute)
             if value is not None:
                 if isinstance(value, str):
                     body[attribute] = value.strip()
-                if check_length:
-                    try:
-                        utils.check_string_length(body[attribute], attribute,
-                                                  min_length=0, max_length=255)
-                    except exception.InvalidInput as error:
-                        raise webob.exc.HTTPBadRequest(explanation=error.msg)
 
     @staticmethod
     def validate_string_length(value, entity_name, min_length=0,

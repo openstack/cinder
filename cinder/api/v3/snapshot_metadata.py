@@ -48,7 +48,6 @@ class SnapshotMetadataController(wsgi.Controller):
 
     @validation.schema(schema.create)
     def create(self, req, snapshot_id, body):
-        self.assert_valid_body(body, 'metadata')
         context = req.environ['cinder.context']
         metadata = body['metadata']
 
@@ -61,7 +60,6 @@ class SnapshotMetadataController(wsgi.Controller):
 
     @validation.schema(schema.update)
     def update(self, req, snapshot_id, id, body):
-        self.assert_valid_body(body, 'meta')
         meta_item = body['meta']
 
         if id not in meta_item:
@@ -82,7 +80,6 @@ class SnapshotMetadataController(wsgi.Controller):
 
     @validation.schema(schema.update_all)
     def update_all(self, req, snapshot_id, body):
-        self.assert_valid_body(body, 'metadata')
         context = req.environ['cinder.context']
         metadata = body['metadata']
 

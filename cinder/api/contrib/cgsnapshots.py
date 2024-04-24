@@ -124,27 +124,21 @@ class CgsnapshotsController(wsgi.Controller):
         """Create a new cgsnapshot."""
         versionutils.report_deprecated_feature(LOG, DEPRECATE_CGSNAP_API_MSG)
         LOG.debug('Creating new cgsnapshot %s', body)
-        self.assert_valid_body(body, 'cgsnapshot')
 
         context = req.environ['cinder.context']
         cgsnapshot = body['cgsnapshot']
-        self.validate_name_and_description(cgsnapshot)
 
-        try:
-            group_id = cgsnapshot['consistencygroup_id']
-        except KeyError:
-            msg = _("'consistencygroup_id' must be specified")
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        # Not found exception will be handled at the wsgi level
-        group = self._get_cg(context, group_id)
-
+        group_id = cgsnapshot['consistencygroup_id']
+        self.clean_name_and_description(cgsnapshot)
         name = cgsnapshot.get('name', None)
         description = cgsnapshot.get('description', None)
 
         LOG.info("Creating cgsnapshot %(name)s.",
                  {'name': name},
                  context=context)
+
+        # Not found exception will be handled at the wsgi level
+        group = self._get_cg(context, group_id)
 
         try:
             new_cgsnapshot = self.group_snapshot_api.create_group_snapshot(
