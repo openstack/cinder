@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import functools
 import os
 
 from oslo_config import cfg
@@ -313,6 +314,23 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
 
         # Update the list of directories we'll explore...
         dirnames[:] = subdirs
+
+
+def extension_is_loaded(alias):
+    """Ensure an extension is loaded and return a HTTP 404 if not.
+
+    This is intended to be used on action APIs added by extensions. Other
+    methods can use conditional configuration of the router.
+    """
+    def wrapper(func):
+        @functools.wraps(func)
+        def inner(self, *args, **kwargs):
+            if self.ext_mgr.is_loaded(alias):
+                raise webob.exc.HTTPNotFound()
+
+            return func(self, *args, **kwargs)
+        return inner
+    return wrapper
 
 
 def extension_authorizer(api_name, extension_name):
