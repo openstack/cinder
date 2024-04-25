@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Hitachi driver `bug #2063317
+    <https://bugs.launchpad.net/cinder/+bug/2063317>`_: Fix test scripts to
+    avoid failing by unexpected response from psuedo REST API server

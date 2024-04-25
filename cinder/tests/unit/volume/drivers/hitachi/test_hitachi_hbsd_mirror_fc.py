@@ -1,4 +1,4 @@
-# Copyright (C) 2022, 2023, Hitachi, Ltd.
+# Copyright (C) 2022, 2024, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -820,10 +820,8 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
              self.configuration.hitachi_mirror_pair_target_number),
             drv.common.rep_secondary._PAIR_TARGET_NAME)
         # stop the Loopingcall within the do_setup treatment
-        self.driver.common.rep_primary.client.keep_session_loop.stop()
-        self.driver.common.rep_primary.client.keep_session_loop.wait()
-        self.driver.common.rep_secondary.client.keep_session_loop.stop()
-        self.driver.common.rep_secondary.client.keep_session_loop.wait()
+        drv.common.rep_primary.client.keep_session_loop.stop()
+        drv.common.rep_secondary.client.keep_session_loop.stop()
         self._setup_config()
 
     @mock.patch.object(requests.Session, "request")
