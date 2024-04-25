@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2023, Hitachi, Ltd.
+# Copyright (C) 2020, 2024, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -646,8 +646,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(1, brick_get_connector_properties.call_count)
         self.assertEqual(4, request.call_count)
         # stop the Loopingcall within the do_setup treatment
-        self.driver.common.client.keep_session_loop.stop()
-        self.driver.common.client.keep_session_loop.wait()
+        drv.common.client.keep_session_loop.stop()
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(
@@ -674,8 +673,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(1, brick_get_connector_properties.call_count)
         self.assertEqual(9, request.call_count)
         # stop the Loopingcall within the do_setup treatment
-        self.driver.common.client.keep_session_loop.stop()
-        self.driver.common.client.keep_session_loop.wait()
+        drv.common.client.keep_session_loop.stop()
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(
@@ -703,8 +701,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(1, brick_get_connector_properties.call_count)
         self.assertEqual(9, request.call_count)
         # stop the Loopingcall within the do_setup treatment
-        self.driver.common.client.keep_session_loop.stop()
-        self.driver.common.client.keep_session_loop.wait()
+        drv.common.client.keep_session_loop.stop()
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(
@@ -756,8 +753,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(1, brick_get_connector_properties.call_count)
         self.assertEqual(10, request.call_count)
         # stop the Loopingcall within the do_setup treatment
-        self.driver.common.client.keep_session_loop.stop()
-        self.driver.common.client.keep_session_loop.wait()
+        drv.common.client.keep_session_loop.stop()
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(
@@ -783,8 +779,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(5, request.call_count)
         self.configuration.hitachi_pools = tmp_pools
         # stop the Loopingcall within the do_setup treatment
-        self.driver.common.client.keep_session_loop.stop()
-        self.driver.common.client.keep_session_loop.wait()
+        drv.common.client.keep_session_loop.stop()
 
     @mock.patch.object(requests.Session, "request")
     def test_create_volume(self, request):
