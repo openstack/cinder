@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    Hitachi driver `bug #2043978
+    <https://bugs.launchpad.net/cinder/+bug/2043978>`_: Since around the Train
+    era, Hitachi had an out-of-tree driver that implemented the Global-Active
+    Device (GAD) and Remote Replication features.  As part of an initiative to
+    unify the "Enterprise" and in-tree drivers, change I4543cd036897 in the
+    2023.1 (Antelope) release implemented the GAD feature for the in-tree
+    driver.  Unfortunately, this change used an incompatible string to indicate
+    what copy groups were under GAD control, and thus upgrading to the in-tree
+    driver breaks GAD for existing volumes.  This bug fix makes the copy group
+    control identifier consistent so that current users of the out-of-tree
+    driver can upgrade to releases that contain the in-tree driver.

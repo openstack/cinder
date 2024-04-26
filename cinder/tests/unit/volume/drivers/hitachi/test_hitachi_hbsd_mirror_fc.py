@@ -495,7 +495,7 @@ GET_REMOTE_MIRROR_COPYPAIR_RESULT_SPLIT = {
 }
 
 GET_REMOTE_MIRROR_COPYGROUP_RESULT = {
-    'copyGroupName': 'HBSD-127.0.0.100U00',
+    'copyGroupName': 'HBSD-127.0.0.100G00',
     'copyPairs': [GET_REMOTE_MIRROR_COPYPAIR_RESULT],
 }
 
@@ -889,6 +889,12 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                  'remote-copy': hbsd_utils.MIRROR_ATTR})}
         self.assertEqual(actual, ret)
         self.assertEqual(14, request.call_count)
+        for args, kwargs in request.call_args_list:
+            if args[0] == 'POST' and 'remote-mirror-copypairs' in args[1]:
+                self.assertEqual('G', kwargs['json']['copyGroupName'][-3])
+                break
+        else:
+            self.fail('no create pair api')
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')

@@ -387,7 +387,7 @@ class HBSDREPLICATION(rest.HBSDREST):
         return pvol, svol
 
     def _create_rep_copy_group_name(self, ldev):
-        return self.driver_info['target_prefix'] + '%s%02XU%02d' % (
+        return self.driver_info['target_prefix'] + '%s%02XG%02d' % (
             CONF.my_ip, self.conf.hitachi_replication_number, ldev >> 10)
 
     def _get_rep_copy_speed(self):
