@@ -296,6 +296,7 @@ class RestApiClient():
         kwargs.setdefault('timeout_message', None)
         kwargs.setdefault('no_log', False)
         kwargs.setdefault('timeout', self.conf.hitachi_rest_timeout)
+        kwargs.setdefault('job_nowait', False)
 
         headers = dict(self.headers)
         if async_:
@@ -306,6 +307,9 @@ class RestApiClient():
                 "Response-Job-Status": "Completed;"})
         else:
             read_timeout = self.conf.hitachi_rest_get_api_response_timeout
+
+        if kwargs['job_nowait']:
+            headers['Job-Mode-Wait-Configuration-Change'] = 'NoWait'
 
         remote_auth = kwargs.get('remote_auth')
         if remote_auth:
@@ -918,6 +922,42 @@ class RestApiClient():
         }
         self._invoke(url)
 
+    def get_journals(self):
+        url = '%(url)s/journals' % {
+            'url': self.object_url,
+        }
+        params = {"journalInfo": "basic"}
+        return self._get_objects(url, params=params)
+
+    def get_journal(self, journal_id, **kwargs):
+        url = '%(url)s/journals/%(id)s' % {
+            'url': self.object_url,
+            'id': journal_id,
+        }
+        return self._get_object(url, **kwargs)
+
+    def add_journal(self, journal_id, ldev, **kwargs):
+        url = '%(url)s/journals' % {
+            'url': self.object_url,
+        }
+        body = {"journalId": journal_id, "ldevIds": [ldev]}
+        journal_id, errobj = self._add_object(url, body=body, **kwargs)
+        return int(journal_id) if journal_id else None, errobj
+
+    def modify_journal(self, journal_id, body):
+        url = '%(url)s/journals/%(id)s' % {
+            'url': self.object_url,
+            'id': journal_id,
+        }
+        self._invoke(url, body=body)
+
+    def delete_journal(self, journal_id, **kwargs):
+        url = '%(url)s/journals/%(id)s' % {
+            'url': self.object_url,
+            'id': journal_id,
+        }
+        self._delete_object(url, **kwargs)
+
     def get_remote_copy_grps(self, remote_client):
         url = '%(url)s/remote-mirror-copygroups' % {
             'url': self.object_url,
@@ -933,6 +973,32 @@ class RestApiClient():
         }
         with RemoteSession(remote_client) as session:
             return self._get_object(url, remote_auth=session, **kwargs)
+
+    @utils.synchronized_on_copy_group()
+    def split_remote_copy_grp(self, remote_client, copy_group_name, rep_type):
+        body = {"parameters": {"replicationType": rep_type}}
+        url = '%(url)s/remote-mirror-copygroups/%(id)s/actions/%(action)s' % {
+            'url': self.object_url,
+            'id': self._remote_copygroup_id(remote_client, copy_group_name),
+            'action': 'split',
+        } + '/invoke'
+        with RemoteSession(remote_client) as session:
+            self._invoke(url, body=body, remote_auth=session, job_nowait=True)
+
+    @utils.synchronized_on_copy_group()
+    def resync_remote_copy_grp(self, remote_client, copy_group_name,
+                               rep_type, swap=False, is_secondary=False):
+        body = {"parameters": {"replicationType": rep_type}}
+        if swap:
+            body["parameters"]["doSwapSvol"] = True
+        url = '%(url)s/remote-mirror-copygroups/%(id)s/actions/%(action)s' % {
+            'url': self.object_url,
+            'id': self._remote_copygroup_id(
+                remote_client, copy_group_name, is_secondary),
+            'action': 'resync',
+        } + '/invoke'
+        with RemoteSession(remote_client) as session:
+            self._invoke(url, body=body, remote_auth=session, job_nowait=True)
 
     def get_remote_copypair(self, remote_client, copy_group_name,
                             pvol_ldev_id, svol_ldev_id, is_secondary=False,
@@ -1010,6 +1076,19 @@ class RestApiClient():
                 session = remote_client.get_my_session()
                 self._delete_object(
                     url, no_relogin=True, remote_auth=session)
+
+    @utils.synchronized_on_copy_group()
+    def takeover_remote_copypair(self, copy_group_name,
+                                 pvol_ldev_id, svol_ldev_id):
+        body = {"parameters": {"mode": "forceSplit"}}
+        url = '%(url)s/remote-mirror-copypairs/%(id)s/actions/%(action)s' % {
+            'url': self.object_url,
+            'id': self._remote_copypair_id(
+                None, copy_group_name, pvol_ldev_id, svol_ldev_id,
+                is_secondary=True),
+            'action': 'takeover',
+        } + '/invoke'
+        self._invoke(url, body=body, job_nowait=True)
 
     def _remote_copygroup_id(self, remote_client, copy_group_name,
                              is_secondary=False):

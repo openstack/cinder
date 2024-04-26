@@ -726,7 +726,6 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.configuration.chap_username = CONFIG_MAP['auth_user']
         self.configuration.chap_password = CONFIG_MAP['auth_password']
 
-        self.configuration.hitachi_replication_number = 0
         self.configuration.hitachi_pair_target_number = 0
         self.configuration.hitachi_rest_pair_target_ports = []
         self.configuration.hitachi_quorum_disk_id = ''
@@ -738,8 +737,38 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.configuration.hitachi_mirror_rest_user = ''
         self.configuration.hitachi_mirror_rest_password = ''
         self.configuration.hitachi_mirror_rest_api_ip = ''
+        self.configuration.hitachi_mirror_rest_api_port = ''
         self.configuration.hitachi_set_mirror_reserve_attribute = ''
         self.configuration.hitachi_path_group_id = ''
+        self.configuration.hitachi_mirror_auth_password = None
+        self.configuration.hitachi_mirror_auth_user = None
+        self.configuration.hitachi_mirror_compute_target_ports = []
+        self.configuration.hitachi_mirror_pair_target_number = 0
+        self.configuration.hitachi_mirror_rest_pair_target_ports = []
+        self.configuration.hitachi_mirror_snap_pool = None
+
+        self.configuration.hitachi_mirror_ssl_cert_verify = ''
+        self.configuration.hitachi_mirror_ssl_cert_path = ''
+        self.configuration.hitachi_mirror_use_chap_auth = False
+
+        self.configuration.hitachi_replication_status_check_short_interval = 5
+        self.configuration.hitachi_replication_status_check_long_interval\
+            = 10 * 60
+        self.configuration.hitachi_replication_status_check_timeout\
+            = 24 * 60 * 60
+
+        self.configuration.hitachi_replication_number = 0
+        self.configuration.hitachi_replication_mun = 1
+        self.configuration.hitachi_replication_journal_size = None
+        self.configuration.hitachi_replication_journal_overflow_tolerance = 60
+        self.configuration.hitachi_replication_journal_use_cache = True
+        self.configuration.hitachi_replication_journal_transfer_speed = 256
+        self.configuration.hitachi_replication_journal_creation_speed = 'L'
+        self.configuration.hitachi_replication_journal_path_failure_tolerance\
+            = 5
+        self.configuration.hitachi_replication_copy_speed = 3
+
+        self.configuration.replication_device = ''
 
         self.configuration.safe_get = self._fake_safe_get
 
@@ -2476,6 +2505,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
                   hbsd_rest.REST_PAIR_OPTS +
                   hbsd_rest_fc.FC_VOLUME_OPTS +
                   hbsd_replication._REP_OPTS +
+                  hbsd_replication.COMMON_REPLICATION_OPTS +
                   hbsd_replication.COMMON_MIRROR_OPTS +
                   hbsd_replication.ISCSI_MIRROR_OPTS +
                   hbsd_replication.REST_MIRROR_OPTS +

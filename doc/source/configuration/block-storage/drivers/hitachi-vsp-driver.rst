@@ -103,6 +103,7 @@ Supported operations
 Hitachi block storage driver also supports the following additional features:
 
 * Global-Active Device
+* Remote replication
 * Maximum number of copy pairs and consistency groups
 * Data deduplication and compression
 * DRS volumes
@@ -188,37 +189,6 @@ If you use iSCSI:
    san_password = password
    hitachi_storage_id = 123456789012
    hitachi_pools = pool0, pool1
-
-Configuration options
-~~~~~~~~~~~~~~~~~~~~~
-
-This table shows configuration options for Hitachi block storage driver.
-
-.. config-table::
-   :config-target: Hitachi block storage driver
-
-   cinder.volume.drivers.hitachi.hbsd_common
-   cinder.volume.drivers.hitachi.hbsd_rest
-   cinder.volume.drivers.hitachi.hbsd_rest_fc
-   cinder.volume.drivers.hitachi.hbsd_replication
-
-Required options
-----------------
-
-- ``san_ip``
-    IP address of SAN controller
-
-- ``san_login``
-    Username for SAN controller
-
-- ``san_password``
-    Password for SAN controller
-
-- ``hitachi_storage_id``
-    Product number of the storage system.
-
-- ``hitachi_pools``
-    Pool number(s) or pool name(s) of the DP pool.
 
 Set up and operation for additional features
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -373,6 +343,145 @@ configuration:
    In addition, if the configuration is "P-VOL registered to a VSM",
    the backup creation command of the Backup Volume functions cannot be run
    with the ``--snapshot option`` or the ``--force`` option specified.
+
+
+Set up remote replication and volume operation
+----------------------------------------------
+
+Hitachi block storage driver uses Universal Replicator for remote replication.
+For details about Universal Replicator, see the
+`Universal Replicator User Guide`_.
+
+.. note::
+
+   * You cannot use a configuration that has multiple replication targets (the configuration described on the following webpage).
+
+   https://docs.openstack.org/cinder/latest/contributor/replication.html
+
+   * You cannot apply global-active device configuration and remote replication configuration to the same backend.
+
+**System requirements for a remote replication configuration**
+
+**Storage firmware versions**
+
++-----------------+------------------------+
+| Storage model   | Firmware version       |
++=================+========================+
+| VSP F350,       | 88-03-25 or later      |
+| F370,           |                        |
+| F700,           |                        |
+| F900            |                        |
+|                 |                        |
+| VSP G350,       |                        |
+| G370,           |                        |
+| G700,           |                        |
+| G900            |                        |
++-----------------+------------------------+
+| VSP F400,       | 83-05-31 or later      |
+| F600,           |                        |
+| F800            |                        |
+|                 |                        |
+| VSP G200,       |                        |
+| G400,           |                        |
+| G600,           |                        |
+| G800            |                        |
++-----------------+------------------------+
+| VSP N400,       | 83-06-03 or later      |
+| N600,           |                        |
+| N800            |                        |
++-----------------+------------------------+
+| VSP F1500       | 80-06-68 or later      |
+|                 |                        |
+| VSP G1000,      |                        |
+| VSP G1500       |                        |
++-----------------+------------------------+
+
+**Storage management software**
+
+Configuration Manager REST API version 8.6.5-00 or later is required;
+however, a newer version might be required
+depending on the storage system model.
+Use the Configuration Manager REST API
+that corresponds to the firmware version
+of the storage system model you are using.
+
+**Storage software license**
+
+Obtain the following software licenses, which are
+included in Hitachi Remote Replication:
+
+* Universal Replicator
+
+* TrueCopy
+
+**Creating a remote replication environment**
+
+Before you can use Universal Replicator,
+use other storage system management tools
+to create the prerequisite environment.
+For details, see the description of operations
+in a Universal Replicator configuration
+in the `Universal Replicator User Guide`_,
+and the description of the workflow for creating a remote copy environment
+in the `Hitachi Command Suite Configuration Manager REST API Reference Guide`_
+or the
+`Hitachi Ops Center API Configuration Manager REST API Reference Guide`_.
+
+Perform the procedure up to and including the step
+in which remote paths are set.
+
+You must also specify parameters for Hitachi block storage driver.
+
+.. note::
+
+   The users specified for the san_login parameter and the san_login parameter of the replication_device parameter must have following roles:
+
+   * Storage Administrator (Remote Copy)
+   * Storage Administrator (System Resource Management)
+
+**Volume operations in a remote replication configuration**
+
+If you create a Cinder volume in a remote replication configuration,
+each Universal Replicator pair is mapped to a Cinder volume.
+You can then perform operations on Cinder volume
+without thinking of it as a copy pair.
+
+.. note::
+
+   * The status of a Universal Replicator pair is assumed to be COPY or PAIR. If the status is not COPY or PAIR, replication is not performed normally between the primary and secondary storage systems. To check the pair status or change the status, use the storage system management software.
+   * When restarting the primary or secondary storage system, perform the procedure described in Powering-off the primary or secondary storage system in the `Universal Replicator User Guide`_.
+
+**Create volume in a remote replication configuration**
+
+To create a replicated volume, specify replication_enabled="<is> True"
+as an extra spec for the volume type as follows:
+
+.. code-block:: ini
+
+   # cinder type-create <volume type name>
+   # cinder type-key <volume type name> \
+   set replication_enabled="<is> True"
+   # cinder create --volume-type <volume type name> <size>
+
+.. note::
+
+   * In this case, the following restrictions apply:
+
+    * After a volume is created, do not change volume type extra specs and the ``replication_device`` parameter value.
+
+**Unavailable Cinder functions**
+
+If a remote replication configuration is used,
+you cannot use the following Cinder functions:
+
+* Volume Migration (host assisted)
+* Volume Migration (storage assisted)
+* Consistency Group
+* Generic volume group
+* Revert to snapshot
+* Manage Volume
+* Unmanage Volume
+* Retype Volume
 
 Maximum number of copy pairs and consistency groups
 ---------------------------------------------------
@@ -751,7 +860,7 @@ attach operations for each volume type.
 .. note::
 
    * Use a comma to separate multiple ports.
-   * In a Global-Active Device configuration, use the extra spec
+   * In a Global-Active Device configuration or a remote replication, use the extra spec
      ``hbsd:target_ports`` for the primary storage system and the extra spec
      ``hbsd:remote_target_ports`` for the secondary storage system.
    * In a Global-Active Device configuration, the ports specified for
@@ -761,11 +870,137 @@ attach operations for each volume type.
      and for the secondary storage system
      (``hitachi_mirror_target_ports`` or
      ``hitachi_mirror_compute_target_ports``).
+   * In a remote replication configuration, the ports specified for the extra spec
+     ``hbsd:remote_target_ports`` must be specified for the ``target_ports`` child parameter
+     or the ``compute_target_ports`` child parameter of the ``replication_device`` parameter.
+
+Configuration options
+~~~~~~~~~~~~~~~~~~~~~
+
+This table shows configuration options for Hitachi block storage driver.
+
+.. config-table::
+   :config-target: Hitachi block storage driver
+
+   cinder.volume.drivers.hitachi.hbsd_rest
+   cinder.volume.drivers.hitachi.hbsd_common
+   cinder.volume.drivers.hitachi.hbsd_rest_fc
+   cinder.volume.drivers.hitachi.hbsd_replication
+
+Required options
+----------------
+
+- ``san_ip``
+    IP address of SAN controller
+
+- ``san_login``
+    Username for SAN controller
+
+- ``san_password``
+    Password for SAN controller
+
+- ``hitachi_storage_id``
+    Product number of the storage system.
+
+- ``hitachi_pool``
+    Pool number or pool name of the DP pool.
+
+``replication_device`` parameter
+--------------------------------
+
+If you want to set up a remote replication configuration,
+you need to specify the ``replication_device`` parameter
+to specify settings for the secondary site.
+Specify the following child parameters in the form of
+``replication_device = key1: value1, key2: value2, ...``.
+
+Example: ``replication_device = backend_id: backend1,
+storage_id: 938000000001,
+pool: pool_name, ldev_range: 10000-19999, target_ports: CL1-A;CL2-A,
+pair_target_number: 1, san_ip: 1.2.3.4, san_api_port: 443,
+san_login: storage_user, san_password: storage_password``.
+
+- ``backend_id``
+    Specify the ID of the secondary storage system. You can use any string.
+    This value is used when you run the ``cinder failover-host`` command.
+    This child parameter is mandatory if you specify the
+    ``replication_device`` parameter.
+
+- ``storage_id``
+    Same as the ``hitachi_storage_id`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``pool``
+    Same as the ``hitachi_pool`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``snap_pool``
+    Same as the ``hitachi_snap_pool`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``ldev_range``
+    Same as the ``hitachi_ldev_range`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``target_ports``
+    Same as the ``hitachi_target_ports`` parameter except
+    that this child parameter applies to the secondary site
+    and the delimiter is a semicolon, not a comma.
+
+- ``compute_target_ports``
+    Same as the ``hitachi_compute_target_ports`` parameter except
+    that this child parameter applies to the secondary site
+    and the delimiter is a semicolon, not a comma.
+
+- ``pair_target_number``
+    Same as the ``hitachi_pair_target_number`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``rest_pair_target_ports``
+    Same as the ``hitachi_rest_pair_target_ports`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``san_login``
+    Same as the ``san_login`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``san_password``
+    Same as the ``san_password`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``san_ip``
+    Same as the ``san_ip`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``san_api_port``
+    Same as the ``san_api_port`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``use_chap_auth``
+    Same as the ``use_chap_auth`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``chap_username``
+    Same as the ``chap_username`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``chap_password``
+    Same as the ``chap_password`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``driver_ssl_cert_verify``
+    Same as the ``driver_ssl_cert_verify`` parameter except
+    that this child parameter applies to the secondary site.
+
+- ``driver_ssl_cert_path``
+    Same as the ``driver_ssl_cert_path`` parameter except
+    that this child parameter applies to the secondary site.
 
 .. Document Hyperlinks
 .. _Global-Active Device User Guide: https://docs.hitachivantara.com/r/en-us/svos/9.8.7/mk-98rd9024
 .. _Hitachi Command Suite Configuration Manager REST API Reference Guide:
   https://download.hitachivantara.com/download/epcra/hc2292.pdf
+.. _Universal Replicator User Guide: https://docs.hitachivantara.com/r/en-us/svos/9.8.7/mk-98rd9023
 .. _Hitachi Ops Center API Configuration Manager REST API Reference Guide:
   https://docs.hitachivantara.com/r/en-us/ops-center-api-configuration-manager/11.0.x/mk-99cfm000
 .. _Hitachi Thin Image User Guide: https://docs.hitachivantara.com/r/en-us/svos/9.8.7/mk-98rd9020

@@ -953,6 +953,7 @@ class HBSDCommon():
                         value=self.storage_info['pool_id'])
         self.storage_info['controller_ports'] = []
         self.storage_info['compute_ports'] = []
+        self.storage_info['pair_ports'] = []
 
     def find_targets_from_storage(self, targets, connector, target_ports):
         """Find mapped ports, memorize them and return unmapped port count."""

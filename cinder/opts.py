@@ -297,6 +297,8 @@ def list_opts():
                 cinder_volume_drivers_fusionstorage_dsware.volume_opts,
                 cinder_volume_drivers_hitachi_hbsdreplication._REP_OPTS,
                 cinder_volume_drivers_hitachi_hbsdreplication.
+                COMMON_REPLICATION_OPTS,
+                cinder_volume_drivers_hitachi_hbsdreplication.
                 COMMON_MIRROR_OPTS,
                 cinder_volume_drivers_hitachi_hbsdreplication.
                 ISCSI_MIRROR_OPTS,

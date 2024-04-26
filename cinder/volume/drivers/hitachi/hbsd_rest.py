@@ -16,6 +16,7 @@
 """REST interface module for Hitachi HBSD Driver."""
 
 from collections import defaultdict
+import json
 import re
 
 from oslo_config import cfg
@@ -45,6 +46,8 @@ _LUN_TIMEOUT = 50
 _LUN_RETRY_INTERVAL = 1
 _RESTORE_TIMEOUT = 24 * 60 * 60
 _STATE_TRANSITION_TIMEOUT = 15 * 60
+
+REP_ATTR = 'HORC'
 
 _CHECK_LDEV_MANAGEABILITY_KEYS = (
     'emulationType', 'numOfPorts', 'attributes', 'status')
@@ -274,6 +277,20 @@ def _check_ldev_size(self, ldev_info, ldev, existing_ref):
         msg = self.output_log(MSG.INVALID_LDEV_SIZE_FOR_MANAGE, ldev=ldev)
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref, reason=msg)
+
+
+def _get_migrate_volume_update(host, svol):
+    model_update = {}
+    site = host['capabilities']['location_info'].get('execution_site')
+    if not site:
+        provider_location = str(svol)
+    else:
+        ldev_key = 'pldev' if site == utils.PRIMARY_STR else 'sldev'
+        provider_location = json.dumps({ldev_key: svol})
+        model_update['replication_status'] = (
+            fields.ReplicationStatus.DISABLED)
+    model_update['provider_location'] = provider_location
+    return model_update
 
 
 class HBSDREST(common.HBSDCommon):
@@ -722,7 +739,8 @@ class HBSDREST(common.HBSDCommon):
         }
         ldev_info = self.get_ldev_info(['status', 'attributes'], ldev)
         if (ldev_info['status'] == NORMAL_STS and
-                self.driver_info['mirror_attr'] in ldev_info['attributes']):
+                (self.driver_info['mirror_attr'] in ldev_info['attributes'] or
+                 REP_ATTR in ldev_info['attributes'])):
             LOG.debug(
                 'The specified LDEV has replication pair. '
                 'Therefore, unmapping operation was skipped. '
@@ -1242,8 +1260,8 @@ class HBSDREST(common.HBSDCommon):
                     MSG.GROUP_OBJECT_DELETE_FAILED,
                     obj='snapshot' if is_snapshot else 'volume',
                     group='group snapshot' if is_snapshot else 'group',
-                    group_id=group.id, obj_id=obj.id, ldev=self.get_ldev(obj),
-                    reason=exc.msg)
+                    group_id=group.id, obj_id=obj.id,
+                    ldev=self.get_ldev(obj, both=True), reason=exc.msg)
             raise loopingcall.LoopingCallDone(obj_update)
 
         for obj in objs:
@@ -1653,9 +1671,7 @@ class HBSDREST(common.HBSDCommon):
             except exception.VolumeDriverException:
                 self.output_log(MSG.DELETE_LDEV_FAILED, ldev=pvol)
 
-            return True, {
-                'provider_location': str(svol),
-            }
+            return True, _get_migrate_volume_update(host, svol)
 
         return True, None
 

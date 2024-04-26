@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2024, Hitachi, Ltd.
+# Copyright (C) 2025, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -53,6 +53,7 @@ _DRIVER_INFO = {
     'target_iqn_suffix': utils.TARGET_IQN_SUFFIX,
     'pair_attr': utils.PAIR_ATTR,
     'mirror_attr': utils.MIRROR_ATTR,
+    'rep_type_async': utils.REP_TYPE_ASYNC,
     'driver_impl_class': rest_fc.HBSDRESTFC,
 }
 
@@ -81,6 +82,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         2.3.4 - Support data deduplication and compression.
         2.3.5 - Fix key error when backend is down.
         2.4.0 - Add QoS support.
+        2.4.1 - Add UR volume support.
 
     """
 
@@ -109,9 +111,11 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         kwargs.setdefault('driver_info', _DRIVER_INFO)
         self.driver_info = dict(kwargs['driver_info'])
         self.driver_info['driver_class'] = self.__class__
-        if self.configuration.safe_get('hitachi_mirror_storage_id'):
+        if (self.configuration.safe_get('hitachi_mirror_storage_id') or
+                self.configuration.safe_get('replication_device')):
             self.common = replication.HBSDREPLICATION(
-                self.configuration, self.driver_info, kwargs.get('db'))
+                self.configuration, self.driver_info, kwargs.get('db'),
+                kwargs.get('active_backend_id'))
         elif not hasattr(self, '_init_common'):
             self.common = self.driver_info['driver_impl_class'](
                 self.configuration, self.driver_info, kwargs.get('db'))
@@ -134,6 +138,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
                 rest.REST_PAIR_OPTS +
                 rest_fc.FC_VOLUME_OPTS +
                 replication._REP_OPTS +
+                replication.COMMON_REPLICATION_OPTS +
                 replication.COMMON_MIRROR_OPTS +
                 replication.ISCSI_MIRROR_OPTS +
                 replication.REST_MIRROR_OPTS +
@@ -327,3 +332,15 @@ class HBSDFCDriver(driver.FibreChannelDriver):
     @volume_utils.trace
     def delete_group_snapshot(self, context, group_snapshot, snapshots):
         return self.common.delete_group_snapshot(group_snapshot, snapshots)
+
+    @volume_utils.trace
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
+        return self.common.failover_host(volumes, secondary_id)
+
+    @volume_utils.trace
+    def failover(self, context, volumes, secondary_id=None, groups=None):
+        return self.common.failover(volumes, secondary_id)
+
+    @volume_utils.trace
+    def failover_completed(self, context, active_backend_id=None):
+        return self.common.failover_completed(active_backend_id)

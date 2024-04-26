@@ -27,7 +27,7 @@ from cinder import exception
 from cinder import utils as cinder_utils
 from cinder.volume import volume_types
 
-VERSION = '2.5.0'
+VERSION = '2.6.0'
 CI_WIKI_NAME = 'Hitachi_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
@@ -44,6 +44,7 @@ NVOL_LDEV_TYPE = 'DP-VOL'
 TARGET_IQN_SUFFIX = '.hbsd-target'
 PAIR_ATTR = 'HTI'
 MIRROR_ATTR = 'GAD'
+REP_TYPE_ASYNC = 'UR'
 
 GIGABYTE_PER_BLOCK_SIZE = units.Gi / 512
 
@@ -259,6 +260,63 @@ class HBSDMsg(enum.Enum):
         'loglevel': base_logging.WARNING,
         'msg': 'Port %(port)s will not be used because it is not considered '
                'to be active by the Fibre Channel Zone Manager.',
+        'suffix': WARNING_SUFFIX,
+    }
+    NOT_LDEV_NUMBER_WARNING = {
+        'msg_id': 341,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Failed to %(operation)s. The LDEV number is not found in the '
+               'Cinder object. (%(obj)s: %(obj_id)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    COPY_PAIR_CANNOT_RETRIEVED = {
+        'msg_id': 342,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Failed to fail back a copy group. Copy pair information of '
+               'the copy group cannot be retrieved. '
+               '(copy group: %(copy_grp)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    UNMANAGE_LDEV_EXIST_WARNING = {
+        'msg_id': 343,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Failed to fail back a copy group. An LDEV not managed by the '
+               'backend exists in the copy group. (copy group: %(copy_grp)s, '
+               'P-VOL: %(pvol)s, S-VOL: %(svol)s, config_group: '
+               '%(config_group)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    INVALID_COPY_GROUP_STATUS = {
+        'msg_id': 344,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Failed to fail back a copy group. The status of a pair in '
+               'the copy group is invalid. (copy group: %(copy_grp)s, P-VOL: '
+               '%(pvol)s, P-VOL status: %(pvol_status)s, S-VOL: %(svol)s, '
+               'S-VOL status: %(svol_status)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    FAILOVER_FAILBACK_WARNING = {
+        'msg_id': 345,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Failed to fail %(direction)s a %(obj)s. An error occurred '
+               'during the %(operation)s. (%(obj)s: %(obj_id)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    NOT_SYNCHRONIZED_WARNING = {
+        'msg_id': 346,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Volume data may not be up to date. P-VOL and S-VOL in the '
+               'replication pair are not synchronized. (volume: %(volume)s, '
+               'P-VOL: %(pvol)s, S-VOL: %(svol)s, S-VOL status: '
+               '%(svol_status)s)',
+        'suffix': WARNING_SUFFIX,
+    }
+    NOT_REPLICATION_PAIR_WARNING = {
+        'msg_id': 347,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Failed to fail over a volume. The LDEV for the volume is not '
+               'in a remote replication pair. (volume: %(volume)s, LDEV: '
+               '%(ldev)s)',
         'suffix': WARNING_SUFFIX,
     }
     SKIP_DELETING_LDEV = {
@@ -643,6 +701,14 @@ class HBSDMsg(enum.Enum):
                'S-VOL[numOfPorts]: %(svol_num_of_ports)s)',
         'suffix': ERROR_SUFFIX,
     }
+    REPLICATION_VOLUME_ADD_GROUP_ERROR = {
+        'msg_id': 759,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to add a volume to a group. '
+               'The LDEVs for the volume are in a %(rep_type)s pair. '
+               '(volume: %(volume_id)s, LDEV: %(ldev)s, group: %(group_id)s)',
+        'suffix': ERROR_SUFFIX,
+    }
     MIGRATE_VOLUME_FAILED = {
         'msg_id': 760,
         'loglevel': base_logging.ERROR,
@@ -651,12 +717,69 @@ class HBSDMsg(enum.Enum):
                '(P-VOL, S-VOL, copy method, status): %(pair_info)s)',
         'suffix': ERROR_SUFFIX,
     }
+    DRIVER_INITIALIZE_FAILED = {
+        'msg_id': 762,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to initialize the driver. The same parameter is '
+               'specified more than once in cinder.conf. '
+               '(config_group: %(config_group)s, parameter: %(param)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    FAILED_FAILBACK = {
+        'msg_id': 763,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to fail back the driver. Initialization of the driver '
+               'for the %(site)s storage system failed.',
+        'suffix': ERROR_SUFFIX,
+    }
+    INVALID_DESTINATION = {
+        'msg_id': 764,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to fail %(direction)s the driver. The specified '
+               'fail%(direction)s destination is invalid. '
+               '(execution site: %(execution_site)s, specified backend_id: '
+               '%(specified_backend_id)s, defined backend_id: '
+               '%(defined_backend_id)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    MANAGE_REPLICATION_VOLUME_ERROR = {
+        'msg_id': 765,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to manage a volume. The volume type extra spec '
+               '"replication_enabled" is set to "%(replication_enabled)s". '
+               '(source-id: %(source_id)s, volume: %(volume)s, volume type: '
+               '%(volume_type)s)',
+        'suffix': ERROR_SUFFIX,
+    }
     REPLICATION_PAIR_ERROR = {
         'msg_id': 766,
         'loglevel': base_logging.ERROR,
         'msg': 'Failed to %(operation)s. The LDEV for the volume is in '
                'a remote replication pair. (volume: %(volume)s, '
                '%(snapshot_info)sLDEV: %(ldev)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    OTHER_SITE_ERROR = {
+        'msg_id': 767,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to %(operation)s. The LDEV for the %(obj)s exists in '
+               'the other site. (execution site: %(execution_site)s, '
+               'LDEV site: %(ldev_site)s, %(group_info)s%(obj)s: %(obj_id)s, '
+               'LDEV: %(ldev)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    COPY_GROUP_CANNOT_RETRIEVED = {
+        'msg_id': 768,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to fail back the backend. Copy group list information '
+               'cannot be retrieved. (config_group: %(config_group)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    CREATE_JOURNAL_FAILED = {
+        'msg_id': 769,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to create a journal for remote replication. No journal '
+               'ID is available. (volume: %(volume)s)',
         'suffix': ERROR_SUFFIX,
     }
     LDEV_NUMBER_NOT_FOUND = {
@@ -676,6 +799,14 @@ class HBSDMsg(enum.Enum):
         'msg_id': 773,
         'loglevel': base_logging.ERROR,
         'msg': 'Failed to ss2vclone. p-vol=%(pvol)s,s-vol=%(svol)s',
+        'suffix': ERROR_SUFFIX,
+    }
+    REPLICATION_AND_GROUP_ERROR = {
+        'msg_id': 771,
+        'loglevel': base_logging.ERROR,
+        'msg': ('Failed to %(operation)s. Remote replication and '
+                'generic volume group cannot be applied to the same volume. '
+                '(volume: %(volume)s, group: %(group)s)'),
         'suffix': ERROR_SUFFIX,
     }
 
@@ -861,14 +992,15 @@ def get_qos_specs_from_volume_type(volume_type):
 
 DICT = '_dict'
 CONF = '_conf'
+OPTS = '_opts'
 
 
 class Config(object):
 
-    def __init__(self, conf):
+    def __init__(self, conf, opts):
         super().__setattr__(CONF, conf)
         super().__setattr__(DICT, dict())
-        self._opts = {}
+        super().__setattr__(OPTS, opts)
 
     def __getitem__(self, name):
         return (super().__getattribute__(DICT)[name]
@@ -890,3 +1022,12 @@ class Config(object):
         return (super().__getattribute__(DICT)[name]
                 if name in super().__getattribute__(DICT)
                 else super().__getattribute__(CONF).safe_get(name))
+
+    def update(self, name, val):
+        opt = super().__getattribute__(OPTS)[name]
+        if val is not None:
+            if isinstance(opt.type(val), list):
+                val = val.replace(';', ',')
+            super().__getattribute__(DICT)[name] = opt.type(val)
+        else:
+            super().__getattribute__(DICT)[name] = opt.default

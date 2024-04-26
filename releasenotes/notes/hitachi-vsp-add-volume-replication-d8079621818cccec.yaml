@@ -1,0 +1,9 @@
+features:
+  - |
+    Hitachi driver:  Added Volume Replication feature.
+    When using this feature, it requires the following software licenses
+    in ``Hitachi Remote Replication``:
+
+    * Universal Replicator
+    * True Copy
+
