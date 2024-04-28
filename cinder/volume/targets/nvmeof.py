@@ -154,9 +154,6 @@ class NVMeOF(driver.Target):
             if transport == 'rdma':
                 transport = 'RoCEv2'
 
-            if transport == 'rdma':
-                transport = 'RoCEv2'
-
             return {
                 'target_nqn': nqn,
                 'vol_uuid': uuid,
