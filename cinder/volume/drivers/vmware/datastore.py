@@ -138,6 +138,66 @@ class DatastoreSelector(object):
 
         return bool_from_str(attrs['buildup']['value'])
 
+    def is_failover_host(self, host_ref, host_cluster_ref=None,
+                         cluster_cache=None):
+        """Check if a host is (one of the) failover hosts of the cluster
+
+        :param host_ref: a ManagedObjectReference to HostSystem
+        :param host_cluster_ref: (optional) ManagedObjectReference to
+                             ClusterComputeResource pointing to the cluster of
+                             the given host. Will be fetched if not given.
+        :param cluster_cache: (optional) dict from ManagedObjectReference value
+                              to dict (property name, property value) for
+                              ClusterComputeResource objects. Can be set if the
+                              `configuration.dasConfig.admissionControlPolicy`
+                              and
+                              `configuration.dasConfig.admissionControlEnabled`
+                              properties were prefetched for multiple clusters.
+        """
+        if cluster_cache is None:
+            cluster_cache = {}
+
+        if host_cluster_ref is None:
+            host_cluster_ref = self._vops._get_parent(host_ref,
+                                                      "ClusterComputeResource")
+
+        host_cluster_value = vim_util.get_moref_value(host_cluster_ref)
+        # set default in cache so we update it when we fetch values
+        cluster_props = cluster_cache.setdefault(host_cluster_value, {})
+
+        props = ['configuration.dasConfig.admissionControlPolicy',
+                 'configuration.dasConfig.admissionControlEnabled']
+        prop_policy, prop_enabled = props
+        if not any(prop in cluster_props for prop in props):
+            retrieve_result = self._session.invoke_api(vim_util,
+                                                       'get_object_properties',
+                                                       self._session.vim,
+                                                       host_cluster_ref,
+                                                       props)
+
+            if not retrieve_result:
+                return False
+
+            obj_props = self._get_object_properties(retrieve_result[0])
+            for prop in props:
+                cluster_props[prop] = obj_props.get(prop)
+
+        enabled = cluster_props.get(prop_enabled, True)
+        if not enabled:
+            return False
+
+        policy = cluster_props.get(prop_policy)
+        # if the policy isn't set to use failover hosts, the host can't be one
+        if not policy or not hasattr(policy, 'failoverHosts'):
+            return False
+
+        host_ref_value = vim_util.get_moref_value(host_ref)
+        for failover_host_ref in policy.failoverHosts:
+            if vim_util.get_moref_value(failover_host_ref) == host_ref_value:
+                return True
+
+        return False
+
     def _is_host_usable(self, host_ref, host_prop_map=None):
         """Check a host's connectionState and inMaintenanceMode properties
 
@@ -195,6 +255,10 @@ class DatastoreSelector(object):
             if self.is_host_in_buildup_cluster(
                     host, host_cluster_ref=host_cluster_ref,
                     cluster_cache=cluster_prop_map):
+                continue
+
+            if self.is_failover_host(host, host_cluster_ref=host_cluster_ref,
+                                     cluster_cache=cluster_prop_map):
                 continue
 
             if not self._is_host_usable(host, host_prop_map=host_prop_map):
