@@ -2001,7 +2001,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         VOLUME_INFO_0 = self.RETYPE_VOLUME_INFO_0.copy()
 
         # volume without comment
-        del(VOLUME_INFO_0['comment'])
+        del (VOLUME_INFO_0['comment'])
         mock_client.getVolume.return_value = VOLUME_INFO_0
 
         with mock.patch.object(hpecommon.HPE3PARCommon,

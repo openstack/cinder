@@ -134,7 +134,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
 
     def test_migrate_volume_error(self):
         with mock.patch.object(self.volume.driver, 'migrate_volume') as \
-                mock_migrate,\
+                mock_migrate, \
                 mock.patch.object(self.volume.driver, 'create_export') as \
                 mock_create_export:
 
@@ -338,8 +338,8 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
 
         host_obj = {'host': 'newhost', 'capabilities': {}}
         with mock.patch.object(self.volume.driver, 'migrate_volume') as \
-                mock_migrate_volume,\
-                mock.patch.object(self.volume, '_copy_volume_data'),\
+                mock_migrate_volume, \
+                mock.patch.object(self.volume, '_copy_volume_data'), \
                 mock.patch.object(self.volume.driver, 'delete_volume') as \
                 delete_volume:
             create_volume.side_effect = self._fake_create_volume
@@ -355,13 +355,13 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
             self.assertTrue(update_migrated_volume.called)
 
     def test_migrate_volume_generic_copy_error(self):
-        with mock.patch.object(self.volume.driver, 'migrate_volume'),\
-                mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume')\
-                as mock_create_volume,\
+        with mock.patch.object(self.volume.driver, 'migrate_volume'), \
+                mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume') \
+                as mock_create_volume, \
                 mock.patch.object(self.volume, '_copy_volume_data') as \
-                mock_copy_volume,\
-                mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'),\
-                mock.patch.object(self.volume, 'migrate_volume_completion'),\
+                mock_copy_volume, \
+                mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'), \
+                mock.patch.object(self.volume, 'migrate_volume_completion'), \
                 mock.patch.object(self.volume.driver, 'create_export'):
 
             # Exception case at migrate_volume_generic
@@ -434,7 +434,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         expected_update = {'_name_id': volume._name_id,
                            'provider_location': volume.provider_location}
         with mock.patch.object(self.volume.driver,
-                               'update_migrated_volume') as migrate_update,\
+                               'update_migrated_volume') as migrate_update, \
                 mock.patch.object(self.context, 'elevated') as elevated:
             migrate_update.return_value = fake_update
             elevated.return_value = fake_elevated
@@ -516,13 +516,13 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         self.expected_status = 'available'
 
     def test_migrate_volume_generic_create_export_error(self):
-        with mock.patch.object(self.volume.driver, 'migrate_volume'),\
-                mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume')\
-                as mock_create_volume,\
+        with mock.patch.object(self.volume.driver, 'migrate_volume'), \
+                mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume') \
+                as mock_create_volume, \
                 mock.patch.object(self.volume, '_copy_volume_data') as \
-                mock_copy_volume,\
-                mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'),\
-                mock.patch.object(self.volume, 'migrate_volume_completion'),\
+                mock_copy_volume, \
+                mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'), \
+                mock.patch.object(self.volume, 'migrate_volume_completion'), \
                 mock.patch.object(self.volume.driver, 'create_export') as \
                 mock_create_export:
 
@@ -551,12 +551,12 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                              {'migration_status': 'completing'})
             raise processutils.ProcessExecutionError
 
-        with mock.patch.object(self.volume.driver, 'migrate_volume'),\
+        with mock.patch.object(self.volume.driver, 'migrate_volume'), \
                 mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume')\
-                as mock_create_volume,\
-                mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'),\
+                as mock_create_volume, \
+                mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'), \
                 mock.patch.object(self.volume, 'migrate_volume_completion')\
-                as mock_migrate_compl,\
+                as mock_migrate_compl, \
                 mock.patch.object(self.volume.driver, 'create_export'), \
                 mock.patch.object(self.volume, '_attach_volume') \
                 as mock_attach, \
@@ -623,11 +623,11 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                                host=new_host,
                                                migration_status=target_status)
         with mock.patch.object(self.volume, 'detach_volume') as \
-                mock_detach_volume,\
+                mock_detach_volume, \
                 mock.patch.object(volume_rpcapi.VolumeAPI,
-                                  'delete_volume') as mock_delete_volume,\
+                                  'delete_volume') as mock_delete_volume, \
                 mock.patch.object(volume_rpcapi.VolumeAPI,
-                                  'attach_volume') as mock_attach_volume,\
+                                  'attach_volume') as mock_attach_volume, \
                 mock.patch.object(volume_rpcapi.VolumeAPI,
                                   'update_migrated_volume'):
             mock_attach_volume.side_effect = self.fake_attach_volume
@@ -810,11 +810,13 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
 
         old_usage = db.quota_usage_get_all_by_project(elevated, project_id)
 
-        with mock.patch.object(self.volume.driver, 'retype') as _retype,\
-                mock.patch.object(volume_types, 'volume_types_diff') as _diff,\
-                mock.patch.object(self.volume, 'migrate_volume') as _mig,\
-                mock.patch.object(db.sqlalchemy.api, 'volume_get') as _vget,\
-                mock.patch.object(context.RequestContext, 'elevated') as _ctx,\
+        with mock.patch.object(self.volume.driver, 'retype') as _retype, \
+                mock.patch.object(volume_types,
+                                  'volume_types_diff') as _diff, \
+                mock.patch.object(self.volume, 'migrate_volume') as _mig, \
+                mock.patch.object(db.sqlalchemy.api, 'volume_get') as _vget, \
+                mock.patch.object(context.RequestContext,
+                                  'elevated') as _ctx, \
                 mock.patch.object(objects.VolumeType, 'get_by_id') as _vtget:
             _vget.return_value = volume
             _retype.return_value = driver
@@ -1014,7 +1016,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                            replication_status='not-capable')
         host_obj = {'host': 'newhost', 'capabilities': {}}
         with mock.patch.object(self.volume,
-                               'migrate_volume') as migrate_volume,\
+                               'migrate_volume') as migrate_volume, \
                 mock.patch.object(objects.VolumeType,
                                   'get_by_id') as vt_get:
             migrate_volume.return_value = True

@@ -784,20 +784,20 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
             self.context, fake_volume.id)
 
         with mock.patch.object(self.volume.driver.vg,
-                               'revert') as mock_revert,\
+                               'revert') as mock_revert, \
                 mock.patch.object(self.volume.driver.vg,
-                                  'create_lv_snapshot') as mock_create,\
+                                  'create_lv_snapshot') as mock_create, \
                 mock.patch.object(self.volume.driver.vg,
-                                  'deactivate_lv') as mock_deactive,\
+                                  'deactivate_lv') as mock_deactivate, \
                 mock.patch.object(self.volume.driver.vg,
-                                  'activate_lv') as mock_active:
+                                  'activate_lv') as mock_activate:
             self.volume.driver.revert_to_snapshot(self.context,
                                                   fake_volume,
                                                   fake_snapshot)
             mock_revert.assert_called_once_with(
                 self.volume.driver._escape_snapshot(fake_snapshot.name))
-            mock_deactive.assert_called_once_with(fake_volume.name)
-            mock_active.assert_called_once_with(fake_volume.name)
+            mock_deactivate.assert_called_once_with(fake_volume.name)
+            mock_activate.assert_called_once_with(fake_volume.name)
             mock_create.assert_called_once_with(
                 self.volume.driver._escape_snapshot(fake_snapshot.name),
                 fake_volume.name, self.configuration.lvm_type)

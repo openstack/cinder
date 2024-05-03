@@ -245,7 +245,7 @@ class TydsClient(object):
                 - target_block_name: The name of the target block.
 
         """
-        pool_name, block_name, block_id, target_pool_name, target_pool_id,\
+        pool_name, block_name, block_id, target_pool_name, target_pool_id, \
             target_block_name = args
         params = {
             'poolName': pool_name,

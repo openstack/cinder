@@ -217,7 +217,7 @@ class APIVersionRequest(utils.ComparableMixin):
     def matches_versioned_method(self, method):
         """Compares this version to that of a versioned method."""
 
-        if type(method) != versioned_method.VersionedMethod:
+        if type(method) is not versioned_method.VersionedMethod:
             msg = _('An API version request must be compared '
                     'to a VersionedMethod object.')
             raise exception.InvalidParameterValue(err=msg)

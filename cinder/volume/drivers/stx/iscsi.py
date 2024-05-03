@@ -62,7 +62,7 @@ class STXISCSIDriver(cinder.volume.driver.ISCSIDriver):
         super(STXISCSIDriver, self).__init__(*args, **kwargs)
         self.common = None
         self.configuration.append_config_values(san.san_opts)
-        if type(self) != STXISCSIDriver:
+        if type(self) is not STXISCSIDriver:
             return
         self.configuration.append_config_values(common.common_opts)
         self.configuration.append_config_values(common.iscsi_opts)
@@ -154,7 +154,7 @@ class STXISCSIDriver(cinder.volume.driver.ISCSIDriver):
             self.common.client_logout()
 
     def terminate_connection(self, volume, connector, **kwargs):
-        if type(connector) == dict and 'initiator' in connector:
+        if type(connector) is dict and 'initiator' in connector:
             # multiattach volumes cannot be unmapped here, but will
             # be implicity unmapped when the volume is deleted.
             if not volume.get('multiattach'):

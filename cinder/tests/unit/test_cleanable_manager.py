@@ -135,7 +135,7 @@ class TestCleanableManager(test.TestCase):
 
         clean_req = objects.CleanupRequest(service_id=self.service.id)
         mngr = FakeManager(self.service.id)
-        with mock.patch('cinder.manager.timeutils.utcnow', return_value=now),\
+        with mock.patch('cinder.manager.timeutils.utcnow', return_value=now), \
                 mock.patch('cinder.db.worker_get_all') as get_all_mock:
             get_all_mock.return_value = [worker1, worker2]
             mngr.do_cleanup(self.context, clean_req)

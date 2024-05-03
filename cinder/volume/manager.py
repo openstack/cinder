@@ -3079,7 +3079,7 @@ class VolumeManager(manager.CleanableManager,
                                              host)
                 # Check if the driver retype provided a model update or
                 # just a retype indication
-                if type(ret) == tuple:
+                if type(ret) is tuple:
                     retyped, retype_model_update = ret
                 else:
                     retyped = ret

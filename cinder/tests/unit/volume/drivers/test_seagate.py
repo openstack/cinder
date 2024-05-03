@@ -327,7 +327,7 @@ class TestSeagateClient(test.TestCase):
                                      RequestException("error")]
         mock_requests_get.return_value = m
         ret = self.client._api_request('/path')
-        self.assertTrue(type(ret) == etree._Element)
+        self.assertTrue(type(ret) is etree._Element)
         self.assertRaises(stx_exception.ConnectionError,
                           self.client._api_request,
                           '/path')

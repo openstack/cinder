@@ -890,9 +890,9 @@ class AS13000DriverTestCase(test.TestCase):
         mock_tnd = self.mock_object(self.as13000_san, '_trans_name_down',
                                     mock.Mock(return_value='fake_volume'))
         fake_target_list = [{'hostIp': ['fake_hostIp'],
-                             'name':'target_name',
-                             'lun':[{'lvm': 'fake_volume',
-                                     'lunID': 'fake_id'}]}]
+                             'name': 'target_name',
+                             'lun': [{'lvm': 'fake_volume',
+                                      'lunID': 'fake_id'}]}]
         mock_gtl = self.mock_object(self.as13000_san, '_get_target_list',
                                     mock.Mock(return_value=fake_target_list))
         mock_dlft = self.mock_object(self.as13000_san,
@@ -978,8 +978,8 @@ class AS13000DriverTestCase(test.TestCase):
         target_list = [
             {
                 'hostIp': ['fake_ip1', 'fake_ip2'],
-                'name':'fake_target_1',
-                'node':['fake_node1', 'fake_node2']
+                'name': 'fake_target_1',
+                'node': ['fake_node1', 'fake_node2']
             },
             {
                 'hostIp': ['fake_ip3', 'fake_ip4'],

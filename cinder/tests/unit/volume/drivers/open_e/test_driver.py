@@ -1522,7 +1522,7 @@ class TestOpenEJovianDSSDriver(test.TestCase):
 
         get_vol['volsize'] = "1073145824"
         jdssd.ra.get_lun.return_value = get_vol
-        with mock.patch.object(jdssd, '_clone_object'),\
+        with mock.patch.object(jdssd, '_clone_object'), \
                 mock.patch.object(jdssd, "resize_volume"):
             jdssd.create_cloned_volume(UUID_2, UUID_1, 1, sparse=False)
 

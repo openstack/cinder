@@ -1594,7 +1594,7 @@ class NimbleRestAPIExecutor(object):
             LOG.debug("Key %(key)s Value %(value)s",
                       {'key': key, 'value': value})
             if key == EXTRA_SPEC_IOPS_LIMIT and value.isdigit():
-                if type(value) == int or int(value) < MIN_IOPS or (
+                if type(value) is int or int(value) < MIN_IOPS or (
                    int(value) > MAX_IOPS):
                     raise NimbleAPIException(_("%(err)s [%(min)s, %(max)s]") %
                                              {'err': IOPS_ERR_MSG,
@@ -2066,7 +2066,7 @@ class NimbleRestAPIExecutor(object):
             LOG.debug("Key %(key)s Value %(value)s",
                       {'key': key, 'value': value})
             if key == EXTRA_SPEC_IOPS_LIMIT and value.isdigit():
-                if type(value) == int or int(value) < MIN_IOPS or (
+                if type(value) is int or int(value) < MIN_IOPS or (
                    int(value) > MAX_IOPS):
                     raise NimbleAPIException(_("Please enter valid IOPS "
                                                "limit in the range ["
