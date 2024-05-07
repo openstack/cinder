@@ -14,12 +14,9 @@
 #    under the License.
 
 import re
+from urllib.request import parse_http_list
 
 import paste.urlmap
-try:
-    from urllib.request import parse_http_list   # pylint: disable=E0611
-except ImportError:
-    from urllib2 import parse_http_list   # Python 2
 
 from cinder.api.openstack import wsgi
 
