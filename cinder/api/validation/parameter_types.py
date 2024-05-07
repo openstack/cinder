@@ -157,6 +157,15 @@ extra_specs = {
     'additionalProperties': False
 }
 
+image_metadata = {
+    'type': 'object',
+    'patternProperties': {
+        '^[a-zA-Z0-9-_:. /]{1,255}$': {
+            'type': 'string', 'format': 'mysql_text'
+        }
+    },
+    'additionalProperties': False
+}
 
 extra_specs_with_no_spaces_key = {
     'type': 'object',
