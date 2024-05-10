@@ -177,6 +177,7 @@
           $TEMPEST_CONFIG:
             volume-feature-enabled:
               volume_revert: True
+              volume_image_dep_tests: False
     timeout: 10800
 
 - job:
@@ -214,6 +215,10 @@
           $CINDER_CONF:
             DEFAULT:
               cluster: ceph
+        test-config:
+          $TEMPEST_CONFIG:
+            volume-feature-enabled:
+              volume_image_dep_tests: False
 
 - job:
     name: cinder-grenade-mn-sub-bak
