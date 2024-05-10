@@ -162,6 +162,8 @@
           $TEMPEST_CONFIG:
             volume-feature-enabled:
               volume_revert: True
+              volume_image_dep_tests: False
+              enable_volume_image_dep_tests: False
 
 - job:
     name: cinder-plugin-ceph-tempest-mn-aa
@@ -184,6 +186,11 @@
           $CINDER_CONF:
             DEFAULT:
               cluster: ceph
+        test-config:
+          $TEMPEST_CONFIG:
+            volume-feature-enabled:
+              volume_image_dep_tests: False
+              enable_volume_image_dep_tests: False
 
 - job:
     name: cinder-tempest-lvm-multibackend
