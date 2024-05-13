@@ -167,6 +167,7 @@ class StorPoolDriver(driver.VolumeDriver):
                 'data': {
                     'client_id': self._storpool_client_id(connector),
                     'volume': volume['id'],
+                    'access_mode': 'rw',
                 }}
 
     def terminate_connection(self, volume, connector, **kwargs):
@@ -312,45 +313,6 @@ class StorPoolDriver(driver.VolumeDriver):
             # The actual pools data
             'pools': pools
         }
-
-    def _attach_volume(self, context, volume, properties, remote=False):
-        if remote:
-            return super(StorPoolDriver, self)._attach_volume(
-                context, volume, properties, remote=remote)
-        req_id = context.request_id
-        req = self._attach.get().get(req_id, None)
-        if req is None:
-            req = {
-                'volume': self._attach.volumeName(volume['id']),
-                'type': 'cinder-attach',
-                'id': context.request_id,
-                'rights': 2,
-                'volsnap': False,
-                'remove_on_detach': True
-            }
-            self._attach.add(req_id, req)
-        name = req['volume']
-        self._attach.sync(req_id, None)
-        return {'device': {'path': '/dev/storpool/' + name,
-                'storpool_attach_req': req_id}}, volume
-
-    def _detach_volume(self, context, attach_info, volume, properties,
-                       force=False, remote=False, ignore_errors=False):
-        if remote:
-            return super(StorPoolDriver, self)._detach_volume(
-                context, attach_info, volume, properties,
-                force=force, remote=remote, ignore_errors=ignore_errors)
-        try:
-            req_id = attach_info.get('device', {}).get(
-                'storpool_attach_req', context.request_id)
-            req = self._attach.get()[req_id]
-            name = req['volume']
-            self._attach.sync(req_id, name)
-            if req.get('remove_on_detach', False):
-                self._attach.remove(req_id)
-        except BaseException:
-            if not ignore_errors:
-                raise
 
     def backup_volume(self, context, backup, backup_service):
         volume = self.db.volume_get(context, backup['volume_id'])
