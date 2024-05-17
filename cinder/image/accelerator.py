@@ -53,7 +53,7 @@ class ImageAccel(object):
         self.src = src
         self.dest = dest
         self.compression_format = CONF.compression_format
-        if(self.compression_format == 'gzip'):
+        if (self.compression_format == 'gzip'):
             self._accel_engine_path = _ACCEL_PATH_PREFERENCE_ORDER_LIST
         else:
             self._accel_engine_path = None

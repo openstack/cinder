@@ -177,7 +177,7 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         # If both nas_host and nas_share_path are set we are not
         # going to use the nfs_shares_config file.  So, only check
         # for its existence if it is going to be used.
-        if((not nas_host) or (not nas_share_path)):
+        if ((not nas_host) or (not nas_share_path)):
             config = self.configuration.nfs_shares_config
             if not config:
                 msg = (_("There's no NFS config file configured (%s)") %

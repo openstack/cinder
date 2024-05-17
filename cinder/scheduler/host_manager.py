@@ -313,11 +313,11 @@ class BackendState(object):
             pool_cap['timestamp'] = self.updated
 
         self.capabilities = typing.cast(ReadOnlyDict, self.capabilities)
-        if('filter_function' not in pool_cap and
+        if ('filter_function' not in pool_cap and
                 'filter_function' in self.capabilities):
             pool_cap['filter_function'] = self.capabilities['filter_function']
 
-        if('goodness_function' not in pool_cap and
+        if ('goodness_function' not in pool_cap and
                 'goodness_function' in self.capabilities):
             pool_cap['goodness_function'] = (
                 self.capabilities['goodness_function'])

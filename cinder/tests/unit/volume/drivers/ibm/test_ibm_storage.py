@@ -209,11 +209,11 @@ class IBMStorageFakeProxyDriver(object):
 
         # Delete snapshots in group
         self.snapshots = {k: snap for k, snap in self.snapshots.items()
-                          if not(snap.get('group_id') == group.get('id'))}
+                          if not (snap.get('group_id') == group.get('id'))}
 
         # Delete volume in group
         self.volumes = {k: vol for k, vol in self.volumes.items()
-                        if not(vol.get('group_id') == group.get('id'))}
+                        if not (vol.get('group_id') == group.get('id'))}
 
         return {'status': fields.GroupStatus.DELETED}, volumes
 
@@ -256,8 +256,8 @@ class IBMStorageFakeProxyDriver(object):
 
         # Delete snapshots in group
         self.snapshots = {k: snap for k, snap in self.snapshots.items()
-                          if not(snap.get('group_id')
-                                 == group_snapshot.get('group_snapshot_id'))}
+                          if not (snap.get('group_id')
+                                  == group_snapshot.get('group_snapshot_id'))}
 
         return {'status': 'deleted'}, updated_snapshots
 
@@ -310,7 +310,7 @@ class IBMStorageFakeProxyDriver(object):
                 volume_update_list)
 
     def get_replication_error_status(self, context, groups):
-        return(
+        return (
             [{'group_id': groups[0]['id'],
               'replication_status': fields.ReplicationStatus.ERROR}],
             [{'volume_id': VOLUME['id'],

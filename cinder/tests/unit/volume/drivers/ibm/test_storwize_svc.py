@@ -800,8 +800,7 @@ port_speed!N/A
                 value1 = filter1.split('=')[1]
                 value2 = filter2.split('=')[1]
                 for v in ports:
-                    if(str(v[5]) == value1 and str(
-                            v[7]) == value2):
+                    if (str(v[5]) == value1 and str(v[7]) == value2):
                         rows.append(v)
             else:
                 value = kwargs['filtervalue'].split('=')[1]
@@ -1645,8 +1644,8 @@ port_speed!N/A
 
         self._fcmappings_list[fcmap_info['id']] = fcmap_info
 
-        return('FlashCopy Mapping, id [' + fcmap_info['id'] +
-               '], successfully created', '')
+        return ('FlashCopy Mapping, id [' + fcmap_info['id'] +
+                '], successfully created', '')
 
     def _cmd_prestartfcmap(self, **kwargs):
         if 'obj' not in kwargs:
@@ -1801,8 +1800,8 @@ port_speed!N/A
 
         self._fcconsistgrp_list[fcconsistgrp_info['id']] = fcconsistgrp_info
 
-        return('FlashCopy Consistency Group, id [' + fcconsistgrp_info['id'] +
-               '], successfully created', '')
+        return ('FlashCopy Consistency Group, id [' + fcconsistgrp_info['id'] +
+                '], successfully created', '')
 
     def _cmd_prestartfcconsistgrp(self, **kwargs):
         if 'obj' not in kwargs:
@@ -2225,8 +2224,8 @@ port_speed!N/A
         self._volumes_list[master_vol]['RC_id'] = rcrel_info['id']
         self._volumes_list[aux_vol]['RC_name'] = rcrel_info['name']
         self._volumes_list[aux_vol]['RC_id'] = rcrel_info['id']
-        return('RC Relationship, id [' + rcrel_info['id'] +
-               '], successfully created', '')
+        return ('RC Relationship, id [' + rcrel_info['id'] +
+                '], successfully created', '')
 
     def _cmd_lsrcrelationship(self, **kwargs):
         rows = []
@@ -2791,8 +2790,8 @@ port_speed!N/A
         rccg_info['cycle_period_seconds'] = '300'
         self._rcconsistgrp_list[rccg_info['name']] = rccg_info
 
-        return('RC Consistency Group, id [' + rccg_info['id'] +
-               '], successfully created', '')
+        return ('RC Consistency Group, id [' + rccg_info['id'] +
+                '], successfully created', '')
 
     def _cmd_lsrcconsistgrp(self, **kwargs):
         rows = []
@@ -3009,7 +3008,7 @@ port_speed!N/A
         partner_info['partnership'] = 'fully_configured'
 
         self._partnership_list[partner_info['id']] = partner_info
-        return('', '')
+        return ('', '')
 
     def _cmd_mkfcpartnership(self, **kwargs):
         if 'obj' not in kwargs:
@@ -3036,7 +3035,7 @@ port_speed!N/A
         partner_info['backgroundcopyrate'] = copyrate
         partner_info['partnership'] = 'fully_configured'
         self._partnership_list[partner_info['id']] = partner_info
-        return('', '')
+        return ('', '')
 
     def _cmd_chpartnership(self, **kwargs):
         if 'obj' not in kwargs:
@@ -3048,7 +3047,7 @@ port_speed!N/A
         partner_state = ('fully_configured' if 'start' in kwargs
                          else 'fully_configured_stopped')
         self._partnership_list[peer_sys]['partnership'] = partner_state
-        return('', '')
+        return ('', '')
 
     # The main function to run commands on the management simulator
     def execute_command(self, cmd, check_exit_code=True):
@@ -10936,7 +10935,7 @@ class StorwizeHelpersTestCase(test.TestCase):
             'rc_controlled': 'no',
             'source_vdisk_name': 'testvol'}
         get_relationship_info.return_value = None
-        if(fc_data['copy_rate'] != '0' and fc_data['progress'] == '100'
+        if (fc_data['copy_rate'] != '0' and fc_data['progress'] == '100'
            and fc_data['status'] == 'copying'):
             (self.assertRaises(loopingcall.LoopingCallDone,
              self.storwize_svc_common._check_vdisk_fc_mappings, vol, True,
@@ -10955,7 +10954,7 @@ class StorwizeHelpersTestCase(test.TestCase):
         self.assertEqual(1, get_fc_mapping_attributes.call_count)
         self.assertEqual(0, rmfcmap.call_count)
 
-        if(fc_data['copy_rate'] == '0' and fc_data['progress'] == '0'
+        if (fc_data['copy_rate'] == '0' and fc_data['progress'] == '0'
            and fc_data['status'] in ['copying', 'idle_or_copied']):
             chfcmap.assert_called_with('4', copyrate='50', autodel='on')
             self.assertEqual(1, chfcmap.call_count)
@@ -10995,8 +10994,8 @@ class StorwizeHelpersTestCase(test.TestCase):
             'source_vdisk_name': 'testvol'}
         rel_info = {'name': 'rcrel232'}
         get_relationship_info.return_value = rel_info
-        if(fc_data['copy_rate'] != '0' and fc_data['progress'] == '100'
-           and fc_data['status'] == 'copying'):
+        if (fc_data['copy_rate'] != '0' and fc_data['progress'] == '100'
+                and fc_data['status'] == 'copying'):
             (self.assertRaises(loopingcall.LoopingCallDone,
              self.storwize_svc_common._check_vdisk_fc_mappings, vol, True,
              False, rel_info))
@@ -11014,7 +11013,7 @@ class StorwizeHelpersTestCase(test.TestCase):
         self.assertEqual(1, get_fc_mapping_attributes.call_count)
         self.assertEqual(0, rmfcmap.call_count)
 
-        if(fc_data['copy_rate'] == '0' and fc_data['progress'] == '0'
+        if (fc_data['copy_rate'] == '0' and fc_data['progress'] == '0'
            and fc_data['status'] in ['copying', 'idle_or_copied']):
             chfcmap.assert_called_with('4', copyrate='50', autodel='on')
             self.assertEqual(1, chfcmap.call_count)

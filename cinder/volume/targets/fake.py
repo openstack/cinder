@@ -17,7 +17,7 @@ class FakeTarget(iscsi.ISCSITarget):
     VERSION = '0.1'
 
     def _get_target_and_lun(self, context, volume):
-        return(0, 0)
+        return (0, 0)
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth, **kwargs):

@@ -723,7 +723,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
     def test_get_backend_qos_spec_from_volume_type_no_qos_specs_id(self):
         volume_type = copy.deepcopy(fake.VOLUME_TYPE)
-        del(volume_type['qos_specs_id'])
+        del (volume_type['qos_specs_id'])
         mock_get_context = self.mock_object(context, 'get_admin_context')
 
         result = na_utils.get_backend_qos_spec_from_volume_type(volume_type)

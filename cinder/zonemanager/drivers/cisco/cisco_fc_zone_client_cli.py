@@ -407,7 +407,7 @@ class CiscoFCZoneClientCLI(object):
         """
         return_list = []
         for line in switch_data:
-            if not(" N " in line):
+            if not (" N " in line):
                 continue
             linesplit = line.split()
             if len(linesplit) > 2:

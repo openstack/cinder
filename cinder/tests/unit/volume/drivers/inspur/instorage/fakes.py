@@ -1602,8 +1602,8 @@ port_speed!N/A
 
         self._lcmappings_list[lcmap_info['id']] = lcmap_info
 
-        return('LocalCopy Mapping, id [' + lcmap_info['id'] +
-               '], successfully created', '')
+        return ('LocalCopy Mapping, id [' + lcmap_info['id'] +
+                '], successfully created', '')
 
     def _cmd_prestartlcmap(self, **kwargs):
         if 'obj' not in kwargs:
@@ -1705,8 +1705,8 @@ port_speed!N/A
 
         self._lcconsistgrp_list[lcconsistgrp_info['id']] = lcconsistgrp_info
 
-        return('LocalCopy Consistency Group, id [' + lcconsistgrp_info['id'] +
-               '], successfully created', '')
+        return ('LocalCopy Consistency Group, id [' + lcconsistgrp_info['id'] +
+                '], successfully created', '')
 
     def _cmd_prestartlcconsistgrp(self, **kwargs):
         if 'obj' not in kwargs:
@@ -1998,8 +1998,8 @@ port_speed!N/A
         self._volumes_list[master_vol]['RC_id'] = rcrel_info['id']
         self._volumes_list[aux_vol]['RC_name'] = rcrel_info['name']
         self._volumes_list[aux_vol]['RC_id'] = rcrel_info['id']
-        return('RC Relationship, id [' + rcrel_info['id'] +
-               '], successfully created', '')
+        return ('RC Relationship, id [' + rcrel_info['id'] +
+                '], successfully created', '')
 
     def _cmd_startrcrelationship(self, **kwargs):
         if 'obj' not in kwargs:
@@ -2131,7 +2131,7 @@ port_speed!N/A
         partner_info['partnership'] = 'fully_configured'
 
         self._partnership_list[partner_info['id']] = partner_info
-        return('', '')
+        return ('', '')
 
     def _cmd_mkfcpartnership(self, **kwargs):
         if 'obj' not in kwargs:
@@ -2158,7 +2158,7 @@ port_speed!N/A
         partner_info['backgroundcopyrate'] = copyrate
         partner_info['partnership'] = 'fully_configured'
         self._partnership_list[partner_info['id']] = partner_info
-        return('', '')
+        return ('', '')
 
     def _cmd_chpartnership(self, **kwargs):
         if 'obj' not in kwargs:
@@ -2170,7 +2170,7 @@ port_speed!N/A
         partner_state = ('fully_configured' if 'start' in kwargs
                          else 'fully_configured_stopped')
         self._partnership_list[peer_sys]['partnership'] = partner_state
-        return('', '')
+        return ('', '')
 
     # The main function to run commands on the management simulator
     def execute_command(self, cmd, check_exit_code=True):
