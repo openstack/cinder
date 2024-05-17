@@ -23,7 +23,6 @@ import json
 from oslo_log import log as logging
 from oslo_serialization import base64
 import requests
-import six
 
 from cinder.i18n import _
 from cinder.zonemanager.drivers.brocade import exception
@@ -120,8 +119,7 @@ class BrcdRestFCZoneClient(object):
                                         rest_constants.YANG,
                                     rest_constants.AUTHORIZATION: auth}
         else:
-            msg = (_("REST login failed: %s")
-                   % six.text_type(response.text))
+            msg = (_("REST login failed: %s") % response.text)
             LOG.error(msg)
             raise exception.BrocadeZoningRestException(reason=msg)
         return response.status_code
@@ -131,8 +129,7 @@ class BrcdRestFCZoneClient(object):
         if response.status_code == 204:
             LOG.info("REST logout success")
         else:
-            msg = (_("REST logout failed: %s")
-                   % six.text_type(response.text))
+            msg = (_("REST logout failed: %s") % response.text)
             LOG.error(msg)
             raise exception.BrocadeZoningRestException(reason=msg)
 
@@ -146,8 +143,7 @@ class BrcdRestFCZoneClient(object):
             firmware_version = switch[rest_constants.FIRMWARE_VERSION]
             LOG.info("REST firmware version: %s", firmware_version)
         else:
-            msg = (_("REST get switch fw version failed: %s")
-                   % six.text_type(response.text))
+            msg = (_("REST get switch fw version failed: %s") % response.text)
             LOG.error(msg)
             raise exception.BrocadeZoningRestException(reason=msg)
         return firmware_version
@@ -165,8 +161,7 @@ class BrcdRestFCZoneClient(object):
                 port_names.append(nsinfos[i][rest_constants.PORT_NAME])
                 i = i + 1
         else:
-            msg = (_("REST get NS info failed: %s")
-                   % six.text_type(response.text))
+            msg = (_("REST get NS info failed: %s") % response.text)
             LOG.error(msg)
             raise exception.BrocadeZoningRestException(reason=msg)
         return port_names
@@ -201,8 +196,7 @@ class BrcdRestFCZoneClient(object):
                      "active cfg: %(cfg_name)s, checksum: %(chksum)s",
                      {'cfg_name': active_cfg_name, 'chksum': checksum})
         else:
-            msg = (_("REST get effective zoneset failed: %s")
-                   % six.text_type(response.text))
+            msg = (_("REST get effective zoneset failed: %s") % response.text)
             LOG.error(msg)
             raise exception.BrocadeZoningRestException(reason=msg)
         active_zone_set = {"active_zone_config": active_cfg_name,
@@ -226,8 +220,7 @@ class BrcdRestFCZoneClient(object):
                 if response.status_code == 201:
                     LOG.info("REST create zone success: %s", zone_name)
                 else:
-                    msg = (_("REST create zone failed: %s")
-                           % six.text_type(response.text))
+                    msg = (_("REST create zone failed: %s") % response.text)
                     LOG.error(msg)
                     raise exception.BrocadeZoningRestException(reason=msg)
         # update the cfg with the new zones
@@ -247,8 +240,7 @@ class BrcdRestFCZoneClient(object):
                 self._save_and_activate_cfg(checksum, activate,
                                             active_cfg_name)
             else:
-                msg = (_("REST cfg create failed: %s")
-                       % six.text_type(response.text))
+                msg = (_("REST cfg create failed: %s") % response.text)
                 LOG.error(msg)
                 raise exception.BrocadeZoningRestException(reason=msg)
         else:
@@ -260,8 +252,7 @@ class BrcdRestFCZoneClient(object):
                 self._save_and_activate_cfg(checksum, activate,
                                             active_cfg_name)
             else:
-                msg = (_("REST cfg update failed: %s")
-                       % six.text_type(response.text))
+                msg = (_("REST cfg update failed: %s") % response.text)
                 LOG.error(msg)
                 raise exception.BrocadeZoningRestException(reason=msg)
 
@@ -290,8 +281,7 @@ class BrcdRestFCZoneClient(object):
             if response.status_code == 204:
                 LOG.info("REST zone update success: %s", zone)
             else:
-                msg = (_("REST zone update failed: %s")
-                       % six.text_type(response.text))
+                msg = (_("REST zone update failed: %s") % response.text)
                 LOG.error(msg)
                 raise exception.BrocadeZoningRestException(reason=msg)
         # save and activate the config changes
@@ -307,8 +297,7 @@ class BrcdRestFCZoneClient(object):
             if response.status_code == 204:
                 LOG.info("REST delete zone success: %s", zone)
             else:
-                msg = (_("REST delete zone failed: %s")
-                       % six.text_type(response.text))
+                msg = (_("REST delete zone failed: %s") % response.text)
                 LOG.error(msg)
                 raise exception.BrocadeZoningRestException(reason=msg)
         # update the cfg removing the deleted zones
@@ -324,8 +313,7 @@ class BrcdRestFCZoneClient(object):
             if response.status_code == 204:
                 LOG.info("REST cfg disable success")
             else:
-                msg = (_("REST cfg disable failed: %s")
-                       % six.text_type(response.text))
+                msg = (_("REST cfg disable failed: %s") % response.text)
                 LOG.error(msg)
                 raise exception.BrocadeZoningRestException(reason=msg)
             # delete the cfg
@@ -334,8 +322,7 @@ class BrcdRestFCZoneClient(object):
             if response.status_code == 204:
                 LOG.info("REST cfg delete success: %s", active_cfg_name)
             else:
-                msg = (_("REST cfg delete failed: %s")
-                       % six.text_type(response.text))
+                msg = (_("REST cfg delete failed: %s") % response.text)
                 LOG.error(msg)
                 raise exception.BrocadeZoningRestException(reason=msg)
             checksum = self._get_checksum()
@@ -355,8 +342,7 @@ class BrcdRestFCZoneClient(object):
                 self._save_and_activate_cfg(checksum, activate,
                                             active_cfg_name)
             else:
-                msg = (_("REST cfg update failed: %s")
-                       % six.text_type(response.text))
+                msg = (_("REST cfg update failed: %s") % response.text)
                 LOG.error(msg)
                 raise exception.BrocadeZoningRestException(reason=msg)
 
@@ -368,8 +354,7 @@ class BrcdRestFCZoneClient(object):
         if response.status_code == 204:
             LOG.info("REST cfg save success")
         else:
-            msg = (_("REST cfg save failed: %s")
-                   % six.text_type(response.text))
+            msg = (_("REST cfg save failed: %s") % response.text)
             LOG.error(msg)
             raise exception.BrocadeZoningRestException(reason=msg)
         # if activate=true, then enable the cfg changes to effective cfg
@@ -383,8 +368,7 @@ class BrcdRestFCZoneClient(object):
             if response.status_code == 204:
                 LOG.info("REST cfg activate success: %s", active_cfg_name)
             else:
-                msg = (_("REST cfg activate failed: %s")
-                       % six.text_type(response.text))
+                msg = (_("REST cfg activate failed: %s") % response.text)
                 LOG.error(msg)
                 raise exception.BrocadeZoningRestException(reason=msg)
 
@@ -399,8 +383,7 @@ class BrcdRestFCZoneClient(object):
             checksum = effective_cfg[rest_constants.CHECKSUM]
             LOG.info("REST get checksum success: %s", checksum)
         else:
-            msg = (_("REST get checksum failed: %s")
-                   % six.text_type(response.text))
+            msg = (_("REST get checksum failed: %s") % response.text)
             LOG.error(msg)
             raise exception.BrocadeZoningRestException(reason=msg)
         return checksum

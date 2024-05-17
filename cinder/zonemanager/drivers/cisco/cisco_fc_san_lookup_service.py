@@ -21,7 +21,6 @@ from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -206,7 +205,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
                     "error=%(err)s).") % {'cmd': cmd_list,
-                                          'err': six.text_type(e)}
+                                          'err': str(e)}
             LOG.error(msg)
             raise c_exception.CiscoZoningCliException(reason=msg)
 
@@ -255,7 +254,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                             command,
                             check_exit_code=check_exit_code)
                     except Exception as e:
-                        msg = _("Exception: %s") % six.text_type(e)
+                        msg = _("Exception: %s") % str(e)
                         LOG.error(msg)
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
@@ -328,7 +327,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                         else:
                             return True
                     except Exception as e:
-                        msg = _("Exception: %s") % six.text_type(e)
+                        msg = _("Exception: %s") % str(e)
                         LOG.error(msg)
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
@@ -348,7 +347,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
         except Exception as e:
             with excutils.save_and_reraise_exception():
                 msg = (_("Error executing command via ssh: %s") %
-                       six.text_type(e))
+                       str(e))
                 LOG.error(msg)
         finally:
             if stdin:

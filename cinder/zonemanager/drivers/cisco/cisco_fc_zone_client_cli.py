@@ -25,7 +25,6 @@ from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -128,7 +127,7 @@ class CiscoFCZoneClientCLI(object):
                     ) % {'switch': self.switch_ip,
                          'zone_config': switch_data}
             LOG.error(msg)
-            exc_msg = _("Exception: %s") % six.text_type(ex)
+            exc_msg = _("Exception: %s") % str(ex)
             LOG.error(exc_msg)
             raise exception.FCZoneDriverException(reason=msg)
 
@@ -193,7 +192,7 @@ class CiscoFCZoneClientCLI(object):
 
             msg = _("Creating and activating zone set failed: "
                     "(Zone set=%(zoneset)s error=%(err)s)."
-                    ) % {'zoneset': cfg_name, 'err': six.text_type(e)}
+                    ) % {'zoneset': cfg_name, 'err': str(e)}
             LOG.error(msg)
             raise c_exception.CiscoZoningCliException(reason=msg)
 
@@ -259,7 +258,7 @@ class CiscoFCZoneClientCLI(object):
 
             msg = (_("Updating and activating zone set failed: "
                      "(Zone set=%(zoneset)s error=%(err)s).")
-                   % {'zoneset': cfg_name, 'err': six.text_type(e)})
+                   % {'zoneset': cfg_name, 'err': str(e)})
             LOG.error(msg)
             raise c_exception.CiscoZoningCliException(reason=msg)
 
@@ -310,7 +309,7 @@ class CiscoFCZoneClientCLI(object):
                     ) % {'switch': self.switch_ip,
                          'zone_status': switch_data}
             LOG.error(msg)
-            exc_msg = _("Exception: %s") % six.text_type(ex)
+            exc_msg = _("Exception: %s") % str(ex)
             LOG.error(exc_msg)
             raise exception.FCZoneDriverException(reason=msg)
 
@@ -349,7 +348,7 @@ class CiscoFCZoneClientCLI(object):
 
         except Exception as e:
             msg = _("Deleting zones failed: (command=%(cmd)s error=%(err)s)."
-                    ) % {'cmd': cmds, 'err': six.text_type(e)}
+                    ) % {'cmd': cmds, 'err': str(e)}
             LOG.error(msg)
             raise c_exception.CiscoZoningCliException(reason=msg)
 
@@ -394,7 +393,7 @@ class CiscoFCZoneClientCLI(object):
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
                     "error=%(err)s).") % {'cmd': cmd_list,
-                                          'err': six.text_type(e)}
+                                          'err': str(e)}
             LOG.error(msg)
             raise c_exception.CiscoZoningCliException(reason=msg)
 
