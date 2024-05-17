@@ -13,10 +13,10 @@
 #    under the License.
 
 from unittest import mock
+from zoneinfo import ZoneInfo
 
 import ddt
 from oslo_utils import timeutils
-import pytz
 
 from cinder import context
 from cinder import exception
@@ -177,8 +177,9 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertTrue(admin_context.is_admin)
         self.assertTrue(volume.deleted)
         self.assertEqual('deleted', volume.status)
-        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
-                         volume.deleted_at)
+        self.assertEqual(
+            utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
+            volume.deleted_at)
         self.assertIsNone(volume.migration_status)
 
     def test_obj_fields(self):

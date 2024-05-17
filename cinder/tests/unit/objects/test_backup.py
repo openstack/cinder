@@ -13,9 +13,9 @@
 #    under the License.
 
 from unittest import mock
+from zoneinfo import ZoneInfo
 
 from oslo_utils import timeutils
-import pytz
 
 from cinder.db.sqlalchemy import models
 from cinder import exception
@@ -118,8 +118,9 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         self.assertTrue(admin_context.is_admin)
         self.assertTrue(backup.deleted)
         self.assertEqual(fields.BackupStatus.DELETED, backup.status)
-        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
-                         backup.deleted_at)
+        self.assertEqual(
+            utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
+            backup.deleted_at)
 
     def test_obj_field_temp_volume_snapshot_id(self):
         backup = objects.Backup(context=self.context,

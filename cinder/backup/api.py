@@ -22,13 +22,13 @@ from __future__ import annotations
 from datetime import datetime
 import random
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from eventlet import greenthread
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import strutils
-from pytz import timezone
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
@@ -301,7 +301,7 @@ class API(base.Base):
                     if (x['status'] == fields.BackupStatus.AVAILABLE and (
                         not snapshot or (snapshot and x['data_timestamp']
                                          < snapshot['created_at'])))
-                    else datetime(1, 1, 1, 1, 1, 1, tzinfo=timezone('UTC')))
+                    else datetime(1, 1, 1, 1, 1, 1, tzinfo=ZoneInfo('UTC')))
             else:
                 QUOTAS.rollback(context, reservations)
                 msg = _('No backups available to do an incremental backup.')

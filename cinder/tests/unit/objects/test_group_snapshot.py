@@ -13,9 +13,9 @@
 #    under the License.
 
 from unittest import mock
+from zoneinfo import ZoneInfo
 
 from oslo_utils import timeutils
-import pytz
 
 from cinder import exception
 from cinder import objects
@@ -103,8 +103,9 @@ class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
         self.assertTrue(group_snapshot.deleted)
         self.assertEqual(fields.GroupSnapshotStatus.DELETED,
                          group_snapshot.status)
-        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
-                         group_snapshot.deleted_at)
+        self.assertEqual(
+            utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
+            group_snapshot.deleted_at)
 
     @mock.patch('cinder.objects.group.Group.get_by_id')
     @mock.patch(
