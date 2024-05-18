@@ -317,7 +317,7 @@ class BackupSwiftTestCase(test.TestCase):
     @mock.patch.object(service_auth, 'get_service_auth_plugin')
     def test_backup_swift_service_auth_headers_enabled(self, mock_plugin):
         class FakeServiceAuthPlugin:
-            def get_token(self):
+            def get_token(self, session):
                 return "fake"
         self.override_config('send_service_user_token', True,
                              group='service_user')
