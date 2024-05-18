@@ -70,10 +70,9 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         return
 
     def _check_cacheable(self, specs, type_id):
-        multiattach = volume_types.get_volume_type_extra_specs(
-            type_id, key='multiattach')
-        cacheable = volume_types.get_volume_type_extra_specs(
-            type_id, key='cacheable')
+        extra_specs = volume_types.get_volume_type_extra_specs(type_id)
+        multiattach = extra_specs.get('multiattach')
+        cacheable = extra_specs.get('cacheable')
         isTrue = '<is> True'
         if (specs.get('multiattach') == isTrue and cacheable == isTrue) or (
             specs.get('cacheable') == isTrue and multiattach ==

@@ -244,17 +244,10 @@ def get_default_volume_type(
 
 def get_volume_type_extra_specs(
         volume_type_id: str,
-        key: Union[str, bool] = False) -> Union[dict, bool]:
+) -> dict:
     volume_type = get_volume_type(context.get_admin_context(),
                                   volume_type_id)
-    extra_specs = volume_type['extra_specs']
-    if key:
-        if extra_specs.get(key):
-            return extra_specs.get(key)
-        else:
-            return False
-    else:
-        return extra_specs
+    return volume_type['extra_specs']
 
 
 def is_public_volume_type(context: context.RequestContext,
