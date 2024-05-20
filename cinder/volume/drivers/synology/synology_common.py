@@ -20,6 +20,7 @@ import math
 from os import urandom
 from random import randint
 import re
+import urllib
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -34,8 +35,6 @@ from oslo_utils import excutils
 from oslo_utils.secretutils import md5
 from oslo_utils import units
 import requests
-from six.moves import urllib
-from six import string_types
 
 from cinder import exception
 from cinder.i18n import _
@@ -456,7 +455,7 @@ class SynoCommon(object):
                 or 0 >= len(out['data']['nodes'])
                 or not self.check_value_valid(out['data']['nodes'][0],
                                               ['uuid'],
-                                              string_types)):
+                                              str)):
             msg = _('Failed to _get_node_uuid.')
             raise exception.VolumeDriverException(message=msg)
 
@@ -565,7 +564,7 @@ class SynoCommon(object):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Failed to _get_lun_uuid. [%s]', lun_name)
 
-        if not self.check_value_valid(lun_info, ['uuid'], string_types):
+        if not self.check_value_valid(lun_info, ['uuid'], str):
             raise exception.MalformedResponse(cmd='_get_lun_uuid',
                                               reason=_('uuid not found'))
 
@@ -583,7 +582,7 @@ class SynoCommon(object):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Failed to _get_lun_status. [%s]', lun_name)
 
-        if not self.check_value_valid(lun_info, ['status'], string_types):
+        if not self.check_value_valid(lun_info, ['status'], str):
             raise exception.MalformedResponse(cmd='_get_lun_status',
                                               reason=_('status not found'))
         if not self.check_value_valid(lun_info, ['is_action_locked'], bool):
@@ -635,7 +634,7 @@ class SynoCommon(object):
                 LOG.exception('Failed to _get_snapshot_info. [%s]',
                               snapshot_uuid)
 
-        if not self.check_value_valid(snapshot_info, ['status'], string_types):
+        if not self.check_value_valid(snapshot_info, ['status'], str):
             raise exception.MalformedResponse(cmd='_get_snapshot_status',
                                               reason=_('status not found'))
         if not self.check_value_valid(snapshot_info,
@@ -869,7 +868,7 @@ class SynoCommon(object):
 
         if not self.check_value_valid(out,
                                       ['data', 'firmware_ver'],
-                                      string_types):
+                                      str):
             raise exception.MalformedResponse(cmd='_check_ds_version',
                                               reason=_('data not found'))
         firmware_version = out['data']['firmware_ver']
@@ -1180,7 +1179,7 @@ class SynoCommon(object):
 
         if not self.check_value_valid(resp,
                                       ['data', 'snapshot_uuid'],
-                                      string_types):
+                                      str):
             raise exception.MalformedResponse(cmd='create_snapshot',
                                               reason=_('uuid not found'))
 
