@@ -888,6 +888,17 @@ class BackupSwiftTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.delete_backup(backup)
 
+    def test_delete_not_found(self):
+        volume_id = '9ab256c8-3175-4ad8-baa1-0000007f9d31'
+        container_name = 'not_found_on_delete'
+        object_prefix = 'test_prefix'
+        self._create_backup_db_entry(volume_id=volume_id,
+                                     container=container_name,
+                                     service_metadata=object_prefix)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+        service.delete_backup(backup)
+
     def test_delete_wraps_socket_error(self):
         volume_id = 'f74cb6fa-2900-40df-87ac-0000000f72ea'
         container_name = 'socket_error_on_delete'

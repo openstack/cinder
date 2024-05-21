@@ -20,6 +20,7 @@ import socket
 import zlib
 
 from swiftclient import client as swift
+from swiftclient import exceptions as swift_exc
 
 
 class FakeSwiftClient(object):
@@ -105,4 +106,7 @@ class FakeSwiftConnection(object):
     def delete_object(self, container, name, headers=None):
         if container == 'socket_error_on_delete':
             raise socket.error(111, 'ECONNREFUSED')
+        if container == 'not_found_on_delete':
+            raise swift_exc.ClientException(
+                msg='404 Not Found', http_status=404, http_reason='Not Found')
         pass
