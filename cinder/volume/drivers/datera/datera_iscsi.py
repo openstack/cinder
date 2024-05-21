@@ -20,7 +20,6 @@ from eventlet.green import threading
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -103,9 +102,9 @@ CONF.import_opt('driver_use_ssl', 'cinder.volume.driver')
 CONF.register_opts(d_opts)
 
 
-@six.add_metaclass(volume_utils.TraceWrapperWithABCMetaclass)
 @interface.volumedriver
-class DateraDriver(san.SanISCSIDriver, api21.DateraApi, api22.DateraApi):
+class DateraDriver(san.SanISCSIDriver, api21.DateraApi, api22.DateraApi,
+                   metaclass=volume_utils.TraceWrapperWithABCMetaclass):
     """The OpenStack Datera iSCSI volume driver.
 
     .. code-block:: none
