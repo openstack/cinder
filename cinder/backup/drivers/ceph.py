@@ -397,7 +397,7 @@ class CephBackupDriver(driver.BackupDriver):
                     eventlet.tpool.Proxy(volume.rbd_image).discard(
                         offset + chunks * limit, rem)
             else:
-                zeroes = '\0' * self.chunk_size
+                zeroes = bytearray(self.chunk_size)
                 chunks = int(length / self.chunk_size)
                 for chunk in range(0, chunks):
                     LOG.debug("Writing zeroes chunk %d", chunk)
@@ -406,7 +406,7 @@ class CephBackupDriver(driver.BackupDriver):
 
                 rem = int(length % self.chunk_size)
                 if rem:
-                    zeroes = '\0' * rem
+                    zeroes = bytearray(rem)
                     volume.write(zeroes)
                     volume.flush()
 
