@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1912624 <https://bugs.launchpad.net/cinder/+bug/1912624>`_:
+    Corrected regression introduced by the refactoring of the backup
+    service in the ussuri release, which prevented the creation of
+    a volume backup in a different availability zone.

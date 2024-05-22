@@ -2295,3 +2295,28 @@ class BackupAPITestCase(BaseBackupTest):
                           volume_id, None,
                           incremental=is_incremental)
         mock_rollback.assert_called_with(self.ctxt, "fake_reservation")
+
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.create_backup')
+    @mock.patch.object(api.API, '_get_available_backup_service_host',
+                       return_value='fake_host')
+    @mock.patch.object(quota.QUOTAS, 'rollback')
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    def test_create_backup_with_specified_az(
+            self, mock_reserve, mock_rollback, mock_get_service,
+            mock_create):
+
+        self.ctxt.user_id = 'fake_user'
+        self.ctxt.project_id = 'fake_project'
+        mock_reserve.return_value = 'fake_reservation'
+        mock_get_service.return_value = 'host_1'
+
+        volume_id = self._create_volume_db_entry(status='available',
+                                                 host='testhost#rbd',
+                                                 size=1)
+        backup = self.api.create(self.ctxt,
+                                 name='test',
+                                 description='test',
+                                 volume_id=volume_id,
+                                 container='test',
+                                 availability_zone='test_az')
+        self.assertEqual('test_az', backup.availability_zone)

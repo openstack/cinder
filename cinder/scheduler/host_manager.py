@@ -990,12 +990,26 @@ class HostManager(object):
         # we just convert them into string to compare them.
         return str(value) == str(capability)
 
-    def get_backup_host(self, volume: objects.Volume, driver=None) -> str:
+    def get_az(self,
+               volume: objects.Volume,
+               availability_zone: Union[str, None]) -> Union[str, None]:
+        if availability_zone:
+            az = availability_zone
+        elif volume:
+            az = volume.availability_zone
+        else:
+            az = None
+        return az
+
+    def get_backup_host(self,
+                        volume: objects.Volume,
+                        availability_zone: Union[str, None],
+                        driver=None) -> str:
         if volume:
             volume_host = volume_utils.extract_host(volume.host, 'host')
         else:
             volume_host = None
-        az = volume.availability_zone if volume else None
+        az = self.get_az(volume, availability_zone)
         return self._get_available_backup_service_host(volume_host, az, driver)
 
     def _get_any_available_backup_service(self, availability_zone,
