@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    HPE 3PAR driver `Bug #1994521 <https://bugs.launchpad.net/cinder/+bug/1994521>`_:
+    Fixed: While performing a delete snapshot (s1) operation, the volumes (v2)
+    dependent on the snapshot (s1) are converted to base volumes. This
+    operation fails if these dependent volumes (v2) have their own dependent
+    snapshots (s2). The errors during the failure were vague and not helpful.
+    With this release, we added conditions to fail this operation early and
+    also added useful error message.
+
