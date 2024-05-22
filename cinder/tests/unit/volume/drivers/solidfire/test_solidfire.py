@@ -964,7 +964,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                               '_remove_volume_from_vags') as rem_vol:
 
             sfv.delete_volume(testvol)
-            rem_vol.not_called(get_vol_result['volumeID'])
+            rem_vol.assert_not_called()
 
     def test_delete_multiattach_volume(self):
         vol_id = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
@@ -3226,9 +3226,12 @@ class SolidFireVolumeTestCase(test.TestCase):
             fake_context, fake_cinder_vols, secondary_id='secondary',
             groups=None)
 
-        mock_failover.called_with(fake_context, fake_cinder_vols, "secondary",
-                                  None)
-        mock_failover_completed.called_with(fake_context, "secondary")
+        mock_failover.assert_called_once_with(fake_context,
+                                              fake_cinder_vols,
+                                              "secondary",
+                                              None)
+        mock_failover_completed.assert_called_once_with(fake_context,
+                                                        "secondary")
         self.assertEqual(cluster_id, "secondary")
         self.assertEqual(fake_failover_updates, updates)
 
