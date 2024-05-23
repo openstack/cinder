@@ -21,7 +21,6 @@ from time import time
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -64,8 +63,7 @@ SSC_API_MAP = {
 }
 
 
-@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
-class RestClient(object):
+class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
     def __init__(self, **kwargs):
 

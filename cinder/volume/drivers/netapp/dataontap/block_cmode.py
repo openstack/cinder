@@ -28,7 +28,6 @@ from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -47,9 +46,10 @@ from cinder.volume import volume_utils
 LOG = logging.getLogger(__name__)
 
 
-@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
-class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
-                                     data_motion.DataMotionMixin):
+class NetAppBlockStorageCmodeLibrary(
+        block_base.NetAppBlockStorageLibrary,
+        data_motion.DataMotionMixin,
+        metaclass=volume_utils.TraceWrapperMetaclass):
     """NetApp block storage library for Data ONTAP (Cluster-mode).
 
     Version history:

@@ -18,7 +18,6 @@ import copy
 from unittest import mock
 
 import ddt
-import six
 
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
@@ -75,7 +74,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         result = self.ssc_library.get_ssc_aggregates()
 
-        six.assertCountEqual(self, list(fake.SSC_AGGREGATES), result)
+        self.assertCountEqual(list(fake.SSC_AGGREGATES), result)
 
     def test_is_qos_min_supported(self):
         ssc_pool = fake.SSC.get(fake.SSC_VOLUMES[0])

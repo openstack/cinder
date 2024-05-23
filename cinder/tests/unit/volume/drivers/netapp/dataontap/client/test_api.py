@@ -18,6 +18,7 @@
 """Tests for NetApp API layer"""
 
 from unittest import mock
+import urllib
 
 import ddt
 from lxml import etree
@@ -26,8 +27,6 @@ from oslo_utils import netutils
 import paramiko
 import requests
 from requests import auth
-import six
-from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
@@ -90,19 +89,14 @@ class NetAppApiServerTests(test.TestCase):
               {'params': {'major': '!*', 'minor': '20a'}})
     @ddt.unpack
     def test_set_api_version_value_error(self, params):
-        """Tests Value Error on setting non-integer version"""
+        """Tests Value Error on setting values incompatible with integer"""
         self.assertRaises(ValueError, self.root.set_api_version, **params)
 
     def test_set_api_version_valid(self):
-        """Tests Value Error on setting non-integer version"""
+        """Tests no Error on setting values compatible with integer"""
         args = {'major': '20', 'minor': 1}
 
-        expected_call_args_list = [mock.call('20'), mock.call(1)]
-
-        mock_invoke = self.mock_object(six, 'text_type', return_value='str')
         self.root.set_api_version(**args)
-
-        self.assertEqual(expected_call_args_list, mock_invoke.call_args_list)
 
     @ddt.data({'params': {'result': zapi_fakes.FAKE_RESULT_API_ERR_REASON}},
               {'params': {'result': zapi_fakes.FAKE_RESULT_API_ERRNO_INVALID}},

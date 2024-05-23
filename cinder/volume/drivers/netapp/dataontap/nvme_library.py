@@ -15,14 +15,11 @@
 Volume driver library for NetApp C-mode NVMe storage systems.
 """
 
-
-import sys
 import uuid
 
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -60,8 +57,8 @@ class NetAppNamespace(object):
                 % (self.handle, self.name, self.size, self.metadata))
 
 
-@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
-class NetAppNVMeStorageLibrary(object):
+class NetAppNVMeStorageLibrary(
+        object, metaclass=volume_utils.TraceWrapperMetaclass):
     """NetApp NVMe storage library for Data ONTAP."""
 
     # do not increment this as it may be used in volume type definitions.
@@ -661,14 +658,13 @@ class NetAppNVMeStorageLibrary(object):
             ns_uuid = self.client.map_namespace(
                 path, subsystem_name,)
             return subsystem_name, ns_uuid
-        except netapp_api.NaApiError:
-            exc_info = sys.exc_info()
+        except netapp_api.NaApiError as e:
             (subsystem_name, ns_uuid) = self._find_mapped_namespace_subsystem(
                 path, host_nqn)
             if ns_uuid is not None and subsystem_name:
                 return subsystem_name, ns_uuid
             else:
-                six.reraise(*exc_info)
+                raise e
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.

@@ -20,7 +20,6 @@ import uuid
 
 import ddt
 from lxml import etree
-import six
 
 from cinder import exception
 from cinder.tests.unit import test
@@ -52,8 +51,8 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.client.connection.get_api_version.return_value = (1, 100)
         self.client.ssh_client = mock.MagicMock()
         self.connection = self.client.connection
-        self.fake_volume = six.text_type(uuid.uuid4())
-        self.fake_lun = six.text_type(uuid.uuid4())
+        self.fake_volume = str(uuid.uuid4())
+        self.fake_lun = str(uuid.uuid4())
         self.fake_size = '1024'
         self.fake_metadata = {'OsType': 'linux', 'SpaceReserved': 'true',
                               'SpaceAllocated': 'true'}

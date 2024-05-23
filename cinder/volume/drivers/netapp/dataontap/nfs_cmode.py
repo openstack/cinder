@@ -28,7 +28,6 @@ from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
-import six
 
 from cinder.common import constants
 from cinder import exception
@@ -51,9 +50,10 @@ LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-@six.add_metaclass(volume_utils.TraceWrapperWithABCMetaclass)
-class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
-                           data_motion.DataMotionMixin):
+class NetAppCmodeNfsDriver(
+        nfs_base.NetAppNfsDriver,
+        data_motion.DataMotionMixin,
+        metaclass=volume_utils.TraceWrapperWithABCMetaclass):
     """NetApp NFS driver for Data ONTAP (Cluster-mode).
 
     Version history:
@@ -769,7 +769,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         dst_share = dst_ip + ':' + dest_share_path
 
         # tmp file is required to deal with img formats
-        tmp_img_file = six.text_type(uuid.uuid4())
+        tmp_img_file = str(uuid.uuid4())
         img_info = image_service.show(context, image_id)
         self._check_share_can_hold_size(dst_share, img_info['size'])
         run_as_root = self._execute_as_root
@@ -814,7 +814,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                           {'img': image_id, 'vol': volume['id']})
             else:
                 LOG.debug('Image will be converted to raw %s.', image_id)
-                img_conv = six.text_type(uuid.uuid4())
+                img_conv = str(uuid.uuid4())
                 dst_img_conv_local = os.path.join(dst_dir, img_conv)
 
                 # Checking against image size which is approximate check

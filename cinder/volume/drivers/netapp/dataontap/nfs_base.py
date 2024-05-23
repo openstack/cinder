@@ -26,6 +26,7 @@ import math
 import os
 import re
 import time
+import urllib
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -33,8 +34,6 @@ from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import netutils
 from oslo_utils import units
-import six
-from six.moves import urllib
 
 from cinder import context
 from cinder import exception
@@ -56,10 +55,10 @@ CONF = cfg.CONF
 HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
 
 
-@six.add_metaclass(volume_utils.TraceWrapperWithABCMetaclass)
 class NetAppNfsDriver(driver.ManageableVD,
                       driver.CloneableImageVD,
-                      nfs.NfsDriver):
+                      nfs.NfsDriver,
+                      metaclass=volume_utils.TraceWrapperWithABCMetaclass):
     """Base class for NetApp NFS driver for Data ONTAP."""
 
     # do not increment this as it may be used in volume type definitions
@@ -949,7 +948,7 @@ class NetAppNfsDriver(driver.ManageableVD,
             exception_msg = (_("Failed to extend volume "
                                "%(name)s, Error msg: %(msg)s.") %
                              {'name': volume['name'],
-                              'msg': six.text_type(err)})
+                              'msg': str(err)})
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
         try:
@@ -964,7 +963,7 @@ class NetAppNfsDriver(driver.ManageableVD,
             exception_msg = (_("Failed to set QoS for existing volume "
                                "%(name)s, Error msg: %(msg)s.") %
                              {'name': volume['name'],
-                              'msg': six.text_type(err)})
+                              'msg': str(err)})
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
     def _is_share_clone_compatible(self, volume, share):
@@ -1162,7 +1161,7 @@ class NetAppNfsDriver(driver.ManageableVD,
             exception_msg = (_("Failed to set QoS for existing volume "
                                "%(name)s, Error msg: %(msg)s.") %
                              {'name': existing_vol_ref['source-name'],
-                              'msg': six.text_type(err)})
+                              'msg': str(err)})
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
         model_update = self._get_volume_model_update(volume) or {}

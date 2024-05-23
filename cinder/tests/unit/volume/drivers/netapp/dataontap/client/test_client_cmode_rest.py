@@ -21,7 +21,6 @@ import uuid
 
 import ddt
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder.tests.unit import test
@@ -96,8 +95,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.connection = self.client.connection
 
         self.vserver = CONNECTION_INFO['vserver']
-        self.fake_volume = six.text_type(uuid.uuid4())
-        self.fake_lun = six.text_type(uuid.uuid4())
+        self.fake_volume = str(uuid.uuid4())
+        self.fake_lun = str(uuid.uuid4())
         # this line interferes in test__get_cluster_nodes_info
         # self.mock_send_request = self.mock_object(
         #    self.client, 'send_request')

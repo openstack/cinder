@@ -24,7 +24,6 @@ import ddt
 from lxml import etree
 from oslo_utils import units
 import paramiko
-import six
 
 from cinder import exception
 from cinder import ssh_utils
@@ -72,8 +71,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.connection = self.client.connection
 
         self.vserver = CONNECTION_INFO['vserver']
-        self.fake_volume = six.text_type(uuid.uuid4())
-        self.fake_lun = six.text_type(uuid.uuid4())
+        self.fake_volume = str(uuid.uuid4())
+        self.fake_lun = str(uuid.uuid4())
         self.mock_send_request = self.mock_object(
             self.client.connection, 'send_request')
 
