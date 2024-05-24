@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Dell PowerMax driver `bug #2051828
+    <https://bugs.launchpad.net/cinder/+bug/2051828>`_: The driver
+    only recognized 10.0 as being Unisphere 10 and would try to
+    use 9.2 for Unisphere 10.x (where x > 0), but now it correctly
+    recognizes 10.x as being Unisphere 10.
