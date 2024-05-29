@@ -2430,6 +2430,27 @@ class PowerMaxRestTest(test.TestCase):
         request_count = mock_req.call_count
         self.assertEqual(1, request_count)
 
+    def test_validate_unisphere_version_101(self):
+        version = 'T10.1.0.501'
+        returned_version = {'version': version}
+        with mock.patch.object(self.rest, "request",
+                               return_value=(200,
+                                             returned_version)) as mock_req:
+            valid_version = self.rest.validate_unisphere_version()
+            self.assertTrue(valid_version)
+            self.assertEqual(self.rest.u4p_version, rest.U4P_100_VERSION)
+        request_count = mock_req.call_count
+        self.assertEqual(1, request_count)
+
+    def test_validate_unisphere_version_110(self):
+        version = 'T11.1.0.501'
+        returned_version = {'version': version}
+        with mock.patch.object(self.rest, "request",
+                               return_value=(200,
+                                             returned_version)):
+            self.assertRaises(exception.InvalidConfigurationValue,
+                              self.rest.validate_unisphere_version)
+
     @mock.patch.object(rest.PowerMaxRest, '_build_uri_kwargs')
     @mock.patch.object(rest.PowerMaxRest, '_build_uri_legacy_args')
     def test_build_uri_legacy(self, mck_build_legacy, mck_build_kwargs):

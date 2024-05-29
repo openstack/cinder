@@ -36,6 +36,7 @@ LOG = logging.getLogger(__name__)
 SLOPROVISIONING = 'sloprovisioning'
 REPLICATION = 'replication'
 SYSTEM = 'system'
+U4P_110_VERSION = '110'
 U4P_100_VERSION = '100'
 MIN_U4P_100_VERSION = '10.0.0.0'
 U4P_92_VERSION = '92'
@@ -761,9 +762,11 @@ class PowerMaxRest(object):
         version, major_version = None, None
         response = self.get_unisphere_version()
         if response and response.get('version'):
-            version = response['version']
-            version_list = version.split('.')
-            major_version = version_list[0][1:] + version_list[1]
+            regex = re.compile(r'^[a-zA-Z]\d+(.\d+){3}$')
+            if regex.match(response['version']):
+                version = response['version']
+                version_list = version.split('.')
+                major_version = version_list[0][1:] + version_list[1]
         return version, major_version
 
     def get_unisphere_version(self):
@@ -3465,18 +3468,28 @@ class PowerMaxRest(object):
     def validate_unisphere_version(self):
         """Validate that the running Unisphere version meets min requirement
 
+        :raises: InvalidConfigurationValue
         :returns: unisphere_meets_min_req -- boolean
         """
-        running_version, major_version = self.get_uni_version()
-        if major_version == U4P_100_VERSION:
-            self.u4p_version = U4P_100_VERSION
-            minimum_version = MIN_U4P_100_VERSION
-        elif major_version:
-            self.u4p_version = U4P_92_VERSION
-            minimum_version = MIN_U4P_92_VERSION
         unisphere_meets_min_req = False
+        self.u4p_version = U4P_92_VERSION
+        minimum_version = MIN_U4P_92_VERSION
 
-        if running_version and (running_version[0].isalpha()):
+        running_version, major_version = self.get_uni_version()
+        if not running_version or not major_version:
+            LOG.warning("Unable to validate Unisphere instance meets minimum "
+                        "requirements.")
+        else:
+            if int(major_version) >= int(U4P_110_VERSION):
+                msg = _("Unisphere version %(running_version)s "
+                        "is not supported.") % {
+                            'running_version': running_version}
+                LOG.error(msg)
+                raise exception.InvalidConfigurationValue(message=msg)
+            if int(major_version) >= int(U4P_100_VERSION):
+                self.u4p_version = U4P_100_VERSION
+                minimum_version = MIN_U4P_100_VERSION
+
             # remove leading letter
             if running_version.lower()[0] == QUAL_CODE:
                 version = running_version[1:]
@@ -3488,20 +3501,18 @@ class PowerMaxRest(object):
                             "Unisphere.", {'version': running_version})
                 return int(major_version) >= int(self.u4p_version)
 
-        if unisphere_meets_min_req:
-            LOG.info("Unisphere version %(running_version)s meets minimum "
-                     "requirement of version %(minimum_version)s.",
-                     {'running_version': running_version,
-                      'minimum_version': minimum_version})
-        elif running_version:
-            LOG.error("Unisphere version %(running_version)s does not meet "
-                      "minimum requirement for use with this release, please "
-                      "upgrade to Unisphere %(minimum_version)s at minimum.",
-                      {'running_version': running_version,
-                       'minimum_version': minimum_version})
-        else:
-            LOG.warning("Unable to validate Unisphere instance meets minimum "
-                        "requirements.")
+            if unisphere_meets_min_req:
+                LOG.info("Unisphere version %(running_version)s meets minimum "
+                         "requirement of version %(minimum_version)s.",
+                         {'running_version': running_version,
+                          'minimum_version': minimum_version})
+            else:
+                LOG.error("Unisphere version %(running_version)s does "
+                          "not meet minimum requirement for use with this "
+                          "release, please upgrade to Unisphere "
+                          "%(minimum_version)s at minimum.",
+                          {'running_version': running_version,
+                           'minimum_version': minimum_version})
 
         return unisphere_meets_min_req
 
