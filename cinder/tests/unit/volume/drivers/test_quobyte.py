@@ -358,6 +358,52 @@ class QuobyteDriverTestCase(test.TestCase):
             drv._local_volume_dir(volume),
             drv.QUOBYTE_VOLUME_SNAP_CACHE_DIR_NAME))
 
+    @ddt.data([True, False], [True, True], [False, True], [False, False])
+    @ddt.unpack
+    def test__update_volume_stats(self, is_qcow2, is_sparse):
+        with mock.patch.object(self._driver,
+                               '_get_capacity_info') as mock_get_cap, \
+            mock.patch.object(self._driver,
+                              '_ensure_shares_mounted') as mock_ens_mnt:
+            drv = self._driver
+            drv.configuration.quobyte_qcow2_volumes = is_qcow2
+            drv.configuration.quobyte_sparsed_volumes = is_sparse
+            drv.configuration.safe_get.side_effect = (
+                lambda key: 'Quobyte' if key == 'volume_backend_name' else
+                None)
+            self._driver.configuration.max_over_subscription_ratio = 20.0
+            self._driver.configuration.reserved_percentage = 5.0
+            mock_get_cap.return_value = (1000 * units.Gi,
+                                         300 * units.Gi,
+                                         700 * units.Gi)
+            drv._load_shares_config()
+            drv._mounted_shares = drv.shares
+            expect_thin = True
+            expect_thick = False
+            if not is_qcow2 and not is_sparse:
+                expect_thin = False
+                expect_thick = True
+
+            expected_stats = {
+                'driver_version': drv.VERSION,
+                'free_capacity_gb': 300.0,
+                'QoS_support': False,
+                'reserved_percentage': 5.0,
+                'storage_protocol': 'quobyte',
+                'thin_provisioning_support': expect_thin,
+                'thick_provisioning_support': expect_thick,
+                'total_capacity_gb': 1000.0,
+                'vendor_name': 'Open Source',
+                'volume_backend_name': drv.volume_backend_name,
+            }
+
+            drv._update_volume_stats()
+
+            mock_get_cap.assert_called_once_with(
+                self.TEST_QUOBYTE_VOLUME_WITHOUT_PROTOCOL)
+            mock_ens_mnt.assert_called_once_with()
+            self.assertEqual(expected_stats, drv._stats)
+
     def test_local_path(self):
         """local_path common use case."""
         drv = self._driver
@@ -526,6 +572,26 @@ class QuobyteDriverTestCase(test.TestCase):
             self.assertEqual(df_size, size)
             self.assertEqual(df_avail, available)
             self.assertEqual(size - available, used)
+
+    @ddt.data(True, False)
+    def test_get_volume_stats(self, refresh):
+        init_stats = {'this_is_an': '_initializer'}
+        test_stats = {'this_is_a': '_test'}
+        with mock.patch.object(self._driver,
+                               '_update_volume_stats') as mock_up_vol_stats:
+            drv = self._driver
+            drv._stats = init_stats
+
+            def uvolsta_side_effect(*args, **kwargs):
+                drv._stats = test_stats
+            mock_up_vol_stats.side_effect = uvolsta_side_effect
+
+            if refresh:
+                self.assertEqual(test_stats, drv.get_volume_stats(refresh))
+                mock_up_vol_stats.assert_called_once_with()
+            else:
+                self.assertEqual(init_stats, drv.get_volume_stats(refresh))
+                mock_up_vol_stats.assert_not_called()
 
     def test_load_shares_config(self):
         """_load_shares_config takes the Volume URL and strips quobyte://."""

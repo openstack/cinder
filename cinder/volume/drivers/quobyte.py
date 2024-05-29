@@ -38,7 +38,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1.15'
+VERSION = '1.2'
 
 LOG = logging.getLogger(__name__)
 
@@ -121,6 +121,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.13 - Allow creating volumes from snapshots in state 'backing-up'
         1.1.14 - Fixes regression from encryption being added in parent class
         1.1.15 - Handle file formats correctly in copy_image_to_volume
+        1.2    - Fix stat reporting which adds thin provisioning
 
     """
 
@@ -710,6 +711,12 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         return os.path.join(self.configuration.quobyte_mount_point_base,
                             self._get_hash_str(quobyte_volume))
 
+    def get_volume_stats(self, refresh=False):
+
+        if refresh:
+            self._update_volume_stats()
+        return self._stats
+
     # open() wrapper to mock reading from /proc/mount.
     @staticmethod
     def read_proc_mount():  # pragma: no cover
@@ -769,6 +776,17 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             self._validate_volume(mount_path)
             if self.configuration.quobyte_volume_from_snapshot_cache:
                 self._ensure_volume_from_snap_cache(mount_path)
+
+    def _update_volume_stats(self) -> None:
+        """Refresh  volume / driver stats."""
+        super(QuobyteDriver, self)._update_volume_stats()
+
+        # Set specific values
+        self._stats['thin_provisioning_support'] = (
+            self.configuration.quobyte_qcow2_volumes
+            or self.configuration.quobyte_sparsed_volumes)
+        self._stats['thick_provisioning_support'] = (
+            not self._stats['thin_provisioning_support'])
 
     def _validate_volume(self, mount_path):
         """Runs a number of tests on the expect Quobyte mount"""
