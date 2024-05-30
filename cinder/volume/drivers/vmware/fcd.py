@@ -274,13 +274,22 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
                 volume.provider_location
             )
         )
-        backing = self.volumeops.get_backing(volume.name, volume.id)
-        if not backing:
-            backing = self._create_backing(volume)
-        self.volumeops.attach_fcd(backing, fcd_loc)
-        backing_moref = backing.value
-        vmdk_path = self.volumeops.get_vmdk_path(backing)
-        datacenter = self.volumeops.get_dc(backing)
+        # We don't need this parameters unless backup is created/restored
+        backup = False
+        backing_moref = ""
+        vmdk_path = ""
+        datacenter = ""
+        if 'cinder-volume-backup' in connector['host']:
+            backup = True
+
+        if backup:
+            backing = self.volumeops.get_backing(volume.name, volume.id)
+            if not backing:
+                backing = self._create_backing(volume)
+                self.volumeops.attach_fcd(backing, fcd_loc)
+            backing_moref = backing.value
+            vmdk_path = self.volumeops.get_vmdk_path(backing)
+            datacenter = self.volumeops.get_dc(backing)
 
         connection_info = {
             'driver_volume_type': self.STORAGE_TYPE,
