@@ -81,9 +81,10 @@ These options can also be set in the ``cinder.conf`` file.
 
 .. config-table::
    :config-target: common
-   :exclusive-list: global_opts
+   :exclusive-list: global_opts,db_opts
 
    cinder.common.config
+   cinder.db.api
 
 .. config-table::
    :config-target: [profiler]
