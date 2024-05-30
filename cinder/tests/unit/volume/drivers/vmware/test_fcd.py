@@ -278,7 +278,11 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         extract_host.return_value = mock.sentinel.host
 
         volume = self._create_volume_obj()
-        connector = {}
+        connector = {'platform': 'x86_64', 'os_type': 'linux',
+                     'ip': '10.0.0.1',
+                     'host': 'cinder-volume-backup-vmware-vc-a-0',
+                     'multipath': False,
+                     'initiator': 'iqn.1993-08.org.debian:01:c4f3207eed25'}
         profile_id = mock.sentinel.profile_id
         get_storage_profile_id.return_value = profile_id
         ret = self._driver.initialize_connection(volume, connector)
