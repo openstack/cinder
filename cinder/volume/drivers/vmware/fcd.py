@@ -372,6 +372,14 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             )
             volume.update({'provider_location': provider_location})
             volume.save()
+        else:
+            backing = self.volumeops.get_backing_by_uuid(volume.id)
+            fcd_loc = vops.FcdLocation.from_provider_location(
+                self._provider_location_to_moref_location(
+                    volume.provider_location))
+            if backing:
+                self.volumeops.detach_fcd(backing, fcd_loc)
+                self._delete_temp_backing(backing)
 
     def _validate_container_format(self, container_format, image_id):
         if container_format and container_format != 'bare':
