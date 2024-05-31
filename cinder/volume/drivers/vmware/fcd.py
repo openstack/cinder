@@ -285,7 +285,9 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         if backup:
             backing = self.volumeops.get_backing(volume.name, volume.id)
             if not backing:
-                backing = self._create_backing(volume)
+                create_params = {vmdk.CREATE_PARAM_DISK_LESS: True}
+                backing = self._create_backing(volume,
+                                               create_params=create_params)
                 self.volumeops.attach_fcd(backing, fcd_loc)
             backing_moref = backing.value
             vmdk_path = self.volumeops.get_vmdk_path(backing)
