@@ -955,18 +955,20 @@ class BaseVD(object, metaclass=abc.ABCMeta):
                                 force=True, ignore_errors=True)
 
     def before_volume_copy(self, context, src_vol, dest_vol, remote=None):
-        """Driver-specific actions before copyvolume data.
+        """Driver-specific actions executed before copying a volume.
 
-        This method will be called before _copy_volume_data during volume
-        migration
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.before_volume_copy`
+        for additional information.
         """
         pass
 
     def after_volume_copy(self, context, src_vol, dest_vol, remote=None):
-        """Driver-specific actions after copyvolume data.
+        """Driver-specific actions executed after copying a volume.
 
-        This method will be called after _copy_volume_data during volume
-        migration
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.after_volume_copy`
+        for additional information.
         """
         pass
 
@@ -1413,17 +1415,9 @@ class BaseVD(object, metaclass=abc.ABCMeta):
                                original_volume_status):
         """Return model update for migrated volume.
 
-        Each driver implementing this method needs to be responsible for the
-        values of _name_id and provider_location. If None is returned or either
-        key is not set, it means the volume table does not need to change the
-        value(s) for the key(s).
-        The return format is {"_name_id": value, "provider_location": value}.
-
-        :param volume: The original volume that was migrated to this backend
-        :param new_volume: The migration volume object that was created on
-                           this backend as part of the migration process
-        :param original_volume_status: The status of the original volume
-        :returns: model_update to update DB with any needed changes
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.update_migrated_volume`
+        for additional information.
         """
         msg = _("The method update_migrated_volume is not implemented.")
         raise NotImplementedError(msg)
@@ -1433,6 +1427,12 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         pass
 
     def retype(self, context, volume, new_type, diff, host):
+        """Change the type of a volume.
+
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.retype`
+        for additional information.
+        """
         return False, None
 
     def create_cloned_volume(self, volume, src_vref):
@@ -1548,10 +1548,14 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         return None, None
 
     def migrate_volume(self, context, volume, host):
-        """Migrate volume stub.
+        """Migrate the volume to the specified host.
 
-        This is for drivers that don't implement an enhanced version
-        of this operation.
+        This is a stub for drivers that don't implement an enhanced
+        version of this operation.
+
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.migrate_volume`
+        for additional information.
         """
         return (False, None)
 
@@ -2028,14 +2032,9 @@ class MigrateVD(object, metaclass=abc.ABCMeta):
     def migrate_volume(self, context, volume, host):
         """Migrate the volume to the specified host.
 
-        Returns a boolean indicating whether the migration occurred, as well as
-        model_update.
-
-        :param context: Context
-        :param volume: A dictionary describing the volume to migrate
-        :param host: A dictionary describing the host to migrate to, where
-                     host['host'] is its name, and host['capabilities'] is a
-                     dictionary of its reported capabilities.
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.migrate_volume`
+        for additional information.
         """
         return (False, None)
 
@@ -2318,6 +2317,12 @@ class VolumeDriver(ManageableVD, CloneableImageVD, ManageableSnapshotsVD,
         """Unmanage the specified snapshot from Cinder management."""
 
     def retype(self, context, volume, new_type, diff, host):
+        """Change the type of a volume.
+
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.retype`
+        for additional information.
+        """
         return False, None
 
     # #######  Interface methods for DataPath (Connector) ########
@@ -2584,6 +2589,12 @@ class VolumeDriver(ManageableVD, CloneableImageVD, ManageableSnapshotsVD,
         return None
 
     def migrate_volume(self, context, volume, host):
+        """Migrate the volume to the specified host.
+
+        Refer to
+        :obj:`cinder.interface.volume_driver.VolumeDriverCore.migrate_volume`
+        for additional information.
+        """
         return (False, None)
 
     def accept_transfer(self, context, volume, new_user, new_project):

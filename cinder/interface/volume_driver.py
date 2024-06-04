@@ -323,6 +323,32 @@ class VolumeDriverCore(base.CinderInterface):
         :returns: Model updates.
         """
 
+    def before_volume_copy(self, context, src_vol, dest_vol, remote=None):
+        """Driver-specific actions executed before copying a volume.
+
+        This method will be called before _copy_volume_data during volume
+        migration.
+
+        :param context: Context
+        :param src_volume: Source volume in the copy operation.
+        :param dest_volume: Destination volume in the copy operation.
+        :param remote: Whether the copy operation is local.
+        :returns: There is no return value for this method.
+        """
+
+    def after_volume_copy(self, context, src_vol, dest_vol, remote=None):
+        """Driver-specific actions executed after copying a volume.
+
+        This method will be called after _copy_volume_data during volume
+        migration.
+
+        :param context: Context
+        :param src_volume: Source volume in the copy operation.
+        :param dest_volume: Destination volume in the copy operation.
+        :param remote: Whether the copy operation is local.
+        :returns: There is no return value for this method.
+        """
+
     def extend_volume(self, volume, new_size):
         """Extend the size of a volume.
 
@@ -331,6 +357,52 @@ class VolumeDriverCore(base.CinderInterface):
 
         Note that if the volume backend doesn't support extending an in-use
         volume, the driver should report online_extend_support=False.
+        """
+
+    def migrate_volume(self, context, volume, host):
+        """Migrate the volume to the specified host.
+
+        :param context: Context
+        :param volume: A dictionary describing the volume to migrate
+        :param host: A dictionary describing the host to migrate to, where
+                     host['host'] is its name, and host['capabilities'] is a
+                     dictionary of its reported capabilities.
+        :returns: Tuple of (model_update, boolean) where the boolean specifies
+                  whether the migration occurred.
+        """
+
+    def update_migrated_volume(self, context, volume, new_volume,
+                               original_volume_status):
+        """Return model update for migrated volume.
+
+        Each driver implementing this method needs to be responsible for the
+        values of _name_id and provider_location. If None is returned or either
+        key is not set, it means the volume table does not need to change the
+        value(s) for the key(s).
+        The return format is {"_name_id": value, "provider_location": value}.
+
+        :param context: Context
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
+        :returns: model_update to update DB with any needed changes
+        """
+
+    def retype(self, context, volume, new_type, diff, host):
+        """Change the type of a volume.
+
+        This operation occurs on the same backend and the return value
+        indicates whether it was successful.  If migration is required
+        to satisfy a retype, that will be handled by the volume manager.
+
+        :param context: Context
+        :param volume: The volume to retype
+        :param new_type: The target type for the volume
+        :param diff: The differences between the two types
+        :param host: The host that contains this volume
+        :returns: Tuple of (boolean, model_update) where the boolean specifies
+                  whether the retype occurred.
         """
 
     def create_snapshot(self, snapshot):
