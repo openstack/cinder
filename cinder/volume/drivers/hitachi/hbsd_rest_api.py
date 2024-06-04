@@ -537,6 +537,7 @@ class RestApiClient():
                                  timeout=self.conf.hitachi_lock_timeout)
         if not err:
             self.set_my_session(self.Session(rsp["sessionId"], rsp["token"]))
+            self.nested_count = 0
             return True
         else:
             return False
@@ -574,6 +575,7 @@ class RestApiClient():
                 retry = self._has_session()
                 if not retry:
                     LOG.debug("Trying to re-login.")
+                    self.nested_count = 0
                     retry = self._login(do_raise=False)
                 if not retry:
                     self.output_log(
