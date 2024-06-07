@@ -976,7 +976,6 @@ class CephBackupDriver(driver.BackupDriver):
         if len(snaps) > 1:
             msg = (_("Backup should only have one snapshot but instead has %s")
                    % len(snaps))
-            LOG.error(msg)
             raise exception.BackupOperationError(msg)
 
         LOG.debug("Found snapshot '%s'", snaps[0])
@@ -1087,22 +1086,65 @@ class CephBackupDriver(driver.BackupDriver):
 
         This will result in all extents being copied from source to
         destination.
+
+        :param backup: Backup object describing the backup to be restored.
+        :param dest_file: File object of the destination volume.
+        :param dest_name: Name of the destination volume.
+        :param length: Size of the destination volume in bytes.
+        :param volume_is_new: True if the destination volume is new.
+        :param src_snap: A string, the name of the restore point snapshot,
+        optional, used for incremental backups or RBD backup.
         """
         with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
                                   backup.container)) as client:
-            # If a source snapshot is provided we assume the base is diff
-            # format.
-            if src_snap:
+            # In case of snapshot_id, the old base name format is used:
+            # volume-<vol-uuid>.backup.base
+            # Otherwise, the new base name format is used:
+            # volume-<vol-uuid>.backup-<backup-uuid>
+            # Should match the base name format in _full_backup()
+            if backup.snapshot_id:
+                backup_name = self._get_backup_base_name(backup.volume_id)
+            else:
                 backup_name = self._get_backup_base_name(backup.volume_id,
                                                          backup=backup)
-            else:
-                backup_name = self._get_backup_base_name(backup.volume_id)
 
-            # Retrieve backup volume
-            src_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
-                                                          backup_name,
-                                                          snapshot=src_snap,
-                                                          read_only=True))
+            try:
+                # Retrieve backup volume
+                _src = src_snap
+                src_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
+                                                              backup_name,
+                                                              snapshot=_src,
+                                                              read_only=True))
+            except rbd.ImageNotFound:
+                # Check for another base name as a fallback mechanism, in case
+                # the backup image is not found under the expected name.
+                # The main reason behind having two different base name formats
+                # is due to a change in the naming convention at some point in
+                # the history of the Cinder project.
+                # This approach ensures backward compatibility and makes it
+                # possible to restore older backups that were created before
+                # the change.
+                tried_name = backup_name
+                if backup.snapshot_id:
+                    backup_name = self._get_backup_base_name(backup.volume_id,
+                                                             backup=backup)
+                else:
+                    backup_name = self._get_backup_base_name(backup.volume_id)
+                msg = (_("Backup %(backup_id)s of volume %(volume_id)s"
+                         " not found with name %(tried_name)s,"
+                         " trying a legacy name %(next_name)s.") %
+                       {'backup_id': backup.id,
+                        'volume_id': backup.volume_id,
+                        'tried_name': tried_name,
+                        'next_name': backup_name})
+                LOG.info(msg)
+
+                src_rbd = eventlet.tpool.Proxy(self.rbd.Image(
+                                               client.ioctx,
+                                               backup_name,
+                                               snapshot=_src,
+                                               read_only=True))
+
             try:
                 rbd_meta = linuxrbd.RBDImageMetadata(src_rbd,
                                                      backup.container,
@@ -1343,7 +1385,6 @@ class CephBackupDriver(driver.BackupDriver):
                               backup.volume_id)
         except exception.BackupMetadataUnsupportedVersion:
             msg = _("Metadata restore failed due to incompatible version")
-            LOG.error(msg)
             raise exception.BackupOperationError(msg)
 
     def restore(self,
