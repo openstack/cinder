@@ -464,6 +464,7 @@ class HPE3PARCommon(object):
             # case of a fail-over.
             self._get_3par_config(array_id=array_id)
             self.client = self._create_client(timeout=timeout)
+            self.client_login()
             wsapi_version = self.client.getWsApiVersion()
             self.API_VERSION = wsapi_version['build']
 
