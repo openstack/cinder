@@ -23,6 +23,7 @@ Supported operations
 - Create, delete Consistency Groups snapshots.
 - Clone a Consistency Group.
 - Create a Consistency Group from a Consistency Group snapshot.
+- Quality of Service (QoS)
 
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~
@@ -221,3 +222,72 @@ snapshot enabled.
 .. note:: Currently driver does not support Consistency Groups replication.
           Adding volume to Consistency Group and creating volume in Consistency Group
           will fail if volume is replicated.
+
+QoS (Quality of Service) support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note:: QoS is supported in PowerStore version 4.0 or later.
+
+The PowerStore driver supports Quality of Service (QoS) by
+enabling the following capabilities:
+
+``bandwidth_limit_type``
+    The QoS bandwidth limit type. This type setting determines
+    how the max_iops and max_bw attributes are used.
+    This has the following two values:
+
+    1. ``Absolute`` - Limits are absolute values specified,
+    either I/O operations per second or bandwidth.
+
+    2. ``Density`` -  Limits specified are per GB,
+    e.g. I/O operations per second per GB.
+
+.. note:: This (bandwidth_limit_type) property is mandatory when creating QoS.
+
+``max_iops``
+    Maximum I/O operations in either I/O operations per second (IOPS) or
+    I/O operations per second per GB. The specification of the type
+    attribute determines which metric is used.
+    If type is set to absolute, max_iops is specified in IOPS.
+    If type is set to density, max_iops is specified in IOPS per GB.
+    If both max_iops and max_bw are specified,
+    the system will limit I/O if either value is exceeded.
+    The value must be within the range of 1 to 2147483646.
+
+``max_bw``
+    Maximum I/O bandwidth measured in either Kilobytes per second or Kilobytes
+    per second / per GB. The specification of the type attribute determines
+    which measurement is used. If type is set to absolute, max_bw is specified
+    in Kilobytes per second. If type is set to density max_bw is specified
+    in Kilobytes per second / per GB.
+    If both max_iops and max_bw are specified, the system will
+    limit I/O if either value is exceeded.
+    The value must be within the range of 2000 to 2147483646.
+
+``burst_percentage``
+    Percentage indicating by how much the limit may be exceeded. If I/O
+    normally runs below the specified limit, then the volume or volume_group
+    will accumulate burst credits that can be used to exceed the limit for
+    a short period (a few seconds, but will not exceed the burst limit).
+    This burst percentage applies to both max_iops and max_bw and
+    is independent of the type setting.
+    The value must be within the range of 0 to 100.
+    If this property is not specified during QoS creation,
+    a default value of 0 will be used.
+
+.. note:: When creating QoS, you must define either ``max_iops`` or ``max_bw``, or you can define both.
+
+.. code-block:: console
+
+    $ openstack volume qos create --consumer back-end --property max_iops=100 --property max_bw=50000 --property bandwidth_limit_type=Absolute --property burst_percentage=80 powerstore_qos
+    $ openstack volume type create --property volume_backend_name=powerstore powerstore
+    $ openstack volume qos associate powerstore_qos powerstore
+
+.. note:: There are two approaches for updating QoS properties in PowerStore:
+
+    #. ``Retype the Volume``:
+        This involves retyping the volume with the different QoS settings and migrating the volume to the new type.
+    #. ``Modify Existing QoS Properties`` (Recommended):
+        This method entails changing the existing QoS properties and creating a new instance or image
+        volume to update the QoS policy in PowerStore. This will also update the QoS properties of existing attached volumes,
+        created with the same volume type.

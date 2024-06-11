@@ -52,9 +52,10 @@ class PowerStoreDriver(driver.VolumeDriver):
                 (iSCSI target, Replication target, etc.)
         1.2.0 - Add NVMe-OF support
         1.2.1 - Report trim/discard support
+        1.2.2 - QoS (Quality of Service) support
     """
 
-    VERSION = "1.2.1"
+    VERSION = "1.2.2"
     VENDOR = "Dell EMC"
 
     # ThirdPartySystems wiki page

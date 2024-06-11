@@ -22,8 +22,29 @@ from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import powerstore
 from cinder.volume.drivers.dell_emc.powerstore import utils
 
+FAKE_HOST = {
+    "name": "fake_host",
+    "id": "fake_id"
+}
+
 
 class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
+
+    QOS_SPECS = {
+        'qos_specs': {
+            'name': 'powerstore_qos',
+            'id': 'd8c88f5a-4c6f-4f89-97c5-da1ef059006e',
+            'created_at': 'fake_date',
+            'consumer': 'back-end',
+            'specs': {
+                'max_bw': '104857600',
+                'max_iops': '500',
+                'bandwidth_limit_type': 'Absolute',
+                'burst_percentage': '50'
+            }
+        }
+    }
+
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
     def setUp(self, mock_chap):
@@ -41,7 +62,8 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
             self.context,
             host="host@backend",
             provider_id="fake_id",
-            size=8
+            size=8,
+            volume_type_id="fake_volume_type_id"
         )
         self.volume.volume_attachment = (
             volume_attachment.VolumeAttachmentList()
@@ -208,3 +230,126 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
                                                self.fake_connector)
         mock_filter_hosts.assert_called_once()
         mock_detach.assert_called_once()
+
+    @mock.patch('cinder.volume.volume_types.'
+                'get_volume_type_qos_specs',
+                return_value=QOS_SPECS)
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.attach_volume_to_host")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_volume_lun")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_array_version",
+                return_value='4.0')
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_qos_policy_id_by_name",
+                return_value=None)
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.create_qos_io_rule")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.create_qos_policy")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.update_volume_with_qos_policy")
+    def test_volume_qos_policy_create(self,
+                                      mock_volume_types,
+                                      mock_attach_volume,
+                                      mock_get_volume_lun,
+                                      mock_get_array_version,
+                                      mock_get_qos_policy,
+                                      mock_qos_io_rule,
+                                      mock_qos_policy,
+                                      mock_volume_qos_update):
+
+        self.iscsi_driver.adapter.use_chap_auth = False
+        self.mock_object(self.iscsi_driver.adapter,
+                         "_create_host_if_not_exist",
+                         return_value=(
+                             FAKE_HOST,
+                             utils.get_chap_credentials(),
+                         ))
+        self.iscsi_driver.initialize_connection(
+            self.volume,
+            self.fake_connector
+        )
+        mock_get_volume_lun.return_value = "fake_volume_identifier"
+        mock_qos_io_rule.return_value = "9beb10ff-a00c-4d88-a7d9-692be2b3073f"
+        mock_qos_policy.return_value = "d69f7131-4617-4bae-89f8-a540a6bda94b"
+        mock_volume_types.assert_called_once()
+        mock_get_array_version.assert_called_once()
+        mock_get_qos_policy.assert_called_once()
+        mock_attach_volume.assert_called_once()
+        mock_qos_policy.assert_called_once()
+        mock_volume_qos_update.assert_called_once()
+
+    @mock.patch('cinder.volume.volume_types.'
+                'get_volume_type_qos_specs',
+                return_value=QOS_SPECS)
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.attach_volume_to_host")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_volume_lun")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_array_version",
+                return_value='4.0')
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_qos_policy_id_by_name")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.update_qos_io_rule")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.update_volume_with_qos_policy")
+    def test_volume_qos_io_rule_update(self,
+                                       mock_volume_types,
+                                       mock_attach_volume,
+                                       mock_get_volume_lun,
+                                       mock_get_array_version,
+                                       mock_get_qos_policy,
+                                       mock_update_qos_io_rule,
+                                       mock_volume_qos_update):
+        self.iscsi_driver.adapter.use_chap_auth = False
+        self.mock_object(self.iscsi_driver.adapter,
+                         "_create_host_if_not_exist",
+                         return_value=(
+                             FAKE_HOST,
+                             utils.get_chap_credentials(),
+                         ))
+        self.iscsi_driver.initialize_connection(
+            self.volume,
+            self.fake_connector
+        )
+        mock_get_volume_lun.return_value = "fake_volume_identifier"
+        mock_get_qos_policy.return_value = ("d69f7131-"
+                                            "4617-4bae-89f8-a540a6bda94b")
+        mock_volume_types.assert_called_once()
+        mock_attach_volume.assert_called_once()
+        mock_get_array_version.assert_called_once()
+        mock_update_qos_io_rule.assert_called_once()
+        mock_volume_qos_update.assert_called_once()
+
+    @mock.patch('cinder.volume.volume_types.'
+                'get_volume_type_qos_specs',
+                return_value=QOS_SPECS)
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.utils."
+                "is_multiattached_to_host", return_value=False)
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.detach_volume_from_host")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_array_version",
+                return_value='4.0')
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.update_volume_with_qos_policy")
+    def test_volume_qos_policy_update(self,
+                                      mock_volume_types,
+                                      mock_multi_attached_host,
+                                      mock_detach_volume,
+                                      mock_get_array_version,
+                                      mock_volume_qos_update):
+        self.mock_object(self.iscsi_driver.adapter,
+                         "_filter_hosts_by_initiators",
+                         return_value=FAKE_HOST)
+        self.iscsi_driver.terminate_connection(self.volume,
+                                               self.fake_connector)
+        mock_volume_types.assert_called_once()
+        mock_multi_attached_host.assert_called_once()
+        mock_detach_volume.assert_called_once()
+        mock_get_array_version.assert_called_once()
+        mock_volume_qos_update.assert_called_once()

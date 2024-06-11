@@ -36,6 +36,8 @@ PROTOCOL_FC = constants.FC
 PROTOCOL_ISCSI = constants.ISCSI
 PROTOCOL_NVME = "NVMe"
 POWERSTORE_PP_KEY = "powerstore:protection_policy"
+VOLUME_ATTACH_OPERATION = 1
+VOLUME_DETACH_OPERATION = 2
 
 
 def bytes_to_gib(size_in_bytes):

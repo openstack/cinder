@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Dell PowerStore Driver: Added QoS (Quality of Service) support for
+    PowerStore 4.0 or later versions.

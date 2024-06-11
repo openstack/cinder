@@ -25,14 +25,18 @@ import requests
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils as cinder_utils
+from cinder.volume.drivers.dell_emc.powerstore import (
+    exception as powerstore_exception)
 from cinder.volume.drivers.dell_emc.powerstore import utils
-
 
 LOG = logging.getLogger(__name__)
 VOLUME_NOT_MAPPED_ERROR = "0xE0A08001000F"
 SESSION_ALREADY_FAILED_OVER_ERROR = "0xE0201005000C"
 TOO_MANY_SNAPS_ERROR = "0xE0A040010003"
 MAX_SNAPS_IN_VTREE = 32
+QOS_IO_RULE_EXISTS_ERROR = "0xE0A0E0010009"
+QOS_POLICY_EXISTS_ERROR = "0xE02020010004"
+QOS_UNEXPECTED_RESPONSE_ERROR = "0xE0101001000C"
 
 
 class PowerStoreClient(object):
@@ -803,3 +807,87 @@ class PowerStoreClient(object):
             raise exception.VolumeBackendAPIException(data=msg)
         nguid = response["nguid"].split('.')[1]
         return nguid
+
+    def get_qos_policy_id_by_name(self, name):
+        r, response = self._send_get_request(
+            "/policy",
+            params={
+                "name": "eq.%s" % name,
+                "type": "eq.QoS",
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore QoS policy "
+                    "with name %s." % name)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        if len(response) > 0:
+            qos_policy_id = response[0].get("id")
+            return qos_policy_id
+        return None
+
+    def create_qos_io_rule(self, io_rule_params):
+        r, response = self._send_post_request(
+            "/io_limit_rule",
+            payload=io_rule_params
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to create PowerStore I/O limit "
+                    "rule %s." % io_rule_params["name"])
+            LOG.error(msg)
+            if ("messages" in response and
+                    (response["messages"][0]["code"] ==
+                     QOS_IO_RULE_EXISTS_ERROR or
+                     response["messages"][0]["code"] ==
+                     QOS_UNEXPECTED_RESPONSE_ERROR)):
+                raise (
+                    powerstore_exception.
+                    DellPowerStoreQoSIORuleExists(name=io_rule_params["name"]))
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response["id"]
+
+    def create_qos_policy(self, policy_params):
+        r, response = self._send_post_request(
+            "/policy",
+            payload=policy_params
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to create PowerStore QoS "
+                    "policy %s." % policy_params["name"])
+            LOG.error(msg)
+            if ("messages" in response and
+                    (response["messages"][0]["code"] ==
+                     QOS_POLICY_EXISTS_ERROR or
+                     response["messages"][0]["code"] ==
+                     QOS_UNEXPECTED_RESPONSE_ERROR)):
+                raise (
+                    powerstore_exception.
+                    DellPowerStoreQoSPolicyExists(name=policy_params["name"]))
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response["id"]
+
+    def update_volume_with_qos_policy(self, provider_id, qos_policy_id):
+        r, response = self._send_patch_request(
+            "/volume/%s" % provider_id,
+            payload={
+                "qos_performance_policy_id": qos_policy_id,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to update PowerStore volume %(volume_id)s with "
+                    "QoS policy %(policy_id)s."
+                    % {"volume_id": provider_id,
+                       "policy_id": qos_policy_id})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def update_qos_io_rule(self, io_rule_name, io_rule_params):
+        r, response = self._send_patch_request(
+            "/io_limit_rule/name:%s" % io_rule_name,
+            payload=io_rule_params
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to update PowerStore I/O limit rule %s.")
+                   % io_rule_name)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
