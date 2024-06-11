@@ -14,8 +14,6 @@
 
 """Unit tests for the base Driver for DataCore SANsymphony storage array."""
 
-from __future__ import division
-
 import abc
 import math
 from unittest import mock
