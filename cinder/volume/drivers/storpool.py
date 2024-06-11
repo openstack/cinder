@@ -338,24 +338,24 @@ class StorPoolDriver(driver.VolumeDriver):
         templ = self.configuration.storpool_template
         repl = self.configuration.storpool_replication
         if diff['extra_specs']:
-            for (k, v) in diff['extra_specs'].items():
-                if k == 'volume_backend_name':
-                    if v[0] != v[1]:
-                        # Retype of a volume backend not supported yet,
-                        # the volume needs to be migrated.
-                        return False
-                elif k == 'storpool_template':
-                    if v[0] != v[1]:
-                        if v[1] is not None:
-                            update['template'] = v[1]
-                        elif templ is not None:
-                            update['template'] = templ
-                        else:
-                            update['replication'] = repl
-                elif v[0] != v[1]:
-                    LOG.error('Retype of extra_specs "%s" not '
-                              'supported yet.', k)
+            # Check for the StorPool extra specs. We intentionally ignore any
+            # other extra_specs because the cinder scheduler should not even
+            # call us if there's a serious mismatch between the volume types."
+            if diff['extra_specs'].get('volume_backend_name'):
+                v = diff['extra_specs'].get('volume_backend_name')
+                if v[0] != v[1]:
+                    # Retype of a volume backend not supported yet,
+                    # the volume needs to be migrated.
                     return False
+            if diff['extra_specs'].get('storpool_template'):
+                v = diff['extra_specs'].get('storpool_template')
+                if v[0] != v[1]:
+                    if v[1] is not None:
+                        update['template'] = v[1]
+                    elif templ is not None:
+                        update['template'] = templ
+                    else:
+                        update['replication'] = repl
 
         if update:
             name = self._attach.volumeName(volume['id'])
@@ -380,21 +380,46 @@ class StorPoolDriver(driver.VolumeDriver):
                       'created as part of the migration from '
                       '"%(oid)s".', {'tid': temp_id, 'oid': orig_id})
             return {'_name_id': new_volume['_name_id'] or new_volume['id']}
-        elif orig_name in vols:
-            LOG.error('StorPool update_migrated_volume(): both '
+
+        if orig_name in vols:
+            LOG.debug('StorPool update_migrated_volume(): both '
                       'the original volume "%(oid)s" and the migrated '
                       'StorPool volume "%(tid)s" seem to exist on '
                       'the StorPool cluster.',
                       {'oid': orig_id, 'tid': temp_id})
-            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
-        else:
+            int_name = temp_name + '--temp--mig'
+            LOG.debug('Trying to swap volume names, intermediate "%(int)s"',
+                      {'int': int_name})
             try:
+                LOG.debug('- rename "%(orig)s" to "%(int)s"',
+                          {'orig': orig_name, 'int': int_name})
+                self._attach.api().volumeUpdate(orig_name,
+                                                {'rename': int_name})
+
+                LOG.debug('- rename "%(temp)s" to "%(orig)s"',
+                          {'temp': temp_name, 'orig': orig_name})
                 self._attach.api().volumeUpdate(temp_name,
                                                 {'rename': orig_name})
+
+                LOG.debug('- rename "%(int)s" to "%(temp)s"',
+                          {'int': int_name, 'temp': temp_name})
+                self._attach.api().volumeUpdate(int_name,
+                                                {'rename': temp_name})
                 return {'_name_id': None}
             except spapi.ApiError as e:
                 LOG.error('StorPool update_migrated_volume(): '
-                          'could not rename %(tname)s to %(oname)s: '
+                          'could not rename a volume: '
                           '%(err)s',
-                          {'tname': temp_name, 'oname': orig_name, 'err': e})
+                          {'err': e})
                 return {'_name_id': new_volume['_name_id'] or new_volume['id']}
+
+        try:
+            self._attach.api().volumeUpdate(temp_name,
+                                            {'rename': orig_name})
+            return {'_name_id': None}
+        except spapi.ApiError as e:
+            LOG.error('StorPool update_migrated_volume(): '
+                      'could not rename %(tname)s to %(oname)s: '
+                      '%(err)s',
+                      {'tname': temp_name, 'oname': orig_name, 'err': e})
+            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
