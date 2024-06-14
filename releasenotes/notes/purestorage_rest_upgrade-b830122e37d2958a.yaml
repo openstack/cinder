@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Pure Storage FlashArray drivers upgraded to remove REST 1.x support and
+    changed to REST 2.4 as the minimum supported version.
+  - |
+    Pure Storage FlashArray drivers changed minimum supported Purity//FA
+    version to 6.1.0.
+upgrade:
+  - |
+    [Pure Storage] Changed Python SDK driver requirement from ``purestorage``
+    to ``py-pure-client`` to support change to Purity//FA REST 2.x API calls.

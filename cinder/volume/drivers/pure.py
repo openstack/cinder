@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Pure Storage, Inc.
+# Copyright (c) 2024 Pure Storage, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,7 +14,7 @@
 #    under the License.
 """Volume driver for Pure Storage FlashArray storage system.
 
-This driver requires Purity version 4.0.0 or later.
+This driver requires Purity version 6.1.0 or higher.
 """
 
 import functools
@@ -32,9 +32,9 @@ from oslo_utils import strutils
 from oslo_utils import units
 from packaging import version
 try:
-    from purestorage import purestorage
+    from pypureclient import flasharray
 except ImportError:
-    purestorage = None
+    flasharray = None
 
 from cinder.common import constants
 from cinder import context
@@ -155,7 +155,6 @@ ERR_MSG_ALREADY_EXISTS = "already exists"
 ERR_MSG_COULD_NOT_BE_FOUND = "could not be found"
 ERR_MSG_ALREADY_INCLUDES = "already includes"
 ERR_MSG_ALREADY_ALLOWED = "already allowed on"
-ERR_MSG_NOT_CONNECTED = "is not connected"
 ERR_MSG_ALREADY_BELONGS = "already belongs to"
 ERR_MSG_EXISTING_CONNECTIONS = "cannot be deleted due to existing connections"
 ERR_MSG_ALREADY_IN_USE = "already in use"
@@ -286,7 +285,6 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._replication_retention_long_term_per_day = (
             self.configuration.
             pure_replica_retention_long_term_per_day_default)
-
         self._async_replication_retention_policy = (
             self._generate_replication_retention())
 
@@ -298,7 +296,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                 backend_id = replication_device["backend_id"]
                 san_ip = replication_device["san_ip"]
                 api_token = replication_device["api_token"]
-                verify_https = strutils.bool_from_string(
+                verify_ssl = strutils.bool_from_string(
                     replication_device.get("ssl_cert_verify", False))
                 ssl_cert_path = replication_device.get("ssl_cert_path", None)
                 repl_type = replication_device.get("type",
@@ -306,17 +304,18 @@ class PureBaseVolumeDriver(san.SanDriver):
                 uniform = strutils.bool_from_string(
                     replication_device.get("uniform", False))
 
-                try:
-                    target_array = self._get_flasharray(
-                        san_ip,
-                        api_token,
-                        verify_https=verify_https,
-                        ssl_cert_path=ssl_cert_path
-                    )
-
-                    target_array_info = target_array.get()
-                    target_array.array_name = target_array_info["array_name"]
-                    target_array.array_id = target_array_info["id"]
+                target_array = self._get_flasharray(
+                    san_ip,
+                    api_token,
+                    verify_ssl=verify_ssl,
+                    ssl_cert_path=ssl_cert_path
+                )
+                if target_array:
+                    target_array_info = list(
+                        target_array.get_arrays().items
+                    )[0]
+                    target_array.array_name = target_array_info.name
+                    target_array.array_id = target_array_info.id
                     target_array.replication_type = repl_type
                     target_array.backend_id = backend_id
                     target_array.uniform = uniform
@@ -328,9 +327,9 @@ class PureBaseVolumeDriver(san.SanDriver):
                              target_array.array_id,
                              target_array.replication_type,
                              target_array.uniform)
-                except purestorage.PureError as err:
-                    LOG.warning("Failed to set up secondary array with "
-                                "message: %(msg)s", {"msg": err.reason})
+                else:
+                    LOG.warning("Failed to set up secondary array: %(ip)s",
+                                {"ip": san_ip})
                     continue
 
                 self._replication_target_arrays.append(target_array)
@@ -342,72 +341,113 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     @pure_driver_debug_trace
     def set_qos(self, array, vol_name, qos):
-        LOG.debug('QoS: %(qos)s', {'qos': qos})
-        if qos['maxIOPS'] == '0' and qos['maxBWS'] == 0:
-            array.set_volume(vol_name,
-                             iops_limit='',
-                             bandwidth_limit='')
+        if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
+            array.patch_volumes(names=[vol_name],
+                                volume=flasharray.VolumePatch(
+                                    qos=flasharray.Qos(
+                                        iops_limit=100000000,
+                                        bandwidth_limit=549755813888)))
         elif qos['maxIOPS'] == 0:
-            array.set_volume(vol_name,
-                             iops_limit='',
-                             bandwidth_limit=qos['maxBWS'])
+            array.patch_volumes(names=[vol_name],
+                                volume=flasharray.VolumePatch(
+                                    qos=flasharray.Qos(
+                                        iops_limit=100000000,
+                                        bandwidth_limit=qos['maxBWS'])))
         elif qos['maxBWS'] == 0:
-            array.set_volume(vol_name,
-                             iops_limit=qos['maxIOPS'],
-                             bandwidth_limit='')
+            array.patch_volumes(names=[vol_name],
+                                volume=flasharray.VolumePatch(
+                                    qos=flasharray.Qos(
+                                        iops_limit=qos['maxIOPS'],
+                                        bandwidth_limit=549755813888)))
         else:
-            array.set_volume(vol_name,
-                             iops_limit=qos['maxIOPS'],
-                             bandwidth_limit=qos['maxBWS'])
+            array.patch_volumes(names=[vol_name],
+                                volume=flasharray.VolumePatch(
+                                    qos=flasharray.Qos(
+                                        iops_limit=qos['maxIOPS'],
+                                        bandwidth_limit=qos['maxBWS'])))
         return
 
     @pure_driver_debug_trace
     def create_with_qos(self, array, vol_name, vol_size, qos):
-        LOG.debug('QoS: %(qos)s', {'qos': qos})
-        if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
-            array.create_volume(vol_name, vol_size,
-                                iops_limit='',
-                                bandwidth_limit='')
-        elif qos['maxIOPS'] == 0:
-            array.create_volume(vol_name, vol_size,
-                                iops_limit='',
-                                bandwidth_limit=qos['maxBWS'])
-        elif qos['maxBWS'] == 0:
-            array.create_volume(vol_name, vol_size,
-                                iops_limit=qos['maxIOPS'],
-                                bandwidth_limit='')
+        if self._array.safemode:
+            if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
+                array.post_volumes(names=[vol_name],
+                                   with_default_protection=False,
+                                   volume=flasharray.VolumePost(
+                                       provisioned=vol_size))
+            elif qos['maxIOPS'] == 0:
+                array.post_volumes(names=[vol_name],
+                                   with_default_protection=False,
+                                   volume=flasharray.VolumePost(
+                                       provisioned=vol_size,
+                                       qos=flasharray.Qos(
+                                           bandwidth_limit=qos['maxBWS'])))
+            elif qos['maxBWS'] == 0:
+                array.post_volumes(names=[vol_name],
+                                   with_default_protection=False,
+                                   volume=flasharray.VolumePost(
+                                       provisoned=vol_size,
+                                       qos=flasharray.Qos(
+                                           iops_limit=qos['maxIOPS'])))
+            else:
+                array.post_volumes(names=[vol_name],
+                                   with_default_protection=False,
+                                   volume=flasharray.VolumePost(
+                                       provisioned=vol_size,
+                                       qos=flasharray.Qos(
+                                           iops_limit=qos['maxIOPS'],
+                                           bandwidth_limit=qos['maxBWS'])))
         else:
-            array.create_volume(vol_name, vol_size,
-                                iops_limit=qos['maxIOPS'],
-                                bandwidth_limit=qos['maxBWS'])
+            if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
+                array.post_volumes(names=[vol_name],
+                                   volume=flasharray.VolumePost(
+                                       provisioned=vol_size))
+            elif qos['maxIOPS'] == 0:
+                array.post_volumes(names=[vol_name],
+                                   volume=flasharray.VolumePost(
+                                       provisioned=vol_size,
+                                       qos=flasharray.Qos(
+                                           bandwidth_limit=qos['maxBWS'])))
+            elif qos['maxBWS'] == 0:
+                array.post_volumes(names=[vol_name],
+                                   volume=flasharray.VolumePost(
+                                       provisoned=vol_size,
+                                       qos=flasharray.Qos(
+                                           iops_limit=qos['maxIOPS'])))
+            else:
+                array.post_volumes(names=[vol_name],
+                                   volume=flasharray.VolumePost(
+                                       provisioned=vol_size,
+                                       qos=flasharray.Qos(
+                                           iops_limit=qos['maxIOPS'],
+                                           bandwidth_limit=qos['maxBWS'])))
         return
 
     def do_setup(self, context):
         """Performs driver initialization steps that could raise exceptions."""
-        if purestorage is None:
-            msg = _("Missing 'purestorage' python module, ensure the library"
-                    " is installed and available.")
+        if flasharray is None:
+            msg = _("Missing 'py-pure-client' python module, ensure the"
+                    " library is installed and available.")
             raise PureDriverException(msg)
 
-        # Raises PureDriverException if unable to connect and PureHTTPError
+        # Raises PureDriverException if unable to connect and PureError
         # if unable to authenticate.
-        try:
-            self._array = self._get_flasharray(
-                self.configuration.san_ip,
-                api_token=self.configuration.pure_api_token,
-                verify_https=self.configuration.driver_ssl_cert_verify,
-                ssl_cert_path=self.configuration.driver_ssl_cert_path
-            )
-
-            array_info = self._array.get()
-            if version.parse(array_info["version"]) < version.parse(
-                '5.3.0'
+        self._array = self._get_flasharray(
+            san_ip=self.configuration.san_ip,
+            api_token=self.configuration.pure_api_token,
+            verify_ssl=self.configuration.driver_ssl_cert_verify,
+            ssl_cert_path=self.configuration.driver_ssl_cert_path
+        )
+        if self._array:
+            array_info = list(self._array.get_arrays().items)[0]
+            if version.parse(array_info.version) < version.parse(
+                '6.1.0'
             ):
-                msg = _("FlashArray Purity version less than 5.3.0 "
+                msg = _("FlashArray Purity version less than 6.1.0 "
                         "unsupported. Please upgrade your backend to "
                         "a supported version.")
                 raise PureDriverException(msg)
-            if version.parse(array_info["version"]) < version.parse(
+            if version.parse(array_info.version) < version.parse(
                 '6.4.2'
             ) and self._storage_protocol == constants.NVMEOF_TCP:
                 msg = _("FlashArray Purity version less than 6.4.2 "
@@ -415,20 +455,27 @@ class PureBaseVolumeDriver(san.SanDriver):
                         "backend to a supported version.")
                 raise PureDriverException(msg)
 
-            self._array.array_name = array_info["array_name"]
-            self._array.array_id = array_info["id"]
+            self._array.array_name = array_info.name
+            self._array.array_id = array_info.id
             self._array.replication_type = None
             self._array.backend_id = self._backend_name
             self._array.preferred = True
             self._array.uniform = True
+            self._array.version = array_info.version
+            if version.parse(array_info.version) < version.parse(
+                '6.3.4'
+            ):
+                self._array.safemode = False
+            else:
+                self._array.safemode = True
 
             LOG.info("Primary array: backend_id='%s', name='%s', id='%s'",
                      self.configuration.config_group,
                      self._array.array_name,
                      self._array.array_id)
-        except purestorage.PureError as err:
-            LOG.warning("self.do_setup failed to set up primary array with"
-                        " message: %(msg)s", {"msg": err.reason})
+        else:
+            LOG.warning("self.do_setup failed to set up primary array: %(ip)s",
+                        {"ip": self.configuration.san_ip})
 
         self.do_setup_replication()
 
@@ -480,20 +527,19 @@ class PureBaseVolumeDriver(san.SanDriver):
                 if repl_type == "async":
                     san_ip = replication_device["san_ip"]
                     api_token = replication_device["api_token"]
-                    verify_https = strutils.bool_from_string(
+                    verify_ssl = strutils.bool_from_string(
                         replication_device.get("ssl_cert_verify", False))
                     ssl_cert_path = replication_device.get(
                         "ssl_cert_path", None)
                     target_array = self._get_flasharray(
                         san_ip,
                         api_token,
-                        verify_https=verify_https,
+                        verify_ssl=verify_ssl,
                         ssl_cert_path=ssl_cert_path
                     )
-                    trisync_async_info = target_array.get()
-                    target_array.array_name = trisync_async_info[
-                        "array_name"
-                    ]
+                    trisync_async_info = list(
+                        target_array.get_arrays().items)[0]
+                    target_array.array_name = trisync_async_info.name
 
                     async_target.append(target_array)
 
@@ -583,7 +629,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         :return None
         """
         vol_name = self._generate_purity_vol_name(volume)
-        if snapshot['group_snapshot'] or snapshot['cgsnapshot']:
+        if snapshot['cgsnapshot']:
             snap_name = self._get_pgroup_snap_name_from_snapshot(snapshot)
         else:
             snap_name = self._get_snap_name(snapshot)
@@ -593,7 +639,10 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         current_array = self._get_current_array()
 
-        current_array.copy_volume(snap_name, vol_name, overwrite=True)
+        current_array.post_volumes(names=[snap_name], overwrite=True,
+                                   volume=flasharray.VolumePost(
+                                       source=flasharray.Reference(
+                                           name=vol_name)))
 
     @pure_driver_debug_trace
     def create_volume(self, volume):
@@ -610,7 +659,15 @@ class PureBaseVolumeDriver(san.SanDriver):
         if qos is not None:
             self.create_with_qos(current_array, vol_name, vol_size, qos)
         else:
-            current_array.create_volume(vol_name, vol_size)
+            if self._array.safemode:
+                current_array.post_volumes(names=[vol_name],
+                                           with_default_protection=False,
+                                           volume=flasharray.VolumePost(
+                                               provisioned=vol_size))
+            else:
+                current_array.post_volumes(names=[vol_name],
+                                           volume=flasharray.VolumePost(
+                                               provisioned=vol_size))
 
         return self._setup_volume(current_array, volume, vol_name)
 
@@ -619,7 +676,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Creates a volume from a snapshot."""
         qos = None
         vol_name = self._generate_purity_vol_name(volume)
-        if snapshot['group_snapshot'] or snapshot['cgsnapshot']:
+        if snapshot['cgsnapshot']:
             snap_name = self._get_pgroup_snap_name_from_snapshot(snapshot)
         else:
             snap_name = self._get_snap_name(snapshot)
@@ -631,7 +688,17 @@ class PureBaseVolumeDriver(san.SanDriver):
             volume_type = volume_types.get_volume_type(ctxt, type_id)
             qos = self._get_qos_settings(volume_type)
 
-        current_array.copy_volume(snap_name, vol_name)
+        if self._array.safemode:
+            current_array.post_volumes(names=[vol_name],
+                                       with_default_protection=False,
+                                       volume=flasharray.VolumePost(
+                                           source=flasharray.Reference(
+                                               name=snap_name)))
+        else:
+            current_array.post_volume(names=[vol_name],
+                                      volume=flasharray.VolumePost(
+                                          source=flasharray.Reference(
+                                              name=snap_name)))
         self._extend_if_needed(current_array,
                                vol_name,
                                snapshot["volume_size"],
@@ -639,9 +706,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         if qos is not None:
             self.set_qos(current_array, vol_name, qos)
         else:
-            current_array.set_volume(vol_name,
-                                     iops_limit='',
-                                     bandwidth_limit='')
+            current_array.patch_volumes(names=[vol_name],
+                                        volume=flasharray.VolumePatch(
+                                            qos=flasharray.Qos(
+                                                iops_limit=100000000,
+                                                bandwidth_limit=549755813888)))
 
         return self._setup_volume(current_array, volume, vol_name)
 
@@ -651,18 +720,22 @@ class PureBaseVolumeDriver(san.SanDriver):
         volume.provider_id = purity_vol_name
         async_enabled = False
         trisync_enabled = False
-        try:
-            self._add_to_group_if_needed(volume, purity_vol_name)
-            async_enabled = self._enable_async_replication_if_needed(
-                array, volume)
-            trisync_enabled = self._enable_trisync_replication_if_needed(
-                array, volume)
-        except purestorage.PureError as err:
-            with excutils.save_and_reraise_exception():
-                LOG.error("Failed to add volume %s to pgroup, removing volume",
-                          err.reason)
-                array.destroy_volume(purity_vol_name)
-                array.eradicate_volume(purity_vol_name)
+        self._add_to_group_if_needed(volume, purity_vol_name)
+        async_enabled = self._enable_async_replication_if_needed(
+            array, volume)
+        trisync_enabled = self._enable_trisync_replication_if_needed(
+            array, volume)
+        repl_type = self._get_replication_type_from_vol_type(
+            volume.volume_type)
+        pgroup = array.get_protection_groups_volumes(
+            member_names=[volume.provider_id]).items
+        if (repl_type in [REPLICATION_TYPE_ASYNC, REPLICATION_TYPE_TRISYNC] and
+                not pgroup):
+            LOG.error("Failed to add volume %s to pgroup, removing volume")
+            array.patch_volumes(names=[purity_vol_name],
+                                volume=flasharray.VolumePatch(
+                                    destroyed=True))
+            array.delete_volumes(names=[purity_vol_name])
 
         repl_status = fields.ReplicationStatus.DISABLED
         if (self._is_vol_in_pod(purity_vol_name) or
@@ -707,46 +780,21 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _enable_trisync_replication(self, array, volume):
         """Add volume to sync-replicated protection group"""
-        try:
-            array.set_pgroup(self._trisync_name,
-                             addvollist=[self._get_vol_name(volume)])
-        except purestorage.PureHTTPError as err:
-            with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        ERR_MSG_ALREADY_BELONGS in err.text):
-                    # Happens if the volume already added to PG.
-                    ctxt.reraise = False
-                    LOG.warning("Adding Volume to sync-replicated "
-                                "Protection Group failed with message: %s",
-                                err.text)
+        array.post_protection_groups_volumes(
+            group_names=[self._trisync_name],
+            member_names=[self._get_vol_name(volume)])
 
     def _disable_trisync_replication(self, array, volume):
         """Remove volume from sync-replicated protection group"""
-        try:
-            array.set_pgroup(self._trisync_name,
-                             remvollist=[self._get_vol_name(volume)])
-        except purestorage.PureHTTPError as err:
-            with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        ERR_MSG_NOT_EXIST in err.text):
-                    ctxt.reraise = False
-                    LOG.warning("Removing Volume from sync-replicated "
-                                "Protection Group failed with message: %s",
-                                err.text)
+        array.delete_protection_groups_volumes(
+            group_names=[self._trisync_name],
+            member_names=[self._get_vol_name(volume)])
 
     def _enable_async_replication(self, array, volume):
         """Add volume to replicated protection group."""
-        try:
-            array.set_pgroup(self._replication_pg_name,
-                             addvollist=[self._get_vol_name(volume)])
-        except purestorage.PureHTTPError as err:
-            with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        ERR_MSG_ALREADY_BELONGS in err.text):
-                    # Happens if the volume already added to PG.
-                    ctxt.reraise = False
-                    LOG.warning("Adding Volume to Protection Group "
-                                "failed with message: %s", err.text)
+        array.post_protection_groups_volumes(
+            group_names=[self._replication_pg_name],
+            member_names=[self._get_vol_name(volume)])
 
     @pure_driver_debug_trace
     def create_cloned_volume(self, volume, src_vref):
@@ -757,7 +805,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         # Check which backend the source volume is on. In case of failover
         # the source volume may be on the secondary array.
         current_array = self._get_current_array()
-        current_array.copy_volume(src_name, vol_name)
+        current_array.post_volumes(volume=flasharray.VolumePost(
+            source=flasharray.Reference(name=src_name)), names=[vol_name])
         self._extend_if_needed(current_array,
                                vol_name,
                                src_vref["size"],
@@ -769,34 +818,36 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Extend the volume from size src_size to size vol_size."""
         if vol_size > src_size:
             vol_size = vol_size * units.Gi
-            array.extend_volume(vol_name, vol_size)
+            array.patch_volumes(names=[vol_name],
+                                volume=flasharray.VolumePatch(
+                                    provisioned=vol_size))
 
     @pure_driver_debug_trace
     def delete_volume(self, volume):
         """Disconnect all hosts and delete the volume"""
         vol_name = self._get_vol_name(volume)
         current_array = self._get_current_array()
-        try:
-            # Do a pass over remaining connections on the current array, if
-            # we can try and remove any remote connections too.
-            hosts = current_array.list_volume_private_connections(
-                vol_name, remote=True)
-            for host_info in hosts:
-                host_name = host_info["host"]
-                self._disconnect_host(current_array, host_name, vol_name)
+        # Do a pass over remaining connections on the current array, if
+        # we can try and remove any remote connections too.
+        hosts = list(current_array.get_connections(
+            volume_names=[vol_name]).items)
+        for host_info in range(0, len(hosts)):
+            host_name = hosts[host_info].host.name
+            self._disconnect_host(current_array, host_name, vol_name)
 
-            # Finally, it should be safe to delete the volume
-            current_array.destroy_volume(vol_name)
-            if self.configuration.pure_eradicate_on_delete:
-                current_array.eradicate_volume(vol_name)
-        except purestorage.PureHTTPError as err:
+        # Finally, it should be safe to delete the volume
+        res = current_array.patch_volumes(names=[vol_name],
+                                          volume=flasharray.VolumePatch(
+                                              destroyed=True))
+        if self.configuration.pure_eradicate_on_delete:
+            current_array.delete_volumes(names=[vol_name])
+        if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        ERR_MSG_NOT_EXIST in err.text):
+                if ERR_MSG_NOT_EXIST in res.errors[0].message:
                     # Happens if the volume does not exist.
                     ctxt.reraise = False
                     LOG.warning("Volume deletion failed with message: %s",
-                                err.text)
+                                res.errors[0].message)
 
     @pure_driver_debug_trace
     def create_snapshot(self, snapshot):
@@ -805,7 +856,23 @@ class PureBaseVolumeDriver(san.SanDriver):
         # Get current array in case we have failed over via replication.
         current_array = self._get_current_array()
         vol_name, snap_suff = self._get_snap_name(snapshot).split(".")
-        current_array.create_snapshot(vol_name, suffix=snap_suff)
+        volume_snapshot = flasharray.VolumeSnapshotPost(suffix=snap_suff)
+        current_array.post_volume_snapshots(source_names=[vol_name],
+                                            volume_snapshot=volume_snapshot)
+        if not snapshot.metadata:
+            snapshot_update = {
+                'metadata': {'array_snapshot_name': self._get_snap_name(
+                    snapshot),
+                    'array_name': self._array.array_name}
+            }
+        else:
+            snapshot_update = {
+                'metadata': {**snapshot.metadata,
+                             'array_snapshot_name': self._get_snap_name(
+                                 snapshot),
+                             'array_name': self._array.array_name}
+            }
+        return snapshot_update
 
     @pure_driver_debug_trace
     def delete_snapshot(self, snapshot):
@@ -815,20 +882,21 @@ class PureBaseVolumeDriver(san.SanDriver):
         current_array = self._get_current_array()
 
         snap_name = self._get_snap_name(snapshot)
-        try:
-            current_array.destroy_volume(snap_name)
-            if self.configuration.pure_eradicate_on_delete:
-                current_array.eradicate_volume(snap_name)
-        except purestorage.PureHTTPError as err:
+        volume_snap = flasharray.VolumeSnapshotPatch(destroyed=True)
+        res = current_array.patch_volume_snapshots(names=[snap_name],
+                                                   volume_snapshot=volume_snap)
+        if self.configuration.pure_eradicate_on_delete:
+            current_array.delete_volume_snapshots(names=[snap_name])
+        if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:
-                if err.code == 400 and (
-                        ERR_MSG_NOT_EXIST in err.text or
-                        ERR_MSG_NO_SUCH_SNAPSHOT in err.text or
-                        ERR_MSG_PENDING_ERADICATION in err.text):
+                if (ERR_MSG_NOT_EXIST in res.errors[0].message or
+                        ERR_MSG_NO_SUCH_SNAPSHOT in res.errors[0].message or
+                        ERR_MSG_PENDING_ERADICATION in res.errors[0].message):
                     # Happens if the snapshot does not exist.
                     ctxt.reraise = False
                     LOG.warning("Unable to delete snapshot, assuming "
-                                "already deleted. Error: %s", err.text)
+                                "already deleted. Error: %s",
+                                res.errors[0].message)
 
     def ensure_export(self, context, volume):
         pass
@@ -865,7 +933,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         return len(attachment) > 1
 
     @pure_driver_debug_trace
-    def _disconnect(self, array, volume, connector, remove_remote_hosts=False,
+    def _disconnect(self, array, volume, connector, remove_remote_hosts=True,
                     is_multiattach=False):
         """Disconnect the volume from the host described by the connector.
 
@@ -880,11 +948,12 @@ class PureBaseVolumeDriver(san.SanDriver):
             # host connections for the volume
             LOG.warning("Removing ALL host connections for volume %s",
                         vol_name)
-            connections = array.list_volume_private_connections(
-                vol_name, remote=True)
-
-            for connection in connections:
-                self._disconnect_host(array, connection['host'], vol_name)
+            connections = list(array.get_connections(
+                volume_names=[vol_name]).items)
+            for connection in range(0, len(connections)):
+                self._disconnect_host(array,
+                                      connections[connection]['host'],
+                                      vol_name)
             return False
         else:
             # Normal case with a specific initiator to detach it from
@@ -894,7 +963,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                 any_in_use = False
                 host_in_use = False
                 for host in hosts:
-                    host_name = host["name"]
+                    host_name = host.name
                     if not is_multiattach:
                         host_in_use = self._disconnect_host(array,
                                                             host_name,
@@ -923,14 +992,12 @@ class PureBaseVolumeDriver(san.SanDriver):
             # Try to disconnect from each host, they may not be online though
             # so if they fail don't cause a problem.
             for array in self._uniform_active_cluster_target_arrays:
-                try:
-                    self._disconnect(array, volume, connector,
-                                     remove_remote_hosts=True,
-                                     is_multiattach=multiattach)
-                except purestorage.PureError as err:
+                res = self._disconnect(array, volume, connector,
+                                       remove_remote_hosts=False,
+                                       is_multiattach=multiattach)
+                if not res:
                     # Swallow any exception, just warn and continue
-                    LOG.warning("Disconnect on secondary array failed with"
-                                " message: %(msg)s", {"msg": err.reason})
+                    LOG.warning("Disconnect on secondary array failed")
         # Now disconnect from the current array
         self._disconnect(self._get_current_array(), volume,
                          connector, remove_remote_hosts=False,
@@ -939,17 +1006,18 @@ class PureBaseVolumeDriver(san.SanDriver):
     @pure_driver_debug_trace
     def _disconnect_host(self, array, host_name, vol_name):
         """Return value indicates if host should be cleaned up."""
-        try:
-            array.disconnect_host(host_name, vol_name)
-        except purestorage.PureHTTPError as err:
+        res = array.delete_connections(host_names=[host_name],
+                                       volume_names=[vol_name])
+        if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:
-                if err.code == 400 and (ERR_MSG_NOT_CONNECTED in err.text or
-                                        ERR_MSG_HOST_NOT_EXIST in err.text):
+                if (ERR_MSG_NOT_EXIST in res.errors[0].message or
+                        ERR_MSG_HOST_NOT_EXIST in res.errors[0].message):
                     # Happens if the host and volume are not connected or
                     # the host has already been deleted
                     ctxt.reraise = False
                     LOG.warning("Disconnection failed with message: "
-                                "%(msg)s.", {"msg": err.text})
+                                "%(msg)s.",
+                                {"msg": res.errors[0].message})
 
         # If it is a remote host, call it quits here. We cannot delete a remote
         # host even if it should be cleaned up now.
@@ -957,68 +1025,65 @@ class PureBaseVolumeDriver(san.SanDriver):
             return
 
         connections = None
-        try:
-            connections = array.list_host_connections(host_name, private=True)
-        except purestorage.PureHTTPError as err:
+        res = array.get_connections(host_names=[host_name])
+        connection_obj = getattr(res, "items", None)
+        if connection_obj:
+            connections = list(connection_obj)
+        if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:
-                if err.code == 400 and ERR_MSG_NOT_EXIST in err.text:
+                if ERR_MSG_NOT_EXIST in res.errors[0].message:
                     ctxt.reraise = False
 
         # Assume still used if volumes are attached
         host_still_used = bool(connections)
-
         if GENERATED_NAME.match(host_name) and not host_still_used:
             LOG.info("Attempting to delete unneeded host %(host_name)r.",
                      {"host_name": host_name})
-            try:
-                array.delete_host(host_name)
+            res = array.delete_hosts(names=[host_name])
+            if res.status_code == 200:
                 host_still_used = False
-            except purestorage.PureHTTPError as err:
+            else:
                 with excutils.save_and_reraise_exception() as ctxt:
-                    if err.code == 400:
-                        if ERR_MSG_NOT_EXIST in err.text:
-                            # Happens if the host is already deleted.
-                            # This is fine though, just log so we know what
-                            # happened.
-                            ctxt.reraise = False
-                            host_still_used = False
-                            LOG.debug("Purity host deletion failed: "
-                                      "%(msg)s.", {"msg": err.text})
-                        if ERR_MSG_EXISTING_CONNECTIONS in err.text:
-                            # If someone added a connection underneath us
-                            # that's ok, just keep going.
-                            ctxt.reraise = False
-                            host_still_used = True
-                            LOG.debug("Purity host deletion ignored: %(msg)s",
-                                      {"msg": err.text})
+                    if ERR_MSG_NOT_EXIST in res.errors[0].message:
+                        # Happens if the host is already deleted.
+                        # This is fine though, just log so we know what
+                        # happened.
+                        ctxt.reraise = False
+                        host_still_used = False
+                        LOG.debug("Purity host deletion failed: "
+                                  "%(msg)s.", {"msg": res.errors[0].message})
+                    if ERR_MSG_EXISTING_CONNECTIONS in res.errors[0].message:
+                        # If someone added a connection underneath us
+                        # that's ok, just keep going.
+                        ctxt.reraise = False
+                        host_still_used = True
+                        LOG.debug("Purity host deletion ignored: %(msg)s",
+                                  {"msg": res.errors[0].message})
         return not host_still_used
 
     @pure_driver_debug_trace
     def _update_volume_stats(self):
         """Set self._stats with relevant information."""
         current_array = self._get_current_array()
-
-        # Collect info from the array
-        space_info = current_array.get(space=True)
-        if not isinstance(space_info, dict):
-            # Some versions of the API give back a list of dicts, always use 0
-            space_info = space_info[0]
-        perf_info = current_array.get(action='monitor')[0]  # Always index 0
-        hosts = current_array.list_hosts()
-        snaps = current_array.list_volumes(snap=True, pending=True)
-        pgroups = current_array.list_pgroups(pending=True)
+        space_info = list(current_array.get_arrays_space().items)[0]
+        perf_info = list(current_array.get_arrays_performance().items)[0]
+        hosts = list(current_array.get_hosts().items)
+        volumes = list(current_array.get_volumes().items)
+        snaps = list(current_array.get_volume_snapshots().items)
+        pgroups = list(current_array.get_protection_groups().items)
 
         # Perform some translations and calculations
-        total_capacity = float(space_info["capacity"]) / units.Gi
-        used_space = float(space_info["total"]) / units.Gi
+        total_capacity = float(space_info.capacity) / units.Gi
+        used_space = float(space_info.space.total_physical) / units.Gi
         free_space = float(total_capacity - used_space)
-        prov_space, total_vols = self._get_provisioned_space()
+        provisioned_space = float(space_info.space.
+                                  total_provisioned) / units.Gi
+        total_reduction = float(space_info.space.total_reduction)
+        total_vols = len(volumes)
         total_hosts = len(hosts)
         total_snaps = len(snaps)
         total_pgroups = len(pgroups)
-        provisioned_space = float(prov_space) / units.Gi
-        thin_provisioning = self._get_thin_provisioning(provisioned_space,
-                                                        used_space)
+        thin_provisioning = self._get_thin_provisioning(total_reduction)
 
         # Start with some required info
         data = dict(
@@ -1031,9 +1096,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         # Add flags for supported features
         data['consistencygroup_support'] = True
         data['thin_provisioning_support'] = True
-        data['consistent_group_snapshot_enabled'] = True
-        data['consistent_group_replication_enabled'] = True
         data['multiattach'] = True
+        data['consistent_group_replication_enabled'] = True
+        data['consistent_group_snapshot_enabled'] = True
         data['QoS_support'] = True
 
         # Add capacity info for scheduler
@@ -1055,17 +1120,17 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         # Add performance stats for filtering and weighing functions
         #  IOPS
-        data['writes_per_sec'] = perf_info['writes_per_sec']
-        data['reads_per_sec'] = perf_info['reads_per_sec']
+        data['writes_per_sec'] = perf_info.writes_per_sec
+        data['reads_per_sec'] = perf_info.reads_per_sec
 
         #  Bandwidth
-        data['input_per_sec'] = perf_info['input_per_sec']
-        data['output_per_sec'] = perf_info['output_per_sec']
+        data['input_per_sec'] = perf_info.write_bytes_per_sec
+        data['output_per_sec'] = perf_info.read_bytes_per_sec
 
         #  Latency
-        data['usec_per_read_op'] = perf_info['usec_per_read_op']
-        data['usec_per_write_op'] = perf_info['usec_per_write_op']
-        data['queue_depth'] = perf_info['queue_depth']
+        data['usec_per_read_op'] = perf_info.usec_per_read_op
+        data['usec_per_write_op'] = perf_info.usec_per_write_op
+        data['queue_depth'] = getattr(perf_info, 'queue_depth', 0)
 
         #  Replication
         data["replication_capability"] = self._get_replication_capability()
@@ -1085,17 +1150,18 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _get_replication_capability(self):
         """Discovered connected arrays status for replication"""
-        connections = self._get_current_array().list_array_connections()
+        connections = list(
+            self._get_current_array().get_array_connections().items)
         is_sync, is_async, is_trisync = False, False, False
-        for conn in connections:
+        for conn in range(0, len(connections)):
             # If connection status is connected, we can have
             # either sync or async replication
-            if conn["status"] == "connected":
+            if connections[conn].status == "connected":
                 # check for async replication
-                if conn["type"] == "async-replication":
+                if connections[conn].type == "async-replication":
                     is_async = True
                 # check for sync replication
-                elif conn["type"] == "sync-replication":
+                elif connections[conn].type == "sync-replication":
                     is_sync = True
             # If we've connections for both sync and async
             # replication, we can set trisync replication
@@ -1116,12 +1182,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             replication_type = None
         return replication_type
 
-    def _get_provisioned_space(self):
-        """Sum up provisioned size of all volumes on array"""
-        volumes = self._get_current_array().list_volumes(pending=True)
-        return sum(item["size"] for item in volumes), len(volumes)
-
-    def _get_thin_provisioning(self, provisioned_space, used_space):
+    def _get_thin_provisioning(self, total_reduction):
         """Get the current value for the thin provisioning ratio.
 
         If pure_automatic_max_oversubscription_ratio is True we will calculate
@@ -1130,13 +1191,15 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
 
         if (self.configuration.pure_automatic_max_oversubscription_ratio and
-                used_space != 0 and provisioned_space != 0):
-            # If array is empty we can not calculate a max oversubscription
-            # ratio. In this case we look to the config option as a starting
+                total_reduction < 100):
+            # If total_reduction is > 100 then this is a very under-utilized
+            # array and therefore the oversubscription rate is effectively
+            # meaningless.
+            # In this case we look to the config option as a starting
             # point. Once some volumes are actually created and some data is
             # stored on the array a much more accurate number will be
             # presented based on current usage.
-            thin_provisioning = provisioned_space / used_space
+            thin_provisioning = total_reduction
         else:
             thin_provisioning = volume_utils.get_max_over_subscription_ratio(
                 self.configuration.max_over_subscription_ratio,
@@ -1153,76 +1216,59 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         vol_name = self._get_vol_name(volume)
         new_size = new_size * units.Gi
-        current_array.extend_volume(vol_name, new_size)
+        current_array.patch_volumes(names=[vol_name],
+                                    volume=flasharray.VolumePatch(
+                                    provisioned=new_size))
 
     def _add_volume_to_consistency_group(self, group, vol_name):
         pgroup_name = self._get_pgroup_name(group)
         current_array = self._get_current_array()
-        current_array.set_pgroup(pgroup_name, addvollist=[vol_name])
+        current_array.post_protection_groups_volumes(
+            group_names=[pgroup_name],
+            member_names=[vol_name])
 
     @pure_driver_debug_trace
     def create_consistencygroup(self, context, group, grp_type=None):
         """Creates a consistencygroup."""
 
         current_array = self._get_current_array()
-        pg_name = self._get_pgroup_name(group)
-        current_array.create_pgroup(pg_name)
+        group_name = self._get_pgroup_name(group)
+        LOG.debug('Creating Consistency Group %(group_name)s',
+                  {'group_name': group_name})
+        current_array.post_protection_groups(
+            names=[group_name])
         if grp_type:
-            current_array.set_pgroup(
-                pg_name,
-                **self._async_replication_retention_policy
-            )
-            # Configure replication propagation frequency on a
-            # protection group.
-            repl_freq = self._replication_interval
-            current_array.set_pgroup(pg_name,
-                                     replicate_frequency=repl_freq)
+            current_array.patch_protection_groups(
+                names=[group_name],
+                protection_group=flasharray.ProtectionGroup(
+                    replication_schedule=flasharray.ReplicationSchedule(
+                        frequency=self._replication_interval)))
             for target_array in self._replication_target_arrays:
-                try:
-                    # Configure PG to replicate to target_array.
-                    current_array.set_pgroup(pg_name,
-                                             addtargetlist=[
-                                                 target_array.array_name])
-                except purestorage.PureHTTPError as err:
-                    with excutils.save_and_reraise_exception() as ctxt:
-                        if err.code == 400 and (
-                                ERR_MSG_ALREADY_INCLUDES
-                                in err.text):
-                            ctxt.reraise = False
-                            LOG.info("Skipping add target %(target_array)s"
-                                     " to protection group %(pgname)s"
-                                     " since it's already added.",
-                                     {"target_array": target_array.array_name,
-                                      "pgname": pg_name})
-
+                # Configure PG to replicate to target_array.
+                current_array.post_protection_groups_targets(
+                    group_names=[group_name],
+                    member_names=[target_array.array_name])
                 # Wait until "Target Group" setting propagates to target_array.
                 pgroup_name_on_target = self._get_pgroup_name_on_target(
-                    current_array.array_name, pg_name)
+                    current_array.array_name, group_name)
 
                 if grp_type == REPLICATION_TYPE_TRISYNC:
-                    pgroup_name_on_target = pg_name.replace("::", ":")
+                    pgroup_name_on_target = group_name.replace("::", ":")
 
-                try:
-                    # Configure the target_array to allow replication from the
-                    # PG on source_array.
-                    target_array.set_pgroup(pgroup_name_on_target,
-                                            allowed=True)
-                except purestorage.PureHTTPError as err:
-                    with excutils.save_and_reraise_exception() as ctxt:
-                        if (err.code == 400 and
-                                ERR_MSG_ALREADY_ALLOWED in err.text):
-                            ctxt.reraise = False
-                            LOG.info("Skipping allow pgroup %(pgname)s on "
-                                     "target array %(target_array)s since "
-                                     "it is already allowed.",
-                                     {"pgname": pg_name,
-                                      "target_array": target_array.array_name})
+                target_array.patch_protection_groups_targets(
+                    group_names=[pgroup_name_on_target],
+                    target=flasharray.TargetProtectionGroupPostPatch(
+                        allowed=True))
 
                 # Wait until source array acknowledges previous operation.
                 self._wait_until_source_array_allowed(current_array,
-                                                      pg_name)
+                                                      group_name)
                 # Start replication on the PG.
-                current_array.set_pgroup(pg_name, replicate_enabled=True)
+                current_array.patch_protection_groups(
+                    names=[group_name],
+                    protection_group=flasharray.ProtectionGroup(
+                        replication_schedule=flasharray.ReplicationSchedule(
+                            enabled=True)))
 
         model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         return model_update
@@ -1256,17 +1302,24 @@ class PureBaseVolumeDriver(san.SanDriver):
                   {'snap_name': tmp_pgsnap_name,
                    'source_group': source_group.id})
         current_array = self._get_current_array()
-        current_array.create_pgroup_snapshot(pgroup_name, suffix=tmp_suffix)
+        suffix = flasharray.ProtectionGroupSnapshotPost(suffix=tmp_suffix)
+        current_array.post_protection_group_snapshots(
+            source_names=[pgroup_name],
+            protection_group_snapshot=suffix)
         volumes, _ = self.update_provider_info(volumes, None)
         try:
             for source_vol, cloned_vol in zip(source_vols, volumes):
+                vol_models.append(cloned_vol)
                 source_snap_name = self._get_pgroup_vol_snap_name(
                     pgroup_name,
                     tmp_suffix,
                     self._get_vol_name(source_vol)
                 )
                 cloned_vol_name = self._get_vol_name(cloned_vol)
-                current_array.copy_volume(source_snap_name, cloned_vol_name)
+                current_array.post_volumes(names=[cloned_vol_name],
+                                           volume=flasharray.VolumePost(
+                                           source=flasharray.Reference(
+                                               name=source_snap_name)))
                 self._add_volume_to_consistency_group(
                     group,
                     cloned_vol_name
@@ -1288,6 +1341,9 @@ class PureBaseVolumeDriver(san.SanDriver):
                                          cgsnapshot=None, snapshots=None,
                                          source_cg=None, source_vols=None,
                                          group_type=None):
+        # let generic volume group support handle non-cgsnapshots
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
         model_update = self.create_consistencygroup(context, group, group_type)
         if cgsnapshot and snapshots:
             vol_models = self._create_cg_from_cgsnap(volumes,
@@ -1302,22 +1358,28 @@ class PureBaseVolumeDriver(san.SanDriver):
     def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
 
-        try:
-            pgroup_name = self._get_pgroup_name(group)
-            current_array = self._get_current_array()
-            current_array.destroy_pgroup(pgroup_name)
+        # let generic volume group support handle non-cgsnapshots
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        pgroup_name = self._get_pgroup_name(group)
+        current_array = self._get_current_array()
+        pgres = current_array.patch_protection_groups(
+            names=[pgroup_name],
+            protection_group=flasharray.ProtectionGroup(
+                destroyed=True))
+        if pgres.status_code == 200:
             if self.configuration.pure_eradicate_on_delete:
-                current_array.eradicate_pgroup(pgroup_name)
-        except purestorage.PureHTTPError as err:
+                current_array.delete_protection_groups(
+                    names=[pgroup_name])
+        else:
             with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        (ERR_MSG_PENDING_ERADICATION in err.text or
-                         ERR_MSG_NOT_EXIST in err.text)):
+                if (ERR_MSG_PENDING_ERADICATION in pgres.errors[0].message or
+                        ERR_MSG_NOT_EXIST in pgres.errors[0].message):
                     # Treat these as a "success" case since we are trying
                     # to delete them anyway.
                     ctxt.reraise = False
                     LOG.warning("Unable to delete Protection Group: %s",
-                                err.text)
+                                pgres.errors[0].context)
 
         for volume in volumes:
             self.delete_volume(volume)
@@ -1340,8 +1402,12 @@ class PureBaseVolumeDriver(san.SanDriver):
             remvollist = []
 
         current_array = self._get_current_array()
-        current_array.set_pgroup(pgroup_name, addvollist=addvollist,
-                                 remvollist=remvollist)
+        current_array.post_protection_groups_volumes(
+            group_names=[pgroup_name],
+            member_names=addvollist)
+        current_array.delete_protection_groups_volumes(
+            group_names=[pgroup_name],
+            member_names=remvollist)
 
         return None, None, None
 
@@ -1352,28 +1418,31 @@ class PureBaseVolumeDriver(san.SanDriver):
         pgroup_name = self._get_pgroup_name(cgsnapshot.group)
         pgsnap_suffix = self._get_pgroup_snap_suffix(cgsnapshot)
         current_array = self._get_current_array()
-        current_array.create_pgroup_snapshot(pgroup_name, suffix=pgsnap_suffix)
+        suffix = flasharray.ProtectionGroupSnapshotPost(suffix=pgsnap_suffix)
+        current_array.post_protection_group_snapshots(
+            source_names=[pgroup_name],
+            protection_group_snapshot=suffix)
 
         return None, None
 
     def _delete_pgsnapshot(self, pgsnap_name):
         current_array = self._get_current_array()
-        try:
-            # FlashArray.destroy_pgroup is also used for deleting
-            # pgroup snapshots. The underlying REST API is identical.
-            current_array.destroy_pgroup(pgsnap_name)
-            if self.configuration.pure_eradicate_on_delete:
-                current_array.eradicate_pgroup(pgsnap_name)
-        except purestorage.PureHTTPError as err:
+        pg_snapshot = flasharray.ProtectionGroupSnapshotPatch(destroyed=True)
+        res = current_array.patch_protection_group_snapshots(
+            protection_group_snapshot=pg_snapshot,
+            names=[pgsnap_name])
+        if self.configuration.pure_eradicate_on_delete:
+            current_array.delete_protection_group_snapshots(
+                names=[pgsnap_name])
+        if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        (ERR_MSG_PENDING_ERADICATION in err.text or
-                         ERR_MSG_NOT_EXIST in err.text)):
+                if (ERR_MSG_PENDING_ERADICATION in res.errors[0].message or
+                        ERR_MSG_NOT_EXIST in res.errors[0].message):
                     # Treat these as a "success" case since we are trying
                     # to delete them anyway.
                     ctxt.reraise = False
                     LOG.warning("Unable to delete Protection Group "
-                                "Snapshot: %s", err.text)
+                                "Snapshot: %s", res.errors[0].message)
 
     @pure_driver_debug_trace
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
@@ -1426,19 +1495,26 @@ class PureBaseVolumeDriver(san.SanDriver):
                 _("Unable to manage volume in a Pod"))
 
         current_array = self._get_current_array()
-        try:
-            volume_info = current_array.get_volume(ref_vol_name, snap=is_snap)
+        volres = current_array.get_volumes(names=[ref_vol_name])
+        if volres.status_code == 200:
+            volume_info = list(volres.items)[0]
             if volume_info:
                 if is_snap:
-                    for snap in volume_info:
-                        if snap['name'] == existing_ref['name']:
-                            return snap
+                    snapres = current_array.get_volume_snapshots(
+                        names=[existing_ref['name']])
+                    if snapres.status_code == 200:
+                        snap = list(snapres.items)[0]
+                        return snap
+                    else:
+                        with excutils.save_and_reraise_exception() as ctxt:
+                            if ERR_MSG_NOT_EXIST in volres.errors[0].message:
+                                ctxt.reraise = False
+
                 else:
                     return volume_info
-        except purestorage.PureHTTPError as err:
+        else:
             with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        ERR_MSG_NOT_EXIST in err.text):
+                if ERR_MSG_NOT_EXIST in volres.errors[0].message:
                     ctxt.reraise = False
 
         # If volume information was unable to be retrieved we need
@@ -1477,11 +1553,11 @@ class PureBaseVolumeDriver(san.SanDriver):
                     LOG.error(msg)
                     raise PureDriverException(msg)
                 for vol_type_id in group.volume_type_ids:
-                    vol_type = \
-                        volume_type.VolumeType.get_by_name_or_id(ctxt,
-                                                                 vol_type_id)
-                    repl_type = \
-                        self._get_replication_type_from_vol_type(vol_type)
+                    vol_type = volume_type.VolumeType.get_by_name_or_id(
+                        ctxt,
+                        vol_type_id)
+                    repl_type = self._get_replication_type_from_vol_type(
+                        vol_type)
                     if repl_type not in [REPLICATION_TYPE_ASYNC,
                                          REPLICATION_TYPE_TRISYNC]:
                         # Unsupported configuration
@@ -1614,9 +1690,10 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         ref_vol_name = existing_ref['name']
         current_array = self._get_current_array()
-        connected_hosts = \
-            current_array.list_volume_private_connections(ref_vol_name)
-        if len(connected_hosts) > 0:
+        volume_data = list(current_array.get_volumes(
+            names=[ref_vol_name]).items)[0]
+        connected_hosts = volume_data.connection_count
+        if connected_hosts > 0:
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref,
                 reason=_("%(driver)s manage_existing cannot manage a volume "
@@ -1629,16 +1706,22 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._rename_volume_object(ref_vol_name,
                                    new_vol_name,
                                    raise_not_exist=True)
+        # If existing volume has QoS settings then clear these out
+        vol_iops = getattr(volume_data.qos, "iops_limit", None)
+        vol_bw = getattr(volume_data.qos, "bandwidth_limit", None)
+        if vol_bw or vol_iops:
+            LOG.info("Removing pre-existing QoS settings on managed volume.")
+            current_array.patch_volumes(
+                names=[new_vol_name],
+                volume=flasharray.VolumePatch(
+                    qos=flasharray.Qos(iops_limit=100000000,
+                                       bandwidth_limit=549755813888)))
         # Check if the volume_type has QoS settings and if so
         # apply them to the newly managed volume
         qos = None
         qos = self._get_qos_settings(volume.volume_type)
-        if qos is not None:
+        if qos:
             self.set_qos(current_array, new_vol_name, qos)
-        else:
-            current_array.set_volume(new_vol_name,
-                                     iops_limit='',
-                                     bandwidth_limit='')
         volume.provider_id = new_vol_name
         async_enabled = self._enable_async_replication_if_needed(current_array,
                                                                  volume)
@@ -1659,26 +1742,36 @@ class PureBaseVolumeDriver(san.SanDriver):
         We expect a volume name in the existing_ref that matches one in Purity.
         """
         volume_info = self._validate_manage_existing_ref(existing_ref)
-        size = self._round_bytes_to_gib(volume_info['size'])
+        size = self._round_bytes_to_gib(volume_info.provisioned)
 
         return size
 
-    def _rename_volume_object(self, old_name, new_name, raise_not_exist=False):
+    def _rename_volume_object(self,
+                              old_name,
+                              new_name,
+                              raise_not_exist=False,
+                              snapshot=False):
         """Rename a volume object (could be snapshot) in Purity.
 
         This will not raise an exception if the object does not exist
         """
         current_array = self._get_current_array()
-        try:
-            current_array.rename_volume(old_name, new_name)
-        except purestorage.PureHTTPError as err:
+        if snapshot:
+            res = current_array.patch_volume_snapshots(
+                names=[old_name],
+                volume_snapshot=flasharray.VolumePatch(name=new_name))
+        else:
+            res = current_array.patch_volumes(
+                names=[old_name],
+                volume=flasharray.VolumePatch(name=new_name))
+        if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        ERR_MSG_NOT_EXIST in err.text):
+                if ERR_MSG_NOT_EXIST in res.errors[0].message:
                     ctxt.reraise = raise_not_exist
                     LOG.warning("Unable to rename %(old_name)s, error "
                                 "message: %(error)s",
-                                {"old_name": old_name, "error": err.text})
+                                {"old_name": old_name,
+                                 "error": res.errors[0].message})
         return new_name
 
     @pure_driver_debug_trace
@@ -1714,8 +1807,12 @@ class PureBaseVolumeDriver(san.SanDriver):
                                   "new_name": new_snap_name})
         self._rename_volume_object(ref_snap_name,
                                    new_snap_name,
-                                   raise_not_exist=True)
-        return None
+                                   raise_not_exist=True,
+                                   snapshot=True)
+        return {
+            'metadata': {'array_snapshot_name': new_snap_name,
+                         'array_name': self._array.array_name},
+        }
 
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
         """Return size of snapshot to be managed by manage_existing.
@@ -1725,7 +1822,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
         snap_info = self._validate_manage_existing_ref(existing_ref,
                                                        is_snap=True)
-        size = self._round_bytes_to_gib(snap_info['size'])
+        size = self._round_bytes_to_gib(snap_info.provisioned)
         return size
 
     def unmanage_snapshot(self, snapshot):
@@ -1745,7 +1842,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         LOG.info("Renaming existing snapshot %(ref_name)s to "
                  "%(new_name)s", {"ref_name": snap_name,
                                   "new_name": unmanaged_snap_name})
-        self._rename_volume_object(snap_name, unmanaged_snap_name)
+        self._rename_volume_object(snap_name,
+                                   unmanaged_snap_name,
+                                   snapshot=True)
 
     def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
                                sort_keys, sort_dirs):
@@ -1761,15 +1860,14 @@ class PureBaseVolumeDriver(san.SanDriver):
         We return references of the volume names for any others.
         """
         array = self._get_current_array()
-        pure_vols = array.list_volumes()
-        hosts_with_connections = array.list_hosts(all=True)
+        pure_vols = list(array.get_volumes().items)
+        connections = list(array.get_connections().items)
 
         # Put together a map of volumes that are connected to hosts
         connected_vols = {}
-        for host in hosts_with_connections:
-            vol = host.get('vol')
-            if vol:
-                connected_vols[vol] = host['name']
+        for connect in range(0, len(connections)):
+            connected_vols[connections[connect].volume.name] = \
+                connections[connect].host.name
 
         # Put together a map of existing cinder volumes on the array
         # so we can lookup cinder id's by purity volume names
@@ -1778,12 +1876,13 @@ class PureBaseVolumeDriver(san.SanDriver):
             existing_vols[self._get_vol_name(cinder_vol)] = cinder_vol.name_id
 
         manageable_vols = []
-        for pure_vol in pure_vols:
-            vol_name = pure_vol['name']
+        for pure_vol in range(0, len(pure_vols)):
+            vol_name = pure_vols[pure_vol].name
             cinder_id = existing_vols.get(vol_name)
             not_safe_msgs = []
             host = connected_vols.get(vol_name)
             in_pod = ("::" in vol_name)
+            is_deleted = pure_vols[pure_vol].destroyed
 
             if host:
                 not_safe_msgs.append(_('Volume connected to host %s') % host)
@@ -1793,6 +1892,9 @@ class PureBaseVolumeDriver(san.SanDriver):
 
             if in_pod:
                 not_safe_msgs.append(_('Volume is in a Pod'))
+
+            if is_deleted:
+                not_safe_msgs.append(_('Volume is deleted'))
 
             is_safe = (len(not_safe_msgs) == 0)
             reason_not_safe = ''
@@ -1804,7 +1906,8 @@ class PureBaseVolumeDriver(san.SanDriver):
 
             manageable_vols.append({
                 'reference': {'name': vol_name},
-                'size': self._round_bytes_to_gib(pure_vol['size']),
+                'size': self._round_bytes_to_gib(
+                    pure_vols[pure_vol].provisioned),
                 'safe_to_manage': is_safe,
                 'reason_not_safe': reason_not_safe,
                 'cinder_id': cinder_id,
@@ -1818,8 +1921,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                                  sort_keys, sort_dirs):
         """List snapshots on the backend available for management by Cinder."""
         array = self._get_current_array()
-        pure_snapshots = array.list_volumes(snap=True)
-
+        pure_snapshots = list(array.get_volume_snapshots().items)
         # Put together a map of existing cinder snapshots on the array
         # so we can lookup cinder id's by purity snapshot names
         existing_snapshots = {}
@@ -1828,9 +1930,10 @@ class PureBaseVolumeDriver(san.SanDriver):
             existing_snapshots[name] = cinder_snap.id
 
         manageable_snaps = []
-        for pure_snap in pure_snapshots:
-            snap_name = pure_snap['name']
+        for pure_snap in range(0, len(pure_snapshots)):
+            snap_name = pure_snapshots[pure_snap].name
             cinder_id = existing_snapshots.get(snap_name)
+
             is_safe = True
             reason_not_safe = None
 
@@ -1838,14 +1941,21 @@ class PureBaseVolumeDriver(san.SanDriver):
                 is_safe = False
                 reason_not_safe = _("Snapshot already managed.")
 
+            if pure_snapshots[pure_snap].destroyed:
+                is_safe = False
+                reason_not_safe = _("Snapshot is deleted.")
+
             manageable_snaps.append({
                 'reference': {'name': snap_name},
-                'size': self._round_bytes_to_gib(pure_snap['size']),
+                'size': self._round_bytes_to_gib(
+                    pure_snapshots[pure_snap].provisioned),
                 'safe_to_manage': is_safe,
                 'reason_not_safe': reason_not_safe,
                 'cinder_id': cinder_id,
                 'extra_info': None,
-                'source_reference': {'name': pure_snap['source']},
+                'source_reference': {
+                    'name': getattr(pure_snapshots[pure_snap].source,
+                                    "name", None)},
             })
 
         return volume_utils.paginate_entries_list(
@@ -1856,19 +1966,21 @@ class PureBaseVolumeDriver(san.SanDriver):
         return int(math.ceil(float(size) / units.Gi))
 
     def _get_flasharray(self, san_ip, api_token, rest_version=None,
-                        verify_https=None, ssl_cert_path=None,
-                        request_kwargs=None):
+                        verify_ssl=None, ssl_cert_path=None):
 
-        array = purestorage.FlashArray(san_ip,
-                                       api_token=api_token,
-                                       rest_version=rest_version,
-                                       verify_https=verify_https,
-                                       ssl_cert=ssl_cert_path,
-                                       user_agent=self._user_agent,
-                                       request_kwargs=request_kwargs)
-        array_info = array.get()
-        array.array_name = array_info["array_name"]
-        array.array_id = array_info["id"]
+        try:
+            array = flasharray.Client(target=san_ip,
+                                      api_token=api_token,
+                                      verify_ssl=verify_ssl,
+                                      ssl_cert=ssl_cert_path,
+                                      user_agent=self._user_agent,
+                                      )
+        except Exception:
+            return None
+        array_info = list(array.get_arrays().items)[0]
+        array.array_name = array_info.name
+        array.array_id = array_info.id
+        array._rest_version = array.get_rest_version()
 
         # Configure some extra tracing on requests made to the array
         if hasattr(array, '_request'):
@@ -1898,14 +2010,6 @@ class PureBaseVolumeDriver(san.SanDriver):
                   {"array_name": array.array_name,
                    "api_version": array._rest_version})
         return array
-
-    @staticmethod
-    def _client_version_greater_than(version):
-        module_version = [int(v) for v in purestorage.VERSION.split('.')]
-        for limit_version, actual_version in zip(version, module_version):
-            if actual_version > limit_version:
-                return True
-        return False
 
     @staticmethod
     def _get_pod_for_volume(volume_name):
@@ -2113,28 +2217,44 @@ class PureBaseVolumeDriver(san.SanDriver):
         LOG.debug("Connecting volume %(vol)s to host %(host)s.",
                   {"vol": vol_name,
                    "host": host_name})
-        try:
-            connection = array.connect_host(host_name, vol_name)
-        except purestorage.PureHTTPError as err:
-            if err.code == 400 and ERR_MSG_HOST_NOT_EXIST in err.text:
-                LOG.debug('Unable to attach volume to host: %s', err.text)
+        res = array.post_connections(
+            host_names=[host_name],
+            volume_names=[vol_name])
+        connection_obj = getattr(res, "items", None)
+        if connection_obj:
+            connection = list(connection_obj)
+        if res.status_code == 400:
+            if ERR_MSG_HOST_NOT_EXIST in res.errors[0].message:
+                LOG.debug(
+                    'Unable to attach volume to host: %s',
+                    res.errors[0].context
+                )
                 raise PureRetryableException()
             with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        ERR_MSG_ALREADY_EXISTS in err.text):
+                ctxt.reraise = False
+                if (res.status_code == 400 and
+                        ERR_MSG_ALREADY_EXISTS in res.errors[0].message):
                     # Happens if the volume is already connected to the host.
                     # Treat this as a success.
-                    ctxt.reraise = False
                     LOG.debug("Volume connection already exists for Purity "
-                              "host with message: %s", err.text)
+                              "host with message: %s", res.errors[0].message)
 
-                    # Get the info for the existing connection.
-                    connected_hosts = (
-                        array.list_volume_private_connections(vol_name))
-                    for host_info in connected_hosts:
-                        if host_info["host"] == host_name:
-                            connection = host_info
-                            break
+                    vol_data = list(array.get_volumes(names=[vol_name]).items)
+                    vol_id = vol_data[0].id
+                    connected_host = list(
+                        array.get_connections(
+                            volume_names=[vol_name], host_names=[host_name]
+                        ).items
+                    )[0]
+                    connection = [
+                        {
+                            "host": {"name": host_name},
+                            "host_group": {},
+                            'protocol_endpoint': {},
+                            "volume": {"name": vol_name, "id": vol_id},
+                            "lun": connected_host.lun,
+                        }
+                    ]
         if not connection:
             raise PureDriverException(
                 reason=_("Unable to connect or find connection to host"))
@@ -2240,9 +2360,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         if qos is not None:
             self.set_qos(current_array, vol_name, qos)
         else:
-            current_array.set_volume(vol_name,
-                                     iops_limit='',
-                                     bandwidth_limit='')
+            current_array.patch_volumes(names=[vol_name],
+                                        volume=flasharray.VolumePatch(
+                                            qos=flasharray.Qos(
+                                                iops_limit=100000000,
+                                                bandwidth_limit=549755813888)))
 
         return True, model_update
 
@@ -2255,19 +2377,20 @@ class PureBaseVolumeDriver(san.SanDriver):
                   "array %(backend_id)s.",
                   {"id": volume["id"],
                    "backend_id": current_array.backend_id})
-        try:
-            current_array.set_pgroup(self._replication_pg_name,
-                                     remvollist=([self._get_vol_name(volume)]))
-        except purestorage.PureHTTPError as err:
+        res = current_array.delete_protection_groups_volumes(
+            group_names=[self._replication_pg_name],
+            member_names=[self._get_vol_name(volume)])
+        if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        ERR_MSG_COULD_NOT_BE_FOUND in err.text):
+                if ERR_MSG_COULD_NOT_BE_FOUND in res.errors[0].message:
                     ctxt.reraise = False
                     LOG.warning("Disable replication on volume failed: "
-                                "already disabled: %s", err.text)
+                                "already disabled: %s",
+                                res.errors[0].message)
                 else:
                     LOG.error("Disable replication on volume failed with "
-                              "message: %s", err.text)
+                              "message: %s",
+                              res.errors[0].message)
 
     @pure_driver_debug_trace
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
@@ -2289,7 +2412,6 @@ class PureBaseVolumeDriver(san.SanDriver):
         # This should not happen unless we receive the same RPC message twice
         if active_backend_id == current.backend_id:
             LOG.info('No need to switch replication backend, already using it')
-
         # Manager sets the active_backend to '' when secondary_id was default,
         # but the driver failover_host method calls us with "default"
         elif not active_backend_id or active_backend_id == 'default':
@@ -2323,7 +2445,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                 # else will go into an error state pending an admin to check
                 # them and adjust states as appropriate.
 
-                current_array = self._get_current_array()
+                current_array = self._get_current_array(True)
                 repl_type = current_array.replication_type
                 is_in_ac = bool(repl_type == REPLICATION_TYPE_SYNC)
                 model_updates = []
@@ -2406,15 +2528,15 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     @pure_driver_debug_trace
     def set_personality(self, array, host_name, personality):
-        try:
-            array.set_host(host_name, personality=personality)
-        except purestorage.PureHTTPError as err:
-            if (err.code == 400 and
-                    ERR_MSG_HOST_NOT_EXIST in err.text):
+        res = array.patch_hosts(names=[host_name],
+                                host=flasharray.HostPatch(
+                                    personality=personality))
+        if res.status_code == 400:
+            if ERR_MSG_HOST_NOT_EXIST in res.errors[0].message:
                 # If the host disappeared out from under us that's
                 # ok, we will just retry and snag a new host.
                 LOG.debug('Unable to set host personality: %s',
-                          err.text)
+                          res.errors[0].message)
                 raise PureRetryableException()
         return
 
@@ -2468,12 +2590,13 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _does_pgroup_exist(self, array, pgroup_name):
         """Return True/False"""
-        try:
-            array.get_pgroup(pgroup_name)
+        pgroupres = array.get_protection_groups(
+            names=[pgroup_name])
+        if pgroupres.status_code == 200:
             return True
-        except purestorage.PureHTTPError as err:
+        else:
             with excutils.save_and_reraise_exception() as ctxt:
-                if err.code == 400 and ERR_MSG_NOT_EXIST in err.text:
+                if ERR_MSG_NOT_EXIST in pgroupres.errors[0].message:
                     ctxt.reraise = False
                     return False
             # Any unexpected exception to be handled by caller.
@@ -2488,16 +2611,16 @@ class PureBaseVolumeDriver(san.SanDriver):
         if self._does_pgroup_exist(target_array, pgroup_name_on_target):
             return
         else:
-            raise PureDriverException(message=
-                                      _('Protection Group not ready.'))
+            raise PureDriverException(message=_('Protection Group not ready.'))
 
     @pure_driver_debug_trace
     @utils.retry(PureDriverException,
                  REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL,
                  REPL_SETTINGS_PROPAGATE_MAX_RETRIES)
     def _wait_until_source_array_allowed(self, source_array, pgroup_name):
-        result = source_array.get_pgroup(pgroup_name)
-        if result["targets"][0]["allowed"]:
+        result = list(source_array.get_protection_groups_targets(
+            group_names=[pgroup_name]).items)[0]
+        if result.allowed:
             return
         else:
             raise PureDriverException(message=_('Replication not '
@@ -2515,13 +2638,14 @@ class PureBaseVolumeDriver(san.SanDriver):
         # arrays given to this method are configured for sync rep with active
         # cluster enabled.
         for target_array in ac_secondaries:
-            try:
-                primary.add_pod(pod_name, target_array.array_name)
-            except purestorage.PureHTTPError as err:
+            res = primary.post_pods_arrays(
+                group_names=[pod_name],
+                member_names=[target_array.array_name])
+            if res.status_code == 400:
                 with excutils.save_and_reraise_exception() as ctxt:
-                    if err.code == 400 and (
-                        ERR_MSG_ALREADY_EXISTS in err.text
-                        or ERR_MSG_ARRAY_LIMIT in err.text
+                    if (
+                        ERR_MSG_ALREADY_EXISTS in res.errors[0].message
+                        or ERR_MSG_ARRAY_LIMIT in res.errors[0].message
                     ):
                         ctxt.reraise = False
                         LOG.info("Skipping add array %(target_array)s to pod"
@@ -2538,22 +2662,26 @@ class PureBaseVolumeDriver(san.SanDriver):
         # Apply retention policies to a protection group.
         # These retention policies will be applied on the replicated
         # snapshots on the target array.
-        primary.set_pgroup(pg_name, **retention_policy)
+        primary.patch_protection_groups(
+            names=[pg_name],
+            protection_group=flasharray.ProtectionGroup(
+                target_retention=retention_policy))
 
         # Configure replication propagation frequency on a
         # protection group.
-        primary.set_pgroup(pg_name,
-                           replicate_frequency=replication_interval)
+        primary.patch_protection_groups(
+            names=[pg_name],
+            protection_group=flasharray.ProtectionGroup(
+                replication_schedule=flasharray.ReplicationSchedule(
+                    frequency=replication_interval)))
         for target_array in secondaries:
-            try:
-                # Configure PG to replicate to target_array.
-                primary.set_pgroup(pg_name,
-                                   addtargetlist=[target_array.array_name])
-            except purestorage.PureHTTPError as err:
+            # Configure PG to replicate to target_array.
+            res = primary.post_protection_groups_targets(
+                group_names=[pg_name],
+                member_names=[target_array.array_name])
+            if res.status_code == 400:
                 with excutils.save_and_reraise_exception() as ctxt:
-                    if err.code == 400 and (
-                            ERR_MSG_ALREADY_INCLUDES
-                            in err.text):
+                    if ERR_MSG_ALREADY_INCLUDES in res.errors[0].message:
                         ctxt.reraise = False
                         LOG.info("Skipping add target %(target_array)s"
                                  " to protection group %(pgname)s"
@@ -2572,15 +2700,15 @@ class PureBaseVolumeDriver(san.SanDriver):
             self._wait_until_target_group_setting_propagates(
                 target_array,
                 pgroup_name_on_target)
-            try:
-                # Configure the target_array to allow replication from the
-                # PG on source_array.
-                target_array.set_pgroup(pgroup_name_on_target,
-                                        allowed=True)
-            except purestorage.PureHTTPError as err:
+            # Configure the target_array to allow replication from the
+            # PG on source_array.
+            res = target_array.patch_protection_groups_targets(
+                group_names=[pgroup_name_on_target],
+                target=flasharray.TargetProtectionGroupPostPatch(
+                    allowed=True))
+            if res.status_code == 400:
                 with excutils.save_and_reraise_exception() as ctxt:
-                    if (err.code == 400 and
-                            ERR_MSG_ALREADY_ALLOWED in err.text):
+                    if ERR_MSG_ALREADY_ALLOWED in res.errors[0].message:
                         ctxt.reraise = False
                         LOG.info("Skipping allow pgroup %(pgname)s on "
                                  "target array %(target_array)s since "
@@ -2591,7 +2719,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         # Wait until source array acknowledges previous operation.
         self._wait_until_source_array_allowed(primary, pg_name)
         # Start replication on the PG.
-        primary.set_pgroup(pg_name, replicate_enabled=True)
+        primary.patch_protection_groups(
+            names=[pg_name],
+            protection_group=flasharray.ProtectionGroup(
+                replication_schedule=flasharray.ReplicationSchedule(
+                    enabled=True)))
 
     @pure_driver_debug_trace
     def _generate_replication_retention(self):
@@ -2608,10 +2740,10 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         :return: a dictionary representing replication retention settings
         """
-        replication_retention = dict(
-            target_all_for=self._replication_retention_short_term,
-            target_per_day=self._replication_retention_long_term_per_day,
-            target_days=self._replication_retention_long_term
+        replication_retention = flasharray.RetentionPolicy(
+            all_for_sec=self._replication_retention_short_term,
+            per_day=self._replication_retention_long_term_per_day,
+            days=self._replication_retention_long_term
         )
         return replication_retention
 
@@ -2620,26 +2752,19 @@ class PureBaseVolumeDriver(san.SanDriver):
                                        target_array,
                                        source_array_name,
                                        pgroup_name):
-        # Get all protection group snapshots.
+        # Get all protection group snapshots where replication has completed.
+        # Sort into reverse order to get the latest.
         snap_name = "%s:%s" % (source_array_name, pgroup_name)
         LOG.debug("Looking for snap %(snap)s on array id %(array_id)s",
                   {"snap": snap_name, "array_id": target_array.array_id})
-        pg_snaps = target_array.get_pgroup(snap_name, snap=True, transfer=True)
-        LOG.debug("Retrieved snapshots on target %(pg_snaps)s",
-                  {"pg_snaps": pg_snaps})
+        pg_snaps = list(
+            target_array.get_protection_group_snapshots_transfer(
+                names=[snap_name],
+                destroyed=False,
+                filter='progress="1.0"',
+                sort=["started-"]).items)
+        pg_snap = pg_snaps[0] if pg_snaps else None
 
-        # Only use snapshots that are replicated completely.
-        pg_snaps_filtered = [s for s in pg_snaps if s["progress"] == 1]
-        LOG.debug("Filtered list of snapshots %(pg_snaps_filtered)s",
-                  {"pg_snaps_filtered": pg_snaps_filtered})
-
-        # Go through the protection group snapshots, latest first ....
-        #   stop when we find required volume snapshot.
-        pg_snaps_filtered.sort(key=lambda x: x["created"], reverse=True)
-        LOG.debug("Sorted list of snapshots %(pg_snaps_filtered)s",
-                  {"pg_snaps_filtered": pg_snaps_filtered})
-
-        pg_snap = pg_snaps_filtered[0] if pg_snaps_filtered else None
         LOG.debug("Selecting snapshot %(pg_snap)s for failover.",
                   {"pg_snap": pg_snap})
 
@@ -2650,22 +2775,21 @@ class PureBaseVolumeDriver(san.SanDriver):
         if not name:
             raise PureDriverException(
                 reason=_("Empty string passed for Pod name."))
-        try:
-            source_array.create_pod(name)
-        except purestorage.PureHTTPError as err:
+        res = source_array.post_pods(names=[name], pod=flasharray.PodPost())
+        if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:
-                if err.code == 400 and ERR_MSG_ALREADY_EXISTS in err.text:
+                if ERR_MSG_ALREADY_EXISTS in res.errors[0].message:
                     # Happens if the pod already exists
                     ctxt.reraise = False
                     LOG.warning("Skipping creation of pod %s since it "
                                 "already exists.", name)
                     return
-                if err.code == 400 and (
-                        ERR_MSG_PENDING_ERADICATION in err.text):
+                if list(source_array.get_pods(
+                        names=[name]).items)[0].destroyed:
                     ctxt.reraise = False
                     LOG.warning("Pod %s is deleted but not"
                                 " eradicated - will recreate.", name)
-                    source_array.eradicate_pod(name)
+                    source_array.delete_pods(names=[name])
                     self._create_pod_if_not_exist(source_array, name)
 
     @pure_driver_debug_trace
@@ -2673,11 +2797,10 @@ class PureBaseVolumeDriver(san.SanDriver):
         if not pgname:
             raise PureDriverException(
                 reason=_("Empty string passed for PG name."))
-        try:
-            source_array.create_pgroup(pgname)
-        except purestorage.PureHTTPError as err:
+        res = source_array.post_protection_groups(names=[pgname])
+        if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:
-                if err.code == 400 and ERR_MSG_ALREADY_EXISTS in err.text:
+                if ERR_MSG_ALREADY_EXISTS in res.errors[0].message:
                     # Happens if the PG already exists
                     ctxt.reraise = False
                     LOG.warning("Skipping creation of PG %s since it "
@@ -2685,12 +2808,12 @@ class PureBaseVolumeDriver(san.SanDriver):
                     # We assume PG has already been setup with correct
                     # replication settings.
                     return
-                if err.code == 400 and (
-                        ERR_MSG_PENDING_ERADICATION in err.text):
+                if list(source_array.get_protection_groups(
+                        names=[pgname]).items)[0].destroyed:
                     ctxt.reraise = False
                     LOG.warning("Protection group %s is deleted but not"
                                 " eradicated - will recreate.", pgname)
-                    source_array.eradicate_pgroup(pgname)
+                    source_array.delete_protection_groups(names=[pgname])
                     self._create_protection_group_if_not_exist(source_array,
                                                                pgname)
 
@@ -2732,7 +2855,6 @@ class PureBaseVolumeDriver(san.SanDriver):
         for array in self._replication_target_arrays:
             if array.backend_id == secondary_id:
                 return array
-
         raise exception.InvalidReplicationTarget(
             reason=_("Unable to determine secondary_array from"
                      " supplied secondary: %(secondary)s.") %
@@ -2747,66 +2869,72 @@ class PureBaseVolumeDriver(san.SanDriver):
             return secondary_array
 
         for array in self._active_cluster_target_arrays:
-            try:
-                secondary_array = array
-                # Ensure the pod is in a good state on the array
-                pod_info = secondary_array.get_pod(self._replication_pod_name)
-                for pod_array in pod_info["arrays"]:
+            secondary_array = array
+            # Ensure the pod is in a good state on the array
+            res = secondary_array.get_pods(
+                names=[self._replication_pod_name])
+            if res.status_code == 200:
+                pod_info = list(res.items)[0]
+                for pod_array in range(0, len(pod_info.arrays)):
                     # Compare against Purity ID's
-                    if pod_array["array_id"] == secondary_array.array_id:
-                        if pod_array["status"] == "online":
+                    if pod_info.arrays[pod_array].id == \
+                            secondary_array.array_id:
+                        if pod_info.arrays[pod_array].status == "online":
                             # Success! Use this array.
                             break
                         else:
                             secondary_array = None
-
-            except purestorage.PureHTTPError as err:
+            else:
                 LOG.warning("Failed to get pod status for secondary array "
                             "%(id)s: %(err)s",
                             {
                                 "id": secondary_array.backend_id,
-                                "err": err,
+                                "err": res.errors[0].message,
                             })
                 secondary_array = None
         return secondary_array
 
     def _async_failover_host(self, volumes, secondary_array, pg_snap):
         # Try to copy the flasharray as close as we can.
-
-        # We have to rely on a call that is only available in REST API 1.3
-        # therefore we have to create a temporary FlashArray for this.
-        if hasattr(secondary_array, '_request_kwargs'):
-            target_array = self._get_flasharray(
-                secondary_array._target,
-                api_token=secondary_array._api_token,
-                rest_version='1.3',
-                request_kwargs=secondary_array._request_kwargs,
-            )
+        secondary_info = list(secondary_array.get_arrays().items)[0]
+        if version.parse(secondary_info.version) < version.parse('6.3.4'):
+            secondary_safemode = False
         else:
-            target_array = self._get_flasharray(
-                secondary_array._target,
-                api_token=secondary_array._api_token,
-                rest_version='1.3',
-            )
+            secondary_safemode = True
 
-        volume_snaps = target_array.get_volume(pg_snap['name'],
-                                               snap=True,
-                                               pgroup=True)
+        volume_snaps = list(secondary_array.get_volume_snapshots(
+            filter="name='" + pg_snap.name + ".*'"
+        ).items)
 
         # We only care about volumes that are in the list we are given.
         vol_names = set()
         for vol in volumes:
             vol_names.add(self._get_vol_name(vol))
 
-        for snap in volume_snaps:
-            vol_name = snap['name'].split('.')[-1]
+        for snap in range(0, len(volume_snaps)):
+            vol_name = volume_snaps[snap].name.split('.')[-1]
             if vol_name in vol_names:
                 vol_names.remove(vol_name)
                 LOG.debug('Creating volume %(vol)s from replicated snapshot '
-                          '%(snap)s', {'vol': vol_name, 'snap': snap['name']})
-                secondary_array.copy_volume(snap['name'],
-                                            vol_name,
-                                            overwrite=True)
+                          '%(snap)s', {'vol': vol_name,
+                                       'snap': volume_snaps[snap].name})
+                if secondary_safemode:
+                    secondary_array.post_volumes(
+                        with_default_protection=False,
+                        volume=flasharray.VolumePost(
+                            source=flasharray.Reference(
+                                name=volume_snaps[snap].name)
+                        ),
+                        names=[vol_name],
+                        overwrite=True)
+                else:
+                    secondary_array.post_volumes(
+                        volume=flasharray.VolumePost(
+                            source=flasharray.Reference(
+                                name=volume_snaps[snap].name)
+                        ),
+                        names=[vol_name],
+                        overwrite=True)
             else:
                 LOG.debug('Ignoring unmanaged volume %(vol)s from replicated '
                           'snapshot %(snap)s.', {'vol': vol_name,
@@ -2838,12 +2966,12 @@ class PureBaseVolumeDriver(san.SanDriver):
         There isn't actually anything that needs to be changed, only
         update the volume status to distinguish the survivors..
         """
-        array_volumes = secondary_array.list_volumes()
+
+        array_volumes = list(secondary_array.get_volumes(
+            filter="pod.name='" + self._replication_pod_name + "'").items)
         replicated_vol_names = set()
         for vol in array_volumes:
-            name = vol['name']
-            if name.startswith(self._replication_pod_name):
-                replicated_vol_names.add(name)
+            replicated_vol_names.add(vol.name)
 
         model_updates = []
         for vol in volumes:
@@ -2871,39 +2999,62 @@ class PureBaseVolumeDriver(san.SanDriver):
         by '0', and finally the serial number.
         """
         array = self._get_current_array()
-        volume_info = array.get_volume(pure_vol_name)
-        wwn = '3624a9370' + volume_info['serial']
+        volume_info = list(array.get_volumes(names=[pure_vol_name]).items)[0]
+        wwn = '3624a9370' + volume_info.serial
         return wwn.lower()
 
     def _get_current_array(self, init=False):
         if (not init and
                 self._is_active_cluster_enabled and
                 not self._failed_over_primary_array):
-            try:
-                pod_info = self._array.get_pod(self._replication_pod_name)
+            res = self._array.get_pods(names=[self._replication_pod_name])
+            if res.status_code == 200:
+                pod_info = list(res.items)[0]
                 for target_array in self._active_cluster_target_arrays:
                     LOG.info("Checking target array %s...",
                              target_array.array_name)
                     status_ok = False
-                    for pod_array in pod_info['arrays']:
-                        if pod_array['array_id'] == target_array.array_id:
-                            if pod_array['status'] == 'online':
+                    for pod_array in range(0, len(pod_info.arrays)):
+                        if pod_info.arrays[pod_array].id == \
+                                target_array.array_id:
+                            if pod_info.arrays[pod_array].status == \
+                                    'online':
                                 status_ok = True
                             break
                     if not status_ok:
                         LOG.warning("Target array is offline. Volume "
                                     "replication in unknown state. Check "
                                     "replication links and array state.")
-            except purestorage.PureError as err:
+            else:
                 LOG.warning("self.get_pod failed with"
-                            " message: %(msg)s", {"msg": err})
-                raise purestorage.PureError('No functional arrays '
-                                            'available')
+                            " message: %(msg)s",
+                            {"msg": res.errors[0].message})
+                raise PureDriverException(
+                    reason=_("No functional arrays available"))
 
         return self._array
 
     def _set_current_array(self, array):
         self._array = array
+
+    @pure_driver_debug_trace
+    def _get_valid_ports(self, array):
+        ports = []
+        res = array.get_controllers(filter="status='ready'")
+        if res.status_code != 200:
+            with excutils.save_and_reraise_exception() as ctxt:
+                ctxt.reraise = False
+                LOG.warning("No live controllers found: %s", res.errors[0])
+                return ports
+        else:
+            live_controllers = list(res.items)
+        if len(live_controllers) != 0:
+            controllers = [controller.name for controller in live_controllers]
+            for controller in controllers:
+                ports += list(
+                    array.get_ports(filter="name='" + controller + ".*'").items
+                )
+        return ports
 
 
 @interface.volumedriver
@@ -2914,7 +3065,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     the underlying storage connectivity with the FlashArray.
     """
 
-    VERSION = "18.0.iscsi"
+    VERSION = "19.0.iscsi"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -2923,12 +3074,31 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
     def _get_host(self, array, connector, remote=False):
         """Return dict describing existing Purity host object or None."""
-        hosts = array.list_hosts(remote=remote)
-        matching_hosts = []
-        for host in hosts:
-            if connector["initiator"] in host["iqn"]:
-                matching_hosts.append(host)
-        return matching_hosts
+        if remote:
+            hosts = list(
+                getattr(
+                    array.get_hosts(
+                        filter="iqns='"
+                        + connector["initiator"]
+                        + "' and not is_local"
+                    ),
+                    "items",
+                    []
+                )
+            )
+        else:
+            hosts = list(
+                getattr(
+                    array.get_hosts(
+                        filter="iqns='"
+                        + connector["initiator"]
+                        + "' and is_local"
+                    ),
+                    "items",
+                    []
+                )
+            )
+        return hosts
 
     @pure_driver_debug_trace
     def initialize_connection(self, volume, connector):
@@ -2948,14 +3118,11 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
         targets = []
         for array in target_arrays:
-            try:
-                connection = self._connect(array, pure_vol_name, connector,
-                                           chap_username, chap_password)
-
-            except purestorage.PureError as err:
+            connection = self._connect(array, pure_vol_name, connector,
+                                       chap_username, chap_password)
+            if not connection[0].lun:
                 # Swallow any exception, just warn and continue
-                LOG.warning("self._connect failed with"
-                            " message: %(msg)s", {"msg": err.reason})
+                LOG.warning("self._connect failed.")
                 continue
             target_ports = self._get_target_iscsi_ports(array)
             targets.append({
@@ -3002,23 +3169,26 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
         # Aggregate all targets together if they're in the allowed CIDR. We may
         # end up with different LUNs for different target iqn/portal sets (ie.
         # it could be a unique LUN for each FlashArray)
-        for target in targets:
-            port_iter = iter(target["ports"])
+        for target in range(0, len(targets)):
+            port_iter = iter(targets[target]["ports"])
             for port in port_iter:
                 # Check to ensure that the portal IP is in the iSCSI target
                 # CIDR before adding it
-                target_portal = port["portal"]
+                target_portal = port.portal
                 portal, p_port = target_portal.rsplit(':', 1)
                 portal = portal.strip('[]')
                 check_ip = ipaddress.ip_address(portal)
                 for check_cidr in check_iscsi_cidrs:
                     if check_ip in check_cidr:
-                        target_luns.append(target["connection"]["lun"])
-                        target_iqns.append(port["iqn"])
+                        target_luns.append(
+                            targets[target]["connection"][0].lun)
+                        target_iqns.append(port.iqn)
                         target_portals.append(target_portal)
 
         LOG.info("iSCSI target portals that match CIDR range: '%s'",
                  target_portals)
+        LOG.info("iSCSI target IQNs that match CIDR range: '%s'",
+                 target_iqns)
 
         # If we have multiple ports always report them.
         if target_luns and target_iqns and target_portals:
@@ -3030,8 +3200,8 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
     def _get_target_iscsi_ports(self, array):
         """Return list of iSCSI-enabled port descriptions."""
-        ports = array.list_ports()
-        iscsi_ports = [port for port in ports if port["iqn"]]
+        ports = self._get_valid_ports(array)
+        iscsi_ports = [port for port in ports if getattr(port, "iqn", None)]
         if not iscsi_ports:
             raise PureDriverException(
                 reason=_("No iSCSI-enabled ports on target array."))
@@ -3073,7 +3243,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
         hosts = self._get_host(array, connector, remote=False)
         host = hosts[0] if len(hosts) > 0 else None
         if host:
-            host_name = host["name"]
+            host_name = host.name
             LOG.info("Re-using existing purity host %(host_name)r",
                      {"host_name": host_name})
             if self.configuration.use_chap_auth:
@@ -3100,32 +3270,33 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             host_name = self._generate_purity_host_name(connector["host"])
             LOG.info("Creating host object %(host_name)r with IQN:"
                      " %(iqn)s.", {"host_name": host_name, "iqn": iqn})
-            try:
-                array.create_host(host_name, iqnlist=[iqn])
-            except purestorage.PureHTTPError as err:
-                if (err.code == 400 and
-                        (ERR_MSG_ALREADY_EXISTS in err.text or
-                            ERR_MSG_ALREADY_IN_USE in err.text)):
+            res = array.post_hosts(names=[host_name],
+                                   host=flasharray.HostPost(iqns=[iqn]))
+            if res.status_code == 400:
+                if (ERR_MSG_ALREADY_EXISTS in res.errors[0].message or
+                        ERR_MSG_ALREADY_IN_USE in res.errors[0].message):
                     # If someone created it before we could just retry, we will
                     # pick up the new host.
-                    LOG.debug('Unable to create host: %s', err.text)
+                    LOG.debug('Unable to create host: %s',
+                              res.errors[0].message)
                     raise PureRetryableException()
 
             if personality:
                 self.set_personality(array, host_name, personality)
 
             if self.configuration.use_chap_auth:
-                try:
-                    array.set_host(host_name,
-                                   host_user=chap_username,
-                                   host_password=chap_password)
-                except purestorage.PureHTTPError as err:
-                    if (err.code == 400 and
-                            ERR_MSG_HOST_NOT_EXIST in err.text):
-                        # If the host disappeared out from under us that's ok,
-                        # we will just retry and snag a new host.
-                        LOG.debug('Unable to set CHAP info: %s', err.text)
-                        raise PureRetryableException()
+                res = array.patch_hosts(names=[host_name],
+                                        host=flasharray.HostPatch(
+                                            chap=flasharray.Chap(
+                                                host_user=chap_username,
+                                                host_password=chap_password)))
+                if (res.status_code == 400 and
+                        ERR_MSG_HOST_NOT_EXIST in res.errors[0].message):
+                    # If the host disappeared out from under us that's ok,
+                    # we will just retry and snag a new host.
+                    LOG.debug('Unable to set CHAP info: %s',
+                              res.errors[0].message)
+                    raise PureRetryableException()
 
         # TODO: Ensure that the host has the correct preferred
         # arrays configured for it.
@@ -3146,7 +3317,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     supports the Cinder Fibre Channel Zone Manager.
     """
 
-    VERSION = "18.0.fc"
+    VERSION = "19.0.fc"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -3156,29 +3327,44 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
     def _get_host(self, array, connector, remote=False):
         """Return dict describing existing Purity host object or None."""
-        hosts = array.list_hosts(remote=remote)
-        matching_hosts = []
-        for host in hosts:
+        if remote:
             for wwn in connector["wwpns"]:
-                if wwn.lower() in str(host["wwn"]).lower():
-                    matching_hosts.append(host)
-                    break  # go to next host
-        return matching_hosts
+                hosts = list(
+                    getattr(
+                        array.get_hosts(
+                            filter="wwns='"
+                            + wwn.upper()
+                            + "' and not is_local"
+                        ),
+                        "items",
+                        []
+                    )
+                )
+        else:
+            for wwn in connector["wwpns"]:
+                hosts = list(
+                    getattr(
+                        array.get_hosts(
+                            filter="wwns='"
+                            + wwn.upper()
+                            + "' and is_local"
+                        ),
+                        "items",
+                        []
+                    )
+                )
+        return hosts
 
-    @staticmethod
-    def _get_array_wwns(array):
+    def _get_array_wwns(self, array):
         """Return list of wwns from the array
 
         Ensure that only true scsi FC ports are selected
         and not any that are enabled for NVMe-based FC with
         an associated NQN.
         """
-        ports = array.list_ports()
-        valid_ports = [
-            port["wwn"]
-            for port in ports
-            if port["wwn"] and not port["nqn"]
-        ]
+        ports = self._get_valid_ports(array)
+        valid_ports = [port.wwn for port in ports if getattr(
+            port, "wwn", None) and not getattr(port, "nqn", None)]
         return valid_ports
 
     @pure_driver_debug_trace
@@ -3194,17 +3380,15 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         target_luns = []
         target_wwns = []
         for array in target_arrays:
-            try:
-                connection = self._connect(array, pure_vol_name, connector)
-            except purestorage.PureError as err:
+            connection = self._connect(array, pure_vol_name, connector)
+            if not connection[0].lun:
                 # Swallow any exception, just warn and continue
-                LOG.warning("self._connect failed with"
-                            " message: %(msg)s", {"msg": err.reason})
+                LOG.warning("self._connect failed.")
                 continue
             array_wwns = self._get_array_wwns(array)
             for wwn in array_wwns:
                 target_wwns.append(wwn)
-                target_luns.append(connection["lun"])
+                target_luns.append(connection[0].lun)
 
         # Build the zoning map based on *all* wwns, this could be multiple
         # arrays connecting to the same host with a stretched volume.
@@ -3238,7 +3422,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         host = hosts[0] if len(hosts) > 0 else None
 
         if host:
-            host_name = host["name"]
+            host_name = host.name
             LOG.info("Re-using existing purity host %(host_name)r",
                      {"host_name": host_name})
         else:
@@ -3246,16 +3430,16 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
             host_name = self._generate_purity_host_name(connector["host"])
             LOG.info("Creating host object %(host_name)r with WWN:"
                      " %(wwn)s.", {"host_name": host_name, "wwn": wwns})
-            try:
-                array.create_host(host_name, wwnlist=wwns)
-            except purestorage.PureHTTPError as err:
-                if (err.code == 400 and
-                        (ERR_MSG_ALREADY_EXISTS in err.text or
-                            ERR_MSG_ALREADY_IN_USE in err.text)):
-                    # If someone created it before we could just retry, we will
-                    # pick up the new host.
-                    LOG.debug('Unable to create host: %s', err.text)
-                    raise PureRetryableException()
+            res = array.post_hosts(names=[host_name],
+                                   host=flasharray.HostPost(wwns=wwns))
+            if (res.status_code == 400 and
+                    (ERR_MSG_ALREADY_EXISTS in res.errors[0].message or
+                        ERR_MSG_ALREADY_IN_USE in res.errors[0].message)):
+                # If someone created it before we could just retry, we will
+                # pick up the new host.
+                LOG.debug('Unable to create host: %s',
+                          res.errors[0].message)
+                raise PureRetryableException()
 
             if personality:
                 self.set_personality(array, host_name, personality)
@@ -3304,16 +3488,11 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
             # Try to disconnect from each host, they may not be online though
             # so if they fail don't cause a problem.
             for array in self._uniform_active_cluster_target_arrays:
-                try:
-                    no_more_connections = self._disconnect(
-                        array, volume, connector, remove_remote_hosts=True,
-                        is_multiattach=multiattach)
-                    if no_more_connections:
-                        unused_wwns += self._get_array_wwns(array)
-                except purestorage.PureError as err:
-                    # Swallow any exception, just warn and continue
-                    LOG.warning("Disconnect on sendondary array failed with"
-                                " message: %(msg)s", {"msg": err.reason})
+                no_more_connections = self._disconnect(
+                    array, volume, connector, remove_remote_hosts=True,
+                    is_multiattach=multiattach)
+                if no_more_connections:
+                    unused_wwns += self._get_array_wwns(array)
 
         # Now disconnect from the current array, removing any left over
         # remote hosts that we maybe couldn't reach.
@@ -3345,7 +3524,7 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
     FlashArray.
     """
 
-    VERSION = "18.0.nvme"
+    VERSION = "19.0.nvme"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -3370,36 +3549,57 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         // octets 11 - 15:       last 5 octets of volume serial number
         """
         array = self._get_current_array()
-        volume_info = array.get_volume(pure_vol_name)
-        nguid = ("00" + volume_info['serial'][0:14] +
-                 "24a937" + volume_info['serial'][-10:])
+        volume_info = list(array.get_volumes(names=[pure_vol_name]).items)[0]
+        nguid = ("00" + volume_info.serial[0:14] +
+                 "24a937" + volume_info.serial[-10:])
         return nguid.lower()
 
     def _get_host(self, array, connector, remote=False):
         """Return a list of dicts describing existing host objects or None."""
-        hosts = array.list_hosts(remote=remote)
-        matching_hosts = [host for host in hosts
-                          if connector['nqn'] in host['nqn']]
-        return matching_hosts
+        if remote:
+            hosts = list(
+                getattr(
+                    array.get_hosts(
+                        filter="nqns='"
+                        + connector["nqn"]
+                        + "' and not is_local"
+                    ),
+                    "items",
+                    []
+                )
+            )
+        else:
+            hosts = list(
+                getattr(
+                    array.get_hosts(
+                        filter="nqns='"
+                        + connector["nqn"]
+                        + "' and is_local"
+                    ),
+                    "items",
+                    []
+                )
+            )
+        return hosts
 
     @pure_driver_debug_trace
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         pure_vol_name = self._get_vol_name(volume)
         target_arrays = [self._get_current_array()]
-        if (self._is_vol_in_pod(pure_vol_name) and
-                self._is_active_cluster_enabled and
-                not self._failed_over_primary_array):
+        if (
+            self._is_vol_in_pod(pure_vol_name)
+            and self._is_active_cluster_enabled and
+            not self._failed_over_primary_array
+        ):
             target_arrays += self._uniform_active_cluster_target_arrays
 
         targets = []
         for array in target_arrays:
-            try:
-                connection = self._connect(array, pure_vol_name, connector)
-            except purestorage.PureError as err:
+            connection = self._connect(array, pure_vol_name, connector)
+            if not connection[0].lun:
                 # Swallow any exception, just warn and continue
-                LOG.warning("self._connect failed with"
-                            " message: %(msg)s", {"msg": err.reason})
+                LOG.warning("self._connect failed.")
                 continue
             target_ports = self._get_target_nvme_ports(array)
             targets.append(
@@ -3443,23 +3643,23 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         # Aggregate all targets together, we may end up with different
         # namespaces for different target nqn/subsys sets (ie. it could
         # be a unique namespace for each FlashArray)
-        for target in targets:
-            for port in target["ports"]:
+        for target in range(0, len(targets)):
+            for port in targets[target]["ports"]:
                 # Check to ensure that the portal IP is in the NVMe target
                 # CIDR before adding it
-                target_portal = port["portal"]
-                if target_portal and port["nqn"]:
+                target_portal = port.portal
+                if target_portal and port.nqn:
                     portal, p_port = target_portal.rsplit(':', 1)
                     portal = portal.strip("[]")
                     check_ip = ipaddress.ip_address(portal)
                     for check_cidr in check_nvme_cidrs:
                         if check_ip in check_cidr:
-                            target_luns.append(target["connection"]["lun"])
-                            target_nqns.append(port["nqn"])
+                            target_luns.append(
+                                targets[target]["connection"][0].lun)
+                            target_nqns.append(port.nqn)
                             target_portals.append(
                                 (portal, NVME_PORT, self.transport_type)
                             )
-
         LOG.debug(
             "NVMe target portals that match CIDR range: '%s'", target_portals
         )
@@ -3477,15 +3677,15 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
 
     def _get_target_nvme_ports(self, array):
         """Return list of correct nvme-enabled port descriptions."""
-        ports = array.list_ports()
+        ports = self._get_valid_ports(array)
         valid_nvme_ports = []
-        nvme_ports = [port for port in ports if port["nqn"]]
+        nvme_ports = [port for port in ports if getattr(port, "nqn", None)]
         for port in range(0, len(nvme_ports)):
-            if "ETH" in nvme_ports[port]["name"]:
-                port_detail = array.get_network_interface(
-                    interface=nvme_ports[port]["name"]
-                )
-                if port_detail["services"][0] == "nvme-" + \
+            if "ETH" in nvme_ports[port].name:
+                port_detail = list(array.get_network_interfaces(
+                    names=[nvme_ports[port].name]
+                ).items)[0]
+                if port_detail.services[0] == "nvme-" + \
                         self.configuration.pure_nvme_transport:
                     valid_nvme_ports.append(nvme_ports[port])
         if not nvme_ports:
@@ -3502,7 +3702,7 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         hosts = self._get_host(array, connector, remote=False)
         host = hosts[0] if len(hosts) > 0 else None
         if host:
-            host_name = host["name"]
+            host_name = host.name
             LOG.info(
                 "Re-using existing purity host %(host_name)r",
                 {"host_name": host_name},
@@ -3514,17 +3714,16 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
                 "Creating host object %(host_name)r with NQN:" " %(nqn)s.",
                 {"host_name": host_name, "nqn": connector["nqn"]},
             )
-            try:
-                array.create_host(host_name, nqnlist=[nqn])
-            except purestorage.PureHTTPError as err:
-                if err.code == 400 and (
-                    ERR_MSG_ALREADY_EXISTS in err.text
-                    or ERR_MSG_ALREADY_IN_USE in err.text
-                ):
-                    # If someone created it before we could just retry, we will
-                    # pick up the new host.
-                    LOG.debug("Unable to create host: %s", err.text)
-                    raise PureRetryableException()
+            res = array.post_hosts(names=[host_name],
+                                   host=flasharray.HostPost(nqns=[nqn]))
+            if res.status_code == 400 and (
+                    ERR_MSG_ALREADY_EXISTS in res.errors[0].message
+                    or ERR_MSG_ALREADY_IN_USE in res.errors[0].message):
+                # If someone created it before we could just retry, we will
+                # pick up the new host.
+                LOG.debug("Unable to create host: %s",
+                          res.errors[0].message)
+                raise PureRetryableException()
 
             if personality:
                 self.set_personality(array, host_name, personality)

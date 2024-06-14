@@ -11,7 +11,7 @@ Volume Driver class, Fibre Channel with the PureFCDriver and
 NVMe-ROCE or NVMe-TCP with the PureNVMEDriver.
 
 iSCSI, Fibre Channel and NVMe-RoCE drivers are compatible with FlashArrays
-that support the REST API version 1.16 and higher (Purity 5.2.0 and newer).
+that support the REST API version 2.4 and higher (Purity 6.1.0 and newer).
 The NVMe-TCP driver is compatible with FlashArrays
 that are running Purity 6.4.2 and higher.
 Some features may require newer versions of Purity.
@@ -84,11 +84,11 @@ Pure Storage FlashArray as back-end storage.
 
 #. Install Pure Storage PyPI module.
    A requirement for the Pure Storage driver is the installation of the
-   Pure Storage Python SDK version 1.4.0 or later from PyPI.
+   Pure Storage Python SDK version 1.47.0 or later from PyPI.
 
    .. code-block:: console
 
-      $ pip install purestorage
+      $ pip install py-pure-client
 
 #. Retrieve an API token from Purity.
    The OpenStack Block Storage service configuration requires an API token
@@ -240,10 +240,6 @@ certificates of trusted CAs:
 .. code-block:: ini
 
     driver_ssl_cert_path = Certificate path
-
-.. note::
-
-   This requires the use of Pure Storage Python SDK > 1.4.0.
 
 Replication configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~
