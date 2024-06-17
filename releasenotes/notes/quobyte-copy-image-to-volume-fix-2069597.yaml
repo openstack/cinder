@@ -1,0 +1,5 @@
+---
+bugfixes:
+  - |
+    Quobyte driver now correctly handles 'raw' and 'qcow2' image formats
+    when creating volumes from Glance images. (Bug #2069597)
