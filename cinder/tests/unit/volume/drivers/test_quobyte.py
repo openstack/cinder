@@ -546,6 +546,63 @@ class QuobyteDriverTestCase(test.TestCase):
 
         self.assertIn(self.TEST_QUOBYTE_VOLUME_WITHOUT_PROTOCOL, drv.shares)
 
+    @ddt.data("raw", "qcow2", "foobar")
+    def test_ensure_volume_format_via_qemu_img_info(self, fmt):
+        """Test ensure_volume_format fallback path via qemu_img_info.
+
+        When the volume has no format stored in admin_metadata, the format
+        is determined by inspecting the volume file via qemu_img_info.
+        """
+        drv = self._driver
+        test_vol = self._simple_volume()
+        qemu_img_info_output = """{
+            "filename": "volume-%s",
+            "format": "%s",
+            "virtual-size": 1073741824,
+            "actual-size": 473000
+        }""" % (self.VOLUME_UUID, fmt)
+
+        img_info = imageutils.QemuImgInfo(qemu_img_info_output, format='json')
+
+        test_utils = self.mock_object(image_utils,
+                                      'qemu_img_info',
+                                      return_value=img_info)
+
+        if fmt == "foobar":
+            self.assertRaises(exception.InvalidVolume,
+                              drv.ensure_volume_format,
+                              test_vol)
+        else:
+            self.assertEqual(fmt, drv.ensure_volume_format(test_vol))
+
+        test_utils.assert_called_once_with(drv.local_path(test_vol),
+                                           force_share=True,
+                                           run_as_root=False,
+                                           allow_qcow2_backing_file=True,
+                                           img_format=None)
+
+    @ddt.data("raw", "qcow2", "foobar")
+    def test_ensure_volume_format_via_admin_metadata(self, fmt):
+        """Test ensure_volume_format primary path via admin_metadata.
+
+        When the volume has a format stored in admin_metadata, that value is
+        returned directly and qemu_img_info is not called.
+        """
+        drv = self._driver
+        test_vol = self._simple_volume(
+            volume_admin_metadata=[{'key': 'format', 'value': fmt}])
+
+        mock_qemu_img_info = self.mock_object(image_utils, 'qemu_img_info')
+
+        if fmt == "foobar":
+            self.assertRaises(exception.InvalidVolume,
+                              drv.ensure_volume_format,
+                              test_vol)
+        else:
+            self.assertEqual(fmt, drv.ensure_volume_format(test_vol))
+
+        mock_qemu_img_info.assert_not_called()
+
     def test_ensure_share_mounted(self):
         """_ensure_share_mounted simple use case."""
         with mock.patch.object(self._driver, '_get_mount_point_for_share') as \
@@ -991,6 +1048,98 @@ class QuobyteDriverTestCase(test.TestCase):
                 img_format=None)
             image_utils.resize_image.assert_called_once_with(volume_path, 3)
 
+    @ddt.data(["raw", False],
+              ["raw", True],
+              ["qcow2", False],
+              ["qcow2", True])
+    @ddt.unpack
+    @mock.patch.object(image_utils, "resize_image")
+    @mock.patch.object(image_utils, "fetch_to_volume_format")
+    @mock.patch.object(image_utils, "fixup_disk_format")
+    def test_copy_image_to_volume(self, fmt, sparse_bool,
+                                  mock_fix_df, mock_fetch_tvf, mock_resize_i):
+        drv = self._driver
+        drv.ensure_volume_format = mock.Mock(return_value=fmt)
+        if fmt == 'qcow2':
+            drv.configuration.quobyte_qcow2_volumes = True
+        else:
+            drv.configuration.quobyte_qcow2_volumes = False
+        drv.configuration.volume_dd_blocksize = "1Mb"
+        img_mock = mock.Mock()
+        img_mock.file_format = fmt
+        mock_fix_df.return_value = fmt
+        test_context = mock.Mock()
+        test_vol = self._simple_volume()
+        test_img_serv = mock.Mock()
+        test_img_id = "image-test-id"
+
+        drv.copy_image_to_volume(test_context,
+                                 test_vol,
+                                 test_img_serv,
+                                 test_img_id,
+                                 sparse_bool)
+
+        drv.ensure_volume_format.assert_called_once_with(test_vol)
+        mock_fix_df.assert_called_once_with(fmt)
+        mock_fetch_tvf.assert_called_once_with(
+            test_context,
+            test_img_serv,
+            test_img_id,
+            drv.local_path(test_vol),
+            mock_fix_df(),
+            drv.configuration.volume_dd_blocksize,
+            disable_sparse=sparse_bool
+        )
+        mock_resize_i.assert_called_once_with(drv.local_path(test_vol),
+                                              test_vol.size,
+                                              run_as_root=drv._execute_as_root)
+
+    @ddt.data("raw", "qcow2")
+    @mock.patch.object(image_utils, "resize_image")
+    @mock.patch.object(image_utils, "fetch_to_volume_format")
+    @mock.patch.object(image_utils, "fixup_disk_format")
+    def test_copy_image_to_volume_fails_on_wrong_format(
+            self, fmt, mock_fix_df, mock_fetch_tvf, mock_resize_i):
+        drv = self._driver
+        # This is the format we expect
+        if fmt == 'qcow2':
+            drv.configuration.quobyte_qcow2_volumes = True
+        else:
+            drv.configuration.quobyte_qcow2_volumes = False
+
+        # But we get the other one
+        wrong_fmt = 'qcow2' if fmt == 'raw' else 'raw'
+        drv.ensure_volume_format = mock.Mock(return_value=wrong_fmt)
+
+        drv.configuration.volume_dd_blocksize = "1Mb"
+        mock_fix_df.return_value = fmt
+        test_context = mock.Mock()
+        test_vol = self._simple_volume()
+        test_img_serv = mock.Mock()
+        test_img_id = "image-test-id"
+
+        self.assertRaises(exception.InvalidVolume,
+                          drv.copy_image_to_volume,
+                          test_context,
+                          test_vol,
+                          test_img_serv,
+                          test_img_id,
+                          False)
+
+        drv.ensure_volume_format.assert_called_once_with(test_vol)
+        mock_fix_df.assert_called_once_with(fmt)
+        mock_fetch_tvf.assert_called_once_with(
+            test_context,
+            test_img_serv,
+            test_img_id,
+            drv.local_path(test_vol),
+            mock_fix_df(),
+            drv.configuration.volume_dd_blocksize,
+            disable_sparse=False
+        )
+        # resize should not be called
+        self.assertFalse(mock_resize_i.called)
+
     def test_copy_volume_from_snapshot(self):
         drv = self._driver
 
@@ -1311,30 +1460,14 @@ class QuobyteDriverTestCase(test.TestCase):
         drv = self._driver
 
         volume = self._simple_volume()
-        vol_dir = os.path.join(self.TEST_MNT_POINT_BASE,
-                               drv._get_hash_str(self.TEST_QUOBYTE_VOLUME))
-        vol_path = os.path.join(vol_dir, volume['name'])
-
-        qemu_img_output = """{
-    "filename": "%s",
-    "format": "raw",
-    "virtual-size": 1073741824,
-    "actual-size": 173000
-}""" % volume['name']
-        img_info = imageutils.QemuImgInfo(qemu_img_output, format='json')
 
         drv.get_active_image_from_info = mock.Mock(return_value=volume['name'])
-        self.mock_object(image_utils, 'qemu_img_info', return_value=img_info)
+        drv.ensure_volume_format = mock.Mock(return_value='raw')
 
         conn_info = drv.initialize_connection(volume, None)
 
         drv.get_active_image_from_info.assert_called_once_with(volume)
-        image_utils.qemu_img_info.assert_called_once_with(
-            vol_path,
-            force_share=True,
-            run_as_root=False,
-            allow_qcow2_backing_file=True,
-            img_format=None)
+        drv.ensure_volume_format.assert_called_once_with(volume)
 
         self.assertEqual('raw', conn_info['data']['format'])
         self.assertEqual('quobyte', conn_info['driver_volume_type'])
