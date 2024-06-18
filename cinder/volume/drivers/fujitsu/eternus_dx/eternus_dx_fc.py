@@ -149,8 +149,10 @@ class FJDXFCDriver(driver.FibreChannelDriver):
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats."""
+        LOG.debug('get_volume_stats, refresh: %s, Enter method.', refresh)
+
         pool_name = None
-        if refresh is True:
+        if refresh:
             data, pool_name = self.common.update_volume_stats()
             backend_name = self.configuration.safe_get('volume_backend_name')
             data['volume_backend_name'] = backend_name or 'FJDXFCDriver'
@@ -158,7 +160,7 @@ class FJDXFCDriver(driver.FibreChannelDriver):
             self._stats = data
 
         LOG.debug('get_volume_stats, '
-                  'pool name: %s.', pool_name)
+                  'pool name: %s, Exit method.', pool_name)
         return self._stats
 
     def extend_volume(self, volume, new_size):
