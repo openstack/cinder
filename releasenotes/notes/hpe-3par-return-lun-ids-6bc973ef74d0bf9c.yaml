@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    HPE 3PAR driver `bug #2044255
+    <https://bugs.launchpad.net/cinder/+bug/2044255>`_:
+    Fixed: In peer persistence setup, when volume is attached to instance,
+    now LUN ids are returned from both the arrays.
+

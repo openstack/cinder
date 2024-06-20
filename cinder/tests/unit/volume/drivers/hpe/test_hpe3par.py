@@ -7664,8 +7664,17 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
               'volumeName': self.VOLUME_3PAR_NAME,
               'remoteName': self.wwn[0],
               'lun': 90, 'type': 0}]]
-        mock_replicated_client.getHostVLUNs.side_effect = (
-            mock_client.getHostVLUNs.side_effect)
+
+        mock_replicated_client.getHostVLUNs.side_effect = [
+            hpeexceptions.HTTPNotFound('fake'),
+            [{'active': True,
+              'volumeName': self.VOLUME_3PAR_NAME,
+              'remoteName': self.wwn[1],
+              'lun': 80, 'type': 0}],
+            [{'active': True,
+              'volumeName': self.VOLUME_3PAR_NAME,
+              'remoteName': self.wwn[0],
+              'lun': 80, 'type': 0}]]
 
         location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
                     {'volume_name': self.VOLUME_3PAR_NAME,
@@ -7673,15 +7682,23 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                      'host': self.FAKE_HOST,
                      'nsp': 'something'})
         mock_client.createVLUN.return_value = location
-        mock_replicated_client.createVLUN.return_value = location
 
+        location_peer = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
+                         {'volume_name': self.VOLUME_3PAR_NAME,
+                          'lun_id': 80,
+                          'host': self.FAKE_HOST,
+                          'nsp': 'something'})
+        mock_replicated_client.createVLUN.return_value = location_peer
+
+        primary_luns = [90, 90]
+        peer_luns = [80, 80]
         expected_properties = {
             'driver_volume_type': 'fibre_channel',
             'data': {
                 'encrypted': False,
-                'target_lun': 90,
                 'target_wwn': ['0987654321234', '123456789000987',
                                '0987654321234', '123456789000987'],
+                'target_luns': primary_luns + peer_luns,
                 'target_discovered': True,
                 'initiator_target_map':
                     {'123456789012345': ['0987654321234', '123456789000987',
