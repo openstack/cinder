@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    StorPool driver: implemented revert to snapshot, which happens
+    immediately i.e. without deleting and recreating the volume.
