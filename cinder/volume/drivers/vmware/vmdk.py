@@ -3244,6 +3244,16 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         return None
 
+    def _provider_location_to_ds_name_location(self, moref_location):
+        """Translate the provider location to the datastore name."""
+        fcd_loc = volumeops.FcdLocation.from_provider_location(
+            moref_location
+        )
+        ds_ref = fcd_loc.ds_ref()
+        summary = self.volumeops.get_summary(ds_ref)
+        return "%s@%s" % (fcd_loc.fcd_id, summary.name)
+
+    @volume_utils.trace
     def _migrate_to_fcd(self, context, volume, host):
 
         info = host['capabilities']['location_info']
@@ -3314,12 +3324,18 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                             volume.name, service_locator)
                 old_mref = summary.datastore.value
                 new_prov_loc = prov_loc.replace(old_mref, ds_ref.value)
-                volume.update({'provider_location': new_prov_loc})
+                prov_loc = self._provider_location_to_ds_name_location(
+                    new_prov_loc
+                )
+                volume.update({'provider_location': prov_loc})
                 volume.save()
                 return (True, None)
             else:
                 return false_ret
         else:
+            prov_loc = self._provider_location_to_ds_name_location(
+                prov_loc
+            )
             volume.update({'provider_location': prov_loc})
             volume.save()
             return (True, None)

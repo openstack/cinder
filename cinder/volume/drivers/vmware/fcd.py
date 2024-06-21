@@ -136,15 +136,6 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         (_, _, ds_ref) = self.ds_sel.select_datastore_by_name(ds_name)
         return "%s@%s" % (fcd_id, ds_ref.datastore.value)
 
-    def _provider_location_to_ds_name_location(self, moref_location):
-        """Translate the provider location to the datastore name."""
-        fcd_loc = vops.FcdLocation.from_provider_location(
-            moref_location
-        )
-        ds_ref = fcd_loc.ds_ref()
-        summary = self.volumeops.get_summary(ds_ref)
-        return "%s@%s" % (fcd_loc.fcd_id, summary.name)
-
     def _snap_provider_location_to_ds_name_location(self, moref_location):
         """Translate the provider location to the datastore name for snapshot.
 
