@@ -21,8 +21,8 @@ Cinder Service Configuration
 
 .. warning::
 
-   For security reasons **Service Tokens must to be configured** in OpenStack
-   for Cinder to operate securely.  Pay close attention to the :doc:`specific
+   For security reasons **Service Tokens must be configured** in OpenStack
+   for Cinder to operate securely. Pay close attention to the :doc:`specific
    section describing it: <block-storage/service-token>`. See
    https://bugs.launchpad.net/nova/+bug/2004555 for details.
 
