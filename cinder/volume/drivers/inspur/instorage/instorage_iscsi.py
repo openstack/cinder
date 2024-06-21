@@ -44,7 +44,6 @@ we must:
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import coordination
 from cinder import exception
@@ -207,7 +206,7 @@ class InStorageMCSISCSIDriver(instorage_common.InStorageMCSCommonDriver,
         except Exception as ex:
             msg = (_('_get_multi_iscsi_data: Failed to '
                      'get port ip because of exception: '
-                     '%s.') % six.text_type(ex))
+                     '%s.') % str(ex))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 

@@ -45,7 +45,6 @@ requests>=2.25.1 # Apache-2.0
 Routes>=2.4.1 # MIT
 taskflow>=4.5.0 # Apache-2.0
 rtslib-fb>=2.1.74 # Apache-2.0
-six>=1.15.0 # MIT
 SQLAlchemy>=1.4.23 # MIT
 stevedore>=3.2.2 # Apache-2.0
 tabulate>=0.8.7 # MIT
