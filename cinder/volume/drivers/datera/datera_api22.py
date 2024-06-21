@@ -26,7 +26,6 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils as json
 from oslo_utils import importutils
 from oslo_utils import units
-import six
 
 from cinder.common import constants
 from cinder import exception
@@ -1107,7 +1106,7 @@ class DateraApi(object):
     def _get_ip_pool_for_string_ip_2_2(self, ip, tenant):
         """Takes a string ipaddress and return the ip_pool API object dict """
         pool = 'default'
-        ip_obj = ipaddress.ip_address(six.text_type(ip))
+        ip_obj = ipaddress.ip_address(str(ip))
         ip_pools = self.api.access_network_ip_pools.list(tenant=tenant)
         for ipdata in ip_pools:
             for adata in ipdata['network_paths']:
