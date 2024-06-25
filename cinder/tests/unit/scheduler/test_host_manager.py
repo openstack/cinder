@@ -67,7 +67,7 @@ class HostManagerTestCase(test.TestCase):
 
     @mock.patch(
         'cinder.scheduler.filters.BackendFilterHandler.get_all_classes')
-    def test_initialzie_with_default_filters(self, mock_get_all_classes):
+    def test_initialize_with_default_filters(self, mock_get_all_classes):
         self.flags(scheduler_default_filters=
                    'FakeFilterClass1,FakeFilterClass2')
         mock_get_all_classes.return_value = [
