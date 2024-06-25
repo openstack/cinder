@@ -192,14 +192,17 @@ class VolumeApiTest(test.TestCase):
         # Create volumes in project 1
         db.volume_create(self.ctxt, {'display_name': 'test1',
                                      'project_id': fake.PROJECT_ID,
-                                     'volume_type_id': fake.VOLUME_TYPE_ID})
+                                     'volume_type_id': fake.VOLUME_TYPE_ID,
+                                     'id': fake.VOLUME_ID})
         db.volume_create(self.ctxt, {'display_name': 'test2',
                                      'project_id': fake.PROJECT_ID,
-                                     'volume_type_id': fake.VOLUME_TYPE_ID})
+                                     'volume_type_id': fake.VOLUME_TYPE_ID,
+                                     'id': fake.VOLUME2_ID})
         # Create volume in project 2
         db.volume_create(self.ctxt, {'display_name': 'test3',
                                      'project_id': fake.PROJECT2_ID,
-                                     'volume_type_id': fake.VOLUME_TYPE_ID})
+                                     'volume_type_id': fake.VOLUME_TYPE_ID,
+                                     'id': fake.VOLUME3_ID})
 
     def test_volume_index_filter_by_glance_metadata(self):
         vols = self._create_volume_with_glance_metadata()
@@ -331,6 +334,22 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller._get_volumes(req, is_detail=True)
         self.assertEqual(1, len(res_dict['volumes']))
         self.assertEqual(metadata, res_dict['volumes'][0]['metadata'])
+
+    def test_list_volume_with_filter_and_paginate(self):
+        self._create_multiple_volumes_with_different_project()
+        test_utils.create_volume(self.ctxt)
+
+        self.mock_object(ViewBuilder, '_get_volume_type',
+                         v2_fakes.fake_volume_type_name_get)
+
+        req = fakes.HTTPRequest.blank(
+            "/v3/volumes/detail?all_tenants=1"
+            "&sort=bootable:asc&with_count=True&limit=5"
+            "&marker=" + fake.VOLUME_ID)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        req.environ['cinder.context'] = ctxt
+        res_dict = self.controller._get_volumes(req, is_detail=True)
+        self.assertEqual(2, len(res_dict['volumes']))
 
     def test_volume_index_filter_by_group_id_in_unsupport_version(self):
         self._create_volume_with_group()
