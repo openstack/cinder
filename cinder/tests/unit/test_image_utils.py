@@ -30,55 +30,186 @@ from cinder.volume import throttling
 
 
 class TestQemuImgInfo(test.TestCase):
+    @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
     @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
-    def test_qemu_img_info(self, mock_exec, mock_info):
+    def test_qemu_img_info(self, mock_exec, mock_info, mock_detect):
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
         mock_exec.return_value = (mock_out, mock_err)
+
+        mock_detect.return_value = 'mock_fmt'
 
         output = image_utils.qemu_img_info(test_path)
-        mock_exec.assert_called_once_with('env', 'LC_ALL=C', 'qemu-img',
-                                          'info', '--output=json', test_path,
-                                          run_as_root=True,
-                                          prlimit=image_utils.QEMU_IMG_LIMITS)
+        mock_exec.assert_called_once_with(
+            'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'mock_fmt',
+            '--output=json', test_path, run_as_root=True,
+            prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
+        mock_detect.assert_called_once_with(path=test_path,
+                                            allow_qcow2_backing_file=False)
 
+    @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
     @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
-    def test_qemu_img_info_not_root(self, mock_exec, mock_info):
+    def test_qemu_img_info_qcow2_backing_ok(
+            self, mock_exec, mock_info, mock_detect):
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
         mock_exec.return_value = (mock_out, mock_err)
+
+        mock_detect.return_value = 'qcow2'
+
+        output = image_utils.qemu_img_info(
+            test_path, allow_qcow2_backing_file=True)
+        mock_exec.assert_called_once_with(
+            'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'qcow2',
+            '--output=json', test_path, run_as_root=True,
+            prlimit=image_utils.QEMU_IMG_LIMITS)
+        self.assertEqual(mock_info.return_value, output)
+        mock_detect.assert_called_once_with(path=test_path,
+                                            allow_qcow2_backing_file=True)
+
+    @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    @mock.patch('os.name', new='posix')
+    @mock.patch('oslo_utils.imageutils.QemuImgInfo')
+    @mock.patch('cinder.utils.execute')
+    def test_qemu_img_info_raw_not_luks(self, mock_exec, mock_info,
+                                        mock_detect):
+        """To determine if a raw image is luks, we call qemu-img twice."""
+        mock_out = mock.sentinel.out
+        mock_err = mock.sentinel.err
+        test_path = mock.sentinel.path
+        mock_exec.side_effect = [(mock_out, mock_err),
+                                 # it's not luks, so raise an error
+                                 processutils.ProcessExecutionError]
+
+        mock_detect.return_value = 'raw'
+
+        mock_data = mock.Mock()
+        mock_data.file_format = 'raw'
+        mock_info.return_value = mock_data
+
+        first = mock.call(
+            'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'raw',
+            '--output=json', test_path, run_as_root=True,
+            prlimit=image_utils.QEMU_IMG_LIMITS)
+        second = mock.call(
+            'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'luks',
+            '--output=json', test_path, run_as_root=True,
+            prlimit=image_utils.QEMU_IMG_LIMITS)
+
+        output = image_utils.qemu_img_info(test_path)
+        mock_exec.assert_has_calls([first, second])
+        mock_info.assert_called_once()
+        self.assertEqual(mock_info.return_value, output)
+        mock_detect.assert_called_once_with(path=test_path,
+                                            allow_qcow2_backing_file=False)
+
+    @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    @mock.patch('os.name', new='posix')
+    @mock.patch('oslo_utils.imageutils.QemuImgInfo')
+    @mock.patch('cinder.utils.execute')
+    def test_qemu_img_info_luks(self, mock_exec, mock_info, mock_detect):
+        # the format_inspector will identify the image as raw, but
+        # we will ask qemu-img for a second opinion, and it say luks
+        mock_out = mock.sentinel.out
+        mock_err = mock.sentinel.err
+        test_path = mock.sentinel.path
+        mock_exec.return_value = (mock_out, mock_err)
+
+        mock_detect.return_value = 'raw'
+
+        mock_data1 = mock.Mock(name='first_time')
+        mock_data1.file_format = 'raw'
+        mock_data2 = mock.Mock(name='second_time')
+        mock_data2.file_format = 'luks'
+        mock_info.side_effect = [mock_data1, mock_data2]
+
+        first = mock.call(
+            'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'raw',
+            '--output=json', test_path, run_as_root=True,
+            prlimit=image_utils.QEMU_IMG_LIMITS)
+        second = mock.call(
+            'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'luks',
+            '--output=json', test_path, run_as_root=True,
+            prlimit=image_utils.QEMU_IMG_LIMITS)
+
+        output = image_utils.qemu_img_info(test_path)
+        mock_exec.assert_has_calls([first, second])
+        self.assertEqual(2, mock_info.call_count)
+        self.assertEqual(mock_data2, output)
+        mock_detect.assert_called_once_with(path=test_path,
+                                            allow_qcow2_backing_file=False)
+
+    @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    @mock.patch('os.name', new='posix')
+    @mock.patch('oslo_utils.imageutils.QemuImgInfo')
+    @mock.patch('cinder.utils.execute')
+    def test_qemu_img_info_not_root(self, mock_exec, mock_info, mock_detect):
+        mock_out = mock.sentinel.out
+        mock_err = mock.sentinel.err
+        test_path = mock.sentinel.path
+        mock_exec.return_value = (mock_out, mock_err)
+
+        mock_detect.return_value = 'mock_fmt'
 
         output = image_utils.qemu_img_info(test_path,
                                            force_share=False,
                                            run_as_root=False)
-        mock_exec.assert_called_once_with('env', 'LC_ALL=C', 'qemu-img',
-                                          'info', '--output=json', test_path,
-                                          run_as_root=False,
-                                          prlimit=image_utils.QEMU_IMG_LIMITS)
+        mock_exec.assert_called_once_with(
+            'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'mock_fmt',
+            '--output=json', test_path, run_as_root=False,
+            prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
+        mock_detect.assert_called_once_with(path=test_path,
+                                            allow_qcow2_backing_file=False)
 
+    @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
     @mock.patch('cinder.image.image_utils.os')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
-    def test_qemu_img_info_on_nt(self, mock_exec, mock_info, mock_os):
+    def test_qemu_img_info_on_nt(self, mock_exec, mock_info, mock_os,
+                                 mock_detect):
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
         mock_exec.return_value = (mock_out, mock_err)
         mock_os.name = 'nt'
 
+        mock_detect.return_value = 'mock_fmt'
+
         output = image_utils.qemu_img_info(test_path)
-        mock_exec.assert_called_once_with('qemu-img', 'info', '--output=json',
-                                          test_path, run_as_root=True,
-                                          prlimit=image_utils.QEMU_IMG_LIMITS)
+        mock_exec.assert_called_once_with(
+            'qemu-img', 'info', '-f', 'mock_fmt', '--output=json',
+            test_path, run_as_root=True, prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
+        mock_detect.assert_called_once_with(path=test_path,
+                                            allow_qcow2_backing_file=False)
+
+    @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    @mock.patch('os.name', new='posix')
+    @mock.patch('cinder.utils.execute')
+    def test_qemu_img_info_malicious(self, mock_exec, mock_detect):
+        mock_out = mock.sentinel.out
+        mock_err = mock.sentinel.err
+        test_path = mock.sentinel.path
+        mock_exec.return_value = (mock_out, mock_err)
+
+        mock_detect.return_value = None
+
+        self.assertRaises(exception.Invalid,
+                          image_utils.qemu_img_info,
+                          test_path,
+                          force_share=False,
+                          run_as_root=False)
+        mock_exec.assert_not_called()
+        mock_detect.assert_called_once_with(path=test_path,
+                                            allow_qcow2_backing_file=False)
 
     @mock.patch('cinder.utils.execute')
     def test_get_qemu_img_version(self, mock_exec):
@@ -176,6 +307,7 @@ class TestConvertImage(test.TestCase):
         out_format = mock.sentinel.out_format
         mock_info.return_value.file_format = 'qcow2'
         mock_info.return_value.virtual_size = 1048576
+        mock_info.return_value.format_specific = {'data': {}}
         throttle = throttling.Throttle(prefix=['cgcmd'])
 
         with mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
@@ -2159,6 +2291,68 @@ class TestImageUtils(test.TestCase):
 
 
 @ddt.ddt(testNameFormat=ddt.TestNameFormat.INDEX_ONLY)
+class TestQcow2ImageChecks(test.TestCase):
+    def setUp(self):
+        super(TestQcow2ImageChecks, self).setUp()
+        # Test data from:
+        # $ qemu-img create -f qcow2 fake.qcow2 1M
+        # $ qemu-img info -f qcow2 fake.qcow2 --output=json
+        qemu_img_info = '''
+        {
+            "virtual-size": 1048576,
+            "filename": "fake.qcow2",
+            "cluster-size": 65536,
+            "format": "qcow2",
+            "actual-size": 200704,
+            "format-specific": {
+                "type": "qcow2",
+                "data": {
+                    "compat": "1.1",
+                    "compression-type": "zlib",
+                    "lazy-refcounts": false,
+                    "refcount-bits": 16,
+                    "corrupt": false,
+                    "extended-l2": false
+                }
+            },
+            "dirty-flag": false
+        }'''
+        self.qdata = imageutils.QemuImgInfo(qemu_img_info, format='json')
+
+    def test_check_qcow2_image_no_problem(self):
+        image_utils.check_qcow2_image(fake.IMAGE_ID, self.qdata)
+
+    def test_check_qcow2_image_with_datafile(self):
+        self.qdata.format_specific['data']['data-file'] = '/not/good'
+        e = self.assertRaises(exception.ImageUnacceptable,
+                              image_utils.check_qcow2_image,
+                              fake.IMAGE_ID,
+                              self.qdata)
+        self.assertIn('not allowed to have a data file', str(e))
+
+    def test_check_qcow2_image_with_backing_file(self):
+        # qcow2 backing file is done as a separate check because
+        # cinder has legitimate uses for a qcow2 with backing file
+        self.qdata.backing_file = '/this/is/ok'
+        image_utils.check_qcow2_image(fake.IMAGE_ID, self.qdata)
+
+    def test_check_qcow2_image_no_barf_bad_data(self):
+        # should never happen, but you never know ...
+        del self.qdata.format_specific['data']
+        e = self.assertRaises(exception.ImageUnacceptable,
+                              image_utils.check_qcow2_image,
+                              fake.IMAGE_ID,
+                              self.qdata)
+        self.assertIn('Cannot determine format-specific', str(e))
+        self.qdata.format_specific = None
+        e = self.assertRaises(exception.ImageUnacceptable,
+                              image_utils.check_qcow2_image,
+                              fake.IMAGE_ID,
+                              self.qdata)
+        self.assertIn('Cannot determine format-specific', str(e))
+
+
+@ddt.ddt(testNameFormat=ddt.TestNameFormat.INDEX_ONLY)
 class TestVmdkImageChecks(test.TestCase):
     def setUp(self):
         super(TestVmdkImageChecks, self).setUp()
@@ -2215,7 +2409,7 @@ class TestVmdkImageChecks(test.TestCase):
     def test_check_vmdk_image_handles_missing_info(self):
         expected = 'Unable to determine VMDK createType'
         # remove create-type
-        del(self.qdata_data['create-type'])
+        del (self.qdata_data['create-type'])
         iue = self.assertRaises(exception.ImageUnacceptable,
                                 image_utils.check_vmdk_image,
                                 fake.IMAGE_ID,
@@ -2223,7 +2417,7 @@ class TestVmdkImageChecks(test.TestCase):
         self.assertIn(expected, str(iue))
 
         # remove entire data section
-        del(self.qdata_data)
+        del (self.qdata_data)
         iue = self.assertRaises(exception.ImageUnacceptable,
                                 image_utils.check_vmdk_image,
                                 fake.IMAGE_ID,
@@ -2391,9 +2585,11 @@ class TestImageFormatCheck(test.TestCase):
         }'''
         self.qdata = imageutils.QemuImgInfo(qemu_img_info, format='json')
 
+    @mock.patch('cinder.image.image_utils.check_qcow2_image')
     @mock.patch('cinder.image.image_utils.check_vmdk_image')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
-    def test_check_image_format_defaults(self, mock_info, mock_vmdk):
+    def test_check_image_format_defaults(self, mock_info, mock_vmdk,
+                                         mock_qcow2):
         """Doesn't blow up when only the mandatory arg is passed."""
         src = mock.sentinel.src
         mock_info.return_value = self.qdata
@@ -2412,6 +2608,12 @@ class TestImageFormatCheck(test.TestCase):
         self.qdata.file_format = 'vmdk'
         image_utils.check_image_format(src)
         mock_vmdk.assert_called_with(expected_image_id, self.qdata)
+
+        # Bug #2059809: a qcow2 should trigger an additional check
+        mock_info.reset_mock()
+        self.qdata.file_format = 'qcow2'
+        image_utils.check_image_format(src)
+        mock_qcow2.assert_called_with(expected_image_id, self.qdata)
 
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     def test_check_image_format_uses_passed_data(self, mock_info):
