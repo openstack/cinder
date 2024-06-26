@@ -127,6 +127,9 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Quobyte_CI"
 
+    # driver is subject to removal if CI is not fixed
+    SUPPORTED = False
+
     QUOBYTE_VOLUME_SNAP_CACHE_DIR_NAME = "volume_from_snapshot_cache"
 
     def __init__(self, execute=processutils.execute, *args, **kwargs):
