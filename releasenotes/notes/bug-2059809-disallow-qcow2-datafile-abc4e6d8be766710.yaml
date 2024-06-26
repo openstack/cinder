@@ -1,0 +1,19 @@
+---
+security:
+  - |
+    Images in the qcow2 format with an external data file are now
+    rejected with an ``ImageUnacceptable`` error because such images
+    could be used in an exploit to expose host information.  Given
+    that qcow2 external data files were never supported by Cinder,
+    this change should have no impact on users.  See `Bug #2059809
+    <https://bugs.launchpad.net/cinder/+bug/2059809>`_ for details.
+fixes:
+  - |
+    `Bug #2059809 <https://bugs.launchpad.net/cinder/+bug/2059809>`_:
+    Fixed issue where a qcow2 format image with an external data file
+    could expose host information.  Such an image is now rejected with
+    an ``ImageUnacceptable`` error if it is used to create a volume.
+    Given that  qcow2 external data files were never supported by
+    Cinder, the only use for such an image previously was to attempt
+    to steal host information, and hence this change should have no
+    impact on users.
