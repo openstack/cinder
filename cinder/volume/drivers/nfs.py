@@ -160,6 +160,16 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
             msg = _('nfs volume must be a valid raw or qcow2 image.')
             raise exception.InvalidVolume(reason=msg)
 
+        # Test if the size is accurate or if something tried to modify it
+        if info.virtual_size != volume.size * units.Gi:
+            LOG.error('The volume virtual_size does not match the size in '
+                      'cinder, aborting as we suspect an exploit. '
+                      'Virtual Size is %(vsize)s and real size is %(size)s',
+                      {'vsize': info.virtual_size, 'size': volume.size})
+            msg = _('The volume virtual_size does not match the size in '
+                    'cinder, aborting as we suspect an exploit.')
+            raise exception.InvalidVolume(reason=msg)
+
         conn_info['data']['format'] = info.file_format
         LOG.debug('NfsDriver: conn_info: %s', conn_info)
         return conn_info

@@ -1361,7 +1361,8 @@ class NfsDriverTestCase(test.TestCase):
         mock_read_info_file.assert_called_once_with(info_path)
         mock_img_info.assert_called_once_with(snap_path,
                                               force_share=True,
-                                              run_as_root=True)
+                                              run_as_root=True,
+                                              allow_qcow2_backing_file=True)
         used_qcow = nfs_conf['nfs_qcow2_volumes']
         if encryption:
             mock_convert_image.assert_called_once_with(
@@ -1491,7 +1492,8 @@ class NfsDriverTestCase(test.TestCase):
 
         mock_img_utils.assert_called_once_with(vol_path,
                                                force_share=True,
-                                               run_as_root=True)
+                                               run_as_root=True,
+                                               allow_qcow2_backing_file=True)
         self.assertEqual('nfs', conn_info['driver_volume_type'])
         self.assertEqual(volume.name, conn_info['data']['name'])
         self.assertEqual(self.TEST_MNT_POINT_BASE,
@@ -1506,16 +1508,37 @@ class NfsDriverTestCase(test.TestCase):
         qemu_img_output = """{
     "filename": "%s",
     "format": "iso",
-    "virtual-size": 1073741824,
+    "virtual-size": 10737418240,
     "actual-size": 173000
 }""" % volume['name']
         mock_img_info.return_value = imageutils.QemuImgInfo(qemu_img_output,
                                                             format='json')
 
-        self.assertRaises(exception.InvalidVolume,
-                          drv.initialize_connection,
-                          volume,
-                          None)
+        self.assertRaisesRegex(exception.InvalidVolume,
+                               "must be a valid raw or qcow2 image",
+                               drv.initialize_connection,
+                               volume,
+                               None)
+
+    @mock.patch.object(image_utils, 'qemu_img_info')
+    def test_initialize_connection_raise_on_wrong_size(self, mock_img_info):
+        self._set_driver()
+        drv = self._driver
+        volume = self._simple_volume()
+
+        qemu_img_output = """{
+    "filename": "%s",
+    "format": "qcow2",
+    "virtual-size": 999999999999999,
+    "actual-size": 173000
+}""" % volume['name']
+        mock_img_info.return_value = imageutils.QemuImgInfo(qemu_img_output,
+                                                            format='json')
+        self.assertRaisesRegex(exception.InvalidVolume,
+                               "virtual_size does not match",
+                               drv.initialize_connection,
+                               volume,
+                               None)
 
     def test_create_snapshot(self):
         self._set_driver()
