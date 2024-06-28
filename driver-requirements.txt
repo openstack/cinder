@@ -42,7 +42,7 @@ infi.dtypes.wwn # PSF
 infi.dtypes.iqn # PSF
 
 # Storpool
-storpool>=4.0.0 # Apache-2.0
+storpool>=7.1.0 # Apache-2.0
 storpool.spopenstack>=2.2.1 # Apache-2.0
 
 # Datera

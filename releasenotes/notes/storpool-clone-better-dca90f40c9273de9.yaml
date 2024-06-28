@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    StorPool driver: improved the way volumes are cloned into different
+    StorPool templates (exposed as Cinder storage pools) if requested,
+    eliminating some data duplication in the underlying StorPool cluster.
