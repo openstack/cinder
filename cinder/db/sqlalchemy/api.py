@@ -406,7 +406,7 @@ def condition_not_db_filter(model, field, value, auto_none=True):
     If auto_none is True then we'll consider NULL values as different as well,
     like we do in Python and not like SQL does.
     """
-    result = ~condition_db_filter(model, field, value)
+    result = ~condition_db_filter(model, field, value)  # pylint: disable=E1130
 
     if auto_none and (
         (
@@ -789,7 +789,7 @@ def _clustered_bool_field_filter(query, field_name, filter_value):
             ),
         )
         if not filter_value:
-            query_filter = ~query_filter
+            query_filter = ~query_filter  # pylint: disable=E1130
         query = query.filter(query_filter)
     return query
 
