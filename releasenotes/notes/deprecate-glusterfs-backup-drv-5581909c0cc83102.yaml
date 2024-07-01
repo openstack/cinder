@@ -1,0 +1,5 @@
+---
+deprecations:
+  - |
+    The GlusterFS backup driver has been deprecated. It will be removed in
+    the 2025.1 release.

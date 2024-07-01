@@ -21,6 +21,8 @@ import stat
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_log import versionutils
 
 from cinder.backup.drivers import posix
 from cinder import exception
@@ -37,6 +39,8 @@ glusterfsbackup_service_opts = [
                     '<hostname|ipv4addr|ipv6addr>:<gluster_vol_name> format. '
                     'Eg: 1.2.3.4:backup_vol'),
 ]
+
+LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
 CONF.register_opts(glusterfsbackup_service_opts)
@@ -60,6 +64,12 @@ class GlusterfsBackupDriver(posix.PosixBackupDriver):
 
     def check_for_setup_error(self):
         """Raises error if any required configuration flag is missing."""
+
+        versionutils.report_deprecated_feature(
+            LOG,
+            "The Cinder GlusterFS Backup Driver is deprecated and will be "
+            "removed in the 2025.1 release.")
+
         required_flags = ['glusterfs_backup_share']
         for flag in required_flags:
             val = getattr(CONF, flag, None)
