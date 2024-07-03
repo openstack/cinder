@@ -1,0 +1,6 @@
+fixes:
+  - |
+    Hitachi driver `bug #2071697
+    <https://bugs.launchpad.net/cinder/+bug/2071697>'_: Fix to set
+    correct object ID as LDEV nickname when running host-assisted
+    migration with ``retype`` or ``migration`` commands.
