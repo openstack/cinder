@@ -280,7 +280,6 @@ class RestApiClient():
             }
             return req
 
-    @volume_utils.trace
     def _request(self, method, url, params=None, body=None,
                  async_=False, **kwargs):
         """Transmit the request to REST API server."""
@@ -526,6 +525,7 @@ class RestApiClient():
     def get_my_session(self):
         return getattr(self, 'session', None)
 
+    @volume_utils.trace
     def _login(self, do_raise=True):
         """Establishes a session and manages the session."""
         url = '%(url)s/sessions' % {
@@ -598,16 +598,19 @@ class RestApiClient():
             self.conf.hitachi_rest_keep_session_loop_interval)
         LOG.debug('enter_keep_session')
 
+    @volume_utils.trace
     def _get_object(self, url, params=None, **kwargs):
         """Transmit a GET request that appointed object ID."""
         rsp = self._request("GET", url, params=params, **kwargs)[0]
         return rsp if rsp else None
 
+    @volume_utils.trace
     def _get_objects(self, url, params=None, **kwargs):
         """Transmit a GET request."""
         rsp = self._request("GET", url, params=params, **kwargs)[0]
         return rsp.get("data") if rsp else None
 
+    @volume_utils.trace
     def _add_object(self, url, body, **kwargs):
         """Transmit a POST request."""
         rsp, errobj = self._request(
@@ -619,11 +622,13 @@ class RestApiClient():
             return resources[0].split('/')[-1], errobj
         return None, errobj
 
+    @volume_utils.trace
     def _delete_object(self, url, params=None, body=None, **kwargs):
         """Transmit a DELETE request."""
         self._request("DELETE", url, params=params, body=body, async_=True,
                       **kwargs)
 
+    @volume_utils.trace
     def _invoke(self, url, body=None, **kwargs):
         """Transmit a PUT request."""
         self._request("PUT", url, body=body, async_=True, **kwargs)
