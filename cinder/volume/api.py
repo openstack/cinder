@@ -16,8 +16,6 @@
 
 """Handles all requests relating to volumes."""
 
-from __future__ import annotations
-
 import ast
 import collections
 import datetime

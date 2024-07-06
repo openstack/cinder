@@ -50,8 +50,6 @@
 
 """CLI interface for cinder management."""
 
-from __future__ import annotations
-
 import collections
 import collections.abc as collections_abc
 import errno

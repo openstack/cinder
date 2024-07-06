@@ -15,8 +15,6 @@
 
 """CLI interface for cinder status commands."""
 
-from __future__ import annotations
-
 import os
 import sys
 

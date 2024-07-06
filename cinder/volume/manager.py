@@ -35,8 +35,6 @@ intact.
 
 """
 
-from __future__ import annotations  # Remove when only supporting Python 3.9+
-
 import functools
 import time
 import typing

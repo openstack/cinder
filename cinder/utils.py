@@ -25,8 +25,6 @@
    should be placed in volume_utils instead.
 """
 
-from __future__ import annotations  # Remove when only supporting python 3.9+
-
 from collections import OrderedDict
 import contextlib
 import datetime

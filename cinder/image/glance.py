@@ -16,8 +16,6 @@
 
 """Implementation of an image service that uses Glance as the backend"""
 
-from __future__ import annotations  # Remove when only supporting python 3.9+
-
 import copy
 import itertools
 import random

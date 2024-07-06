@@ -17,8 +17,6 @@
 
 """Handles all requests relating to the volume backups service."""
 
-from __future__ import annotations
-
 from datetime import datetime
 import random
 from typing import Optional

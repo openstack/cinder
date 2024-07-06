@@ -14,8 +14,6 @@
 
 """Volume-related Utilities and helpers."""
 
-from __future__ import annotations  # Remove when only supporting python 3.9+
-
 import abc
 import ast
 import functools

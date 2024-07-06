@@ -19,8 +19,6 @@
 
 """Built-in volume type properties."""
 
-from __future__ import annotations
-
 from typing import Any, Iterable, Optional, Union
 
 from oslo_config import cfg
