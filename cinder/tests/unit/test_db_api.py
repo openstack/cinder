@@ -4018,7 +4018,8 @@ class OnlineMigrationTestCase(BaseTest):
             calculate_method)
 
         query_mock.assert_called_once_with(self.ctxt,
-                                           models_mock.resource_name)
+                                           models_mock.resource_name,
+                                           read_deleted='yes')
         query_mock.return_value.filter_by.assert_called_once_with(
             use_quota=None)
         query.count.assert_called_once_with()
