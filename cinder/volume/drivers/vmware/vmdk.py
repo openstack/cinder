@@ -39,6 +39,7 @@ from oslo_vmware import image_transfer
 from oslo_vmware import pbm
 from oslo_vmware import vim_util
 
+from cinder import compute
 from cinder import context
 from cinder import exception
 # This is needed to register the SAP config options
@@ -3277,16 +3278,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         except ValueError:
             return false_ret
         dest_host = host['host']
-        cross_vc = False
-        if self._vcenter_instance_uuid != vcenter:
-            cross_vc = True
         tgt_ds = self._remote_api.select_ds_for_volume(context,
                                                        cinder_host=dest_host,
                                                        volume=volume)
         vol_status = volume.previous_status
-        # abort unsupported operation as soon as possible
-        if vol_status != 'available':
-            return false_ret
         backing = self.volumeops.get_backing(volume.name, volume.id)
         # upgrade shadow vm to support FCD
         vmx = volumeops.VMX_VERSION
@@ -3315,24 +3310,17 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         vmdk_url = "https://%s/folder/%s/%s?dcPath=%s&dsName=%s" % (
             self.configuration.vmware_host_ip, ds_rel_path, file_name,
             dc_path, ds_name)
+        self.volumeops.detach_disk_from_backing(backing, disk_dev)
         fcd_loc = self.volumeops.register_disk(
             vmdk_url, volume.name, summary.datastore)
         prov_loc = fcd_loc.provider_location()
-        self.volumeops.detach_disk_from_backing(backing, disk_dev)
         self.volumeops.delete_backing(backing)
-        service_locator = None
-        if cross_vc:
-            service_locator = self._remote_api.get_service_locator_info(
-                context,
-                dest_host)
-
         ds_ref = vim_util.get_moref(tgt_ds['datastore'], 'Datastore')
-        if ((ds_ref.value != summary.datastore.value) or
-           (cross_vc)):
+        if (ds_ref.value != summary.datastore.value):
             # Migration required
             if vol_status == 'available':
                 self.volumeops.relocate_fcd(fcd_loc, ds_ref,
-                                            volume.name, service_locator)
+                                            volume.name)
                 old_mref = summary.datastore.value
                 new_prov_loc = prov_loc.replace(old_mref, ds_ref.value)
                 prov_loc = self._provider_location_to_ds_name_location(
@@ -3342,11 +3330,33 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 volume.save()
                 return (True, None)
             else:
-                return false_ret
+                attachments = volume.volume_attachment
+                instance_uuid = attachments[0]['instance_uuid']
+                get_vm_by_uuid = self.volumeops.get_backing_by_uuid
+                attachedvm = get_vm_by_uuid(instance_uuid)
+                profile_id = tgt_ds.get('profile_id')
+                rp_ref = vim_util.get_moref(tgt_ds['resource_pool'],
+                                            'ResourcePool')
+                self.volumeops.relocate_one_disk(attachedvm,
+                                                 ds_ref, rp_ref,
+                                                 volume_id=volume.id,
+                                                 profile_id=profile_id)
+                fcd_loc_new = volumeops.FcdLocation(fcd_loc.fcd_id,
+                                                    ds_ref.value)
+                prov_loc = self._provider_location_to_ds_name_location(
+                    fcd_loc_new.provider_location()
+                )
+
         else:
             prov_loc = self._provider_location_to_ds_name_location(
                 prov_loc
             )
-            volume.update({'provider_location': prov_loc})
-            volume.save()
-            return (True, None)
+        volume.update({'provider_location': prov_loc})
+        volume.save()
+        if vol_status == 'in-use':
+            nova_api = compute.API()
+            attachments = volume.volume_attachment
+            instance_uuid = attachments[0]['instance_uuid']
+            nova_api.update_server_volume(context, instance_uuid,
+                                          volume.id, volume.id)
+        return (True, None)

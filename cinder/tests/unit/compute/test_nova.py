@@ -219,7 +219,8 @@ class NovaApiTestCase(test.TestCase):
                                           'attach_id', 'new_volume_id')
 
         mock_novaclient.assert_called_once_with(self.ctx,
-                                                privileged_user=True)
+                                                privileged_user=True,
+                                                api_version='2.85')
         mock_update_server_volume.assert_called_once_with(
             'server_id',
             'attach_id',
