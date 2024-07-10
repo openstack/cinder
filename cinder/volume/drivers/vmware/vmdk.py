@@ -3354,8 +3354,29 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         volume.update({'provider_location': prov_loc})
         volume.save()
         if vol_status == 'in-use':
-            nova_api = compute.API()
+            new_conn_info = {
+            'driver_volume_type': "vstorageobject",
+            'data': {
+                'volume_id': volume.id,
+                'name': volume.name,
+                # This is needed by the backup process (os-brick)
+                'config': self._get_connector_config(),
+                'id': fcd_loc.fcd_id,
+                'ds_ref_val': fcd_loc.ds_ref_val,
+                'ds_name': volume_utils.extract_host(volume.host,
+                                                     level='pool'),
+                'adapter_type': self._get_adapter_type(volume),
+                'profile_id': self._get_storage_profile_id(volume),
+                'volume': "",
+                'vmdk_size': volume.size * units.Gi,
+                'vmdk_path': vmdk_path,
+                'datacenter': dc_ref
+                }}
             attachments = volume.volume_attachment
+            for attach in attachments:
+                attach.connection_info = new_conn_info
+                attach.save()
+            nova_api = compute.API()
             instance_uuid = attachments[0]['instance_uuid']
             nova_api.update_server_volume(context, instance_uuid,
                                           volume.id, volume.id)
