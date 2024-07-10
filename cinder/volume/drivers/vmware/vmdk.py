@@ -3359,8 +3359,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 'data': {
                     'volume_id': volume.id,
                     'name': volume.name,
-                    # This is needed by the backup process (os-brick)
-                    'config': self._get_connector_config(),
                     'id': fcd_loc.fcd_id,
                     'ds_ref_val': fcd_loc.ds_ref_val,
                     'ds_name': volume_utils.extract_host(volume.host,
@@ -3370,7 +3368,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     'volume': "",
                     'vmdk_size': volume.size * units.Gi,
                     'vmdk_path': vmdk_path,
-                    'datacenter': dc_ref
+                    'datacenter': dc_ref.value
                 }
             }
             attachments = volume.volume_attachment
