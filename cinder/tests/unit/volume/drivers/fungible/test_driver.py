@@ -601,6 +601,7 @@ class FungibleDriverTest(unittest.TestCase):
         with self.assertRaises(exception.VolumeBackendAPIException):
             self.driver.create_volume_from_snapshot(mock_volume, mock_snapshot)
 
+    @mock.patch('time.sleep', new=mock.MagicMock())
     @mock.patch.object(swagger_client.StorageApi, 'delete_volume_copy_task')
     @mock.patch.object(swagger_client.StorageApi, 'delete_snapshot')
     @mock.patch.object(swagger_client.StorageApi, 'get_volume_copy_task')
@@ -624,6 +625,7 @@ class FungibleDriverTest(unittest.TestCase):
         self.assertIsNotNone(self.driver.create_cloned_volume(
             target_mock_volume, source_mock_volume))
 
+    @mock.patch('time.sleep', new=mock.MagicMock())
     @mock.patch.object(swagger_client.StorageApi, 'delete_volume_copy_task')
     @mock.patch.object(swagger_client.StorageApi, 'delete_snapshot')
     @mock.patch.object(swagger_client.StorageApi, 'get_volume_copy_task')
