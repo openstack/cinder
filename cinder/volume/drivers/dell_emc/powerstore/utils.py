@@ -26,7 +26,6 @@ from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
-from cinder.volume.drivers.dell_emc.powerstore import driver
 from cinder.volume import volume_utils
 
 
@@ -36,6 +35,7 @@ CHAP_DEFAULT_SECRET_LENGTH = 60
 PROTOCOL_FC = constants.FC
 PROTOCOL_ISCSI = constants.ISCSI
 PROTOCOL_NVME = "NVMe"
+POWERSTORE_PP_KEY = "powerstore:protection_policy"
 
 
 def bytes_to_gib(size_in_bytes):
@@ -167,7 +167,7 @@ def get_protection_policy_from_volume(volume):
     :return: Protection policy name
     """
 
-    return volume.volume_type.extra_specs.get(driver.POWERSTORE_PP_KEY)
+    return volume.volume_type.extra_specs.get(POWERSTORE_PP_KEY)
 
 
 def is_group_a_cg_snapshot_type(func):

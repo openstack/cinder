@@ -34,7 +34,6 @@ POWERSTORE_OPTS = options.POWERSTORE_OPTS
 CONF = cfg.CONF
 CONF.register_opts(POWERSTORE_OPTS, group=configuration.SHARED_CONF_GROUP)
 LOG = logging.getLogger(__name__)
-POWERSTORE_PP_KEY = "powerstore:protection_policy"
 
 
 @interface.volumedriver
@@ -75,7 +74,7 @@ class PowerStoreDriver(driver.VolumeDriver):
         properties = {}
         self._set_property(
             properties,
-            POWERSTORE_PP_KEY,
+            utils.POWERSTORE_PP_KEY,
             "PowerStore Protection Policy.",
             _("Specifies the PowerStore Protection Policy for a "
               "volume type. Protection Policy is assigned to a volume during "
