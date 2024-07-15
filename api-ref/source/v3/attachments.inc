@@ -217,6 +217,8 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all-tenants
+   - instance_id: instance_uuid_query_optional
+   - volume_id: volume_id_attachment_query_optional
    - sort: sort
    - sort_key: sort_key
    - sort_dir: sort_dir
