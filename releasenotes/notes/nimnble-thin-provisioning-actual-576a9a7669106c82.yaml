@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    HPE Nimble driver. Report thin provisioning capability
+    correctly according to backend configuration.
