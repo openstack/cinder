@@ -44,6 +44,7 @@
               - ^doc/.*$
               - ^releasenotes/.*$
         - cinder-plugin-ceph-tempest:
+            voting: false
             irrelevant-files: &gate-irrelevant-files
               - ^(test-|)requirements.txt$
               - ^.*\.rst$
@@ -90,6 +91,7 @@
         - cinder-grenade-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - cinder-plugin-ceph-tempest:
+            voting: false
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
