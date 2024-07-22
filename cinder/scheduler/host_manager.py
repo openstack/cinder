@@ -445,6 +445,7 @@ class PoolState(BackendState):
             self.filter_function = capability.get('filter_function', None)
             self.goodness_function = capability.get('goodness_function', 0)
 
+    @typing.no_type_check
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
         pass

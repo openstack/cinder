@@ -33,6 +33,7 @@ Volume backups can be created, restored, deleted and listed.
 
 import contextlib
 import os
+import typing
 
 from castellan import key_manager
 from eventlet import tpool
@@ -139,6 +140,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self.service = importutils.import_class(self.driver_name)
         self.message_api = message_api.API()
 
+    @typing.no_type_check
     def init_host(self, **kwargs):
         """Run initialization needed for a standalone service."""
         ctxt = context.get_admin_context()

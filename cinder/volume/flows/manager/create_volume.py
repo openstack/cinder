@@ -1292,6 +1292,7 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
             'migration_target_creating': 'migration_target',
         }
 
+    @typing.no_type_check
     def execute(self, context, volume, volume_spec):
         need_update_volume = volume_spec.pop('need_update_volume', True)
         if not need_update_volume:
