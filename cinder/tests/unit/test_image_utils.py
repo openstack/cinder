@@ -31,14 +31,18 @@ from cinder.volume import throttling
 
 class TestQemuImgInfo(test.TestCase):
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    @mock.patch('cinder.image.image_utils.os.path.abspath')
+    @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
-    def test_qemu_img_info(self, mock_exec, mock_info, mock_detect):
+    def test_qemu_img_info(self, mock_exec, mock_info,
+                           mock_abspath, mock_detect):
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
-        mock_exec.return_value = (mock_out, mock_err)
 
+        mock_abspath.return_value = test_path
+        mock_exec.return_value = (mock_out, mock_err)
         mock_detect.return_value = 'mock_fmt'
 
         output = image_utils.qemu_img_info(test_path)
@@ -49,17 +53,21 @@ class TestQemuImgInfo(test.TestCase):
         self.assertEqual(mock_info.return_value, output)
         mock_detect.assert_called_once_with(path=test_path,
                                             allow_qcow2_backing_file=False)
+        mock_abspath.assert_called()
 
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    @mock.patch('cinder.image.image_utils.os.path.abspath')
+    @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
     def test_qemu_img_info_qcow2_backing_ok(
-            self, mock_exec, mock_info, mock_detect):
+            self, mock_exec, mock_info, mock_abspath, mock_detect):
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
-        mock_exec.return_value = (mock_out, mock_err)
 
+        mock_abspath.return_value = test_path
+        mock_exec.return_value = (mock_out, mock_err)
         mock_detect.return_value = 'qcow2'
 
         output = image_utils.qemu_img_info(
@@ -71,20 +79,24 @@ class TestQemuImgInfo(test.TestCase):
         self.assertEqual(mock_info.return_value, output)
         mock_detect.assert_called_once_with(path=test_path,
                                             allow_qcow2_backing_file=True)
+        mock_abspath.assert_called()
 
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    @mock.patch('cinder.image.image_utils.os.path.abspath')
+    @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
     def test_qemu_img_info_raw_not_luks(self, mock_exec, mock_info,
-                                        mock_detect):
+                                        mock_abspath, mock_detect):
         """To determine if a raw image is luks, we call qemu-img twice."""
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
+
+        mock_abspath.return_value = test_path
         mock_exec.side_effect = [(mock_out, mock_err),
                                  # it's not luks, so raise an error
                                  processutils.ProcessExecutionError]
-
         mock_detect.return_value = 'raw'
 
         mock_data = mock.Mock()
@@ -106,18 +118,23 @@ class TestQemuImgInfo(test.TestCase):
         self.assertEqual(mock_info.return_value, output)
         mock_detect.assert_called_once_with(path=test_path,
                                             allow_qcow2_backing_file=False)
+        mock_abspath.assert_called()
 
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    @mock.patch('cinder.image.image_utils.os.path.abspath')
+    @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
-    def test_qemu_img_info_luks(self, mock_exec, mock_info, mock_detect):
+    def test_qemu_img_info_luks(self, mock_exec, mock_info,
+                                mock_abspath, mock_detect):
         # the format_inspector will identify the image as raw, but
         # we will ask qemu-img for a second opinion, and it say luks
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
-        mock_exec.return_value = (mock_out, mock_err)
 
+        mock_abspath.return_value = test_path
+        mock_exec.return_value = (mock_out, mock_err)
         mock_detect.return_value = 'raw'
 
         mock_data1 = mock.Mock(name='first_time')
@@ -141,16 +158,21 @@ class TestQemuImgInfo(test.TestCase):
         self.assertEqual(mock_data2, output)
         mock_detect.assert_called_once_with(path=test_path,
                                             allow_qcow2_backing_file=False)
+        mock_abspath.assert_called()
 
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    @mock.patch('cinder.image.image_utils.os.path.abspath')
+    @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
-    def test_qemu_img_info_not_root(self, mock_exec, mock_info, mock_detect):
+    def test_qemu_img_info_not_root(self, mock_exec, mock_info,
+                                    mock_abspath, mock_detect):
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
-        mock_exec.return_value = (mock_out, mock_err)
 
+        mock_abspath.return_value = test_path
+        mock_exec.return_value = (mock_out, mock_err)
         mock_detect.return_value = 'mock_fmt'
 
         output = image_utils.qemu_img_info(test_path,
@@ -163,13 +185,18 @@ class TestQemuImgInfo(test.TestCase):
         self.assertEqual(mock_info.return_value, output)
         mock_detect.assert_called_once_with(path=test_path,
                                             allow_qcow2_backing_file=False)
+        mock_abspath.assert_called()
 
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    @mock.patch('cinder.image.image_utils.os.path.abspath')
     @mock.patch('cinder.utils.execute')
-    def test_qemu_img_info_malicious(self, mock_exec, mock_detect):
+    def test_qemu_img_info_malicious(self, mock_exec, mock_abspath,
+                                     mock_detect):
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
+
+        mock_abspath.return_value = test_path
         mock_exec.return_value = (mock_out, mock_err)
 
         mock_detect.return_value = None
@@ -182,6 +209,7 @@ class TestQemuImgInfo(test.TestCase):
         mock_exec.assert_not_called()
         mock_detect.assert_called_once_with(path=test_path,
                                             allow_qcow2_backing_file=False)
+        mock_abspath.assert_called_once_with(test_path)
 
     @mock.patch('cinder.utils.execute')
     def test_get_qemu_img_version(self, mock_exec):
