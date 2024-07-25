@@ -1,4 +1,4 @@
-# Copyright (C) 2022, 2023, Hewlett Packard Enterprise, Ltd.
+# Copyright (C) 2022, 2024, Hewlett Packard Enterprise, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -955,7 +955,10 @@ class HPEXPRESTFCDriverTest(test.TestCase):
             TEST_VOLUME[0],
             TEST_VOLUME[1],
             "available")
-        self.assertEqual(1, request.call_count)
+        self.assertEqual(2, request.call_count)
+        args, kwargs = request.call_args_list[1]
+        self.assertEqual(kwargs['json']['label'],
+                         TEST_VOLUME[0]['id'].replace("-", ""))
 
     def test_unmanage_snapshot(self):
         """The driver don't support unmange_snapshot."""

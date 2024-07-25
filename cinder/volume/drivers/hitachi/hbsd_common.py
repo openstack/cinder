@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2023, Hitachi, Ltd.
+# Copyright (C) 2020, 2024, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -1101,6 +1101,13 @@ class HBSDCommon():
     def migrate_volume(self, volume, host):
         """Migrate the specified volume."""
         return False
+
+    def update_migrated_volume(self, volume, new_volume):
+        """Update LDEV settings after generic volume migration."""
+        ldev = self.get_ldev(new_volume)
+        # We do not need to check if ldev is not None because it is guaranteed
+        # that ldev is not None because migration has been successful so far.
+        self.modify_ldev_name(ldev, volume['id'].replace("-", ""))
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Retype the specified volume."""
