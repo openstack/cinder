@@ -1839,6 +1839,19 @@ class PowerMaxRest(object):
             iqn = port_details['symmetrixPort']['identifier']
         return ip_addresses, iqn
 
+    def get_nvme_tcp_ip_address(self, array, port_id):
+        """Get the IPv4Address from the director port.
+
+        :param array: the array serial number
+        :param port_id: the director port identifier
+        :returns: (list of ip_addresses)
+        """
+        ip_addresses = None
+        port_details = self.get_port(array, port_id)
+        if port_details:
+            ip_addresses = port_details['symmetrixPort']['ip_addresses']
+        return ip_addresses
+
     def get_ip_interface_physical_port(self, array_id, virtual_port,
                                        ip_address):
         """Get the physical port associated with a virtual port and IP address.
@@ -3616,3 +3629,20 @@ class PowerMaxRest(object):
         """
         return "true" if force_flag else (
             "true" if utils.FORCE_VOL_EDIT in extra_specs else "false")
+
+    def get_device_nguid(self, array, device_id):
+        """Retrieve the NGUID for a device.
+
+        This function queries the specified storage array for
+        the NGUID of a given device using its device ID.
+
+        :param array: The identifier of the storage array.
+        :param device_id: The identifier of the device.
+        :return: The NGUID of the device as a string,
+         or None if the device is not found.
+        """
+
+        volume = self.get_resource(
+            array, SLOPROVISIONING, 'volume', resource_name=device_id)
+        if volume is not None:
+            return volume["nguid"]

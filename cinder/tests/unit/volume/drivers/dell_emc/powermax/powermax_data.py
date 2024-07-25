@@ -43,7 +43,9 @@ class PowerMaxData(object):
     workload = 'DSS'
     port_group_name_f = 'OS-fibre-PG'
     port_group_name_i = 'OS-iscsi-PG'
+    port_group_name_nt = 'OS-nvme-tcp-PG'
     masking_view_name_f = 'OS-HostX-F-OS-fibre-PG-MV'
+    masking_view_name_nt = 'OS-HostX-NT-VME-PG1558b4-MV'
     masking_view_name_Y_f = 'OS-HostY-F-OS-fibre-PG-MV'
     masking_view_name_i = 'OS-HostX-SRP_1-I-OS-iscsi-PG-MV'
     initiatorgroup_name_f = 'OS-HostX-F-IG'
@@ -106,11 +108,16 @@ class PowerMaxData(object):
     ip, ip2 = '123.456.7.8', '123.456.7.9'
     iqn = 'iqn.1992-04.com.emc:600009700bca30c01e3e012e00000001'
     iqn2 = 'iqn.1992-04.com.emc:600009700bca30c01e3e012e00000002'
+    nvme_tcp_hostid = '0eaf7037-479c-432b-a3d8-62e2889d768e'
+    nqn = ('nqn.2014-08.org.nvmexpress:uuid:'
+           'ac353d72-eabe-43c7-926c-f08987a8a553')
     connector = {'ip': ip,
                  'initiator': initiator,
                  'wwpns': [wwpn1, wwpn2],
                  'wwnns': [wwnn1],
-                 'host': 'HostX'}
+                 'host': 'HostX',
+                 'nvme_hostid': nvme_tcp_hostid,
+                 'nqn': nqn}
 
     fabric_name_prefix = 'fakeFabric'
     end_point_map = {connector['wwpns'][0]: [wwpn1],
@@ -160,6 +167,13 @@ class PowerMaxData(object):
                       'array': array,
                       'controller': {'host': '10.00.00.00'},
                       'hostlunid': 3}
+    nvme_tcp_device_info = {'array': array,
+                            'device_id': '0027C', 'hostlunid': 1,
+                            'ips': ['172.16.22.1', '172.16.22.2'],
+                            'maskingview': masking_view_name_nt,
+                            'target_nqn':
+                            'nqn.1988-11.com.dell:'
+                            'PowerMax_2500:00:000120001602'}
 
     director_port_keys_empty = {'symmetrixPortKey': []}
     director_port_keys_multiple = {'symmetrixPortKey': [
@@ -662,6 +676,13 @@ class PowerMaxData(object):
     }
     initiator_group_list = [
         initiator_group_fc, initiator_group_iscsi]
+
+    nvme_tcp_initiator_list = ['OR-1C:001:nqn.2014-08.org.nvmexpress:'
+                               'uuid:ac353d72-eabe-43c7-926c-f08987a8a553:'
+                               '0EAF7037479C432BA3D862E2889D768E',
+                               'OR-2C:001:nqn.2014-08.org.nvmexpress:'
+                               'uuid:ac353d72-eabe-43c7-926c-f08987a8a553:'
+                               '0EAF7037479C432BA3D862E2889D768E']
 
     initiator_list = [{'host': initiatorgroup_name_f,
                        'initiatorId': wwpn1,
@@ -1730,3 +1751,32 @@ class PowerMaxData(object):
 
     port_info_no_details = deepcopy(port_info)
     port_info_no_details.pop("symmetrixPort")
+
+    nvme_tcp_discover_json = {
+        "device": "nvme0",
+        "genctr": 48,
+        "records": [
+            {
+                "trtype": "tcp",
+                "adrfam": "ipv4",
+                "subtype": "nvme subsystem",
+                "treq": "not specified",
+                "portid": 1025,
+                "trsvcid": "4420",
+                "subnqn": "nqn.1988-11.com.dell:PowerMax_2500:00:000120001602",
+                "traddr": "172.16.22.1",
+                "sectype": "none"
+            },
+            {
+                "trtype": "tcp",
+                "adrfam": "ipv4",
+                "subtype": "nvme subsystem",
+                "treq": "not specified",
+                "portid": 5121,
+                "trsvcid": "4420",
+                "subnqn": "nqn.1988-11.com.dell:PowerMax_2500:00:000120001602",
+                "traddr": "172.16.22.2",
+                "sectype": "none"
+            }
+        ]
+    }

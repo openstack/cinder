@@ -15,6 +15,7 @@
 
 import ast
 from copy import deepcopy
+import json
 import time
 from unittest import mock
 
@@ -32,6 +33,7 @@ from cinder.volume.drivers.dell_emc.powermax import common
 from cinder.volume.drivers.dell_emc.powermax import fc
 from cinder.volume.drivers.dell_emc.powermax import masking
 from cinder.volume.drivers.dell_emc.powermax import metadata
+from cinder.volume.drivers.dell_emc.powermax import nvme_tcp
 from cinder.volume.drivers.dell_emc.powermax import provision
 from cinder.volume.drivers.dell_emc.powermax import rest
 from cinder.volume.drivers.dell_emc.powermax import utils
@@ -56,8 +58,12 @@ class PowerMaxCommonTest(test.TestCase):
         self.mock_object(rest.PowerMaxRest, '_establish_rest_session',
                          return_value=tpfo.FakeRequestsSession())
         driver = fc.PowerMaxFCDriver(configuration=configuration)
+        driver_nvme_tcp = (nvme_tcp.
+                           PowerMaxNVMETCPDriver(configuration=configuration))
         self.driver = driver
+        self.driver_nvme_tcp = driver_nvme_tcp
         self.common = self.driver.common
+        self.nvme_tcp_common = self.driver_nvme_tcp.common
         self.masking = self.common.masking
         self.provision = self.common.provision
         self.rest = self.common.rest
@@ -4931,3 +4937,49 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertEqual(7, mock_ss_list.call_count)
         self.assertEqual(0, mock_snapvx.call_count)
         self.assertEqual(7, mock_clean.call_count)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_port_ids',
+                       return_value=['OR-1C:001'])
+    @mock.patch.object(rest.PowerMaxRest, 'get_nvme_tcp_ip_address',
+                       return_value=(['10.10.10.1'], ['10.10.10.2']))
+    @mock.patch.object(common.PowerMaxCommon,
+                       'find_host_lun_id',
+                       return_value=(tpd.PowerMaxData.nvme_tcp_device_info,
+                                     False))
+    def test_initialize_nvme_connection(self, mock_port, mock_ip, mock_lun_id):
+        volume = self.data.test_volume
+        connector = self.data.connector
+        extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_nt
+        with mock.patch.object(
+                self.nvme_tcp_common, '_initial_setup',
+                return_value=extra_specs) as mck_setup:
+            device_info_dict = self.nvme_tcp_common.initialize_connection(
+                volume, connector)
+            self.assertEqual({'array': '000197800123',
+                              'device_id': '0027C',
+                              'hostlunid': 1,
+                              'ips': [['10.10.10.1'], ['10.10.10.2']],
+                              'maskingview': 'OS-HostX-NT-VME-PG1558b4-MV',
+                              'target_nqn': 'nqn.1988-11.com.dell:'
+                                            'PowerMax_2500:00:000120001602'},
+                             device_info_dict)
+            mock_port.assert_called_once()
+            mock_ip.assert_called_once()
+            mock_lun_id.assert_called_once()
+            mck_setup.assert_called_once()
+
+    def test_get_target_nqn(self):
+        fake_discover_json = json.dumps(self.data.nvme_tcp_discover_json)
+        mock_connector = mock.Mock()
+        mock_connector.run_nvme_cli.return_value = (fake_discover_json, None)
+        ips = [('172.16.22.1', 4420, "tcp")]
+        nqn = self.nvme_tcp_common.get_target_nqn(ips, mock_connector)
+        self.assertEqual(
+            'nqn.1988-11.com.dell:PowerMax_2500:00:000120001602',
+            nqn
+        )
+        mock_connector.run_nvme_cli.assert_called_once_with(
+            ['discover', '-t', 'tcp', '-a', '172.16.22.1',
+             '-s', utils.POWERMAX_NVME_TCP_PORT, '-o', 'json']
+        )
