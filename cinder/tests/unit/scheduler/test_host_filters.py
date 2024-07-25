@@ -27,6 +27,7 @@ from cinder.scheduler import filters
 from cinder.scheduler.filters import extra_specs_ops
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.scheduler import fakes
+from cinder.tests.unit.scheduler import helpers
 from cinder.tests.unit import test
 from cinder.tests.unit import utils
 
@@ -37,13 +38,10 @@ class BackendFiltersTestCase(test.TestCase):
     def setUp(self):
         super(BackendFiltersTestCase, self).setUp()
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
-        # This has a side effect of testing 'get_filter_classes'
-        # when specifying a method (in this case, our standard filters)
-        filter_handler = filters.BackendFilterHandler(
-            'cinder.scheduler.filters')
-        classes = filter_handler.get_all_classes()
+        # we're testing that the filters work, not that they are retrievable
+        # so pre-populate this convenient class map
         self.class_map = {}
-        for cls in classes:
+        for cls in helpers.ALL_FILTER_CLASSES:
             self.class_map[cls.__name__] = cls
 
 
