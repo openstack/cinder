@@ -1075,7 +1075,7 @@ class BackupCephTestCase(test.TestCase):
             self.assertEqual(2, image.write.call_count)
             self.assertEqual(2, image.flush.call_count)
             self.assertFalse(image.discard.called)
-            zeroes = '\0' * self.service.chunk_size
+            zeroes = bytearray(self.service.chunk_size)
             image.write.assert_has_calls([mock.call(zeroes, 0),
                                          mock.call(zeroes, self.chunk_size)])
             self.assertNotEqual(threading.current_thread(),
@@ -1099,7 +1099,7 @@ class BackupCephTestCase(test.TestCase):
                                                     self.chunk_size * 2),
                                           mock.call(zeroes,
                                                     self.chunk_size * 3),
-                                          mock.call('\0',
+                                          mock.call(bytearray(1),
                                                     self.chunk_size * 4)])
 
     @common_mocks
