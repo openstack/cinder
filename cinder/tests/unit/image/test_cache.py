@@ -42,11 +42,12 @@ class ImageVolumeCacheTestCase(test.TestCase):
         self.volume.update(vol_params)
         self.volume_ovo = objects.Volume(self.context, **vol_params)
 
-    def _build_cache(self, max_gb=0, max_count=0):
+    def _build_cache(self, max_gb=0, max_count=0, clone_across_pools=False):
         cache = image_cache.ImageVolumeCache(self.mock_db,
                                              self.mock_volume_api,
                                              max_gb,
-                                             max_count)
+                                             max_count,
+                                             clone_across_pools)
         cache.notifier = self.notifier
         return cache
 
@@ -91,9 +92,10 @@ class ImageVolumeCacheTestCase(test.TestCase):
         self.assertEqual(entry['image_id'], msg['payload']['image_id'])
         self.assertEqual(1, len(self.notifier.notifications))
 
-    @ddt.data(True, False)
-    def test_get_entry(self, clustered):
-        cache = self._build_cache()
+    @ddt.data((True, True), (True, False), (False, True), (False, False))
+    @ddt.unpack
+    def test_get_entry(self, clustered, clone_across_pools):
+        cache = self._build_cache(clone_across_pools=clone_across_pools)
         entry = self._build_entry()
         image_meta = {
             'is_public': True,
@@ -107,7 +109,7 @@ class ImageVolumeCacheTestCase(test.TestCase):
          image_volume_cache_get_and_update_last_used.return_value) = entry
         if not clustered:
             self.volume_ovo.cluster_name = None
-            expect = {'host': self.volume.host}
+            expect = {} if clone_across_pools else {'host': self.volume.host}
         else:
             expect = {'cluster_name': self.volume.cluster_name}
         found_entry = cache.get_entry(self.context,

@@ -739,8 +739,12 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         urls = list(set([direct_url]
                         + [loc.get('url') for loc in locations or []]))
         image_volume_ids = self._extract_cinder_ids(urls)
-        image_volumes = self.db.volume_get_all_by_host(
-            context, volume['host'], filters={'id': image_volume_ids})
+        if self.driver.capabilities.get('clone_across_pools'):
+            image_volumes = self.db.volume_get_all(
+                context, filters={'id': image_volume_ids})
+        else:
+            image_volumes = self.db.volume_get_all_by_host(
+                context, volume['host'], filters={'id': image_volume_ids})
 
         for image_volume in image_volumes:
             # For the case image volume is stored in the service tenant,

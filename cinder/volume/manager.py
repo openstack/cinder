@@ -354,7 +354,8 @@ class VolumeManager(manager.CleanableManager,
                 self.db,
                 cinder_volume.API(),
                 max_cache_size,
-                max_cache_entries
+                max_cache_entries,
+                self.driver.capabilities.get('clone_across_pools', False)
             )
             LOG.info('Image-volume cache enabled for host %(host)s.',
                      {'host': self.host})

@@ -34,11 +34,13 @@ class ImageVolumeCache(object):
                  db,
                  volume_api,
                  max_cache_size_gb: int = 0,
-                 max_cache_size_count: int = 0):
+                 max_cache_size_count: int = 0,
+                 clone_across_pools: bool = False):
         self.db = db
         self.volume_api = volume_api
         self.max_cache_size_gb = int(max_cache_size_gb)
         self.max_cache_size_count = int(max_cache_size_count)
+        self.clone_across_pools = bool(clone_across_pools)
         self.notifier = rpc.get_notifier('volume', CONF.host)
 
     def get_by_image_volume(self,
@@ -55,11 +57,12 @@ class ImageVolumeCache(object):
         self._notify_cache_eviction(context, cache_entry['image_id'],
                                     cache_entry['host'])
 
-    @staticmethod
-    def _get_query_filters(volume_ref: objects.Volume) -> dict:
+    def _get_query_filters(self, volume_ref: objects.Volume) -> dict:
         if volume_ref.is_clustered:
             return {'cluster_name': volume_ref.cluster_name}
-        return {'host': volume_ref.host}
+        if not self.clone_across_pools:
+            return {'host': volume_ref.host}
+        return {}
 
     def get_entry(self,
                   context: context.RequestContext,
