@@ -3367,7 +3367,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 'volume': "",
                 'vmdk_size': volume.size * units.Gi,
                 'vmdk_path': vmdk_path,
-                'datacenter': dc_ref.value   
+                'datacenter': dc_ref.value
             }
             attachments = volume.volume_attachment
             for attach in attachments:
