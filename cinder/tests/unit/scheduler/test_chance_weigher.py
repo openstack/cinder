@@ -19,6 +19,7 @@ from unittest import mock
 
 from cinder.scheduler import host_manager
 from cinder.scheduler.weights import chance
+from cinder.tests.unit.scheduler import fakes
 from cinder.tests.unit import test
 
 
@@ -47,9 +48,8 @@ class ChanceWeigherTestCase(test.TestCase):
         self.assertEqual(3.0, weight)
 
     def test_host_manager_choosing_chance_weigher(self):
-        # ensure HostManager can load the ChanceWeigher
-        # via the entry points mechanism
-        hm = host_manager.HostManager()
+        # ensure HostManager can find the ChanceWeigher
+        hm = fakes.FakeHostManager()
         weighers = hm._choose_backend_weighers('ChanceWeigher')
         self.assertEqual(1, len(weighers))
         self.assertEqual(weighers[0], chance.ChanceWeigher)
@@ -57,7 +57,7 @@ class ChanceWeigherTestCase(test.TestCase):
     def test_use_of_chance_weigher_via_host_manager(self):
         # ensure we don't lose any hosts when weighing with
         # the ChanceWeigher
-        hm = host_manager.HostManager()
+        hm = fakes.FakeHostManager()
         fake_backends = [host_manager.BackendState('fake_be%s' % x, None)
                          for x in range(1, 5)]
         weighed_backends = hm.get_weighed_backends(fake_backends, {},
