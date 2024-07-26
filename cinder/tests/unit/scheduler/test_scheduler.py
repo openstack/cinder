@@ -29,7 +29,6 @@ from cinder import exception
 from cinder.message import message_field
 from cinder import objects
 from cinder.scheduler import driver
-from cinder.scheduler import host_manager
 from cinder.scheduler import manager
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
@@ -55,6 +54,10 @@ class SchedulerManagerTestCase(test.TestCase):
     def setUp(self):
         super(SchedulerManagerTestCase, self).setUp()
         self.flags(scheduler_driver=self.driver_cls_name)
+        # the host_manager injected into the scheduler driver is controlled
+        # via configuration
+        self.flags(scheduler_host_manager='cinder.tests.unit.scheduler.fakes.'
+                   'FakeHostManager')
         self.manager = self.manager_cls()
         self.manager._startup_delay = False
         self.context = context.get_admin_context()
@@ -657,7 +660,9 @@ class SchedulerManagerTestCase(test.TestCase):
         volume = fake_volume.fake_db_volume()
         volume['status'] = 'backing-up'
         volume['previous_status'] = 'available'
-        hm = host_manager.HostManager()
+        # this next line looks a little suspect, but the FakeHostManager
+        # is a HostManager and does not override any relevant functions
+        hm = fake_scheduler.FakeHostManager()
         az = hm.get_az(volume, availability_zone='test_az')
         self.assertEqual('test_az', az)
 
@@ -670,6 +675,10 @@ class SchedulerTestCase(test.TestCase):
 
     def setUp(self):
         super(SchedulerTestCase, self).setUp()
+        # the host_manager injected into the scheduler driver is controlled
+        # via configuration
+        self.flags(scheduler_host_manager='cinder.tests.unit.scheduler.fakes.'
+                   'FakeHostManager')
         self.driver = self.driver_cls()
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         self.topic = 'fake_topic'
