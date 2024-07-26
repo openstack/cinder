@@ -215,8 +215,10 @@ SERVICE_STATES_WITH_POOLS = {
 
 class FakeFilterScheduler(filter_scheduler.FilterScheduler):
     def __init__(self, *args, **kwargs):
+        # note: the following call will inject a host_manager into this
+        # object whose class is determined by the config option
+        # 'scheduler_host_manager'
         super(FakeFilterScheduler, self).__init__(*args, **kwargs)
-        self.host_manager = host_manager.HostManager()
 
 
 class FakeHostManager(host_manager.HostManager):
