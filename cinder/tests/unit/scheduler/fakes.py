@@ -17,11 +17,15 @@ Fakes For Scheduler tests.
 """
 import copy
 
+from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 
+from cinder import context as cinder_context
 from cinder.scheduler import filter_scheduler
+from cinder.scheduler import filters
 from cinder.scheduler import host_manager
+from cinder.tests.unit.scheduler import helpers
 from cinder.volume import volume_utils
 
 
@@ -217,12 +221,38 @@ class FakeFilterScheduler(filter_scheduler.FilterScheduler):
 
 class FakeHostManager(host_manager.HostManager):
     def __init__(self, multibackend_with_pools=False):
-        super(FakeHostManager, self).__init__()
+        # For testing, we don't call __init__() on the super class; instead we
+        # do explicit initialization of our fake instance.  Differences noted
+        # below.
 
+        # For testing, set the service_states directly
         self.service_states = copy.deepcopy(
             SERVICE_STATES_WITH_POOLS if multibackend_with_pools
             else SERVICE_STATES
         )
+
+        self.backend_state_map: dict[str, host_manager.BackendState] = {}
+        self.backup_service_states = {}
+        self.filter_handler = filters.BackendFilterHandler('cinder.scheduler.'
+                                                           'filters')
+
+        # for testing, set the filter_classes directly instead of
+        # calling the filter_handler to discover them
+        self.filter_classes = helpers.ALL_FILTER_CLASSES[:]
+
+        # for testing, use specific values instead of config settings
+        self.enabled_filters = self._choose_backend_filters(
+            helpers.DEFAULT_SCHEDULER_FILTERS[:])
+        self.weight_handler = importutils.import_object(
+            'cinder.scheduler.weights.OrderedHostWeightHandler',
+            'cinder.scheduler.weights')
+
+        # for testing, set the weigher classes instead of discovering them
+        self.weight_classes = helpers.ALL_WEIGHER_CLASSES[:]
+
+        self._no_capabilities_backends = set()  # Services without capabilities
+        self._update_backend_state_map(cinder_context.get_admin_context())
+        self.service_states_last_update = {}
 
 
 class FakeBackendState(host_manager.BackendState):
