@@ -79,7 +79,7 @@ class AttachmentManagerTestCase(test.TestCase):
                 'driver_volume_type': 'iscsi',
                 'attachment_id': attachment_ref.id}
 
-            get_extra_specs.return_value = ''
+            get_extra_specs.return_value = {}
             self.assertEqual(expected,
                              self.manager.attachment_update(
                                  self.context,
@@ -94,7 +94,7 @@ class AttachmentManagerTestCase(test.TestCase):
                 'driver_volume_type': 'iscsi',
                 'attachment_id': attachment_ref.id}
 
-            get_extra_specs.return_value = '<is> True'
+            get_extra_specs.return_value = {'cacheable': '<is> True'}
             self.assertEqual(expected,
                              self.manager.attachment_update(
                                  self.context,

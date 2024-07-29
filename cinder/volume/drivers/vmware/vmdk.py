@@ -194,8 +194,9 @@ def _get_volume_type_extra_spec(type_id, spec_key, possible_values=None,
         return default_value
 
     spec_key = ('vmware:%s') % spec_key
-    spec_value = volume_types.get_volume_type_extra_specs(type_id,
-                                                          spec_key)
+    spec_value = volume_types.get_volume_type_extra_specs(type_id).get(
+        spec_key, False)
+
     if not spec_value:
         LOG.debug("Returning default spec value: %s.", default_value)
         return default_value

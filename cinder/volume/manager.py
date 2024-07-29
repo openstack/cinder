@@ -1871,7 +1871,7 @@ class VolumeManager(manager.CleanableManager,
         # Add cacheable flag to connection_info if not set in the driver.
         if typeid:
             cacheable = volume_types.get_volume_type_extra_specs(
-                typeid, key='cacheable')
+                typeid).get('cacheable')
             if conn_info['data'].get('cacheable') is not None:
                 driver_setting = bool(conn_info['data']['cacheable'])
                 # override a True driver_setting but respect False

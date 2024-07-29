@@ -264,14 +264,14 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
 
         # no 'cacheable' set by driver, should be extra spec
         conn_info = {"data": {}}
-        mock_get_extra_specs.return_value = '<is> True'
+        mock_get_extra_specs.return_value = {'cacheable': '<is> True'}
         manager._parse_connection_options(ctxt, vol, conn_info)
         self.assertIn('cacheable', conn_info['data'])
         self.assertIs(conn_info['data']['cacheable'], True)
 
         # driver sets 'cacheable' False, should override extra spec
         conn_info = {"data": {"cacheable": False}}
-        mock_get_extra_specs.return_value = '<is> True'
+        mock_get_extra_specs.return_value = {'cacheable': '<is> True'}
         manager._parse_connection_options(ctxt, vol, conn_info)
         self.assertIn('cacheable', conn_info['data'])
         self.assertIs(conn_info['data']['cacheable'], False)
@@ -279,7 +279,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
         # driver sets 'cacheable' True, nothing in extra spec,
         # extra spec should override driver
         conn_info = {"data": {"cacheable": True}}
-        mock_get_extra_specs.return_value = None
+        mock_get_extra_specs.return_value = {}
         manager._parse_connection_options(ctxt, vol, conn_info)
         self.assertIn('cacheable', conn_info['data'])
         self.assertIs(conn_info['data']['cacheable'], False)
@@ -287,7 +287,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
         # driver sets 'cacheable' True, extra spec has False,
         # extra spec should override driver
         conn_info = {"data": {"cacheable": True}}
-        mock_get_extra_specs.return_value = '<is> False'
+        mock_get_extra_specs.return_value = {'cacheable': '<is> False'}
         manager._parse_connection_options(ctxt, vol, conn_info)
         self.assertIn('cacheable', conn_info['data'])
         self.assertIs(conn_info['data']['cacheable'], False)
