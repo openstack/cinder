@@ -69,10 +69,11 @@ class FJDXCommon(object):
     1.4.1 - Add the method for expanding RAID volumes by CLI.
     1.4.2 - Add the secondary check for copy-sessions when deleting volumes.
     1.4.3 - Add fragment capacity information of RAID Group.
+    1.4.4 - Add support for update migrated volume.
 
     """
 
-    VERSION = "1.4.3"
+    VERSION = "1.4.4"
     stats = {
         'driver_version': VERSION,
         'storage_protocol': None,
@@ -2594,6 +2595,34 @@ class FJDXCommon(object):
                   'target_pool: %(target_pool)s.',
                   {'poolname': poolname, 'target_pool': target_pool})
         return poolname, target_pool
+
+    def update_migrated_volume(self, ctxt, volume, new_volume):
+        """Update migrated volume."""
+        LOG.debug('update_migrated_volume, '
+                  'source volume id: %(s_id)s, '
+                  'target volume id: %(t_id)s.',
+                  {'s_id': volume['id'], 't_id': new_volume['id']})
+
+        model_update = None
+
+        dst_metadata = self.get_metadata(new_volume)
+        src_metadata = self.get_metadata(volume)
+
+        LOG.debug('source: (%(src_meta)s)(%(src_loc)s), '
+                  'target: (%(dst_meta)s)(%(dst_loc)s).',
+                  {'src_meta': src_metadata,
+                   'src_loc': volume['provider_location'],
+                   'dst_meta': dst_metadata,
+                   'dst_loc': new_volume['provider_location']})
+
+        if volume['provider_location']:
+            dst_location = new_volume['provider_location']
+            model_update = {'_name_id': new_volume['id'],
+                            'provider_location': dst_location}
+
+        LOG.debug('update_migrated_volume, model_update: %s.',
+                  model_update)
+        return model_update
 
     def _get_eternus_model(self):
         """Get ENTERNUS model."""
