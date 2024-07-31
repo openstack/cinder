@@ -140,6 +140,7 @@ FAKE_LUN_NO1 = '0x0014'
 # Snapshot1 in pool abcd1234_OSVD
 FAKE_LUN_ID2 = '600000E00D2A0000002A0115001E0000'
 FAKE_LUN_NO2 = '0x001E'
+FAKE_SDV_NO = '0x001E'
 # Volume2 in pool abcd1234_RG
 FAKE_LUN_ID3 = '600000E00D2800000028075301140000'
 FAKE_LUN_NO3 = '0x0114'
@@ -179,7 +180,7 @@ FAKE_POOLS = [{
 }]
 
 FAKE_STATS = {
-    'driver_version': '1.4.4',
+    'driver_version': '1.4.5',
     'storage_protocol': 'iSCSI',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -189,7 +190,7 @@ FAKE_STATS = {
     'pools': FAKE_POOLS,
 }
 FAKE_STATS2 = {
-    'driver_version': '1.4.4',
+    'driver_version': '1.4.5',
     'storage_protocol': 'FC',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -302,7 +303,14 @@ FAKE_LOCATION2 = {
     'vol_name': 'FJosv_OgEZj1mSvKRvIKOExKktlg=='
 }
 
+FAKE_SNAP_META = {
+    'FJ_Pool_Name': 'abcd1234_OSVD',
+    'FJ_SDV_Name': u'FJosv_OgEZj1mSvKRvIKOExKktlg==',
+    'FJ_SDV_No': FAKE_SDV_NO,
+}
+
 FAKE_SNAP_INFO = {
+    'metadata': FAKE_SNAP_META,
     'provider_location': str(FAKE_LOCATION2)
 }
 
@@ -1105,6 +1113,10 @@ class FJFCDriverTestCase(test.TestCase):
         conn = FakeEternusConnection()
         return conn
 
+    def volume_update(self, volume, diction):
+        for key, value in diction.items():
+            volume[key] = value
+
     def test_get_volume_stats(self):
         ret = self.driver.get_volume_stats(True)
 
@@ -1112,9 +1124,11 @@ class FJFCDriverTestCase(test.TestCase):
 
     def test_create_and_delete_volume(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
         model_info = self.driver.create_volume(TEST_VOLUME2)
+        self.volume_update(TEST_VOLUME2, model_info)
         self.assertEqual(FAKE_MODEL_INFO3, model_info)
 
         self.driver.delete_volume(TEST_VOLUME)
@@ -1137,6 +1151,7 @@ class FJFCDriverTestCase(test.TestCase):
                      'data': fake_mapdata}
 
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
         info = self.driver.initialize_connection(TEST_VOLUME,
@@ -1157,9 +1172,11 @@ class FJFCDriverTestCase(test.TestCase):
 
     def test_create_and_delete_snapshot(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
         snap_info = self.driver.create_snapshot(TEST_SNAP)
+        self.volume_update(TEST_SNAP, snap_info)
         self.assertEqual(FAKE_SNAP_INFO, snap_info)
 
         self.driver.delete_snapshot(TEST_SNAP)
@@ -1167,13 +1184,16 @@ class FJFCDriverTestCase(test.TestCase):
 
     def test_create_volume_from_snapshot(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
         snap_info = self.driver.create_snapshot(TEST_SNAP)
+        self.volume_update(TEST_SNAP, snap_info)
         self.assertEqual(FAKE_SNAP_INFO, snap_info)
 
         model_info = self.driver.create_volume_from_snapshot(TEST_CLONE,
                                                              TEST_SNAP)
+        self.volume_update(TEST_CLONE, model_info)
         self.assertEqual(FAKE_MODEL_INFO2, model_info)
 
         self.driver.delete_snapshot(TEST_SNAP)
@@ -1182,9 +1202,11 @@ class FJFCDriverTestCase(test.TestCase):
 
     def test_create_cloned_volume(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
         model_info = self.driver.create_cloned_volume(TEST_CLONE, TEST_VOLUME)
+        self.volume_update(TEST_CLONE, model_info)
         self.assertEqual(FAKE_MODEL_INFO2, model_info)
 
         self.driver.delete_volume(TEST_CLONE)
@@ -1195,60 +1217,34 @@ class FJFCDriverTestCase(test.TestCase):
         # ThinProvisioningPool separately.
         TEST_VOLUME_LIST = [TEST_VOLUME, TEST_VOLUME2]
         FAKE_MODEL_INFO_LIST = [FAKE_MODEL_INFO1, FAKE_MODEL_INFO3]
-        model_info_list = []
         for i in range(len(TEST_VOLUME_LIST)):
             model_info = self.driver.create_volume(TEST_VOLUME_LIST[i])
+            self.volume_update(TEST_VOLUME_LIST[i], model_info)
             self.assertEqual(FAKE_MODEL_INFO_LIST[i], model_info)
-            model_info_list.append(model_info)
 
-        for i in range(len(TEST_VOLUME_LIST)):
-            volume_info = {}
-            for key in TEST_VOLUME_LIST[i]:
-                if key == 'provider_location':
-                    volume_info[key] = model_info_list[i][key]
-                elif key == 'metadata':
-                    volume_info[key] = model_info_list[i][key]
-                else:
-                    volume_info[key] = TEST_VOLUME_LIST[i][key]
-
-            self.driver.extend_volume(volume_info, 10)
+            self.driver.extend_volume(TEST_VOLUME_LIST[i], 10)
 
     def test_create_volume_with_qos(self):
         self.driver.common._get_qos_specs = mock.Mock()
         self.driver.common._get_qos_specs.return_value = {'maxBWS': '700'}
         self.driver.common._set_qos = mock.Mock()
         model_info = self.driver.create_volume(TEST_VOLUME_QOS)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO_QOS, model_info)
         self.driver.common._set_qos.assert_called()
 
     def test_update_migrated_volume(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
-        volume_info = {}
-        for key in TEST_VOLUME:
-            if key == 'provider_location':
-                volume_info[key] = model_info[key]
-            elif key == 'metadata':
-                volume_info[key] = model_info[key]
-            else:
-                volume_info[key] = TEST_VOLUME[key]
-
         model_info2 = self.driver.create_volume(TEST_VOLUME2)
+        self.volume_update(TEST_VOLUME2, model_info2)
         self.assertEqual(FAKE_MODEL_INFO3, model_info2)
 
-        volume_info2 = {}
-        for key in TEST_VOLUME:
-            if key == 'provider_location':
-                volume_info2[key] = model_info2[key]
-            elif key == 'metadata':
-                volume_info2[key] = model_info2[key]
-            else:
-                volume_info2[key] = TEST_VOLUME2[key]
-
         model_update = self.driver.update_migrated_volume(self.context,
-                                                          volume_info,
-                                                          volume_info2,
+                                                          TEST_VOLUME,
+                                                          TEST_VOLUME2,
                                                           'available')
 
         FAKE_MIGRATED_MODEL_UPDATE = {
@@ -1405,6 +1401,10 @@ class FJISCSIDriverTestCase(test.TestCase):
                     'target_iqns': ISCSI_TARGET_IQN,
                     'target_lun': 0}
 
+    def volume_update(self, volume, diction):
+        for key, value in diction.items():
+            volume[key] = value
+
     def test_get_volume_stats(self):
         ret = self.driver.get_volume_stats(True)
 
@@ -1412,9 +1412,11 @@ class FJISCSIDriverTestCase(test.TestCase):
 
     def test_create_and_delete_volume(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
         model_info = self.driver.create_volume(TEST_VOLUME2)
+        self.volume_update(TEST_VOLUME2, model_info)
         self.assertEqual(FAKE_MODEL_INFO3, model_info)
 
         self.driver.delete_volume(TEST_VOLUME)
@@ -1428,6 +1430,7 @@ class FJISCSIDriverTestCase(test.TestCase):
                      'data': fake_mapdata}
 
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
         info = self.driver.initialize_connection(TEST_VOLUME,
@@ -1447,9 +1450,11 @@ class FJISCSIDriverTestCase(test.TestCase):
 
     def test_create_and_delete_snapshot(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
         snap_info = self.driver.create_snapshot(TEST_SNAP)
+        self.volume_update(TEST_SNAP, snap_info)
         self.assertEqual(FAKE_SNAP_INFO, snap_info)
 
         self.driver.delete_snapshot(TEST_SNAP)
@@ -1457,13 +1462,16 @@ class FJISCSIDriverTestCase(test.TestCase):
 
     def test_create_volume_from_snapshot(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
         snap_info = self.driver.create_snapshot(TEST_SNAP)
+        self.volume_update(TEST_SNAP, snap_info)
         self.assertEqual(FAKE_SNAP_INFO, snap_info)
 
         model_info = self.driver.create_volume_from_snapshot(TEST_CLONE,
                                                              TEST_SNAP)
+        self.volume_update(TEST_CLONE, model_info)
         self.assertEqual(FAKE_MODEL_INFO2, model_info)
 
         self.driver.delete_snapshot(TEST_SNAP)
@@ -1472,9 +1480,11 @@ class FJISCSIDriverTestCase(test.TestCase):
 
     def test_create_cloned_volume(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
         model_info = self.driver.create_cloned_volume(TEST_CLONE, TEST_VOLUME)
+        self.volume_update(TEST_CLONE, model_info)
         self.assertEqual(FAKE_MODEL_INFO2, model_info)
 
         self.driver.delete_volume(TEST_CLONE)
@@ -1485,60 +1495,34 @@ class FJISCSIDriverTestCase(test.TestCase):
         # ThinProvisioningPool separately.
         TEST_VOLUME_LIST = [TEST_VOLUME, TEST_VOLUME2]
         FAKE_MODEL_INFO_LIST = [FAKE_MODEL_INFO1, FAKE_MODEL_INFO3]
-        model_info_list = []
         for i in range(len(TEST_VOLUME_LIST)):
             model_info = self.driver.create_volume(TEST_VOLUME_LIST[i])
+            self.volume_update(TEST_VOLUME_LIST[i], model_info)
             self.assertEqual(FAKE_MODEL_INFO_LIST[i], model_info)
-            model_info_list.append(model_info)
 
-        for i in range(len(TEST_VOLUME_LIST)):
-            volume_info = {}
-            for key in TEST_VOLUME_LIST[i]:
-                if key == 'provider_location':
-                    volume_info[key] = model_info_list[i][key]
-                elif key == 'metadata':
-                    volume_info[key] = model_info_list[i][key]
-                else:
-                    volume_info[key] = TEST_VOLUME_LIST[i][key]
-
-            self.driver.extend_volume(volume_info, 10)
+            self.driver.extend_volume(TEST_VOLUME_LIST[i], 10)
 
     def test_create_volume_with_qos(self):
         self.driver.common._get_qos_specs = mock.Mock()
         self.driver.common._get_qos_specs.return_value = {'maxBWS': '700'}
         self.driver.common._set_qos = mock.Mock()
         model_info = self.driver.create_volume(TEST_VOLUME_QOS)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO_QOS, model_info)
         self.driver.common._set_qos.assert_called()
 
     def test_update_migrated_volume(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
-        volume_info = {}
-        for key in TEST_VOLUME:
-            if key == 'provider_location':
-                volume_info[key] = model_info[key]
-            elif key == 'metadata':
-                volume_info[key] = model_info[key]
-            else:
-                volume_info[key] = TEST_VOLUME[key]
-
         model_info2 = self.driver.create_volume(TEST_VOLUME2)
+        self.volume_update(TEST_VOLUME2, model_info2)
         self.assertEqual(FAKE_MODEL_INFO3, model_info2)
 
-        volume_info2 = {}
-        for key in TEST_VOLUME:
-            if key == 'provider_location':
-                volume_info2[key] = model_info2[key]
-            elif key == 'metadata':
-                volume_info2[key] = model_info2[key]
-            else:
-                volume_info2[key] = TEST_VOLUME2[key]
-
         model_update = self.driver.update_migrated_volume(self.context,
-                                                          volume_info,
-                                                          volume_info2,
+                                                          TEST_VOLUME,
+                                                          TEST_VOLUME2,
                                                           'available')
 
         FAKE_MIGRATED_MODEL_UPDATE = {
@@ -1919,13 +1903,21 @@ class FJCommonTestCase(test.TestCase):
         volume_no = self.driver.common._get_volume_number(vol_instance)
         self.assertEqual(FAKE_LUN_NO1, volume_no)
 
+    def volume_update(self, volume, diction):
+        for key, value in diction.items():
+            volume[key] = value
+
     def test_get_eternus_model(self):
         ETERNUS_MODEL = self.driver.common._get_eternus_model()
         self.assertEqual(3, ETERNUS_MODEL)
 
     def test_get_matadata(self):
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
         TEST_METADATA = self.driver.common.get_metadata(TEST_VOLUME)
-        self.assertEqual({}, TEST_METADATA)
+        self.assertEqual(FAKE_LUN_META1, TEST_METADATA)
 
     def test_is_qos_or_format_support(self):
         QOS_SUPPORT = \
@@ -2016,35 +2008,29 @@ class FJCommonTestCase(test.TestCase):
 
     def test_update_migrated_volume(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
-        volume_info = {}
-        for key in TEST_VOLUME:
-            if key == 'provider_location':
-                volume_info[key] = model_info[key]
-            elif key == 'metadata':
-                volume_info[key] = model_info[key]
-            else:
-                volume_info[key] = TEST_VOLUME[key]
-
         model_info2 = self.driver.create_volume(TEST_VOLUME2)
+        self.volume_update(TEST_VOLUME2, model_info2)
         self.assertEqual(FAKE_MODEL_INFO3, model_info2)
 
-        volume_info2 = {}
-        for key in TEST_VOLUME:
-            if key == 'provider_location':
-                volume_info2[key] = model_info2[key]
-            elif key == 'metadata':
-                volume_info2[key] = model_info2[key]
-            else:
-                volume_info2[key] = TEST_VOLUME2[key]
-
         model_update = self.driver.common.update_migrated_volume(self.context,
-                                                                 volume_info,
-                                                                 volume_info2)
+                                                                 TEST_VOLUME,
+                                                                 TEST_VOLUME2)
 
         FAKE_MIGRATED_MODEL_UPDATE = {
             '_name_id': TEST_VOLUME2['id'],
             'provider_location': model_info2['provider_location']
         }
         self.assertEqual(FAKE_MIGRATED_MODEL_UPDATE, model_update)
+
+    def test_create_snapshot(self):
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.volume_update(TEST_VOLUME, model_info)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        snap_info = self.driver.common._create_snapshot(TEST_SNAP)
+        self.assertEqual(FAKE_SNAP_INFO, snap_info)
+
+        self.driver.delete_volume(TEST_VOLUME)

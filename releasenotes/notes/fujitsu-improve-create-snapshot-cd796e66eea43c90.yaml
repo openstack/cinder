@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Fujitsu ETERNUS DX driver: Add metadata to snapshot
+
+    After the snapshot is created, upload the information of the snapshot on
+    the storage to the metadata.
+
+    The metadata has the following information:
+
+    - ``FJ_SDV_Name``
+    - ``FJ_SDV_No``
+    - ``FJ_Pool_Name``
