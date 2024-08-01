@@ -185,23 +185,21 @@ Configuration
    ``EternusPool`` (Multiple setting allowed)
        Name of the storage pool for the volumes from ``ETERNUS DX setup``.
 
-       Use the pool RAID Group name or TPP name in the ETERNUS device.
+       Use the pool RAID Group pool name or TPP pool name in the ETERNUS device.
 
-   ``EternusSnapPool``
+   ``EternusSnapPool`` (Multiple setting allowed)
        Name of the storage pool for the snapshots from ``ETERNUS DX setup``.
 
-       Use the pool RAID Group name in the ETERNUS device.
+       Use the pool RAID Group pool name or TPP pool name in the ETERNUS device.
 
-       If you did not create a different pool for snapshots, use the same value as ``ETternusPool``.
+       If you did not create a different pool for snapshots, use the same value as ``EternusPool``.
 
    ``EternusISCSIIP`` (Multiple setting allowed)
        iSCSI connection IP address of the ETERNUS DX.
 
    .. note::
 
-      * For ``EternusSnapPool``, you can specify only RAID Group name
-        and cannot specify TPP name.
-      * You can specify the same RAID Group name for ``EternusPool`` and ``EternusSnapPool``
+      * You can specify the same RAID Group pool name or TPP pool name for ``EternusPool`` and ``EternusSnapPool``
         if you create volumes and snapshots on a same storage pool.
       * For ``EternusPool``, when multiple pools are specified,
         cinder-scheduler will select one from multiple pools to create the volume.
@@ -454,3 +452,59 @@ The following procedure shows how to set the QoS.
    ETERNUS OpenStack VolumeDriver ends the process to prevent the
    created volumes from being left in the ETERNUS AF/DX.
    If volumes fail to be created, the process terminates with an error.
+
+Specification of the Snapshot Creation Destination Pool
+-------------------------------------------------------
+
+A RAID Group or a Thin Provisioning Pool (TPP) can be specified as the snapshot
+creation destination pool. In an ETERNUS AF/DX with a firmware version earlier
+than or equal to V10L60, Thin Provisioning Pools(TPPs) cannot be used as the
+snapshot creation destination pool.
+
+Multiple snapshot creation destination pools can be specified.
+
+A pool where snapshots can be created is searched in the order written in the
+driver configuration file and if one is found, snapshots are created in that
+pool.
+
+**Cautions**
+
+#. If the creation destination pool is a RAID Group, more than 128 snapshots
+   cannot be created. Therefore, to create more than 128 snapshots in a RAID
+   Group, multiple RAID Groups must be specified as snapshot creation
+   destination pools.
+
+#. When creating a snapshot, Cinder Scheduler checks the capacity of the pool
+   where the source volume is located. This may lead to the failure of snapshot
+   creation fail to be created if this pool has insufficient capacity, even if
+   the snapshot pool specified by ``EternusSnapPool`` has sufficient capacity.
+
+#. If multiple snapshot creation destination pools are specified, a different
+   pool must be specified for the volume creation destination pool
+   (``EternusPool`` and ``EternusSnapPool`` can be specified multiple times but
+   the same pool name cannot be specified).
+   If the same pool name is specified and instructions to create multiple
+   volumes and multiple snapshots are issued at the same time, the number of
+   logical volumes in a RAID Group will reach 128 and the operation may fail.
+
+#. To address the issue that a volume with snapshot cannot be extended, a
+   parameter ``fujitsu_use_cli_copy`` has been introduced.
+
+   The default value of ``fujitsu_use_cli_copy`` is ``False``.
+
+   If ``fujitsu_use_cli_copy`` is set to ``True``, create a Snapshot using the
+   CLI method instead of SMI-S method, allowing volume extension of the source
+   volume.
+
+    .. code-block:: console
+
+      $ cat /etc/cinder/cinder.conf
+        (snip)
+        [Backend1]
+        volume_driver=cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_fc.FJDXFCDriver
+        cinder_eternus_config_file = /etc/cinder/cinder_fujitsu_eternus_dx.xml
+        volume_backend_name = volume_backend_name1
+        fujitsu_use_cli_copy = True
+
+   Note that ``fujitsu_use_cli_copy`` cannot be set to True when the type of
+   target pool is RAID Group.

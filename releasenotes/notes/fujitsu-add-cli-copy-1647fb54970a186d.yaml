@@ -1,0 +1,24 @@
+---
+features:
+  - |
+    Fujitsu Eternus DX driver: Added cli operations when creating snapshot
+
+    Fujitsu Eternus DX driver used to create snapshot using SMI-S, resulting
+    in the inability to extend the source volume.
+
+    To make the volume extendable after creating a snapshot, an additional
+    parameter ``fujitsu_use_cli_copy`` is introduced with a default value of
+    ``False``.
+
+    * If ``fujitsu_use_cli_copy`` is set to ``False``, create a snapshot using
+      the conventional SMI-S method.
+
+    * If ``fujitsu_use_cli_copy`` is set to ``True``, create a snapshot using
+      the CLI method, allowing volume extension of the source volume.
+
+    Note that ``fujitsu_use_cli_copy`` cannot be set to True when the type of
+    target pool is RAID Group.
+
+    See the `Fujitsu ETERNUS DX driver documentation
+    <https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/fujitsu-eternus-dx-driver.html>`_
+    for details.
