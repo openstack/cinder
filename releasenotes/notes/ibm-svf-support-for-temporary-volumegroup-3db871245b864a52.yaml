@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    IBM Storage Virtualize Family driver: Added support to create,
+    update and delete temporary volumegroup.
+upgrade:
+  - |
+    IBM Storage Virtualize Family driver: The configuration option
+    'storwize_volume_group', which was introduced in Antelope release
+    but was never fully operational is hereby removed.
+
