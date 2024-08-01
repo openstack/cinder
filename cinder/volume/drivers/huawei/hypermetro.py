@@ -95,7 +95,7 @@ class HuaweiHyperMetro(object):
                      "HCRESOURCETYPE": '1',
                      "ISFIRSTSYNC": False,
                      "LOCALOBJID": lun_id,
-                     "RECONVERYPOLICY": '1',
+                     "RECOVERYPOLICY": '1',
                      "REMOTEOBJID": remote_lun_id,
                      "SPEED": '2'}
 
