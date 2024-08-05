@@ -55,6 +55,7 @@ class FJDXCLI(object):
             'show_enclosure_status': self._show_enclosure_status,
             'start_copy_snap_opc': self._start_copy_snap_opc,
             'stop_copy_session': self._stop_copy_session,
+            'start_copy_opc': self._start_copy_opc,
             'delete_volume': self._delete_volume
         }
 
@@ -490,6 +491,10 @@ class FJDXCLI(object):
     def _stop_copy_session(self, **option):
         """Exec stop copy-session."""
         return self._exec_cli("stop copy-session", **option)
+
+    def _start_copy_opc(self, **option):
+        """Exec start copy-opc."""
+        return self._exec_cli("start copy-opc", **option)
 
     def _delete_volume(self, **option):
         """Exec delete volume."""

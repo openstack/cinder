@@ -181,3 +181,7 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
                   'target volume meta: %s, Exit method.', model_update)
 
         return model_update
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert volume to snapshot."""
+        return self.common.revert_to_snapshot(volume, snapshot)

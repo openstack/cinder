@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Fujitsu Eternus DX driver: Added support for revert to snapshot operation.
+
+    Added support of revert to snapshot functionality.
+
+    If a volume with snapshots has been extended, causing a mismatch in size
+    between the origin volume and the snapshot, reverting will be guarded by
+    cinder-api.
