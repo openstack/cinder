@@ -32,6 +32,7 @@ class NetAppCmodeISCSIDriver(driver.BaseVD,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_CI"
     VERSION = block_cmode.NetAppBlockStorageCmodeLibrary.VERSION
+    SUPPORTS_ACTIVE_ACTIVE = True
 
     def __init__(self, *args, **kwargs):
         super(NetAppCmodeISCSIDriver, self).__init__(*args, **kwargs)
@@ -133,8 +134,14 @@ class NetAppCmodeISCSIDriver(driver.BaseVD,
             source_group=source_group, source_vols=source_vols)
 
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
-        return self.library.failover_host(
-            context, volumes, secondary_id=secondary_id)
+        return self.library.failover_host(context, volumes,
+                                          secondary_id=secondary_id)
+
+    def failover(self, context, volumes, secondary_id=None, groups=None):
+        return self.library.failover(context, volumes, secondary_id)
+
+    def failover_completed(self, context, secondary_id=None):
+        return self.library.failover_completed(context, secondary_id)
 
     def migrate_volume(self, context, volume, host):
         return self.library.migrate_volume(context, volume, host)
