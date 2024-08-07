@@ -245,6 +245,8 @@ class BackupUserMessagesTest(test.TestCase):
             detail=message_field.Detail.BACKUP_CREATE_CLEANUP_ERROR)
 
     @mock.patch('cinder.scheduler.host_manager.HostManager.'
+                '_choose_backend_filters')
+    @mock.patch('cinder.scheduler.host_manager.HostManager.'
                 '_get_available_backup_service_host')
     @mock.patch('cinder.volume.volume_utils.update_backup_error')
     @mock.patch('cinder.db.volume_update')
@@ -252,7 +254,8 @@ class BackupUserMessagesTest(test.TestCase):
     @mock.patch('cinder.message.api.API.create')
     def test_backup_create_scheduling_error(
             self, mock_msg_create, mock_get_vol, mock_vol_update,
-            mock_update_error, mock_get_backup_host):
+            mock_update_error, mock_get_backup_host, mock_choose_filters):
+        mock_choose_filters.return_value = ['AvailabilityZoneFilter']
         manager = sch_manager.SchedulerManager()
         fake_context = mock.MagicMock()
         fake_backup = mock.MagicMock(id=fake.BACKUP_ID,
