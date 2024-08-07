@@ -257,4 +257,6 @@ def set_external_library_defaults():
     # setup.cfg.
 
     set_middleware_defaults()
-    policy_opts.set_defaults(CONF, policy_file=DEFAULT_POLICY_FILENAME)
+    policy_opts.set_defaults(CONF, policy_file=DEFAULT_POLICY_FILENAME,
+                             enforce_scope=False,
+                             enforce_new_defaults=False)
