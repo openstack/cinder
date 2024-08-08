@@ -143,6 +143,12 @@ If you use iSCSI:
 1. ``Ports``
     Assign an IP address and a TCP port number to the port.
 
+.. note::
+
+   * Do not change LDEV nickname for the LDEVs created by Hitachi block
+     storage driver. The nickname is referred when deleting a volume or
+     a snapshot, to avoid data-loss risk. See details in `bug #2072317`_.
+
 Set up Hitachi storage volume driver and volume operations
 ----------------------------------------------------------
 
@@ -508,3 +514,5 @@ attach operations for each volume type.
   https://docs.hitachivantara.com/r/en-us/svos/9.8.7/mk-97hm85026/
   about-adaptive-data-reduction/capacity-saving/
   capacity-saving-function-data-deduplication-and-compression
+.. _bug #2072317:
+  https://bugs.launchpad.net/cinder/+bug/2072317
