@@ -126,6 +126,12 @@ If you use iSCSI:
 - ``Ports``
     Assign an IP address and a TCP port number to the port.
 
+.. note::
+
+   * Do not change LDEV nickname for the LDEVs created by Hitachi block
+     storage driver. The nickname is referred when deleting a volume or
+     a snapshot, to avoid data-loss risk. See details in `bug #2072317`_.
+
 Set up Hitachi storage volume driver
 ------------------------------------
 
@@ -184,3 +190,7 @@ Required options
 
 - ``hitachi_pools``
     Pool number(s) or pool name(s) of the DP pool.
+
+.. Document Hyperlinks
+.. _bug #2072317:
+  https://bugs.launchpad.net/cinder/+bug/2072317
