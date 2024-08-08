@@ -191,6 +191,7 @@ GET_LDEV_RESULT = {
     "attributes": ["CVS", "DP"],
     "status": "NML",
     "poolId": 30,
+    "label": "00000000000000000000000000000000",
 }
 
 GET_LDEV_RESULT_MAPPED = {
@@ -208,11 +209,29 @@ GET_LDEV_RESULT_MAPPED = {
     ],
 }
 
+GET_LDEV_RESULT_SNAP = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 2097152,
+    "attributes": ["CVS", "DP"],
+    "status": "NML",
+    "poolId": 30,
+    "label": "10000000000000000000000000000000",
+}
+
 GET_LDEV_RESULT_PAIR = {
     "emulationType": "OPEN-V-CVS",
     "blockCapacity": 2097152,
     "attributes": ["CVS", "DP", "SS"],
     "status": "NML",
+    "label": "00000000000000000000000000000000",
+}
+
+GET_LDEV_RESULT_PAIR_SNAP = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 2097152,
+    "attributes": ["CVS", "DP", "SS"],
+    "status": "NML",
+    "label": "10000000000000000000000000000000",
 }
 
 GET_POOLS_RESULT = {
@@ -584,17 +603,18 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
-                               FakeResponse(200, GET_SNAPSHOTS_RESULT)]
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.common._stats = {}
         self.driver.common._stats['pools'] = [
             {'location_info': {'pool_id': 30}}]
         ret = self.driver.create_snapshot(TEST_SNAPSHOT[0])
         self.assertEqual('1', ret['provider_location'])
-        self.assertEqual(4, request.call_count)
+        self.assertEqual(5, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     def test_delete_snapshot(self, request):
-        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_SNAP),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -797,17 +817,12 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     def test_update_migrated_volume(self, request):
         request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
-        self.assertRaises(
-            NotImplementedError,
-            self.driver.update_migrated_volume,
-            self.ctxt,
-            TEST_VOLUME[0],
-            TEST_VOLUME[1],
-            "available")
-        self.assertEqual(2, request.call_count)
-        args, kwargs = request.call_args_list[1]
-        self.assertEqual(kwargs['json']['label'],
-                         TEST_VOLUME[0]['id'].replace("-", ""))
+        ret = self.driver.update_migrated_volume(
+            self.ctxt, TEST_VOLUME[0], TEST_VOLUME[1], "available")
+        self.assertEqual(1, request.call_count)
+        actual = ({'_name_id': TEST_VOLUME[1]['id'],
+                   'provider_location': TEST_VOLUME[1]['provider_location']})
+        self.assertEqual(actual, ret)
 
     def test_unmanage_snapshot(self):
         """The driver don't support unmange_snapshot."""
@@ -938,14 +953,15 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
-                               FakeResponse(200, GET_SNAPSHOTS_RESULT)]
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.common._stats = {}
         self.driver.common._stats['pools'] = [
             {'location_info': {'pool_id': 30}}]
         ret = self.driver.create_group_snapshot(
             self.ctxt, TEST_GROUP_SNAP[0], [TEST_SNAPSHOT[0]]
         )
-        self.assertEqual(4, request.call_count)
+        self.assertEqual(5, request.call_count)
         actual = (
             {'status': 'available'},
             [{'id': TEST_SNAPSHOT[0]['id'],
@@ -962,6 +978,7 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
         is_group_a_cg_snapshot_type.return_value = True
         request.side_effect = [FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT_PAIR),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT)]
@@ -971,7 +988,7 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
         ret = self.driver.create_group_snapshot(
             self.ctxt, TEST_GROUP_SNAP[0], [TEST_SNAPSHOT[0]]
         )
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(6, request.call_count)
         actual = (
             None,
             [{'id': TEST_SNAPSHOT[0]['id'],
@@ -982,7 +999,7 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
 
     @mock.patch.object(requests.Session, "request")
     def test_delete_group_snapshot(self, request):
-        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR_SNAP),
                                FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),

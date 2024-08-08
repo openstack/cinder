@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2023, Hitachi, Ltd.
+# Copyright (C) 2020, 2024, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -522,9 +522,22 @@ class HBSDREST(common.HBSDCommon):
             self._create_clone_pair(pvol, svol, snap_pool_id)
 
     def get_ldev_info(self, keys, ldev, **kwargs):
-        """Return a dictionary of LDEV-related items."""
+        """Return a dictionary of LDEV-related items.
+
+        :param keys: LDEV Attributes to be obtained. Specify None to obtain all
+        LDEV attributes.
+        :type keys: list or NoneType
+        :param int ldev: The LDEV ID
+        :param dict kwargs: REST API options
+        :return: LDEV info
+        :rtype: dict
+        """
         d = {}
         result = self.client.get_ldev(ldev, **kwargs)
+        if not keys:
+            # To avoid KeyError when accessing a missing attribute, set the
+            # default value to None.
+            return defaultdict(lambda: None, result)
         for key in keys:
             d[key] = result.get(key)
         return d
@@ -909,10 +922,17 @@ class HBSDREST(common.HBSDCommon):
 
         return pvol, [{'ldev': svol, 'is_psus': is_psus, 'status': status}]
 
-    def get_pair_info(self, ldev):
-        """Return info of the volume pair."""
+    def get_pair_info(self, ldev, ldev_info=None):
+        """Return info of the volume pair.
+
+        :param int ldev: The LDEV ID
+        :param dict ldev_info: LDEV info
+        :return: TI pair info if the LDEV has TI pairs, None otherwise
+        :rtype: dict or NoneType
+        """
         pair_info = {}
-        ldev_info = self.get_ldev_info(['status', 'attributes'], ldev)
+        if ldev_info is None:
+            ldev_info = self.get_ldev_info(['status', 'attributes'], ldev)
         if (ldev_info['status'] != NORMAL_STS or
                 self.driver_info['pair_attr'] not in ldev_info['attributes']):
             return None
@@ -1278,6 +1298,8 @@ class HBSDREST(common.HBSDCommon):
                 extra_specs = self.get_volume_extra_specs(snapshot.volume)
                 pair['svol'] = self.create_ldev(size, extra_specs,
                                                 pool_id, ldev_range)
+                self.modify_ldev_name(pair['svol'],
+                                      snapshot.id.replace("-", ""))
             except Exception as exc:
                 pair['msg'] = utils.get_exception_msg(exc)
             raise loopingcall.LoopingCallDone(pair)

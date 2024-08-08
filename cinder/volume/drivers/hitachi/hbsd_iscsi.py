@@ -187,9 +187,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
             self, ctxt, volume, new_volume, original_volume_status):
         """Do any remaining jobs after migration."""
         self.common.discard_zero_page(new_volume)
-        self.common.update_migrated_volume(volume, new_volume)
-        super(HBSDISCSIDriver, self).update_migrated_volume(
-            ctxt, volume, new_volume, original_volume_status)
+        return self.common.update_migrated_volume(new_volume)
 
     @volume_utils.trace
     def copy_image_to_volume(self, context, volume, image_service, image_id,

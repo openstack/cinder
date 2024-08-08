@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Hitachi driver `bug #2072317
+    <https://bugs.launchpad.net/cinder/+bug/2072317>`_: Fix potential
+    data-loss due to a network issue during a volume deletion.
