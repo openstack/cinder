@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2023, Hitachi, Ltd.
+# Copyright (C) 2020, 2024, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -251,6 +251,14 @@ class HBSDMsg(enum.Enum):
         'loglevel': base_logging.WARNING,
         'msg': 'Port %(port)s will not be used because it is not considered '
                'to be active by the Fibre Channel Zone Manager.',
+        'suffix': WARNING_SUFFIX,
+    }
+    SKIP_DELETING_LDEV = {
+        'msg_id': 348,
+        'loglevel': base_logging.WARNING,
+        'msg': 'Skip deleting the LDEV and its LUNs and pairs because the '
+               'LDEV is used by another object. (%(obj)s: %(obj_id)s, LDEV: '
+               '%(ldev)s, LDEV label: %(ldev_label)s)',
         'suffix': WARNING_SUFFIX,
     }
     STORAGE_COMMAND_FAILED = {
