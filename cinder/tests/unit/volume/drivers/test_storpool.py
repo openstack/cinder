@@ -32,15 +32,16 @@ sys.modules['storpool'] = fakeStorPool
 
 
 from cinder import exception
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import storpool as driver
 
 
 volume_types = {
-    1: {},
-    2: {'storpool_template': 'ssd'},
-    3: {'storpool_template': 'hdd'}
+    fake_constants.VOLUME_TYPE_ID: {},
+    fake_constants.VOLUME_TYPE2_ID: {'storpool_template': 'ssd'},
+    fake_constants.VOLUME_TYPE3_ID: {'storpool_template': 'hdd'}
 }
 volumes = {}
 snapshots = {}
@@ -329,7 +330,8 @@ class StorPoolTestCase(test.TestCase):
         self.assertDictEqual({}, snapshots)
 
         self.driver.create_volume({'id': '1', 'name': 'v1', 'size': 1,
-                                   'volume_type': None})
+                                   'volume_type':
+                                       {'id': fake_constants.VOLUME_TYPE_ID}})
         self.assertCountEqual([volumeName('1')], volumes.keys())
         self.assertVolumeNames(('1',))
         v = volumes[volumeName('1')]
@@ -339,8 +341,9 @@ class StorPoolTestCase(test.TestCase):
 
         caught = False
         try:
-            self.driver.create_volume({'id': '1', 'name': 'v1', 'size': 0,
-                                       'volume_type': None})
+            self.driver.create_volume(
+                {'id': '1', 'name': 'v1', 'size': 0,
+                 'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}})
         except exception.VolumeBackendAPIException:
             caught = True
         self.assertTrue(caught)
@@ -349,8 +352,9 @@ class StorPoolTestCase(test.TestCase):
         self.assertVolumeNames([])
         self.assertDictEqual({}, volumes)
 
-        self.driver.create_volume({'id': '1', 'name': 'v1', 'size': 2,
-                                   'volume_type': None})
+        self.driver.create_volume(
+            {'id': '1', 'name': 'v1', 'size': 2,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}})
         self.assertVolumeNames(('1',))
         v = volumes[volumeName('1')]
         self.assertEqual(2 * units.Gi, v['size'])
@@ -358,23 +362,26 @@ class StorPoolTestCase(test.TestCase):
         self.assertEqual(3, v['replication'])
 
         self.driver.create_volume({'id': '2', 'name': 'v2', 'size': 3,
-                                   'volume_type': {'id': 1}})
+                                   'volume_type':
+                                       {'id': fake_constants.VOLUME_TYPE_ID}})
         self.assertVolumeNames(('1', '2'))
         v = volumes[volumeName('2')]
         self.assertEqual(3 * units.Gi, v['size'])
         self.assertIsNone(v['template'])
         self.assertEqual(3, v['replication'])
 
-        self.driver.create_volume({'id': '3', 'name': 'v2', 'size': 4,
-                                   'volume_type': {'id': 2}})
+        self.driver.create_volume(
+            {'id': '3', 'name': 'v2', 'size': 4,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE2_ID}})
         self.assertVolumeNames(('1', '2', '3'))
         v = volumes[volumeName('3')]
         self.assertEqual(4 * units.Gi, v['size'])
         self.assertEqual('ssd', v['template'])
         self.assertNotIn('replication', v.keys())
 
-        self.driver.create_volume({'id': '4', 'name': 'v2', 'size': 5,
-                                   'volume_type': {'id': 3}})
+        self.driver.create_volume(
+            {'id': '4', 'name': 'v2', 'size': 5,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE3_ID}})
         self.assertVolumeNames(('1', '2', '3', '4'))
         v = volumes[volumeName('4')]
         self.assertEqual(5 * units.Gi, v['size'])
@@ -400,10 +407,12 @@ class StorPoolTestCase(test.TestCase):
         self.assertDictEqual({}, snapshots)
 
         # Create two volumes
-        self.driver.create_volume({'id': '1', 'name': 'v1', 'size': 1,
-                                   'volume_type': None})
-        self.driver.create_volume({'id': '2', 'name': 'v2', 'size': 1,
-                                   'volume_type': None})
+        self.driver.create_volume(
+            {'id': '1', 'name': 'v1', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}})
+        self.driver.create_volume(
+            {'id': '2', 'name': 'v2', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}})
         self.assertCountEqual([volumeName('1'), volumeName('2')],
                               volumes.keys())
         self.assertVolumeNames(('1', '2',))
@@ -438,20 +447,27 @@ class StorPoolTestCase(test.TestCase):
         self.assertDictEqual({}, volumes)
         self.assertDictEqual({}, snapshots)
 
+    @mock_volume_types
     def test_clone_extend_volume(self):
         self.assertVolumeNames([])
         self.assertDictEqual({}, volumes)
         self.assertDictEqual({}, snapshots)
 
-        self.driver.create_volume({'id': '1', 'name': 'v1', 'size': 1,
-                                   'volume_type': None})
+        self.driver.create_volume(
+            {'id': '1', 'name': 'v1', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}})
         self.assertVolumeNames(('1',))
         self.driver.extend_volume({'id': '1'}, 2)
         self.assertEqual(2 * units.Gi, volumes[volumeName('1')]['size'])
 
         with mock.patch.object(self.driver, 'db', new=MockVolumeDB()):
             self.driver.create_cloned_volume(
-                {'id': '2', 'name': 'clo', 'size': 3, 'volume_type': None},
+                {
+                    'id': '2',
+                    'name': 'clo',
+                    'size': 3,
+                    'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}
+                },
                 {'id': 1})
         self.assertVolumeNames(('1', '2'))
         self.assertDictEqual({}, snapshots)
@@ -468,24 +484,16 @@ class StorPoolTestCase(test.TestCase):
         self.assertDictEqual({}, snapshots)
 
     @ddt.data(*itertools.product(
-        [None] + [{'id': key} for key in sorted(volume_types.keys())],
-        [None] + [{'id': key} for key in sorted(volume_types.keys())]))
+        [{'id': key} for key in sorted(volume_types.keys())],
+        [{'id': key} for key in sorted(volume_types.keys())]))
     @ddt.unpack
     @mock_volume_types
     def test_create_cloned_volume(self, src_type, dst_type):
         self.assertDictEqual({}, volumes)
         self.assertDictEqual({}, snapshots)
 
-        src_template = (
-            None
-            if src_type is None
-            else volume_types[src_type['id']].get('storpool_template')
-        )
-        dst_template = (
-            None
-            if dst_type is None
-            else volume_types[dst_type['id']].get('storpool_template')
-        )
+        src_template = volume_types[src_type['id']].get('storpool_template')
+        dst_template = volume_types[dst_type['id']].get('storpool_template')
         src_name = 's-none' if src_template is None else 's-' + src_template
         dst_name = 'd-none' if dst_template is None else 'd-' + dst_template
 
@@ -553,8 +561,9 @@ class StorPoolTestCase(test.TestCase):
         self.assertEqual(21, pool['total_capacity_gb'])
         self.assertEqual(5, int(pool['free_capacity_gb']))
 
-        self.driver.create_volume({'id': 'cfgrepl1', 'name': 'v1', 'size': 1,
-                                   'volume_type': None})
+        self.driver.create_volume(
+            {'id': 'cfgrepl1', 'name': 'v1', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}})
         self.assertVolumeNames(('cfgrepl1',))
         v = volumes[volumeName('cfgrepl1')]
         self.assertEqual(3, v['replication'])
@@ -567,16 +576,18 @@ class StorPoolTestCase(test.TestCase):
         self.assertEqual(21, pool['total_capacity_gb'])
         self.assertEqual(8, int(pool['free_capacity_gb']))
 
-        self.driver.create_volume({'id': 'cfgrepl2', 'name': 'v1', 'size': 1,
-                                   'volume_type': None})
+        self.driver.create_volume(
+            {'id': 'cfgrepl2', 'name': 'v1', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}})
         self.assertVolumeNames(('cfgrepl2',))
         v = volumes[volumeName('cfgrepl2')]
         self.assertEqual(2, v['replication'])
         self.assertIsNone(v['template'])
         self.driver.delete_volume({'id': 'cfgrepl2'})
 
-        self.driver.create_volume({'id': 'cfgrepl3', 'name': 'v1', 'size': 1,
-                                   'volume_type': {'id': 2}})
+        self.driver.create_volume(
+            {'id': 'cfgrepl3', 'name': 'v1', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE2_ID}})
         self.assertVolumeNames(('cfgrepl3',))
         v = volumes[volumeName('cfgrepl3')]
         self.assertNotIn('replication', v)
@@ -599,16 +610,18 @@ class StorPoolTestCase(test.TestCase):
 
         self.driver.configuration.storpool_template = None
 
-        self.driver.create_volume({'id': 'cfgtempl1', 'name': 'v1', 'size': 1,
-                                   'volume_type': None})
+        self.driver.create_volume(
+            {'id': 'cfgtempl1', 'name': 'v1', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}})
         self.assertVolumeNames(('cfgtempl1',))
         v = volumes[volumeName('cfgtempl1')]
         self.assertEqual(3, v['replication'])
         self.assertIsNone(v['template'])
         self.driver.delete_volume({'id': 'cfgtempl1'})
 
-        self.driver.create_volume({'id': 'cfgtempl2', 'name': 'v1', 'size': 1,
-                                   'volume_type': {'id': 2}})
+        self.driver.create_volume(
+            {'id': 'cfgtempl2', 'name': 'v1', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE2_ID}})
         self.assertVolumeNames(('cfgtempl2',))
         v = volumes[volumeName('cfgtempl2')]
         self.assertNotIn('replication', v)
@@ -617,16 +630,18 @@ class StorPoolTestCase(test.TestCase):
 
         self.driver.configuration.storpool_template = 'hdd'
 
-        self.driver.create_volume({'id': 'cfgtempl3', 'name': 'v1', 'size': 1,
-                                   'volume_type': None})
+        self.driver.create_volume(
+            {'id': 'cfgtempl3', 'name': 'v1', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}})
         self.assertVolumeNames(('cfgtempl3',))
         v = volumes[volumeName('cfgtempl3')]
         self.assertNotIn('replication', v)
         self.assertEqual('hdd', v['template'])
         self.driver.delete_volume({'id': 'cfgtempl3'})
 
-        self.driver.create_volume({'id': 'cfgtempl4', 'name': 'v1', 'size': 1,
-                                   'volume_type': {'id': 2}})
+        self.driver.create_volume(
+            {'id': 'cfgtempl4', 'name': 'v1', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE2_ID}})
         self.assertVolumeNames(('cfgtempl4',))
         v = volumes[volumeName('cfgtempl4')]
         self.assertNotIn('replication', v)
@@ -643,10 +658,10 @@ class StorPoolTestCase(test.TestCase):
         # No volume type at all: 'default'
         ('default', None),
         # No storpool_template in the type extra specs: 'default'
-        ('default', {'id': 1}),
+        ('default', {'id': fake_constants.VOLUME_TYPE_ID}),
         # An actual template specified: 'template_*'
-        ('template_ssd', {'id': 2}),
-        ('template_hdd', {'id': 3}),
+        ('template_ssd', {'id': fake_constants.VOLUME_TYPE2_ID}),
+        ('template_hdd', {'id': fake_constants.VOLUME_TYPE3_ID}),
     )
     @ddt.unpack
     @mock_volume_types
@@ -656,6 +671,7 @@ class StorPoolTestCase(test.TestCase):
                              'volume_type': volume_type
                          }))
 
+    @mock_volume_types
     def test_volume_revert(self):
         vol_id = 'rev1'
         vol_name = volumeName(vol_id)
@@ -666,8 +682,9 @@ class StorPoolTestCase(test.TestCase):
         self.assertDictEqual({}, volumes)
         self.assertDictEqual({}, snapshots)
 
-        self.driver.create_volume({'id': vol_id, 'name': 'v1', 'size': 1,
-                                   'volume_type': None})
+        self.driver.create_volume(
+            {'id': vol_id, 'name': 'v1', 'size': 1,
+             'volume_type': {'id': fake_constants.VOLUME_TYPE_ID}})
         self.assertVolumeNames((vol_id,))
         self.assertDictEqual({}, snapshots)
 
