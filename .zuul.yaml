@@ -181,6 +181,11 @@
     roles:
       - zuul: opendev.org/openstack/cinder-tempest-plugin
     vars:
+      # FIXME: change I29b1af0a4034decad to tempest added image format tests that
+      # cannot pass in this job because the image data takes a optimized path that
+      # bypasses nova's checks.  Until the nova team decides on a strategy to handle
+      # this issue, we skip these tests.
+      tempest_exclude_regex: (tempest.api.image.v2.test_images_formats.ImagesFormatTest.test_compute_rejects)
       configure_swap_size: 4096
       devstack_localrc:
         CEPH_MIN_CLIENT_VERSION: "mimic"
