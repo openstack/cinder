@@ -27,7 +27,6 @@ Server-centric flow is used for authentication.
 """
 
 import base64
-import importlib.metadata as importlib_metadata
 import io
 import os
 
@@ -50,7 +49,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import secretutils
 from oslo_utils import timeutils
-from packaging import version
 
 from cinder.backup import chunkeddriver
 from cinder import exception
@@ -142,17 +140,6 @@ def gcs_logger(func):
     return func_wrapper
 
 
-def _get_dist_version(name):
-    """Mock-able wrapper for importlib_metadata.version()
-
-    The module name where version() is found varies by python
-    version. This function makes it easier for tests to mock the
-    function and change the return value.
-
-    """
-    return importlib_metadata.version(name)
-
-
 @interface.backupdriver
 class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within GCS."""
@@ -184,22 +171,22 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
             os.environ['http_proxy'] = CONF.backup_gcs_proxy_url
 
         backup_credential = CONF.backup_gcs_credential_file
-        # If we have google client that support google-auth library
-        # (v1.6.0 or higher) and all required libraries are installed use
-        # google-auth for the credentials
-        dist_version = _get_dist_version('google-api-python-client')
-        if (version.parse(dist_version) >= version.parse('1.6.0')
-                and service_account):
+        # service_account is imported if all required libraries are available
+        if service_account:
             creds = service_account.Credentials.from_service_account_file(
                 backup_credential)
             OAUTH_EXCEPTIONS = (gexceptions.RefreshError,
                                 gexceptions.DefaultCredentialsError,
                                 client.Error)
-
-        # Can't use google-auth, use deprecated oauth2client
-        else:
+        # The (deprecated) client is imported if the oauth2client library is
+        # available
+        elif client:
             creds = client.GoogleCredentials.from_stream(backup_credential)
             OAUTH_EXCEPTIONS = client.Error
+        else:
+            msg = _('google-auth-httplib2 or oauth2client should be '
+                    'installed.')
+            raise exception.BackupDriverException(reason=msg)
 
         self.conn = discovery.build('storage',
                                     'v1',
