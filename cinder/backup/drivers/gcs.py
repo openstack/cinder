@@ -37,11 +37,6 @@ try:
 except ImportError:
     service_account = google_auth_httplib2 = gexceptions = None
 
-try:
-    from oauth2client import client
-except ImportError:
-    client = None
-
 from googleapiclient import discovery
 from googleapiclient import errors
 from googleapiclient import http
@@ -176,16 +171,14 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
             creds = service_account.Credentials.from_service_account_file(
                 backup_credential)
             OAUTH_EXCEPTIONS = (gexceptions.RefreshError,
-                                gexceptions.DefaultCredentialsError,
-                                client.Error)
-        # The (deprecated) client is imported if the oauth2client library is
-        # available
-        elif client:
-            creds = client.GoogleCredentials.from_stream(backup_credential)
-            OAUTH_EXCEPTIONS = client.Error
+                                gexceptions.DefaultCredentialsError)
         else:
-            msg = _('google-auth-httplib2 or oauth2client should be '
-                    'installed.')
+            # NOTE(tkajinam): google-api-python-client is now in requirements
+            #                 and google-auth-httplib2 is its dependency. So
+            #                 this error should not be raised now. But it's
+            #                 kept now in case the client library is moved to
+            #                 extra dependencies
+            msg = _('google-api-python-client not found')
             raise exception.BackupDriverException(reason=msg)
 
         self.conn = discovery.build('storage',

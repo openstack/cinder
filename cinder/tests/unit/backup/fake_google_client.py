@@ -18,8 +18,8 @@ import json
 import os
 import zlib
 
+from google.auth import exceptions as gexceptions
 from googleapiclient import errors
-from oauth2client import client
 from oslo_utils import units
 
 
@@ -55,7 +55,7 @@ class FakeGoogleBucketListExecute(object):
 
     def execute(self, *args, **kwargs):
         if self.container_name == 'gcs_oauth2_failure':
-            raise client.Error
+            raise gexceptions.DefaultCredentialsError
         return {u'items': [{u'name': u'gcscinderbucket'},
                            {u'name': u'gcsbucket'}]}
 
