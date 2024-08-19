@@ -306,11 +306,12 @@ class HPE3PARCommon(object):
         4.0.20 - Use small QoS Latency value. Bug #2018994
         4.0.21 - Fix issue seen during retype/migrate. Bug #2026718
         4.0.22 - Fixed clone of replicated volume. Bug #2021941
+        4.0.23 - Fixed login/logout while accessing wsapi. Bug #2068795
 
 
     """
 
-    VERSION = "4.0.22"
+    VERSION = "4.0.23"
 
     stats = {}
 
@@ -432,8 +433,9 @@ class HPE3PARCommon(object):
             raise exception.InvalidInput(reason=msg)
 
     def client_logout(self):
-        LOG.debug("Disconnect from 3PAR REST and SSH %s", self.uuid)
-        self.client.logout()
+        if self.client is not None:
+            LOG.debug("Disconnect from 3PAR REST and SSH %s", self.uuid)
+            self.client.logout()
 
     def _create_replication_client(self, remote_array):
         try:
@@ -488,6 +490,8 @@ class HPE3PARCommon(object):
             if self._replication_enabled:
                 self.client = None
             raise exception.InvalidInput(ex)
+        finally:
+            self.client_logout()
 
         if context:
             # The context is None except at driver startup.
