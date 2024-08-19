@@ -63,6 +63,7 @@ CONF = cfg.CONF
 backup_cmd_opts = [
     cfg.IntOpt('backup_workers',
                default=1, min=1, max=processutils.get_worker_count(),
+               sample_default=8,
                help='Number of backup processes to launch. '
                'Improves performance with concurrent backups.'),
     cfg.IntOpt('backup_max_operations',
