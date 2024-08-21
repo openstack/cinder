@@ -1064,6 +1064,7 @@ MPV = ValidResponse(200, None, 3,
 CONNECTION_DATA = {'host': {'name': 'utest'},
                    'host_group': {},
                    'lun': 1,
+                   'nsid': 9753,
                    'protocol_endpoint': {},
                    'volume': {'id': '78a9e55b-d9ef-37ce-0dbd-14de74ae35d4',
                               'name': 'xVol1'}}
@@ -1073,6 +1074,7 @@ vol_dict = {'id': '1e5177e7-95e5-4a0f-b170-e45f4b469f6a',
 NCONNECTION_DATA = {'host': {'name': PURE_HOST_NAME},
                     'host_group': {},
                     'lun': 1,
+                    'nsid': 9753,
                     'protocol_endpoint': {},
                     'volume': vol_dict}
 NCONN = ValidResponse(200, None, 1,
@@ -1081,6 +1083,7 @@ NCONN = ValidResponse(200, None, 1,
 AC_CONNECTION_DATA = [{'host': {'name': 'utest5'},
                        'host_group': {},
                        'lun': 5,
+                       'nsid': 9755,
                        'protocol_endpoint': {},
                        'volume': {'id': '78a9e55b-d9ef-37ce-0dbd-14de74ae35d5',
                                   'name': 'xVol5'}}]
@@ -1809,7 +1812,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                      name=vol_name)
         mock_fa.return_value = mock_data
 
-        self.driver.create_volume_from_snapshot(vol, snap)
+        self.driver.create_volume_from_snapshot(vol, snap, True)
 
         self.array.post_volumes.assert_called_with(names=[vol_name],
                                                    with_default_protection=
@@ -2438,7 +2441,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             source_vols=None
         )
         mock_create_cg.assert_called_with(ctxt, mock_group, None)
-        expected_calls = [mock.call(vol, snap)
+        expected_calls = [mock.call(vol, snap, cgsnapshot=True)
                           for vol, snap in zip(mock_volumes, mock_snapshots)]
         mock_create_vol.assert_has_calls(expected_calls,
                                          any_order=True)
@@ -4872,6 +4875,7 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
         NCONNECTION_DATA = {'host': {'name': 'utest'},
                             'host_group': {},
                             'lun': 1,
+                            'nsid': None,
                             'protocol_endpoint': {},
                             'volume': vdict}
         NCONN = ValidResponse(200, None, 1,

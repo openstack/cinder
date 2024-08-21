@@ -672,11 +672,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         return self._setup_volume(current_array, volume, vol_name)
 
     @pure_driver_debug_trace
-    def create_volume_from_snapshot(self, volume, snapshot):
+    def create_volume_from_snapshot(self, volume, snapshot, cgsnapshot=False):
         """Creates a volume from a snapshot."""
         qos = None
         vol_name = self._generate_purity_vol_name(volume)
-        if snapshot['cgsnapshot']:
+        if cgsnapshot:
             snap_name = self._get_pgroup_snap_name_from_snapshot(snapshot)
         else:
             snap_name = self._get_snap_name(snapshot)
@@ -727,8 +727,13 @@ class PureBaseVolumeDriver(san.SanDriver):
             array, volume)
         repl_type = self._get_replication_type_from_vol_type(
             volume.volume_type)
-        pgroup = array.get_protection_groups_volumes(
-            member_names=[volume.provider_id]).items
+        try:
+            pgroup = array.get_protection_groups_volumes(
+                member_names=[volume.provider_id]).items
+        except AttributeError:
+            # AttributeError from pypureclient SDK as volume
+            # not in a protection group
+            pgroup = None
         if (repl_type in [REPLICATION_TYPE_ASYNC, REPLICATION_TYPE_TRISYNC] and
                 not pgroup):
             LOG.error("Failed to add volume %s to pgroup, removing volume")
@@ -1280,8 +1285,10 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
         vol_models = []
         for volume, snapshot in zip(volumes, snapshots):
-            vol_models.append(self.create_volume_from_snapshot(volume,
-                                                               snapshot))
+            vol_models.append(self.create_volume_from_snapshot(
+                volume,
+                snapshot,
+                cgsnapshot=True))
         return vol_models
 
     def _create_cg_from_cg(self, group, source_group, volumes, source_vols):
@@ -2252,7 +2259,8 @@ class PureBaseVolumeDriver(san.SanDriver):
                             "host_group": {},
                             'protocol_endpoint': {},
                             "volume": {"name": vol_name, "id": vol_id},
-                            "lun": connected_host.lun,
+                            "lun": getattr(connected_host, "lun", None),
+                            "nsid": getattr(connected_host, "nsid", None),
                         }
                     ]
         if not connection:
@@ -3363,7 +3371,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         an associated NQN.
         """
         ports = self._get_valid_ports(array)
-        valid_ports = [port.wwn for port in ports if getattr(
+        valid_ports = [port.wwn.replace(":", "") for port in ports if getattr(
             port, "wwn", None) and not getattr(port, "nqn", None)]
         return valid_ports
 
@@ -3597,10 +3605,21 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         targets = []
         for array in target_arrays:
             connection = self._connect(array, pure_vol_name, connector)
-            if not connection[0].lun:
-                # Swallow any exception, just warn and continue
-                LOG.warning("self._connect failed.")
-                continue
+            array_info = list(self._array.get_arrays().items)[0]
+            # Minimum NVMe-TCP support is 6.4.2, but at 6.6.0 Purity
+            # changes from using LUN to NSID
+            if version.parse(array_info.version) < version.parse(
+                '6.6.0'
+            ):
+                if not connection[0].lun:
+                    # Swallow any exception, just warn and continue
+                    LOG.warning("self._connect failed.")
+                    continue
+            else:
+                if not connection[0].nsid:
+                    # Swallow any exception, just warn and continue
+                    LOG.warning("self._connect failed.")
+                    continue
             target_ports = self._get_target_nvme_ports(array)
             targets.append(
                 {
@@ -3640,6 +3659,7 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         target_nqns = []
         target_portals = []
 
+        array_info = list(self._array.get_arrays().items)[0]
         # Aggregate all targets together, we may end up with different
         # namespaces for different target nqn/subsys sets (ie. it could
         # be a unique namespace for each FlashArray)
@@ -3654,8 +3674,17 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
                     check_ip = ipaddress.ip_address(portal)
                     for check_cidr in check_nvme_cidrs:
                         if check_ip in check_cidr:
-                            target_luns.append(
-                                targets[target]["connection"][0].lun)
+                            # Minimum NVMe-TCP support is 6.4.2,
+                            # but at 6.6.0 Purity changes from using LUN to
+                            # NSID
+                            if version.parse(
+                                array_info.version
+                            ) < version.parse("6.6.0"):
+                                target_luns.append(
+                                    targets[target]["connection"][0].lun)
+                            else:
+                                target_luns.append(
+                                    targets[target]["connection"][0].nsid)
                             target_nqns.append(port.nqn)
                             target_portals.append(
                                 (portal, NVME_PORT, self.transport_type)
