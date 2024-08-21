@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    IBM Storage Virtualize Family driver: Adding support for creating
+    and deleting volumegroup-snapshot for temporary volumegroup.
