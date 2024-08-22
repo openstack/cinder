@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    Now the ``python-swiftclient`` library is an optional dependency. It
+    should be additionally installed when the swift volume backup driver is
+    used.

@@ -39,7 +39,6 @@ python-barbicanclient>=5.0.1 # Apache-2.0
 python-glanceclient>=3.2.2 # Apache-2.0
 python-keystoneclient>=4.1.1 # Apache-2.0
 python-novaclient>=18.2.0 # Apache-2.0
-python-swiftclient>=3.10.1 # Apache-2.0
 requests>=2.25.1 # Apache-2.0
 urllib3>=2.3.0 # MIT
 Routes>=2.4.1 # MIT

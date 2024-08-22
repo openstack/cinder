@@ -21,3 +21,4 @@ moto>=5.0.0 # Apache-2.0
 distro>=1.8.0 # Apache-2.0
 
 google-api-python-client>=1.11.0 # Apache-2.0
+python-swiftclient>=3.10.1 # Apache-2.0
