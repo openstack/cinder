@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #2077643 <https://bugs.launchpad.net/cinder/+bug/2077643>`_: Fixed
+    "cinder-manage quota sync" CLI command, which failed with an sqlalchemy
+    error when a project id was not specified.

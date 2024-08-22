@@ -1982,3 +1982,7 @@ def attachment_specs_update_or_create(context,
 def remove_temporary_admin_metadata_data_migration(context, max_count):
     return IMPL.remove_temporary_admin_metadata_data_migration(
         context, max_count)
+
+
+def get_projects(context, model, read_deleted="no"):
+    return IMPL.get_projects(context, model, read_deleted=read_deleted)
