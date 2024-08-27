@@ -428,6 +428,9 @@ class BackupManager(manager.SchedulerDependentManager):
                     detail=message_field.Detail.BACKUP_SERVICE_DOWN)
                 raise exception.InvalidBackup(reason=err)
 
+            if not backup.availability_zone:
+                backup.availability_zone = self.az
+
             backup.service = self.driver_name
             backup.save()
 

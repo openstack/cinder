@@ -90,6 +90,7 @@ class BaseBackupTest(test.TestCase):
                                 snapshot_id=None,
                                 metadata=None,
                                 parent_id=None,
+                                availability_zone='1',
                                 encryption_key_id=None):
         """Create a backup entry in the DB.
 
@@ -101,7 +102,7 @@ class BaseBackupTest(test.TestCase):
         kwargs['user_id'] = str(uuid.uuid4())
         kwargs['project_id'] = project_id
         kwargs['host'] = 'testhost'
-        kwargs['availability_zone'] = '1'
+        kwargs['availability_zone'] = availability_zone
         kwargs['display_name'] = display_name
         kwargs['display_description'] = display_description
         kwargs['container'] = container
@@ -2372,3 +2373,39 @@ class BackupAPITestCase(BaseBackupTest):
                                  container='test',
                                  availability_zone='test_az')
         self.assertEqual('test_az', backup.availability_zone)
+
+    def test_create_backup_set_az_if_empty(self):
+        '''Test populating the availability_zone field if it was empty'''
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(size=vol_size)
+        backup = self._create_backup_db_entry(volume_id=vol_id,
+                                              parent_id='mock',
+                                              availability_zone=None)
+        with mock.patch.object(self.backup_mgr, '_start_backup') as \
+                mock__start_backup:
+
+            self.backup_mgr.az = 'test_az'
+            self.backup_mgr.create_backup(self.ctxt, backup)
+
+            mock__start_backup.assert_called_once()
+
+        backup = db.backup_get(self.ctxt, backup.id)
+        self.assertEqual('test_az', backup.availability_zone)
+
+    def test_create_backup_set_az_if_provided(self):
+        '''Test backup availability_zone field remains populated'''
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(size=vol_size)
+        backup = self._create_backup_db_entry(volume_id=vol_id,
+                                              parent_id='mock',
+                                              availability_zone='backup_az')
+        with mock.patch.object(self.backup_mgr, '_start_backup') as \
+                mock__start_backup:
+
+            self.backup_mgr.az = 'test_az'
+            self.backup_mgr.create_backup(self.ctxt, backup)
+
+            mock__start_backup.assert_called_once()
+
+        backup = db.backup_get(self.ctxt, backup.id)
+        self.assertEqual('backup_az', backup.availability_zone)
