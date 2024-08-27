@@ -153,18 +153,6 @@ having completed. If it exits with status 2, intervention is required to
 resolve the issue causing remaining updates to fail. It should be considered
 successfully completed only when the exit status is 0.
 
-Cinder Logs
-~~~~~~~~~~~
-
-``cinder-manage logs errors``
-
-Displays cinder errors from log files.
-
-``cinder-manage logs syslog [<number>]``
-
-Displays cinder the most recent entries from syslog.  The optional number
-argument specifies the number of entries to display (default 10).
-
 Cinder Volume
 ~~~~~~~~~~~~~
 
