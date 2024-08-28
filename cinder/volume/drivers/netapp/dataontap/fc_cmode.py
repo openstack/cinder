@@ -36,12 +36,15 @@ class NetAppCmodeFibreChannelDriver(driver.BaseVD,
         2.0.0 - Wallaby driver version bump
         3.0.0 - Add support for Intra-cluster Storage assisted volume migration
                 Add support for revert to snapshot
+        4.0.0 - Add Cinder Active/Active support (High Availability)
+                Implement Active/Active replication support
 
     """
 
-    VERSION = "3.0.0"
+    VERSION = "4.0.0"
 
     DRIVER_NAME = 'NetApp_FibreChannel_Cluster_direct'
+    SUPPORTS_ACTIVE_ACTIVE = True
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_CI"
@@ -153,6 +156,12 @@ class NetAppCmodeFibreChannelDriver(driver.BaseVD,
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
         return self.library.failover_host(
             context, volumes, secondary_id=secondary_id)
+
+    def failover(self, context, volumes, secondary_id=None, groups=None):
+        return self.library.failover(context, volumes, secondary_id)
+
+    def failover_completed(self, context, secondary_id=None):
+        return self.library.failover_completed(context, secondary_id)
 
     def migrate_volume(self, context, volume, host):
         return self.library.migrate_volume(context, volume, host)

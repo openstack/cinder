@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    NetApp ONTAP ISCSI/FC drivers: Enabled support for Active/Active environments
+    in the NetApp ISCSI/FC drivers (including replication).

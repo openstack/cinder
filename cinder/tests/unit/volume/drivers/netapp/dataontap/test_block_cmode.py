@@ -783,6 +783,70 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertEqual('dev1', actual_active)
         self.assertEqual([], vol_updates)
 
+    @ddt.data({'secondary_id': 'dev0', 'configured_targets': ['dev1']},
+              {'secondary_id': 'dev3', 'configured_targets': ['dev1', 'dev2']},
+              {'secondary_id': 'dev1', 'configured_targets': []},
+              {'secondary_id': None, 'configured_targets': []})
+    @ddt.unpack
+    def test_failover_invalid_replication_target(self, secondary_id,
+                                                 configured_targets):
+        """This tests executes a method in the DataMotionMixin."""
+        self.library.backend_name = 'dev0'
+        self.mock_object(data_motion.DataMotionMixin,
+                         'get_replication_backend_names',
+                         return_value=configured_targets)
+        complete_failover_call = self.mock_object(
+            data_motion.DataMotionMixin, '_complete_failover')
+
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.library.failover, 'fake_context', [],
+                          secondary_id=secondary_id)
+        self.assertFalse(complete_failover_call.called)
+
+    def test_failover_unable_to_failover(self):
+        """This tests executes a method in the DataMotionMixin."""
+        self.library.backend_name = 'dev0'
+        self.mock_object(data_motion.DataMotionMixin, '_complete_failover',
+                         side_effect=na_utils.NetAppDriverException)
+        self.mock_object(data_motion.DataMotionMixin,
+                         'get_replication_backend_names',
+                         return_value=['dev1', 'dev2'])
+        self.mock_object(self.library.ssc_library, 'get_ssc_flexvol_names',
+                         return_value=fake_utils.SSC.keys())
+        self.mock_object(self.library, '_update_zapi_client')
+
+        self.assertRaises(exception.UnableToFailOver,
+                          self.library.failover, 'fake_context', [],
+                          secondary_id='dev1')
+        data_motion.DataMotionMixin._complete_failover.assert_called_once_with(
+            'dev0', ['dev1', 'dev2'], fake_utils.SSC.keys(), [],
+            failover_target='dev1')
+        self.assertFalse(self.library._update_zapi_client.called)
+
+    def test_failover(self):
+        """This tests executes a method in the DataMotionMixin."""
+        self.library.backend_name = 'dev0'
+        self.mock_object(data_motion.DataMotionMixin, '_complete_failover',
+                         return_value=('dev1', []))
+        self.mock_object(data_motion.DataMotionMixin,
+                         'get_replication_backend_names',
+                         return_value=['dev1', 'dev2'])
+        self.mock_object(self.library.ssc_library, 'get_ssc_flexvol_names',
+                         return_value=fake_utils.SSC.keys())
+        self.mock_object(self.library, '_update_zapi_client')
+
+        actual_active, vol_updates, __ = self.library.failover(
+            'fake_context', [], secondary_id='dev1', groups=[])
+
+        data_motion.DataMotionMixin._complete_failover.assert_called_once_with(
+            'dev0', ['dev1', 'dev2'], fake_utils.SSC.keys(), [],
+            failover_target='dev1')
+
+    def test_failover_completed(self):
+        self.mock_object(self.library, '_update_zapi_client')
+        self.library.failover_completed('fake_context', secondary_id='dev1')
+        self.library._update_zapi_client.assert_called_once_with('dev1')
+
     def test_add_looping_tasks(self):
         mock_update_ssc = self.mock_object(self.library, '_update_ssc')
         mock_handle_housekeeping = self.mock_object(
