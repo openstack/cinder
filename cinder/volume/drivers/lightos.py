@@ -88,6 +88,11 @@ lightos_opts = [
                 ' the host`s IP addresses to a volume IPACL. If set to'
                 ' False, any IP address may access the volume. The default'
                 ' is True.'),
+    cfg.IntOpt(
+        'lightos_api_service_snapshots_max_calls',
+        default=5,
+        help='The maximum number of calls to the LightOS'
+        ' when creating snapshots. The default is 5 calls.')
 ]
 
 CONF = cfg.CONF
@@ -409,6 +414,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
         self.logical_op_timeout = \
             self.configuration.lightos_api_service_timeout * 3 + 10
+        self.snapshots_retries = \
+            self.configuration.lightos_api_service_snapshots_max_calls
 
     @classmethod
     def get_driver_options(cls):
@@ -1388,34 +1395,56 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
     @coordination.synchronized('lightos-create_snapshot-{src_volume_name}')
     def _create_snapshot(self, project_name, snapshot_name, src_volume_name):
-        (status_code_get, response) = self._get_lightos_snapshot(
-            project_name, self.logical_op_timeout,
-            snapshot_name=snapshot_name)
-        if status_code_get != httpstatus.OK:
-            end = time.time() + self.logical_op_timeout
-            while (time.time() < end):
-                (status_code_create, response) = self.cluster.send_cmd(
-                    cmd='create_snapshot',
-                    project_name=project_name,
-                    timeout=self.logical_op_timeout,
-                    name=snapshot_name,
-                    src_volume_name=src_volume_name,
-                )
+        found_or_created_snapshot = False
+        last_status_code = 999
+        last_response = "No response"
 
-                if status_code_create == httpstatus.INTERNAL_SERVER_ERROR:
-                    pass
-                else:
-                    break
+        for i in range(self.snapshots_retries):
+            if i != 0:
+                sleeptime = 2 ** i  # 2, 4, 8, 16 (default is 30 seconds)
+                time.sleep(sleeptime)
+            (status_code_get, response) = self._get_lightos_snapshot(
+                project_name, self.logical_op_timeout,
+                snapshot_name=snapshot_name)
+            if status_code_get == httpstatus.OK:
+                found_or_created_snapshot = True
+                break
 
-                time.sleep(1)
+            (status_code_create, response) = self.cluster.send_cmd(
+                cmd='create_snapshot',
+                project_name=project_name,
+                timeout=self.logical_op_timeout,
+                name=snapshot_name,
+                src_volume_name=src_volume_name,
+            )
+            if status_code_create == httpstatus.OK:
+                found_or_created_snapshot = True
+                break
 
-            if status_code_create != httpstatus.OK:
+            if status_code_create in (httpstatus.BAD_REQUEST,
+                                      httpstatus.INTERNAL_SERVER_ERROR,
+                                      httpstatus.SERVICE_UNAVAILABLE):
+
+                LOG.debug('Creating new snapshot %s under project %s'
+                          ' failed, received error with http-status %s',
+                          snapshot_name, project_name, status_code_create)
+                last_status_code = status_code_create
+                last_response = response
+            else:
                 msg = ('Did not succeed creating LightOS snapshot %s'
                        ' project %s'
                        ' status code %s response %s' %
                        (snapshot_name, project_name, status_code_create,
                         response))
                 raise exception.VolumeBackendAPIException(message=_(msg))
+
+        if not found_or_created_snapshot:
+            msg = ('Did not succeed creating LightOS snapshot %s'
+                   ' project %s'
+                   ' status code %s response %s' %
+                   (snapshot_name, project_name, last_status_code,
+                    last_response))
+            raise exception.VolumeBackendAPIException(message=_(msg))
 
         state = self._wait_for_snapshot_available(project_name,
                                                   timeout=

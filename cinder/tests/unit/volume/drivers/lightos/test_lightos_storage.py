@@ -19,6 +19,7 @@ import functools
 import hashlib
 import http.client as httpstatus
 import json
+import time
 from typing import Dict
 from typing import List
 from typing import Tuple
@@ -296,6 +297,7 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
             "test_lightos_storage.InitiatorConnectorFactoryMocker")
         configuration.volume_backend_name = VOLUME_BACKEND_NAME
         configuration.reserved_percentage = RESERVED_PERCENTAGE
+        configuration.lightos_api_service_snapshots_max_calls = 5
 
         def mocked_safe_get(config, variable_name):
             if hasattr(config, variable_name):
@@ -642,6 +644,29 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
 
         self.driver.create_volume(volume)
         self.driver.create_snapshot(snapshot)
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    @mock.patch.object(time, "sleep", return_value=None)
+    def test_create_snapshot_fail_bad_request(self, mock_sleep):
+        def send_cmd_mock(cmd, **kwargs):
+            if cmd == "create_snapshot":
+                return (httpstatus.BAD_REQUEST, {})
+            else:
+                return cluster_send_cmd(cmd, **kwargs)
+        self.driver.do_setup(None)
+        cluster_send_cmd = deepcopy(self.driver.cluster.send_cmd)
+        self.driver.cluster.send_cmd = send_cmd_mock
+
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        snapshot = test_utils.create_snapshot(self.ctxt, volume_id=volume.id)
+
+        self.driver.create_volume(volume)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_snapshot, snapshot)
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
 

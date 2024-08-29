@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Lightbits driver: Added support to create multiple snapshots
+    from the same volume simultaneously when using the Lightbits
+    cinder driver. Under certain conditions, older releases of the
+    Lightbits api-service will return various status codes (including
+    HTTP status codes 500 and 503) that could indicate transient
+    failures. Added retry logic on such errors becuase there's a good
+    chance that the error is transient and subsequent calls will
+    succeed.
