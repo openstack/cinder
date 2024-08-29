@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Dell PowerFlex driver `bug #1998136
+    <https://bugs.launchpad.net/cinder/+bug/1998136>`_:
+    When using self signed certificates, the option
+    sent to os-brick via the connection_properties was
+    not correctly handled. It has now been fixed by
+    adding the 'verify_certificate' and 'certificate_path'
+    to the driver when initializing the connection.

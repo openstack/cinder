@@ -867,6 +867,12 @@ class PowerFlexDriver(driver.VolumeDriver):
         connection_properties["scaleIO_volume_id"] = vol_or_snap.provider_id
         connection_properties["config_group"] = self.configuration.config_group
         connection_properties["failed_over"] = self._is_failed_over
+        connection_properties["verify_certificate"] = (
+            self._get_client().verify_certificate
+        )
+        connection_properties["certificate_path"] = (
+            self._get_client().certificate_path
+        )
 
         if vol_size is not None:
             extra_specs = self._get_volumetype_extraspecs(vol_or_snap)
