@@ -287,6 +287,24 @@ availability_zone_3:
   in: body
   required: true
   type: string
+availability_zone_info:
+  description: |
+    The list of availability zone information.
+  in: body
+  required: true
+  type: array
+availability_zone_state:
+  description: |
+    The current state of the availability zone.
+  in: body
+  required: true
+  type: object
+available:
+  description: |
+    Whether the availability zone is available for use.
+  in: body
+  required: true
+  type: boolean
 backup:
   description: |
     A ``backup`` object.

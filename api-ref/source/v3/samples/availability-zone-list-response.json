@@ -1,0 +1,8 @@
+{
+    "availabilityZoneInfo": [{
+        "zoneState": {
+            "available": true
+        },
+    "zoneName": "nova"
+    }]
+}

@@ -22,6 +22,7 @@ Block Storage API V2 (REMOVED)
 .. rest_expand_all::
 
 .. include:: api-versions.inc
+.. include:: availability-zones-v2.inc
 .. include:: ext-backups.inc
 .. include:: ext-backups-actions-v2.inc
 .. include:: capabilities-v2.inc

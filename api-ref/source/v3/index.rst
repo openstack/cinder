@@ -52,6 +52,7 @@ Block Storage API V3 (CURRENT)
 
 .. Now the other random things in alphabetical order.
 .. include:: attachments.inc
+.. include:: availability-zones-v3.inc
 .. include:: os-vol-pool-v3.inc
 .. include:: ext-backups.inc
 .. include:: ext-backups-actions-v3.inc
