@@ -24,15 +24,22 @@ from cinder.i18n import _
 from cinder.objects import fields
 from cinder.objects.group_snapshot import GroupSnapshot
 from cinder.objects.snapshot import Snapshot
+from cinder.utils import retry
+from cinder.volume.drivers.dell_emc.powerstore import (
+    exception as powerstore_exception)
 from cinder.volume.drivers.dell_emc.powerstore import client
 from cinder.volume.drivers.dell_emc.powerstore import utils
 from cinder.volume import manager
+from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)
 CHAP_MODE_SINGLE = "Single"
 POWERSTORE_NVME_VERSION_SUPPORT = "3.0"
+POWERSTORE_QOS_VERSION_SUPPORT = "4.0"
+retry_exc_tuple = (powerstore_exception.DellPowerStoreQoSIORuleExists,
+                   powerstore_exception.DellPowerStoreQoSPolicyExists)
 
 
 class CommonAdapter(object):
@@ -592,6 +599,8 @@ class CommonAdapter(object):
                       "host_provider_id": host["id"],
                       "volume_identifier": volume_identifier,
                   })
+        self._create_or_update_volume_qos_policy(volume, provider_id,
+                                                 utils.VOLUME_ATTACH_OPERATION)
         return volume_identifier
 
     def _create_host_and_attach(self, connector, volume):
@@ -668,6 +677,8 @@ class CommonAdapter(object):
                       "volume_provider_id": provider_id,
                       "hosts_provider_ids": hosts_to_detach,
                   })
+        self._create_or_update_volume_qos_policy(volume, provider_id,
+                                                 utils.VOLUME_DETACH_OPERATION)
 
     def _disconnect_volume(self, volume, connector):
         """Detach PowerStore volume.
@@ -1019,6 +1030,94 @@ class CommonAdapter(object):
             }
             updates.append(volume_updates)
         return None, updates
+
+    def _create_or_update_volume_qos_policy(self, volume,
+                                            provider_id, operation):
+        """Create or update volume QoS policy
+
+        @param volume: OpenStack volume object
+        @param provider_id: Volume provider Id
+        @param operation: QoS create or update operation
+        """
+        volume_type_id = volume["volume_type_id"]
+        specs = volume_types.get_volume_type_qos_specs(volume_type_id)
+        qos_specs = specs['qos_specs']
+        if (qos_specs is not None and (qos_specs["consumer"] == "back-end" or
+                                       qos_specs["consumer"] == "both")
+                and self._check_qos_support()):
+            if operation == utils.VOLUME_ATTACH_OPERATION:
+                qos_policy_id = self._get_or_create_qos_policy(qos_specs)
+                self.client.update_volume_with_qos_policy(provider_id,
+                                                          qos_policy_id)
+            else:
+                self.client.update_volume_with_qos_policy(provider_id,
+                                                          None)
+
+    def _check_qos_support(self):
+        """Check PowerStore array support QoS or not
+
+        @return: Version is supported or not in boolean
+        """
+        array_version = self.client.get_array_version()
+        if not utils.version_gte(
+                array_version,
+                POWERSTORE_QOS_VERSION_SUPPORT
+        ):
+            msg = (_("PowerStore arrays support QoS starting from version "
+                     "%(qos_support_version)s. Current PowerStore array "
+                     "version: %(current_version)s.")
+                   % {"qos_support_version": POWERSTORE_QOS_VERSION_SUPPORT,
+                      "current_version": array_version})
+            LOG.error(msg)
+        else:
+            return True
+        return False
+
+    @retry(retry_exc_tuple,
+           interval=1,
+           retries=3,
+           backoff_rate=2)
+    def _get_or_create_qos_policy(self, qos_specs):
+        """Get or create QoS policy
+
+        1. Create operation: It will verify if a QoS policy is created for the
+        volume type. If not, it will create an I/O limit rule, establish
+        a policy with this rule, and attach the policy to the volume.
+
+        2. Update operation: It will verify if a QoS policy is created for the
+        volume type. If it is, it will update the existing I/O limit rule with
+        the specified QoS values.
+
+        @param qos_specs: Volume QoS specs
+        @return: QoS policy id
+        """
+        qos_id = qos_specs["id"]
+        policy_name = "qos-policy-%s" % qos_id
+        io_rule_name = "io-rule-%s" % qos_id
+        specs = qos_specs["specs"]
+        io_rule_params = {
+            "type": (specs["bandwidth_limit_type"]
+                     if "bandwidth_limit_type" in specs else None),
+            "max_iops":
+                int(specs["max_iops"]) if "max_iops" in specs else None,
+            "max_bw":
+                int(specs["max_bw"]) if "max_bw" in specs else None,
+            "burst_percentage":
+                (int(specs["burst_percentage"])
+                 if "burst_percentage" in specs else None)
+        }
+        policy_id = self.client.get_qos_policy_id_by_name(policy_name)
+        if policy_id is None:
+            io_rule_params["name"] = io_rule_name
+            io_rule_id = self.client.create_qos_io_rule(io_rule_params)
+            policy_params = {
+                "name": policy_name,
+                "io_limit_rule_id": io_rule_id
+            }
+            return self.client.create_qos_policy(policy_params)
+        else:
+            self.client.update_qos_io_rule(io_rule_name, io_rule_params)
+        return policy_id
 
 
 class FibreChannelAdapter(CommonAdapter):
