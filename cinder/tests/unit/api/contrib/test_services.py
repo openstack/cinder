@@ -172,7 +172,7 @@ def fake_service_get_by_id(value):
     return None
 
 
-def fake_service_update(context, service_id, values):
+def fake_service_update(context, service_id, values, retry=True):
     service = fake_service_get_by_id(service_id)
     if service is None:
         raise exception.ServiceNotFound(service_id=service_id)
