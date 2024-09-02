@@ -39,7 +39,7 @@ NIMBLE_URLLIB2 = 'cinder.volume.drivers.hpe.nimble.requests'
 NIMBLE_RANDOM = 'cinder.volume.drivers.hpe.nimble.random'
 NIMBLE_ISCSI_DRIVER = 'cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver'
 NIMBLE_FC_DRIVER = 'cinder.volume.drivers.hpe.nimble.NimbleFCDriver'
-DRIVER_VERSION = '4.2.0'
+DRIVER_VERSION = '4.3.0'
 nimble.DEFAULT_SLEEP = 0
 
 FAKE_POSITIVE_LOGIN_RESPONSE_1 = '2c20aad78a220ed1dae21dcd6f9446f5'
@@ -266,10 +266,19 @@ SRC_CONSIS_GROUP_ID = '7d7dfa02-ac6e-48cb-96af-8a0cd3008d47'
 FAKE_SRC_GROUP = fake_group.fake_group_obj(
     admin_context, id = SRC_CONSIS_GROUP_ID, status = 'available')
 
+REPL_DEVICES = [{
+    'san_login': 'nimble',
+    'san_password': 'nimble_pass',
+    'san_ip': '10.18.108.66',
+    'schedule_name': 'every-minute',
+    'downstream_partner': 'nimblevsagroup2',
+    'period': 1,
+    'period_unit': 'minutes'}]
+
 
 def create_configuration(username, password, ip_address,
                          pool_name=None, subnet_label=None,
-                         thin_provision=True):
+                         thin_provision=True, devices=None):
     configuration = mock.Mock()
     configuration.san_login = username
     configuration.san_password = password
@@ -278,6 +287,7 @@ def create_configuration(username, password, ip_address,
     configuration.nimble_pool_name = pool_name
     configuration.nimble_subnet_label = subnet_label
     configuration.safe_get.return_value = 'NIMBLE'
+    configuration.replication_device = devices
     return configuration
 
 
@@ -771,6 +781,44 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @mock.patch(NIMBLE_CLIENT)
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
+                       mock.Mock(type_id=FAKE_TYPE_ID, return_value={
+                                 'nimble:perfpol-name': 'default',
+                                 'nimble:encryption': 'yes'}))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*', devices=REPL_DEVICES))
+    def test_create_volume_replicated(self):
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_RESPONSE)
+        self.mock_client_service.get_netconfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
+
+        self.assertEqual({
+            'provider_location': '172.18.108.21:3260 iqn.test',
+            'provider_auth': None,
+            'replication_status': 'enabled'},
+            self.driver.create_volume({'name': 'testvolume',
+                                       'size': 1,
+                                       'volume_type_id': None,
+                                       'display_name': '',
+                                       'display_description': ''}))
+
+        self.mock_client_service.create_vol.assert_called_once_with(
+            {'name': 'testvolume',
+             'size': 1,
+             'volume_type_id': None,
+             'display_name': '',
+             'display_description': ''},
+            'default',
+            False,
+            'iSCSI',
+            False)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     @mock.patch(NIMBLE_ISCSI_DRIVER + ".is_volume_backup_clone", mock.Mock(
@@ -841,6 +889,28 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                   'test-backup-snap'),
             mock.call.delete_snap('volume-' + fake.VOLUME_ID,
                                   'test-backup-snap')]
+
+        self.mock_client_service.assert_has_calls(expected_calls)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*', devices=REPL_DEVICES))
+    @mock.patch(NIMBLE_ISCSI_DRIVER + ".is_volume_backup_clone", mock.Mock(
+        return_value=['', '']))
+    def test_delete_volume_replicated(self):
+        self.mock_client_service.online_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.delete_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+
+        self.driver.delete_volume({'name': 'testvolume'})
+        expected_calls = [mock.call.online_vol(
+            'testvolume', False),
+            mock.call.delete_vol('testvolume')]
 
         self.mock_client_service.assert_has_calls(expected_calls)
 
@@ -1139,7 +1209,10 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                    'QoS_support': False,
                                    'multiattach': True,
                                    'thin_provisioning_support': True,
-                                   'consistent_group_snapshot_enabled': True}]}
+                                   'consistent_group_snapshot_enabled': True,
+                                   'replication_enabled': False,
+                                   'consistent_group_replication_enabled':
+                                       False}]}
         self.assertEqual(
             expected_res,
             self.driver.get_volume_stats(refresh=True))
@@ -1171,6 +1244,70 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                           'volume-' + fake.VOLUME2_ID)
         ]
         self.mock_client_service.assert_has_calls(expected_calls)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*', devices=REPL_DEVICES))
+    def test_enable_replication(self):
+        ctx = context.get_admin_context()
+        group = mock.MagicMock()
+        volumes = [fake_volume.fake_volume_obj(None)]
+
+        return_values = self.driver.enable_replication(ctx, group, volumes)
+        self.mock_client_service.set_schedule_for_volcoll.assert_called_once()
+        model_update = return_values[0]
+        self.assertEqual(model_update['replication_status'], 'enabled')
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*', devices=REPL_DEVICES))
+    def test_disable_replication(self):
+        ctx = context.get_admin_context()
+        group = mock.MagicMock()
+        volumes = [fake_volume.fake_volume_obj(None)]
+
+        return_values = self.driver.disable_replication(ctx, group, volumes)
+        self.mock_client_service.delete_schedule.assert_called_once()
+        model_update = return_values[0]
+        self.assertEqual(model_update['replication_status'], 'disabled')
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*', devices=REPL_DEVICES))
+    def test_time_to_secs(self):
+        time_secs = [('01:05', 3900), ('01:02:15am', 3735),
+                     ('03:07:20pm', 54440)]
+        for time, seconds in time_secs:
+            ret_secs = self.driver._time_to_secs(time)
+            self.assertEqual(ret_secs, seconds)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*', devices=REPL_DEVICES))
+    def test_failover_replication(self):
+        ctx = context.get_admin_context()
+        group = mock.MagicMock()
+        volumes = [fake_volume.fake_volume_obj(None)]
+
+        return_values = self.driver.failover_replication(
+            ctx, group, volumes, 'secondary')
+        self.mock_client_service.handover.assert_called()
+        group_update = return_values[0]
+        self.assertEqual(group_update['replication_status'], 'failed-over')
+
+        return_values = self.driver.failover_replication(
+            ctx, group, volumes, 'default')
+        self.mock_client_service.handover.assert_called()
+        group_update = return_values[0]
+        self.assertEqual(group_update['replication_status'], 'enabled')
 
 
 class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
