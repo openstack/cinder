@@ -345,7 +345,8 @@ OpenStack software.
       other options run the :command:`setwsapi -h` command.
 
 #. If you are not using an existing CPG, create a CPG on the HPE 3PAR / Primera
-   / Alletra 9k storage system to be used as the default location for creating volumes.
+   / Alletra 9k storage system to be used as the default location for creating
+   volumes.
 
 #. Make the following changes in the ``/etc/cinder/cinder.conf`` file.
 
