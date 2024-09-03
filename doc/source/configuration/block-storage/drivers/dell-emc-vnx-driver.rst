@@ -1080,9 +1080,9 @@ The steps mentioned below are for the compute nodes. Follow the
 same steps for the Block Storage nodes also (The steps can be skipped if
 initiator auto registration is enabled).
 
-#. On the compute node with IP address ``10.10.61.1`` and host name ``myhost1``,
-   execute the following commands (assuming ``10.10.61.35`` is the iSCSI
-   target):
+#. On the compute node with IP address ``10.10.61.1`` and host name
+   ``myhost1``, execute the following commands (assuming ``10.10.61.35`` is
+   the iSCSI target):
 
    #. Start the iSCSI initiator service on the node:
 
