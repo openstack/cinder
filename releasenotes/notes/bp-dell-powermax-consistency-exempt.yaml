@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    Dell PowerMax Driver: use consistency exempt flag consistently
+    PowerMax allows volumes to be added, removed, or suspended without
+    affecting the state of the SRDF/A or SRDF/Metro session or requiring
+    that other volumes in the session be suspended. Known as --exempt for
+    symcli and editStorageGroupActionParam in the PowerMax REST API,
+    this capability is available for an SRDF group supporting an active
+    SRDF/A session or an active SRDF/Metro session.
+
+    The PowerMax Cinder driver currently uses the exempt flag when
+    volumes are added to SRDF groups, but not when volumes are
+    removed. This incurs an unnecessary performance penalty that is
+    resolved by this change.
+
+    Blueprint: dell-powermax-srdf-exempt

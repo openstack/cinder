@@ -2877,21 +2877,6 @@ class PowerMaxRest(object):
                 number = None
         return number
 
-    def _get_async_payload_info(self, array, rdf_group_no):
-        """Get the payload details for an async create pair.
-
-        :param array: the array serial number
-        :param rdf_group_no: the rdf group number
-        :returns: payload_update
-        """
-        num_vols, payload_update = 0, {}
-        rdfg_details = self.get_rdf_group(array, rdf_group_no)
-        if rdfg_details is not None and rdfg_details.get('numDevices'):
-            num_vols = int(rdfg_details['numDevices'])
-        if num_vols > 0:
-            payload_update = {'exempt': 'true'}
-        return payload_update
-
     def get_metro_payload_info(self, array, payload,
                                rdf_group_no, extra_specs, next_gen):
         """Get the payload details for a metro active create pair.
@@ -2997,15 +2982,48 @@ class PowerMaxRest(object):
 
         if group_state:
             group_state = [x.lower() for x in group_state]
-
         if len(group_state) == 1 and utils.RDF_SUSPENDED_STATE in group_state:
             LOG.info('SRDF Group %(grp_num)s is already in a suspended state',
                      {'grp_num': rdf_group_no})
         else:
+            cons_exempt = self._get_cons_exempt(
+                array_id, storage_group, rdf_group_no,
+                rep_extra_specs['rep_mode'])
+            payload = {"suspend": {"force": "true"}, "action": "Suspend"}
+            payload["suspend"]["consExempt"] = (
+                "true" if cons_exempt else "false")
             self.srdf_modify_group(
                 array_id, rdf_group_no, storage_group,
-                {"suspend": {"force": "true"}, "action": "Suspend"},
-                rep_extra_specs, 'Suspend SRDF Group Replication')
+                payload, rep_extra_specs,
+                'Suspend SRDF Group Replication')
+
+    def _get_cons_exempt(self, array_id, storage_group, rdf_group_no,
+                         rep_mode=None):
+        """Get the consistency exempt flag for a storage group.
+
+        :param array_id: array serial number
+        :param storage_group: storage group name
+        :param rdf_group_no: RDF group number
+        :param rep_mode: Replication mode of the SRDF session
+        :returns: A boolean indicating if consistency is exempt
+        """
+        if not rep_mode:
+            return False
+
+        resource = ('storagegroup/%(sg)s/rdf_group/%(rdfg)s' % {
+            'sg': storage_group, 'rdfg': rdf_group_no})
+        rdf_group = self.get_resource(array_id, REPLICATION, resource)
+        modes = list(rep_mode)
+
+        if rdf_group and rdf_group.get('modes'):
+            modes.append(rdf_group.get('modes'))
+        # Ensure we don't see the error message:
+        # "A problem occurred modifying the Storage Group
+        # SRDF Group resource: The device is not in
+        # asynchronous mode"
+        cons_exempt = utils.REP_ASYNC in modes
+        LOG.debug("Consistency exempt: %s", cons_exempt)
+        return cons_exempt
 
     def srdf_resume_replication(self, array_id, storage_group, rdf_group_no,
                                 rep_extra_specs, async_call=True):

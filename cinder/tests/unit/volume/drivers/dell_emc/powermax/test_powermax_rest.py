@@ -2084,12 +2084,14 @@ class PowerMaxRestTest(test.TestCase):
         rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = self.data.rep_extra_specs
-
         self.rest.srdf_suspend_replication(
             array_id, sg_name, rdf_group_no, rep_extra_specs)
+        # Replication mode in this test is synchronous, so the expecation
+        # is that the consistency exempt flag is false.
         mck_modify.assert_called_once_with(
             array_id, rdf_group_no, sg_name,
-            {'suspend': {'force': 'true'}, 'action': 'Suspend'},
+            {'suspend': {'force': 'true', 'consExempt': 'false'},
+             'action': 'Suspend'},
             rep_extra_specs, 'Suspend SRDF Group Replication')
 
     @mock.patch.object(rest.PowerMaxRest, 'srdf_modify_group')
@@ -2101,12 +2103,14 @@ class PowerMaxRestTest(test.TestCase):
         rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = self.data.rep_extra_specs
-
         self.rest.srdf_suspend_replication(
             array_id, sg_name, rdf_group_no, rep_extra_specs)
+        # Replication mode in this test is synchronous, so the expecation
+        # is that the consistency exempt flag is false.
         mck_modify.assert_called_once_with(
             array_id, rdf_group_no, sg_name,
-            {'suspend': {'force': 'true'}, 'action': 'Suspend'},
+            {'suspend': {'force': 'true', 'consExempt': 'false'},
+             'action': 'Suspend'},
             rep_extra_specs, 'Suspend SRDF Group Replication')
 
     @mock.patch.object(rest.PowerMaxRest, 'srdf_modify_group')
