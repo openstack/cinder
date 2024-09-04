@@ -62,6 +62,57 @@ class TestReplication(powerstore.TestPowerStoreDriver):
                                   {}, [], "invalid_id")
         self.assertIn("is not a valid choice", error.msg)
 
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.adapter."
+                "NVMEoFAdapter.failover_host")
+    def test_failover_valid_secondary_id(self, mock_adapter_failover):
+        volumes = [self.volume]
+        mock_adapter_failover.return_value = (volumes, None)
+
+        result = self.driver.failover({}, volumes, self.replication_backend_id)
+
+        self.assertEqual(result, (self.replication_backend_id, volumes, None))
+        self.driver.adapter.failover_host.assert_called_once_with(
+            volumes, None, False)
+
+    def test_failover_invalid_secondary_id(self):
+        volumes = [self.volume]
+        secondary_id = "invalid_id"
+        self.driver.active_backend_id = None
+
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.driver.failover,
+                          {}, volumes, secondary_id, None)
+
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.adapter."
+                "NVMEoFAdapter.failover_host")
+    def test_failover_is_failback(self, mock_adapter_failover):
+        volumes = [self.volume]
+        mock_adapter_failover.return_value = (volumes, None)
+        secondary_id = "default"
+        self.driver.active_backend_id = self.replication_backend_id
+
+        result = self.driver.failover({}, volumes, secondary_id, None)
+
+        self.assertEqual(result, (secondary_id, volumes, None))
+        self.driver.adapter.failover_host.assert_called_once_with(
+            volumes, None, True)
+
+    def test_failover_completed_failback(self):
+        self.driver.failover_completed({}, None)
+        self.assertEqual(self.driver.active_backend_id, "default")
+
+    def test_failover_completed_failover(self):
+        self.driver.replication_devices = [{"backend_id":
+                                            self.replication_backend_id}]
+        self.driver.failover_completed({}, "failed over")
+        self.assertEqual(self.driver.active_backend_id,
+                         self.replication_backend_id)
+
+    def test_failover_completed_invalid_target(self):
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.driver.failover_completed,
+                          {}, "invalid_target")
+
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.wait_for_failover_completion")
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."

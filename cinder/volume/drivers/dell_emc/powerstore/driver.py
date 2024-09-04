@@ -53,10 +53,12 @@ class PowerStoreDriver(driver.VolumeDriver):
         1.2.0 - Add NVMe-OF support
         1.2.1 - Report trim/discard support
         1.2.2 - QoS (Quality of Service) support
+        1.2.3 - Added Cinder active/active support
     """
 
-    VERSION = "1.2.2"
+    VERSION = "1.2.3"
     VENDOR = "Dell EMC"
+    SUPPORTS_ACTIVE_ACTIVE = True
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "DellEMC_PowerStore_CI"
@@ -180,6 +182,14 @@ class PowerStoreDriver(driver.VolumeDriver):
         pass
 
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
+        active_backend_id, model_updates, group_update_list = (
+            self.failover(context, volumes, secondary_id, groups))
+        self.failover_completed(context, secondary_id)
+        return active_backend_id, model_updates, group_update_list
+
+    def failover(self, context, volumes, secondary_id=None, groups=None):
+        """Like failover but for a host that is clustered."""
+        LOG.info("Invoking failover with target %s.", secondary_id)
         if secondary_id not in self.failover_choices:
             msg = (_("Target %(target)s is not a valid choice. "
                      "Valid choices: %(choices)s.") %
@@ -194,7 +204,37 @@ class PowerStoreDriver(driver.VolumeDriver):
             groups,
             is_failback
         )
+        LOG.info("Failover host completed.")
         return secondary_id, volumes_updates, groups_updates
+
+    def failover_completed(self, context, active_backend_id=None):
+        """This method is called after failover for clustered backends."""
+        LOG.info("Invoking failover_completed with target %s.",
+                 active_backend_id)
+        target_device = self.replication_devices[0]["backend_id"]
+        if (not active_backend_id
+                or active_backend_id
+                == manager.VolumeManager.FAILBACK_SENTINEL):
+            # failback operation
+            self.active_backend_id = manager.VolumeManager.FAILBACK_SENTINEL
+        elif (active_backend_id == target_device
+                or active_backend_id == "failed over"):
+            # failover operation
+            self.active_backend_id = target_device
+        else:
+            choices = ['None', manager.VolumeManager.FAILBACK_SENTINEL,
+                       'failed over', target_device]
+            msg = (_("Target %(target)s is not a valid choice. "
+                     "Valid choices: %(choices)s.") %
+                   {"target": active_backend_id,
+                    "choices": ', '.join(choices)})
+            msg = f"Target {active_backend_id} is not valid."
+            LOG.error(msg)
+            raise exception.InvalidReplicationTarget(reason=msg)
+
+        LOG.info("Failover completion completed: "
+                 "active_backend_id = %s.",
+                 self.active_backend_id)
 
     def create_group(self, context, group):
         return self.adapter.create_group(group)
