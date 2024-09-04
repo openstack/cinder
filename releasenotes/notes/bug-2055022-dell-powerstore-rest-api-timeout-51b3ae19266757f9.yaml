@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Dell PowerStore Driver `bug #2055022
+    <https://bugs.launchpad.net/cinder/+bug/2055022>`_: REST
+    API calls to the PowerStore backend did not have a timeout
+    set, which could result in cinder waiting forever.
+    This fix introduces two configuration options,
+    ``rest_api_call_connect_timeout`` and
+    ``rest_api_call_read_timeout``, to control timeouts
+    when connecting to the backend.
+    The default value of each is 30 seconds.

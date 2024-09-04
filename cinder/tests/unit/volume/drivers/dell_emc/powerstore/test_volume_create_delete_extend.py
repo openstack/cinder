@@ -157,3 +157,17 @@ class TestVolumeCreateDeleteExtend(powerstore.TestPowerStoreDriver):
                                   self.volume,
                                   16)
         self.assertIn("Failed to extend PowerStore volume", error.msg)
+
+    @mock.patch("requests.request")
+    def test_post_request_timeout_exception(self, mock_request):
+        mock_request.return_value = powerstore.MockResponse(
+            rc=501
+        )
+        error = self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.driver.extend_volume,
+                                  self.volume,
+                                  16)
+        self.assertEqual('Bad or unexpected response from the '
+                         'storage volume backend API: Failed to '
+                         'extend PowerStore volume with id fake_id.',
+                         error.msg)

@@ -21,6 +21,7 @@ import json
 from oslo_log import log as logging
 from oslo_utils import strutils
 import requests
+import requests.exceptions
 
 from cinder import exception
 from cinder.i18n import _
@@ -45,7 +46,9 @@ class PowerStoreClient(object):
                  rest_username,
                  rest_password,
                  verify_certificate,
-                 certificate_path):
+                 certificate_path,
+                 rest_api_connect_timeout,
+                 rest_api_read_timeout):
         self.rest_ip = rest_ip
         self.rest_username = rest_username
         self.rest_password = rest_password
@@ -59,6 +62,8 @@ class PowerStoreClient(object):
             requests.codes.no_content,
             requests.codes.partial_content
         ]
+        self.rest_api_connect_timeout = rest_api_connect_timeout
+        self.rest_api_read_timeout = rest_api_read_timeout
 
     @property
     def _verify_cert(self):
@@ -92,36 +97,46 @@ class PowerStoreClient(object):
                       payload=None,
                       params=None,
                       log_response_data=True):
-        if not params:
-            params = {}
-        request_params = {
-            "auth": (self.rest_username, self.rest_password),
-            "verify": self._verify_cert,
-            "params": params
-        }
-        if payload and method != "GET":
-            request_params["data"] = json.dumps(payload)
-        request_url = self.base_url + url
-        r = requests.request(method, request_url, **request_params)
-
-        log_level = logging.DEBUG
-        if r.status_code not in self.ok_codes:
-            log_level = logging.ERROR
-        LOG.log(log_level,
-                "REST Request: %s %s with body %s",
-                r.request.method,
-                r.request.url,
-                strutils.mask_password(r.request.body))
-        if log_response_data or log_level == logging.ERROR:
-            msg = "REST Response: %s with data %s" % (r.status_code, r.text)
-        else:
-            msg = "REST Response: %s" % r.status_code
-        LOG.log(log_level, msg)
-
+        response = None
+        r = requests.Response
         try:
-            response = r.json()
-        except ValueError:
-            response = None
+            if not params:
+                params = {}
+            request_params = {
+                "auth": (self.rest_username, self.rest_password),
+                "verify": self._verify_cert,
+                "params": params
+            }
+            if payload and method != "GET":
+                request_params["data"] = json.dumps(payload)
+            request_url = self.base_url + url
+            timeout = (self.rest_api_connect_timeout,
+                       self.rest_api_read_timeout)
+            r = requests.request(method, request_url, **request_params,
+                                 timeout=timeout)
+            log_level = logging.DEBUG
+            if r.status_code not in self.ok_codes:
+                log_level = logging.ERROR
+            LOG.log(log_level,
+                    "REST Request: %s %s with body %s",
+                    r.request.method,
+                    r.request.url,
+                    strutils.mask_password(r.request.body))
+            if (log_response_data or
+                    log_level == logging.ERROR):
+                msg = ("REST Response: %s with data %s" %
+                       (r.status_code, r.text))
+            else:
+                msg = "REST Response: %s" % r.status_code
+            LOG.log(log_level, msg)
+            try:
+                response = r.json()
+            except ValueError:
+                response = None
+        except requests.exceptions.Timeout as e:
+            r.status_code = requests.codes.internal_server_error
+            LOG.error("The request to URL %(url)s failed with timeout "
+                      "exception %(exc)s", {"url": url, "exc": e})
         return r, response
 
     _send_get_request = functools.partialmethod(_send_request, "GET")
