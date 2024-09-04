@@ -1340,7 +1340,8 @@ def upload_volume(context: context.RequestContext,
                   volume: 'objects.Volume',
                   volume_format: str = 'raw',
                   run_as_root: bool = True,
-                  compress: bool = True) -> None:
+                  compress: bool = True,
+                  volume_fd = None) -> None:
     # retrieve store information from extra-specs
     store_id = volume.volume_type.extra_specs.get('image_service:store_id')
 
@@ -1353,7 +1354,8 @@ def upload_volume(context: context.RequestContext,
                               volume_format=volume_format,
                               run_as_root=run_as_root,
                               compress=compress, store_id=store_id,
-                              base_image_ref=base_image_ref)
+                              base_image_ref=base_image_ref,
+                              volume_fd=volume_fd)
 
 
 def get_backend_configuration(backend_name, backend_opts=None):

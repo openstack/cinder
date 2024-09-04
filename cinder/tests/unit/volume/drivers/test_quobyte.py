@@ -1335,7 +1335,7 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False,
                 store_id=None, base_image_ref=None, compress=True,
-                volume_format='raw')
+                volume_format='raw', volume_fd=None)
             self.assertTrue(mock_create_temporary_file.called)
 
     @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
@@ -1392,7 +1392,7 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False,
                 store_id=None, base_image_ref=None, compress=True,
-                volume_format='raw')
+                volume_format='raw', volume_fd=None)
             self.assertTrue(mock_create_temporary_file.called)
 
     @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
@@ -1449,7 +1449,8 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_convert_image.assert_called_once_with(
                 volume_path, upload_path, 'raw', run_as_root=False)
             mock_upload_volume.assert_called_once_with(
-                mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False,
+                mock.ANY, mock.ANY, mock.ANY, upload_path, volume_fd=None,
+                run_as_root=False,
                 store_id=None, base_image_ref=None, compress=True,
                 volume_format='raw')
             self.assertTrue(mock_create_temporary_file.called)

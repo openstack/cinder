@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    RBD driver: No longer copy the RBD source volume image to a temporary
+    file when uploading a volume to an image.
