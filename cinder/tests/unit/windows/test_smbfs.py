@@ -789,7 +789,8 @@ class WindowsSmbFsTestCase(test.TestCase):
 
             fake_upload_volume.assert_called_once_with(
                 mock.sentinel.context, mock.sentinel.image_service,
-                fake_image_meta, upload_path, volume_format=fake_img_format,
+                fake_image_meta, upload_path, volume_fd=None,
+                volume_format=fake_img_format,
                 store_id='fake-store', base_image_ref=None, compress=True,
                 run_as_root=True)
 

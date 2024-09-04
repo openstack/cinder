@@ -3475,6 +3475,25 @@ class RBDTestCase(test.TestCase):
 
         self.assertEqual({'provider_location': None}, ret)
 
+    @common_mocks
+    def test_copy_volume_to_image(self):
+        mock_uv = self.mock_object(cinder.volume.volume_utils, 'upload_volume')
+        mock_get_rbd_handle = self.mock_object(
+            self.driver, '_get_rbd_handle',
+            return_value=mock.sentinel.rbd_handle)
+
+        self.driver.copy_volume_to_image(mock.sentinel.context,
+                                         mock.sentinel.volume,
+                                         mock.sentinel.image_service,
+                                         mock.sentinel.image_meta)
+        mock_get_rbd_handle.assert_called_once_with(mock.sentinel.volume)
+        mock_uv.assert_called_once_with(mock.sentinel.context,
+                                        mock.sentinel.image_service,
+                                        mock.sentinel.image_meta,
+                                        None,
+                                        mock.sentinel.volume,
+                                        volume_fd=mock.sentinel.rbd_handle)
+
 
 class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
     driver_name = "cinder.volume.drivers.rbd.RBDDriver"

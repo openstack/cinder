@@ -2081,20 +2081,18 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             raise exception.ReplicationError(reason=err_msg,
                                              volume_id=volume.id)
 
+    def _get_rbd_handle(self, volume: Volume):
+        conn = self.initialize_connection(volume, {})
+
+        connector = volume_utils.brick_get_connector('rbd')
+
+        return connector._get_rbd_handle(conn['data'])
+
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        tmp_dir = volume_utils.image_conversion_dir()
-        tmp_file = os.path.join(tmp_dir,
-                                volume.name + '-' + image_meta['id'])
-        with fileutils.remove_path_on_error(tmp_file):
-            args = ['rbd', 'export',
-                    '--pool', self.configuration.rbd_pool,
-                    volume.name, tmp_file]
-            args.extend(self._ceph_args())
-            self._try_execute(*args)
-            volume_utils.upload_volume(context, image_service,
-                                       image_meta, tmp_file,
-                                       volume)
-        os.unlink(tmp_file)
+        source_handle = self._get_rbd_handle(volume)
+
+        volume_utils.upload_volume(context, image_service, image_meta, None,
+                                   volume, volume_fd=source_handle)
 
     def extend_volume(self, volume: Volume, new_size: str) -> None:
         """Extend an existing volume."""
