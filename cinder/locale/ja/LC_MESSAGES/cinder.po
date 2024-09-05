@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2024-07-06 14:26+0000\n"
+"POT-Creation-Date: 2024-09-04 23:51+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -6093,35 +6093,12 @@ msgid "create_hypermetro_pair error."
 msgstr "create_hypermetro_pair エラー。"
 
 #, python-format
-msgid "create_snapshot, eternus_pool: %(eternus_pool)s, pool not found."
-msgstr ""
-"create_snapshot、eternus_pool: %(eternus_pool)s、プールが見つかりません。"
-
-#, python-format
-msgid ""
-"create_snapshot, snapshotname: %(snapshotname)s, source volume name: "
-"%(volumename)s, vol_instance.path: %(vol_instance)s, dest volume name: "
-"%(d_volumename)s, pool: %(pool)s, Return code: %(rc)lu, Error: %(errordesc)s."
-msgstr ""
-"create_snapshot、スナップショット名: %(snapshotname)s、ソースボリューム名: "
-"%(volumename)s、vol_instance.path: %(vol_instance)s、宛先ボリューム名: "
-"%(d_volumename)s、プール: %(pool)s、戻りコード: %(rc)lu、エラー: "
-"%(errordesc)s。"
-
-#, python-format
 msgid ""
 "create_snapshot, volumename: %(s_volumename)s, source volume not found on "
 "ETERNUS."
 msgstr ""
 "create_snapshot、ボリューム名: %(s_volumename)s、ETERNUS でソースボリュームが"
 "見つかりません。"
-
-#, python-format
-msgid ""
-"create_snapshot, volumename: %(volumename)s, Replication Service not found."
-msgstr ""
-"create_snapshot、ボリューム名: %(volumename)s、レプリケーションサービスが見つ"
-"かりません。"
 
 #, python-format
 msgid ""
