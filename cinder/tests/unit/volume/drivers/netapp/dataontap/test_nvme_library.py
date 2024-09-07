@@ -16,7 +16,6 @@ from concurrent.futures import ThreadPoolExecutor
 import copy
 from unittest import mock
 from unittest.mock import patch
-import uuid
 
 import ddt
 from oslo_utils import units
@@ -281,12 +280,15 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.mock_object(
             self.library.client, 'get_namespace_map',
             return_value=[{
+                'subsystem_uuid': fake.UUID1,
                 'subsystem': fake.SUBSYSTEM,
                 'uuid': fake.UUID1
             }])
 
-        subsystem, n_uuid = self.library._find_mapped_namespace_subsystem(
-            fake.NAMESPACE_NAME, fake.HOST_NQN)
+        subsystem_uuid, subsystem, n_uuid =\
+            self.library._find_mapped_namespace_subsystem(
+                fake.NAMESPACE_NAME, fake.HOST_NQN
+            )
 
         self.assertEqual(fake.SUBSYSTEM, subsystem)
         self.assertEqual(fake.UUID1, n_uuid)
@@ -598,7 +600,7 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             'consistent_group_snapshot_enabled': False,
             'reserved_percentage': 5,
             'max_over_subscription_ratio': 10,
-            'multiattach': False,
+            'multiattach': True,
             'total_capacity_gb': 10.0,
             'free_capacity_gb': 2.0,
             'netapp_dedupe_used_percent': 55.0,
@@ -790,44 +792,31 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.library.client.namespace_resize.assert_called_once_with(
             fake.PATH_NAMESPACE, new_bytes)
 
-    @ddt.data([{'name': fake.SUBSYSTEM, 'os_type': 'linux'}], [])
-    def test__get_or_create_subsystem(self, subs):
-        self.mock_object(self.library.client, 'get_subsystem_by_host',
-                         return_value=subs)
-        self.mock_object(self.library.client, 'create_subsystem')
-        self.mock_object(uuid, 'uuid4', return_value='fake_uuid')
-
-        sub, os = self.library._get_or_create_subsystem(fake.HOST_NQN, 'linux')
-
-        self.library.client.get_subsystem_by_host.assert_called_once_with(
-            fake.HOST_NQN)
-        self.assertEqual('linux', os)
-        if subs:
-            self.assertEqual(fake.SUBSYSTEM, sub)
-        else:
-            self.library.client.create_subsystem.assert_called_once_with(
-                sub, 'linux', fake.HOST_NQN)
-            expected_sub = 'openstack-fake_uuid'
-            self.assertEqual(expected_sub, sub)
-
     def test__map_namespace(self):
         self.library.host_type = 'win'
-        self.mock_object(self.library, '_get_or_create_subsystem',
-                         return_value=(fake.SUBSYSTEM, 'linux'))
+        fake_namespace_metadata = [{
+            'subsystem': 'fake_subsystem',
+            'subsystem_uuid': 'fake_subsystem_uuid',
+            'uuid': 'fake_uuid'
+        }]
+
         self.mock_object(self.library, '_get_namespace_attr',
                          return_value=fake.NAMESPACE_METADATA)
         self.mock_object(self.library.client, 'map_namespace',
                          return_value=fake.UUID1)
+        self.mock_object(self.library.client, 'get_namespace_map',
+                         return_value=fake_namespace_metadata)
 
-        sub, n_uuid = self.library._map_namespace(
-            fake.NAMESPACE_NAME, fake.HOST_NQN)
+        host_nqn = 'fake_host_nqn'
+        name = 'fake_namespace_name'
 
-        self.assertEqual(fake.SUBSYSTEM, sub)
-        self.assertEqual(fake.UUID1, n_uuid)
-        self.library._get_or_create_subsystem.assert_called_once_with(
-            fake.HOST_NQN, 'win')
-        self.library.client.map_namespace.assert_called_once_with(
-            fake.PATH_NAMESPACE, fake.SUBSYSTEM)
+        subsystem_name, ns_uuid = self.library._map_namespace(name, host_nqn)
+
+        self.assertEqual(subsystem_name, 'fake_subsystem')
+        self.assertEqual(ns_uuid, 'fake_uuid')
+        self.library.client.map_host_with_subsystem.assert_called_once_with(
+            host_nqn, 'fake_subsystem_uuid'
+        )
 
     def test_initialize_connection(self):
         self.mock_object(self.library, '_map_namespace',
@@ -899,7 +888,7 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
     def test__unmap_namespace(self, host_nqn):
         mock_find = self.mock_object(
             self.library, '_find_mapped_namespace_subsystem',
-            return_value=(fake.SUBSYSTEM, 'fake'))
+            return_value=(fake.UUID1, fake.SUBSYSTEM, 'fake'))
         self.mock_object(self.library.client, 'get_namespace_map',
                          return_value=[{'subsystem': fake.SUBSYSTEM}])
         self.mock_object(self.library.client, 'unmap_namespace')
@@ -912,10 +901,6 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             self.library.client.get_namespace_map.assert_not_called()
         else:
             self.library._find_mapped_namespace_subsystem.assert_not_called()
-            self.library.client.get_namespace_map.assert_called_once_with(
-                fake.PATH_NAMESPACE)
-        self.library.client.unmap_namespace.assert_called_once_with(
-            fake.PATH_NAMESPACE, fake.SUBSYSTEM)
 
     @ddt.data(None, {'nqn': fake.HOST_NQN})
     def test_terminate_connection(self, connector):

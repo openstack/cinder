@@ -1036,5 +1036,6 @@ ADAPTIVE_QOS_POLICY_GROUP_INFO_REST = {
 
 REST_FIELDS = 'uuid,name,style'
 SUBSYSTEM = 'openstack-fake-subsystem'
+MAPPED_SUBSYSTEM = 'openstack-fake-mapped_subsystem'
 HOST_NQN = 'nqn.1992-01.example.com:string'
 TARGET_NQN = 'nqn.1992-01.example.com:target'

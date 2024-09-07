@@ -4106,6 +4106,39 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             '/protocols/nvme/subsystems', 'get', query=query)
 
+    def test_get_subsystem_by_path(self):
+        response = fake_client.GET_SUBSYSTEM_RESPONSE_REST
+        self.mock_object(self.client, 'send_request', return_value=response)
+
+        res = self.client.get_subsystem_by_path(fake_client.NAMESPACE_NAME)
+
+        expected_res = [{'name': fake_client.SUBSYSTEM, 'os_type': 'linux'}]
+        self.assertEqual(expected_res, res)
+        query = {
+            'svm.name': self.client.vserver,
+            'subsystem_maps.namespace.name': fake_client.NAMESPACE_NAME,
+            'fields': 'name,os_type',
+            'name': 'openstack-*',
+        }
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nvme/subsystems', 'get', query=query)
+
+    def test_get_subsystem_by_path_no_records(self):
+        response = fake_client.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client, 'send_request', return_value=response)
+
+        res = self.client.get_subsystem_by_path(fake_client.NAMESPACE_NAME)
+
+        self.assertEqual([], res)
+        query = {
+            'svm.name': self.client.vserver,
+            'subsystem_maps.namespace.name': fake_client.NAMESPACE_NAME,
+            'fields': 'name,os_type',
+            'name': 'openstack-*',
+        }
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nvme/subsystems', 'get', query=query)
+
     def test_create_subsystem(self):
         self.mock_object(self.client, 'send_request')
 
@@ -4130,12 +4163,14 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         expected_res = [
             {'subsystem': fake_client.SUBSYSTEM,
+             'subsystem_uuid': fake_client.FAKE_UUID,
              'uuid': fake_client.FAKE_UUID,
              'vserver': fake_client.VSERVER_NAME}]
         self.assertEqual(expected_res, res)
         query = {
             'namespace.name': fake_client.NAMESPACE_NAME,
-            'fields': 'subsystem.name,namespace.uuid,svm.name',
+            'fields': 'subsystem.name,namespace.uuid,svm.name,'
+                      'subsystem.uuid',
         }
         self.client.send_request.assert_called_once_with(
             '/protocols/nvme/subsystem-maps', 'get', query=query)
@@ -4216,3 +4251,102 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         }
         self.client.send_request.assert_called_once_with(
             '/protocols/nvme/subsystem-maps', 'delete', query=query)
+
+    def test_unmap_host_with_subsystem(self):
+        url = (
+            f'/protocols/nvme/subsystems/{fake_client.SUBSYSTEM_UUID}/'
+            f'hosts/{fake_client.HOST_NQN}'
+        )
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.unmap_host_with_subsystem(
+            fake_client.HOST_NQN, fake_client.SUBSYSTEM_UUID
+        )
+
+        self.client.send_request.assert_called_once_with(url, 'delete')
+
+    def test_unmap_host_with_subsystem_api_error(self):
+        url = (
+            f'/protocols/nvme/subsystems/{fake_client.SUBSYSTEM_UUID}/'
+            f'hosts/{fake_client.HOST_NQN}'
+        )
+        api_error = netapp_api.NaApiError(code=123, message='fake_error')
+
+        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        mock_log_warning = self.mock_object(client_cmode_rest.LOG, 'warning')
+
+        self.client.unmap_host_with_subsystem(
+            fake_client.HOST_NQN, fake_client.SUBSYSTEM_UUID
+        )
+
+        self.client.send_request.assert_called_once_with(url, 'delete')
+        mock_log_warning.assert_called_once_with(
+            "Failed to unmap host from subsystem. "
+            "Host NQN: %(host_nqn)s, Subsystem UUID: %(subsystem_uuid)s, "
+            "Error Code: %(code)s, Error Message: %(message)s",
+            {'host_nqn': fake_client.HOST_NQN,
+             'subsystem_uuid': fake_client.SUBSYSTEM_UUID,
+             'code': api_error.code, 'message': api_error.message})
+
+    def test_map_host_with_subsystem(self):
+        url = f'/protocols/nvme/subsystems/{fake_client.SUBSYSTEM_UUID}/hosts'
+        body_post = {'nqn': fake_client.HOST_NQN}
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.map_host_with_subsystem(
+            fake_client.HOST_NQN, fake_client.SUBSYSTEM_UUID
+        )
+
+        self.client.send_request.assert_called_once_with(
+            url, 'post', body=body_post
+        )
+
+    def test_map_host_with_subsystem_already_mapped(self):
+        url = f'/protocols/nvme/subsystems/{fake_client.SUBSYSTEM_UUID}/hosts'
+        body_post = {'nqn': fake_client.HOST_NQN}
+        api_error = (
+            netapp_api.NaApiError(
+                code=netapp_api.REST_HOST_ALREADY_MAPPED_TO_SUBSYSTEM,
+                message='fake_error')
+        )
+
+        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        mock_log_info = self.mock_object(client_cmode_rest.LOG, 'info')
+
+        self.client.map_host_with_subsystem(
+            fake_client.HOST_NQN, fake_client.SUBSYSTEM_UUID
+        )
+
+        self.client.send_request.assert_called_once_with(
+            url, 'post', body=body_post
+        )
+        mock_log_info.assert_called_once_with(
+            "Host %(host_nqn)s is already mapped to subsystem"
+            " %(subsystem_uuid)s ",
+            {'host_nqn': fake_client.HOST_NQN,
+             'subsystem_uuid': fake_client.SUBSYSTEM_UUID
+             }
+        )
+
+    def test_map_host_with_subsystem_api_error(self):
+        url = f'/protocols/nvme/subsystems/{fake_client.SUBSYSTEM_UUID}/hosts'
+        body_post = {'nqn': fake_client.HOST_NQN}
+        api_error = netapp_api.NaApiError(code=123, message='fake_error')
+
+        self.mock_object(self.client, 'send_request', side_effect=api_error)
+        mock_log_error = self.mock_object(client_cmode_rest.LOG, 'error')
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.map_host_with_subsystem,
+                          fake_client.HOST_NQN, fake_client.SUBSYSTEM_UUID
+                          )
+
+        self.client.send_request.assert_called_once_with(
+            url, 'post', body=body_post
+        )
+        mock_log_error.assert_called_once_with(
+            "Error mapping host to subsystem. Code :"
+            "%(code)s, Message: %(message)s",
+            {'code': api_error.code, 'message': api_error.message})
