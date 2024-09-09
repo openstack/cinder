@@ -311,11 +311,12 @@ class HPE3PARCommon(object):
         4.0.21 - Fix issue seen during retype/migrate. Bug #2026718
         4.0.22 - Fixed clone of replicated volume. Bug #2021941
         4.0.23 - Fixed login/logout while accessing wsapi. Bug #2068795
+        4.0.24 - Fixed retype volume - thin to deco. Bug #2080927
 
 
     """
 
-    VERSION = "4.0.23"
+    VERSION = "4.0.24"
 
     stats = {}
 
@@ -3613,6 +3614,8 @@ class HPE3PARCommon(object):
                          "with userCPG=%(new_cpg)s",
                          {'volume_name': volume_name, 'new_cpg': new_cpg})
 
+            response = None
+            body = None
             try:
                 if self.API_VERSION < COMPRESSION_API_VERSION:
                     response, body = self.client.modifyVolume(
@@ -3622,13 +3625,16 @@ class HPE3PARCommon(object):
                          'userCPG': new_cpg,
                          'conversionOperation': cop})
                 else:
-                    response, body = self.client.modifyVolume(
+                    LOG.debug("compression: %(compression)s",
+                              {'compression': compression})
+                    body = self.client.tuneVolume(
                         volume_name,
+                        1,
                         {'action': 6,
-                         'tuneOperation': 1,
                          'userCPG': new_cpg,
                          'compression': compression,
                          'conversionOperation': cop})
+                    LOG.debug("body: %(body)s", {'body': body})
             except hpeexceptions.HTTPBadRequest as ex:
                 if ex.get_code() == 40 and "keepVV" in str(ex):
                     # Cannot retype with snapshots because we don't want to
