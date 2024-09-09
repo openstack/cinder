@@ -1793,28 +1793,25 @@ class RBDTestCase(test.TestCase):
             self.assertTrue(mock_get_fsid.called)
 
     def _copy_image(self, volume_busy=False):
-        with mock.patch.object(tempfile, 'NamedTemporaryFile'):
-            with mock.patch.object(os.path, 'exists') as mock_exists:
-                mock_exists.return_value = True
-                with mock.patch.object(image_utils, 'fetch_to_raw'):
-                    with mock.patch.object(self.driver, 'delete_volume') \
-                            as mock_dv:
-                        with mock.patch.object(self.driver, '_resize'):
-                            mock_image_service = mock.MagicMock()
-                            args = [None, self.volume_a,
-                                    mock_image_service, None]
-                            if volume_busy:
-                                mock_dv.side_effect = (
-                                    exception.VolumeIsBusy("doh"))
-                                self.assertRaises(
-                                    exception.VolumeIsBusy,
-                                    self.driver.copy_image_to_volume,
-                                    *args)
-                                self.assertEqual(
-                                    self.cfg.rados_connection_retries,
-                                    mock_dv.call_count)
-                            else:
-                                self.driver.copy_image_to_volume(*args)
+        self.mock_object(tempfile, 'NamedTemporaryFile')
+        self.mock_object(os.path, 'exists', return_value=True)
+        self.mock_object(image_utils, 'fetch_to_raw')
+        self.mock_object(self.driver, '_resize')
+
+        with mock.patch.object(self.driver, 'delete_volume') as mock_dv:
+            mock_image_service = mock.MagicMock()
+            args = [None, self.volume_a, mock_image_service, None]
+            if volume_busy:
+                mock_dv.side_effect = exception.VolumeIsBusy("doh")
+                self.assertRaises(
+                    exception.VolumeIsBusy,
+                    self.driver.copy_image_to_volume,
+                    *args)
+                self.assertEqual(
+                    self.cfg.rados_connection_retries,
+                    mock_dv.call_count)
+            else:
+                self.driver.copy_image_to_volume(*args)
 
     @mock.patch('cinder.volume.drivers.rbd.fileutils.delete_if_exists')
     @mock.patch('cinder.volume.volume_utils.check_encryption_provider',
@@ -1830,24 +1827,24 @@ class RBDTestCase(test.TestCase):
         enc_info = {'encryption_key_id': key_id,
                     'cipher': 'aes-xts-essiv',
                     'key_size': 256}
-        with mock.patch('cinder.volume.volume_utils.check_encryption_provider',
-                        return_value=enc_info), \
-                mock.patch('cinder.volume.drivers.rbd.open'), \
-                mock.patch('os.rename'):
-            with mock.patch.object(tempfile, 'NamedTemporaryFile'):
-                with mock.patch.object(os.path, 'exists') as mock_exists:
-                    mock_exists.return_value = True
-                    with mock.patch.object(image_utils, 'fetch_to_raw'):
-                        with mock.patch.object(self.driver, 'delete_volume'):
-                            with mock.patch.object(self.driver, '_resize'):
-                                mock_image_service = mock.MagicMock()
-                                args = [self.context, self.volume_a,
-                                        mock_image_service, None]
-                                self.driver.copy_image_to_encrypted_volume(
-                                    *args)
-                                mock_temp_delete.assert_called()
-                                self.assertEqual(1,
-                                                 mock_temp_delete.call_count)
+
+        self.mock_object(cinder.volume.volume_utils,
+                         'check_encryption_provider',
+                         return_value=enc_info)
+        self.mock_object(cinder.volume.drivers.rbd, 'open')
+        self.mock_object(os, 'rename')
+        self.mock_object(tempfile, 'NamedTemporaryFile')
+        self.mock_object(os.path, 'exists', return_value=True)
+
+        self.mock_object(image_utils, 'fetch_to_raw')
+        self.mock_object(self.driver, 'delete_volume')
+        self.mock_object(self.driver, '_resize')
+
+        mock_image_service = mock.MagicMock()
+        args = [self.context, self.volume_a, mock_image_service, None]
+        self.driver.copy_image_to_encrypted_volume(*args)
+        mock_temp_delete.assert_called()
+        self.assertEqual(1, mock_temp_delete.call_count)
 
     @common_mocks
     def test_copy_image_no_volume_tmp(self):
