@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Hitachi driver: Added QoS support.

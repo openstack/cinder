@@ -80,6 +80,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         2.3.3 - Add GAD volume support.
         2.3.4 - Support data deduplication and compression.
         2.3.5 - Fix key error when backend is down.
+        2.4.0 - Add QoS support.
 
     """
 

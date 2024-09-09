@@ -345,16 +345,18 @@ class HBSDREPLICATION(rest.HBSDREST):
         """Create a primary volume and  a secondary volume."""
         pool_id = self.rep_secondary.storage_info['pool_id'][0]
         ldev_range = self.rep_secondary.storage_info['ldev_range']
+        qos_specs = utils.get_qos_specs_from_volume(volume)
         thread = greenthread.spawn(
             self.rep_secondary.create_ldev, volume.size, extra_specs,
-            pool_id, ldev_range)
+            pool_id, ldev_range, qos_specs=qos_specs)
         if pvol is None:
             try:
                 pool_id = self.rep_primary.get_pool_id_of_volume(volume)
                 ldev_range = self.rep_primary.storage_info['ldev_range']
                 pvol = self.rep_primary.create_ldev(volume.size,
                                                     extra_specs,
-                                                    pool_id, ldev_range)
+                                                    pool_id, ldev_range,
+                                                    qos_specs=qos_specs)
             except exception.VolumeDriverException:
                 self.rep_primary.output_log(MSG.CREATE_LDEV_FAILED)
         try:
