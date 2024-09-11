@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    `Bug #1946483 <https://bugs.launchpad.net/cinder/+bug/1946483>`_: Fixed
+    an issue where admin user fails to delete backup of an encrypted
+    volume with an ``oslo_config.cfg.NoSuchOptError`` error in logs
+    of cinder-backup service.
+    With this fix cloud admin is able to delete backups of encrypted volumes
+    created by other users if Barbican API policies allow it.
