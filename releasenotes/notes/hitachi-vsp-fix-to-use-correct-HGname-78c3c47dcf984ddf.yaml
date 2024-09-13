@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    HPE XP and NEC V driver `bug #2012515
+    <https://bugs.launchpad.net/cinder/+bug/2012515>`_: Fixed to use
+    correct Host group name.
