@@ -1345,6 +1345,18 @@ class VolumeManager(manager.CleanableManager,
         snapshot.encryption_key_id = vol_ref.encryption_key_id
         snapshot.save()
 
+        # For snapshots that have a hidden backend key
+        # we update the allocated capacity to account
+        # for the snapshot size on the backend.
+        # The hidden backend key is there for snapshots
+        # that are clones.
+        if snapshot.metadata:
+            key = objects.snapshot.SAP_HIDDEN_BACKEND_KEY
+            host = snapshot.metadata.get(key)
+            self._update_snapshot_allocated_capacity(
+                context, snapshot, host=host
+            )
+
         self._notify_about_snapshot_usage(context, snapshot, "create.end")
         action_track.track(
             context, action_track.ACTION_SNAPSHOT_CREATE,
