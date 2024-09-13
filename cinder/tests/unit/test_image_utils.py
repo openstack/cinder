@@ -937,6 +937,37 @@ class TestUploadVolume(test.TestCase):
             ctxt, image_meta['id'], {}, mock_proxy.return_value,
             store_id=None, base_image_ref=None)
 
+    @mock.patch('eventlet.tpool.Proxy')
+    @mock.patch('cinder.image.image_utils.utils.temporary_chown')
+    @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.convert_image')
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.os')
+    def test_same_format_fd(self, mock_os, mock_temp, mock_convert, mock_info,
+                            mock_open, mock_chown, mock_proxy):
+        ctxt = mock.sentinel.context
+        image_service = mock.Mock()
+        image_meta = {'id': 'test_id',
+                      'disk_format': 'raw',
+                      'container_format': mock.sentinel.container_format}
+        mock_os.name = 'posix'
+        mock_os.access.return_value = False
+
+        output = image_utils.upload_volume(ctxt, image_service, image_meta,
+                                           None,
+                                           volume_fd=mock.sentinel.volume_fd)
+
+        self.assertIsNone(output)
+        self.assertFalse(mock_convert.called)
+        self.assertFalse(mock_info.called)
+        mock_chown.assert_not_called()
+        mock_open.assert_not_called()
+        mock_proxy.assert_not_called()
+        image_service.update.assert_called_once_with(
+            ctxt, image_meta['id'], {}, mock.sentinel.volume_fd,
+            store_id=None, base_image_ref=None)
+
     @mock.patch('cinder.image.accelerator.ImageAccel._get_engine')
     @mock.patch('cinder.image.accelerator.ImageAccel.is_engine_ready',
                 return_value = True)
