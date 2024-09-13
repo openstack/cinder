@@ -252,7 +252,8 @@ class HBSDCommon():
                 return pool['location_info']['pool_id']
         return None
 
-    def create_ldev(self, size, extra_specs, pool_id, ldev_range):
+    def create_ldev(
+            self, size, extra_specs, pool_id, ldev_range, qos_specs=None):
         """Create an LDEV and return its LDEV number."""
         raise NotImplementedError()
 
@@ -265,9 +266,10 @@ class HBSDCommon():
         extra_specs = self.get_volume_extra_specs(volume)
         pool_id = self.get_pool_id_of_volume(volume)
         ldev_range = self.storage_info['ldev_range']
+        qos_specs = utils.get_qos_specs_from_volume(volume)
         try:
-            ldev = self.create_ldev(
-                volume['size'], extra_specs, pool_id, ldev_range)
+            ldev = self.create_ldev(volume['size'], extra_specs, pool_id,
+                                    ldev_range, qos_specs=qos_specs)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.output_log(MSG.CREATE_LDEV_FAILED)
@@ -291,13 +293,14 @@ class HBSDCommon():
 
     def copy_on_storage(
             self, pvol, size, extra_specs, pool_id, snap_pool_id, ldev_range,
-            is_snapshot=False, sync=False, is_rep=False):
+            is_snapshot=False, sync=False, is_rep=False, qos_specs=None):
         """Create a copy of the specified LDEV on the storage."""
         ldev_info = self.get_ldev_info(['status', 'attributes'], pvol)
         if ldev_info['status'] != 'NML':
             msg = self.output_log(MSG.INVALID_LDEV_STATUS_FOR_COPY, ldev=pvol)
             self.raise_error(msg)
-        svol = self.create_ldev(size, extra_specs, pool_id, ldev_range)
+        svol = self.create_ldev(
+            size, extra_specs, pool_id, ldev_range, qos_specs=qos_specs)
         try:
             self.create_pair_on_storage(
                 pvol, svol, snap_pool_id, is_snapshot=is_snapshot)
@@ -326,9 +329,10 @@ class HBSDCommon():
         pool_id = self.get_pool_id_of_volume(volume)
         snap_pool_id = self.storage_info['snap_pool_id']
         ldev_range = self.storage_info['ldev_range']
+        qos_specs = utils.get_qos_specs_from_volume(volume)
         new_ldev = self.copy_on_storage(ldev, size, extra_specs, pool_id,
                                         snap_pool_id, ldev_range,
-                                        is_rep=is_rep)
+                                        is_rep=is_rep, qos_specs=qos_specs)
         self.modify_ldev_name(new_ldev, volume['id'].replace("-", ""))
         if is_rep:
             self.delete_pair(new_ldev)
@@ -483,9 +487,10 @@ class HBSDCommon():
         pool_id = self.get_pool_id_of_volume(snapshot['volume'])
         snap_pool_id = self.storage_info['snap_pool_id']
         ldev_range = self.storage_info['ldev_range']
+        qos_specs = utils.get_qos_specs_from_volume(snapshot)
         new_ldev = self.copy_on_storage(
             ldev, size, extra_specs, pool_id, snap_pool_id, ldev_range,
-            is_snapshot=True)
+            is_snapshot=True, qos_specs=qos_specs)
         self.modify_ldev_name(new_ldev, snapshot.id.replace("-", ""))
         return {
             'provider_location': str(new_ldev),
@@ -535,7 +540,7 @@ class HBSDCommon():
         single_pool.update(dict(
             pool_name=pool_name,
             reserved_percentage=self.conf.safe_get('reserved_percentage'),
-            QoS_support=False,
+            QoS_support=True,
             thin_provisioning_support=True,
             thick_provisioning_support=False,
             multiattach=True,
@@ -621,6 +626,12 @@ class HBSDCommon():
         """Check if the LDEV meets the criteria for being managed."""
         raise NotImplementedError()
 
+    def get_qos_specs_from_ldev(self, ldev):
+        raise NotImplementedError()
+
+    def change_qos_specs(self, ldev, old_qos_specs, new_qos_specs):
+        raise NotImplementedError()
+
     def manage_existing(self, volume, existing_ref):
         """Return volume properties which Cinder needs to manage the volume."""
         if 'source-name' in existing_ref:
@@ -630,6 +641,10 @@ class HBSDCommon():
             ldev = str2int(existing_ref.get('source-id'))
         self.check_ldev_manageability(ldev, existing_ref)
         self.modify_ldev_name(ldev, volume['id'].replace("-", ""))
+        new_qos_specs = utils.get_qos_specs_from_volume(volume)
+        old_qos_specs = self.get_qos_specs_from_ldev(ldev)
+        if old_qos_specs != new_qos_specs:
+            self.change_qos_specs(ldev, old_qos_specs, new_qos_specs)
         return {
             'provider_location': str(ldev),
         }

@@ -101,6 +101,7 @@ Hitachi block storage driver also supports the following additional features:
 * Data deduplication and compression
 * Port scheduler
 * Port assignment using extra spec
+* Configuring Quality of Service (QoS) settings
 
 .. note::
 
@@ -376,6 +377,203 @@ If the number of pairs exceeds the maximum, copying cannot proceed normally.
 For information about the maximum number of copy pairs and consistency groups
 that can be created, see the `Hitachi Thin Image User Guide`_.
 
+Configuring Quality of Service (QoS) settings
+---------------------------------------------
+
+By configuring Quality of Service (QoS) settings, you can restrict the
+I/O processing of each volume, thereby maintaining the required performance
+and quality levels.
+
+In Hitachi block storage driver, you can configure the following settings for
+each volume. However, you cannot configure these settings for journal volumes.
+
+* Throughput (IOPS, amount of data transferred in MB/s)
+
+  You can set the upper and lower limits on throughput. If an upper
+  limit is exceeded, I/O is suppressed. If a lower limit is not met, I/O
+  is adjusted so that the lower limit is met.
+
+* Priority level of the I/O processing
+
+  You can set priority levels for the I/O processing of multiple
+  volumes.  I/O is adjusted for faster I/O response, starting with
+  high-priority volumes.
+
+**System requirements for a QoS**
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+**Storage firmware versions**
+
++-----------------+------------------------+
+| Storage model   | Firmware version       |
++=================+========================+
+| VSP F350,       | 88-06-01 or later      |
+| F370,           |                        |
+| F700,           |                        |
+| F900            |                        |
+|                 |                        |
+| VSP G350,       |                        |
+| G370,           |                        |
+| G700,           |                        |
+| G900            |                        |
++-----------------+------------------------+
+| VSP 5100,       | 90-04-01 or later      |
+| 5500,           |                        |
+| 5100H,          |                        |
+| 5500H           |                        |
++-----------------+------------------------+
+
+**Storage management software**
+
+Configuration Manager REST API version 10.2.0-00 or later is required.
+
+**Configuring QoS settings and creating volumes**
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+Create QoS specs that define QoS settings, and then associate the QoS
+specs with a volume type. You can configure QoS settings for a volume
+by running the following functions with this volume type specified.
+
+* Create Volume
+* Create Snapshot
+* Create Volume from Snapshot
+* Create Volume from Volume (Clone)
+* Consistency Group
+* Generic volume group
+
+The following example describes the procedure for configuring QoS settings
+when creating a new volume using the Create Volume function.
+
+Before you begin, Check the following information.
+
+* QoS settings
+
+  - Upper or lower limit on throughput (IOPS, amount of data transferred
+    in MB/s)
+  - Priority level of I/O processing
+
+* ID and name of the volume type
+
+  A volume type is needed in order to associate it with the QoS specs.
+  If no volume types exist, create one in advance.
+
+**Procedure**
+
+1. Create the QoS specs
+
+   a. If you use the cinder command:
+
+.. code-block:: console
+
+    $ cinder qos-create <name-of-the-QoS-specs> [consumer=back-end] \
+    <name-of-a-QoS-specs-property>=<value-of-the-QoS-specs-property> \
+    [<name-of-a-QoS-specs-property>=<value-of-the-QoS-specs-property> ...]
+
+\
+   b. If you use the openstack command:
+
+.. code-block:: console
+
+    $ openstack volume qos create [--consumer back-end] \
+    --property \
+    <name-of-a-QoS-specs-property>=<value-of-the-QoS-specs-property> \
+    [--property \
+    <name-of-a-QoS-specs-property>=<value-of-the-QoS-specs-property> ...] \
+    <name-of-the-QoS-specs>
+
+\
+ Specify a name for ``<name-of-the-QoS-specs>``.
+
+ Specify ``<name-of-a-QoS-specs-property>`` and
+ ``<value-of-the-QoS-specs-property>`` as follows.
+ For details on the range of values you can specify, see the overview of
+ QoS operations in the `Performance Guide`_.
+
+ +--------------------+------------------------------------------+
+ | QoS specs property | Description                              |
+ +====================+==========================================+
+ | upperIops          | The upper limit on IOPS.                 |
+ +--------------------+------------------------------------------+
+ | upperTransferRate  | The upper limit on the amount of data    |
+ |                    | transferred in MB/s.                     |
+ +--------------------+------------------------------------------+
+ | lowerIops          | The lower limit on IOPS.                 |
+ +--------------------+------------------------------------------+
+ | lowerTransferRate  | The lower limit on the amount of data    |
+ |                    | transferred in MB/s.                     |
+ +--------------------+------------------------------------------+
+ | responsePriority   | The priority level of the I/O processing.|
+ +--------------------+------------------------------------------+
+
+ The following is an example of running the command.
+
+\
+   a. If you use the cinder command:
+
+.. code-block:: console
+
+    $ cinder qos-create test_qos consumer=back-end upperIops=2000
+
+\
+   b. If you use the openstack command:
+
+.. code-block:: console
+
+    $ openstack volume qos create --consumer back-end \
+    --property upperIops=2000 test_qos
+
+\
+ When you run this command, the ID of the created QoS specs is also output.
+ Record this ID, because you will need it in a later step.
+
+\
+
+2. Associate the QoS specs with a volume type.
+
+   a. If you use the cinder command:
+
+.. code-block:: console
+
+    $ cinder qos-associate <ID-of-the-QoS-specs> <ID-of-the-volume-type>
+
+\
+   b. If you use the openstack command:
+
+.. code-block:: console
+
+    $ openstack volume qos associate <name-of-the-QoS-specs> \
+    <name-of-the-volume-type>
+
+3. Specify the volume type that is associated with the QoS specs, and then
+   create a volume.
+
+   a. If you use the cinder command:
+
+.. code-block:: console
+
+    $ cinder create --volume-type <name-of-the-volume-type> <size>
+
+\
+   b. If you use the openstack command:
+
+.. code-block:: console
+
+    $ openstack volume create --size <size> --type <name-of-the-volume-type> \
+    <name>
+
+**Changing QoS settings**
+
+To change the QoS settings, use the Retype function to change the volume type
+to one that has different QoS specs.
+
+You can also change a volume type for which no QoS specs are set to a volume
+type for which QoS specs are set, and vice versa.
+
+**Clearing QoS settings**
+
+To clear the QoS settings, clear the association between the volume type and
+QoS specs, and then delete the QoS specs.
+
 Data deduplication and compression
 ----------------------------------
 
@@ -516,3 +714,6 @@ attach operations for each volume type.
   capacity-saving-function-data-deduplication-and-compression
 .. _bug #2072317:
   https://bugs.launchpad.net/cinder/+bug/2072317
+.. _Performance Guide:
+  https://docs.hitachivantara.com/r/en-us/svos/9.6.0/mk-98rd9019/
+  hitachi-performance-monitor-operations

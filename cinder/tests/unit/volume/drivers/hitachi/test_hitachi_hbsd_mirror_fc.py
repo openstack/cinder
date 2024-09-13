@@ -104,12 +104,12 @@ REMOTE_DEFAULT_CONNECTOR = {
 CTXT = cinder_context.get_admin_context()
 
 TEST_VOLUME = []
-for i in range(7):
+for i in range(8):
     volume = {}
     volume['id'] = '00000000-0000-0000-0000-{0:012d}'.format(i)
     volume['name'] = 'test-volume{0:d}'.format(i)
     volume['volume_type_id'] = '00000000-0000-0000-0000-{0:012d}'.format(i)
-    if i == 3:
+    if i == 3 or i == 7:
         volume['provider_location'] = None
     elif i == 4:
         volume['provider_location'] = json.dumps(
@@ -128,6 +128,8 @@ for i in range(7):
     volume['size'] = 128
     if i == 2 or i == 6:
         volume['status'] = 'in-use'
+    elif i == 7:
+        volume['status'] = None
     else:
         volume['status'] = 'available'
     volume = fake_volume.fake_volume_obj(CTXT, **volume)
@@ -826,9 +828,12 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
-    def test_create_volume(self, get_volume_type_extra_specs, request):
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume(self, get_volume_type_qos_specs,
+                           get_volume_type_extra_specs, request):
         extra_specs = {"test1": "aaa"}
         get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
         self.driver.common.rep_primary._stats = {}
         self.driver.common.rep_primary._stats['pools'] = [
@@ -836,20 +841,20 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.driver.common.rep_secondary._stats = {}
         self.driver.common.rep_secondary._stats['pools'] = [
             {'location_info': {'pool_id': 40}}]
-        ret = self.driver.create_volume(fake_volume.fake_volume_obj(self.ctxt))
+        ret = self.driver.create_volume(TEST_VOLUME[7])
         actual = {'provider_location': '1'}
         self.assertEqual(actual, ret)
         self.assertEqual(2, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
-    def test_create_volume_replication(
-            self, get_volume_type_extra_specs, get_volume_type, request):
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume_replication(self, get_volume_type_qos_specs,
+                                       get_volume_type_extra_specs, request):
         extra_specs = {"test1": "aaa",
                        "hbsd:topology": "active_active_mirror_volume"}
         get_volume_type_extra_specs.return_value = extra_specs
-        get_volume_type.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
 
         def _request_side_effect(
                 method, url, params, json, headers, auth, timeout, verify):
@@ -884,6 +889,57 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                  'remote-copy': hbsd_utils.MIRROR_ATTR})}
         self.assertEqual(actual, ret)
         self.assertEqual(14, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume_replication_qos(
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIops': '1000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        extra_specs = {"test1": "aaa",
+                       "hbsd:topology": "active_active_mirror_volume"}
+        get_volume_type_extra_specs.return_value = extra_specs
+
+        def _request_side_effect(
+                method, url, params, json, headers, auth, timeout, verify):
+            if self.configuration.hitachi_storage_id in url:
+                if method in ('POST', 'PUT'):
+                    return FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+                elif method == 'GET':
+                    if '/remote-mirror-copygroups' in url:
+                        return FakeResponse(200, NOTFOUND_RESULT)
+                    elif '/remote-mirror-copypairs/' in url:
+                        return FakeResponse(
+                            200, GET_REMOTE_MIRROR_COPYPAIR_RESULT)
+            else:
+                if method in ('POST', 'PUT'):
+                    return FakeResponse(202, REMOTE_COMPLETED_SUCCEEDED_RESULT)
+                elif method == 'GET':
+                    if '/remote-mirror-copygroups' in url:
+                        return FakeResponse(200, NOTFOUND_RESULT)
+            return FakeResponse(
+                500, ERROR_RESULT, headers={'Content-Type': 'json'})
+        request.side_effect = _request_side_effect
+        self.driver.common.rep_primary._stats = {}
+        self.driver.common.rep_primary._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        self.driver.common.rep_secondary._stats = {}
+        self.driver.common.rep_secondary._stats['pools'] = [
+            {'location_info': {'pool_id': 40}}]
+        ret = self.driver.create_volume(TEST_VOLUME[3])
+        actual = {
+            'provider_location': json.dumps(
+                {'pldev': 1, 'sldev': 2,
+                 'remote-copy': hbsd_utils.MIRROR_ATTR})}
+        self.assertEqual(actual, ret)
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
+        self.assertEqual(1, get_volume_type_qos_specs.call_count)
+        self.assertEqual(16, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     def test_delete_volume(self, request):
@@ -1028,11 +1084,14 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_snapshot(
-            self, volume_get, get_volume_type_extra_specs, request):
+            self, get_volume_type_qos_specs, volume_get,
+            get_volume_type_extra_specs, request):
         extra_specs = {"test1": "aaa",
                        "hbsd:topology": "active_active_mirror_volume"}
         get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1086,13 +1145,14 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.assertEqual(3, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_cloned_volume(
-            self, get_volume_type_extra_specs, get_volume_type, request):
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
         extra_specs = {"test1": "aaa"}
         get_volume_type_extra_specs.return_value = extra_specs
-        get_volume_type.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1110,14 +1170,14 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.assertEqual(5, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_cloned_volume_replication(
-            self, get_volume_type_extra_specs, get_volume_type, request):
-        extra_specs = {"test1": "aaa",
-                       "hbsd:topology": "active_active_mirror_volume"}
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
+        extra_specs = {"hbsd:topology": "active_active_mirror_volume"}
         get_volume_type_extra_specs.return_value = extra_specs
-        get_volume_type.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         self.snapshot_count = 0
 
         def _request_side_effect(
@@ -1163,13 +1223,14 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.assertEqual(23, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_volume_from_snapshot(
-            self, get_volume_type_extra_specs, get_volume_type, request):
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
         extra_specs = {"test1": "aaa"}
         get_volume_type_extra_specs.return_value = extra_specs
-        get_volume_type.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1288,16 +1349,17 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.assertEqual(1, remove_fc_zone.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type')
-    def test_manage_existing(self, get_volume_type, request):
-        get_volume_type.return_value = {}
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_manage_existing(self, get_volume_type_qos_specs, request):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
-                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEVS_RESULT)]
         ret = self.driver.manage_existing(
             TEST_VOLUME[0], self.test_existing_ref)
         actual = {'provider_location': '1'}
         self.assertEqual(actual, ret)
-        self.assertEqual(2, request.call_count)
+        self.assertEqual(3, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -1483,13 +1545,14 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.assertTupleEqual(actual, ret)
 
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_group_from_src_volume(
-            self, get_volume_type_extra_specs, get_volume_type, request):
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
         extra_specs = {"test1": "aaa"}
         get_volume_type_extra_specs.return_value = extra_specs
-        get_volume_type.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1513,13 +1576,14 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.assertTupleEqual(actual, ret)
 
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_group_from_src_Exception(
-            self, get_volume_type_extra_specs, get_volume_type, request):
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
         extra_specs = {"test1": "aaa"}
         get_volume_type_extra_specs.return_value = extra_specs
-        get_volume_type.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1546,13 +1610,14 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.assertEqual(10, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_group_from_src_snapshot(
-            self, get_volume_type_extra_specs, get_volume_type, request):
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
         extra_specs = {"test1": "aaa"}
         get_volume_type_extra_specs.return_value = extra_specs
-        get_volume_type.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1586,12 +1651,14 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_group_snapshot_non_cg(
-            self, is_group_a_cg_snapshot_type, volume_get,
-            get_volume_type_extra_specs, request):
+            self, get_volume_type_qos_specs, is_group_a_cg_snapshot_type,
+            volume_get, get_volume_type_extra_specs, request):
         is_group_a_cg_snapshot_type.return_value = False
         extra_specs = {"test1": "aaa"}
         get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1641,14 +1708,15 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.assertTupleEqual(actual, ret)
 
     @mock.patch.object(requests.Session, "request")
-    @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_rep_ldev_and_pair_deduplication_compression(
-            self, get_volume_type_extra_specs, get_volume_type, request):
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
         get_volume_type_extra_specs.return_value = {
             'hbsd:topology': 'active_active_mirror_volume',
             'hbsd:capacity_saving': 'deduplication_compression'}
-        get_volume_type.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         self.snapshot_count = 0
 
         def _request_side_effect(
@@ -1696,5 +1764,5 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                           TEST_VOLUME[4],
                           TEST_VOLUME[5])
         self.assertEqual(2, get_volume_type_extra_specs.call_count)
-        self.assertEqual(0, get_volume_type.call_count)
+        self.assertEqual(1, get_volume_type_qos_specs.call_count)
         self.assertEqual(14, request.call_count)

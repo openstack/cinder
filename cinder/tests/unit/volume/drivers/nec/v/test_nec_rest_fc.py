@@ -1,4 +1,4 @@
-# Copyright (C) 2021, 2023, NEC corporation
+# Copyright (C) 2021, 2024, NEC corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -28,6 +28,7 @@ from cinder.volume.drivers.hitachi import hbsd_rest
 from cinder.volume.drivers.hitachi import hbsd_rest_api
 from cinder.volume.drivers.nec.v import nec_v_fc
 from cinder.volume.drivers.nec.v import nec_v_rest
+from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
 # Configuration parameter values
@@ -55,6 +56,17 @@ DEFAULT_CONNECTOR = {
     'wwpns': [CONFIG_MAP['host_wwn']],
     'multipath': False,
 }
+
+CTXT = cinder_context.get_admin_context()
+
+TEST_VOLUME = []
+volume = {}
+volume['id'] = '00000000-0000-0000-0000-{0:012d}'.format(0)
+volume['name'] = 'test-volume{0:d}'.format(0)
+volume['volume_type_id'] = '00000000-0000-0000-0000-{0:012d}'.format(0)
+volume = fake_volume.fake_volume_obj(CTXT, **volume)
+volume.volume_type = fake_volume.fake_volume_type_obj(CTXT)
+TEST_VOLUME.append(volume)
 
 # Dummy response for REST API
 POST_SESSIONS_RESULT = {
@@ -376,11 +388,17 @@ class VStorageRESTFCDriverTest(test.TestCase):
                          "SS")
 
     @mock.patch.object(requests.Session, "request")
-    def test_create_volume(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume(
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
         request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        get_volume_type_extra_specs.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         self.driver.common._stats = {}
         self.driver.common._stats['pools'] = [
             {'location_info': {'pool_id': 30}}]
-        ret = self.driver.create_volume(fake_volume.fake_volume_obj(self.ctxt))
+        ret = self.driver.create_volume(TEST_VOLUME[0])
         self.assertEqual('1', ret['provider_location'])
         self.assertEqual(2, request.call_count)

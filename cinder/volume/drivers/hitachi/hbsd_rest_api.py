@@ -1,4 +1,4 @@
-# Copyright (C) 2020, 2022, Hitachi, Ltd.
+# Copyright (C) 2020, 2024, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -1023,6 +1023,16 @@ class RestApiClient():
         }
         body = {"parameters": {"virtualLdevId": virtual_ldev_id}}
         self._invoke(url, body=body)
+
+    def set_qos_specs(self, ldev_id, qos_specs):
+        url = '%(url)s/ldevs/%(id)s/actions/%(action)s/invoke' % {
+            'url': self.object_url,
+            'id': ldev_id,
+            'action': 'set-qos',
+        }
+        for (key, value) in qos_specs.items():
+            body = {'parameters': {key: value}}
+            self._invoke(url, body=body)
 
     def output_log(self, msg_enum, **kwargs):
         if self.is_rep:
