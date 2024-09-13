@@ -8664,3 +8664,8 @@ CALCULATE_COUNT_HELPERS = {
     'snapshot': (_snaps_get_query, _process_snaps_filters),
     'backup': (_backups_get_query, _process_backups_filters),
 }
+
+
+def get_projects(context, model, read_deleted="no"):
+    return model_query(context, model, read_deleted=read_deleted).\
+        with_entities(sa.Column('project_id')).distinct().all()
