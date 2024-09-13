@@ -194,6 +194,90 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
         portals, nqn = self.nvme_driver.adapter._get_nvme_targets()
         self.assertEqual(2, len(portals))
 
+    def test_get_connection_properties(self):
+        volume_identifier = '123'
+        portals, nqn = self.nvme_driver.adapter._get_nvme_targets()
+        result = {
+            'driver_volume_type': 'nvmeof',
+            'data': {
+                'portals': [('11.22.33.44', 4420, 'tcp'),
+                            ('55.66.77.88', 4420, 'tcp')],
+                'target_nqn': [{
+                    'nvm_subsystem_nqn':
+                        'nqn.2020-07.com.dell:powerstore:00:test-nqn'
+                }],
+                'volume_nguid': '123',
+                'discard': True
+            }
+        }
+        self.assertEqual(result,
+                         self.nvme_driver.adapter.
+                         _get_connection_properties(volume_identifier))
+
+    def test_get_connection_properties_no_volume_identifier(self):
+        portals, nqn = self.nvme_driver.adapter._get_nvme_targets()
+        result = {
+            'driver_volume_type': 'nvmeof',
+            'data': {
+                'portals': [('11.22.33.44', 4420, 'tcp'),
+                            ('55.66.77.88', 4420, 'tcp')],
+                'target_nqn': [{
+                    'nvm_subsystem_nqn':
+                        'nqn.2020-07.com.dell:powerstore:00:test-nqn'
+                }],
+                'volume_nguid': None,
+                'discard': True
+            }
+        }
+        self.assertEqual(result, self.nvme_driver.adapter.
+                         _get_connection_properties(None))
+
+    def test_get_connection_properties_no_nqn(self):
+        volume_identifier = '123'
+        with mock.patch.object(self.nvme_driver.adapter,
+                               "_get_nvme_targets",
+                               return_value=(['11.22.33.44', '55.66.77.88'],
+                                             [])):
+            result = {
+                'driver_volume_type': 'nvmeof',
+                'data': {
+                    'portals': [('11.22.33.44', 4420, 'tcp'),
+                                ('55.66.77.88', 4420, 'tcp')],
+                    'target_nqn': [],
+                    'volume_nguid': '123',
+                    'discard': True
+                }
+            }
+            self.assertEqual(result, self.nvme_driver.adapter.
+                             _get_connection_properties(volume_identifier))
+
+    def test_get_connection_properties_no_portals(self):
+        volume_identifier = '123'
+        with mock.patch.object(self.nvme_driver.adapter,
+                               "_get_nvme_targets",
+                               return_value=(
+                                   [],
+                                   [{
+                                       'nvm_subsystem_nqn':
+                                           'nqn.2020-07.com.dell:powerstore:0'
+                                           '0:test-nqn'
+                                   }]
+                               )):
+            result = {
+                'driver_volume_type': 'nvmeof',
+                'data': {
+                    'portals': [],
+                    'target_nqn': [{
+                        'nvm_subsystem_nqn':
+                        'nqn.2020-07.com.dell:powerstore:00:test-nqn'
+                    }],
+                    'volume_nguid': '123',
+                    'discard': True
+                }
+            }
+            self.assertEqual(result, self.nvme_driver.adapter.
+                             _get_connection_properties(volume_identifier))
+
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.adapter."
                 "CommonAdapter._detach_volume_from_hosts")
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.adapter."
