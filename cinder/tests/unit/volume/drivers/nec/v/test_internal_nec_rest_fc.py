@@ -1,4 +1,4 @@
-# Copyright (C) 2021, 2023, NEC corporation
+# Copyright (C) 2021, 2024, NEC corporation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -945,7 +945,10 @@ class VStorageRESTFCDriverTest(test.TestCase):
             TEST_VOLUME[0],
             TEST_VOLUME[1],
             "available")
-        self.assertEqual(1, request.call_count)
+        self.assertEqual(2, request.call_count)
+        args, kwargs = request.call_args_list[1]
+        self.assertEqual(kwargs['json']['label'],
+                         TEST_VOLUME[0]['id'].replace("-", ""))
 
     def test_unmanage_snapshot(self):
         """The driver don't support unmange_snapshot."""
