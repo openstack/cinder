@@ -14,6 +14,7 @@
 #
 """replication module for Hitachi HBSD Driver."""
 
+from collections import defaultdict
 import json
 
 from eventlet import greenthread
@@ -562,16 +563,32 @@ class HBSDREPLICATION(rest.HBSDREST):
             }
         return self.rep_primary.create_volume(volume)
 
-    def _has_rep_pair(self, ldev):
-        ldev_info = self.rep_primary.get_ldev_info(
-            ['status', 'attributes'], ldev)
+    def _has_rep_pair(self, ldev, ldev_info=None):
+        """Return if the specified LDEV has a replication pair.
+
+        :param int ldev: The LDEV ID
+        :param dict ldev_info: LDEV info
+        :return: True if the LDEV status is normal and the LDEV has a
+        replication pair, False otherwise
+        :rtype: bool
+        """
+        if ldev_info is None:
+            ldev_info = self.rep_primary.get_ldev_info(
+                ['status', 'attributes'], ldev)
         return (ldev_info['status'] == rest.NORMAL_STS and
                 self.driver_info['mirror_attr'] in ldev_info['attributes'])
 
-    def _get_rep_pair_info(self, pldev):
-        """Return replication pair info."""
+    def _get_rep_pair_info(self, pldev, ldev_info=None):
+        """Return replication pair info.
+
+        :param int pldev: The ID of the LDEV(P-VOL in case of a pair)
+        :param dict ldev_info: LDEV info
+        :return: replication pair info. An empty dict if the LDEV does not
+        have a pair.
+        :rtype: dict
+        """
         pair_info = {}
-        if not self._has_rep_pair(pldev):
+        if not self._has_rep_pair(pldev, ldev_info):
             return pair_info
         self._require_rep_secondary()
         copy_group_name = self._create_rep_copy_group_name(pldev)
@@ -609,6 +626,65 @@ class HBSDREPLICATION(rest.HBSDREST):
         self.rep_primary.client.delete_remote_copypair(
             self.rep_secondary.client, copy_group_name, pvol, svol)
 
+    def _delete_volume_pre_check(self, volume):
+        """Pre-check for delete_volume().
+
+        :param Volume volume: The volume to be checked
+        :return: svol: The ID of the S-VOL
+        :rtype: int
+        :return: pvol_is_invalid: True if P-VOL is invalid, False otherwise
+        :rtype: bool
+        :return: svol_is_invalid: True if S-VOL is invalid, False otherwise
+        :rtype: bool
+        :return: pair_exists: True if the pair exists, False otherwise
+        :rtype: bool
+        """
+        # Check if the LDEV in the primary storage corresponds to the volume
+        pvol_is_invalid = True
+        # To avoid KeyError when accessing a missing attribute, set the default
+        # value to None.
+        pvol_info = defaultdict(lambda: None)
+        pvol = self.rep_primary.get_ldev(volume)
+        if pvol is not None:
+            if self.rep_primary.is_invalid_ldev(pvol, volume, pvol_info):
+                # If the LDEV is assigned to another object, skip deleting it.
+                self.rep_primary.output_log(
+                    MSG.SKIP_DELETING_LDEV, obj='volume', obj_id=volume.id,
+                    ldev=pvol, ldev_label=pvol_info['label'])
+            else:
+                pvol_is_invalid = False
+        # Check if the pair exists on the storage.
+        pair_exists = False
+        svol_is_invalid = True
+        svol = None
+        if not pvol_is_invalid:
+            pair_info = self._get_rep_pair_info(pvol, pvol_info)
+            if pair_info:
+                pair_exists = True
+                # Because this pair is a valid P-VOL's pair, we need to delete
+                # it and its LDEVs. The LDEV ID of the S-VOL to be deleted is
+                # uniquely determined from the pair info. Therefore, there is
+                # no need to get it from provider_location or to validate the
+                # S-VOL by comparing the volume ID with the S-VOL's label.
+                svol = pair_info['svol_info'][0]['ldev']
+                svol_is_invalid = False
+        # Check if the LDEV in the secondary storage corresponds to the volume
+        if svol_is_invalid:
+            svol = self.rep_secondary.get_ldev(volume)
+            if svol is not None:
+                # To avoid KeyError when accessing a missing attribute, set the
+                # default value to None.
+                svol_info = defaultdict(lambda: None)
+                if self.rep_secondary.is_invalid_ldev(svol, volume, svol_info):
+                    # If the LDEV is assigned to another object, skip deleting
+                    # it.
+                    self.rep_secondary.output_log(
+                        MSG.SKIP_DELETING_LDEV, obj='volume', obj_id=volume.id,
+                        ldev=svol, ldev_label=svol_info['label'])
+                else:
+                    svol_is_invalid = False
+        return svol, pvol_is_invalid, svol_is_invalid, pair_exists
+
     def delete_volume(self, volume):
         """Delete the specified volume."""
         self._require_rep_primary()
@@ -618,22 +694,34 @@ class HBSDREPLICATION(rest.HBSDREST):
                 MSG.INVALID_LDEV_FOR_DELETION, method='delete_volume',
                 id=volume.id)
             return
-        pair_info = self._get_rep_pair_info(ldev)
-        if pair_info:
-            self._delete_rep_pair(
-                pair_info['pvol'], pair_info['svol_info'][0]['ldev'])
+        # Run pre-check.
+        svol, pvol_is_invalid, svol_is_invalid, pair_exists = (
+            self._delete_volume_pre_check(volume))
+        # Delete the pair if it exists.
+        if pair_exists:
+            self._delete_rep_pair(ldev, svol)
+        # Delete LDEVs if they are valid.
+        thread = None
+        if not svol_is_invalid:
             thread = greenthread.spawn(
                 self.rep_secondary.delete_volume, volume)
-            try:
+        try:
+            if not pvol_is_invalid:
                 self.rep_primary.delete_volume(volume)
-            finally:
+        finally:
+            if thread is not None:
                 thread.wait()
-        else:
-            self.rep_primary.delete_volume(volume)
 
-    def delete_ldev(self, ldev):
+    def delete_ldev(self, ldev, ldev_info=None):
+        """Delete the specified LDEV[s].
+
+        :param int ldev: The ID of the LDEV(P-VOL in case of a pair) to be
+        deleted
+        :param dict ldev_info: LDEV(P-VOL in case of a pair) info
+        :return: None
+        """
         self._require_rep_primary()
-        pair_info = self._get_rep_pair_info(ldev)
+        pair_info = self._get_rep_pair_info(ldev, ldev_info)
         if pair_info:
             self._delete_rep_pair(ldev, pair_info['svol_info'][0]['ldev'])
             th = greenthread.spawn(self.rep_secondary.delete_ldev,
@@ -939,23 +1027,6 @@ class HBSDREPLICATION(rest.HBSDREST):
             return False, None
         else:
             return self.rep_primary.migrate_volume(volume, host)
-
-    def update_migrated_volume(self, volume, new_volume):
-        """Update LDEV settings after generic volume migration."""
-        self._require_rep_primary()
-        ldev = self.rep_primary.get_ldev(new_volume)
-        # We do not need to check if ldev is not None because it is guaranteed
-        # that ldev is not None because migration has been successful so far.
-        if self._has_rep_pair(ldev):
-            self._require_rep_secondary()
-            thread = greenthread.spawn(
-                self.rep_secondary.update_migrated_volume, volume, new_volume)
-            try:
-                self.rep_primary.update_migrated_volume(volume, new_volume)
-            finally:
-                thread.wait()
-        else:
-            self.rep_primary.update_migrated_volume(volume, new_volume)
 
     def _resync_rep_pair(self, pvol, svol):
         copy_group_name = self._create_rep_copy_group_name(pvol)
