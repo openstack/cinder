@@ -32,6 +32,7 @@ from cinder.scheduler import filters
 from cinder.scheduler import host_manager
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.objects import test_service
+from cinder.tests.unit.scheduler import helpers
 from cinder.tests.unit import test
 
 CONF = cfg.CONF
@@ -59,11 +60,17 @@ class HostManagerTestCase(test.TestCase):
 
     def setUp(self):
         super(HostManagerTestCase, self).setUp()
-        self.host_manager = host_manager.HostManager()
+        with mock.patch('cinder.scheduler.filters.BackendFilterHandler.'
+                        'get_all_classes',
+                        return_value=helpers.ALL_FILTER_CLASSES[:]):
+            self.host_manager = host_manager.HostManager()
         self.fake_backends = [host_manager.BackendState('fake_be%s' % x, None)
                               for x in range(1, 5)]
         # For a second scheduler service.
-        self.host_manager_1 = host_manager.HostManager()
+        with mock.patch('cinder.scheduler.filters.BackendFilterHandler.'
+                        'get_all_classes',
+                        return_value=helpers.ALL_FILTER_CLASSES[:]):
+            self.host_manager_1 = host_manager.HostManager()
 
     @mock.patch(
         'cinder.scheduler.filters.BackendFilterHandler.get_all_classes')
@@ -537,7 +544,10 @@ class HostManagerTestCase(test.TestCase):
         ]
         _mock_service_get_all.return_value = services
         # Create host_manager again to let db.service_get_all mock run
-        self.host_manager = host_manager.HostManager()
+        with mock.patch('cinder.scheduler.filters.BackendFilterHandler.'
+                        'get_all_classes',
+                        return_value=helpers.ALL_FILTER_CLASSES[:]):
+            self.host_manager = host_manager.HostManager()
         self.assertFalse(self.host_manager.has_all_capabilities())
 
         timestamp = jsonutils.to_primitive(datetime.utcnow())
@@ -602,7 +612,10 @@ class HostManagerTestCase(test.TestCase):
         ]
         _mock_service_get_all.return_value = services
         # Create host_manager again to let db.service_get_all mock run
-        self.host_manager = host_manager.HostManager()
+        with mock.patch('cinder.scheduler.filters.BackendFilterHandler.'
+                        'get_all_classes',
+                        return_value=helpers.ALL_FILTER_CLASSES[:]):
+            self.host_manager = host_manager.HostManager()
         self.assertFalse(self.host_manager.first_receive_capabilities())
 
         timestamp = jsonutils.to_primitive(datetime.utcnow())
