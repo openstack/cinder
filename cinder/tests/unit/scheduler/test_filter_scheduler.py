@@ -65,7 +65,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
     def test_schedule_group(self, specs, _mock_service_get_all):
         # Make sure _schedule_group() can find host successfully.
         sched = fakes.FakeFilterScheduler()
-        sched.host_manager = fakes.FakeHostManager()
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
@@ -169,7 +168,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         # Make sure there's nothing glaringly wrong with _schedule()
         # by doing a happy day pass through.
         sched = fakes.FakeFilterScheduler()
-        sched.host_manager = fakes.FakeHostManager()
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
@@ -355,7 +353,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
 
     def _backend_passes_filters_setup(self, mock_obj):
         sched = fakes.FakeFilterScheduler()
-        sched.host_manager = fakes.FakeHostManager()
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
