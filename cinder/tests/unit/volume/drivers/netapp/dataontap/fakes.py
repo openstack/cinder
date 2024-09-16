@@ -16,6 +16,7 @@
 
 from lxml import etree
 
+from cinder.tests.unit import fake_constants
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 
 
@@ -778,9 +779,9 @@ class test_snapshot(object):
 
 
 test_snapshot = test_snapshot()
-test_snapshot.id = 'fake_snap_id'
+test_snapshot.id = fake_constants.SNAPSHOT_ID
 test_snapshot.name = 'snapshot-%s' % test_snapshot.id
-test_snapshot.volume_id = 'fake_volume_id'
+test_snapshot.volume_id = fake_constants.VOLUME_ID
 test_snapshot.provider_location = PROVIDER_LOCATION
 
 

@@ -133,6 +133,12 @@ class WarningsFixture(fixtures.Fixture):
         # this.
         warnings.simplefilter('once', DeprecationWarning)
 
+        # The UUIDFields emits a warning if the value is not a valid UUID.
+        # Let's escalate that to an exception in the test to prevent adding
+        # violations.
+
+        warnings.filterwarnings('error', message='.*invalid UUID.*')
+
         # NOTE(sdague): this remains an unresolved item around the way
         # forward on is_admin, the deprecation is definitely really premature.
         warnings.filterwarnings(
