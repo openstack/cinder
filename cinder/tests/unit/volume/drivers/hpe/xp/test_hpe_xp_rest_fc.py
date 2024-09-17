@@ -578,6 +578,9 @@ class HPEXPRESTFCDriverTest(test.TestCase):
         self.assertEqual(
             {CONFIG_MAP['port_id']: CONFIG_MAP['target_wwn']},
             drv.common.storage_info['wwns'])
+        self.assertEqual(CONFIG_MAP['host_grp_name'],
+                         drv.common.format_info['group_name_format'].format(
+                         wwn=min(DEFAULT_CONNECTOR['wwpns'])))
         self.assertEqual(1, brick_get_connector_properties.call_count)
         self.assertEqual(8, request.call_count)
         # stop the Loopingcall within the do_setup treatment
