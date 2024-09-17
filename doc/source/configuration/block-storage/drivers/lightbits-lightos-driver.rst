@@ -1,11 +1,11 @@
-===============================
-Lightbits LightOS Cinder Driver
-===============================
+=======================
+Lightbits Cinder Driver
+=======================
 
-The Lightbits(TM) LightOS(R) OpenStack driver enables OpenStack
-clusters to use LightOS clustered storage servers. This documentation
-explains how to configure Cinder for use with the Lightbits LightOS
-storage backend system.
+The Lightbits(TM) OpenStack driver enables OpenStack
+clusters to use Lightbits clustered storage servers. This documentation
+explains how to configure Cinder for use with the Lightbits storage
+backend system.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -27,24 +27,25 @@ Supported operations
 - Create volume from volume (clone)
 - Active active deployment support
 
-LightOS OpenStack Driver Components
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Lightbits OpenStack Driver Components
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The LightOS OpenStack driver has three components:
+The Lightbits OpenStack driver has three components:
+
 - Cinder driver
 - Nova libvirt volume driver
 - os_brick initiator connector
 
-In addition, it requires the LightOS ``discovery-client``, provided
-with LightOS. The os_brick connector uses the LightOS
-``discovery-client`` to communicate with LightOS NVMe/TCP discovery
+In addition, it requires the Lightbits ``discovery-client``, provided
+with product. The os_brick connector uses the Lightbits
+``discovery-client`` to communicate with Lightbits NVMe/TCP discovery
 services.
 
 The Cinder Driver
 ~~~~~~~~~~~~~~~~~
 
 The Cinder driver integrates with Cinder and performs REST operations
-against the LightOS cluster. To enable the driver, add the following
+against the Lightbits storage cluster. To enable the driver, add the following
 to Cinder's configuration file
 
 .. code-block:: ini
@@ -65,13 +66,13 @@ and
    lightos_default_compression_enabled = False
    lightos_api_service_timeout=30
 
-- ``TARGET_ACCESS_IPS`` are the LightOS cluster nodes access
+- ``TARGET_ACCESS_IPS`` are the Lightbits cluster nodes access
   IPs. Multiple nodes should be separated by commas. For example:
   ``lightos_api_address =
   192.168.67.78,192.168.34.56,192.168.12.17``. These IPs are where the
-  driver looks for the LightOS clusters REST API servers.
+  driver looks for the Lightbits clusters REST API servers.
 - ``LIGHTOS_JWT`` is the JWT (JSON Web Token) that is located at the
-  LightOS installation controller. You can find the jwt at
+  Lightbits installation controller. You can find the jwt at
   ``~/lightos-default-admin-jwt``.
 - The default number of replicas for volumes is 3, and valid values
   for ``lightos_default_num_replicas`` are 1, 2, or 3.
@@ -113,14 +114,14 @@ Then create a new volume with one of these volume types:
 NVNe/TCP and Asymmetric Namespace Access (ANA)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The LightOS clusters expose their volumes using NVMe/TCP Asynchronous
+The Lightbits clusters expose their volumes using NVMe/TCP Asynchronous
 Namespace Access (ANA). ANA is a relatively new feature in the
 NVMe/TCP stack in Linux but it is fully supported in Ubuntu
 20.04. Each compute host in the OpenStack cluster needs to be
-ANA-capable to provide OpenStack VMs with LightOS volumes over
+ANA-capable to provide OpenStack VMs with Lightbits volumes over
 NVMe/TCP. For more information on how to set up the compute nodes to
 use ANA, see the CentOS Linux Cluster Client Software Installation
-section of the Lightbits(TM) LightOS(R) Cluster Installation and
+section of the Lightbits(TM) Cluster Installation and
 Initial Configuration Guide.
 
 Note
@@ -136,10 +137,10 @@ Driver options
 ~~~~~~~~~~~~~~
 
 The following table contains the configuration options supported by the
-Lightbits LightOS Cinder driver.
+Lightbits Cinder driver.
 
 .. config-table::
-   :config-target: Lightbits LightOS
+   :config-target: Lightbits cluster
 
    cinder.volume.drivers.lightos
 
