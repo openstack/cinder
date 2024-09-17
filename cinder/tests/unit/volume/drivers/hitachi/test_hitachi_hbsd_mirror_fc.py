@@ -1286,7 +1286,9 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     def test_update_migrated_volume(self, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
-                               FakeResponse(200, COMPLETED_SUCCEEDED_RESULT)]
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.assertRaises(
             NotImplementedError,
             self.driver.update_migrated_volume,
@@ -1294,7 +1296,31 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
             TEST_VOLUME[0],
             TEST_VOLUME[1],
             "available")
-        self.assertEqual(2, request.call_count)
+        self.assertEqual(4, request.call_count)
+        args, kwargs = request.call_args_list[3]
+        self.assertEqual(kwargs['json']['label'],
+                         TEST_VOLUME[0]['id'].replace("-", ""))
+
+    @mock.patch.object(requests.Session, "request")
+    def test_update_migrated_volume_replication(self, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_REP),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT_REP),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.update_migrated_volume,
+            self.ctxt,
+            TEST_VOLUME[0],
+            TEST_VOLUME[4],
+            "available")
+        self.assertEqual(6, request.call_count)
+        original_volume_nickname = TEST_VOLUME[0]['id'].replace("-", "")
+        for i in (4, 5):
+            args, kwargs = request.call_args_list[i]
+            self.assertEqual(kwargs['json']['label'], original_volume_nickname)
 
     def test_unmanage_snapshot(self):
         """The driver don't support unmange_snapshot."""
