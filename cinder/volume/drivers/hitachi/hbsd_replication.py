@@ -237,7 +237,15 @@ class HBSDREPLICATION(rest.HBSDREST):
         for opt in opts:
             name = opt.name.replace('hitachi_mirror_', 'hitachi_')
             try:
-                setattr(conf, name, getattr(conf, opt.name))
+                if opt.name == 'hitachi_mirror_pool':
+                    if conf.safe_get('hitachi_mirror_pool'):
+                        name = 'hitachi_pools'
+                        value = [getattr(conf, opt.name)]
+                    else:
+                        raise ValueError()
+                else:
+                    value = getattr(conf, opt.name)
+                setattr(conf, name, value)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     self.rep_secondary.output_log(
