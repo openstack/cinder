@@ -1,0 +1,6 @@
+fixes:
+  - |
+    Hitachi driver `bug #2024418
+    <https://bugs.launchpad.net/cinder/+bug/2024418>`_: Fixed to raise
+    correct exception when volume is busy while performing delete volume
+    operation.

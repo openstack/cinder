@@ -400,7 +400,7 @@ class HBSDCommon():
         try:
             self.delete_ldev(ldev)
         except exception.VolumeDriverException as ex:
-            if ex.msg == utils.BUSY_MESSAGE:
+            if utils.BUSY_MESSAGE in ex.msg:
                 raise exception.VolumeIsBusy(volume_name=volume['name'])
             else:
                 raise ex
@@ -437,7 +437,7 @@ class HBSDCommon():
         try:
             self.delete_ldev(ldev)
         except exception.VolumeDriverException as ex:
-            if ex.msg == utils.BUSY_MESSAGE:
+            if utils.BUSY_MESSAGE in ex.msg:
                 raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
             else:
                 raise ex
@@ -592,7 +592,7 @@ class HBSDCommon():
         try:
             self.delete_pair(ldev)
         except exception.VolumeDriverException as ex:
-            if ex.msg == utils.BUSY_MESSAGE:
+            if utils.BUSY_MESSAGE in ex.msg:
                 raise exception.VolumeIsBusy(volume_name=volume['name'])
             else:
                 raise ex
