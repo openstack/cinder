@@ -460,6 +460,11 @@ def volume_get_all_by_host(context, host, filters=None):
     return IMPL.volume_get_all_by_host(context, host, filters=filters)
 
 
+def volume_update_all_by_service(context):
+    """Update all volumes associated with an old service."""
+    return IMPL.volume_update_all_by_service(context)
+
+
 def volume_get_all_by_group(context, group_id, filters=None):
     """Get all volumes belonging to a consistency group."""
     return IMPL.volume_get_all_by_group(context, group_id, filters=filters)
