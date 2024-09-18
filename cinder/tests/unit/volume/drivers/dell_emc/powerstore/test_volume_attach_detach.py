@@ -142,7 +142,9 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
             return_value=fake_nvme_nqn_response
         )
 
-    def test_initialize_connection_chap_enabled(self):
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.utils."
+                "is_metro_volume", return_value=False)
+    def test_initialize_connection_chap_enabled(self, mock_is_metro_volume):
         self.iscsi_driver.adapter.use_chap_auth = True
         with mock.patch.object(self.iscsi_driver.adapter,
                                "_create_host_and_attach",
@@ -156,8 +158,11 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
             )
             self.assertIn("auth_username", connection_properties["data"])
             self.assertIn("auth_password", connection_properties["data"])
+            mock_is_metro_volume.assert_called_once()
 
-    def test_initialize_connection_chap_disabled(self):
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.utils."
+                "is_metro_volume", return_value=False)
+    def test_initialize_connection_chap_disabled(self, mock_is_metro_volume):
         self.iscsi_driver.adapter.use_chap_auth = False
         with mock.patch.object(self.iscsi_driver.adapter,
                                "_create_host_and_attach",
@@ -171,6 +176,7 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
             )
             self.assertNotIn("auth_username", connection_properties["data"])
             self.assertNotIn("auth_password", connection_properties["data"])
+            mock_is_metro_volume.assert_called_once()
 
     def test_get_fc_targets(self):
         wwns = self.fc_driver.adapter._get_fc_targets()
@@ -300,13 +306,17 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
             self.assertEqual(result, self.nvme_driver.adapter.
                              _get_connection_properties(volume_identifier))
 
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.utils."
+                "is_metro_volume", return_value=False)
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.adapter."
                 "CommonAdapter._detach_volume_from_hosts")
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.adapter."
                 "CommonAdapter._filter_hosts_by_initiators")
-    def test_detach_multiattached_volume(self, mock_filter_hosts, mock_detach):
+    def test_detach_multiattached_volume(self, mock_filter_hosts, mock_detach,
+                                         mock_is_metro_volume):
         self.iscsi_driver.terminate_connection(self.volume,
                                                self.fake_connector)
+        mock_is_metro_volume.assert_called_once()
         mock_filter_hosts.assert_not_called()
         mock_detach.assert_not_called()
         self.volume.volume_attachment.objects.pop()
@@ -314,7 +324,10 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
                                                self.fake_connector)
         mock_filter_hosts.assert_called_once()
         mock_detach.assert_called_once()
+        mock_is_metro_volume.assert_called()
 
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.utils."
+                "is_metro_volume", return_value=False)
     @mock.patch('cinder.volume.volume_types.'
                 'get_volume_type_qos_specs',
                 return_value=QOS_SPECS)
@@ -342,7 +355,8 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
                                       mock_get_qos_policy,
                                       mock_qos_io_rule,
                                       mock_qos_policy,
-                                      mock_volume_qos_update):
+                                      mock_volume_qos_update,
+                                      mock_is_metro_volume):
 
         self.iscsi_driver.adapter.use_chap_auth = False
         self.mock_object(self.iscsi_driver.adapter,
@@ -364,7 +378,10 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
         mock_attach_volume.assert_called_once()
         mock_qos_policy.assert_called_once()
         mock_volume_qos_update.assert_called_once()
+        mock_is_metro_volume.assert_called_once()
 
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.utils."
+                "is_metro_volume", return_value=False)
     @mock.patch('cinder.volume.volume_types.'
                 'get_volume_type_qos_specs',
                 return_value=QOS_SPECS)
@@ -388,7 +405,8 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
                                        mock_get_array_version,
                                        mock_get_qos_policy,
                                        mock_update_qos_io_rule,
-                                       mock_volume_qos_update):
+                                       mock_volume_qos_update,
+                                       mock_is_metro_volume):
         self.iscsi_driver.adapter.use_chap_auth = False
         self.mock_object(self.iscsi_driver.adapter,
                          "_create_host_if_not_exist",
@@ -408,7 +426,10 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
         mock_get_array_version.assert_called_once()
         mock_update_qos_io_rule.assert_called_once()
         mock_volume_qos_update.assert_called_once()
+        mock_is_metro_volume.assert_called_once()
 
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.utils."
+                "is_metro_volume", return_value=False)
     @mock.patch('cinder.volume.volume_types.'
                 'get_volume_type_qos_specs',
                 return_value=QOS_SPECS)
@@ -426,7 +447,8 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
                                       mock_multi_attached_host,
                                       mock_detach_volume,
                                       mock_get_array_version,
-                                      mock_volume_qos_update):
+                                      mock_volume_qos_update,
+                                      mock_is_metro_volume):
         self.mock_object(self.iscsi_driver.adapter,
                          "_filter_hosts_by_initiators",
                          return_value=FAKE_HOST)
@@ -437,3 +459,4 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
         mock_detach_volume.assert_called_once()
         mock_get_array_version.assert_called_once()
         mock_volume_qos_update.assert_called_once()
+        mock_is_metro_volume.assert_called_once()

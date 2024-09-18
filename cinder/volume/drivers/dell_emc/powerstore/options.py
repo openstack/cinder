@@ -17,11 +17,12 @@
 
 from oslo_config import cfg
 
-from cinder.volume.drivers.dell_emc.powerstore import utils as store_utils
+from cinder.volume.drivers.dell_emc.powerstore import utils
 
 POWERSTORE_APPLIANCES = "powerstore_appliances"
 POWERSTORE_PORTS = "powerstore_ports"
 POWERSTORE_NVME = "powerstore_nvme"
+POWERSTORE_HOST_CONNECTIVITY = "powerstore_host_connectivity"
 
 POWERSTORE_OPTS = [
     cfg.ListOpt(POWERSTORE_APPLIANCES,
@@ -42,15 +43,19 @@ POWERSTORE_OPTS = [
     cfg.BoolOpt(POWERSTORE_NVME,
                 default=False,
                 help="Connect PowerStore volumes using NVMe-OF."),
-    cfg.IntOpt(store_utils.POWERSTORE_REST_CONNECT_TIMEOUT,
+    cfg.IntOpt(utils.POWERSTORE_REST_CONNECT_TIMEOUT,
                default=30, min=1,
                help='Use this value to specify the connect '
                     'timeout value (in seconds) for REST API calls '
                     'to the PowerStore backend.'),
-    cfg.IntOpt(store_utils.POWERSTORE_REST_READ_TIMEOUT,
+    cfg.IntOpt(utils.POWERSTORE_REST_READ_TIMEOUT,
                default=30, min=1,
                help='Use this value to specify the read '
                     'timeout value (in seconds) for REST API calls '
-                    'to the PowerStore backend.')
+                    'to the PowerStore backend.'),
+    cfg.StrOpt(POWERSTORE_HOST_CONNECTIVITY,
+               default=utils.LOCAL_ONLY,
+               choices=utils.HOST_CONNECTIVITY_OPTIONS,
+               help="Host connectivity of PowerStore Metro volumes."),
 
 ]
