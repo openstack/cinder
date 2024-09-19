@@ -29,6 +29,9 @@ storage service volume operations:
 -  Extend a volume.
 -  Retype a volume.
 -  Create a volume from a snapshot.
+-  Create, list, update, and delete volume groups.
+-  Create, list, and delete volume group snapshots.
+-  Clone a volume group.
 -  Create, list, and delete consistency group.
 -  Create, list, and delete consistency group snapshot.
 -  Modify consistency group (add or remove volumes).
@@ -262,6 +265,8 @@ Note the following:
   the available options are available in the Storage Virtualize family
   documentation.
 
+Volumes
+~~~~~~~
 
 Placement with volume types
 ---------------------------
@@ -419,9 +424,6 @@ parameter for storage volumes:
    If you are changing a volume type with QOS to a new volume type
    without QOS, the QOS configuration settings will be removed.
 
-Operational notes for the Storage Virtualize family driver
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 Migrate volumes
 ---------------
 
@@ -558,38 +560,6 @@ default as the ``backend_id``:
    service driver will perform the synchronization and do the failback
    after the synchronization is finished.
 
-Replication group
-<<<<<<<<<<<<<<<<<
-
-Before creating replication group, a group-spec which key
-``consistent_group_replication_enabled`` set to ``<is> True`` should be
-set in group type. Volume type used to create group must be replication
-enabled, and its ``replication_type`` should be set either ``<in> global``
-or ``<in> metro``. The "failover_group" api allows group to be failed over
-and back without failing over the entire host. Example syntax:
-
-- Create replication group
-
-.. code-block:: console
-
-   $ cinder group-type-create rep-group-type-example
-   $ cinder group-type-key rep-group-type-example set consistent_group_replication_enabled='<is> True'
-   $ cinder type-create type-global
-   $ cinder type-key type-global set replication_enabled='<is> True' replication_type='<in> global'
-   $ cinder group-create rep-group-type-example type-global --name global-group
-
-- Failover replication group
-
-.. code-block:: console
-
-   $ cinder group-failover-replication --secondary-backend-id target_svc_id group_id
-
-- Failback replication group
-
-.. code-block:: console
-
-   $ cinder group-failover-replication --secondary-backend-id default group_id
-
 .. note::
 
    Optionally, allow-attached-volume can be used to failover the in-use volume, but
@@ -642,3 +612,78 @@ used for host mapping in the Storage Virtualize family.
 
 A group is created as a HyperSwap group with a group-type that has the
 group spec ``hyperswap_group_enabled`` set to ``<is> True``.
+
+Groups
+~~~~~~~
+
+Replication operation
+---------------------
+
+Replication group
+<<<<<<<<<<<<<<<<<
+
+Before creating replication group, a group-spec which key
+``consistent_group_replication_enabled`` set to ``<is> True`` should be
+set in group type. Volume type used to create group must be replication
+enabled, and its ``replication_type`` should be set either ``<in> global``
+or ``<in> metro``. The "failover_group" api allows group to be failed over
+and back without failing over the entire host. Example syntax:
+
+- Create replication group
+
+.. code-block:: console
+
+   $ cinder group-type-create rep-group-type-example
+   $ cinder group-type-key rep-group-type-example set consistent_group_replication_enabled='<is> True'
+   $ cinder type-create type-global
+   $ cinder type-key type-global set replication_enabled='<is> True' replication_type='<in> global'
+   $ cinder group-create rep-group-type-example type-global --name global-group
+
+- Failover replication group
+
+.. code-block:: console
+
+   $ cinder group-failover-replication --secondary-backend-id target_svc_id group_id
+
+- Failback replication group
+
+.. code-block:: console
+
+   $ cinder group-failover-replication --secondary-backend-id default group_id
+
+Volume Group Snapshots
+----------------------
+
+Volume groups are created using group-type spec volume_group_enabled set
+to True. Volume groups are supported from IBM Storage Virtualize family
+firmware version 8.5.1.0 and later.
+
+.. code-block:: console
+
+   $ cinder group-type-create vg-enabled-group-type
+   $ cinder group-type-key vg-enabled-group-type set volume_group_enabled='<is> True'
+
+.. note::
+
+  Users must note that taking volume group snapshots on volumes having legacy
+  FlashCopy snapshots will render legacy FlashCopy Snapshots unusable. If your
+  volumes still have legacy FlashCopy mappings and you don't want them to be
+  part of volume groups, add following to the backend configuration:
+  migrate_from_flashcopy = False.
+
+Another implementation of volume group snapshots is vector of volumes. If you
+want to take volume group snapshot of a group of volumes without creating a
+volume group object on storage backend, use group-type spec
+temporary_volume_group_enabled. Volume vectors are supported from IBM Storage
+Virtualize family firmware version 8.6.2.0 and later.
+
+.. code-block:: console
+
+   $ cinder group-type-create temp-vg-enabled-group-type
+   $ cinder group-type-key temp-vg-enabled-group-type \
+   set temporary_volume_group_enabled='<is> True'
+
+.. note::
+
+  Replication and Hyperswap enabled volumes are not supported for volume group
+  snapshots in this release.

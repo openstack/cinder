@@ -72,3 +72,6 @@
      - (Integer) Defines an optional cycle period that applies to Global Mirror relationships with a cycling mode of multi. A Global Mirror relationship using the multi cycling_mode performs a complete cycle at most once each period. The default is 300 seconds, and the valid seconds are 60-86400.
    * - ``storwize_portset`` = ``None``
      - (String) Specifies the name of the portset in which the host is to be created.
+   * - ``migrate_from_flashcopy`` = ``True``
+     - (Boolean) Specifies whether volumegroup snapshots can be created on volumes having legacy FlashCopy mappings or not.
+
