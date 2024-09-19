@@ -16,6 +16,7 @@
 
 from unittest import mock
 
+from oslo_utils import netutils
 from oslo_utils import units
 import suds
 from suds.sax import parser
@@ -50,6 +51,13 @@ class DataCoreClientTestCase(test.TestCase):
         setattr(self.mock_suds_client.service.__getitem__,
                 'side_effect',
                 self._get_service_side_effect)
+
+        # TODO(tkajinam): Because of changes in netaddr 1.0.0, is_valid_ipv6 no
+        #                 longer "accept" non string object and raises
+        #                 TypeError. Patch the method until we properly mock
+        #                 internal behavior to present valid address strings.
+        mock_is_valid_ipv6 = self.mock_object(netutils, 'is_valid_ipv6')
+        mock_is_valid_ipv6.return_value = False
 
         self.client = api.DataCoreClient('hostname', 'username', 'password', 1)
         self.client.API_RETRY_INTERVAL = 0
