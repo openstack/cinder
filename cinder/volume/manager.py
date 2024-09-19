@@ -370,22 +370,76 @@ class VolumeManager(manager.CleanableManager,
                      {'host': self.host})
             self.image_volume_cache = None
 
+    @volume_utils.trace
+    def _update_allocated_capacity(self,
+                                   vol: objects.Volume,
+                                   decrement: bool = False,
+                                   host: Optional[str] = None,
+                                   size=None) -> None:
+        """Update a pool's allocated capacity for a volume."""
+        # Update allocated capacity in volume stats
+        host = host or vol['host']
+        pool = volume_utils.extract_host(host, 'pool')
+        if pool is None:
+            # Legacy volume, put them into default pool
+            pool = self.driver.configuration.safe_get(
+                'volume_backend_name') or volume_utils.extract_host(host,
+                                                                    'pool',
+                                                                    True)
+
+        # if a size was passed in, we use that to increment/decrement
+        # instead of the size in the volume.
+        # This is for extend
+        if size:
+            vol_size = -size if decrement else size
+        else:
+            vol_size = -vol['size'] if decrement else vol['size']
+
+        self._update_pool_allocated_capacity(pool, vol_size)
+
     def _update_pool_allocated_capacity(self, pool, size):
+        """Update a pool's allocated capacity by size."""
         try:
-            pool_stat = self.stats['pools'][pool]
+            pool_info = self.stats['pools'][pool]
+            curr_size = pool_info['allocated_capacity_gb']
         except KeyError:
             # First volume in the pool
             self.stats['pools'][pool] = dict(
                 allocated_capacity_gb=0)
-            pool_stat = self.stats['pools'][pool]
-        pool_sum = pool_stat['allocated_capacity_gb']
-        pool_sum += size
+            curr_size = 0
+            pool_info = self.stats['pools'][pool]
 
-        self.stats['pools'][pool]['allocated_capacity_gb'] = pool_sum
+        msg = "Decrementing " if size < 0 else "Incrementing "
+        msg += ("allocated_capacity_gb pool %(pool)s (%(curr_size)s) by "
+                "%(vol_size)s ")
+        LOG.debug(
+            msg,
+            {'pool': pool,
+             'curr_size': self.stats['pools'][pool]['allocated_capacity_gb'],
+             'vol_size': size})
+
+        pool_info['allocated_capacity_gb'] += size
         self.stats['allocated_capacity_gb'] += size
+        if pool_info['allocated_capacity_gb'] < 0:
+            # Remove this once we find out why
+            new_size = pool_info['allocated_capacity_gb']
+            LOG.warning("allocated_capacity_gb now=%(new_size)s"
+                        " prev=%(prev_size)s "
+                        "for pool %(pool)s is negative,"
+                        "after being altered by %(size)s size. Reset to 0",
+                        {'new_size': new_size,
+                         'prev_size': curr_size,
+                         'size': size,
+                         'pool': pool})
+            pool_info['allocated_capacity_gb'] = 0
 
     def _count_allocated_capacity(self, ctxt: context.RequestContext,
                                   volume: objects.Volume) -> None:
+        """Count the capacity for a volume against a pool.
+
+           This is called at init_host time to count the capacity
+           but also to ensure that a pool/host is set for a volume
+        """
         pool = volume_utils.extract_host(volume['host'], 'pool')
         if pool is None:
             # No pool name encoded in host, so this is a legacy
@@ -417,7 +471,8 @@ class VolumeManager(manager.CleanableManager,
 
     def _update_snapshot_allocated_capacity(self, ctxt: context.RequestContext,
                                             snapshot: objects.Snapshot,
-                                            host: Optional[str]) -> None:
+                                            host: Optional[str],
+                                            decrement: bool = False) -> None:
         """Use the size of the snapshot to adjust the allocated capacity.
 
         This updates the pool stats allocated_capacity for the pool that owns
@@ -434,6 +489,9 @@ class VolumeManager(manager.CleanableManager,
             host = volume.host
 
         pool = volume_utils.extract_host(host, 'pool')
+
+        if decrement:
+            size = -size
         self._update_pool_allocated_capacity(pool, size)
 
     def _set_voldb_empty_at_startup_indicator(
@@ -1443,12 +1501,14 @@ class VolumeManager(manager.CleanableManager,
         # for the snapshot size on the backend.
         # The hidden backend key is there for snapshots
         # that are clones.
-        if snapshot.metadata:
+        if (self.driver.capabilities.get('snapshot_type') == 'clone'
+                and snapshot.metadata):
             key = objects.snapshot.SAP_HIDDEN_BACKEND_KEY
-            host = snapshot.metadata.get(key)
-            self._update_snapshot_allocated_capacity(
-                context, snapshot, host=host
-            )
+            hidden_host = snapshot.metadata.get(key)
+            if hidden_host:
+                self._update_snapshot_allocated_capacity(
+                    context, snapshot, host=hidden_host
+                )
 
         self._notify_about_snapshot_usage(context, snapshot, "create.end")
         action_track.track(
@@ -1533,6 +1593,22 @@ class VolumeManager(manager.CleanableManager,
             reservations = None
             LOG.exception("Update snapshot usages failed.",
                           resource=snapshot)
+
+            # For snapshots that have a hidden backend key
+            # we update the allocated capacity to account
+            # for the snapshot size on the backend.
+            # The hidden backend key is there for snapshots
+            # that are clones.
+            if (self.driver.capabilities.get('snapshot_type') == 'clone'
+                    and snapshot.metadata):
+                key = objects.snapshot.SAP_HIDDEN_BACKEND_KEY
+                hidden_host = snapshot.metadata.get(key)
+                if hidden_host:
+                    self._update_snapshot_allocated_capacity(
+                        context, snapshot, host=hidden_host,
+                        decrement=True
+                    )
+
         self.db.volume_glance_metadata_delete_by_snapshot(context, snapshot.id)
         snapshot.destroy()
         self._notify_about_snapshot_usage(context, snapshot, "delete.end")
@@ -3970,63 +4046,6 @@ class VolumeManager(manager.CleanableManager,
             raise exception.MetadataCopyFailure(reason=str(ex))
 
         self.db.volume_update(context, vol['id'], update)
-
-    @volume_utils.trace
-    def _update_allocated_capacity(self,
-                                   vol: objects.Volume,
-                                   decrement: bool = False,
-                                   host: Optional[str] = None,
-                                   size=None) -> None:
-        # Update allocated capacity in volume stats
-        host = host or vol['host']
-        pool = volume_utils.extract_host(host, 'pool')
-        if pool is None:
-            # Legacy volume, put them into default pool
-            pool = self.driver.configuration.safe_get(
-                'volume_backend_name') or volume_utils.extract_host(host,
-                                                                    'pool',
-                                                                    True)
-
-        # if a size was passed in, we use that to increment/decrement
-        # instead of the size in the volume.
-        # This is for extend
-        if size:
-            vol_size = -size if decrement else size
-        else:
-            vol_size = -vol['size'] if decrement else vol['size']
-
-        try:
-            curr_size = self.stats['pools'][pool]['allocated_capacity_gb']
-        except KeyError:
-            self.stats['pools'][pool] = dict(
-                allocated_capacity_gb=0)
-            curr_size = 0
-
-        msg = "Decrementing " if decrement else "Incrementing "
-        msg += ("allocated_capacity_gb host %(host)s (%(curr_size)s) by "
-                "%(vol_size)s ")
-        LOG.debug(
-            msg,
-            {'host': host,
-             'curr_size': self.stats['pools'][pool]['allocated_capacity_gb'],
-             'vol_size': vol_size}, resource=vol)
-
-        self.stats['pools'][pool]['allocated_capacity_gb'] += vol_size
-
-        pool_info = self.stats['pools'][pool]
-        if pool_info['allocated_capacity_gb'] < 0:
-            # Remove this once we find out why
-            new_size = pool_info['allocated_capacity_gb']
-            LOG.warning("allocated_capacity_gb now=%(new_size)s"
-                        " prev=%(prev_size)s "
-                        "for pool %(pool)s is negative,"
-                        "after being altered by %(vol_size)s size. Reset to 0",
-                        {'new_size': new_size,
-                         'prev_size': curr_size,
-                         'pool': pool,
-                         'vol_size': vol_size},
-                        resource=vol)
-            self.stats['pools'][pool]['allocated_capacity_gb'] = 0
 
     @action_track.track_decorator(action_track.ACTION_GROUP_DELETE)
     def delete_group(self,
