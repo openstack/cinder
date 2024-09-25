@@ -62,6 +62,11 @@ class ImageVolumeCache(object):
             return {'cluster_name': volume_ref.cluster_name}
         if not self.clone_across_pools:
             return {'host': volume_ref.host}
+        # FIXME(whoami-rajat): If we have two cinder backends pointing to
+        # two different storage arrays, this logic will allow the operation
+        # to proceed to clone across two storage arrays which will fail
+        # eventually. We should at least filter with the hostname in the
+        # given host value hostname@backend#pool.
         return {}
 
     def get_entry(self,
