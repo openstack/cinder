@@ -210,22 +210,28 @@ class APIRouter(cinder.api.openstack.APIRouter):
                         member={'accept': 'POST'})
 
         self.resources['default_types'] = default_types.create_resource()
-        mapper.connect("default-types", "/default-types/{id}",
-                       controller=self.resources['default_types'],
-                       action='create_update',
-                       conditions={"method": ['PUT']})
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect(
+                "default-types", "%s/default-types/{id}" % path_prefix,
+                controller=self.resources['default_types'],
+                action='create_update',
+                conditions={"method": ['PUT']})
 
-        mapper.connect("default-types", "/default-types",
-                       controller=self.resources['default_types'],
-                       action='index',
-                       conditions={"method": ['GET']})
+            mapper.connect(
+                "default-types", "%s/default-types" % path_prefix,
+                controller=self.resources['default_types'],
+                action='index',
+                conditions={"method": ['GET']})
 
-        mapper.connect("default-types", "/default-types/{id}",
-                       controller=self.resources['default_types'],
-                       action='detail',
-                       conditions={"method": ['GET']})
+            mapper.connect(
+                "default-types", "%s/default-types/{id}" % path_prefix,
+                controller=self.resources['default_types'],
+                action='detail',
+                conditions={"method": ['GET']})
 
-        mapper.connect("default-types", "/default-types/{id}",
-                       controller=self.resources['default_types'],
-                       action='delete',
-                       conditions={"method": ['DELETE']})
+            mapper.connect(
+                "default-types", "%s/default-types/{id}" % path_prefix,
+                controller=self.resources['default_types'],
+                action='delete',
+                conditions={"method": ['DELETE']})
