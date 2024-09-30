@@ -32,7 +32,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import excutils
-from oslo_utils import secretutils
 from oslo_utils import units
 
 from cinder.backup import driver
@@ -401,7 +400,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         ) as writer:
             writer.write(output_data)
         md5 = eventlet.tpool.execute(
-            secretutils.md5, data, usedforsecurity=False).hexdigest()
+            hashlib.md5, data, usedforsecurity=False).hexdigest()
         obj[object_name]['md5'] = md5
         LOG.debug('backup MD5 for %(object_name)s: %(md5)s',
                   {'object_name': object_name, 'md5': md5})

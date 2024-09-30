@@ -13,13 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import hashlib
 import json
 import posixpath
 import urllib
 
 from eventlet import greenthread
 from oslo_log import log as logging
-from oslo_utils.secretutils import md5
 import requests
 
 from cinder import exception
@@ -601,7 +601,7 @@ class NefProxy(object):
         path = '%s:%s' % (guid, self.path)
         if isinstance(path, str):
             path = path.encode('utf-8')
-        self.lock = md5(path, usedforsecurity=False).hexdigest()
+        self.lock = hashlib.md5(path, usedforsecurity=False).hexdigest()
 
     def url(self, path):
         netloc = '%s:%d' % (self.host, int(self.port))

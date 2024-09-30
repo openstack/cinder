@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import hashlib
 import json
 import math
 
 from oslo_log import log as logging
-from oslo_utils.secretutils import md5
 from oslo_utils import strutils
 
 from cinder import context
@@ -35,8 +35,8 @@ LOG = logging.getLogger(__name__)
 
 
 def encode_name(name):
-    encoded_name = md5(name.encode('utf-8'),
-                       usedforsecurity=False).hexdigest()
+    encoded_name = hashlib.md5(name.encode('utf-8'),
+                               usedforsecurity=False).hexdigest()
     prefix = name.split('-')[0] + '-'
     postfix = encoded_name[:constants.MAX_NAME_LENGTH - len(prefix)]
     return prefix + postfix
@@ -54,8 +54,8 @@ def old_encode_name(name):
 
 def encode_host_name(name):
     if name and len(name) > constants.MAX_NAME_LENGTH:
-        encoded_name = md5(name.encode('utf-8'),
-                           usedforsecurity=False).hexdigest()
+        encoded_name = hashlib.md5(name.encode('utf-8'),
+                                   usedforsecurity=False).hexdigest()
         return encoded_name[:constants.MAX_NAME_LENGTH]
     return name
 

@@ -27,6 +27,7 @@ Server-centric flow is used for authentication.
 """
 
 import base64
+import hashlib
 import io
 import os
 
@@ -42,7 +43,6 @@ from googleapiclient import errors
 from googleapiclient import http
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import secretutils
 from oslo_utils import timeutils
 
 from cinder.backup import chunkeddriver
@@ -314,7 +314,7 @@ class GoogleObjectWriter(object):
             body={},
             media_body=media).execute(num_retries=self.num_retries)
         etag = resp['md5Hash']
-        md5 = secretutils.md5(self.data, usedforsecurity=False).digest()
+        md5 = hashlib.md5(self.data, usedforsecurity=False).digest()
         md5 = md5.encode('utf-8')
         etag = bytes(etag, 'utf-8')
         md5 = base64.b64encode(md5)

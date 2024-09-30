@@ -14,10 +14,10 @@
 
 """Volume driver for KIOXIA KumoScale NVMeOF storage system."""
 
+import hashlib
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils.secretutils import md5
 
 from cinder.common import constants
 from cinder import exception
@@ -386,7 +386,8 @@ class KumoScaleBaseVolumeDriver(driver.BaseVD):
         if name is None:
             return ""
         if len(name) > 32:
-            name = md5(name.encode('utf-8'), usedforsecurity=False).hexdigest()
+            name = hashlib.md5(name.encode('utf-8'),
+                               usedforsecurity=False).hexdigest()
         else:
             name = name.replace('.', '-').lower()
         return name

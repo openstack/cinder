@@ -65,6 +65,7 @@
 
 import base64
 import functools
+import hashlib
 import io
 import itertools as it
 import socket
@@ -76,7 +77,6 @@ from botocore.vendored.requests.packages.urllib3 import exceptions as \
     urrlib_exc
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils.secretutils import md5
 from oslo_utils import timeutils
 
 from cinder.backup import chunkeddriver
@@ -325,7 +325,8 @@ class S3ObjectWriter(object):
     def close(self):
         reader = io.BytesIO(self.data)
         contentmd5 = base64.b64encode(
-            md5(self.data, usedforsecurity=False).digest()).decode('utf-8')
+            hashlib.md5(self.data,
+                        usedforsecurity=False).digest()).decode('utf-8')
         put_args = {'Bucket': self.bucket,
                     'Body': reader,
                     'Key': self.object_name,

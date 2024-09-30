@@ -15,6 +15,7 @@
 
 import base64
 import functools
+import hashlib
 import json
 import math
 from os import urandom
@@ -32,7 +33,6 @@ import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
-from oslo_utils.secretutils import md5
 from oslo_utils import units
 import requests
 
@@ -117,7 +117,7 @@ class AESCipher(object):
         d = d_i = b''
         while len(d) < key_length + iv_length:
             md5_str = d_i + password + salt
-            d_i = md5(md5_str, usedforsecurity=True).digest()
+            d_i = hashlib.md5(md5_str, usedforsecurity=True).digest()
             d += d_i
         return d[:key_length], d[key_length:key_length + iv_length]
 

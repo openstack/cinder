@@ -19,6 +19,7 @@
 """Cinder Volume driver for Fujitsu ETERNUS DX S3 series."""
 
 import base64
+import hashlib
 import time
 
 from lxml import etree as ET
@@ -26,7 +27,6 @@ from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import loopingcall
-from oslo_utils.secretutils import md5
 from oslo_utils import units
 
 from cinder import context
@@ -1426,7 +1426,7 @@ class FJDXCommon(object):
 
         id_code = volume['id']
 
-        m = md5(usedforsecurity=False)
+        m = hashlib.md5(usedforsecurity=False)
         m.update(id_code.encode('utf-8'))
 
         # Pylint: disable=E1121.
