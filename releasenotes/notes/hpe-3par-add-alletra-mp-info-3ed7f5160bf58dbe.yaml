@@ -1,0 +1,7 @@
+---
+other:
+  - |
+    HPE 3PAR: Documented that existing driver supports the new Alletra MP
+    backend. HPE Alletra MP is newer version of existing HPE Alletra 9k
+    backend.
+

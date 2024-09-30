@@ -1,6 +1,6 @@
-===============================================
-HPE 3PAR, HPE Primera and HPE Alletra 9k Driver
-===============================================
+===============================================================
+HPE 3PAR, HPE Primera, HPE Alletra 9k and HPE Alletra MP Driver
+===============================================================
 
 The ``HPE3PARFCDriver`` and ``HPE3PARISCSIDriver`` drivers, which are based on
 the Block Storage service (Cinder) plug-in architecture, run volume operations
@@ -8,14 +8,14 @@ by communicating with the HPE 3PAR, HPE Primera and HPE Alletra 9k storage
 systems over HTTP, HTTPS, and SSH connections. The HTTP & HTTPS communications
 use ``python-3parclient``, which is part of PyPi.
 
-For information on HPE 3PAR, HPE Primera and HPE Alletra 9k Driver, refer to
-`content kit page <https://www.hpe.com/us/en/product-catalog/storage/storage-software/pip.openstack-device-management-software.1008537377.html>`_.
+For information on HPE storage systems,
+refer to `the Alletra Storage product page <https://buy.hpe.com/us/en/storage/disk-storage-systems/alletra-storage-arrays/c/1013540066>`_.
 
 System requirements
 ~~~~~~~~~~~~~~~~~~~
 
-To use the HPE 3PAR, HPE Primera and HPE Alletra 9k drivers, install the
-following software and components on the HPE 3PAR storage system:
+To use the HPE 3PAR, HPE Primera, HPE Alletra 9k and HPE Alletra MP drivers,
+install the following software and components on the HPE 3PAR storage system:
 
 * HPE 3PAR Operating System software version 3.1.3 MU1 or higher.
 
@@ -60,19 +60,23 @@ following software and components on the HPE 3PAR storage system:
   newer from PyPi on the system with the enabled Block
   Storage service volume drivers.
 
-To use the HPE Primera and HPE Alletra 9k backends, install the following
-software and components on the HPE Primera storage system:
+To use the HPE Primera, Alletra 9k and Alletra MP backends, install the
+following software and components on the HPE storage system:
 
-* HPE Primera Operating System software version 4.0.0 or higher.
+* Operating System software:
 
-  * On HPE Primera/Alletra 9k storage system, Dedup & Compression is
-    combined as single option 'deco'. Due to this, only either 'thin' volume
-    or 'deco' volume can be created.
+  * HPE Primera: version 4.4.0 or higher.
+  * HPE Alletra 9k: version 9.4.0 or higher.
+  * HPE Alletra MP: version 10.4.2.23 or higher.
 
-  * Also, port number 443 is used instead of 8080. This only affects
-    cinder configuration.
+* On HPE Primera/Alletra 9k/Alletra MP storage system, Dedup & Compression
+  is combined as single option 'deco'. Due to this, only either 'thin'
+  volume or 'deco' volume can be created.
 
-* Additionally, you must install the ``python-3parclient`` version 4.2.11 or
+* Also, port number 443 is used instead of 8080. This only affects
+  cinder configuration.
+
+* Additionally, you must install the ``python-3parclient`` version 4.2.14 or
   newer from PyPi on the system with the enabled Block
   Storage service volume drivers.
 
@@ -158,8 +162,8 @@ pairs and associate them with a volume type, run the following command:
 
    Volumes that are cloned only support the extra specs keys cpg, snap_cpg,
    provisioning and vvs. The others are ignored. In addition the comments
-   section of the cloned volume in the HPE 3PAR / Primera / Alletra 9k array is
-   not populated.
+   section of the cloned volume in the HPE 3PAR / Primera / Alletra 9k /
+   Alletra MP array is not populated.
 
 If volume types are not used or a particular key is not set for a volume type,
 the following defaults are used:
@@ -216,8 +220,8 @@ pairs and associate them with a volume type, run the following commands:
 
    $ openstack help volume qos
 
-The following keys require that the HPE 3PAR / Primera / Alletra 9k array
-has a Priority Optimization enabled.
+The following keys require that the HPE 3PAR/Primera/Alletra 9k/
+Alletra MP array has a Priority Optimization enabled.
 
 ``hpe3par:vvs``
  The virtual volume set name that has been predefined by the Administrator
@@ -254,8 +258,8 @@ has a Priority Optimization enabled.
    set I/O limits. Similarly, minBWS and maxBWS must be used together. If only
    one is set the other will be set to the same value.
 
-The following key requires that the HPE 3PAR / Primera / Alletra 9k array has
-an Adaptive Flash Cache enabled.
+The following key requires that the HPE 3PAR/Primera/Alletra 9k/Alletra MP
+array has an Adaptive Flash Cache enabled.
 
 * ``hpe3par:flash_cache`` - The flash-cache policy, which can be turned on and
   off by setting the value to ``true`` or ``false``.
@@ -273,9 +277,9 @@ Other restrictions and considerations for ``hpe3par:compression``:
   if a compression is enabled and provisioning type requested is full,
   the resulting volume defaults to thinly provisioned compressed volume.
 
-* While creating volume on HPE Primera / Alletra 9k storage system, only below
-  two combinations are supported. If any other combination is used, then
-  volume is not created.
+* While creating volume on HPE Primera/Alletra 9k/Alletra MP storage system,
+  only below two combinations are supported. If any other combination is used,
+  then volume is not created.
 
   * thin volume: provisioning = ``thin`` and compression = ``false``
   * deco volume: provisioning = ``dedup`` and compression = ``true``
@@ -304,10 +308,10 @@ OpenStack software.
 
 
 #. Verify that the HPE 3PAR Web Services API server is enabled and running on
-   the HPE 3PAR / Primera / Alletra 9k storage system.
+   the HPE 3PAR / Primera / Alletra 9k / Alletra MP storage system.
 
-   a. Log onto the HPE 3PAR / Primera / Alletra 9k storage system with
-      administrator access.
+   a. Log onto the HPE 3PAR / Primera / Alletra 9k / Alletra MP storage system
+      with administrator access.
 
       .. code-block:: console
 
@@ -345,28 +349,28 @@ OpenStack software.
       other options run the :command:`setwsapi -h` command.
 
 #. If you are not using an existing CPG, create a CPG on the HPE 3PAR / Primera
-   / Alletra 9k storage system to be used as the default location for creating
-   volumes.
+   / Alletra 9k / Alletra MP storage system to be used as the default location
+   for creating volumes.
 
 #. Make the following changes in the ``/etc/cinder/cinder.conf`` file.
 
    .. code-block:: ini
 
       # WSAPI Server URL.
-      # This setting applies to all: 3PAR, Primera and Alletra 9k.
+      # This setting applies to all: 3PAR, Primera, Alletra 9k and Alletra MP.
       # Example 1: for 3PAR, URL is:
       https://<3par ip>:8080/api/v1
 
-      # Example 2: for Primera/Alletra 9k, URL is:
-      https://<primera/alletra_9k ip>:443/api/v1
+      # Example 2: for Primera/Alletra 9k/Alletra MP, URL is:
+      https://<primera/alletra_9k/alletra_mp ip>:443/api/v1
 
-      # 3PAR / Primera / Alletra 9k username with the 'edit' role
+      # 3PAR / Primera / Alletra 9k / Alletra MP username with the 'edit' role
       hpe3par_username=edit3par
 
-      # 3PAR / Primera / Alletra 9k password for the user specified in hpe3par_username
+      # 3PAR / Primera / Alletra 9k / Alletra MP password for the user specified in hpe3par_username
       hpe3par_password=3parpass
 
-      # 3PAR / Primera / Alletra 9k CPG to use for volume creation
+      # 3PAR / Primera / Alletra 9k / Alletra MP CPG to use for volume creation
       hpe3par_cpg=OpenStackCPG_RAID5_NL
 
       # IP address of SAN controller for SSH access to the array
@@ -397,7 +401,7 @@ OpenStack software.
       # Still available for single port iSCSI configuration
       #iscsi_ip_address=10.10.220.253
 
-      # Enable HTTP debugging to 3PAR / Primera / Alletra 9k
+      # Enable HTTP debugging to 3PAR / Primera / Alletra 9k / Alletra MP
       hpe3par_debug=False
 
       # Enable CHAP authentication for iSCSI connections.
