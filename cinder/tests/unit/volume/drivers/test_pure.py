@@ -4064,34 +4064,56 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                           self.driver._get_qos_settings,
                           voltype)
 
-    @mock.patch(BASE_DRIVER_OBJ + ".create_with_qos")
+    @ddt.data(
+        {
+            "qos_name": "qos-iops-bws",
+            "qos_spec": dict(QOS_IOPS_BWS),
+            "qos_data": {"iops_limit": '100', "bandwidth_limit": '1048576'}
+        },
+        {
+            "qos_name": "qos-iops",
+            "qos_spec": dict(QOS_IOPS),
+            "qos_data": {"iops_limit": '100'}
+        },
+        {
+            "qos_name": "qos-bws",
+            "qos_spec": dict(QOS_BWS),
+            "qos_data": {"bandwidth_limit": '1048576'}
+        },
+    )
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
     @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")
     @mock.patch.object(qos_specs, "get_qos_specs")
     @mock.patch.object(volume_types, 'get_volume_type')
-    def test_create_volume_with_qos(self, mock_get_volume_type,
+    def test_create_volume_with_qos(self, qos_info,
+                                    mock_get_volume_type,
                                     mock_get_qos_specs,
                                     mock_get_repl_type,
                                     mock_add_to_group,
-                                    mock_create_qos):
+                                    mock_create_favol):
         ctxt = context.get_admin_context()
-        qos = qos_specs.create(ctxt, "qos-iops-bws", dict(QOS_IOPS_BWS))
+        qos = qos_specs.create(ctxt,
+                               qos_info["qos_name"],
+                               qos_info["qos_spec"])
+        qos_data = self.flasharray.Qos(**qos_info["qos_data"])
         vol, vol_name = self.new_fake_vol(spec={"size": 1},
                                           type_qos_specs_id=qos.id)
-
+        mock_data = self.flasharray.VolumePost(names=[vol_name],
+                                               provisioned=vol["size"],
+                                               qos=qos_data)
         mock_get_volume_type.return_value = vol.volume_type
         mock_get_qos_specs.return_value = qos
         mock_get_repl_type.return_value = None
 
         self.driver.create_volume(vol)
-        self.driver.create_with_qos.assert_called_with(self.array, vol_name,
-                                                       vol["size"] * 1024
-                                                       * 1024 * 1024,
-                                                       {'maxIOPS': 100,
-                                                        'maxBWS': 1048576})
-        mock_add_to_group.assert_called_once_with(vol,
-                                                  vol_name)
-        self.assert_error_propagates([mock_create_qos],
+        self.array.post_volumes.\
+            assert_called_with(names=[vol_name],
+                               with_default_protection=False,
+                               volume=mock_data)
+        mock_add_to_group.assert_called_with(vol,
+                                             vol_name)
+        self.assert_error_propagates([mock_create_favol],
                                      self.driver.create_volume, vol)
 
     @mock.patch(BASE_DRIVER_OBJ + ".set_qos")
