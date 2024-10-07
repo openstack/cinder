@@ -521,7 +521,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         cf = self._session.vim.client.factory
         consumer = self.volumeops.get_fcd_consumer(fcd_loc.ds_ref(),
                                                    fcd_loc.id(cf))
-        if consumer:
+        if consumer and not self._use_fcd_cross_vc_migration:
             # The volume is attached, so we need to clone the volume
             (host, rp, folder, _) = self._select_ds_for_volume(volume)
             return self.volumeops.clone_fcd_attached(
