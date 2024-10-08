@@ -370,7 +370,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertEqual(vmdk_type,
                          self._driver._get_extra_spec_disk_type(type_id))
         get_volume_type_extra_spec.assert_called_once_with(
-            type_id, 'vmdk_type', default_value=vmdk.THIN_VMDK_TYPE)
+            type_id, 'vmdk_type', default_value=vmdk.THICK_VMDK_TYPE)
         validate.assert_called_once_with(vmdk_type)
 
     @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_disk_type')
