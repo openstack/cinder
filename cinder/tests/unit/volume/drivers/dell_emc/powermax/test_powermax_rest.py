@@ -869,10 +869,10 @@ class PowerMaxRestTest(test.TestCase):
     def test_find_mv_connections_for_vol_missing_host_lun_address(self):
         with mock.patch.object(self.rest, 'get_resource',
                                return_value=self.data.maskingview_no_lun):
-            host_lun_id = self.rest.find_mv_connections_for_vol(
-                self.data.array, self.data.masking_view_name_f,
-                self.data.device_id)
-            self.assertIsNone(host_lun_id)
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.rest.find_mv_connections_for_vol,
+                              self.data.array, self.data.masking_view_name_f,
+                              self.data.device_id)
 
     def test_find_mv_connections_for_vol_failed(self):
         # no masking view info retrieved
@@ -883,9 +883,10 @@ class PowerMaxRestTest(test.TestCase):
         # no connection info received
         with mock.patch.object(self.rest, 'get_resource',
                                return_value={'no_conn': 'no_info'}):
-            host_lun_id2 = self.rest.find_mv_connections_for_vol(
-                self.data.array, self.data.masking_view_name_f, device_id)
-            self.assertIsNone(host_lun_id2)
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.rest.find_mv_connections_for_vol,
+                              self.data.array, self.data.masking_view_name_f,
+                              self.data.device_id)
 
     def test_get_storage_groups_from_volume(self):
         array = self.data.array
