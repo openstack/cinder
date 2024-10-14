@@ -16,20 +16,12 @@
 
 import itertools
 import re
-import sys
 from unittest import mock
 
 import ddt
+from os_brick.initiator import storpool_utils
+from os_brick.tests.initiator import test_storpool_utils
 from oslo_utils import units
-
-
-fakeStorPool = mock.Mock()
-fakeStorPool.spopenstack = mock.Mock()
-fakeStorPool.spapi = mock.Mock()
-fakeStorPool.spconfig = mock.Mock()
-fakeStorPool.sptypes = mock.Mock()
-sys.modules['storpool'] = fakeStorPool
-
 
 from cinder import exception
 from cinder.tests.unit import fake_constants
@@ -64,64 +56,52 @@ def mock_volume_types(f):
 
 
 def volumeName(vid):
-    return 'os--volume--{id}'.format(id=vid)
+    return 'os--volume-{id}'.format(id=vid)
 
 
-def snapshotName(vtype, vid):
-    return 'os--snap--{t}--{id}'.format(t=vtype, id=vid)
-
-
-class MockDisk(object):
-    def __init__(self, diskId):
-        self.id = diskId
-        self.generationLeft = -1
-        self.agCount = 14
-        self.agFree = 12
-        self.agAllocated = 1
-
-
-class MockVolume(object):
-    def __init__(self, v):
-        self.name = v['name']
-
-
-class MockTemplate(object):
-    def __init__(self, name):
-        self.name = name
-
-
-class MockApiError(Exception):
-    def __init__(self, msg):
-        super(MockApiError, self).__init__(msg)
+def snapshotName(vtype, vid, more=None):
+    return 'os--{t}--{m}--snapshot-{id}'.format(
+        t=vtype,
+        m="none" if more is None else more,
+        id=vid
+    )
 
 
 class MockAPI(object):
-    def __init__(self):
-        self._disks = {diskId: MockDisk(diskId) for diskId in (1, 2, 3, 4)}
-        self._disks[3].generationLeft = 42
+    def __init__(self, *args):
+        self._disks = {}
+        for disk_id in [1, 2, 3, 4]:
+            self._disks[disk_id] = {
+                'id': disk_id,
+                'generationLeft': -1,
+                'agCount': 14,
+                'agFree': 12,
+                'agAllocated': 1
+            }
+        self._disks[3]['generationLeft'] = 42
 
-        self._templates = [MockTemplate(name) for name in ('ssd', 'hdd')]
+        self._templates = [{'name': name} for name in ('ssd', 'hdd')]
 
-    def setlog(self, log):
-        self._log = log
-
-    def disksList(self):
+    def disks_list(self):
         return self._disks
 
-    def snapshotCreate(self, vname, snap):
+    def snapshot_create(self, vname, snap):
         snapshots[snap['name']] = dict(volumes[vname])
 
-    def snapshotUpdate(self, snap, data):
+    def snapshot_update(self, snap, data):
         sdata = snapshots[snap]
         sdata.update(data)
 
-    def snapshotDelete(self, name):
+    def snapshot_delete(self, name):
         del snapshots[name]
 
-    def volumeCreate(self, vol):
+    def volume_create(self, vol):
         name = vol['name']
         if name in volumes:
-            raise MockApiError('volume already exists')
+            raise storpool_utils.StorPoolAPIError(
+                'none',
+                {'error': {
+                    'descr': 'volume already exists'}})
         data = dict(vol)
 
         if 'parent' in vol and 'template' not in vol:
@@ -139,19 +119,22 @@ class MockAPI(object):
 
         volumes[name] = data
 
-    def volumeDelete(self, name):
+    def volume_delete(self, name):
         del volumes[name]
 
-    def volumesList(self):
-        return [MockVolume(v[1]) for v in volumes.items()]
+    def volumes_list(self):
+        the_volumes = []
+        for volume in volumes:
+            the_volumes.append({'name': volume})
+        return the_volumes
 
-    def volumeTemplatesList(self):
+    def volume_templates_list(self):
         return self._templates
 
-    def volumesReassign(self, json):
+    def volumes_reassign(self, json):
         pass
 
-    def volumeUpdate(self, name, data):
+    def volume_update(self, name, data):
         if 'size' in data:
             volumes[name]['size'] = data['size']
 
@@ -162,52 +145,21 @@ class MockAPI(object):
                 volumes[new_name]['name'] = new_name
             del volumes[name]
 
-    def volumeRevert(self, name, data):
+    def volume_revert(self, name, data):
         if name not in volumes:
-            raise MockApiError('No such volume {name}'.format(name=name))
+            raise storpool_utils.StorPoolAPIError(
+                'none',
+                {'error': {
+                    'descr': 'No such volume {name}'.format(name=name)}})
 
         snapname = data['toSnapshot']
         if snapname not in snapshots:
-            raise MockApiError('No such snapshot {name}'.format(name=snapname))
+            raise storpool_utils.StorPoolAPIError(
+                'none',
+                {'error': {
+                    'descr': 'No such snapshot {name}'.format(name=snapname)}})
 
         volumes[name] = dict(snapshots[snapname])
-
-
-class MockAttachDB(object):
-    def __init__(self, log):
-        self._api = MockAPI()
-
-    def api(self):
-        return self._api
-
-    def volumeName(self, vid):
-        return volumeName(vid)
-
-    def snapshotName(self, vtype, vid):
-        return snapshotName(vtype, vid)
-
-
-def MockVolumeRevertDesc(toSnapshot):
-    return {'toSnapshot': toSnapshot}
-
-
-def MockVolumeUpdateDesc(size):
-    return {'size': size}
-
-
-def MockSPConfig(section = 's01'):
-    res = {}
-    m = re.match('^s0*([A-Za-z0-9]+)$', section)
-    if m:
-        res['SP_OURID'] = m.group(1)
-    return res
-
-
-fakeStorPool.spapi.ApiError = MockApiError
-fakeStorPool.spconfig.SPConfig = MockSPConfig
-fakeStorPool.spopenstack.AttachDB = MockAttachDB
-fakeStorPool.sptypes.VolumeRevertDesc = MockVolumeRevertDesc
-fakeStorPool.sptypes.VolumeUpdateDesc = MockVolumeUpdateDesc
 
 
 class MockVolumeDB(object):
@@ -227,7 +179,16 @@ class MockVolumeDB(object):
         }
 
 
+def MockSPConfig(section = 's01'):
+    res = {}
+    m = re.match('^s0*([A-Za-z0-9]+)$', section)
+    if m:
+        res['SP_OURID'] = m.group(1)
+    return res
+
+
 @ddt.ddt
+@mock.patch('os_brick.initiator.storpool_utils.get_conf', MockSPConfig)
 class StorPoolTestCase(test.TestCase):
 
     def setUp(self):
@@ -243,7 +204,16 @@ class StorPoolTestCase(test.TestCase):
 
         self.driver = driver.StorPoolDriver(execute=mock_exec,
                                             configuration=self.cfg)
-        self.driver.check_for_setup_error()
+
+        with (
+            mock.patch(
+                'os_brick.initiator.storpool_utils.get_conf'
+            ) as get_conf,
+            mock.patch(
+                'os_brick.initiator.storpool_utils.StorPoolAPI', MockAPI)
+        ):
+            get_conf.return_value = test_storpool_utils.SP_CONF
+            self.driver.check_for_setup_error()
 
     @ddt.data(
         (5, TypeError),

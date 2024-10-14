@@ -1,0 +1,8 @@
+---
+other:
+  - |
+    Use the new implementation in os-brick for communicating with the
+    StorPool API and reading StorPool configuration files.
+
+    The StorPool backend no longer requires the OpenStack nodes to have
+    the Python packages `storpool` and `storpool.spopenstack` installed.

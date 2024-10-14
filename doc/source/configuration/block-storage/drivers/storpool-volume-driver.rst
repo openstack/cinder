@@ -26,14 +26,6 @@ Prerequisites
   images, then the node running the ``cinder-volume`` service must also have
   access to the StorPool data network and run the ``storpool_block`` service.
 
-* All nodes that need to access the StorPool API (the compute nodes and
-  the node running the ``cinder-volume`` service) must have the following
-  packages installed:
-
-  * storpool-config (part of the StorPool installation)
-  * the storpool Python bindings package
-  * the storpool.spopenstack Python helper package
-
 Configuring the StorPool volume driver
 --------------------------------------
 
