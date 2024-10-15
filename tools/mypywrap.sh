@@ -14,6 +14,8 @@ ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 #export MYPYPATH=$ROOT_DIR/../cinder/tests/stubs/
 
+python -m mypy -V
+
 if [ $# -eq 0 ]; then
     # if no arguments provided, use the standard converted lists
     lines=$(grep -v '#' $ROOT_DIR/../mypy-files.txt)
