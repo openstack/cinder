@@ -384,7 +384,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self._notify_about_backup_usage(context, backup, "create.start")
 
         expected_status = "backing-up"
-        if snapshot_id:
+        if snapshot:
             actual_status = snapshot['status']
             if actual_status != expected_status:
                 err = _('Create backup aborted, expected snapshot status '
@@ -546,7 +546,7 @@ class BackupManager(manager.SchedulerDependentManager):
                                 message_field.Detail.DETACH_ERROR)
         except Exception as err:
             with excutils.save_and_reraise_exception():
-                if snapshot_id:
+                if snapshot:
                     snapshot.status = fields.SnapshotStatus.AVAILABLE
                     snapshot.save()
                 else:
@@ -838,7 +838,7 @@ class BackupManager(manager.SchedulerDependentManager):
                      {'volume_id': volume.id, 'backup_id': backup.id})
 
             key_mgr = key_manager.API(CONF)
-            if orig_key_id is not None:
+            if orig_key_id:
                 LOG.debug('Deleting original volume encryption key ID.')
                 volume_utils.delete_encryption_key(context,
                                                    key_mgr,

@@ -324,7 +324,7 @@ def remove_volume_type_access(context: context.RequestContext,
 
 
 def is_encrypted(context: context.RequestContext,
-                 volume_type_id: str) -> bool:
+                 volume_type_id: Optional[str]) -> bool:
     return get_volume_type_encryption(context, volume_type_id) is not None
 
 
@@ -444,7 +444,7 @@ def volume_types_diff(context: context.RequestContext,
 
 def volume_types_encryption_changed(
         context: context.RequestContext,
-        vol_type_id1: str, vol_type_id2: str) -> bool:
+        vol_type_id1: Optional[str], vol_type_id2: Optional[str]) -> bool:
     """Return whether encryptions of two volume types are same."""
     def _get_encryption(enc: dict) -> dict:
         enc = dict(enc)
