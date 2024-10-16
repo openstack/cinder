@@ -35,7 +35,8 @@ _TYPE_SCHEMA = {
     'datetime': datetime.datetime(1900, 1, 1),
     'big_integer': 0,
     'integer': 0,
-    'string': ''
+    'string': '',
+    'boolean': False,
 }
 
 
@@ -155,6 +156,8 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
                 *[(model_attr.isnot(None), model_attr)],
                 else_=default,
             )
+            if isinstance(model_attr.type, sqlalchemy.Boolean):
+                marker_values[i] = int(marker_values[i])
             if sort_dirs[i] == 'desc':
                 crit_attrs.append((attr < marker_values[i]))
             elif sort_dirs[i] == 'asc':
