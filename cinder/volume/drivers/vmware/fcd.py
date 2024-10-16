@@ -20,6 +20,7 @@ Volume driver based on VMware VStorageObject aka First Class Disk (FCD). This
 driver requires a minimum vCenter version of 6.5.
 """
 
+from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 from oslo_utils import versionutils
@@ -35,6 +36,7 @@ from cinder.volume.drivers.vmware import vmdk
 from cinder.volume.drivers.vmware import volumeops as vops
 from cinder.volume import volume_utils
 
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 LOCATION_DRIVER_NAME = 'VMwareVcFcdDriver'
@@ -84,6 +86,11 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         self._use_fcd_snapshot = False
         self._storage_policy_enabled = vc_67_compatible
         self._use_fcd_cross_vc_migration = cross_vc_migration
+
+        if CONF.sap_allow_independent_snapshots:
+            # If we setup cinder to allow independent snapshots, we can
+            # use them.  This means snapshots will be clones.
+            self.has_independent_snapshots = True
 
     def get_volume_stats(self, refresh=False):
         """Collects volume backend stats.
