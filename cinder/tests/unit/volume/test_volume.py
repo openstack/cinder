@@ -1722,15 +1722,15 @@ class VolumeTestCase(base.BaseVolumeTestCase):
     @ddt.data({'connector_class':
                os_brick.initiator.connectors.iscsi.ISCSIConnector,
                'rekey_supported': True,
-               'already_encrypted': 'yes'},
+               'already_encrypted': True},
               {'connector_class':
                os_brick.initiator.connectors.iscsi.ISCSIConnector,
                'rekey_supported': True,
-               'already_encrypted': 'no'},
+               'already_encrypted': False},
               {'connector_class':
                os_brick.initiator.connectors.rbd.RBDConnector,
                'rekey_supported': False,
-               'already_encrypted': 'no'})
+               'already_encrypted': False})
     @ddt.unpack
     @mock.patch('cinder.volume.volume_utils.delete_encryption_key')
     @mock.patch('cinder.volume.flows.manager.create_volume.'
@@ -1748,9 +1748,11 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             already_encrypted=None):
         # create source volume
         mock_execute.return_value = ('', '')
-        mock_enc_metadata_get.return_value = {'cipher': 'aes-xts-plain64',
-                                              'key_size': 256,
-                                              'provider': 'luks'}
+        mock_enc_metadata_get.return_value = {
+            'cipher': 'aes-xts-plain64',
+            'key_size': 256,
+            'provider': 'luks',
+            'encryption_key_id': fake.ENCRYPTION_KEY_ID}
         mock_setup_enc_keys.return_value = (
             'qwert',
             'asdfg',
@@ -1802,7 +1804,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                 src_vol,
                 {'key_size': 256,
                  'provider': 'luks',
-                 'cipher': 'aes-xts-plain64'}
+                 'cipher': 'aes-xts-plain64',
+                 'encryption_key_id': fake.ENCRYPTION_KEY_ID}
             )
             if already_encrypted:
                 mock_execute.assert_called_once_with(
@@ -1816,6 +1819,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             else:
                 mock_execute.assert_called_once_with(
                     'cryptsetup', '--batch-mode', 'luksFormat',
+                    '--force-password',
                     '--type', 'luks1',
                     '--cipher', 'aes-xts-plain64', '--key-size', '256',
                     '--key-file=-', '/some/device/thing',

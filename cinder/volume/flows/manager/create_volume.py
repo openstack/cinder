@@ -596,17 +596,18 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     # and is detected as another format.
                     raise exception.Invalid()
 
-                if encryption['provider'] == 'luks':
+                encryption_provider = encryption['provider']
+                if encryption_provider == 'luks':
                     # Force ambiguous "luks" provider to luks1 for
                     # compatibility with new versions of cryptsetup.
-                    encryption['provider'] = 'luks1'
+                    encryption_provider = 'luks1'
 
                 (out, err) = utils.execute(
                     'cryptsetup',
                     '--batch-mode',
                     'luksFormat',
                     '--force-password',
-                    '--type', encryption['provider'],
+                    '--type', encryption_provider,
                     '--cipher', encryption['cipher'],
                     '--key-size', str(encryption['key_size']),
                     '--key-file=-',
