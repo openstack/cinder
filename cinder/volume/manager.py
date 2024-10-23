@@ -1594,20 +1594,20 @@ class VolumeManager(manager.CleanableManager,
             LOG.exception("Update snapshot usages failed.",
                           resource=snapshot)
 
-            # For snapshots that have a hidden backend key
-            # we update the allocated capacity to account
-            # for the snapshot size on the backend.
-            # The hidden backend key is there for snapshots
-            # that are clones.
-            if (self.driver.capabilities.get('snapshot_type') == 'clone'
-                    and snapshot.metadata):
-                key = objects.snapshot.SAP_HIDDEN_BACKEND_KEY
-                hidden_host = snapshot.metadata.get(key)
-                if hidden_host:
-                    self._update_snapshot_allocated_capacity(
-                        context, snapshot, host=hidden_host,
-                        decrement=True
-                    )
+        # For snapshots that have a hidden backend key
+        # we update the allocated capacity to account
+        # for the snapshot size on the backend.
+        # The hidden backend key is there for snapshots
+        # that are clones.
+        if (self.driver.capabilities.get('snapshot_type') == 'clone'
+                and snapshot.metadata):
+            key = objects.snapshot.SAP_HIDDEN_BACKEND_KEY
+            hidden_host = snapshot.metadata.get(key)
+            if hidden_host:
+                self._update_snapshot_allocated_capacity(
+                    context, snapshot, host=hidden_host,
+                    decrement=True
+                )
 
         self.db.volume_glance_metadata_delete_by_snapshot(context, snapshot.id)
         snapshot.destroy()
