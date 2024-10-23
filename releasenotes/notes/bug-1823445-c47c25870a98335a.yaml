@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed the volume property `signature_verified` propagating to images created
+    from volumes. That property could later conflict with the same property being
+    added again when creating a new volume from such image, preventing the volume
+    from being created successfully. This volume property is created whenever a
+    volume is created from an image for the purpose of indicating that the image
+    signature was verified on creation, and was not intended to be propagated
+    further if a new image is created from such volume. 
