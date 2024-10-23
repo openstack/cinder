@@ -104,9 +104,9 @@ image_opts = [
                      'an operator has configured glance property protections '
                      'to make some image properties read-only. Cinder will '
                      '*always* filter out image metadata in the namespaces '
-                     '`os_glance` and `img_signature`; this configuration '
-                     'option allows operators to specify *additional* '
-                     'namespaces to be excluded.',
+                     '`os_glance`, `img_signature` and `signature_verified`; '
+                     'this configuration option allows operators to specify '
+                     '*additional* namespaces to be excluded.',
                 default=[]),
 ]
 
@@ -132,7 +132,8 @@ QEMU_IMG_MIN_CONVERT_LUKS_VERSION = '2.10'
 
 COMPRESSIBLE_IMAGE_FORMATS = ('qcow2',)
 
-GLANCE_RESERVED_NAMESPACES = ["os_glance", "img_signature"]
+GLANCE_RESERVED_NAMESPACES = ["os_glance", "img_signature",
+                              "signature_verified"]
 
 
 def validate_stores_id(context: context.RequestContext,
