@@ -2734,7 +2734,7 @@ class TestFilterReservedNamespaces(test.TestCase):
     @ddt.unpack
     def test_filter_out_reserved_namespaces_metadata(
             self, metadata_for_test, config, keys_to_pop):
-        hardcoded_keys = ['os_glance', "img_signature"]
+        hardcoded_keys = image_utils.GLANCE_RESERVED_NAMESPACES
 
         keys_to_pop = hardcoded_keys + keys_to_pop
 
@@ -2794,7 +2794,7 @@ class TestFilterReservedNamespaces(test.TestCase):
     @ddt.unpack
     def test_filter_out_reserved_namespaces_metadata_properties(
             self, metadata_for_test, config, keys_to_pop):
-        hardcoded_keys = ['os_glance', "img_signature"]
+        hardcoded_keys = image_utils.GLANCE_RESERVED_NAMESPACES
 
         keys_to_pop = hardcoded_keys + keys_to_pop
 
