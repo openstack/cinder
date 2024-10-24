@@ -19,6 +19,7 @@ from cinder import exception
 
 CONF = cfg.CONF
 _SERVICE_AUTH = None
+_SERVICE_SESSION = None
 
 SERVICE_USER_GROUP = 'service_user'
 
@@ -63,6 +64,16 @@ def get_service_auth_plugin():
                 # means there's no auth information in the [service_user] group
                 raise exception.ServiceUserTokenNoAuth()
         return _SERVICE_AUTH
+    return None
+
+
+def get_service_session():
+    if CONF.service_user.send_service_user_token:
+        global _SERVICE_SESSION
+        if not _SERVICE_SESSION:
+            _SERVICE_SESSION = ks_loading.load_session_from_conf_options(
+                CONF, SERVICE_USER_GROUP, auth=get_service_auth_plugin())
+        return _SERVICE_SESSION
     return None
 
 
