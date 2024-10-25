@@ -1817,11 +1817,8 @@ class RBDTestCase(test.TestCase):
                                 self.driver.copy_image_to_volume(*args)
 
     @mock.patch('cinder.volume.drivers.rbd.fileutils.delete_if_exists')
-    @mock.patch('cinder.volume.volume_utils.check_encryption_provider',
-                return_value={'encryption_key_id': fake.ENCRYPTION_KEY_ID})
     @mock.patch('cinder.image.image_utils.convert_image')
-    def _copy_image_encrypted(self, mock_convert, mock_encrypt_key,
-                              mock_temp_delete):
+    def _copy_image_encrypted(self, mock_convert, mock_temp_delete):
         key_mgr = fake_keymgr.fake_api()
         self.mock_object(castellan.key_manager, 'API', return_value=key_mgr)
         key_id = key_mgr.store(self.context, KeyObject())
