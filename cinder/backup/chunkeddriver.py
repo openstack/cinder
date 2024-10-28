@@ -107,7 +107,8 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
     """
 
     DRIVER_VERSION = '1.0.0'
-    DRIVER_VERSION_MAPPING = {
+    DRIVER_VERSION_MAPPING = {'1.0.0': '_restore_v1'}
+    SAP_DRIVER_VERSION_MAPPING = {
         '1.0.0': 'cinder.backup.chunkeddriver.BackupRestoreHandleV1'
     }
 
@@ -796,13 +797,19 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         metadata = self._read_metadata(backup)
         metadata_version = metadata['version']
         LOG.debug('Restoring backup version %s', metadata_version)
+        sap_restore = use_sap_restore(volume_file)
         try:
-            restore_handle = importutils.import_object(
-                self.DRIVER_VERSION_MAPPING[metadata_version],
-                self,
-                volume_id,
-                volume_file)
-        except (KeyError, ImportError):
+            if sap_restore:
+                restore_handle = importutils.import_object(
+                    self.SAP_DRIVER_VERSION_MAPPING[metadata_version],
+                    self,
+                    volume_id,
+                    volume_file)
+            else:
+                restore_handle = getattr(
+                    self, self.DRIVER_VERSION_MAPPING.get(
+                        metadata_version))
+        except (TypeError, KeyError, ImportError):
             err = (_('No support to restore backup version %s')
                    % metadata_version)
             raise exception.InvalidBackup(reason=err)
@@ -824,8 +831,11 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
             backup1 = backup_list[index]
             index = index - 1
             metadata = self._read_metadata(backup1)
-            restore_handle.add_backup(backup1, metadata, backup, volume_id)
-
+            if sap_restore:
+                restore_handle.add_backup(backup1, metadata, backup, volume_id)
+            else:
+                restore_handle(backup1, volume_id, metadata, volume_file,
+                               volume_is_new, backup)
             volume_meta = metadata.get('volume_meta', None)
             try:
                 if volume_meta:
@@ -837,7 +847,8 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
                 LOG.error(msg)
                 raise exception.BackupOperationError(msg)
 
-        restore_handle.finish_restore()
+        if sap_restore:
+            restore_handle.finish_restore()
 
         LOG.debug('restore %(backup_id)s to %(volume_id)s finished.',
                   {'backup_id': backup_id, 'volume_id': volume_id})
@@ -873,6 +884,16 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
                 eventlet.sleep(0)
 
         LOG.debug('delete %s finished.', backup['id'])
+
+
+def use_sap_restore(volume_file):
+    class_name = volume_file.__class__.__name__
+    if isinstance(volume_file, eventlet.tpool.Proxy):
+        # This is a proxied object.
+        # The real object is in volume_file._obj
+        class_name = volume_file._obj.__class__.__name__
+
+    return class_name and "VmdkWriteHandle" in class_name
 
 
 class BackupRestoreHandle(object, metaclass=abc.ABCMeta):

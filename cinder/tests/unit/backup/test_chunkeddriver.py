@@ -455,9 +455,7 @@ class ChunkedDriverTestCase(test.TestCase):
                           self.backup,
                           mock.Mock())
 
-    @mock.patch('cinder.backup.chunkeddriver.BackupRestoreHandleV1.add_backup')
-    def test_restore(self, mock_add_backup):
-        volume_file = mock.Mock()
+    def _test_restore(self, volume_file):
         restore_test = mock.Mock()
         self.driver._restore_v1 = restore_test
 
@@ -469,7 +467,24 @@ class ChunkedDriverTestCase(test.TestCase):
             self.driver.restore(backup, self.volume, volume_file, False)
             self.assertEqual(2, mock_put.call_count)
 
+    @mock.patch('cinder.backup.chunkeddriver.BackupRestoreHandleV1.add_backup')
+    @mock.patch(
+        'cinder.backup.chunkeddriver.BackupRestoreHandleV1.finish_restore')
+    def test_restore(self, mock_finish_restore,
+                     mock_add_backup):
+        self._test_restore(mock.Mock())
+        mock_add_backup.assert_not_called()
+        mock_finish_restore.assert_not_called()
+
+    @mock.patch('cinder.backup.chunkeddriver.BackupRestoreHandleV1.add_backup')
+    @mock.patch(
+        'cinder.backup.chunkeddriver.BackupRestoreHandleV1.finish_restore')
+    def test_sap_restore(self, mock_finish_restore, mock_add_backup):
+        volume_file = mock.Mock(
+            __class__=mock.Mock(__name__='VmdkWriteHandle'))
+        self._test_restore(volume_file)
         mock_add_backup.assert_called()
+        mock_finish_restore.assert_called_once_with()
 
     def test_delete_backup(self):
         with mock.patch.object(self.driver, 'delete_object') as mock_delete:
