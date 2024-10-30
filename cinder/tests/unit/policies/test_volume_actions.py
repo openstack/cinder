@@ -406,8 +406,10 @@ class VolumeActionsPolicyTest(base.BasePolicyTest):
                                  id=volume.id, body=body)
 
     @ddt.data(*base.all_users)
+    @mock.patch.object(volume_api.volume_rpcapi.VolumeAPI, 'get_capabilities')
     @mock.patch('cinder.objects.Service.get_by_id')
-    def test_migrate_policy(self, user_id, mock_get_service_by_id):
+    def test_migrate_policy(self, user_id, mock_get_service_by_id,
+                            mock_get_capabilities):
         volume = self._create_volume()
         rule_name = policy.MIGRATE_POLICY
         url = '%s/%s/action' % (self.api_path, volume.id)

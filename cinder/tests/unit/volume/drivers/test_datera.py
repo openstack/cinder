@@ -20,7 +20,6 @@ import uuid
 from cinder import context
 from cinder import exception
 from cinder.tests.unit import test
-from cinder import version
 from cinder.volume import configuration as conf
 from cinder.volume import volume_types
 
@@ -430,21 +429,13 @@ class DateraVolumeTestCasev22(test.TestCase):
         offset = mock.MagicMock()
         sort_keys = mock.MagicMock()
         sort_dirs = mock.MagicMock()
-        if (version.version_string() >= '15.0.0'):
-            with mock.patch(
-                    'cinder.volume.volume_utils.paginate_entries_list') \
-                    as mpage:
-                self.driver.get_manageable_volumes(
-                    [testvol], marker, limit, offset, sort_keys, sort_dirs)
-                mpage.assert_called_once_with(
-                    [v1, v2], marker, limit, offset, sort_keys, sort_dirs)
-        else:
-            with mock.patch(
-                    'cinder.volume.utils.paginate_entries_list') as mpage:
-                self.driver.get_manageable_volumes(
-                    [testvol], marker, limit, offset, sort_keys, sort_dirs)
-                mpage.assert_called_once_with(
-                    [v1, v2], marker, limit, offset, sort_keys, sort_dirs)
+        with mock.patch(
+                'cinder.volume.volume_utils.paginate_entries_list') \
+                as mpage:
+            self.driver.get_manageable_volumes(
+                [testvol], marker, limit, offset, sort_keys, sort_dirs)
+            mpage.assert_called_once_with(
+                [v1, v2], marker, limit, offset, sort_keys, sort_dirs)
 
     def test_unmanage(self):
         testvol = _stub_volume()
