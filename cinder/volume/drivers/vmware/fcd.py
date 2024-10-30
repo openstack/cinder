@@ -349,7 +349,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             backing = self.volumeops.get_backing_by_uuid(volume.id)
             self.volumeops.rename_backing(backing, volume.name)
             self.volumeops.update_backing_disk_uuid(backing, volume.id)
-            profile_id = self._get_storage_profile_id(volume),
+            profile_id = self._get_storage_profile_id(volume)
             vmware_host_ip = self.configuration.vmware_host_ip
 
             # Now move the vmdk into the original folder here?
