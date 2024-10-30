@@ -2341,11 +2341,9 @@ class VMwareVolumeOps(object):
 
     @volume_utils.trace
     def update_fcd_after_backup_restore(self, volume, tmp_backing, profile_id,
-                                        vmware_host_ip, folder):
+                                        vmware_host_ip, clone_vmdk_path,
+                                        fcd_id):
         dest_ds_ref = self.get_datastore(tmp_backing)
-        disk_device = self._get_disk_device(tmp_backing)
-        clone_vmdk_path = disk_device.backing.fileName
-        self.detach_disk_from_backing(tmp_backing, disk_device)
         self.delete_backing(tmp_backing)
         (ds_name,
          ds_rel_path,
@@ -2357,8 +2355,11 @@ class VMwareVolumeOps(object):
             dc_path, ds_name)
         self.update_fcd_vmdk_uuid(dest_ds_ref,
                                   clone_vmdk_path, volume.id)
-        fcd_loc = self.register_disk(
-            vmdk_url, volume.name, dest_ds_ref)
+        try:
+            fcd_loc = self.register_disk(vmdk_url, volume.name,
+                                         dest_ds_ref)
+        except exceptions.AlreadyExistsException:
+            fcd_loc = FcdLocation.create(fcd_id, dest_ds_ref)
         self.update_fcd_policy(fcd_loc, profile_id)
         return fcd_loc
 
