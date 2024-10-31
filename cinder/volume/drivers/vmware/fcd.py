@@ -19,6 +19,7 @@ VMware VStorageObject driver
 Volume driver based on VMware VStorageObject aka First Class Disk (FCD). This
 driver requires a minimum vCenter version of 6.5.
 """
+import time
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -345,7 +346,12 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
                 else:
                     raise ex
 
-            (_, _, folder, summary) = self._select_ds_for_volume(volume)
+            # hack to give vcenter time to release the vmdk lock
+            # If we remove this, then calling move_vmdk_file or
+            # copy_vmdk_file will fail with a lock error.
+            time.sleep(5)
+
+            (_, _, _, summary) = self._select_ds_for_volume(volume)
             backing = self.volumeops.get_backing_by_uuid(volume.id)
             self.volumeops.rename_backing(backing, volume.name)
             self.volumeops.update_backing_disk_uuid(backing, volume.id)
@@ -356,15 +362,15 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             dest_dc = self.volumeops.get_dc(backing)
             src_vmdk_path = self.volumeops.get_vmdk_path(backing)
             dest_vmdk_path = f"[{summary.name}] {volume.id}/{volume.id}.vmdk"
+            disk_device = self.volumeops._get_disk_device(backing)
+            self.volumeops.detach_disk_from_backing(backing, disk_device)
             self.volumeops.move_vmdk_file(dest_dc, src_vmdk_path,
                                           dest_vmdk_path)
-            self.volumeops.reconfigure_backing_vmdk_path(
-                backing,
-                dest_vmdk_path
-            )
-
+            fcd_loc = vops.FcdLocation.from_provider_location(provider_loc)
+            fcd_id = fcd_loc.fcd_id
             fcd_loc = self.volumeops.update_fcd_after_backup_restore(
-                volume, backing, profile_id, vmware_host_ip, folder)
+                volume, backing, profile_id, vmware_host_ip,
+                dest_vmdk_path, fcd_id)
             provider_location = self._provider_location_to_ds_name_location(
                 fcd_loc.provider_location()
             )
