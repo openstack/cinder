@@ -29,6 +29,7 @@ postgresql
 postgresql-client [platform:dpkg]
 postgresql-devel [platform:rpm]
 postgresql-server [platform:rpm]
+python3-devel [platform:rpm test]
 libpq-dev [platform:dpkg]
 thin-provisioning-tools [platform:debian]
 libxml2-dev [platform:dpkg test]
