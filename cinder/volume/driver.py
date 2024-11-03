@@ -1087,6 +1087,10 @@ class BaseVD(object, metaclass=abc.ABCMeta):
                 encrypted = bool(volume.encryption_key_id)
                 conn['data']['encrypted'] = encrypted
 
+        # Append the enforce_multipath value if the connector has it
+        conn['data']['enforce_multipath'] = properties.get(
+            'enforce_multipath', False)
+
         try:
             attach_info = self._connect_device(conn)
         except Exception as exc:

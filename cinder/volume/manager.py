@@ -1980,6 +1980,8 @@ class VolumeManager(manager.CleanableManager,
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         conn_info = self._parse_connection_options(context, volume, conn_info)
+        conn_info['data']['enforce_multipath'] = connector.get(
+            'enforce_multipath', False)
         LOG.info("Initialize volume connection completed successfully.",
                  resource=volume)
         return conn_info
@@ -2040,6 +2042,8 @@ class VolumeManager(manager.CleanableManager,
                 LOG.error(ex_msg)
                 raise exception.VolumeBackendAPIException(data=ex_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
+        conn['data']['enforce_multipath'] = connector.get(
+            'enforce_multipath', False)
 
         LOG.info("Initialize snapshot connection completed successfully.",
                  resource=snapshot)
@@ -4851,6 +4855,9 @@ class VolumeManager(manager.CleanableManager,
         self.db.volume_attachment_update(ctxt, attachment.id, values)
 
         connection_info['attachment_id'] = attachment.id
+        # Append the enforce_multipath value if the connector has it
+        connection_info['enforce_multipath'] = connector.get(
+            'enforce_multipath', False)
         LOG.debug("Connection info returned from driver %(connection_info)s",
                   {'connection_info':
                    strutils.mask_dict_password(connection_info)})
