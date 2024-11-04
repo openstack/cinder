@@ -86,27 +86,30 @@ hpe3par_opts = [
     cfg.StrOpt('hpe3par_api_url',
                default='',
                help="WSAPI Server URL. "
-                    "This setting applies to: 3PAR, Primera and Alletra 9k "
+                    "This setting applies to: 3PAR, Primera, Alletra 9k and "
+                    "Alletra MP"
                     "\n       Example 1: for 3PAR, URL is: "
                     "\n       https://<3par ip>:8080/api/v1 "
-                    "\n       Example 2: for Primera/Alletra 9k, URL is: "
+                    "\n       Example 2: for Primera/Alletra 9k/Alletra MP, "
+                    "URL is: "
                     "\n       https://<primera ip>:443/api/v1"),
     cfg.StrOpt('hpe3par_username',
                default='',
-               help="3PAR/Primera/Alletra 9k username with the 'edit' role"),
+               help="3PAR/Primera/Alletra 9k/Alletra MP username with the "
+                    "'edit' role"),
     cfg.StrOpt('hpe3par_password',
                default='',
-               help="3PAR/Primera/Alletra 9k password for the user specified "
-                    "in hpe3par_username",
+               help="3PAR/Primera/Alletra 9k/Alletra MP password for the "
+                    "user specified in hpe3par_username",
                secret=True),
     cfg.ListOpt('hpe3par_cpg',
                 default=["OpenStack"],
-                help="List of the 3PAR/Primera/Alletra 9k CPG(s) to use for "
-                     "volume creation"),
+                help="List of the 3PAR/Primera/Alletra 9k/Alletra MP CPG(s) "
+                     "to use for volume creation"),
     cfg.StrOpt('hpe3par_cpg_snap',
                default="",
-               help="The 3PAR/Primera/Alletra 9k CPG to use for snapshots of "
-                    "volumes. If empty the userCPG will be used."),
+               help="The 3PAR/Primera/Alletra 9k/Alletra MP CPG to use for "
+                    "snapshots of volumes. If empty the userCPG will be used"),
     cfg.StrOpt('hpe3par_snapshot_retention',
                default="",
                help="The time in hours to retain a snapshot.  "
@@ -117,7 +120,8 @@ hpe3par_opts = [
                     " and is deleted.  This must be larger than expiration"),
     cfg.BoolOpt('hpe3par_debug',
                 default=False,
-                help="Enable HTTP debugging to 3PAR/Primera/Alletra 9k"),
+                help="Enable HTTP debugging to 3PAR/Primera/Alletra 9k/"
+                     "Alletra MP"),
     cfg.ListOpt('hpe3par_iscsi_ips',
                 default=[],
                 help="List of target iSCSI addresses to use."),
@@ -126,9 +130,9 @@ hpe3par_opts = [
                 help="Enable CHAP authentication for iSCSI connections."),
     cfg.StrOpt('hpe3par_target_nsp',
                default="",
-               help="The nsp of 3PAR/Primera/Alletra 9k backend to be used "
-                    "when: (1) multipath is not enabled in cinder.conf. "
-                    "(2) Fiber Channel Zone Manager is not used. "
+               help="The nsp of 3PAR/Primera/Alletra 9k/Alletra MP backend to "
+                    "be used when: (1) multipath is not enabled in cinder.conf"
+                    ". (2) Fiber Channel Zone Manager is not used. "
                     "(3) the backend is prezoned with this "
                     "specific nsp only. For example if nsp is 2 1 2, the "
                     "format of the option's value is 2:1:2"),
