@@ -64,7 +64,9 @@ apidoc_excluded_paths = [
     'zonemanager/drivers/*',
     'zonemanager/drivers',
     'backup/drivers/*',
-    'backup/drivers']
+    'backup/drivers',
+    'wsgi/api.py',
+]
 apidoc_separate_modules = True
 
 config_generator_config_file = (
