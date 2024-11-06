@@ -1105,7 +1105,7 @@ def upload_volume(context: context.RequestContext,
                       image_id, volume_format, image_meta['disk_format'])
             if volume_fd is not None:
                 image_service.update(context, image_id, {},
-                                     volume_fd,
+                                     tpool.Proxy(volume_fd),
                                      store_id=store_id,
                                      base_image_ref=base_image_ref)
             else:
