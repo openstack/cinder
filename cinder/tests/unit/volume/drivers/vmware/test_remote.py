@@ -81,7 +81,8 @@ class VmdkDriverRemoteServiceTest(test.TestCase):
         fake_host = mock.Mock(value='fake-host')
         fake_rp = mock.Mock(value='fake-rp')
         fake_folder = mock.Mock(value='fake-folder')
-        fake_summary = mock.Mock(datastore=mock.Mock(vlaue='fake-ds'))
+        fake_summary = mock.Mock(datastore=mock.Mock(value='fake-ds'),
+                                 url=mock.Mock(value='fake-url'))
         fake_profile_id = 'fake-uuid'
 
         self._driver._select_ds_for_volume.return_value = \
@@ -93,6 +94,7 @@ class VmdkDriverRemoteServiceTest(test.TestCase):
         self._driver._select_ds_for_volume.assert_called_once_with(
             self._fake_volume, cinder_host=None)
         self.assertEqual({
+            'datastore_url': fake_summary.url,
             'host': fake_host.value,
             'resource_pool': fake_rp.value,
             'folder': fake_folder.value,
