@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Hitachi driver `bug #2033448
+    <https://bugs.launchpad.net/cinder/+bug/2033448>`_: Fixed to initialize
+    lock counter for resource group
