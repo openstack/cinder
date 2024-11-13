@@ -824,8 +824,6 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             prov_loc = self._remote_api.get_fcd_provider_location(
                 context, dest_host, fcd_loc.fcd_id, ds_ref.value)
             LOG.warning(f"prov_loc {prov_loc}")
-            fcd_loc_new = vops.FcdLocation.from_provider_location(prov_loc)
-            #fcd_loc_new = vops.FcdLocation(prov_loc.fcd_id, ds_ref.value)
 
         LOG.warning(f"provider_location {prov_loc}")
         volume.update({'provider_location': prov_loc})
@@ -833,15 +831,17 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         if cross_vc:
             if self._use_fcd_cross_vc_migration:
                 # Use the native FCD cross vc migration from 8.0U3 and >
+                fcd_loc_moid = vops.FcdLocation(prov_loc.fcd_id, ds_ref.value)
                 self._remote_api.update_fcd_policy(
-                    context, dest_host, prov_loc, new_profile_id)
+                    context, dest_host, prov_loc_moid, new_profile_id)
             else:
                 # TODO(hemna): Add the temporary shadow migration
                 LOG.error("TODO: Need to add shadow migration for cross vc.")
                 raise NotImplementedError()
         # todo-update policy-onremote vc and move it to folder
         else:
-            self.volumeops.update_fcd_policy(fcd_loc_new, new_profile_id)
+            fcd_loc_moid = vops.FcdLocation(prov_loc.fcd_id, ds_ref.value)
+            self.volumeops.update_fcd_policy(fcd_loc_moid, new_profile_id)
 
         return (True, None)
 
