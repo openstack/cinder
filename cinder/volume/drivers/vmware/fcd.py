@@ -771,7 +771,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         else:
             return self.shadow_cross_vc_migrate_volume(context, volume, host,
                                                        vcenter, fcd_loc)
-            
+
     def _get_fcd_location(self, fcd_id, datastore_ref):
         """Wrapper for the remote API to return the fcd location."""
         # We have to do this to avoid a circular reference from the
@@ -794,9 +794,6 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
         (_, _, _, src_ds_info) = self._select_ds_for_volume(volume)
 
-        LOG.warning(f"ds_info: {ds_info}")
-        LOG.warning(f"src_ds_info: {src_ds_info}")
-
         ds_ref = vim_util.get_moref(ds_info['datastore'], 'Datastore')
         new_profile_id = ds_info.get('profile_id')
 
@@ -806,13 +803,10 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
         # if we are migrating to a different DS on the same host
         # there is no reason to call the remote_api to get the
-        # provider location. 
+        # provider location.
         dest_host_name = volume_utils.extract_host(dest_host, 'host')
         src_host_name = volume_utils.extract_host(volume['host'], 'host')
-        LOG.warning(f"dest host name {dest_host_name}")
-        LOG.warning(f"src  host name {src_host_name}")
         if dest_host_name == src_host_name:
-            LOG.warning(f"No need to call remote api to get provider location")
             fcd_loc_new = vops.FcdLocation(fcd_loc.fcd_id, ds_ref.value)
             # Convert the provider location from the moref format to the
             # datastore name format to store in the cinder DB.
@@ -820,18 +814,16 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
                 fcd_loc_new.provider_location()
             )
         else:
-            LOG.warning(f"Calling remote api to get provider location")
             prov_loc = self._remote_api.get_fcd_provider_location(
                 context, dest_host, fcd_loc.fcd_id, ds_ref.value)
-            LOG.warning(f"prov_loc {prov_loc}")
 
-        LOG.warning(f"provider_location {prov_loc}")
         volume.update({'provider_location': prov_loc})
         volume.save()
         if cross_vc:
             if self._use_fcd_cross_vc_migration:
                 # Use the native FCD cross vc migration from 8.0U3 and >
-                fcd_loc_moid = vops.FcdLocation(prov_loc.fcd_id, ds_ref.value)
+                fcd_loc_moid = vops.FcdLocation(fcd_loc.fcd_id, ds_ref.value)
+                prov_loc_moid = fcd_loc_moid.provider_location()
                 self._remote_api.update_fcd_policy(
                     context, dest_host, prov_loc_moid, new_profile_id)
             else:
@@ -840,7 +832,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
                 raise NotImplementedError()
         # todo-update policy-onremote vc and move it to folder
         else:
-            fcd_loc_moid = vops.FcdLocation(prov_loc.fcd_id, ds_ref.value)
+            fcd_loc_moid = vops.FcdLocation(fcd_loc.fcd_id, ds_ref.value)
             self.volumeops.update_fcd_policy(fcd_loc_moid, new_profile_id)
 
         return (True, None)

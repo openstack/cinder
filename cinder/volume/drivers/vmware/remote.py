@@ -140,11 +140,9 @@ class VmdkDriverRemoteService(object):
 
     def get_fcd_provider_location(self, ctxt, fcd_id, datastore_ref):
         fcd_loc_new = self._driver._get_fcd_location(fcd_id, datastore_ref)
-        #fcd_loc_new = self._driver.volumeops.FcdLocation(fcd_id, datastore_ref)
         # Convert the provider location from the moref format to the
         # datastore name format to store in the cinder DB.
         prov_loc = self._driver._provider_location_to_ds_name_location(
             fcd_loc_new.provider_location()
         )
-        LOG.warning(f"Returning {prov_loc}")
         return prov_loc
