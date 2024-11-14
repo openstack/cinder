@@ -778,6 +778,12 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             return self.shadow_cross_vc_migrate_volume(context, volume, host,
                                                        vcenter, fcd_loc)
 
+    def _get_fcd_location(self, fcd_id, datastore_ref):
+        """Wrapper for the remote API to return the fcd location."""
+        # We have to do this to avoid a circular reference from the
+        # Remote api back to this file.
+        return vops.FcdLocation(fcd_id, datastore_ref)
+
     @volume_utils.trace
     def _migrate_unattached(self, context, dest_host, volume, fcd_loc,
                             cross_vc=False):
@@ -792,31 +798,48 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         else:
             service_locator = None
 
+        (_, _, _, src_ds_info) = self._select_ds_for_volume(volume)
+
         ds_ref = vim_util.get_moref(ds_info['datastore'], 'Datastore')
         new_profile_id = ds_info.get('profile_id')
 
-        self.volumeops.relocate_fcd(fcd_loc, ds_ref, volume.name,
-                                    service_locator)
-        fcd_loc_new = vops.FcdLocation(fcd_loc.fcd_id, ds_ref.value)
-        # Convert the provider location from the moref format to the
-        # datastore name format to store in the cinder DB.
-        prov_loc = self._provider_location_to_ds_name_location(
-            fcd_loc_new.provider_location()
-        )
+        if ds_info['datastore_url'] != src_ds_info['url']:
+            self.volumeops.relocate_fcd(fcd_loc, ds_ref, volume.name,
+                                        service_locator)
+
+        # if we are migrating to a different DS on the same host
+        # there is no reason to call the remote_api to get the
+        # provider location.
+        dest_host_name = volume_utils.extract_host(dest_host, 'host')
+        src_host_name = volume_utils.extract_host(volume['host'], 'host')
+        if dest_host_name == src_host_name:
+            fcd_loc_new = vops.FcdLocation(fcd_loc.fcd_id, ds_ref.value)
+            # Convert the provider location from the moref format to the
+            # datastore name format to store in the cinder DB.
+            prov_loc = self._provider_location_to_ds_name_location(
+                fcd_loc_new.provider_location()
+            )
+        else:
+            prov_loc = self._remote_api.get_fcd_provider_location(
+                context, dest_host, fcd_loc.fcd_id, ds_ref.value)
+
         volume.update({'provider_location': prov_loc})
         volume.save()
         if cross_vc:
             if self._use_fcd_cross_vc_migration:
                 # Use the native FCD cross vc migration from 8.0U3 and >
+                fcd_loc_moid = vops.FcdLocation(fcd_loc.fcd_id, ds_ref.value)
+                prov_loc_moid = fcd_loc_moid.provider_location()
                 self._remote_api.update_fcd_policy(
-                    context, dest_host, prov_loc, new_profile_id)
+                    context, dest_host, prov_loc_moid, new_profile_id)
             else:
                 # TODO(hemna): Add the temporary shadow migration
                 LOG.error("TODO: Need to add shadow migration for cross vc.")
                 raise NotImplementedError()
         # todo-update policy-onremote vc and move it to folder
         else:
-            self.volumeops.update_fcd_policy(fcd_loc_new, new_profile_id)
+            fcd_loc_moid = vops.FcdLocation(fcd_loc.fcd_id, ds_ref.value)
+            self.volumeops.update_fcd_policy(fcd_loc_moid, new_profile_id)
 
         return (True, None)
 
