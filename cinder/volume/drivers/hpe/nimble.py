@@ -158,7 +158,9 @@ class NimbleBaseVolumeDriver(san.SanDriver):
 
     @staticmethod
     def get_driver_options():
-        return nimble_opts
+        additional_opts = driver.BaseVD._get_oslo_driver_opts(
+            'max_over_subscription_ratio')
+        return nimble_opts + additional_opts
 
     def _check_config(self):
         """Ensure that the flags we care about are set."""
@@ -425,6 +427,8 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                                 'storage_protocol': self._storage_protocol}
             # Just use a single pool for now, FIXME to support multiple
             # pools
+            mor = self.configuration.max_over_subscription_ratio
+            LOG.debug("mor: %(mor)s", {'mor': mor})
             single_pool = dict(
                 pool_name=backend_name,
                 total_capacity_gb=total_capacity,
@@ -432,6 +436,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                 reserved_percentage=0,
                 QoS_support=False,
                 multiattach=True,
+                max_over_subscription_ratio=mor,
                 thin_provisioning_support=True,
                 consistent_group_snapshot_enabled=True,
                 consistent_group_replication_enabled=self._replicated_type,

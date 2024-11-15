@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    HPE Nimble: Report max oversubscription ratio according to backend
+    configuration ``max_over_subscription_ratio``

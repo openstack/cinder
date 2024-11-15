@@ -278,7 +278,8 @@ REPL_DEVICES = [{
 
 def create_configuration(username, password, ip_address,
                          pool_name=None, subnet_label=None,
-                         thin_provision=True, devices=None):
+                         thin_provision=True, devices=None,
+                         max_over_subscription_ratio=20.0):
     configuration = mock.Mock()
     configuration.san_login = username
     configuration.san_password = password
@@ -288,6 +289,7 @@ def create_configuration(username, password, ip_address,
     configuration.nimble_subnet_label = subnet_label
     configuration.safe_get.return_value = 'NIMBLE'
     configuration.replication_device = devices
+    configuration.max_over_subscription_ratio = max_over_subscription_ratio
     return configuration
 
 
@@ -1194,7 +1196,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
-        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*', True,
+        None, 15.0))
     def test_get_volume_stats(self):
         self.mock_client_service.get_group_info.return_value = (
             FAKE_POSITIVE_GROUP_INFO_RESPONSE)
@@ -1212,7 +1215,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                    'consistent_group_snapshot_enabled': True,
                                    'replication_enabled': False,
                                    'consistent_group_replication_enabled':
-                                       False}]}
+                                       False,
+                                   'max_over_subscription_ratio': 15.0}]}
         self.assertEqual(
             expected_res,
             self.driver.get_volume_stats(refresh=True))
