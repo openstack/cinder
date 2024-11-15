@@ -22,6 +22,7 @@ from unittest import mock
 import ddt
 import fixtures
 import iso8601
+from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_db import exception as oslo_exception
 from oslo_utils import timeutils
@@ -128,6 +129,10 @@ class TestCinderBackupCmd(test.TestCase):
     @mock.patch('oslo_log.log.setup')
     def test_main_multiprocess(self, log_setup, monkey_patch, service_create,
                                get_launcher, mock_semaphore):
+        if processutils.get_worker_count() < 2:
+            raise test.testtools.TestCase.skipException(
+                'requires more than 1 cpu (to set backup_workers >1)')
+
         CONF.set_override('backup_workers', 2)
         mock_semaphore.side_effect = [mock.sentinel.semaphore1,
                                       mock.sentinel.semaphore2]
