@@ -2086,8 +2086,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_data = self.array.flasharray.VolumeSnapshotPatch(destroyed=True)
         mock_snap_patch.return_value = mock_data
         self.driver.delete_snapshot(snap)
-        self.array.delete_volume_snapshots.asssert_called_with(names=
-                                                               [snap_name])
+        self.array.delete_volume_snapshots.assert_called_with(names=
+                                                              [snap_name])
         self.assertTrue(self.array.delete_volume_snapshots.called)
 
     @mock.patch(BASE_DRIVER_OBJ + "._get_host", autospec=True)
