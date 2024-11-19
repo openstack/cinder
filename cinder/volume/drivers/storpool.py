@@ -133,19 +133,16 @@ class StorPoolDriver(driver.VolumeDriver):
         size = int(volume['size']) * units.Gi
         name = self._attach.volumeName(volume['id'])
         template = self._template_from_volume(volume)
+
+        create_request = {'name': name, 'size': size}
+        if template is not None:
+            create_request['template'] = template
+        else:
+            create_request['replication'] = \
+                self.configuration.storpool_replication
+
         try:
-            if template is None:
-                self._attach.api().volumeCreate({
-                    'name': name,
-                    'size': size,
-                    'replication': self.configuration.storpool_replication
-                })
-            else:
-                self._attach.api().volumeCreate({
-                    'name': name,
-                    'size': size,
-                    'template': template
-                })
+            self._attach.api().volumeCreate(create_request)
         except spapi.ApiError as e:
             raise self._backendException(e)
 
