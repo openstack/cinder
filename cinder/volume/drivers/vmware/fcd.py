@@ -349,7 +349,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             # hack to give vcenter time to release the vmdk lock
             # If we remove this, then calling move_vmdk_file or
             # copy_vmdk_file will fail with a lock error.
-            time.sleep(5)
+            time.sleep(10)
 
             (_, _, _, summary) = self._select_ds_for_volume(volume)
             backing = self.volumeops.get_backing_by_uuid(volume.id)
