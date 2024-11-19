@@ -123,7 +123,10 @@ def _validate_string_length(value, entity_name, mandatory=False,
                               max_length=max_length)
 
 
-@jsonschema.FormatChecker.cls_checks('date-time')
+_FORMAT_CHECKER = jsonschema.FormatChecker()
+
+
+@_FORMAT_CHECKER.checks('date-time')
 def _validate_datetime_format(param_value):
     try:
         timeutils.parse_isotime(param_value)
@@ -133,7 +136,7 @@ def _validate_datetime_format(param_value):
         return True
 
 
-@jsonschema.FormatChecker.cls_checks('name', exception.InvalidName)
+@_FORMAT_CHECKER.checks('name', exception.InvalidName)
 def _validate_name(param_value):
     if not param_value:
         msg = _("The 'name' can not be None.")
@@ -144,8 +147,8 @@ def _validate_name(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('name_skip_leading_trailing_spaces',
-                                     exception.InvalidName)
+@_FORMAT_CHECKER.checks(
+    'name_skip_leading_trailing_spaces', exception.InvalidName)
 def _validate_name_skip_leading_trailing_spaces(param_value):
     if not param_value:
         msg = _("The 'name' can not be None.")
@@ -160,12 +163,12 @@ def _validate_name_skip_leading_trailing_spaces(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('uuid')
+@_FORMAT_CHECKER.checks('uuid')
 def _validate_uuid_format(instance):
     return uuidutils.is_uuid_like(instance)
 
 
-@jsonschema.FormatChecker.cls_checks('group_snapshot_status')
+@_FORMAT_CHECKER.checks('group_snapshot_status')
 def _validate_status(param_value):
     if len(param_value.strip()) == 0:
         msg = _("The 'status' can not be empty.")
@@ -179,7 +182,7 @@ def _validate_status(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('progress')
+@_FORMAT_CHECKER.checks('progress')
 def _validate_progress(progress):
     if progress:
         try:
@@ -194,7 +197,7 @@ def _validate_progress(progress):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('base64')
+@_FORMAT_CHECKER.checks('base64')
 def _validate_base64_format(instance):
     try:
         if isinstance(instance, str):
@@ -208,8 +211,8 @@ def _validate_base64_format(instance):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('disabled_reason',
-                                     exception.InvalidInput)
+@_FORMAT_CHECKER.checks(
+    'disabled_reason', exception.InvalidInput)
 def _validate_disabled_reason(param_value):
     _validate_string_length(param_value, 'disabled_reason',
                             mandatory=False, min_length=1, max_length=255,
@@ -217,7 +220,7 @@ def _validate_disabled_reason(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks(
+@_FORMAT_CHECKER.checks(
     'name_non_mandatory_remove_white_spaces')
 def _validate_name_non_mandatory_remove_white_spaces(param_value):
     _validate_string_length(param_value, 'name',
@@ -226,7 +229,7 @@ def _validate_name_non_mandatory_remove_white_spaces(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks(
+@_FORMAT_CHECKER.checks(
     'description_non_mandatory_remove_white_spaces')
 def _validate_description_non_mandatory_remove_white_spaces(param_value):
     _validate_string_length(param_value, 'description',
@@ -235,7 +238,7 @@ def _validate_description_non_mandatory_remove_white_spaces(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('quota_set')
+@_FORMAT_CHECKER.checks('quota_set')
 def _validate_quota_set(quota_set):
     bad_keys = []
     for key, value in quota_set.items():
@@ -257,7 +260,7 @@ def _validate_quota_set(quota_set):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('quota_class_set')
+@_FORMAT_CHECKER.checks('quota_class_set')
 def _validate_quota_class_set(instance):
     bad_keys = []
     for key in instance:
@@ -271,7 +274,7 @@ def _validate_quota_class_set(instance):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks(
+@_FORMAT_CHECKER.checks(
     'group_status', webob.exc.HTTPBadRequest)
 def _validate_group_status(param_value):
     if param_value is None:
@@ -288,7 +291,7 @@ def _validate_group_status(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('availability_zone')
+@_FORMAT_CHECKER.checks('availability_zone')
 def _validate_availability_zone(param_value):
     if param_value is None:
         return True
@@ -298,7 +301,7 @@ def _validate_availability_zone(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks(
+@_FORMAT_CHECKER.checks(
     'group_type', (webob.exc.HTTPBadRequest, exception.InvalidInput))
 def _validate_group_type(param_value):
     _validate_string_length(param_value, 'group_type',
@@ -307,13 +310,13 @@ def _validate_group_type(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('level')
+@_FORMAT_CHECKER.checks('level')
 def _validate_log_level(level):
     utils.get_log_method(level)
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('validate_volume_reset_body')
+@_FORMAT_CHECKER.checks('validate_volume_reset_body')
 def _validate_volume_reset_body(instance):
     status = instance.get('status')
     attach_status = instance.get('attach_status')
@@ -327,7 +330,7 @@ def _validate_volume_reset_body(instance):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('volume_status')
+@_FORMAT_CHECKER.checks('volume_status')
 def _validate_volume_status(param_value):
     if param_value and param_value.lower() not in c_fields.VolumeStatus.ALL:
         msg = _("Volume status: %(status)s is invalid, "
@@ -338,7 +341,7 @@ def _validate_volume_status(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('volume_attach_status')
+@_FORMAT_CHECKER.checks('volume_attach_status')
 def _validate_volume_attach_status(param_value):
     valid_attach_status = [c_fields.VolumeAttachStatus.ATTACHED,
                            c_fields.VolumeAttachStatus.DETACHED]
@@ -351,7 +354,7 @@ def _validate_volume_attach_status(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('volume_migration_status')
+@_FORMAT_CHECKER.checks('volume_migration_status')
 def _validate_volume_migration_status(param_value):
     if param_value and (
             param_value.lower() not in c_fields.VolumeMigrationStatus.ALL):
@@ -363,7 +366,7 @@ def _validate_volume_migration_status(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('snapshot_status')
+@_FORMAT_CHECKER.checks('snapshot_status')
 def _validate_snapshot_status(param_value):
     if not param_value or (
             param_value.lower() not in c_fields.SnapshotStatus.ALL):
@@ -375,7 +378,7 @@ def _validate_snapshot_status(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('backup_status')
+@_FORMAT_CHECKER.checks('backup_status')
 def _validate_backup_status(param_value):
     valid_status = [c_fields.BackupStatus.AVAILABLE,
                     c_fields.BackupStatus.ERROR]
@@ -389,7 +392,7 @@ def _validate_backup_status(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('key_size')
+@_FORMAT_CHECKER.checks('key_size')
 def _validate_key_size(param_value):
     if param_value is not None:
         if not strutils.is_int_like(param_value):
@@ -398,47 +401,12 @@ def _validate_key_size(param_value):
     return True
 
 
-@jsonschema.FormatChecker.cls_checks('mysql_text')
+@_FORMAT_CHECKER.checks('mysql_text')
 def _validate_mysql_text(param_value):
     length = len(param_value.encode('utf8'))
     if length > 65535:
         return False
     return True
-
-
-class FormatChecker(jsonschema.FormatChecker):
-    """A FormatChecker can output the message from cause exception
-
-    We need understandable validation errors messages for users. When a
-    custom checker has an exception, the FormatChecker will output a
-    readable message provided by the checker.
-    """
-
-    def check(self, param_value, format):
-        """Check whether the param_value conforms to the given format.
-
-        :argument param_value: the param_value to check
-        :type: any primitive type (str, number, bool)
-        :argument str format: the format that param_value should conform to
-        :raises: :exc:`FormatError` if param_value does not conform to format
-        """
-
-        if format not in self.checkers:
-            return
-
-        # For safety reasons custom checkers can be registered with
-        # allowed exception types. Anything else will fall into the
-        # default formatter.
-        func, raises = self.checkers[format]
-        result, cause = None, None
-
-        try:
-            result = func(param_value)
-        except raises as e:
-            cause = e
-        if not result:
-            msg = "%r is not a %r" % (param_value, format)
-            raise jsonschema_exc.FormatError(msg, cause=cause)
 
 
 class _SchemaValidator(object):
@@ -465,8 +433,7 @@ class _SchemaValidator(object):
 
         validator_cls = jsonschema.validators.extend(self.validator_org,
                                                      validators)
-        format_checker = FormatChecker()
-        self.validator = validator_cls(schema, format_checker=format_checker)
+        self.validator = validator_cls(schema, format_checker=_FORMAT_CHECKER)
 
     def validate(self, *args, **kwargs):
         try:
