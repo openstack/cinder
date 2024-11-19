@@ -312,11 +312,12 @@ class HPE3PARCommon(object):
         4.0.22 - Fixed clone of replicated volume. Bug #2021941
         4.0.23 - Fixed login/logout while accessing wsapi. Bug #2068795
         4.0.24 - Fixed retype volume - thin to deco. Bug #2080927
+        4.0.25 - Update the calculation of free_capacity
 
 
     """
 
-    VERSION = "4.0.24"
+    VERSION = "4.0.25"
 
     stats = {}
 
@@ -1749,8 +1750,6 @@ class HPE3PARCommon(object):
                     # cpg usable free space
                     cpg_avail_space = (
                         self.client.getCPGAvailableSpace(cpg_name))
-                    free_capacity = int(
-                        cpg_avail_space['usableFreeMiB'] * const)
                     # total_capacity is the best we can do for a limitless cpg
                     total_capacity = int(
                         (cpg['SDUsage']['usedMiB'] +
@@ -1758,16 +1757,15 @@ class HPE3PARCommon(object):
                          cpg_avail_space['usableFreeMiB']) * const)
                 else:
                     total_capacity = int(cpg['SDGrowth']['limitMiB'] * const)
-                    free_capacity = int((cpg['SDGrowth']['limitMiB'] -
-                                        (cpg['UsrUsage']['usedMiB'] +
-                                         cpg['SDUsage']['usedMiB'])) * const)
-                capacity_utilization = (
-                    (float(total_capacity - free_capacity) /
-                     float(total_capacity)) * 100)
+
                 provisioned_capacity = int((cpg['UsrUsage']['totalMiB'] +
                                             cpg['SAUsage']['totalMiB'] +
                                             cpg['SDUsage']['totalMiB']) *
                                            const)
+                free_capacity = total_capacity - provisioned_capacity
+                capacity_utilization = (
+                    (float(total_capacity - free_capacity) /
+                     float(total_capacity)) * 100)
 
             except hpeexceptions.HTTPNotFound:
                 err = (_("CPG (%s) doesn't exist on array")
