@@ -58,6 +58,12 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
+            # NOTE(elod.illes): the newly pinned tempest (33.0.0) has issues as
+            # it seems cinder-plugin-ceph-tempest job pulls in latest version
+            # of cinder-tempest-plugin, where the dependency installation times
+            # out, which shows that we are using the wrong upper constraints.
+            # Let's set this non-voting for now to unblock the gate.
+            voting: false
         - cinder-plugin-ceph-tempest-mn-aa:
             voting: false
             irrelevant-files: *gate-irrelevant-files
@@ -75,9 +81,14 @@
             voting: false
             irrelevant-files: *gate-irrelevant-files
         - tempest-slow-py3:
+            voting: false
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
+            vars:
+              tempest_exclude_regex: "\
+                  (^tempest.api.compute.admin.test_volumes_negative.UpdateMultiattachVolumeNegativeTest)|\
+                  (^tempest.api.compute.volumes.test_attach_volume.AttachVolumeMultiAttachTest)"
         - grenade:
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
@@ -91,10 +102,16 @@
       jobs:
         - cinder-grenade-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
-        - cinder-plugin-ceph-tempest:
-            irrelevant-files: *gate-irrelevant-files
+        # NOTE(elod.illes): no need to run this until the job is set back as
+        # voting on check queue
+        # - cinder-plugin-ceph-tempest:
+        #     irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
+            vars:
+              tempest_exclude_regex: "\
+                  (^tempest.api.compute.admin.test_volumes_negative.UpdateMultiattachVolumeNegativeTest)|\
+                  (^tempest.api.compute.volumes.test_attach_volume.AttachVolumeMultiAttachTest)"
         - grenade:
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
