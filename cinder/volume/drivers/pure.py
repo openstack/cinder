@@ -21,6 +21,7 @@ import functools
 import ipaddress
 import math
 import re
+import time
 import uuid
 
 import distro
@@ -1071,7 +1072,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Set self._stats with relevant information."""
         current_array = self._get_current_array()
         space_info = list(current_array.get_arrays_space().items)[0]
-        perf_info = list(current_array.get_arrays_performance().items)[0]
+        perf_info = list(current_array.get_arrays_performance(
+            end_time=int(time.time()) * 1000,
+            start_time=(int(time.time()) * 1000) - 30000,
+            resolution=30000
+        ).items)[0]
         hosts = list(current_array.get_hosts().items)
         volumes = list(current_array.get_volumes().items)
         snaps = list(current_array.get_volume_snapshots().items)
@@ -1135,7 +1140,14 @@ class PureBaseVolumeDriver(san.SanDriver):
         #  Latency
         data['usec_per_read_op'] = perf_info.usec_per_read_op
         data['usec_per_write_op'] = perf_info.usec_per_write_op
+
+        # TODO: Queue depth - deprecated - remove in 2026.1 cycle
         data['queue_depth'] = getattr(perf_info, 'queue_depth', 0)
+        # Detailed I/O queuieing information
+        data['queue_usec_per_mirrored_write_op'] = (
+            perf_info.queue_usec_per_mirrored_write_op)
+        data['queue_usec_per_read_op'] = perf_info.queue_usec_per_read_op
+        data['queue_usec_per_write_op'] = perf_info.queue_usec_per_write_op
 
         #  Replication
         data["replication_capability"] = self._get_replication_capability()
