@@ -237,8 +237,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
         self.assertEqual('gcscinderbucket', backup.container)
 
     @gcs_client
-    @mock.patch('httplib2.proxy_info_from_url')
-    def test_backup_proxy_configured(self, mock_proxy_info):
+    def test_backup_proxy_configured(self):
         # Configuration overwrites enviromental variable
         proxy_cfg = "http://myproxy.example.com"
         os.environ['http_proxy'] = proxy_cfg + '_fake'
