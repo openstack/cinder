@@ -33,8 +33,6 @@ from oslo_middleware import cors
 from oslo_policy import opts as policy_opts
 from oslo_utils import netutils
 
-from cinder.policy import DEFAULT_POLICY_FILENAME
-
 
 CONF = cfg.CONF
 logging.register_options(CONF)
@@ -257,6 +255,6 @@ def set_external_library_defaults():
     # setup.cfg.
 
     set_middleware_defaults()
-    policy_opts.set_defaults(CONF, policy_file=DEFAULT_POLICY_FILENAME,
+    policy_opts.set_defaults(CONF,
                              enforce_scope=False,
                              enforce_new_defaults=False)
