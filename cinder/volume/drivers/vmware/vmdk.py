@@ -3134,9 +3134,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         except ValueError:
             return false_ret
 
-        if ((volume['status'] == 'retyping') and
-           (driver_name == 'VMwareVcFcdDriver')):
-            LOG.info("Retyping volume %s to FCD driver.", volume['id'])
+        # This covers retype and migration
+        if (driver_name == 'VMwareVcFcdDriver'):
+            LOG.info("Retyping/Migrating volume %s to FCD driver.",
+                     volume['id'])
             return self._migrate_to_fcd(context, volume, host)
 
         if driver_name != self._driver_name():
