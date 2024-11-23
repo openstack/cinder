@@ -386,7 +386,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                 array.post_volumes(names=[vol_name],
                                    with_default_protection=False,
                                    volume=flasharray.VolumePost(
-                                       provisoned=vol_size,
+                                       provisioned=vol_size,
                                        qos=flasharray.Qos(
                                            iops_limit=qos['maxIOPS'])))
             else:
@@ -411,7 +411,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             elif qos['maxBWS'] == 0:
                 array.post_volumes(names=[vol_name],
                                    volume=flasharray.VolumePost(
-                                       provisoned=vol_size,
+                                       provisioned=vol_size,
                                        qos=flasharray.Qos(
                                            iops_limit=qos['maxIOPS'])))
             else:
