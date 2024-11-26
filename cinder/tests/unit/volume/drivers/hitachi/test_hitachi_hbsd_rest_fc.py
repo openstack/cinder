@@ -669,6 +669,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.configuration.hitachi_manage_drs_volumes = False
         self.configuration.hitachi_port_scheduler = False
         self.configuration.hitachi_group_name_format = None
+        self.configuration.hitachi_extend_snapshot_volumes = (
+            False)
 
         self.configuration.san_login = CONFIG_MAP['user_id']
         self.configuration.san_password = CONFIG_MAP['user_pass']
@@ -1277,6 +1279,24 @@ class HBSDRESTFCDriverTest(test.TestCase):
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.extend_volume(TEST_VOLUME[0], 256)
         self.assertEqual(5, request.call_count)
+        body = request.call_args_list[4][1]['json']
+        self.assertNotIn('enhancedExpansion', body['parameters'])
+
+    @mock.patch.object(hbsd_common.HBSDCommon, "delete_pair")
+    @mock.patch.object(requests.Session, "request")
+    def test_extend_volume_enable_having_snapshots(self, request, delete_pair):
+        self.configuration.hitachi_extend_snapshot_volumes = (
+            True)
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
+                               FakeResponse(200, GET_LDEV_RESULT_PAIR),
+                               FakeResponse(200, GET_LDEV_RESULT_PAIR),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.extend_volume(TEST_VOLUME[0], 256)
+        self.assertEqual(4, request.call_count)
+        body = request.call_args_list[3][1]['json']
+        self.assertTrue(body['parameters']['enhancedExpansion'])
+        self.configuration.hitachi_extend_snapshot_volumes = (
+            False)
 
     @mock.patch.object(driver.FibreChannelDriver, "get_goodness_function")
     @mock.patch.object(driver.FibreChannelDriver, "get_filter_function")
@@ -2501,6 +2521,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
                   hbsd_common.COMMON_PORT_OPTS +
                   hbsd_common.COMMON_PAIR_OPTS +
                   hbsd_common.COMMON_NAME_OPTS +
+                  hbsd_common.COMMON_EXTEND_OPTS +
                   hbsd_rest.REST_VOLUME_OPTS +
                   hbsd_rest.REST_PAIR_OPTS +
                   hbsd_rest_fc.FC_VOLUME_OPTS +

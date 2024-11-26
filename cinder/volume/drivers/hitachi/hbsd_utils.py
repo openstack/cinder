@@ -27,7 +27,7 @@ from cinder import exception
 from cinder import utils as cinder_utils
 from cinder.volume import volume_types
 
-VERSION = '2.6.0'
+VERSION = '2.6.1'
 CI_WIKI_NAME = 'Hitachi_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
@@ -789,6 +789,14 @@ class HBSDMsg(enum.Enum):
                'Cinder object. (%(obj)s: %(obj_id)s)',
         'suffix': ERROR_SUFFIX,
     }
+    REPLICATION_AND_GROUP_ERROR = {
+        'msg_id': 771,
+        'loglevel': base_logging.ERROR,
+        'msg': ('Failed to %(operation)s. Remote replication and '
+                'generic volume group cannot be applied to the same volume. '
+                '(volume: %(volume)s, group: %(group)s)'),
+        'suffix': ERROR_SUFFIX,
+    }
     GET_SNAPSHOT_FROM_SVOL_FAILURE = {
         'msg_id': 772,
         'loglevel': base_logging.ERROR,
@@ -799,14 +807,6 @@ class HBSDMsg(enum.Enum):
         'msg_id': 773,
         'loglevel': base_logging.ERROR,
         'msg': 'Failed to ss2vclone. p-vol=%(pvol)s,s-vol=%(svol)s',
-        'suffix': ERROR_SUFFIX,
-    }
-    REPLICATION_AND_GROUP_ERROR = {
-        'msg_id': 771,
-        'loglevel': base_logging.ERROR,
-        'msg': ('Failed to %(operation)s. Remote replication and '
-                'generic volume group cannot be applied to the same volume. '
-                '(volume: %(volume)s, group: %(group)s)'),
         'suffix': ERROR_SUFFIX,
     }
 

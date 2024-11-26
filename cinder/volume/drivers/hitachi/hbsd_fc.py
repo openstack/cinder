@@ -83,6 +83,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         2.3.5 - Fix key error when backend is down.
         2.4.0 - Add QoS support.
         2.4.1 - Add UR volume support.
+        2.4.2 - Support extending volume with snapshot.
 
     """
 
@@ -104,6 +105,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         self.configuration.append_config_values(common.COMMON_PAIR_OPTS)
         self.configuration.append_config_values(common.COMMON_PORT_OPTS)
         self.configuration.append_config_values(common.COMMON_NAME_OPTS)
+        self.configuration.append_config_values(common.COMMON_EXTEND_OPTS)
         self.configuration.append_config_values(rest_fc.FC_VOLUME_OPTS)
         self.configuration.append_config_values(
             replication.COMMON_MIRROR_OPTS)
@@ -134,6 +136,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
                 common.COMMON_PORT_OPTS +
                 common.COMMON_PAIR_OPTS +
                 common.COMMON_NAME_OPTS +
+                common.COMMON_EXTEND_OPTS +
                 rest.REST_VOLUME_OPTS +
                 rest.REST_PAIR_OPTS +
                 rest_fc.FC_VOLUME_OPTS +

@@ -375,6 +375,7 @@ def list_opts():
                 cinder_volume_drivers_hitachi_hbsdcommon.COMMON_PORT_OPTS,
                 cinder_volume_drivers_hitachi_hbsdcommon.COMMON_PAIR_OPTS,
                 cinder_volume_drivers_hitachi_hbsdcommon.COMMON_NAME_OPTS,
+                cinder_volume_drivers_hitachi_hbsdcommon.COMMON_EXTEND_OPTS,
                 cinder_volume_drivers_hitachi_hbsdrest.REST_VOLUME_OPTS,
                 cinder_volume_drivers_hitachi_hbsdrest.REST_PAIR_OPTS,
                 cinder_volume_drivers_hitachi_hbsdrestfc.FC_VOLUME_OPTS,

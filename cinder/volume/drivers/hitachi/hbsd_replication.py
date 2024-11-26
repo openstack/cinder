@@ -1486,6 +1486,20 @@ class HBSDREPLICATION(rest.HBSDREST):
         else:
             copy_group_name = self._create_rep_copy_group_name(ldev)
             journal_ids = self._get_journal_ids(copy_group_name)
+        if not self.conf.safe_get(self.driver_info['param_prefix'] +
+                                  '_extend_snapshot_volumes'):
+            # If the volume has a snapshot, P-VOL is not expandable because it
+            # is a P-VOL of a TI pair, while S-VOL is expandable because it is
+            # not in a TI pair because a snapshot is not created in the
+            # secondary storage. Expanding only the S-VOL makes it difficult to
+            # restore the pair after an error occurs. To avoid this situation,
+            # we check if P-VOL is expandable before expanding both LDEVs. The
+            # following method raises an exception if P-VOL is in a TI pair,
+            # and thus we can prevent expanding only S-VOL. Contrary to its
+            # name, this method does not actually delete a TI pair in this
+            # context because the P-VOL of a GAD/UR pair cannot be the S-VOL of
+            # a TI pair.
+            self.rep_primary.delete_pair(ldev)
         self._delete_rep_pair(
             ldev, pair_info['svol_info'][0]['ldev'],
             rep_type == self.driver_info['mirror_attr'], delete_journal=False)
