@@ -3265,6 +3265,34 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         ds_ref = fcd_loc.ds_ref()
         summary = self.volumeops.get_summary(ds_ref)
         return "%s@%s" % (fcd_loc.fcd_id, summary.name)
+    
+    
+    def _update_fcd_attachment_info_for_nova(self, context, volume,
+                                             fcd_loc, vmdk_path, dc_ref):
+        new_conn_info = {
+            'driver_volume_type': "vstorageobject",
+            'volume_id': volume.id,
+            'name': volume.name,
+            'id': fcd_loc.fcd_id,
+            'ds_ref_val': fcd_loc.ds_ref_val,
+            'ds_name': volume_utils.extract_host(volume.host,
+                                                    level='pool'),
+            'adapter_type': self._get_adapter_type(volume),
+            'profile_id': self._get_storage_profile_id(volume),
+            'volume': "",
+            'vmdk_size': volume.size * units.Gi,
+            'vmdk_path': vmdk_path,
+            'datacenter': dc_ref.value
+        }
+        attachments = volume.volume_attachment
+        for attach in attachments:
+            attach.connection_info = new_conn_info
+            attach.save()
+        nova_api = compute.API()
+        instance_uuid = attachments[0]['instance_uuid']
+        nova_api.update_server_volume(context, instance_uuid,
+                                        volume.id, volume.id)
+        
 
     @volume_utils.trace
     def _migrate_to_fcd(self, context, volume, host):
@@ -3365,27 +3393,31 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         volume.update({'provider_location': prov_loc})
         volume.save()
         if vol_status == 'in-use':
-            new_conn_info = {
-                'driver_volume_type': "vstorageobject",
-                'volume_id': volume.id,
-                'name': volume.name,
-                'id': fcd_loc.fcd_id,
-                'ds_ref_val': fcd_loc.ds_ref_val,
-                'ds_name': volume_utils.extract_host(volume.host,
-                                                     level='pool'),
-                'adapter_type': self._get_adapter_type(volume),
-                'profile_id': self._get_storage_profile_id(volume),
-                'volume': "",
-                'vmdk_size': volume.size * units.Gi,
-                'vmdk_path': vmdk_path,
-                'datacenter': dc_ref.value
-            }
-            attachments = volume.volume_attachment
-            for attach in attachments:
-                attach.connection_info = new_conn_info
-                attach.save()
-            nova_api = compute.API()
-            instance_uuid = attachments[0]['instance_uuid']
-            nova_api.update_server_volume(context, instance_uuid,
-                                          volume.id, volume.id)
+            self._update_fcd_attachment_info_for_nova(
+                context, volume, fcd_loc,
+                vmdk_path, dc_ref
+            )
+            # new_conn_info = {
+            #     'driver_volume_type': "vstorageobject",
+            #     'volume_id': volume.id,
+            #     'name': volume.name,
+            #     'id': fcd_loc.fcd_id,
+            #     'ds_ref_val': fcd_loc.ds_ref_val,
+            #     'ds_name': volume_utils.extract_host(volume.host,
+            #                                          level='pool'),
+            #     'adapter_type': self._get_adapter_type(volume),
+            #     'profile_id': self._get_storage_profile_id(volume),
+            #     'volume': "",
+            #     'vmdk_size': volume.size * units.Gi,
+            #     'vmdk_path': vmdk_path,
+            #     'datacenter': dc_ref.value
+            # }
+            # attachments = volume.volume_attachment
+            # for attach in attachments:
+            #     attach.connection_info = new_conn_info
+            #     attach.save()
+            # nova_api = compute.API()
+            # instance_uuid = attachments[0]['instance_uuid']
+            # nova_api.update_server_volume(context, instance_uuid,
+            #                               volume.id, volume.id)
         return (True, None)

@@ -868,6 +868,18 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         )
         volume.update({'provider_location': prov_loc})
         volume.save()
+        
+        backing = self.volumeops.get_backing(volume.name, volume.id)
+        chost = self.volumeops.get_host(backing)
+        dc_ref = self.volumeops.get_dc(chost)
+        disk_dev = self.volumeops.get_disk_by_uuid(backing, volume.id)
+        vmdk_path = disk_dev.backing.fileName
+        
+        self._update_fcd_attachment_info_for_nova(
+            context, volume, prov_loc,
+            vmdk_path,
+            dc_ref
+        )
         return (True, None)
 
     @volume_utils.trace
