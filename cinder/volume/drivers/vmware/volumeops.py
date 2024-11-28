@@ -2158,7 +2158,11 @@ class VMwareVolumeOps(object):
             backing_spec.path = path + '/'
         return backing_spec
 
-    def get_vmdk_path_for_fcd(self, ds_ref, disk_id):
+    def get_vmdk_path_for_fcd(self, ds_ref=None, disk_id=None, fcd_loc=None):
+        cf = self._session.vim.client.factory
+        if fcd_loc:
+            ds_ref = fcd_loc.ds_ref()
+            disk_id = fcd_loc.id(cf)
         vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
         fcd_obj = self._session.invoke_api(
             self._session.vim,
