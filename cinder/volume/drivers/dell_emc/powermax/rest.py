@@ -30,6 +30,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.utils import retry
 from cinder.volume.drivers.dell_emc.powermax import utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 SLOPROVISIONING = 'sloprovisioning'
@@ -219,6 +220,7 @@ class PowerMaxRest(object):
             self.u4p_failover_lock = False
             raise exception.VolumeBackendAPIException(message=msg)
 
+    @volume_utils.trace()
     def request(self, target_uri, method, params=None, request_object=None,
                 u4p_check=False, retry=False):
         """Sends a request (GET, POST, PUT, DELETE) to the target api.

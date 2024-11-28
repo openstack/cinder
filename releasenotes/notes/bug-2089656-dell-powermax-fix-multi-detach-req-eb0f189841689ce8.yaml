@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Dell PowerMax Driver `Bug #2089656
+    <https://bugs.launchpad.net/cinder/+bug/2089656>`_: Fixed
+    the issue that multiple detach requests caused race conditions
+    in Dell PowerMax driver. Also, improved trace logs for
+    PowerMax RESTAPI requests.

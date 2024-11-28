@@ -22,6 +22,7 @@ from oslo_log import log as logging
 from oslo_utils import strutils
 
 from cinder.common import constants
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -148,6 +149,8 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerMAX_CI"
 
+    driver_prefix = 'powermax'
+
     def __init__(self, *args, **kwargs):
 
         super(PowerMaxISCSIDriver, self).__init__(*args, **kwargs)
@@ -260,6 +263,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         :param volume_id: the volume id
         """
 
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
@@ -440,6 +444,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
 
         return properties
 
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector.
 
@@ -699,3 +704,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         :param snapshot: the cinder snapshot object
         """
         self.common.revert_to_snapshot(volume, snapshot)
+
+    @classmethod
+    def clean_volume_file_locks(cls, volume_id):
+        coordination.synchronized_remove(f'{cls.driver_prefix}-{volume_id}')
