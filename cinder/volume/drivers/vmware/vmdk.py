@@ -1101,7 +1101,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         }
 
         # vmdk connector in os-brick needs additional connection info.
-        if 'platform' in connector and 'os_type' in connector:
+        if self._is_os_brick_connector(connector):
             connection_info['data']['vmdk_size'] = volume['size'] * units.Gi
 
             vmdk_path = self.volumeops.get_vmdk_path(backing)
@@ -1130,6 +1130,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                    'connector': connector})
 
         return connection_info
+
+    @staticmethod
+    def _is_os_brick_connector(connector):
+        return ('platform' in connector and 'os_type' in connector
+                and connector['os_type'] != 'baremetal')
 
     def _is_volume_subject_to_import_vapp(self, volume):
         return (volume['status'] == 'restoring-backup' or
@@ -1266,7 +1271,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # that case, the VMDK connector in os-brick created a new backing
         # which will replace the initial one. Here we set the proper name
         # and backing uuid for the new backing, because os-brick doesn't do it.
-        if (connector and 'platform' in connector and 'os_type' in connector
+        if (connector and self._is_os_brick_connector(connector)
                 and self._is_volume_subject_to_import_vapp(volume)):
             backing = self.volumeops.get_backing_by_uuid(volume['id'])
 

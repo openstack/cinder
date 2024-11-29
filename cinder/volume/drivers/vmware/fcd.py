@@ -297,8 +297,6 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             'data': {
                 'volume_id': volume.id,
                 'name': volume.name,
-                # This is needed by the backup process (os-brick)
-                'config': self._get_connector_config(),
                 'id': fcd_loc.fcd_id,
                 'ds_ref_val': fcd_loc.ds_ref_val,
                 'ds_name': volume_utils.extract_host(volume.host,
@@ -311,6 +309,10 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
                 'datacenter': datacenter,
             }
         }
+
+        # This is needed by the backup process (os-brick)
+        if self._is_os_brick_connector(connector):
+            connection_info['data']['config'] = self._get_connector_config()
 
         # instruct os-brick to use ImportVApp and HttpNfc upload for
         # disconnecting the volume
@@ -331,7 +333,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         # that case, the VMDK connector in os-brick created a new backing
         # which will replace the initial one. Here we set the proper name
         # and backing uuid for the new backing, because os-brick doesn't do it.
-        if (connector and 'platform' in connector and 'os_type' in connector
+        if (connector and self._is_os_brick_connector(connector)
                 and self._is_volume_subject_to_import_vapp(volume)):
             try:
                 # we store the PL with a datastore name, but volumeops uses
