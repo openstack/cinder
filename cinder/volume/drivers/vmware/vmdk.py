@@ -3271,6 +3271,44 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         summary = self.volumeops.get_summary(ds_ref)
         return "%s@%s" % (fcd_loc.fcd_id, summary.name)
 
+    def _update_fcd_attachment_info_for_nova(self, context, volume,
+                                             fcd_loc, vmdk_path, dc_ref):
+        new_conn_info = {
+            'driver_volume_type': "vstorageobject",
+            'volume_id': volume.id,
+            'name': volume.name,
+            'id': fcd_loc.fcd_id,
+            'ds_ref_val': fcd_loc.ds_ref_val,
+            'ds_name': volume_utils.extract_host(
+                volume.host, level='pool'),
+            'adapter_type': self._get_adapter_type(volume),
+            'profile_id': self._get_storage_profile_id(volume),
+            'volume': "",
+            'vmdk_size': volume.size * units.Gi,
+            'vmdk_path': vmdk_path,
+            'datacenter': dc_ref.value
+        }
+        nova_api = compute.API()
+        attachments = volume.volume_attachment
+        instance_uuids = set()
+        for attach in attachments:
+            attach.connection_info = new_conn_info
+            attach.save()
+            instance_uuids.add(attach['instance_uuid'])
+        # We want to prevent inconsistencies for any
+        # instances this volume is attached to.
+        # We don't really support multi-attach, but
+        # sometimes a volume can have multiple attachments
+        # due to migrations, live migration.
+        # There could be multiple attachments due to
+        # inconsistencies, and this helps prevent nova from
+        # having outdated info for this volume, leading to
+        # more inconsistencies.
+        for instance_uuid in instance_uuids:
+            nova_api.update_server_volume(
+                context, instance_uuid, volume.id, volume.id
+            )
+
     @volume_utils.trace
     def _migrate_to_fcd(self, context, volume, host):
 
@@ -3284,9 +3322,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         except ValueError:
             return false_ret
         dest_host = host['host']
-        tgt_ds = self._remote_api.select_ds_for_volume(context,
-                                                       cinder_host=dest_host,
-                                                       volume=volume)
+        tgt_ds = self._remote_api.select_ds_for_volume(
+            context, cinder_host=dest_host, volume=volume
+        )
         vol_status = volume.previous_status
         backing = self.volumeops.get_backing(volume.name, volume.id)
         if not backing:
@@ -3370,27 +3408,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         volume.update({'provider_location': prov_loc})
         volume.save()
         if vol_status == 'in-use':
-            new_conn_info = {
-                'driver_volume_type': "vstorageobject",
-                'volume_id': volume.id,
-                'name': volume.name,
-                'id': fcd_loc.fcd_id,
-                'ds_ref_val': fcd_loc.ds_ref_val,
-                'ds_name': volume_utils.extract_host(volume.host,
-                                                     level='pool'),
-                'adapter_type': self._get_adapter_type(volume),
-                'profile_id': self._get_storage_profile_id(volume),
-                'volume': "",
-                'vmdk_size': volume.size * units.Gi,
-                'vmdk_path': vmdk_path,
-                'datacenter': dc_ref.value
-            }
-            attachments = volume.volume_attachment
-            for attach in attachments:
-                attach.connection_info = new_conn_info
-                attach.save()
-            nova_api = compute.API()
-            instance_uuid = attachments[0]['instance_uuid']
-            nova_api.update_server_volume(context, instance_uuid,
-                                          volume.id, volume.id)
+            self._update_fcd_attachment_info_for_nova(
+                context, volume, fcd_loc,
+                vmdk_path, dc_ref
+            )
         return (True, None)

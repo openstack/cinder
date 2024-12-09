@@ -870,6 +870,15 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         )
         volume.update({'provider_location': prov_loc})
         volume.save()
+
+        dc_ref = self.volumeops.get_dc(ds_ref)
+        vmdk_path = self.volumeops.get_vmdk_path_for_fcd(fcd_loc=fcd_loc_new)
+
+        self._update_fcd_attachment_info_for_nova(
+            context, volume, prov_loc,
+            vmdk_path,
+            dc_ref
+        )
         return (True, None)
 
     @volume_utils.trace
