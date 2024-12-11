@@ -326,6 +326,7 @@ Response codes
 
    - 400
    - 404
+   - 409
 
 Request
 -------

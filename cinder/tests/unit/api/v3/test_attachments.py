@@ -18,6 +18,7 @@
 from unittest import mock
 
 import ddt
+import webob
 
 from cinder.api import microversions as mv
 from cinder.api.v3 import attachments as v3_attachments
@@ -137,6 +138,113 @@ class AttachmentsAPITestCase(test.TestCase):
                 },
         }
         self.assertRaises(exception.ValidationError,
+                          self.controller.update, req,
+                          self.attachment1.id, body=body)
+
+    @mock.patch.object(volume_api.API, 'attachment_update')
+    def test_update_attachment_not_authorized(self, mock_update):
+        exc = exception.NotAuthorized(reason='Operation is not authorized.')
+        mock_update.side_effect = exc
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
+                                      (fake.PROJECT_ID, self.attachment1.id),
+                                      version=mv.NEW_ATTACH,
+                                      use_admin_context=True)
+        body = {
+            "attachment":
+                {
+                    "connector": {'fake_key': 'fake_value',
+                                  'host': 'somehost',
+                                  'connection_info': 'a'},
+                },
+        }
+
+        self.assertRaises(exception.NotAuthorized,
+                          self.controller.update, req,
+                          self.attachment1.id, body=body)
+
+    @mock.patch('cinder.volume.api.API.attachment_update')
+    def test_update_attachment_invalid_volume_conflict(self, mock_update):
+        exc = exception.ResourceConflict(
+            reason='Duplicate connectors or improper volume status')
+        mock_update.side_effect = exc
+
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
+                                      (fake.PROJECT_ID, self.attachment1.id),
+                                      version=mv.NEW_ATTACH,
+                                      use_admin_context=True)
+        body = {
+            "attachment":
+                {
+                    "connector": {'fake_key': 'fake_value',
+                                  'host': 'somehost',
+                                  'connection_info': 'a'},
+                },
+        }
+
+        self.assertRaises(exception.ResourceConflict,
+                          self.controller.update, req,
+                          self.attachment1.id, body=body)
+
+    @mock.patch.object(volume_api.API, 'attachment_update')
+    def test_update_attachment_generic_exception_invalid(self, mock_update):
+        exc = exception.Invalid(reason='Invalid class generic Exception')
+        mock_update.side_effect = exc
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
+                                      (fake.PROJECT_ID, self.attachment1.id),
+                                      version=mv.NEW_ATTACH,
+                                      use_admin_context=True)
+        body = {
+            "attachment":
+                {
+                    "connector": {'fake_key': 'fake_value',
+                                  'host': 'somehost',
+                                  'connection_info': 'a'},
+                },
+        }
+
+        self.assertRaises(exception.Invalid,
+                          self.controller.update, req,
+                          self.attachment1.id, body=body)
+
+    @mock.patch.object(volume_api.API, 'attachment_update')
+    def test_update_attachment_cinder_exception(self, mock_update):
+        exc = exception.CinderException(reason='Generic Cinder Exception')
+        mock_update.side_effect = exc
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
+                                      (fake.PROJECT_ID, self.attachment1.id),
+                                      version=mv.NEW_ATTACH,
+                                      use_admin_context=True)
+        body = {
+            "attachment":
+                {
+                    "connector": {'fake_key': 'fake_value',
+                                  'host': 'somehost',
+                                  'connection_info': 'a'},
+                },
+        }
+
+        self.assertRaises(webob.exc.HTTPInternalServerError,
+                          self.controller.update, req,
+                          self.attachment1.id, body=body)
+
+    @mock.patch.object(volume_api.API, 'attachment_update')
+    def test_update_attachment_all_other_exceptions(self, mock_update):
+        exc = Exception('The most generic Exception')
+        mock_update.side_effect = exc
+        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
+                                      (fake.PROJECT_ID, self.attachment1.id),
+                                      version=mv.NEW_ATTACH,
+                                      use_admin_context=True)
+        body = {
+            "attachment":
+                {
+                    "connector": {'fake_key': 'fake_value',
+                                  'host': 'somehost',
+                                  'connection_info': 'a'},
+                },
+        }
+
+        self.assertRaises(webob.exc.HTTPInternalServerError,
                           self.controller.update, req,
                           self.attachment1.id, body=body)
 
