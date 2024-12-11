@@ -250,11 +250,11 @@ class AttachmentsController(wsgi.Controller):
                 self.volume_api.attachment_update(context,
                                                   attachment_ref,
                                                   connector))
-        except exception.NotAuthorized:
+        except (exception.NotAuthorized, exception.Invalid):
             raise
         except exception.CinderException as ex:
             err_msg = (
-                _("Unable to update attachment.(%s).") % ex.msg)
+                _("Unable to update attachment (%s).") % ex.msg)
             LOG.exception(err_msg)
         except Exception:
             err_msg = _("Unable to update the attachment.")
