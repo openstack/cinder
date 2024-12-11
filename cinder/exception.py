@@ -220,6 +220,11 @@ class InvalidVolume(Invalid):
     message = _("Invalid volume: %(reason)s")
 
 
+class ResourceConflict(Invalid):
+    message = _("Resource conflict: %(reason)s")
+    code = 409
+
+
 class InvalidContentType(Invalid):
     message = _("Invalid content type %(content_type)s.")
 

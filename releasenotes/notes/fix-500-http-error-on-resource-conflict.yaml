@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1907295 <https://bugs.launchpad.net/cinder/+bug/1907295>`_: Fixed
+    When a volume was not in the correct status to accept an attachment update
+    (e.g.: volume in error or duplicate connectors), the REST API was returning
+    a 500 (Internal Server Error). It now correctly returns the response code
+    409 (Conflict) in this situation.

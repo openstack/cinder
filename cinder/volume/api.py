@@ -2548,7 +2548,7 @@ class API(base.Base):
                        'volume_id': volume_ref.id,
                        'volume_status': volume_ref.status}
             LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
+            raise exception.ResourceConflict(reason=msg)
 
         if (len(volume_ref.volume_attachment) > 1 and
             not (volume_ref.multiattach or
@@ -2570,7 +2570,7 @@ class API(base.Base):
                 msg = _('duplicate connectors detected on volume '
                         '%(vol)s') % {'vol': volume_ref.id}
 
-                raise exception.InvalidVolume(reason=msg)
+                raise exception.ResourceConflict(reason=msg)
 
         connection_info = (
             self.volume_rpcapi.attachment_update(ctxt,
