@@ -302,11 +302,11 @@ class AttachmentManagerTestCase(test.TestCase):
         vref.save()
         connector = {'fake': 'connector',
                      'host': 'somehost'}
-        self.assertRaises(exception.InvalidVolume,
-                          self.volume_api.attachment_update,
-                          self.context,
-                          aref,
-                          connector)
+        caught_exc = self.assertRaises(
+            exception.ResourceConflict,
+            self.volume_api.attachment_update,
+            self.context, aref, connector)
+        self.assertEqual(409, caught_exc.code)
 
     @mock.patch('cinder.db.sqlalchemy.api.volume_attachment_update',
                 return_value={})
@@ -342,11 +342,13 @@ class AttachmentManagerTestCase(test.TestCase):
         with mock.patch('cinder.objects.Volume.get_by_id', return_value=vref):
             with mock.patch.object(self.volume_api.volume_rpcapi,
                                    'attachment_update') as m_au:
-                self.assertRaises(exception.InvalidVolume,
-                                  self.volume_api.attachment_update,
-                                  self.context,
-                                  vref.volume_attachment[1],
-                                  connector)
+                caught_exc = self.assertRaises(
+                    exception.ResourceConflict,
+                    self.volume_api.attachment_update,
+                    self.context,
+                    vref.volume_attachment[1],
+                    connector)
+                self.assertEqual(409, caught_exc.code)
                 m_au.assert_not_called()
         mock_va_update.assert_not_called()
         mock_db_upd.assert_not_called()
