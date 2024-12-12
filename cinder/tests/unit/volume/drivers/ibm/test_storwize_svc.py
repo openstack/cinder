@@ -8939,7 +8939,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             lsmdiskgrp.assert_not_called()
             self.assertEqual(0, lsmdiskgrp.call_count)
 
-    @ mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsmdiskgrp')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsmdiskgrp')
     def test_storwize_svc_select_iogrp_with_pool_site(self, lsmdiskgrp):
         opts = {}
         state = self.driver._state
