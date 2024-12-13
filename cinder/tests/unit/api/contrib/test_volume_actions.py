@@ -97,12 +97,14 @@ class VolumeActionsTest(test.TestCase):
             res = req.get_response(app)
             self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
-    def test_initialize_connection(self):
+    @ddt.data(False, True)
+    def test_initialize_connection(self, enforce_mpath):
         with mock.patch.object(volume_api.API,
                                'initialize_connection') as init_conn:
             init_conn.return_value = {}
             body = {'os-initialize_connection': {'connector': {
-                'fake': 'fake'}}}
+                'fake': 'fake', 'enforce_multipath': enforce_mpath}}}
+            expected_conn_info = {'enforce_multipath': enforce_mpath}
             req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = "POST"
@@ -111,7 +113,9 @@ class VolumeActionsTest(test.TestCase):
 
             res = req.get_response(fakes.wsgi_app(
                 fake_auth_context=self.context))
+            actual_conn_info = jsonutils.loads(res.body).get('connection_info')
             self.assertEqual(HTTPStatus.OK, res.status_int)
+            self.assertEqual(expected_conn_info, actual_conn_info)
 
     def test_initialize_connection_without_connector(self):
         with mock.patch.object(volume_api.API,

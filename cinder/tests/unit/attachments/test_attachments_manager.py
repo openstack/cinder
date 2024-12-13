@@ -12,6 +12,7 @@
 
 from unittest import mock
 
+import ddt
 from oslo_config import cfg
 from oslo_utils import importutils
 
@@ -28,6 +29,7 @@ from cinder.volume import configuration as conf
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class AttachmentManagerTestCase(test.TestCase):
     """Attachment related test for volume.manager.py."""
 
@@ -46,11 +48,13 @@ class AttachmentManagerTestCase(test.TestCase):
         self.manager.stats = {'allocated_capacity_gb': 100,
                               'pools': {}}
 
+    @ddt.data(False, True)
     @mock.patch.object(db.sqlalchemy.api, '_volume_type_get',
                        v2_fakes.fake_volume_type_get)
     @mock.patch('cinder.db.sqlalchemy.api.volume_type_qos_specs_get')
     @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
-    def test_attachment_update(self, get_extra_specs, mock_type_get):
+    def test_attachment_update(self, enforce_mpath, get_extra_specs,
+                               mock_type_get):
         """Test attachment_update."""
         volume_params = {'status': 'available'}
         connector = {
@@ -59,7 +63,8 @@ class AttachmentManagerTestCase(test.TestCase):
             "platform": "x86_64",
             "host": "tempest-1",
             "os_type": "linux2",
-            "multipath": False}
+            "multipath": False,
+            "enforce_multipath": enforce_mpath}
 
         vref = tests_utils.create_volume(self.context, **volume_params)
         self.manager.create_volume(self.context, vref)
@@ -77,7 +82,8 @@ class AttachmentManagerTestCase(test.TestCase):
                 'cacheable': False,
                 'access_mode': 'rw',
                 'driver_volume_type': 'iscsi',
-                'attachment_id': attachment_ref.id}
+                'attachment_id': attachment_ref.id,
+                'enforce_multipath': enforce_mpath}
 
             get_extra_specs.return_value = {}
             self.assertEqual(expected,
@@ -92,7 +98,8 @@ class AttachmentManagerTestCase(test.TestCase):
                 'cacheable': True,
                 'access_mode': 'rw',
                 'driver_volume_type': 'iscsi',
-                'attachment_id': attachment_ref.id}
+                'attachment_id': attachment_ref.id,
+                'enforce_multipath': enforce_mpath}
 
             get_extra_specs.return_value = {'cacheable': '<is> True'}
             self.assertEqual(expected,

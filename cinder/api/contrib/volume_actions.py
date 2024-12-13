@@ -172,6 +172,7 @@ class VolumeActionsController(wsgi.Controller):
             if error.exc_type == 'InvalidInput':
                 raise exception.InvalidInput(reason=error.value)
             raise
+        info['enforce_multipath'] = connector.get('enforce_multipath', False)
 
         return {'connection_info': info}
 
