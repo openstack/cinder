@@ -81,6 +81,10 @@ class MockPermissionError(MockException):
     errno = errno.EPERM
 
 
+class MockTimeOutException(MockException):
+    """Used as mock for TimeOut."""
+
+
 class MockImageHasSnapshotsException(MockException):
     """Used as mock for rbd.ImageHasSnapshots."""
 
@@ -114,12 +118,14 @@ def common_mocks(f):
             inst.mock_proxy = mock_proxy
             inst.mock_rbd.RBD.Error = Exception
             inst.mock_rados.Error = Exception
+            inst.mock_rbd.Error = Exception
             inst.mock_rbd.ImageBusy = MockImageBusyException
             inst.mock_rbd.ImageNotFound = MockImageNotFoundException
             inst.mock_rbd.ImageExists = MockImageExistsException
             inst.mock_rbd.ImageHasSnapshots = MockImageHasSnapshotsException
             inst.mock_rbd.InvalidArgument = MockInvalidArgument
             inst.mock_rbd.PermissionError = MockPermissionError
+            inst.mock_rbd.TimeOut = MockTimeOutException
 
             inst.driver.rbd = inst.mock_rbd
             aux = inst.driver.rbd
@@ -764,6 +770,32 @@ class RBDTestCase(test.TestCase):
                     'source-name':
                         'volume-11111111-1111-1111-1111-111111111111.deleted'}}
                ]
+        self.assertEqual(exp, res)
+
+    @common_mocks
+    @mock.patch.object(driver.RBDDriver, '_get_image_status')
+    def test_get_manageable_volumes_exc(self, mock_get_image_status):
+        cinder_vols = [{'id': '00000000-0000-0000-0000-000000000000'}]
+        vols = ['volume-00000000-0000-0000-0000-000000000000', 'vol1', 'vol2',
+                'volume-11111111-1111-1111-1111-111111111111.deleted']
+        self.mock_rbd.RBD.return_value.list.return_value = vols
+        image = self.mock_proxy.return_value.__enter__.return_value
+        # Four images are present, but the third image can't be opened
+        image.size.side_effect = [2 * units.Gi,
+                                  self.mock_rbd.ImageNotFound,
+                                  self.mock_rbd.TimeOut,
+                                  self.mock_rbd.PermissionError]
+        mock_get_image_status.side_effect = [
+            {'watchers': []},
+            {'watchers': []},
+            {'watchers': []}]
+        res = self.driver.get_manageable_volumes(
+            cinder_vols, None, 1000, 0, ['size'], ['asc'])
+        exp = [{'size': 2, 'reason_not_safe': 'already managed',
+                'extra_info': None, 'safe_to_manage': False,
+                'reference': {'source-name':
+                              'volume-00000000-0000-0000-0000-000000000000'},
+                'cinder_id': '00000000-0000-0000-0000-000000000000'}]
         self.assertEqual(exp, res)
 
     @common_mocks

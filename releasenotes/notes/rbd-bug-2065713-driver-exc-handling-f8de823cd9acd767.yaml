@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #2065713 <https://bugs.launchpad.net/cinder/+bug/2065713>`_: Due to
+    incorrect exception handling, ImageNotFound errors in the RBD driver's
+    get_manageable_volumes operation would propagate up to the API layer rather
+    than being caught and handled in the driver.
