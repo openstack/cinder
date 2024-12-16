@@ -14,6 +14,9 @@ defaults for a new project.
  gigabytes              Volume gigabytes allowed for each project.
  snapshots              Volume snapshots allowed for each project.
  volumes                Volumes allowed for each project.
+ backups                Volume backups allowed for each project.
+ backup_gigabytes       Total amount of backups allowed for each per project
+ groups                 Volume groups allowed for each project
 ===================  =============================================
 
 View Block Storage quotas
@@ -148,10 +151,18 @@ service quotas.
       the initial database sync in the initial deployment. If you want to
       change a default value for a new project, see the following.
 
-   To update a default value for a new project, set
-   ``use_default_quota_class = True`` (which is the default setting) in the
-   :guilabel:`DEFAULT` section of the ``/etc/cinder/cinder.conf`` file, and
-   run the command as the following.
+   To update a default value for projects, including existing projects and
+   a new project, set ``use_default_quota_class = True`` (which is the
+   default setting) in the :guilabel:`DEFAULT` section of the
+   ``/etc/cinder/cinder.conf`` file, and run the command as the following.
+
+   .. note::
+      Updating a default value affects to existing projects' quota default.
+      For example, when you update volumes to 200 to default class,
+      volumes quota in all existing projects is updated to 200 unless the value
+      was modified from the past default value.
+      And a new project after the default quota update will use the new default
+      value, volumes=200.
 
    .. code-block:: console
 
@@ -160,7 +171,7 @@ service quotas.
    Replace ``QUOTA_NAME`` with the quota that is to be updated,
    ``QUOTA_VALUE`` with the required new value.
 
-#. To update Block Storage service quotas for an existing project
+#. To update Block Storage service quotas to project specific values for an existing project
 
    .. code-block:: console
 
