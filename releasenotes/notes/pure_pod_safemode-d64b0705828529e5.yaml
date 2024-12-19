@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    [Pure Storage] When using synchronous replication, ensure that
+    FlashArray pods used by Cinder do not have SafeMode protection
+    groups attached, as SafeMode is not supported by Cinder.
