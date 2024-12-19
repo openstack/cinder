@@ -68,12 +68,30 @@ image_opts = [
                 default=True,
                 help='When possible, compress images uploaded '
                 'to the image service'),
+    # TODO(pas-ha): remove in 2027.2/J release
     cfg.IntOpt('image_conversion_cpu_limit',
+               deprecated_for_removal=True,
+               deprecated_since="2026.2/Hibiscus",
+               deprecated_reason="Renamed to 'image_introspection_cpu_limit'",
                default=60,
                help='CPU time limit in seconds to convert the image'),
+    cfg.IntOpt('image_introspection_cpu_limit',
+               default=60,
+               deprecated_name="image_conversion_cpu_limit",
+               help='CPU time limit in seconds to introspect the image'),
+    # TODO(pas-ha): remove in 2027.2/J release
     cfg.IntOpt('image_conversion_address_space_limit',
+               deprecated_for_removal=True,
+               deprecated_since="2026.2/Hibiscus",
+               deprecated_reason="Renamed to "
+                                 "'image_introspection_address_space_limit'",
                default=1,
                help='Address space limit in gigabytes to convert the image'),
+    cfg.IntOpt('image_introspection_address_space_limit',
+               default=1,
+               deprecated_name="image_conversion_address_space_limit",
+               help='Address space limit in gigabytes '
+               'to introspect the image'),
     cfg.BoolOpt('image_conversion_disable',
                 default=False,
                 help='Disallow image conversion when creating a volume from '
@@ -112,11 +130,6 @@ image_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(image_opts)
-
-QEMU_IMG_LIMITS = processutils.ProcessLimits(
-    cpu_time=CONF.image_conversion_cpu_limit,
-    address_space=CONF.image_conversion_address_space_limit * units.Gi)
-
 
 QEMU_IMG_FORMAT_MAP = {
     # Convert formats of Glance images to how they are processed with qemu-img.
@@ -195,8 +208,11 @@ def qemu_img_info(
         cmd.append('--force-share')
     cmd.append(path)
 
-    out, _err = utils.execute(*cmd, run_as_root=run_as_root,
-                              prlimit=QEMU_IMG_LIMITS)
+    prlimit = processutils.ProcessLimits(
+        cpu_time=CONF.image_introspection_cpu_limit,
+        address_space=(CONF.image_introspection_address_space_limit * units.Gi)
+    )
+    out, _err = utils.execute(*cmd, run_as_root=run_as_root, prlimit=prlimit)
     info = imageutils.QemuImgInfo(out, format='json')
 
     # FIXME: figure out a more elegant way to do this
@@ -214,7 +230,7 @@ def qemu_img_info(
         cmd.append(path)
         try:
             out, _err = utils.execute(*cmd, run_as_root=run_as_root,
-                                      prlimit=QEMU_IMG_LIMITS)
+                                      prlimit=prlimit)
             info = imageutils.QemuImgInfo(out, format='json')
         except processutils.ProcessExecutionError:
             # we'll just use the info object we already got earlier

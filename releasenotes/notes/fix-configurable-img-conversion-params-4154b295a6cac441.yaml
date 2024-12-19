@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    `Bug #1917353
+    <https://bugs.launchpad.net/cinder/+bug/1917353>`_: Options
+    ``image_conversion_cpu_limit`` and ``image_conversion_address_space_limit``
+    were renamed to ``image_introspection_cpu_limit`` and
+    ``image_introspection_address_space_limit`` respectively,
+    and now actually allow setting values other than default ones.
+
+deprecations:
+  - |
+    Option ``image_conversion_cpu_limit`` is deprecated in favor of
+    ``image_introspection_cpu_limit``, default value stays the same
+  - |
+    Option ``image_conversion_address_space_limit`` is deprecated in favor of
+    ``image_introspection_address_space_limit``, default value stays the same
