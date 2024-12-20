@@ -529,15 +529,15 @@ following meanings:
 - ``false``: Never do locking.
 - ``null``: Forced locking regardless of the iSCSI initiator.
 
-3.70 (Maximum in Zed and 2023.1)
---------------------------------
+3.70 (Maximum in Zed, 2023.1 and 2023.2)
+----------------------------------------
 
 Add the ability to transfer encrypted volumes and their snapshots. The feature
 removes a prior restriction on transferring encrypted volumes. Otherwise, the
 API request and response schema are unchanged.
 
-3.71
-----
+3.71 (Maximum in 2024.1 and 2024.2)
+-----------------------------------
 Add the ``os-extend_volume_completion`` volume action, which Nova can use
 to notify Cinder of success and error when handling a ``volume-extended``
 external server event.
