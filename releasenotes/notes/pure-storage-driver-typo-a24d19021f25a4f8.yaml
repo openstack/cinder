@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #2083532 <https://bugs.launchpad.net/cinder/+bug/2083532>`_:
+    [Pure Storage] Fixed creation of volumes with only IOPS qos.
