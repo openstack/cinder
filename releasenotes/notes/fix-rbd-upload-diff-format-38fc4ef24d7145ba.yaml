@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    RBD driver `bug #2092534
+    <https://bugs.launchpad.net/cinder/+bug/2092534>`_: Fixed
+    uploading a volume to image when image has different format
+    than volume.
