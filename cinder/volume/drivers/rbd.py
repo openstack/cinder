@@ -2091,10 +2091,41 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         return connector._get_rbd_handle(conn['data'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        source_handle = self._get_rbd_handle(volume)
+        if image_meta.get('container_format') != 'compressed' and (
+                image_meta['disk_format'] == 'raw'):
+            source_handle = self._get_rbd_handle(volume)
 
-        volume_utils.upload_volume(context, image_service, image_meta, None,
-                                   volume, volume_fd=source_handle)
+            volume_utils.upload_volume(context, image_service, image_meta,
+                                       None, volume, volume_fd=source_handle)
+        else:
+            # When the image format is different from volume format, we will
+            # fallback to the old workflow because of the following issues:
+            # 1. Passing RBDVolumeIOWrapper to format inspector
+            # We fail when calling privsep since RPC cannot serialize the
+            # RBDVolumeIOWrapper object
+            # 2. Handling in format inspector
+            # Determine if it's RBD file descriptor and only open the volume
+            # file if it's not
+            # 3. Handling in qemu-img commands
+            # Use rbd:{pool-name}/{image-name} format instead of file path
+            # https://docs.ceph.com/en/latest/rbd/qemu-rbd/#running-qemu-with-rbd # noqa
+            #
+            # Even if above issues are addressed, qemu-img convert will create
+            # a local copy of converted volume file so will need to determine
+            # the performance vs this workflow.
+            tmp_dir = volume_utils.image_conversion_dir()
+            tmp_file = os.path.join(tmp_dir,
+                                    volume.name + '-' + image_meta['id'])
+            with fileutils.remove_path_on_error(tmp_file):
+                args = ['rbd', 'export',
+                        '--pool', self.configuration.rbd_pool,
+                        volume.name, tmp_file]
+                args.extend(self._ceph_args())
+                self._try_execute(*args)
+                volume_utils.upload_volume(context, image_service,
+                                           image_meta, tmp_file,
+                                           volume)
+            os.unlink(tmp_file)
 
     def extend_volume(self, volume: Volume, new_size: str) -> None:
         """Extend an existing volume."""

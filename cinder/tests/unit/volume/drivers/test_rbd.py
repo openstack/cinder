@@ -26,6 +26,7 @@ import uuid
 
 import castellan
 import ddt
+from oslo_utils import fileutils
 from oslo_utils import imageutils
 from oslo_utils import units
 
@@ -3475,24 +3476,56 @@ class RBDTestCase(test.TestCase):
 
         self.assertEqual({'provider_location': None}, ret)
 
+    @ddt.data(('bare', 'raw'),
+              ('bare', 'qcow2'),
+              ('compressed', 'raw'),
+              ('compressed', 'qcow2'))
+    @ddt.unpack
     @common_mocks
-    def test_copy_volume_to_image(self):
+    def test_copy_volume_to_image(self, container_format, disk_format):
+        fake_image_meta = {
+            'id': 'e105244f-4cb8-447b-8452-6f1da459e3ab',
+            'container_format': container_format,
+            'disk_format': disk_format,
+        }
         mock_uv = self.mock_object(cinder.volume.volume_utils, 'upload_volume')
         mock_get_rbd_handle = self.mock_object(
             self.driver, '_get_rbd_handle',
             return_value=mock.sentinel.rbd_handle)
 
-        self.driver.copy_volume_to_image(mock.sentinel.context,
-                                         mock.sentinel.volume,
-                                         mock.sentinel.image_service,
-                                         mock.sentinel.image_meta)
-        mock_get_rbd_handle.assert_called_once_with(mock.sentinel.volume)
-        mock_uv.assert_called_once_with(mock.sentinel.context,
-                                        mock.sentinel.image_service,
-                                        mock.sentinel.image_meta,
-                                        None,
-                                        mock.sentinel.volume,
-                                        volume_fd=mock.sentinel.rbd_handle)
+        if container_format != 'compressed' and disk_format == 'raw':
+            self.driver.copy_volume_to_image(mock.sentinel.context,
+                                             mock.sentinel.volume,
+                                             mock.sentinel.image_service,
+                                             fake_image_meta)
+            mock_get_rbd_handle.assert_called_once_with(mock.sentinel.volume)
+            mock_uv.assert_called_once_with(mock.sentinel.context,
+                                            mock.sentinel.image_service,
+                                            fake_image_meta,
+                                            None,
+                                            mock.sentinel.volume,
+                                            volume_fd=
+                                            mock.sentinel.rbd_handle)
+        else:
+            with mock.patch.object(self.driver, '_execute'), \
+                    mock.patch.object(fileutils, 'remove_path_on_error'), \
+                    mock.patch.object(os, 'unlink'), \
+                    mock.patch.object(
+                        volume_utils, 'image_conversion_dir') as fake_dir:
+                fake_path = 'fake_path'
+                fake_vol = 'volume-' + fake_image_meta['id']
+                fake_dir.return_value = fake_path
+                fake_vol_path = os.path.join(fake_path, fake_vol)
+                self.driver.copy_volume_to_image(mock.sentinel.context,
+                                                 mock.sentinel.volume,
+                                                 mock.sentinel.image_service,
+                                                 fake_image_meta)
+            mock_get_rbd_handle.assert_not_called()
+            mock_uv.assert_called_once_with(mock.sentinel.context,
+                                            mock.sentinel.image_service,
+                                            fake_image_meta,
+                                            fake_vol_path,
+                                            mock.sentinel.volume)
 
 
 class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
