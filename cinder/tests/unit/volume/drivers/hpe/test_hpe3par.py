@@ -805,6 +805,8 @@ class HPE3PARBaseDriver(test.TestCase):
                   'host': HPE3PARBaseDriver.FAKE_HOST,
                   'source_volid': HPE3PARBaseDriver.VOLUME_ID}
 
+        mock_client.tuneVolume.return_value = ({'taskid': 1})
+
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
@@ -834,12 +836,11 @@ class HPE3PARBaseDriver(test.TestCase):
                 mock.call.modifyVolume(osv_matcher,
                                        {'comment': new_comment,
                                         'snapCPG': 'OpenStackCPGSnap'}),
-                mock.call.modifyVolume(osv_matcher,
-                                       {'action': 6,
-                                        'userCPG': 'OpenStackCPG',
-                                        'conversionOperation': 1,
-                                        'tuneOperation': 1,
-                                        'compression': False}),
+                mock.call.tuneVolume(osv_matcher, 1,
+                                     {'action': 6,
+                                      'userCPG': 'OpenStackCPG',
+                                      'conversionOperation': 1,
+                                      'compression': False}),
                 mock.call.getTask(1)
             ]
             mock_client.assert_has_calls(expected)
@@ -1968,6 +1969,8 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         volume = {'id': HPE3PARBaseDriver.CLONE_ID}
 
+        mock_client.tuneVolume.return_value = ({'taskid': 1})
+
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
@@ -1983,15 +1986,14 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 mock.call.deleteVolumeSet('vvs-0DM4qZEVSKON-AAAAAAAAA'),
                 mock.call.addVolumeToVolumeSet('myvvs',
                                                'osv-0DM4qZEVSKON-AAAAAAAAA'),
-                mock.call.modifyVolume('osv-0DM4qZEVSKON-AAAAAAAAA',
-                                       {'action': 6,
-                                        'userCPG': 'OpenStackCPG',
-                                        'conversionOperation': 1,
-                                        'compression': False,
-                                        'tuneOperation': 1}),
+                mock.call.tuneVolume('osv-0DM4qZEVSKON-AAAAAAAAA', 1,
+                                     {'action': 6,
+                                      'userCPG': 'OpenStackCPG',
+                                      'conversionOperation': 1,
+                                      'compression': False}),
                 mock.call.getTask(1),
             ]
-            mock_client.assert_has_calls(expected + self.standard_logout)
+            mock_client.assert_has_calls(expected)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_retype_volume_without_comment(self, _mock_volume_types):
@@ -2005,6 +2007,8 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         # volume without comment
         del (VOLUME_INFO_0['comment'])
         mock_client.getVolume.return_value = VOLUME_INFO_0
+
+        mock_client.tuneVolume.return_value = ({'taskid': 1})
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -2022,12 +2026,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 mock.call.deleteVolumeSet('vvs-0DM4qZEVSKON-AAAAAAAAA'),
                 mock.call.addVolumeToVolumeSet('myvvs',
                                                'osv-0DM4qZEVSKON-AAAAAAAAA'),
-                mock.call.modifyVolume('osv-0DM4qZEVSKON-AAAAAAAAA',
-                                       {'action': 6,
-                                        'userCPG': 'OpenStackCPG',
-                                        'conversionOperation': 1,
-                                        'compression': False,
-                                        'tuneOperation': 1}),
+                mock.call.tuneVolume('osv-0DM4qZEVSKON-AAAAAAAAA', 1,
+                                     {'action': 6,
+                                      'userCPG': 'OpenStackCPG',
+                                      'conversionOperation': 1,
+                                      'compression': False}),
                 mock.call.getTask(1),
             ]
             mock_client.assert_has_calls(expected + self.standard_logout)
@@ -2370,6 +2373,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         cpg = "any_cpg"
         snap_cpg = "any_cpg"
+        mock_client.tuneVolume.return_value = ({'taskid': 1})
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
@@ -2387,12 +2391,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             expected = [
                 mock.call.addVolumeToVolumeSet(u'vvs-0DM4qZEVSKON-DXN-NwVpw',
                                                'osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.modifyVolume('osv-0DM4qZEVSKON-DXN-NwVpw',
-                                       {'action': 6,
-                                        'userCPG': 'any_cpg',
-                                        'conversionOperation': 3,
-                                        'compression': False,
-                                        'tuneOperation': 1}),
+                mock.call.tuneVolume('osv-0DM4qZEVSKON-DXN-NwVpw', 1,
+                                     {'action': 6,
+                                      'userCPG': 'any_cpg',
+                                      'conversionOperation': 3,
+                                      'compression': False}),
                 mock.call.getTask(1)]
             mock_client.assert_has_calls(expected)
 
@@ -3073,7 +3076,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         mock_client = self.setup_driver(mock_conf=conf)
 
         mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
-        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.tuneVolume.return_value = ({'taskid': 1})
         mock_client.getTask.return_value = self.STATUS_DONE
 
         volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
@@ -3084,6 +3087,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                   'status': 'available',
                   'host': HPE3PARBaseDriver.FAKE_HOST,
                   'source_volid': HPE3PARBaseDriver.VOLUME_ID}
+
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
@@ -3112,12 +3116,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     osv_matcher,
                     {'comment': comment,
                      'snapCPG': HPE3PAR_CPG_SNAP}),
-                mock.call.modifyVolume(osv_matcher,
-                                       {'action': 6,
-                                        'userCPG': 'CPG-FC1',
-                                        'conversionOperation': 1,
-                                        'compression': False,
-                                        'tuneOperation': 1}),
+                mock.call.tuneVolume(osv_matcher, 1,
+                                     {'action': 6,
+                                      'userCPG': 'CPG-FC1',
+                                      'conversionOperation': 1,
+                                      'compression': False}),
                 mock.call.getTask(mock.ANY)
             ]
 
@@ -3141,7 +3144,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         mock_client = self.setup_driver(mock_conf=conf)
 
         mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
-        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.tuneVolume.return_value = ({'taskid': 1})
         mock_client.getTask.return_value = self.STATUS_DONE
 
         display_name = 'Foo Volume'
@@ -3187,12 +3190,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     {'comment': expected_comment,
                      'snapCPG': self.RETYPE_VOLUME_TYPE_2
                      ['extra_specs']['snap_cpg']}),
-                mock.call.modifyVolume(
-                    osv_matcher,
+                mock.call.tuneVolume(
+                    osv_matcher, 1,
                     {'action': 6,
                      'userCPG': 'CPG-FC1',
                      'conversionOperation': 1,
-                     'tuneOperation': 1,
                      'compression': False}),
                 mock.call.getTask(mock.ANY)
             ]
@@ -3247,7 +3249,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         mock_client = self.setup_driver(mock_conf=conf)
 
         mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
-        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.tuneVolume.return_value = ({'taskid': 1})
         mock_client.getTask.return_value = self.STATUS_DONE
 
         volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
@@ -3284,12 +3286,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 osv_matcher,
                 {'comment': comment,
                  'snapCPG': HPE3PAR_CPG_SNAP}),
-            mock.call.modifyVolume(osv_matcher,
-                                   {'action': 6,
-                                    'userCPG': 'CPG-FC1',
-                                    'conversionOperation': 1,
-                                    'tuneOperation': 1,
-                                    'compression': False}),
+            mock.call.tuneVolume(osv_matcher, 1,
+                                 {'action': 6,
+                                  'userCPG': 'CPG-FC1',
+                                  'conversionOperation': 1,
+                                  'compression': False}),
             mock.call.getTask(mock.ANY),
         ]
 
@@ -4529,7 +4530,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                   'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
 
         mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
-        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.tuneVolume.return_value = ({'taskid': 1})
         mock_client.getTask.return_value = self.STATUS_DONE
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -4583,11 +4584,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                      'bwMinGoalKB': 25600, 'priority': 1, 'latencyGoal': 25,
                      'bwMaxLimitKB': 51200}),
                 mock.call.addVolumeToVolumeSet(vvs_matcher, osv_matcher),
-                mock.call.modifyVolume(
-                    osv_matcher,
+                mock.call.tuneVolume(
+                    osv_matcher, 1,
                     {'action': 6,
                      'userCPG': HPE3PAR_CPG,
-                     'conversionOperation': 1, 'tuneOperation': 1,
+                     'conversionOperation': 1,
                      'compression': False}),
                 mock.call.getTask(1)
             ]
@@ -4666,7 +4667,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         mock_client = self.setup_driver()
 
         mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
-        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.tuneVolume.return_value = ({'taskid': 1})
         mock_client.getTask.return_value = self.STATUS_DONE
 
         id = '007abcde-7579-40bc-8f90-a20b3902283e'
@@ -4716,12 +4717,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                                         'snapCPG': 'OpenStackCPGSnap'}),
                 mock.call.deleteVolumeSet(vvs_matcher),
                 mock.call.addVolumeToVolumeSet(vvs, osv_matcher),
-                mock.call.modifyVolume(osv_matcher,
-                                       {'action': 6,
-                                        'userCPG': 'CPGNOTUSED',
-                                        'conversionOperation': 1,
-                                        'tuneOperation': 1,
-                                        'compression': False}),
+                mock.call.tuneVolume(osv_matcher, 1,
+                                     {'action': 6,
+                                      'userCPG': 'CPGNOTUSED',
+                                      'conversionOperation': 1,
+                                      'compression': False}),
                 mock.call.getTask(1)
             ]
 
