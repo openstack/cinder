@@ -164,7 +164,7 @@ Install and configure components
 
    .. code-block:: console
 
-      # yum install openstack-cinder
+      # dnf install openstack-cinder
 
 #. Edit the ``/etc/cinder/cinder.conf`` file and complete the
    following actions:

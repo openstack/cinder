@@ -1162,9 +1162,9 @@ On Red Hat Enterprise Linux and CentOS:
 
 .. code-block:: console
 
-   # yum install iscsi-initiator-utils   #ensure iSCSI is installed
-   # yum install device-mapper-multipath #multipath modules
-   # yum install sysfsutils sg3-utils    #file system utilities
+   # dnf install iscsi-initiator-utils   #ensure iSCSI is installed
+   # dnf install device-mapper-multipath #multipath modules
+   # dnf install sysfsutils sg3-utils    #file system utilities
 
 
 Multipath configuration file

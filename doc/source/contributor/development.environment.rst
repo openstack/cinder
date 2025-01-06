@@ -72,9 +72,9 @@ be added to the list above::
   python3-dev python3-pip
 
 On Red Hat-based distributions e.g., Fedora/RHEL/CentOS/Scientific Linux
-(tested on CentOS 6.5 and CentOS 7.3)::
+(tested on CentOS Stream 9)::
 
-  sudo yum install python-virtualenv openssl-devel python-pip git gcc libffi-devel libxslt-devel mysql-devel postgresql-devel
+  sudo dnf install python3-virtualenv openssl-devel python3-pip git gcc libffi-devel libxslt-devel mariadb-devel postgresql-devel
 
 On openSUSE-based distributions (SLES 12, openSUSE 13.1, Factory or
 Tumbleweed)::

@@ -17,7 +17,7 @@ storage node, you must prepare the storage device.
 
      .. code-block:: console
 
-        # yum install lvm2 device-mapper-persistent-data
+        # dnf install lvm2 device-mapper-persistent-data
 
      .. end
 
@@ -119,7 +119,7 @@ Install and configure components
 
    .. code-block:: console
 
-      # yum install openstack-cinder targetcli
+      # dnf install openstack-cinder targetcli
 
    .. end
 
