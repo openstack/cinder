@@ -18,6 +18,8 @@
 Helpers for cgroup related routines.
 """
 
+import os.path
+
 from oslo_concurrency import processutils
 
 import cinder.privsep
@@ -25,11 +27,25 @@ import cinder.privsep
 
 @cinder.privsep.sys_admin_pctxt.entrypoint
 def cgroup_create(name):
-    processutils.execute('cgcreate', '-g', 'blkio:%s' % name)
+    # If this path exists, it means we have support for cgroups v2
+    if os.path.isfile('/sys/fs/cgroup/cgroup.controllers'):
+        # cgroups v2 doesn't support io, but blkio instead.
+        processutils.execute('cgcreate', '-g', 'io:%s' % name)
+    else:
+        processutils.execute('cgcreate', '-g', 'blkio:%s' % name)
 
 
 @cinder.privsep.sys_admin_pctxt.entrypoint
 def cgroup_limit(name, rw, dev, bps):
-    processutils.execute('cgset', '-r',
-                         'blkio.throttle.%s_bps_device=%s %d' % (rw, dev, bps),
-                         name)
+    if os.path.isfile('/sys/fs/cgroup/cgroup.controllers'):
+        if rw == 'read':
+            cgset_arg = 'rbps'
+        else:
+            cgset_arg = 'wbps'
+        processutils.execute('cgset', '-r',
+                             'io.max=%s %s=%s' % (dev, cgset_arg, bps), name)
+    else:
+        processutils.execute('cgset', '-r',
+                             'blkio.throttle.%s_bps_device=%s %d' % (rw, dev,
+                                                                     bps),
+                             name)
