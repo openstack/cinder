@@ -8945,6 +8945,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
         expected_get_ports = [mock.call.getPorts()]
         expected_primera = [
             mock.call.is_primera_array(),
+            mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS),
             mock.call.getWsApiVersion()]
         mock_client.assert_has_calls(
             self.standard_login +

@@ -131,10 +131,11 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.6 - Allow iSCSI support for Primera 4.2 onwards
         4.0.7 - Use vlan iscsi ips. Bug #2015034
         4.0.8 - Add ipv6 support. Bug #2045411
+        4.0.9 - getWsApiVersion now requires login
 
     """
 
-    VERSION = "4.0.8"
+    VERSION = "4.0.9"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -147,6 +148,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         client_obj = common.client
         is_primera = client_obj.is_primera_array()
         if is_primera:
+            common.client_login()
             api_version = client_obj.getWsApiVersion()
             array_version = api_version['build']
             LOG.debug("array version: %(version)s",
