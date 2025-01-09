@@ -105,6 +105,71 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         self.assertEqual('newhost', volume.host)
         self.assertEqual('success', volume.migration_status)
 
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                '_can_use_driver_migration')
+    def test_migrate_volume_driver_for_retype(self, mock_can_use):
+        """Test volume migration done by driver on a retype."""
+        # Mock driver and rpc functions
+        mock_driver = self.mock_object(self.volume.driver, 'migrate_volume',
+                                       return_value=(True, {}))
+
+        volume = tests_utils.create_volume(self.context, size=0,
+                                           host=CONF.host,
+                                           migration_status='migrating')
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        self.volume.migrate_volume(self.context, volume, host_obj, False,
+                                   fake.VOLUME_TYPE2_ID, mock.sentinel.diff)
+
+        mock_can_use.assert_called_once_with(mock.sentinel.diff)
+        mock_driver.assert_called_once_with(self.context, volume, host_obj)
+        # check volume properties
+        volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                          volume.id)
+        self.assertEqual('newhost', volume.host)
+        self.assertEqual('success', volume.migration_status)
+        self.assertEqual(fake.VOLUME_TYPE2_ID, volume.volume_type_id)
+
+    @mock.patch('cinder.volume.manager.VolumeManager._migrate_volume_generic')
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                '_can_use_driver_migration')
+    def test_migrate_volume_driver_for_retype_generic(self, mock_can_use,
+                                                      mock_generic):
+        """Test generic volume migration on a retype after driver can't."""
+        # Mock driver and rpc functions
+        mock_driver = self.mock_object(self.volume.driver, 'migrate_volume',
+                                       return_value=(False, None))
+
+        volume = tests_utils.create_volume(self.context, size=0,
+                                           host=CONF.host,
+                                           migration_status='migrating')
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        self.volume.migrate_volume(self.context, volume, host_obj, False,
+                                   fake.VOLUME_TYPE2_ID, mock.sentinel.diff)
+
+        mock_can_use.assert_called_once_with(mock.sentinel.diff)
+        mock_driver.assert_called_once_with(self.context, volume, host_obj)
+        mock_generic.assert_called_once_with(self.context, volume, host_obj,
+                                             fake.VOLUME_TYPE2_ID)
+
+    @mock.patch('cinder.volume.manager.VolumeManager._migrate_volume_generic')
+    def test_migrate_volume_driver_attached_volume(self, mock_generic):
+        """Test driver volume migration with an attachment."""
+        mock_driver = self.mock_object(self.volume.driver, 'migrate_volume',
+                                       return_value=(False, None))
+        volume = tests_utils.create_volume(self.context, size=0,
+                                           host=CONF.host,
+                                           migration_status='migrating')
+        volume = tests_utils.attach_volume(
+            self.context, volume, fake.INSTANCE_ID, 'host', '/dev/vda')
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        self.volume.migrate_volume(self.context, volume, host_obj, False,
+                                   fake.VOLUME_TYPE2_ID)
+        # Driver assisted migration should not be attempted when the volume
+        # has attachments.
+        mock_driver.assert_not_called()
+        mock_generic.assert_called_once_with(self.context, volume, host_obj,
+                                             fake.VOLUME_TYPE2_ID)
+
     def test_migrate_volume_driver_cross_az(self):
         """Test volume migration done by driver."""
         # Mock driver and rpc functions
@@ -1024,3 +1089,21 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
             self.volume.retype(self.context, volume, new_vol_type.id,
                                host_obj, migration_policy='on-demand')
             vt_get.assert_not_called()
+
+    @ddt.data(
+        (None, True),
+        ({'encryption': {'cipher': ('v1', 'v2')}}, False),
+        ({'qos_specs': {'key1': ('v1', 'v2')}}, False),
+        ({'encryption': {}, 'qos_specs': {}, 'extra_specs': {}}, True),
+        ({'encryption': {}, 'qos_specs': {},
+          'extra_specs': {'volume_backend_name': ('ceph1', 'ceph2'),
+                          'RESKEY:availability_zones': ('nova', 'nova2')}},
+         True),
+        ({'encryption': {}, 'qos_specs': {},
+          'extra_specs': {'thin_provisioning_support': ('<is> True', None)}},
+         False),
+    )
+    @ddt.unpack
+    def test__can_use_driver_migration(self, diff, expected):
+        res = self.volume._can_use_driver_migration(diff)
+        self.assertEqual(expected, res)
