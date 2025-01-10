@@ -403,11 +403,9 @@ class QuotaCommands(object):
                 return []
             return [project_id]
 
-        projects = db_api.model_query(
-            ctxt,
-            models.QuotaUsage,
-            read_deleted="no"
-        ).with_entities('project_id').distinct().all()
+        projects = db_api.get_projects(ctxt,
+                                       models.QuotaUsage,
+                                       read_deleted="no")
         project_ids = [row.project_id for row in projects]
         return project_ids
 
