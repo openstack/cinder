@@ -60,3 +60,5 @@ zstd>=1.4.5.1 # BSD
 boto3>=1.18.49 # Apache-2.0
 distro>=1.8.0 # Apache-2.0
 tzdata>=2022.4 # MIT
+cachetools>=4.2.1 # MIT
+packaging>=20.9 # Apache-2.0
