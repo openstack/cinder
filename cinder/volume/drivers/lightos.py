@@ -251,6 +251,9 @@ class LightOSConnection(object):
                                          kwargs.get("snapshot_name")),
                                      {})
         }
+        if kwargs.get("qos_policy", None) is not None:
+            lightos_commands['create_volume'][2]['qosPolicyUUID'] = \
+                str(kwargs.get("qos_policy"))
         if cmd not in lightos_commands:
             raise exception.UnknownCmd(cmd=cmd)
         else:
@@ -609,10 +612,11 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         compression = self._parse_extra_spec(type_compression,
                                              default_compression)
         num_replicas = str(specs.get('lightos:num_replicas', num_replicas))
+        qos_policy = specs.get('lightos:qos_policy', None)
         project_name = specs.get(
             'lightos:project_name',
             LIGHTOS_DEFAULT_PROJECT_NAME)
-        return (compression, num_replicas, project_name)
+        return (compression, num_replicas, project_name, qos_policy)
 
     def _create_new_lightos_volume(self,
                                    os_volume,
@@ -620,7 +624,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                                    lightos_name,
                                    src_snapshot_lightos_name=None):
         """Create a new LightOS volume for this openstack volume."""
-        (compression, num_replicas, _) = self._get_volume_specs(os_volume)
+        (compression, num_replicas, _, qos_policy) = \
+            self._get_volume_specs(os_volume)
         vol_ipAcl = ['ALLOW_NONE'] if self.use_ip_acl() else ['ALLOW_ANY']
         return self.cluster.send_cmd(
             cmd='create_volume',
@@ -632,8 +637,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
             compression=compression,
             src_snapshot_name=src_snapshot_lightos_name,
             acl=['ALLOW_NONE'],
-            ip_acl=vol_ipAcl
-        )
+            ip_acl=vol_ipAcl,
+            qos_policy=qos_policy)
 
     def _get_lightos_uuid(self, project_name, volume):
         lightos_name = self._lightos_volname(volume)
@@ -1025,7 +1030,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                 'driver_version': self.VERSION,
                 'storage_protocol': constants.LIGHTOS,
                 'reserved_percentage': res_percentage,
-                'QoS_support': False,
+                'QoS_support': True,
                 'online_extend_support': True,
                 'thin_provisioning_support': True,
                 'compression': [True, False],
@@ -1622,6 +1627,15 @@ class LightOSVolumeDriver(driver.VolumeDriver):
             minimum=1,
             maximun=3,
             default=3)
+        self._set_property(
+            properties,
+            "lightos:qos_policy",
+            "Lightbits volume QoS policy UUID",
+            _(
+                "Specifies the Lightbits volume QoS policy UUID to use for \
+                the LightOS volume."),
+            "string",
+            default=None)
 
         return properties, 'lightos'
 
