@@ -2106,7 +2106,7 @@ class PowerMaxCommon(object):
             array, device_id, volume_name, extra_specs)
         return volume_name
 
-    @retry(retry_exc_tuple, interval=1, retries=3)
+    @retry(retry_exc_tuple, interval=2, retries=7)
     def _cleanup_device_retry(self, array, device_id, extra_specs):
         """Cleanup snapvx on the device
 
