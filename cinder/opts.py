@@ -194,10 +194,6 @@ from cinder.volume.drivers.veritas_access import veritas_iscsi as \
 from cinder.volume.drivers.vmware import vmdk as \
     cinder_volume_drivers_vmware_vmdk
 from cinder.volume.drivers import vzstorage as cinder_volume_drivers_vzstorage
-from cinder.volume.drivers.windows import iscsi as \
-    cinder_volume_drivers_windows_iscsi
-from cinder.volume.drivers.windows import smbfs as \
-    cinder_volume_drivers_windows_smbfs
 from cinder.volume.drivers.yadro import tatlin_common as \
     cinder_volume_drivers_yadro_tatlincommon
 from cinder.volume.drivers.zadara import zadara as \
@@ -452,8 +448,6 @@ def list_opts():
                 cinder_volume_drivers_vastdata_driver.VASTDATA_OPTS,
                 cinder_volume_drivers_vmware_vmdk.vmdk_opts,
                 cinder_volume_drivers_vzstorage.vzstorage_opts,
-                cinder_volume_drivers_windows_iscsi.windows_opts,
-                cinder_volume_drivers_windows_smbfs.volume_opts,
                 cinder_volume_drivers_yadro_tatlincommon.tatlin_opts,
                 cinder_volume_drivers_zadara_zadara.common.zadara_opts,
                 cinder_volume_manager.volume_backend_opts,

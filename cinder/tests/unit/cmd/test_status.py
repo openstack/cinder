@@ -160,26 +160,6 @@ class TestCinderStatus(testtools.TestCase):
             expected = uc.Code.FAILURE
         self.assertEqual(expected, result.code)
 
-    def test_check_legacy_win_conf(self):
-        self._set_volume_driver(
-            'cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver',
-            'winiscsi')
-        result = self.checks._check_legacy_windows_config()
-        self.assertEqual(uc.Code.SUCCESS, result.code)
-
-    def test_check_legacy_win_conf_fail(self):
-        self._set_volume_driver(
-            'cinder.volume.drivers.windows.windows.WindowsDriver',
-            'winiscsi')
-        result = self.checks._check_legacy_windows_config()
-        self.assertEqual(uc.Code.FAILURE, result.code)
-        self.assertIn('Please update to use', result.details)
-
-    def test_check_legacy_win_conf_no_drivers(self):
-        self._set_config('enabled_backends', None)
-        result = self.checks._check_legacy_windows_config()
-        self.assertEqual(uc.Code.SUCCESS, result.code)
-
     def test_check_removed_drivers(self):
         self._set_volume_driver(
             'cinder.volume.drivers.lvm.LVMVolumeDriver',
@@ -196,7 +176,9 @@ class TestCinderStatus(testtools.TestCase):
               'HPELeftHandISCSIDriver',
               'cinder.volume.drivers.sheepdog.SheepdogDriver',
               'cinder.volume.drivers.zfssa.zfssaiscsi.ZFSSAISCSIDriver',
-              'cinder.volume.drivers.zfssa.zfssanfs.ZFSSANFSDriver')
+              'cinder.volume.drivers.zfssa.zfssanfs.ZFSSANFSDriver',
+              'cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver',
+              'cinder.volume.drivers.windows.smbfs.WindowsSmbfsDriver')
     def test_check_removed_drivers_fail(self, volume_driver):
         self._set_volume_driver(
             volume_driver,

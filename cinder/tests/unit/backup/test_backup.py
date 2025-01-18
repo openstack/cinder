@@ -1372,12 +1372,9 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('builtins.open', wraps=open)
     @mock.patch.object(os.path, 'isdir', return_value=False)
-    @ddt.data({'os_name': 'nt', 'exp_open_mode': 'rb+'},
-              {'os_name': 'posix', 'exp_open_mode': 'wb'})
     @ddt.unpack
     def test_restore_backup(self, mock_isdir, mock_open,
-                            mock_temporary_chown, mock_get_conn,
-                            os_name, exp_open_mode):
+                            mock_temporary_chown, mock_get_conn):
         """Test normal backup restoration."""
         vol_size = 1
         vol_id = self._create_volume_db_entry(status='restoring-backup',
@@ -1398,10 +1395,9 @@ class BackupTestCase(BaseBackupTest):
                                               '_attach_device')
         mock_attach_device.return_value = attach_info
 
-        with mock.patch('os.name', os_name):
-            self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id, False)
 
-        mock_open.assert_called_once_with('/dev/null', exp_open_mode)
+        mock_open.assert_called_once_with('/dev/null', 'wb')
         mock_temporary_chown.assert_called_once_with('/dev/null')
         mock_get_conn.assert_called_once_with(False, enforce_multipath=False)
         vol.status = 'available'
@@ -1422,16 +1418,12 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('builtins.open', wraps=open)
     @mock.patch.object(os.path, 'isdir', return_value=False)
-    @ddt.data({'os_name': 'nt', 'exp_open_mode': 'rb+'},
-              {'os_name': 'posix', 'exp_open_mode': 'wb'})
     @ddt.unpack
     def test_restore_backup_new_volume(self,
                                        mock_isdir,
                                        mock_open,
                                        mock_temporary_chown,
-                                       mock_get_conn,
-                                       os_name,
-                                       exp_open_mode):
+                                       mock_get_conn):
         """Test normal backup restoration."""
         vol_size = 1
         vol_id = self._create_volume_db_entry(
@@ -1458,16 +1450,13 @@ class BackupTestCase(BaseBackupTest):
         self.mock_object(self.backup_mgr, '_detach_device')
         mock_attach_device.return_value = attach_info
 
-        with mock.patch('os.name', os_name):
-            self.backup_mgr.restore_backup(self.ctxt, backup, new_vol_id,
-                                           False)
+        self.backup_mgr.restore_backup(self.ctxt, backup, new_vol_id, False)
 
         backup.status = "restoring"
         db.backup_update(self.ctxt, backup.id, {"status": "restoring"})
         vol.status = 'available'
         vol.obj_reset_changes()
-        with mock.patch('os.name', os_name):
-            self.backup_mgr.restore_backup(self.ctxt, backup, vol2_id, False)
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol2_id, False)
 
         vol2.refresh()
         old_src_backup_id = vol2.metadata["src_backup_id"]
@@ -1476,8 +1465,7 @@ class BackupTestCase(BaseBackupTest):
         db.volume_update(self.ctxt, vol2.id, {"status": "restoring-backup"})
         vol2.obj_reset_changes()
 
-        with mock.patch('os.name', os_name):
-            self.backup_mgr.restore_backup(self.ctxt, backup2, vol2_id, False)
+        self.backup_mgr.restore_backup(self.ctxt, backup2, vol2_id, False)
 
         vol2.status = 'available'
         vol2.obj_reset_changes()

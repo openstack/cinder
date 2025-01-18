@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    The following volume drivers have been removed.
+
+    - ``Windows iSCSI driver``
+    - ``Windows SMB driver``
+
+  - |
+    Support for running cinder services in Windows operating systems has been
+    removed.

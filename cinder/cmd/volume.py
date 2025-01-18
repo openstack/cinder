@@ -17,22 +17,12 @@
 
 """Starter script for Cinder Volume."""
 import logging as python_logging
-import os
-import re
 import shlex
 import sys
 
 import eventlet
 import eventlet.tpool
-# Monkey patching must go before the oslo.log import, otherwise
-# oslo.context will not use greenthread thread local and all greenthreads
-# will share the same context.
-if os.name == 'nt':
-    # eventlet monkey patching the os module causes subprocess.Popen to fail
-    # on Windows when using pipes due to missing non-blocking IO support.
-    eventlet.monkey_patch(os=False)
-else:
-    eventlet.monkey_patch()
+eventlet.monkey_patch()
 # Monkey patch the original current_thread to use the up-to-date _active
 # global variable. See https://bugs.launchpad.net/bugs/1863021 and
 # https://github.com/eventlet/eventlet/issues/592
@@ -53,10 +43,8 @@ from oslo_reports import opts as gmr_opts
 from cinder.common import config  # noqa
 from cinder.common import constants
 from cinder.db import api as session
-from cinder import exception
 from cinder import i18n
 i18n.enable_lazy()
-from cinder.i18n import _
 from cinder import objects
 from cinder import service
 from cinder import utils
@@ -132,42 +120,7 @@ def _notify_service_started() -> None:
     service_started = True
 
 
-def _launch_services_win32() -> None:
-    if CONF.backend_name and CONF.backend_name not in CONF.enabled_backends:
-        msg = _('The explicitly passed backend name "%(backend_name)s" is not '
-                'among the enabled backends: %(enabled_backends)s.')
-        raise exception.InvalidInput(
-            reason=msg % dict(backend_name=CONF.backend_name,
-                              enabled_backends=CONF.enabled_backends))
-
-    # We'll avoid spawning a subprocess if a single backend is requested.
-    single_backend_name = (CONF.enabled_backends[0]
-                           if len(CONF.enabled_backends) == 1
-                           else CONF.backend_name)
-    if single_backend_name:
-        launcher = service.get_launcher()
-        _launch_service(launcher, single_backend_name)
-    elif CONF.enabled_backends:
-        # We're using the 'backend_name' argument, requesting a certain backend
-        # and constructing the service object within the child process.
-        launcher = service.WindowsProcessLauncher()
-        py_script_re = re.compile(r'.*\.py\w?$')
-        backend: str
-        for backend in filter(None, CONF.enabled_backends):
-            cmd = sys.argv + ['--backend_name=%s' % backend]
-            # Recent setuptools versions will trim '-script.py' and '.exe'
-            # extensions from sys.argv[0].
-            if py_script_re.match(sys.argv[0]):
-                cmd = [sys.executable] + cmd
-            launcher.add_process(cmd)
-            _notify_service_started()
-
-    _ensure_service_started()
-
-    launcher.wait()
-
-
-def _launch_services_posix() -> None:
+def _launch_services() -> None:
     launcher = service.get_launcher()
 
     backend: str
@@ -199,11 +152,4 @@ def main() -> None:
                   'drivers is not supported since Ocata.')
         sys.exit(1)
 
-    if os.name == 'nt':
-        # We cannot use oslo.service to spawn multiple services on Windows.
-        # It relies on forking, which is not available on Windows.
-        # Furthermore, service objects are unmarshallable objects that are
-        # passed to subprocesses.
-        _launch_services_win32()
-    else:
-        _launch_services_posix()
+    _launch_services()

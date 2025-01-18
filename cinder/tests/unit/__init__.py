@@ -22,19 +22,10 @@
    :platform: Unix
 """
 
-import os
 import sys
 
 import eventlet
-# Monkey patching must go before the oslo.log import, otherwise
-# oslo.context will not use greenthread thread local and all greenthreads
-# will share the same context.
-if os.name == 'nt':
-    # eventlet monkey patching the os module causes subprocess.Popen to fail
-    # on Windows when using pipes due to missing non-blocking IO support.
-    eventlet.monkey_patch(os=False)
-else:
-    eventlet.monkey_patch()
+eventlet.monkey_patch()
 # Monkey patch the original current_thread to use the up-to-date _active
 # global variable. See https://bugs.launchpad.net/bugs/1863021 and
 # https://github.com/eventlet/eventlet/issues/592

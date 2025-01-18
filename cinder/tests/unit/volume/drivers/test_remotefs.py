@@ -1106,8 +1106,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         mock_qemu_img_info.assert_called_once_with(self._fake_snapshot_path)
 
     @ddt.data({},
-              {'info_file_exists': True},
-              {'os_name': 'nt'})
+              {'info_file_exists': True})
     @ddt.unpack
     @mock.patch('json.dump')
     @mock.patch('cinder.volume.drivers.remotefs.open')
@@ -1116,8 +1115,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                              mock_os_path_exists,
                              mock_open,
                              mock_json_dump,
-                             info_file_exists=False,
-                             os_name='posix'):
+                             info_file_exists=False):
 
         mock_os_path_exists.return_value = info_file_exists
         fake_info_path = '/path/to/info'
@@ -1131,7 +1129,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         mock_json_dump.assert_called_once_with(
             fake_snapshot_info, mock.ANY, indent=1, sort_keys=True)
 
-        if info_file_exists or os.name == 'nt':
+        if info_file_exists:
             self._driver._execute.assert_not_called()
             self._driver._set_rw_permissions.assert_not_called()
         else:
@@ -1387,35 +1385,6 @@ class RemoteFSManageableVolumesTestCase(test.TestCase):
             'mountpoint': mock_get_mount_point.return_value,
             'vol_local_path': '/fake_mountpoint/import/img',
             'vol_remote_path': 'host:/dir/subdir/import/img'
-        }
-        self.assertEqual(exp_location_info, location_info)
-
-    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
-                       '_get_mount_point_for_share', create=True)
-    @mock.patch.object(os.path, 'isfile')
-    @mock.patch.object(os.path, 'normpath', lambda x: x.replace('/', '\\'))
-    @mock.patch.object(os.path, 'normcase', lambda x: x.lower())
-    @mock.patch.object(os.path, 'join', lambda *args: '\\'.join(args))
-    @mock.patch.object(os.path, 'sep', '\\')
-    def test_get_manageable_vol_location_win32(self, mock_is_file,
-                                               mock_get_mount_point):
-        self._driver._mounted_shares = [
-            '//host/share2/subdir',
-            '//host/share/subdir',
-            'host:/dir/subdir'
-        ]
-
-        mock_get_mount_point.return_value = r'c:\fake_mountpoint'
-        mock_is_file.return_value = True
-
-        location_info = self._driver._get_manageable_vol_location(
-            {'source-name': '//Host/share/Subdir/import/img'})
-
-        exp_location_info = {
-            'share': '//host/share/subdir',
-            'mountpoint': mock_get_mount_point.return_value,
-            'vol_local_path': r'c:\fake_mountpoint\import\img',
-            'vol_remote_path': r'\\host\share\subdir\import\img'
         }
         self.assertEqual(exp_location_info, location_info)
 

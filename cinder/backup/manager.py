@@ -105,7 +105,7 @@ MAPPING = {
     'cinder.backup.drivers.google.GoogleBackupDriver':
     'cinder.backup.drivers.gcs.GoogleBackupDriver',
 }
-SERVICE_PGRP = '' if os.name == 'nt' else os.getpgrp()
+SERVICE_PGRP = os.getpgrp()
 
 
 # TODO(geguileo): Once Eventlet issue #432 gets fixed we can just tpool.execute
@@ -788,17 +788,16 @@ class BackupManager(manager.SchedulerDependentManager):
         # with native threads proxy-wrapping the device file object.
         try:
             device_path = attach_info['device']['path']
-            open_mode = 'rb+' if os.name == 'nt' else 'wb'
             if (isinstance(device_path, str) and
                     not os.path.isdir(device_path)):
                 if secure_enabled:
-                    with open(device_path, open_mode) as device_file:
+                    with open(device_path, 'wb') as device_file:
                         backup_service.restore(backup, volume.id,
                                                tpool.Proxy(device_file),
                                                volume_is_new)
                 else:
                     with utils.temporary_chown(device_path):
-                        with open(device_path, open_mode) as device_file:
+                        with open(device_path, 'wb') as device_file:
                             backup_service.restore(backup, volume.id,
                                                    tpool.Proxy(device_file),
                                                    volume_is_new)

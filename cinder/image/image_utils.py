@@ -192,8 +192,6 @@ def qemu_img_info(
         cmd.append('--force-share')
     cmd.append(path)
 
-    if os.name == 'nt':
-        cmd = cmd[2:]
     out, _err = utils.execute(*cmd, run_as_root=run_as_root,
                               prlimit=QEMU_IMG_LIMITS)
     info = imageutils.QemuImgInfo(out, format='json')
@@ -211,8 +209,6 @@ def qemu_img_info(
         if force_share:
             cmd.append('--force-share')
         cmd.append(path)
-        if os.name == 'nt':
-            cmd = cmd[2:]
         try:
             out, _err = utils.execute(*cmd, run_as_root=run_as_root,
                                       prlimit=QEMU_IMG_LIMITS)
@@ -1134,7 +1130,7 @@ def fetch_to_volume_format(context: context.RequestContext,
 
 @contextlib.contextmanager
 def chown_if_needed(volume_path: str) -> Generator[None, None, None]:
-    if os.name == 'nt' or os.access(volume_path, os.R_OK):
+    if os.access(volume_path, os.R_OK):
         yield
     else:
         with utils.temporary_chown(volume_path):

@@ -39,9 +39,6 @@ public or private clouds.
    cinderlib) is aligned with the Ceph server version.  Mixing server
    and client versions is *unsupported* and may lead to anomalous behavior.
 
-   The minimum requirements for using Ceph with Hyper-V are Ceph Pacific and
-   Windows Server 2016.
-
 RADOS
 ~~~~~
 

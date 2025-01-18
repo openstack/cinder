@@ -46,6 +46,7 @@ REMOVED_DRVRS = [
     "hpe_lefthand",
     "sheepdog",
     "zfssa",
+    "windows"
 ]
 
 
@@ -186,30 +187,6 @@ class Checks(uc.UpgradeCommands):
                 'and is removed in Wallaby release.')
         return uc.Result(SUCCESS)
 
-    def _check_legacy_windows_config(self) -> uc.Result:
-        """Checks to ensure that the Windows driver path is properly updated.
-
-        The WindowsDriver was renamed in the Queens release to
-        WindowsISCSIDriver to avoid confusion with the SMB driver.
-        The backwards compatibility for this has now been removed, so
-        any cinder.conf settings still using
-        cinder.volume.drivers.windows.windows.WindowsDriver
-        must now be updated to use
-        cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver.
-        """
-        for volume_driver in _get_enabled_drivers():
-            if (volume_driver ==
-                    "cinder.volume.drivers.windows.windows.WindowsDriver"):
-                return uc.Result(
-                    FAILURE,
-                    'Setting volume_driver to '
-                    'cinder.volume.drivers.windows.windows.WindowsDriver '
-                    'is no longer supported.  Please update to use '
-                    'cinder.volume.drivers.windows.iscsi.WindowsISCSIDriver '
-                    'in cinder.conf.')
-
-        return uc.Result(SUCCESS)
-
     def _check_removed_drivers(self) -> uc.Result:
         """Checks to ensure that no removed drivers are configured.
 
@@ -267,7 +244,6 @@ class Checks(uc.UpgradeCommands):
         # added in Stein
         ('Backup Driver Path', _check_backup_module),
         ('Use of Policy File', _check_policy_file),
-        ('Windows Driver Path', _check_legacy_windows_config),
         ('Removed Drivers', _check_removed_drivers),
         # added in Train
         ('Periodic Interval Use', _check_periodic_interval),

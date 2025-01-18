@@ -19,8 +19,6 @@ import errno
 import glob
 import inspect
 import os
-import re
-import sys
 from typing import Callable, Optional
 import uuid
 
@@ -68,9 +66,6 @@ class Coordinator(object):
     def _get_file_path(self, backend_url):
         if backend_url.startswith('file://'):
             path = backend_url[7:]
-            # Copied from TooZ's _normalize_path to get the same path they use
-            if sys.platform == 'win32':
-                path = re.sub(r'\\(?=\w:\\)', '', os.path.normpath(path))
             return os.path.abspath(os.path.join(path, self.prefix))
         return None
 
