@@ -26,6 +26,7 @@ Supported operations
 - Create volume from snapshot
 - Create volume from volume (clone)
 - Active active deployment support
+- Volume retype (host assisted)
 
 LightOS OpenStack Driver Components
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
