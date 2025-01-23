@@ -1901,20 +1901,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def _get_fsid(self) -> str:
         with RADOSClient(self) as client:
-            # Librados's get_fsid is represented as binary
-            # in py3 instead of str as it is in py2.
-            # This causes problems with cinder rbd
-            # driver as we rely on get_fsid return value
-            # which should be string, not bytes.
-            # Decode binary to str fixes these issues.
-            # Fix with encodeutils.safe_decode CAN BE REMOVED
-            # after librados's fix will be in stable for some time.
-            #
-            # More informations:
-            # https://bugs.launchpad.net/glance-store/+bug/1816721
-            # https://bugs.launchpad.net/cinder/+bug/1816468
-            # https://tracker.ceph.com/issues/38381
-            return encodeutils.safe_decode(client.cluster.get_fsid())
+            return client.cluster.get_fsid()
 
     def _is_cloneable(self, image_location: str, image_meta: dict) -> bool:
         try:
