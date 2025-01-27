@@ -80,6 +80,10 @@ test_snapshot = mock.Mock(id=fake.SNAPSHOT_ID, volume=test_volume)
 test_clone = mock.Mock(id=fake.VOLUME4_ID, name_id=fake.VOLUME4_ID, size=1,
                        volume_type_id=fake.VOLUME_TYPE_ID, group_id=None,
                        multiattach=False, volume_attachment=None)
+test_clone2 = mock.Mock(id=fake.VOLUME5_ID, name_id=fake.VOLUME5_ID, size=1,
+                        volume_type_id=fake.VOLUME_TYPE_ID,
+                        group_id=fake.VOLUME_TYPE_ID,
+                        multiattach=False, volume_attachment=None)
 test_group = mock.Mock(id=fake.GROUP_ID)
 test_snapgroup = mock.Mock(id=fake.GROUP_SNAPSHOT_ID, group=test_group)
 test_connector = dict(wwpns=[TEST_WWN_1],
@@ -137,12 +141,15 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         capacity.GiB = units.Gi
         infinisdk.core.exceptions.InfiniSDKException = FakeInfinisdkException
         infinisdk.InfiniBox.return_value = self._system
+        (infinisdk.core.utils.environment.get_infinisdk_version.
+            return_value) = '250.0.0'
 
         if not self._test_skips_driver_setup():
             self.driver.do_setup(None)
 
     def _infinibox_mock(self):
         result = mock.Mock()
+        result.compat.has_promote_snapshot.return_value = False
         self._mock_volume = mock.Mock()
         self._mock_new_volume = mock.Mock()
         self._mock_volume.get_id.return_value = TEST_VOLUME_SOURCE_ID
@@ -244,8 +251,26 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     @skip_driver_setup
     @mock.patch('cinder.volume.drivers.infinidat.infinisdk', None)
     def test_do_setup_no_infinisdk(self):
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.do_setup, None)
+        error = self.assertRaises(exception.VolumeDriverException,
+                                  self.driver.do_setup, None)
+        self.assertIn('infinisdk', str(error))
+        self.assertIn(infinidat.MIN_SDK_VERSION, str(error))
+        self.assertNotIn('pip', str(error))
+
+    @skip_driver_setup
+    @mock.patch('cinder.volume.drivers.infinidat.infinisdk.'
+                'core.utils.environment.get_infinisdk_version')
+    def test_do_setup_infinisdk_version(self, get_infinisdk_version):
+        get_infinisdk_version.return_value = '210.1.2'
+        error = self.assertRaises(exception.VolumeDriverException,
+                                  self.driver.do_setup, None)
+        self.assertIn('210.1.2', str(error))
+        self.assertIn(infinidat.MIN_SDK_VERSION, str(error))
+        self.assertNotIn('pip', str(error))
+        get_infinisdk_version.return_value = '250.0.0'
+        self.driver.do_setup(None)
+        get_infinisdk_version.return_value = '250.3.4'
+        self.driver.do_setup(None)
 
     @mock.patch('cinder.volume.drivers.infinidat.infinisdk.InfiniBox')
     @ddt.data(True, False)
@@ -427,9 +452,16 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertTrue(result['thin_provisioning_support'])
         self.assertFalse(result['thick_provisioning_support'])
 
+    @ddt.data((True, 'THIN'), (False, 'THICK'))
+    @ddt.unpack
     @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
-    def test_create_volume(self, *mocks):
+    def test_create_volume(self, thin, provisioning, *mocks):
+        self.override_config('san_thin_provision', thin)
         self.driver.create_volume(test_volume)
+        self._system.volumes.create.assert_called_once_with(
+            name=self.driver._make_volume_name(test_volume),
+            pool=self._mock_pool, provisioning=provisioning,
+            size=test_volume.size * units.Gi)
 
     def test_create_volume_pool_not_found(self):
         self._system.pools.safe_get.return_value = None
@@ -540,36 +572,6 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           self.driver.create_volume_from_snapshot,
                           test_clone, test_snapshot)
 
-    def test_create_volume_from_snapshot_create_fails(self):
-        self._system.volumes.create.side_effect = self._raise_infinisdk
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_volume_from_snapshot,
-                          test_clone, test_snapshot)
-
-    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
-                return_value=test_connector)
-    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
-    def test_create_volume_from_snapshot_map_fails(self, *mocks):
-        self._mock_host.map_volume.side_effect = self._raise_infinisdk
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_volume_from_snapshot,
-                          test_clone, test_snapshot)
-
-    @mock.patch('cinder.volume.volume_utils.brick_get_connector')
-    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
-    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
-    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
-                '_connect_device')
-    def test_create_volume_from_snapshot_connect_fails(self, connect_device,
-                                                       connector_properties,
-                                                       *mocks):
-        connector_properties.return_value = test_connector
-        connect_device.side_effect = exception.DeviceUnavailable(
-            path='/dev/sdb', reason='Block device required')
-        self.assertRaises(exception.DeviceUnavailable,
-                          self.driver.create_volume_from_snapshot,
-                          test_clone, test_snapshot)
-
     def test_delete_snapshot(self):
         self.driver.delete_snapshot(test_snapshot)
 
@@ -582,44 +584,6 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self._mock_volume.safe_delete.side_effect = self._raise_infinisdk
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_snapshot, test_snapshot)
-
-    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
-                'delete_snapshot')
-    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
-                'create_volume_from_snapshot')
-    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
-                'create_snapshot')
-    @mock.patch('uuid.uuid4')
-    def test_create_cloned_volume(self, mock_uuid, create_snapshot,
-                                  create_volume_from_snapshot,
-                                  delete_snapshot):
-        mock_uuid.return_value = uuid.UUID(test_snapshot.id)
-        snapshot_attributes = ('id', 'name', 'volume')
-        Snapshot = collections.namedtuple('Snapshot', snapshot_attributes)
-        snapshot_id = test_snapshot.id
-        snapshot_name = self.configuration.snapshot_name_template % snapshot_id
-        snapshot = Snapshot(id=snapshot_id, name=snapshot_name,
-                            volume=test_volume)
-        self.driver.create_cloned_volume(test_clone, test_volume)
-        create_snapshot.assert_called_once_with(snapshot)
-        create_volume_from_snapshot.assert_called_once_with(test_clone,
-                                                            snapshot)
-        delete_snapshot.assert_called_once_with(snapshot)
-
-    def test_create_cloned_volume_create_fails(self):
-        self._system.volumes.create.side_effect = self._raise_infinisdk
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_cloned_volume,
-                          test_clone, test_volume)
-
-    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
-                return_value=test_connector)
-    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
-    def test_create_cloned_volume_map_fails(self, *mocks):
-        self._mock_host.map_volume.side_effect = self._raise_infinisdk
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_cloned_volume,
-                          test_clone, test_volume)
 
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
@@ -1556,3 +1520,276 @@ class InfiniboxDriverTestCaseQoS(InfiniboxDriverTestCaseBase):
         self.driver.create_volume(test_volume)
         self._system.qos_policies.create.assert_not_called()
         self._mock_qos_policy.assign_entity.assert_called()
+
+
+class InfiniboxDriverTestCaseWithoutSnapPromote(InfiniboxDriverTestCaseBase):
+    def setUp(self):
+        super(InfiniboxDriverTestCaseWithoutSnapPromote, self).setUp()
+        self.driver.do_setup(None)
+        self._system.compat.has_promote_snapshot.return_value = False
+
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
+                '_connect_device')
+    def test_create_volume_from_snapshot_connect_fails(self, connect_device,
+                                                       connector_properties,
+                                                       *mocks):
+        connector_properties.return_value = test_connector
+        connect_device.side_effect = exception.DeviceUnavailable(
+            path='/dev/sdb', reason='Block device required')
+        self.assertRaises(exception.DeviceUnavailable,
+                          self.driver.create_volume_from_snapshot,
+                          test_clone, test_snapshot)
+
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
+                return_value=test_connector)
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_create_cloned_volume_map_fails(self, *mocks):
+        self._mock_host.map_volume.side_effect = self._raise_infinisdk
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          test_clone, test_volume)
+
+    def test_create_cloned_volume_create_fails(self):
+        self._system.volumes.create.side_effect = self._raise_infinisdk
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          test_clone, test_volume)
+
+    def test_create_volume_from_snapshot_create_fails(self):
+        self._system.volumes.create.side_effect = self._raise_infinisdk
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          test_clone, test_snapshot)
+
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
+                return_value=test_connector)
+    @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
+    def test_create_volume_from_snapshot_map_fails(self, *mocks):
+        self._mock_host.map_volume.side_effect = self._raise_infinisdk
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          test_clone, test_snapshot)
+
+    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
+                'delete_snapshot')
+    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
+                '_create_copy_from_snapshot')
+    @mock.patch('cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
+                'create_snapshot')
+    @mock.patch('uuid.uuid4')
+    def test_create_cloned_volume(self, mock_uuid, create_snapshot,
+                                  create_copy_from_snapshot,
+                                  delete_snapshot):
+        mock_uuid.return_value = uuid.UUID(test_snapshot.id)
+        snapshot_attributes = ('id', 'name', 'volume')
+        Snapshot = collections.namedtuple('Snapshot', snapshot_attributes)
+        snapshot_id = test_snapshot.id
+        snapshot_name = self.configuration.snapshot_name_template % snapshot_id
+        snapshot = Snapshot(id=snapshot_id, name=snapshot_name,
+                            volume=test_volume)
+        self.driver.create_cloned_volume(test_clone, test_volume)
+        create_snapshot.assert_called_once_with(snapshot)
+        create_copy_from_snapshot.assert_called_once_with(test_clone, snapshot)
+        delete_snapshot.assert_called_once_with(snapshot)
+
+
+@ddt.ddt
+class InfiniboxDriverTestCaseWithSnapPromote(InfiniboxDriverTestCaseBase):
+    def setUp(self):
+        super(InfiniboxDriverTestCaseWithSnapPromote, self).setUp()
+        self._system.compat.has_promote_snapshot.return_value = True
+        self._mock_pool.is_compression_enabled.return_value = True
+        self._child_snapshot = mock.Mock(name='child_snapshot')
+        self._promoted_volume = mock.Mock(name='promoted_volume')
+        self._promoted_volume.get_size.return_value = units.Gi
+        self._mock_volume.create_snapshot.return_value = self._child_snapshot
+        self._mock_snapshot.create_snapshot.return_value = (
+            self._child_snapshot)
+        self._child_snapshot.promote_snapshot.return_value = (
+            self._promoted_volume)
+        snapshot_name = self.driver._make_snapshot_name(test_snapshot)
+        volumes = {
+            self.driver._make_volume_name(test_volume): self._mock_volume,
+            snapshot_name: self._mock_snapshot,
+            self.driver._make_volume_name(test_clone): self._promoted_volume,
+            self.driver._make_volume_name(test_clone2): self._promoted_volume,
+        }
+        self._system.volumes.safe_get.side_effect = (
+            lambda **kwargs: volumes.get(kwargs['name']))
+        self._set_qos = self.patch(
+            'cinder.volume.drivers.infinidat.InfiniboxVolumeDriver._set_qos')
+        self._set_metadata = self.patch(
+            'cinder.volume.drivers.infinidat.InfiniboxVolumeDriver.'
+            '_set_cinder_object_metadata')
+
+    def _create_clone(self, from_snapshot, volume):
+        if from_snapshot:
+            self.driver.create_volume_from_snapshot(volume, test_snapshot)
+        else:
+            self.driver.create_cloned_volume(volume, test_volume)
+
+    @ddt.data(*itertools.product(
+        (False, True), (False, True),
+        ((True, False), (False, True), (None, True), (None, False))))
+    @ddt.unpack
+    def test_create_clone_settings(self, from_snapshot, thin, compression):
+        configured_compression, pool_compression = compression
+        expected_compression = (pool_compression
+                                if configured_compression is None
+                                else configured_compression)
+        self.override_config('san_thin_provision', thin)
+        self.override_config('infinidat_use_compression',
+                             configured_compression)
+        self._mock_pool.is_compression_enabled.return_value = pool_compression
+        for source in (self._mock_volume, self._mock_snapshot):
+            source.get_provisioning.return_value = 'THICK' if thin else 'THIN'
+            source.is_compression_enabled.return_value = (
+                not expected_compression)
+
+        self._create_clone(from_snapshot, test_clone)
+
+        source = self._mock_snapshot if from_snapshot else self._mock_volume
+        source.create_snapshot.assert_called_once_with(
+            name=self.driver._make_volume_name(test_clone),
+            write_protected=False)
+        self._child_snapshot.promote_snapshot.assert_called_once_with()
+        self._promoted_volume.update_provisioning.assert_called_once_with(
+            'THIN' if thin else 'THICK')
+        if expected_compression:
+            self._promoted_volume.enable_compression.assert_called_once_with()
+            self._promoted_volume.disable_compression.assert_not_called()
+        else:
+            self._promoted_volume.disable_compression.assert_called_once_with()
+            self._promoted_volume.enable_compression.assert_not_called()
+        self._promoted_volume.update_compression_enabled.assert_not_called()
+        if configured_compression is None:
+            self._system.pools.safe_get.assert_called_once_with(
+                name=TEST_POOL_NAME)
+            self._mock_pool.is_compression_enabled.assert_called_once_with()
+        else:
+            self._system.pools.safe_get.assert_not_called()
+            self._mock_pool.is_compression_enabled.assert_not_called()
+        self._set_qos.assert_called_once_with(
+            test_clone, self._promoted_volume)
+        self._set_metadata.assert_called_once_with(
+            self._promoted_volume, test_clone)
+        self._promoted_volume.delete.assert_not_called()
+        self._system.volumes.create.assert_not_called()
+        self._mock_volume.promote_snapshot.assert_not_called()
+        self._mock_snapshot.promote_snapshot.assert_not_called()
+        for obj in (self._mock_volume, self._mock_snapshot,
+                    self._child_snapshot):
+            obj.update_provisioning.assert_not_called()
+            obj.enable_compression.assert_not_called()
+            obj.disable_compression.assert_not_called()
+            obj.resize.assert_not_called()
+            obj.delete.assert_not_called()
+
+    @ddt.data(*itertools.product((False, True), (1, 10)))
+    @ddt.unpack
+    def test_create_clone_size(self, from_snapshot, size):
+        clone = copy.deepcopy(test_clone)
+        clone.size = size
+
+        self._create_clone(from_snapshot, clone)
+
+        if size == 1:
+            self._promoted_volume.resize.assert_not_called()
+        else:
+            self._promoted_volume.resize.assert_called_once_with(
+                (size - 1) * units.Gi)
+        self._mock_volume.resize.assert_not_called()
+        self._mock_snapshot.resize.assert_not_called()
+        self._child_snapshot.resize.assert_not_called()
+
+    @ddt.data(False, True)
+    @mock.patch('cinder.volume.volume_utils.group_get_by_id')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_clone_within_group(self, from_snapshot, *mocks):
+        self._create_clone(from_snapshot, test_clone2)
+        self._mock_group.add_member.assert_called_once_with(
+            self._promoted_volume)
+
+    @ddt.data(False, True)
+    def test_create_clone_snapshot_fails(self, from_snapshot):
+        source = self._mock_snapshot if from_snapshot else self._mock_volume
+        source.create_snapshot.side_effect = self._raise_infinisdk
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self._create_clone, from_snapshot, test_clone)
+
+        self._child_snapshot.promote_snapshot.assert_not_called()
+        self._child_snapshot.delete.assert_not_called()
+        self._promoted_volume.delete.assert_not_called()
+        source.delete.assert_not_called()
+
+    @ddt.data(*itertools.product((False, True), (
+        'promote', 'provisioning', 'compression_enable', 'compression_disable',
+        'pool_compression', 'resize', 'qos', 'metadata', 'group')))
+    @ddt.unpack
+    @mock.patch('cinder.volume.volume_utils.group_get_by_id')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
+                return_value=True)
+    def test_create_clone_failure_cleanup(self, from_snapshot, stage, *mocks):
+        clone = copy.deepcopy(test_clone2)
+        clone.size = 2
+        self.override_config('infinidat_use_compression',
+                             False if stage == 'compression_disable' else None)
+        operations = {
+            'promote': self._child_snapshot.promote_snapshot,
+            'provisioning': self._promoted_volume.update_provisioning,
+            'compression_enable': self._promoted_volume.enable_compression,
+            'compression_disable': self._promoted_volume.disable_compression,
+            'pool_compression': self._mock_pool.is_compression_enabled,
+            'resize': self._promoted_volume.resize,
+            'qos': self._set_qos,
+            'metadata': self._set_metadata,
+            'group': self._mock_group.add_member,
+        }
+        error = RuntimeError('Clone operation failed')
+        operations[stage].side_effect = error
+
+        raised = self.assertRaises(RuntimeError, self._create_clone,
+                                   from_snapshot, clone)
+
+        self.assertIs(error, raised)
+        if stage == 'promote':
+            self._child_snapshot.delete.assert_called_once_with()
+            self._promoted_volume.delete.assert_not_called()
+        else:
+            self._promoted_volume.delete.assert_called_once_with()
+            self._child_snapshot.delete.assert_not_called()
+        self._mock_volume.delete.assert_not_called()
+        self._mock_snapshot.delete.assert_not_called()
+
+    @ddt.data(False, True)
+    def test_create_clone_pool_not_found(self, from_snapshot):
+        self._system.pools.safe_get.return_value = None
+
+        self.assertRaises(exception.VolumeDriverException,
+                          self._create_clone, from_snapshot, test_clone)
+
+        self._promoted_volume.delete.assert_called_once_with()
+        self._child_snapshot.delete.assert_not_called()
+        self._mock_volume.delete.assert_not_called()
+        self._mock_snapshot.delete.assert_not_called()
+
+    @ddt.data(False, True)
+    def test_create_clone_cleanup_failure(self, from_snapshot):
+        error = RuntimeError('Provisioning update failed')
+        self._promoted_volume.update_provisioning.side_effect = error
+        self._promoted_volume.delete.side_effect = RuntimeError(
+            'Delete failed')
+
+        raised = self.assertRaises(RuntimeError, self._create_clone,
+                                   from_snapshot, test_clone)
+
+        self.assertIs(error, raised)
+        self._promoted_volume.delete.assert_called_once_with()
+        self._child_snapshot.delete.assert_not_called()
+        self._mock_volume.delete.assert_not_called()
+        self._mock_snapshot.delete.assert_not_called()
