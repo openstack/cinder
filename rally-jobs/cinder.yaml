@@ -32,7 +32,7 @@
         api_versions:
           cinder:
             version: 3
-            service_name: cinderv3
+            service_name: cinder
     -
       title: Update cinder Quotas
       scenario:
@@ -49,7 +49,7 @@
         api_versions:
           cinder:
             version: 3
-            service_name: cinderv3
+            service_name: cinder
     -
       title: Create and Delete Volume
       workloads:
@@ -68,7 +68,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
         -
           scenario:
             CinderVolumes.create_and_delete_volume:
@@ -86,7 +86,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
         -
           scenario:
             CinderVolumes.create_and_delete_volume:
@@ -104,7 +104,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
     -
       title: Create and List Volume
       workloads:
@@ -124,7 +124,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
         -
           scenario:
             CinderVolumes.create_and_list_volume:
@@ -143,7 +143,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
         -
           scenario:
             CinderVolumes.create_and_list_volume:
@@ -162,7 +162,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
     -
       title: List volumes
       scenario:
@@ -182,7 +182,7 @@
         api_versions:
           cinder:
             version: 3
-            service_name: cinderv3
+            service_name: cinder
     -
       title: Create volume
       workloads:
@@ -201,7 +201,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
         -
           scenario:
             CinderVolumes.create_volume:
@@ -219,7 +219,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
         -
           scenario:
             CinderVolumes.create_volume:
@@ -237,7 +237,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
     -
       title: Create and Extend volume
       workloads:
@@ -257,7 +257,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
         -
           scenario:
             CinderVolumes.create_and_extend_volume:
@@ -278,7 +278,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
     -
       title: Create and attach volume
       scenario:
@@ -299,7 +299,7 @@
         api_versions:
           cinder:
             version: 3
-            service_name: cinderv3
+            service_name: cinder
     -
       title: Create volume and snapshot attach and detach volume and delete them
       workloads:
@@ -327,7 +327,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
         -
           scenario:
             CinderVolumes.create_snapshot_and_attach_volume:
@@ -352,7 +352,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
     -
       title: Create volume from volume and then delete it
       workloads:
@@ -373,7 +373,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
         -
           scenario:
             CinderVolumes.create_from_volume_and_delete_volume:
@@ -393,7 +393,7 @@
             api_versions:
               cinder:
                 version: 3
-                service_name: cinderv3
+                service_name: cinder
     -
       title: Create and delete snapshot
       scenario:
@@ -412,7 +412,7 @@
         api_versions:
           cinder:
             version: 3
-            service_name: cinderv3
+            service_name: cinder
     -
       title: Create and list snapshots
       scenario:
@@ -432,7 +432,7 @@
         api_versions:
           cinder:
             version: 3
-            service_name: cinderv3
+            service_name: cinder
     -
       title: Create and upload a volume to image
       scenario:
@@ -449,4 +449,4 @@
         api_versions:
           cinder:
             version: 3
-            service_name: cinderv3
+            service_name: cinder
