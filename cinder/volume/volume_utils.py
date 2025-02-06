@@ -1312,7 +1312,7 @@ def resolve_hostname(hostname: str) -> str:
     ip = socket.getaddrinfo(hostname, None)[0][4][0]
     LOG.debug('Asked to resolve hostname %(host)s and got IP %(ip)s.',
               {'host': hostname, 'ip': ip})
-    return ip
+    return str(ip)
 
 
 def update_backup_error(backup,
