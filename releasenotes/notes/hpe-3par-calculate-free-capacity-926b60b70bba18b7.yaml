@@ -1,0 +1,6 @@
+---
+other:
+  - |
+    HPE 3PAR driver: In get_volume_stats response, updated the
+    logic to calculate free_capacity
+

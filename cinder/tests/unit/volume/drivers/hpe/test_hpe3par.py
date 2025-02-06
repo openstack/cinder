@@ -8174,7 +8174,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         mock_client.getCPGAvailableSpace.return_value = {
             "capacityEfficiency": {u'compaction': 594.4},
             "rawFreeMiB": 1024.0 * 6,
-            "usableFreeMiB": 1024.0 * 3
+            "usableFreeMiB": 1024.0 * 79
         }
         stat_capabilities = {
             THROUGHPUT: 0,
@@ -8201,9 +8201,9 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.assertFalse(stats['pools'][0]['QoS_support'])
             self.assertEqual(86.0,
                              stats['pools'][0]['provisioned_capacity_gb'])
-            self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
-            self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
-            self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
+            self.assertEqual(100.0, stats['pools'][0]['total_capacity_gb'])
+            self.assertEqual(14.0, stats['pools'][0]['free_capacity_gb'])
+            self.assertEqual(86.0, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual('up', stats['pools'][0]['backend_state'])
             self.assertEqual(GOODNESS_FUNCTION,
@@ -8241,9 +8241,9 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.assertFalse(stats['pools'][0]['QoS_support'])
             self.assertEqual(86.0,
                              stats['pools'][0]['provisioned_capacity_gb'])
-            self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
-            self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
-            self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
+            self.assertEqual(100.0, stats['pools'][0]['total_capacity_gb'])
+            self.assertEqual(14.0, stats['pools'][0]['free_capacity_gb'])
+            self.assertEqual(86.0, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual(GOODNESS_FUNCTION,
                              stats['pools'][0]['goodness_function'])
@@ -8263,7 +8263,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                              stats['pools'][0][AVG_BUSY_PERC])
 
             cpg2 = self.cpgs[0].copy()
-            cpg2.update({'SDGrowth': {'limitMiB': 8192}})
+            cpg2.update({'SDGrowth': {'limitMiB': 204800}})
             mock_client.getCPG.return_value = cpg2
 
             stats = self.driver.get_volume_stats(True)
@@ -8272,22 +8272,16 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
             self.assertFalse(stats['pools'][0]['QoS_support'])
-            total_capacity_gb = 8192 * const
+            total_capacity_gb = 200 * 1024 * const
             self.assertEqual(total_capacity_gb,
                              stats['pools'][0]['total_capacity_gb'])
-            free_capacity_gb = int(
-                (8192 - (self.cpgs[0]['UsrUsage']['usedMiB'] +
-                         self.cpgs[0]['SDUsage']['usedMiB'])) * const)
+            free_capacity_gb = 114
             self.assertEqual(free_capacity_gb,
                              stats['pools'][0]['free_capacity_gb'])
-            provisioned_capacity_gb = int(
-                (self.cpgs[0]['UsrUsage']['totalMiB'] +
-                 self.cpgs[0]['SAUsage']['totalMiB'] +
-                 self.cpgs[0]['SDUsage']['totalMiB']) * const)
+            provisioned_capacity_gb = 86
             self.assertEqual(provisioned_capacity_gb,
                              stats['pools'][0]['provisioned_capacity_gb'])
-            cap_util = (float(total_capacity_gb - free_capacity_gb) /
-                        float(total_capacity_gb)) * 100
+            cap_util = 43.0
             self.assertEqual(cap_util,
                              stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
@@ -8336,7 +8330,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         mock_client.getCPGAvailableSpace.return_value = {
             "capacityEfficiency": {u'compaction': 594.4},
             "rawFreeMiB": 1024.0 * 6,
-            "usableFreeMiB": 1024.0 * 3
+            "usableFreeMiB": 1024.0 * 79
         }
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -8349,9 +8343,9 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.assertEqual('12345', stats['array_id'])
             self.assertFalse(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['QoS_support'])
-            self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
-            self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
-            self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
+            self.assertEqual(100.0, stats['pools'][0]['total_capacity_gb'])
+            self.assertEqual(14.0, stats['pools'][0]['free_capacity_gb'])
+            self.assertEqual(86.0, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual(GOODNESS_FUNCTION,
                              stats['pools'][0]['goodness_function'])
@@ -8392,7 +8386,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         mock_client.getCPGAvailableSpace.return_value = {
             "capacityEfficiency": {u'compaction': 594.4},
             "rawFreeMiB": 1024.0 * 6,
-            "usableFreeMiB": 1024.0 * 3
+            "usableFreeMiB": 1024.0 * 79
         }
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -8403,9 +8397,9 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('FC', stats['storage_protocol'])
             self.assertEqual('12345', stats['array_id'])
-            self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
-            self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
-            self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
+            self.assertEqual(100.0, stats['pools'][0]['total_capacity_gb'])
+            self.assertEqual(14.0, stats['pools'][0]['free_capacity_gb'])
+            self.assertEqual(86.0, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual(GOODNESS_FUNCTION,
                              stats['pools'][0]['goodness_function'])
@@ -8452,7 +8446,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         mock_client.getCPGAvailableSpace.return_value = {
             "capacityEfficiency": {u'compaction': 594.4},
             "rawFreeMiB": 1024.0 * 6,
-            "usableFreeMiB": 1024.0 * 3
+            "usableFreeMiB": 1024.0 * 79
         }
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -8464,9 +8458,9 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.assertEqual('12345', stats['array_id'])
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['QoS_support'])
-            self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
-            self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
-            self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
+            self.assertEqual(100.0, stats['pools'][0]['total_capacity_gb'])
+            self.assertEqual(14.0, stats['pools'][0]['free_capacity_gb'])
+            self.assertEqual(86.0, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual(GOODNESS_FUNCTION,
                              stats['pools'][0]['goodness_function'])
@@ -9614,7 +9608,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
         mock_client.getCPGAvailableSpace.return_value = {
             "capacityEfficiency": {u'compaction': 594.4},
             "rawFreeMiB": 1024.0 * 6,
-            "usableFreeMiB": 1024.0 * 3
+            "usableFreeMiB": 1024.0 * 79
         }
         stat_capabilities = {
             THROUGHPUT: 0,
@@ -9636,11 +9630,11 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             self.assertEqual('12345', stats['array_id'])
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
-            self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
-            self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
+            self.assertEqual(100.0, stats['pools'][0]['total_capacity_gb'])
+            self.assertEqual(14.0, stats['pools'][0]['free_capacity_gb'])
             self.assertEqual(86.0,
                              stats['pools'][0]['provisioned_capacity_gb'])
-            self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
+            self.assertEqual(86.0, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual(GOODNESS_FUNCTION,
                              stats['pools'][0]['goodness_function'])
@@ -9671,7 +9665,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected)
 
             cpg2 = self.cpgs[0].copy()
-            cpg2.update({'SDGrowth': {'limitMiB': 8192}})
+            cpg2.update({'SDGrowth': {'limitMiB': 204800}})
             mock_client.getCPG.return_value = cpg2
 
             stats = self.driver.get_volume_stats(True)
@@ -9679,22 +9673,16 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             self.assertEqual('12345', stats['array_id'])
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
-            total_capacity_gb = 8192 * const
+            total_capacity_gb = 200 * 1024 * const
             self.assertEqual(total_capacity_gb,
                              stats['pools'][0]['total_capacity_gb'])
-            free_capacity_gb = int(
-                (8192 - (self.cpgs[0]['UsrUsage']['usedMiB'] +
-                         self.cpgs[0]['SDUsage']['usedMiB'])) * const)
+            free_capacity_gb = 114
             self.assertEqual(free_capacity_gb,
                              stats['pools'][0]['free_capacity_gb'])
-            cap_util = (float(total_capacity_gb - free_capacity_gb) /
-                        float(total_capacity_gb)) * 100
+            cap_util = 43.0
             self.assertEqual(cap_util,
                              stats['pools'][0]['capacity_utilization'])
-            provisioned_capacity_gb = int(
-                (self.cpgs[0]['UsrUsage']['totalMiB'] +
-                 self.cpgs[0]['SAUsage']['totalMiB'] +
-                 self.cpgs[0]['SDUsage']['totalMiB']) * const)
+            provisioned_capacity_gb = 86
             self.assertEqual(provisioned_capacity_gb,
                              stats['pools'][0]['provisioned_capacity_gb'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
@@ -9734,7 +9722,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
         mock_client.getCPGAvailableSpace.return_value = {
             "capacityEfficiency": {u'compaction': 594.4},
             "rawFreeMiB": 1024.0 * 6,
-            "usableFreeMiB": 1024.0 * 3
+            "usableFreeMiB": 1024.0 * 79
         }
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -9745,9 +9733,9 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('iSCSI', stats['storage_protocol'])
             self.assertEqual('12345', stats['array_id'])
-            self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
-            self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
-            self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
+            self.assertEqual(100.0, stats['pools'][0]['total_capacity_gb'])
+            self.assertEqual(14.0, stats['pools'][0]['free_capacity_gb'])
+            self.assertEqual(86.0, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual(GOODNESS_FUNCTION,
                              stats['pools'][0]['goodness_function'])
@@ -9788,7 +9776,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
         mock_client.getCPGAvailableSpace.return_value = {
             "capacityEfficiency": {u'compaction': 594.4},
             "rawFreeMiB": 1024.0 * 6,
-            "usableFreeMiB": 1024.0 * 3
+            "usableFreeMiB": 1024.0 * 79
         }
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -9799,9 +9787,9 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('iSCSI', stats['storage_protocol'])
             self.assertEqual('12345', stats['array_id'])
-            self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
-            self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
-            self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
+            self.assertEqual(100.0, stats['pools'][0]['total_capacity_gb'])
+            self.assertEqual(14.0, stats['pools'][0]['free_capacity_gb'])
+            self.assertEqual(86.0, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual(GOODNESS_FUNCTION,
                              stats['pools'][0]['goodness_function'])
@@ -9848,7 +9836,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
         mock_client.getCPGAvailableSpace.return_value = {
             "capacityEfficiency": {u'compaction': 594.4},
             "rawFreeMiB": 1024.0 * 6,
-            "usableFreeMiB": 1024.0 * 3
+            "usableFreeMiB": 1024.0 * 79
         }
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -9860,9 +9848,9 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             self.assertEqual('12345', stats['array_id'])
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['QoS_support'])
-            self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
-            self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
-            self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
+            self.assertEqual(100.0, stats['pools'][0]['total_capacity_gb'])
+            self.assertEqual(14.0, stats['pools'][0]['free_capacity_gb'])
+            self.assertEqual(86.0, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual(GOODNESS_FUNCTION,
                              stats['pools'][0]['goodness_function'])
