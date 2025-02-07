@@ -111,7 +111,7 @@ def fake_volume_obj(context, **updates):
 
     expected_attrs = updates.pop('expected_attrs',
                                  ['metadata', 'admin_metadata',
-                                  'volume_attachment'])
+                                  'volume_attachment', 'glance_metadata'])
     vol = objects.Volume._from_db_object(context, objects.Volume(),
                                          fake_db_volume(**updates),
                                          expected_attrs=expected_attrs)

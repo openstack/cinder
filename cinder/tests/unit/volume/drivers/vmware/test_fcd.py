@@ -200,8 +200,10 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
     @mock.patch.object(FCD_DRIVER, '_get_disk_type')
     @mock.patch.object(FCD_DRIVER, '_get_storage_profile_id')
     @mock.patch.object(FCD_DRIVER, 'volumeops')
-    def test_create_volume(self, vops, get_storage_profile_id, get_disk_type,
-                           select_ds_fcd, provider_loc_to_ds_name_loc):
+    @ddt.data({}, [{'key': 'signature_verified', 'value': 1}])
+    def test_create_volume(self, glance_metadata, vops, get_storage_profile_id,
+                           get_disk_type, select_ds_fcd,
+                           provider_loc_to_ds_name_loc):
         ds_ref = mock.sentinel.ds_ref
         select_ds_fcd.return_value = ds_ref
 
@@ -218,14 +220,22 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         provider_loc_to_ds_name_loc.return_value = provider_loc
 
         volume = self._create_volume_obj()
+        volume.volume_glance_metadata = glance_metadata
         ret = self._driver.create_volume(volume)
-        self.assertEqual({'provider_location': provider_loc}, ret)
-        select_ds_fcd.assert_called_once_with(volume)
-        get_disk_type.assert_called_once_with(volume)
-        vops.create_fcd.assert_called_once_with(
-            volume.id, volume.name, volume.size * units.Ki,
-            ds_ref, disk_type,
-            profile_id=profile_id)
+
+        if not glance_metadata:
+            self.assertEqual({'provider_location': provider_loc}, ret)
+            select_ds_fcd.assert_called_once_with(volume)
+            get_disk_type.assert_called_once_with(volume)
+            vops.create_fcd.assert_called_once_with(
+                volume.id, volume.name, volume.size * units.Ki,
+                ds_ref, disk_type,
+                profile_id=profile_id)
+        else:
+            self.assertIsNone(ret)
+            select_ds_fcd.assert_not_called()
+            get_disk_type.assert_not_called()
+            vops.create_fcd.assert_not_called()
 
     @mock.patch.object(volumeops.FcdLocation, 'from_provider_location')
     @mock.patch.object(FCD_DRIVER, 'volumeops')
@@ -320,6 +330,10 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
                 'is_public': is_public,
                 }
 
+    @mock.patch.object(FCD_DRIVER, '_get_adapter_type')
+    @mock.patch('cinder.objects.Volume.update')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_update')
+    @mock.patch.object(FCD_DRIVER, '_fetch_stream_optimized_image')
     @mock.patch.object(FCD_DRIVER, '_provider_location_to_ds_name_location')
     @mock.patch.object(FCD_DRIVER, '_get_temp_image_folder_from_volume')
     @mock.patch.object(FCD_DRIVER, '_create_virtual_disk_from_sparse_image')
@@ -338,7 +352,11 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
                                   create_disk_from_preallocated_image,
                                   create_disk_from_sparse_image,
                                   get_temp_image_folder,
-                                  provider_loc_to_ds_name_loc):
+                                  provider_loc_to_ds_name_loc,
+                                  _fetch_stream_optimized_image,
+                                  db_volume_update,
+                                  volume_update,
+                                  get_adapter_type):
         image_meta = self._create_image_meta(vmware_disktype=disk_type)
         image_service = mock.Mock()
         image_service.show.return_value = image_meta
@@ -347,16 +365,24 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         datastore = mock.sentinel.datastore
         summary = mock.Mock(datastore=datastore)
         summary.name = 'ds1'
+        vops.get_datastore.return_value = datastore
         folder_path = mock.sentinel.folder_path
         get_temp_image_folder.return_value = (dc_ref, summary, folder_path)
+
+        adapter_type = mock.sentinel.adapter_type
+        get_adapter_type.return_value = adapter_type
 
         vmdk_path = mock.Mock()
         vmdk_path.get_descriptor_ds_file_path.return_value = (
             "[ds1] cinder_vol/foo.vmdk")
         if disk_type == vmdk.ImageDiskType.PREALLOCATED:
             create_disk_from_preallocated_image.return_value = vmdk_path
-        else:
+        elif disk_type == vmdk.ImageDiskType.SPARSE:
             create_disk_from_sparse_image.return_value = vmdk_path
+        elif disk_type == vmdk.ImageDiskType.STREAM_OPTIMIZED:
+            _fetch_stream_optimized_image.return_value =\
+                mock.sentinel.backing
+            vops.get_vmdk_path.return_value = "[ds1] cinder_vol/foo.vmdk"
 
         dc_path = '/test-dc'
         vops.get_inventory_path.return_value = dc_path
@@ -381,28 +407,36 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
             name="test_type", extra_specs=extra_specs)
         volume = self._create_volume_obj(volume_type_id=fake.VOLUME_TYPE_ID)
         image_id = self.IMAGE_ID
-        ret = self._driver.copy_image_to_volume(
+        self._driver.copy_image_to_volume(
             self._context, volume, image_service, image_id)
 
-        self.assertEqual({'provider_location': provider_location}, ret)
-        get_temp_image_folder.assert_called_once_with(volume)
         if disk_type == vmdk.ImageDiskType.PREALLOCATED:
+            get_temp_image_folder.assert_called_once_with(volume)
             create_disk_from_preallocated_image.assert_called_once_with(
                 self._context, image_service, image_id, image_meta['size'],
                 dc_ref, summary.name, folder_path, volume.id,
                 volumeops.VirtualDiskAdapterType.LSI_LOGIC)
-        else:
+        elif disk_type == vmdk.ImageDiskType.SPARSE:
+            get_temp_image_folder.assert_called_once_with(volume)
             create_disk_from_sparse_image.assert_called_once_with(
                 self._context, image_service, image_id, image_meta['size'],
                 dc_ref, summary.name, folder_path, volume.id)
+        elif disk_type == vmdk.ImageDiskType.STREAM_OPTIMIZED:
+            _fetch_stream_optimized_image.assert_called_once_with(
+                self._context, volume, image_service, image_id,
+                image_meta['size'],
+                image_meta['properties']['vmware_adaptertype'])
         datastore_url_cls.assert_called_once_with(
             'https', self._driver.configuration.vmware_host_ip,
             'cinder_vol/foo.vmdk', '/test-dc', 'ds1')
         vops.register_disk.assert_called_once_with(
             str(ds_url),
             volume.name,
-            summary.datastore)
+            datastore)
         vops.update_fcd_policy.assert_called_once_with(fcd_loc, profile_id)
+        volume_update.assert_called_once_with(
+            {'provider_location': provider_location}
+        )
 
     @mock.patch.object(FCD_DRIVER, '_provider_location_to_moref_location')
     @mock.patch.object(volumeops.FcdLocation, 'from_provider_location')

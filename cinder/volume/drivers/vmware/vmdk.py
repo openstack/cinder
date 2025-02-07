@@ -1893,6 +1893,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         LOG.info("Done copying image: %(id)s to volume: %(vol)s.",
                  {'id': image_id, 'vol': volume['name']})
+        return backing
 
     def _extend_backing(self, backing, new_size_in_gb, disk_type):
         """Extend volume backing's virtual disk.

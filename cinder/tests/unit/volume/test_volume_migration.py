@@ -179,6 +179,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         fake_new_volume = fake_volume.fake_db_volume(**fake_db_new_volume)
         new_volume_obj = fake_volume.fake_volume_obj(self.context,
                                                      **fake_new_volume)
+        del new_volume_obj.glance_metadata
         host_obj = {'host': 'newhost', 'capabilities': {}}
         volume_get.return_value = fake_new_volume
         update_server_volume = nova_api.return_value.update_server_volume

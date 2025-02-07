@@ -688,6 +688,7 @@ class TestCinderManageCmd(test.TestCase):
         db_volume = {'host': host + '#pool1'}
         volume = fake_volume.fake_db_volume(**db_volume)
         volume_obj = fake_volume.fake_volume_obj(ctxt, **volume)
+        del volume_obj.glance_metadata
         volume_id = volume['id']
         volume_get.return_value = volume
 
