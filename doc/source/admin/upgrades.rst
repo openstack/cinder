@@ -75,6 +75,23 @@ data migrations.
 For information on developing your own schema or data migrations as part of a
 feature or bugfix, refer to :doc:`/contributor/database-migrations`.
 
+.. note::
+   Occasionally we receive reports of database issues during upgrades
+   due to an old version of database software being used (see, for example,
+   `Bug #1968746 <https://bugs.launchpad.net/cinder/+bug/1968746>`_).
+
+   Upgrades are tested in the gate using the mysql or mariadb version
+   packaged with any of the Linux distributions supported for that release.
+   Thus, if you are using an earlier version of mysql or mariadb, you may
+   want to do additional research before upgrading to make sure you won't
+   run into an issue caused by us using a newer feature than your database
+   version supports.
+
+   To assist you in this, the OpenStack Technical Committee maintains a list
+   of the Linux distributions supported for each release on the
+   `Release based Runtimes
+   <https://governance.openstack.org/tc/reference/runtimes/>`_ page.
+
 API load balancer draining
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
