@@ -439,6 +439,7 @@ class BackupManager(manager.SchedulerDependentManager):
         except Exception as err:
             with excutils.save_and_reraise_exception():
                 if snapshot_id:
+                    assert snapshot is not None
                     snapshot.status = fields.SnapshotStatus.AVAILABLE
                     snapshot.save()
                 else:
