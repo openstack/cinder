@@ -2834,6 +2834,48 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('/snapmirror/relationships/', 'post', body=body)])
 
+    @ddt.data({'policy': 'AutomatedFailOver'})
+    @ddt.unpack
+    def test_create_snapmirror_active_sync(self, policy):
+        """Tests creation of snapmirror with active sync"""
+        api_responses = [
+            {
+                "job": {
+                    "uuid": fake_client.FAKE_UUID,
+                },
+            },
+        ]
+        self.mock_object(self.client, 'send_request',
+                         side_effect = copy.deepcopy(api_responses))
+        self.client.create_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            fake_client.SM_SOURCE_CG, fake_client.SM_DESTINATION_CG,
+            policy=policy)
+
+        if fake_client.SM_SOURCE_VSERVER is not None and \
+                fake_client.SM_SOURCE_CG is not None:
+            body = {
+                'source': {
+                    'path':
+                        fake_client.SM_SOURCE_VSERVER + ':/cg/' +
+                        fake_client.SM_SOURCE_CG,
+                    'consistency_group_volumes': [
+                        {'name': fake_client.SM_SOURCE_VOLUME}]
+                },
+                'destination': {
+                        'path': fake_client.SM_DEST_VSERVER + ':/cg/' +
+                        fake_client.SM_DESTINATION_CG,
+                        'consistency_group_volumes': [
+                            {'name': fake_client.SM_DEST_VOLUME}]
+                }
+            }
+        if policy:
+            body['policy'] = {'name': policy}
+        if body is not None:
+            self.client.send_request.assert_has_calls([
+                mock.call('/snapmirror/relationships/', 'post', body=body)])
+
     def test_create_snapmirror_already_exists(self):
         api_responses = netapp_api.NaApiError(
             code=netapp_api.REST_ERELATION_EXISTS)
@@ -2866,8 +2908,35 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                           relationship_type='data_protection')
         self.assertTrue(self.client.send_request.called)
 
-    def test__set_snapmirror_state(self):
+    def test_create_ontap_consistency_group(self):
+        """Tests creation of consistency group for active sync policies"""
+        api_responses = [
+            {
+                "job": {
+                    "uuid": fake_client.FAKE_UUID,
+                },
+            },
+        ]
+        self.mock_object(self.client, 'send_request',
+                         side_effect = copy.deepcopy(api_responses))
+        self.client.create_ontap_consistency_group(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_SOURCE_CG)
 
+        body = {
+            'svm': {
+                'name': fake_client.SM_SOURCE_VSERVER
+            },
+            'name': fake_client.SM_SOURCE_CG,
+            'volumes': [{
+                'name': fake_client.SM_SOURCE_VOLUME,
+                "provisioning_options": {"action": "add"}
+            }]
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('/application/consistency-groups/', 'post', body=body)])
+
+    def test__set_snapmirror_state(self):
         api_responses = [
             fake_client.SNAPMIRROR_GET_ITER_RESPONSE_REST,
             {

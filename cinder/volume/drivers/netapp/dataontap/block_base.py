@@ -69,7 +69,8 @@ class NetAppLun(object):
 
 
 class NetAppBlockStorageLibrary(
-        object, metaclass=volume_utils.TraceWrapperMetaclass):
+        object,
+        metaclass=volume_utils.TraceWrapperMetaclass):
     """NetApp block storage library for Data ONTAP."""
 
     # do not increment this as it may be used in volume type definitions
@@ -94,6 +95,7 @@ class NetAppBlockStorageLibrary(
         self.driver_name = driver_name
         self.driver_protocol = driver_protocol
         self.zapi_client = None
+        self.dest_zapi_client = None
         self._stats = {}
         self.lun_table = {}
         self.lun_ostype = None
@@ -440,7 +442,10 @@ class NetAppBlockStorageLibrary(
                         " host OS.",
                         {'ig_nm': igroup_name, 'ig_os': ig_host_os})
         try:
-            return self.zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
+            result = self.zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
+            if self._is_active_sync_configured(self.configuration):
+                self.dest_zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
+            return result
         except netapp_api.NaApiError as e:
             (_igroup, lun_id) = self._find_mapped_lun_igroup(path,
                                                              initiator_list)
@@ -464,6 +469,8 @@ class NetAppBlockStorageLibrary(
 
         for _path, _igroup_name in lun_unmap_list:
             self.zapi_client.unmap_lun(_path, _igroup_name)
+            if self._is_active_sync_configured(self.configuration):
+                self.dest_zapi_client.unmap_lun(_path, _igroup_name)
 
     def _find_mapped_lun_igroup(self, path, initiator_list):
         """Find an igroup for a LUN mapped to the given initiator(s)."""
@@ -472,6 +479,21 @@ class NetAppBlockStorageLibrary(
     def _has_luns_mapped_to_initiators(self, initiator_list):
         """Checks whether any LUNs are mapped to the given initiator(s)."""
         return self.zapi_client.has_luns_mapped_to_initiators(initiator_list)
+
+    def _is_active_sync_configured(self, config):
+        backend_names = []
+        replication_devices = config.safe_get('replication_device')
+        if replication_devices:
+            for replication_device in replication_devices:
+                backend_id = replication_device.get('backend_id')
+                if backend_id:
+                    backend_names.append(backend_id)
+
+        replication_enabled = True if backend_names else False
+        if replication_enabled:
+            return config.safe_get('netapp_replication_policy') == \
+                "AutomatedFailOver"
+        return False
 
     def _get_or_create_igroup(self, initiator_list, initiator_group_type,
                               host_os_type):
@@ -493,6 +515,19 @@ class NetAppBlockStorageLibrary(
         else:
             igroup_name = self._create_igroup_add_initiators(
                 initiator_group_type, host_os_type, initiator_list)
+        if self._is_active_sync_configured(self.configuration):
+            igroups_dest = self.dest_zapi_client.get_igroup_by_initiators(
+                initiator_list)
+            for igroup in igroups_dest:
+                igroup_name_dest = igroup['initiator-group-name']
+                if igroup_name_dest.startswith(na_utils.OPENSTACK_PREFIX):
+                    host_os_type = igroup['initiator-group-os-type']
+                    initiator_group_type = igroup['initiator-group-type']
+                    break
+            else:
+                self._create_igroup_add_initiators(
+                    initiator_group_type, host_os_type, initiator_list)
+
         return igroup_name, host_os_type, initiator_group_type
 
     def _create_igroup_add_initiators(self, initiator_group_type,
@@ -501,8 +536,15 @@ class NetAppBlockStorageLibrary(
         igroup_name = na_utils.OPENSTACK_PREFIX + str(uuid.uuid4())
         self.zapi_client.create_igroup(igroup_name, initiator_group_type,
                                        host_os_type)
+        if self._is_active_sync_configured(self.configuration):
+            self.dest_zapi_client.create_igroup(igroup_name,
+                                                initiator_group_type,
+                                                host_os_type)
         for initiator in initiator_list:
             self.zapi_client.add_igroup_initiator(igroup_name, initiator)
+            if self._is_active_sync_configured(self.configuration):
+                self.dest_zapi_client.add_igroup_initiator(igroup_name,
+                                                           initiator)
         return igroup_name
 
     def _delete_lun_from_table(self, name):

@@ -2566,6 +2566,7 @@ class Client(client_base.Client, metaclass=volume_utils.TraceWrapperMetaclass):
 
     def create_snapmirror(self, source_vserver, source_volume,
                           destination_vserver, destination_volume,
+                          src_cg_name=None, dest_cg_name=None,
                           schedule=None, policy=None,
                           relationship_type='data_protection'):
         """Creates a SnapMirror relationship (cDOT 8.2 or later only)."""
@@ -2592,6 +2593,7 @@ class Client(client_base.Client, metaclass=volume_utils.TraceWrapperMetaclass):
 
     def initialize_snapmirror(self, source_vserver, source_volume,
                               destination_vserver, destination_volume,
+                              active_sync_policy=None,
                               source_snapshot=None, transfer_priority=None):
         """Initializes a SnapMirror relationship (cDOT 8.2 or later only)."""
         self._ensure_snapmirror_v2()

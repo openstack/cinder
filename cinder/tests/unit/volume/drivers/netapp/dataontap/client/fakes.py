@@ -1352,6 +1352,8 @@ SM_SOURCE_VSERVER = 'fake_source_vserver'
 SM_SOURCE_VOLUME = 'fake_source_volume'
 SM_DEST_VSERVER = 'fake_destination_vserver'
 SM_DEST_VOLUME = 'fake_destination_volume'
+SM_SOURCE_CG = 'fake_source_cg'
+SM_DESTINATION_CG = 'fake_destination_cg'
 IGROUP_NAME = 'openstack-d9b4194f-5f65-4952-fake-26c911f1e4b2'
 LUN_NAME_PATH = '/vol/volume-fake/lun-path-fake-1234'
 

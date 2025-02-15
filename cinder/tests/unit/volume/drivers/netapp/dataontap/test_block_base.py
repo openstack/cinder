@@ -258,11 +258,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         mock_get_or_create_igroup.return_value = (fake.IGROUP1_NAME, os,
                                                   'iscsi')
         self.zapi_client.map_lun.return_value = '1'
-
+        self.mock_object(self.library, '_is_active_sync_configured',
+                         return_value=False)
         lun_id = self.library._map_lun('fake_volume',
                                        fake.FC_FORMATTED_INITIATORS,
                                        protocol, None)
-
         self.assertEqual('1', lun_id)
         mock_get_or_create_igroup.assert_called_once_with(
             fake.FC_FORMATTED_INITIATORS, protocol, os)
@@ -281,6 +281,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         mock_get_lun_attr.return_value = {'Path': fake.LUN_PATH, 'OsType': os}
         mock_get_or_create_igroup.return_value = (fake.IGROUP1_NAME, os,
                                                   'iscsi')
+        self.mock_object(self.library, '_is_active_sync_configured',
+                         return_value=False)
         self.library._map_lun('fake_volume',
                               fake.FC_FORMATTED_INITIATORS,
                               protocol, None)
@@ -306,7 +308,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                                   'iscsi')
         mock_find_mapped_lun_igroup.return_value = (fake.IGROUP1_NAME, '2')
         self.zapi_client.map_lun.side_effect = netapp_api.NaApiError
-
+        self.mock_object(self.library, '_is_active_sync_configured',
+                         return_value=False)
         lun_id = self.library._map_lun(
             'fake_volume', fake.FC_FORMATTED_INITIATORS, protocol, None)
 

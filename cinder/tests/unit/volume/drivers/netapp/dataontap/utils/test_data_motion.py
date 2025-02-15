@@ -17,10 +17,11 @@ from unittest import mock
 import ddt
 from oslo_config import cfg
 
+from cinder import exception
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
-from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as\
+from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as \
     dataontap_fakes
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes
 from cinder.volume import configuration
@@ -50,6 +51,10 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.mock_cmode_client = self.mock_object(client_cmode, 'Client')
         self.src_flexvol_name = 'volume_c02d497a_236c_4852_812a_0d39373e312a'
         self.dest_flexvol_name = self.src_flexvol_name
+        self.src_cg = ''
+        self.dest_cg = ''
+        self.active_sync_policy = False
+        self.replication_policy = 'MirrorAllSnapshots'
         self.mock_src_client = mock.Mock()
         self.mock_dest_client = mock.Mock()
         self.config = fakes.get_fake_cmode_config(self.src_backend)
@@ -199,7 +204,8 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.dm_mixin.create_snapmirror(self.src_backend,
                                         self.dest_backend,
                                         self.src_flexvol_name,
-                                        self.dest_flexvol_name)
+                                        self.dest_flexvol_name,
+                                        self.replication_policy)
 
         if not dest_exists:
             create_destination_flexvol.assert_called_once_with(
@@ -207,16 +213,20 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                 self.dest_flexvol_name, pool_is_flexgroup=is_flexgroup)
         else:
             self.assertFalse(create_destination_flexvol.called)
+        sync_mirror = False
         mock_dest_client.create_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
             self.dest_flexvol_name,
+            self.src_cg,
+            self.dest_cg,
             schedule='hourly',
+            policy=self.replication_policy,
             relationship_type=('extended_data_protection'
-                               if is_flexgroup
+                               if is_flexgroup or sync_mirror
                                else 'data_protection'))
         mock_dest_client.initialize_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
-            self.dest_flexvol_name)
+            self.dest_flexvol_name, self.active_sync_policy)
 
     def test_create_snapmirror_cleanup_on_geometry_has_changed(self):
         mock_dest_client = mock.Mock()
@@ -254,17 +264,19 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                           self.src_backend,
                           self.dest_backend,
                           self.src_flexvol_name,
-                          self.dest_flexvol_name)
+                          self.dest_flexvol_name,
+                          self.replication_policy)
 
         self.assertFalse(create_destination_flexvol.called)
         mock_dest_client.create_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
-            self.dest_flexvol_name, schedule='hourly',
+            self.dest_flexvol_name, self.src_cg, self.dest_cg,
+            schedule='hourly', policy=self.replication_policy,
             relationship_type='data_protection')
 
         mock_dest_client.initialize_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
-            self.dest_flexvol_name)
+            self.dest_flexvol_name, self.active_sync_policy)
 
         mock_delete_snapshot.assert_called_once_with(
             self.src_backend, self.dest_backend, self.src_flexvol_name,
@@ -285,7 +297,8 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.dm_mixin.create_snapmirror(self.src_backend,
                                         self.dest_backend,
                                         self.src_flexvol_name,
-                                        self.dest_flexvol_name)
+                                        self.dest_flexvol_name,
+                                        self.replication_policy)
 
         self.assertFalse(mock_dest_client.create_snapmirror.called)
         self.assertFalse(mock_dest_client.initialize_snapmirror.called)
@@ -320,7 +333,8 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.dm_mixin.create_snapmirror(self.src_backend,
                                         self.dest_backend,
                                         self.src_flexvol_name,
-                                        self.dest_flexvol_name)
+                                        self.dest_flexvol_name,
+                                        self.replication_policy)
 
         self.assertFalse(mock_dest_client.create_snapmirror.called)
         self.assertFalse(mock_dest_client.initialize_snapmirror.called)
@@ -885,13 +899,13 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.mock_object(self.dm_mixin, 'create_snapmirror')
         expected_calls = [
             mock.call(self.src_backend, replication_backends[0],
-                      flexvols[0], flexvols[0]),
+                      flexvols[0], flexvols[0], self.replication_policy),
             mock.call(self.src_backend, replication_backends[0],
-                      flexvols[1], flexvols[1]),
+                      flexvols[1], flexvols[1], self.replication_policy),
             mock.call(self.src_backend, replication_backends[1],
-                      flexvols[0], flexvols[0]),
+                      flexvols[0], flexvols[0], self.replication_policy),
             mock.call(self.src_backend, replication_backends[1],
-                      flexvols[1], flexvols[1]),
+                      flexvols[1], flexvols[1], self.replication_policy),
         ]
 
         retval = self.dm_mixin.ensure_snapmirrors(self.mock_src_config,
@@ -923,7 +937,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         excepted_call = mock.call(
             self.src_backend, replication_backends[0],
-            flexvols[0], flexvols[0])
+            flexvols[0], flexvols[0], self.replication_policy)
         self.dm_mixin.create_snapmirror.assert_has_calls([
             excepted_call, excepted_call, excepted_call
         ])
@@ -1026,6 +1040,287 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         self.assertEqual('fallback2', target)
         self.assertFalse(mock_debug_log.called)
+
+    def test__failover_host_to_same_host(self):
+        """Tests failover host to same host throws error"""
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "backend1"
+        volumes = []
+        # Assert that an exception is raised
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.dm_mixin._failover_host, volumes, secondary_id)
+
+    def test__failover_host_to_default(self):
+        """Tests failover host to default sets the old primary as a """
+        """new primary"""
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "default"
+        volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
+
+        # Mock the necessary methods
+        self.dm_mixin._update_zapi_client = mock.Mock()
+        self.get_replication_backend_names = mock.Mock(return_value=
+                                                       ["backend1"])
+
+        # Call the method
+        result = self.dm_mixin._failover_host(volumes, secondary_id)
+
+        # Assert the expected result
+        expected_result = ("backend1",
+                           [{'volume_id': 'volume1',
+                             'updates': {'replication_status': 'enabled'}}],
+                           [])
+        self.assertEqual(result, expected_result)
+        self.assertTrue(self.dm_mixin._update_zapi_client.called)
+
+    def test__failover_host_to_custom_host(self):
+        """Tests failover host to custom host sets the secondary """
+        """as a new primary"""
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "backend2"
+        volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
+
+        # Mock the necessary methods
+        self.dm_mixin._complete_failover = \
+            mock.Mock(return_value=
+                      ("backend2", [{'volume_id': 'volume1',
+                                     'updates':
+                                         {'replication_status': 'enabled'}}]))
+        self.dm_mixin._update_zapi_client = mock.Mock()
+        self.dm_mixin.configuration = self.config
+        self.dm_mixin.get_replication_backend_names = \
+            mock.Mock(return_value=["backend1", "backend2"])
+        self.mock_object(utils, 'get_backend_configuration')
+        volume_list = ['pool1', 'vol1', 'vol2']
+        self.dm_mixin.ssc_library = mock.Mock()
+        self.mock_object(self.dm_mixin.ssc_library,
+                         'get_ssc_flexvol_names', return_value=volume_list)
+
+        # Call the method
+        result = self.dm_mixin._failover_host(volumes, secondary_id)
+
+        # Assert the expected result
+        expected_result = ("backend2",
+                           [{'volume_id': 'volume1',
+                             'updates': {'replication_status': 'enabled'}}],
+                           [])
+        self.assertEqual(result, expected_result)
+        self.assertTrue(self.dm_mixin._complete_failover.called)
+        self.assertTrue(self.dm_mixin._update_zapi_client.called)
+
+    def test__failover_host_without_replication_targets(self):
+        """Tests failover host to a target which doenst exist """
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "backend2"
+        volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
+
+        # Mock the necessary methods
+        self.dm_mixin._complete_failover = \
+            mock.Mock(return_value=("backend2",
+                                    [{'volume_id': 'volume1',
+                                      'updates':
+                                          {'replication_status': 'enabled'}}]))
+        self.dm_mixin._update_zapi_client = mock.Mock()
+        self.dm_mixin.configuration = self.config
+        self.dm_mixin.get_replication_backend_names = \
+            mock.Mock(return_value=[])
+        self.mock_object(utils, 'get_backend_configuration')
+        self.dm_mixin.host = "host1"
+        # Assert that an exception is raised
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.dm_mixin._failover_host, volumes, secondary_id)
+
+    def test__failover_host_secondary_id_not_in_replication_target(self):
+        """Tests failover host to custom host whose id is not there  """
+        """in replication target list"""
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "backend3"
+        volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
+
+        # Mock the necessary methods
+        self.dm_mixin._complete_failover = \
+            mock.Mock(return_value=("backend2",
+                                    [{'volume_id': 'volume1',
+                                      'updates':
+                                          {'replication_status': 'enabled'}}]))
+        self.dm_mixin._update_zapi_client = mock.Mock()
+        self.dm_mixin.configuration = self.config
+        self.dm_mixin.get_replication_backend_names = \
+            mock.Mock(return_value=["backend1", "backend2"])
+        self.mock_object(utils, 'get_backend_configuration')
+        self.dm_mixin.host = "host1"
+
+        # Assert that an exception is raised
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.dm_mixin._failover_host, volumes, secondary_id)
+
+    def test__failover_host_no_suitable_target(self):
+        """Tests failover host to a host which is not a suitable secondary """
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "backend2"
+        volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
+
+        # Mock the necessary methods
+        self.mock_object(data_motion.DataMotionMixin, '_complete_failover',
+                         side_effect=na_utils.NetAppDriverException)
+        self.dm_mixin.configuration = self.config
+        self.dm_mixin.get_replication_backend_names = \
+            mock.Mock(return_value=["backend1", "backend2"])
+        self.mock_object(utils, 'get_backend_configuration')
+        volume_list = ['pool1', 'vol1', 'vol2']
+        self.dm_mixin.ssc_library = mock.Mock()
+        self.mock_object(self.dm_mixin.ssc_library, 'get_ssc_flexvol_names',
+                         return_value=volume_list)
+
+        # Assert that an exception is raised
+        self.assertRaises(exception.UnableToFailOver,
+                          self.dm_mixin._failover_host, volumes, secondary_id)
+
+    def test__failover_to_same_host(self):
+        """Tests failover to same host throws error"""
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "backend1"
+        volumes = []
+
+        # Assert that an exception is raised
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.dm_mixin._failover, 'fake_context',
+                          volumes, secondary_id)
+
+    def test__failover_to_default(self):
+        """Tests failover to default sets the old primary as a new primary"""
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "default"
+        volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
+
+        # Mock the necessary methods
+        self.dm_mixin._update_zapi_client = mock.Mock()
+        self.get_replication_backend_names = \
+            mock.Mock(return_value=["backend1"])
+        # Call the method
+        result = self.dm_mixin._failover('fake_context', volumes,
+                                         secondary_id)
+        # Assert the expected result
+        expected_result = ("backend1",
+                           [{'volume_id': 'volume1',
+                             'updates': {'replication_status': 'enabled'}}],
+                           [])
+        self.assertEqual(result, expected_result)
+        self.assertTrue(self.dm_mixin._update_zapi_client.called)
+
+    def test__failover_to_custom_host(self):
+        """Tests failover to custom host sets the secondary """
+        """as a new primary"""
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "backend2"
+        volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
+
+        # Mock the necessary methods
+        self.dm_mixin._complete_failover = \
+            mock.Mock(return_value=("backend2",
+                                    [{'volume_id': 'volume1',
+                                      'updates':
+                                          {'replication_status': 'enabled'}}]))
+        self.dm_mixin.configuration = self.config
+        self.dm_mixin.get_replication_backend_names = \
+            mock.Mock(return_value=["backend1", "backend2"])
+        self.mock_object(utils, 'get_backend_configuration')
+        volume_list = ['pool1', 'vol1', 'vol2']
+        self.dm_mixin.ssc_library = mock.Mock()
+        self.mock_object(self.dm_mixin.ssc_library,
+                         'get_ssc_flexvol_names', return_value=volume_list)
+
+        # Call the method
+        result = self.dm_mixin._failover('fake_context', volumes,
+                                         secondary_id)
+        # Assert the expected result
+        expected_result = ("backend2",
+                           [{'volume_id': 'volume1',
+                             'updates': {'replication_status': 'enabled'}}],
+                           [])
+        self.assertEqual(result, expected_result)
+        self.assertTrue(self.dm_mixin._complete_failover.called)
+
+    def test__failover_without_replication_targets(self):
+        """Tests failover to a target which doenst exist """
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "backend2"
+        volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
+
+        # Mock the necessary methods
+        self.dm_mixin._complete_failover = \
+            mock.Mock(return_value=("backend2",
+                                    [{'volume_id': 'volume1',
+                                      'updates':
+                                          {'replication_status': 'enabled'}}]))
+        self.dm_mixin._update_zapi_client = mock.Mock()
+        self.dm_mixin.configuration = self.config
+        self.dm_mixin.get_replication_backend_names = \
+            mock.Mock(return_value=[])
+        self.mock_object(utils, 'get_backend_configuration')
+        self.dm_mixin.host = "host1"
+
+        # Assert that an exception is raised
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.dm_mixin._failover, 'fake_context',
+                          volumes, secondary_id)
+
+    def test__failover_secondary_id_not_in_replication_target(self):
+        """Tests failover to custom host whose id is not there  """
+        """in replication target list"""
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "backend3"
+        volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
+
+        # Mock the necessary methods
+        self.dm_mixin._complete_failover = \
+            mock.Mock(return_value=("backend2",
+                                    [{'volume_id': 'volume1',
+                                      'updates':
+                                          {'replication_status': 'enabled'}}]))
+        self.dm_mixin._update_zapi_client = mock.Mock()
+        self.dm_mixin.configuration = self.config
+        self.dm_mixin.get_replication_backend_names = \
+            mock.Mock(return_value=["backend1", "backend2"])
+        self.mock_object(utils, 'get_backend_configuration')
+        self.dm_mixin.host = "host1"
+
+        # Assert that an exception is raised
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.dm_mixin._failover, 'fake_context',
+                          volumes, secondary_id)
+
+    def test__failover_no_suitable_target(self):
+        """Tests failover to a host which is not a suitable secondary """
+        # Mock the required attributes
+        self.dm_mixin.backend_name = "backend1"
+        secondary_id = "backend2"
+        volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
+        self.mock_object(data_motion.DataMotionMixin, '_complete_failover',
+                         side_effect=na_utils.NetAppDriverException)
+        self.dm_mixin.configuration = self.config
+        self.dm_mixin.get_replication_backend_names = \
+            mock.Mock(return_value=["backend1", "backend2"])
+        self.mock_object(utils, 'get_backend_configuration')
+        volume_list = ['pool1', 'vol1', 'vol2']
+        self.dm_mixin.ssc_library = mock.Mock()
+        self.mock_object(self.dm_mixin.ssc_library,
+                         'get_ssc_flexvol_names', return_value=volume_list)
+        # Assert that an exception is raised
+        self.assertRaises(exception.UnableToFailOver,
+                          self.dm_mixin._failover, 'fake_context',
+                          volumes, secondary_id)
 
     def test__complete_failover_no_suitable_target(self):
         flexvols = ['nvol1', 'nvol2']

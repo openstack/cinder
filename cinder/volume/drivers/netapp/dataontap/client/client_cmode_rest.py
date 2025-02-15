@@ -2024,8 +2024,32 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         return snapmirrors
 
+    def create_ontap_consistency_group(self, source_vserver, source_volume,
+                                       source_cg):
+        """Creates a ontap consistency group"""
+
+        body = {
+            'svm': {
+                'name': source_vserver
+            },
+            'name': source_cg,
+            'volumes': [{
+                'name': source_volume,
+                "provisioning_options": {"action": "add"}
+            }]
+        }
+
+        try:
+            self.send_request('/application/consistency-groups/', 'post',
+                              body=body)
+        except netapp_api.NaApiError as e:
+            if e.code != netapp_api.REST_ERELATION_EXISTS:
+                raise e
+
     def create_snapmirror(self, source_vserver, source_volume,
                           destination_vserver, destination_volume,
+                          source_cg=None,
+                          destination_cg=None,
                           schedule=None, policy=None,
                           relationship_type='data_protection'):
         """Creates a SnapMirror relationship.
@@ -2037,15 +2061,27 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         relationship_type will be ignored because XDP is the only type
         supported through REST API.
         """
-
-        body = {
-            'source': {
-                'path': source_vserver + ':' + source_volume
-            },
-            'destination': {
-                'path': destination_vserver + ':' + destination_volume
+        if source_cg is not None:
+            body = {
+                'source': {
+                    'path': source_vserver + ':/cg/' + source_cg,
+                    'consistency_group_volumes': [{'name': source_volume}]
+                },
+                'destination': {
+                    'path': destination_vserver + ':/cg/' + destination_cg,
+                    'consistency_group_volumes':
+                        [{'name': destination_volume}]
+                }
             }
-        }
+        else:
+            body = {
+                'source': {
+                    'path': source_vserver + ':' + source_volume
+                },
+                'destination': {
+                    'path': destination_vserver + ':' + destination_volume
+                }
+            }
 
         if policy:
             body['policy'] = {'name': policy}
@@ -2094,6 +2130,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
     def initialize_snapmirror(self, source_vserver, source_volume,
                               destination_vserver, destination_volume,
+                              active_sync_policy=False,
                               source_snapshot=None, transfer_priority=None):
         """Initializes a SnapMirror relationship."""
 
@@ -2101,9 +2138,11 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         # This error is raised when using ZAPI with different volume component
         # numbers, but in REST, the job must be checked sometimes before that
         # error occurs.
-
+        state = 'snapmirrored'
+        if active_sync_policy:
+            state = 'in_sync'
         return self._set_snapmirror_state(
-            'snapmirrored', source_vserver, source_volume,
+            state, source_vserver, source_volume,
             destination_vserver, destination_volume, wait_result=False)
 
     def abort_snapmirror(self, source_vserver, source_volume,

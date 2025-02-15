@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Synchronous mirror support for NetApp Backends. Providing an option
+    netapp_replication_policy for the replication of netapp backends, to
+    enable the user to apply synchronous mirror and other relevant policies.
+    Code also has been added to fail back from secondary to primary
+    via default option.
