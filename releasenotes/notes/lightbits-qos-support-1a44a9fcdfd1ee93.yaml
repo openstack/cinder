@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    Lightbits driver: allows administrators to better manage and optimize
+    storage performance by associating QoS policies with volume types.
+
+    * Administrators must first create the required QoS policy on the vendor
+      side.
+    * Once the QoS policy is created, it can be linked to a volume type in
+      the system using the policy's unique UUID.
+
+    Example:
+
+    .. code-block:: bash
+
+       openstack volume type create LightbitsWithQos --property volume_backend_name=<backend_name> --property=lightos:qos_policy=<uuid>

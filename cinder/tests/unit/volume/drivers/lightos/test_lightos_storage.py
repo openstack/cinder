@@ -339,6 +339,7 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
                     "acl": {'values': kwargs.get('acl')},
                     "IPAcl": ipacl,
                     "state": "Available",
+                    "qosPolicyUUID": kwargs.get("qos_policy", None)
                 }
                 volume["ETag"] = get_vol_etag(volume)
                 code, new_vol = self.db.create_volume(volume)
@@ -577,11 +578,11 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
                                            volume_type_id=vol_type2.id)
         volume3 = test_utils.create_volume(self.ctxt, size=4,
                                            volume_type_id=vol_type3.id)
-        compression, _, _ = self.driver._get_volume_specs(volume1)
+        compression, _, _, _ = self.driver._get_volume_specs(volume1)
         self.assertTrue(compression == "True")
-        compression, _, _ = self.driver._get_volume_specs(volume2)
+        compression, _, _, _ = self.driver._get_volume_specs(volume2)
         self.assertTrue(compression == "True")
-        compression, _, _ = self.driver._get_volume_specs(volume3)
+        compression, _, _, _ = self.driver._get_volume_specs(volume3)
         self.assertTrue(compression == "False")
 
         db.volume_destroy(self.ctxt, volume1.id)
@@ -610,11 +611,11 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
                                            volume_type_id=vol_type2.id)
         volume3 = test_utils.create_volume(self.ctxt, size=4,
                                            volume_type_id=vol_type3.id)
-        compression, _, _ = self.driver._get_volume_specs(volume1)
+        compression, _, _, _ = self.driver._get_volume_specs(volume1)
         self.assertTrue(compression == "False")
-        compression, _, _ = self.driver._get_volume_specs(volume2)
+        compression, _, _, _ = self.driver._get_volume_specs(volume2)
         self.assertTrue(compression == "False")
-        compression, _, _ = self.driver._get_volume_specs(volume3)
+        compression, _, _, _ = self.driver._get_volume_specs(volume3)
         self.assertTrue(compression == "True")
 
         db.volume_destroy(self.ctxt, volume1.id)
@@ -988,7 +989,7 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         assert volumes_data['reserved_percentage'] == RESERVED_PERCENTAGE, \
             "Expected %d, received %s" % \
             (RESERVED_PERCENTAGE, volumes_data['reserved_percentage'])
-        assert volumes_data['QoS_support'] is False, \
+        assert volumes_data['QoS_support'] is True, \
             "Expected False, received %s" % volumes_data['QoS_support']
         assert volumes_data['online_extend_support'] is True, \
             "Expected True, received %s" % \
