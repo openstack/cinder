@@ -24,6 +24,7 @@ from cinder import exception
 from cinder import ssh_utils
 from cinder.tests.unit import test
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.fujitsu.eternus_dx import constants as CONSTANTS
 
 with mock.patch.dict('sys.modules', pywbem=mock.Mock()):
     from cinder.volume.drivers.fujitsu.eternus_dx \
@@ -34,6 +35,8 @@ with mock.patch.dict('sys.modules', pywbem=mock.Mock()):
         import eternus_dx_fc as dx_fc
     from cinder.volume.drivers.fujitsu.eternus_dx \
         import eternus_dx_iscsi as dx_iscsi
+
+PRIVATE_KEY_PATH = '/etc/cinder/eternus'
 
 CONFIG_FILE_NAME = 'cinder_fujitsu_eternus_dx.xml'
 STORAGE_SYSTEM = '172.16.0.2'
@@ -111,7 +114,7 @@ TEST_CONNECTOR = {'initiator': ISCSI_INITIATOR, 'wwpns': TEST_WWPN}
 
 STORAGE_IP = '172.16.0.2'
 TEST_USER = 'testuser'
-TEST_PASSWORD = 'testpassword'
+TEST_PASSWORD = 'testpass'
 
 STOR_CONF_SVC = 'FUJITSU_StorageConfigurationService'
 CTRL_CONF_SVC = 'FUJITSU_ControllerConfigurationService'
@@ -181,7 +184,7 @@ FAKE_POOLS = [{
 }]
 
 FAKE_STATS = {
-    'driver_version': '1.4.7',
+    'driver_version': '1.4.8',
     'storage_protocol': 'iSCSI',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -191,7 +194,7 @@ FAKE_STATS = {
     'pools': FAKE_POOLS,
 }
 FAKE_STATS2 = {
-    'driver_version': '1.4.7',
+    'driver_version': '1.4.8',
     'storage_protocol': 'FC',
     'vendor_name': 'FUJITSU',
     'QoS_support': True,
@@ -353,7 +356,7 @@ FAKE_MODEL_INFO2 = {
 
 FAKE_CLI_OUTPUT = {
     "result": 0,
-    'rc': '0',
+    'rc': str(CONSTANTS.RC_OK),
     "message": 'TEST_MESSAGE'
 }
 
@@ -429,7 +432,7 @@ class FakeEternusConnection(object):
         global MAP_STAT, VOL_STAT
         if MethodName == 'CreateOrModifyElementFromStoragePool':
             VOL_STAT = '1'
-            rc = 0
+            rc = CONSTANTS.RC_OK
             vol = self._enum_volumes()
             if InPool.get('InstanceID') == 'FUJITSU:RSP0005':
                 job = {'TheElement': vol[1].path}
@@ -440,29 +443,29 @@ class FakeEternusConnection(object):
                     job = {'TheElement': vol[0].path}
         elif MethodName == 'ReturnToStoragePool':
             VOL_STAT = '0'
-            rc = 0
+            rc = CONSTANTS.RC_OK
             job = {}
         elif MethodName == 'GetReplicationRelationships':
-            rc = 0
+            rc = CONSTANTS.RC_OK
             job = {'Synchronizations': []}
         elif MethodName == 'ExposePaths':
             MAP_STAT = '1'
-            rc = 0
+            rc = CONSTANTS.RC_OK
             job = {}
         elif MethodName == 'HidePaths':
             MAP_STAT = '0'
-            rc = 0
+            rc = CONSTANTS.RC_OK
             job = {}
         elif MethodName == 'CreateElementReplica':
-            rc = 0
+            rc = CONSTANTS.RC_OK
             snap = self._enum_snapshots()
             job = {'TargetElement': snap[0].path}
         elif MethodName == 'CreateReplica':
-            rc = 0
+            rc = CONSTANTS.RC_OK
             snap = self._enum_snapshots()
             job = {'TargetElement': snap[0].path}
         elif MethodName == 'ModifyReplicaSynchronization':
-            rc = 0
+            rc = CONSTANTS.RC_OK
             job = {}
         else:
             raise exception.VolumeBackendAPIException(data="invoke method")
@@ -1083,6 +1086,8 @@ class FJFCDriverTestCase(test.TestCase):
         self.configuration.cinder_eternus_config_file = self.config_file.name
         self.configuration.safe_get = self.fake_safe_get
         self.configuration.max_over_subscription_ratio = '20.0'
+        self.configuration.fujitsu_passwordless = False
+        self.configuration.fujitsu_private_key_path = PRIVATE_KEY_PATH
         self.configuration.fujitsu_use_cli_copy = False
 
         self.mock_object(dx_common.FJDXCommon, '_get_eternus_connection',
@@ -1398,6 +1403,8 @@ class FJISCSIDriverTestCase(test.TestCase):
         self.configuration.cinder_eternus_config_file = self.config_file.name
         self.configuration.safe_get = self.fake_safe_get
         self.configuration.max_over_subscription_ratio = '20.0'
+        self.configuration.fujitsu_passwordless = False
+        self.configuration.fujitsu_private_key_path = PRIVATE_KEY_PATH
         self.configuration.fujitsu_use_cli_copy = False
 
         self.mock_object(dx_common.FJDXCommon, '_get_eternus_connection',
@@ -1781,31 +1788,28 @@ class FJCLITestCase(test.TestCase):
             ret = '%s\r\n00\r\n0019\r\nCLI> ' % exec_cmdline
         elif exec_cmdline.startswith('start copy-opc'):
             ret = '%s\r\n00\r\n0019\r\nCLI> ' % exec_cmdline
+        elif exec_cmdline.startswith('show cli-error-code'):
+            ret = '%s\r\n00\r\n0001\r\n0001\tBad Value\r\nCLI> ' % exec_cmdline
         else:
             ret = None
         return ret
 
-    @mock.patch.object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus')
-    def test_create_error_message(self, mock_exec_cli_with_eternus):
-        expected_error_value = {'message': ['-bandwidth-limit', 'asdf'],
-                                'rc': 'E8101',
-                                'result': 0}
+    def test_show_cli_error_message(self):
+        FAKE_OPTION = {'error-code': '0001'}
+        FAKE_MESSAGE = 'Bad Value'
+        FAKE_MESSAGE_OUTPUT = {**FAKE_CLI_OUTPUT, 'message': FAKE_MESSAGE}
 
-        FAKE_VOLUME_NAME = 'FJosv_0qJ4rpOHgFE8ipcJOMfBmg=='
-        FAKE_BANDWIDTH_LIMIT = 'abcd'
-        FAKE_QOS_OPTION = self.create_fake_options(
-            volume_name=FAKE_VOLUME_NAME,
-            bandwidth_limit=FAKE_BANDWIDTH_LIMIT)
+        ERROR_MESSAGE_OUTPUT = self.cli._show_cli_error_message(**FAKE_OPTION)
+        self.assertEqual(FAKE_MESSAGE_OUTPUT, ERROR_MESSAGE_OUTPUT)
 
-        error_cli_output = ('\r\nCLI> set volume-qos -volume-name %s '
-                            '-bandwidth-limit %s\r\n'
-                            '01\r\n8101\r\n-bandwidth-limit\r\nasdf\r\n'
-                            'CLI> ' % (FAKE_VOLUME_NAME, FAKE_BANDWIDTH_LIMIT))
-        mock_exec_cli_with_eternus.return_value = error_cli_output
+    def test_create_error_message(self):
+        FAKE_CODE = '0001'
+        FAKE_MSG = 'Bad Value'
+        expected_error_message = ('E' + FAKE_CODE, FAKE_MSG)
 
-        error_qos_output = self.cli._set_volume_qos(**FAKE_QOS_OPTION)
-
-        self.assertEqual(expected_error_value, error_qos_output)
+        ERROR_MESSAGE = self.cli._create_error_message(FAKE_CODE,
+                                                       FAKE_MSG)
+        self.assertEqual(expected_error_message, ERROR_MESSAGE)
 
     def test_get_options(self):
         expected_option = " -bandwidth-limit 2"
@@ -2005,6 +2009,8 @@ class FJCommonTestCase(test.TestCase):
         self.configuration.cinder_eternus_config_file = self.config_file.name
         self.configuration.safe_get = self.fake_safe_get
         self.configuration.max_over_subscription_ratio = '20.0'
+        self.configuration.fujitsu_passwordless = False
+        self.configuration.fujitsu_private_key_path = PRIVATE_KEY_PATH
         self.configuration.fujitsu_use_cli_copy = False
 
         self.mock_object(dx_common.FJDXCommon, '_get_eternus_connection',
@@ -2106,6 +2112,101 @@ class FJCommonTestCase(test.TestCase):
     def volume_update(self, volume, diction):
         for key, value in diction.items():
             volume[key] = value
+
+    @mock.patch.object(ssh_utils, 'SSHPool')
+    def test_ssh_to_storage_by_password(self, mock_ssh_pool):
+        command = 'show_enclosure_status'
+        self.driver.common.fjdxcli = {}
+        self.driver.common._exec_eternus_cli(command)
+
+        mock_ssh_pool.assert_called_with(STORAGE_IP, 22, None, TEST_USER,
+                                         password=TEST_PASSWORD, max_size=2)
+
+    @mock.patch.object(ssh_utils, 'SSHPool')
+    def test_ssh_to_storage_by_key(self, mock_ssh_pool):
+        command = 'show_enclosure_status'
+        self.configuration.fujitsu_passwordless = True
+        driver = dx_iscsi.FJDXISCSIDriver(configuration=self.configuration)
+        self.driver = driver
+
+        self.driver.common.fjdxcli = {}
+        self.driver.common._exec_eternus_cli(command)
+
+        mock_ssh_pool.assert_called_with(STORAGE_IP, 22, None, TEST_USER,
+                                         privatekey=PRIVATE_KEY_PATH,
+                                         max_size=2)
+
+    def test_exec_eternus_cli_success(self):
+        command = 'show_enclosure_status'
+
+        FAKE_CLI_ENCLOUSER_STATUS = (0, None, {'version': 'V10L87-9000'})
+
+        cli_enclosure_status = self.driver.common._exec_eternus_cli(command)
+
+        self.assertEqual(FAKE_CLI_ENCLOUSER_STATUS, cli_enclosure_status)
+
+    @mock.patch.object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus')
+    def test_exec_eternus_cli_success_with_retry(self,
+                                                 mock_exec_cli_with_eternus):
+        command = 'stop_copy_session'
+        mock_exec_cli_with_eternus.side_effect = [
+            '\r\nCLI> stop copy-session\r\n01\r\n0060\r\nCLI> ',
+            '\r\nCLI> show cli-error-code -error-code '
+            '0060\r\n00\r\n0060\r\n0060\tResource locked\r\nCLI> ',
+            '\r\nCLI> stop copy-session\r\n00\r\nCLI> ']
+
+        retry_msg = 'INFO:cinder.volume.drivers.fujitsu.eternus_dx.' \
+                    'eternus_dx_common:_exec_eternus_cli, retry, ' \
+                    'ip: 172.16.0.2, RetryCode: E0060, TryNum: 1.'
+        FAKE_STOP_COPY_SESSION = (0, None, [])
+
+        with self.assertLogs('cinder.volume.drivers.fujitsu.eternus_dx.'
+                             'eternus_dx_common', level='INFO') as cm:
+            cli_return = self.driver.common._exec_eternus_cli(command)
+
+        self.assertIn(retry_msg, cm.output)
+        self.assertEqual(FAKE_STOP_COPY_SESSION, cli_return)
+
+    @mock.patch.object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus')
+    def test_exec_eternus_cli_authentication_fail(self,
+                                                  mock_exec_cli_with_eternus):
+        command = 'check_user_role'
+        mock_exec_cli_with_eternus.side_effect = (
+            exception.VolumeBackendAPIException(
+                'Execute CLI command error. Error: Authentication failed.'))
+        authentication_fail_msg = 'WARNING:' \
+                                  'cinder.volume.drivers.fujitsu.eternus_dx.' \
+                                  'eternus_dx_common:_exec_eternus_cli, ' \
+                                  'retry, ip: 172.16.0.2, ' \
+                                  'Message: Execute CLI command error. ' \
+                                  'Error: Authentication failed., TryNum: 1.'
+        FAKE_STOP_COPY_SESSION = (4, '4',
+                                  'Execute CLI command error. '
+                                  'Error: Authentication failed.')
+
+        with self.assertLogs('cinder.volume.drivers.fujitsu.eternus_dx.'
+                             'eternus_dx_common', level='WARNING') as cm:
+            cli_return = self.driver.common._exec_eternus_cli(command)
+        self.assertIn(authentication_fail_msg, cm.output)
+        self.assertEqual(FAKE_STOP_COPY_SESSION, cli_return)
+
+    @mock.patch.object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus')
+    @mock.patch.object(dx_common, 'LOG')
+    def test_exec_eternus_cli_retry_exceed(self, mock_log,
+                                           mock_exec_cli_with_eternus):
+        command = 'stop_copy_session'
+        mock_exec_cli_with_eternus.side_effect = [
+            '\r\nCLI> stop copy-session\r\n01\r\n0060\r\nCLI> ',
+            '\r\nCLI> show cli-error-code -error-code '
+            '0060\r\n00\r\n0060\r\n0060\tResource locked\r\nCLI> '] * 3
+
+        exceed_msg = '_exec_eternus_cli, Retry was exceeded.'
+        FAKE_STOP_COPY_SESSION = (4, 'E0060', 'Resource locked')
+
+        cli_return = self.driver.common._exec_eternus_cli(command)
+
+        mock_log.warning.assert_called_with(exceed_msg)
+        self.assertEqual(FAKE_STOP_COPY_SESSION, cli_return)
 
     def test_get_eternus_model(self):
         ETERNUS_MODEL = self.driver.common._get_eternus_model()

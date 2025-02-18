@@ -53,6 +53,14 @@ FJ_ETERNUS_DX_OPT_opts = [
     cfg.StrOpt('cinder_eternus_config_file',
                default='/etc/cinder/cinder_fujitsu_eternus_dx.xml',
                help='Config file for cinder eternus_dx volume driver.'),
+    cfg.BoolOpt('fujitsu_passwordless',
+                default=True,
+                help='Use SSH key to connect to storage.'),
+    cfg.StrOpt('fujitsu_private_key_path',
+               default='$state_path/eternus',
+               help='Filename of private key for ETERNUS CLI. '
+                    'This option must be set when '
+                    'the fujitsu_passwordless is True.'),
     cfg.BoolOpt('fujitsu_use_cli_copy',
                 default=False,
                 help='If True use CLI command to create snapshot.'),
@@ -76,10 +84,12 @@ class FJDXCommon(object):
     1.4.5 - Add metadata for snapshot.
     1.4.6 - Add parameter fujitsu_use_cli_copy.
     1.4.7 - Add support for revert-to-snapshot.
+    1.4.8 - Improve the processing flow of CLI error messages.(bug #2048850)
+          - Add support connect to storage using SSH key.
 
     """
 
-    VERSION = "1.4.7"
+    VERSION = "1.4.8"
     stats = {
         'driver_version': VERSION,
         'storage_protocol': None,
@@ -97,6 +107,8 @@ class FJDXCommon(object):
         self.configuration.append_config_values(FJ_ETERNUS_DX_OPT_opts)
 
         self.conn = None
+        self.passwordless = self.configuration.fujitsu_passwordless
+        self.private_key_path = self.configuration.fujitsu_private_key_path
         self.use_cli_copy = self.configuration.fujitsu_use_cli_copy
         self.fjdxcli = {}
         self.model_name = self._get_eternus_model()
@@ -222,7 +234,7 @@ class FJDXCommon(object):
                         'Element Name is in use.',
                         {'volumename': volumename})
             element = self._find_lun(volume)
-        elif rc != 0:
+        elif rc != CONSTANTS.RC_OK:
             msg = (_('_create_volume, '
                      'volumename: %(volumename)s, '
                      'poolname: %(eternus_pool)s, '
@@ -440,7 +452,7 @@ class FJDXCommon(object):
             SourceElement=src_vol_instance.path,
             TargetElement=tgt_vol_instance.path)
 
-        if rc != 0:
+        if rc != CONSTANTS.RC_OK:
             msg = (_('_create_local_cloned_volume, '
                      'volumename: %(volumename)s, '
                      'sourcevolumename: %(sourcevolumename)s, '
@@ -546,7 +558,7 @@ class FJDXCommon(object):
                     'stop_copy_session',
                     **param_dict)
 
-                if rc != 0:
+                if rc != CONSTANTS.RC_OK:
                     msg = (_('_delete_volume_setting, '
                              'stop_copy_session failed. '
                              'Return code: %(rc)lu, '
@@ -601,7 +613,7 @@ class FJDXCommon(object):
             configservice,
             TheElement=vol_instance.path)
 
-        if rc != 0:
+        if rc != CONSTANTS.RC_OK:
             msg = (_('_delete_volume, volumename: %(volumename)s, '
                      'Return code: %(rc)lu, '
                      'Error: %(errordesc)s.')
@@ -630,7 +642,7 @@ class FJDXCommon(object):
             'delete_volume',
             **param_dict)
 
-        if rc == 0:
+        if rc == CONSTANTS.RC_OK:
             msg = (_('_delete_volume_after_error, '
                      'volumename: %(volumename)s, '
                      'Delete Successed.')
@@ -774,7 +786,7 @@ class FJDXCommon(object):
                         smis_method, smis_service,
                         **params)
 
-                    if rc != 0:
+                    if rc != CONSTANTS.RC_OK:
                         LOG.warning('_create_snapshot, '
                                     'snapshotname: %(snapshotname)s, '
                                     'source volume name: %(volumename)s, '
@@ -826,14 +838,14 @@ class FJDXCommon(object):
                         ElementType=self._pywbem_uint(pooltype, '16'),
                         Size=self._pywbem_uint(vol_size, '64'))
 
-                    if rc == 32769:
+                    if rc == CONSTANTS.RG_VOLNUM_MAX:
                         LOG.warning('_create_snapshot, RAID Group pool: %s. '
                                     'Maximum number of Logical Volume in a '
                                     'RAID Group has been reached. '
                                     'Try other pool.',
                                     pool)
                         continue
-                    elif rc != 0:
+                    elif rc != CONSTANTS.RC_OK:
                         msg = (_('_create_volume, '
                                  'volumename: %(volumename)s, '
                                  'poolname: %(eternus_pool)s, '
@@ -862,7 +874,7 @@ class FJDXCommon(object):
                             'start_copy_snap_opc',
                             **param_dict)
 
-                        if rc != 0:
+                        if rc != CONSTANTS.RC_OK:
                             msg = (_('_create_snapshot, '
                                      'create_volume failed. '
                                      'Return code: %(rc)lu, '
@@ -1079,7 +1091,7 @@ class FJDXCommon(object):
                 'expand_volume',
                 **param_dict)
 
-            if rc != 0:
+            if rc != CONSTANTS.RC_OK:
                 msg = (_('extend_volume, '
                          'volumename: %(volumename)s, '
                          'Return code: %(rc)lu, '
@@ -1133,7 +1145,7 @@ class FJDXCommon(object):
                 Size=self._pywbem_uint(volumesize, '64'),
                 TheElement=volume_instance.path)
 
-            if rc != 0:
+            if rc != CONSTANTS.RC_OK:
                 msg = (_('extend_volume, '
                          'volumename: %(volumename)s, '
                          'Return code: %(rc)lu, '
@@ -1543,7 +1555,7 @@ class FJDXCommon(object):
                         'show_pool_provision',
                         **param_dict)
 
-                    if rc != 0:
+                    if rc != CONSTANTS.RC_OK:
                         msg = (_('_find_pools, show_pool_provision, '
                                  'pool name: %(pool_name)s, '
                                  'Return code: %(rc)lu, '
@@ -2047,7 +2059,7 @@ class FJDXCommon(object):
                    % {'cpsession': cpsession,
                       'operation': operation})
             raise exception.VolumeIsBusy(msg)
-        elif rc != 0:
+        elif rc != CONSTANTS.RC_OK:
             msg = (_('_delete_copysession, '
                      'copysession: %(cpsession)s, '
                      'operation: %(operation)s, '
@@ -2188,7 +2200,7 @@ class FJDXCommon(object):
                           {'errordesc': errordesc,
                            'rc': rc})
 
-                if rc != 0 and rc != CONSTANTS.LUNAME_IN_USE:
+                if rc != CONSTANTS.RC_OK and rc != CONSTANTS.LUNAME_IN_USE:
                     LOG.warning('_map_lun, '
                                 'lun_name: %(volume_uid)s, '
                                 'Initiator: %(initiator)s, '
@@ -2221,7 +2233,7 @@ class FJDXCommon(object):
                           {'errordesc': errordesc,
                            'rc': rc})
 
-                if rc != 0 and rc != CONSTANTS.LUNAME_IN_USE:
+                if rc != CONSTANTS.RC_OK and rc != CONSTANTS.LUNAME_IN_USE:
                     LOG.warning('_map_lun, '
                                 'lun_name: %(volume_uid)s, '
                                 'Initiator: %(initiator)s, '
@@ -2428,7 +2440,7 @@ class FJDXCommon(object):
                           'volumename: %(volumename)s, '
                           'Invalid LUNames.',
                           {'volumename': volumename})
-            elif rc != 0:
+            elif rc != CONSTANTS.RC_OK:
                 msg = (_('_unmap_lun, '
                          'volumename: %(volumename)s, '
                          'volume_uid: %(volume_uid)s, '
@@ -2847,7 +2859,7 @@ class FJDXCommon(object):
         """Check whether user's role is accessible to ETERNUS and Software."""
         ret = True
         rc, errordesc, job = self._exec_eternus_cli('check_user_role')
-        if rc != 0:
+        if rc != CONSTANTS.RC_OK:
             msg = (_('_check_user, '
                      'Return code: %(rc)lu, '
                      'Error: %(errordesc)s, '
@@ -2871,100 +2883,79 @@ class FJDXCommon(object):
 
     def _exec_eternus_cli(self, command, retry=CONSTANTS.TIMES_MIN,
                           retry_interval=CONSTANTS.RETRY_INTERVAL,
-                          retry_code=[32787], filename=None, timeout=None,
+                          retry_code=['E0060'], filename=None,
                           **param_dict):
         """Execute ETERNUS CLI."""
         LOG.debug('_exec_eternus_cli, '
                   'command: %(a)s, '
                   'filename: %(f)s, '
-                  'timeout: %(t)s, '
                   'parameters: %(b)s.',
                   {'a': command,
                    'f': filename,
-                   't': timeout,
                    'b': param_dict})
 
-        result = None
+        out = None
         rc = None
         retdata = None
         errordesc = None
         filename = self.configuration.cinder_eternus_config_file
-        storage_ip = self._get_drvcfg('EternusIP')
+        storage_ip = self._get_drvcfg('EternusIP', filename)
         if not self.fjdxcli.get(filename):
-            user = self._get_drvcfg('EternusUser')
-            password = self._get_drvcfg('EternusPassword')
-            self.fjdxcli[filename] = (
-                eternus_dx_cli.FJDXCLI(user, storage_ip,
-                                       password=password))
+            user = self._get_drvcfg('EternusUser', filename)
+            if self.passwordless:
+                self.fjdxcli[filename] = (
+                    eternus_dx_cli.FJDXCLI(user,
+                                           storage_ip,
+                                           keyfile=self.private_key_path))
+            else:
+                password = self._get_drvcfg('EternusPassword', filename)
+                self.fjdxcli[filename] = (
+                    eternus_dx_cli.FJDXCLI(user, storage_ip,
+                                           password=password))
 
         for retry_num in range(retry):
             # Execute ETERNUS CLI and get return value.
             try:
-                out_dict = self.fjdxcli[filename].done(command, **param_dict)
-                result = out_dict.get('result')
+                out = self.fjdxcli[filename].done(command, **param_dict)
+                out_dict = out
                 rc_str = out_dict.get('rc')
                 retdata = out_dict.get('message')
             except Exception as ex:
                 msg = (_('_exec_eternus_cli, '
+                         'stdout: %(out)s, '
                          'unexpected error: %(ex)s.')
-                       % {'ex': ex})
+                       % {'out': out,
+                          'ex': ex})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
-            # Check ssh result.
-            if result == 255:
-                LOG.info('_exec_eternus_cli, retry, '
-                         'command: %(command)s, '
-                         'option: %(option)s, '
-                         'ip: %(ip)s, '
-                         'SSH Result: %(result)s, '
-                         'retdata: %(retdata)s, '
-                         'TryNum: %(rn)s.',
-                         {'command': command,
-                          'option': param_dict,
-                          'ip': storage_ip,
-                          'result': result,
-                          'retdata': retdata,
-                          'rn': (retry_num + 1)})
-                time.sleep(retry_interval)
-                continue
-            elif result != 0:
-                msg = (_('_exec_eternus_cli, '
-                         'unexpected error, '
-                         'command: %(command)s, '
-                         'option: %(option)s, '
-                         'ip: %(ip)s, '
-                         'resuslt: %(result)s, '
-                         'retdata: %(retdata)s.')
-                       % {'command': command,
-                          'option': param_dict,
-                          'ip': storage_ip,
-                          'result': result,
-                          'retdata': retdata})
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-
-            # Check CLI return code.
-            if rc_str.isdigit():
-                # SMI-S style return code.
-                rc = int(rc_str)
-
-                try:
-                    errordesc = CONSTANTS.RETCODE_dic[str(rc)]
-                except Exception:
-                    errordesc = 'Undefined Error!!'
-
-                if rc in retry_code:
+            if rc_str.startswith('E'):
+                errordesc = rc_str
+                rc = CONSTANTS.RC_FAILED
+                if rc_str in retry_code:
                     LOG.info('_exec_eternus_cli, retry, '
                              'ip: %(ip)s, '
                              'RetryCode: %(rc)s, '
                              'TryNum: %(rn)s.',
                              {'ip': storage_ip,
-                              'rc': rc,
+                              'rc': rc_str,
                               'rn': (retry_num + 1)})
                     time.sleep(retry_interval)
                     continue
-                if rc == 4:
+                else:
+                    LOG.warning('_exec_eternus_cli, '
+                                'WARNING!! '
+                                'ip: %(ip)s, '
+                                'ReturnCode: %(rc_str)s, '
+                                'ReturnData: %(retdata)s.',
+                                {'ip': storage_ip,
+                                 'rc_str': rc_str,
+                                 'retdata': retdata})
+                    break
+            else:
+                if rc_str == str(CONSTANTS.RC_FAILED):
+                    errordesc = rc_str
+                    rc = CONSTANTS.RC_FAILED
                     if ('Authentication failed' in retdata and
                             retry_num + 1 < retry):
                         LOG.warning('_exec_eternus_cli, retry, ip: %(ip)s, '
@@ -2975,35 +2966,12 @@ class FJDXCommon(object):
                                      'rn': (retry_num + 1)})
                         time.sleep(1)
                         continue
-
-                break
-            else:
-                # CLI style return code.
-                LOG.warning('_exec_eternus_cli, '
-                            'WARNING!! '
-                            'ip: %(ip)s, '
-                            'ReturnCode: %(rc_str)s, '
-                            'ReturnData: %(retdata)s.',
-                            {'ip': storage_ip,
-                             'rc_str': rc_str,
-                             'retdata': retdata})
-
-                errordesc = rc_str
-                rc = 4  # Failed.
+                else:
+                    errordesc = None
+                    rc = CONSTANTS.RC_OK
                 break
         else:
-            if 0 < result:
-                msg = (_('_exec_eternus_cli, '
-                         'cannot connect to ETERNUS. '
-                         'SSH Result: %(result)s, '
-                         'retdata: %(retdata)s.')
-                       % {'result': result,
-                          'retdata': retdata})
-
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-            else:
-                LOG.warning('_exec_eternus_cli, Retry was exceeded.')
+            LOG.warning('_exec_eternus_cli, Retry was exceeded.')
 
         ret = (rc, errordesc, retdata)
 
@@ -3062,7 +3030,7 @@ class FJDXCommon(object):
 
         # Get storage version information.
         rc, emsg, clidata = self._exec_eternus_cli('show_enclosure_status')
-        if rc != 0:
+        if rc != CONSTANTS.RC_OK:
             msg = (_('_set_qos, '
                      'show_enclosure_status failed. '
                      'Return code: %(rc)lu, '
@@ -3115,7 +3083,7 @@ class FJDXCommon(object):
             rc, errordesc, job = self._exec_eternus_cli(
                 'set_volume_qos',
                 **category_dict)
-            if rc != 0:
+            if rc != CONSTANTS.RC_OK:
                 msg = (_('_set_qos, '
                          'set_volume_qos failed. '
                          'Return code: %(rc)lu, '
@@ -3302,7 +3270,7 @@ class FJDXCommon(object):
         # Get all the bandwidth limits.
         rc, errordesc, bandwidthlist = self._exec_eternus_cli(
             'show_qos_bandwidth_limit')
-        if rc != 0:
+        if rc != CONSTANTS.RC_OK:
             msg = (_('_get_qos_category, '
                      'show_qos_bandwidth_limit failed. '
                      'Return code: %(rc)lu, '
@@ -3335,7 +3303,7 @@ class FJDXCommon(object):
             return ret_dict
 
         rc, errordesc, vqosdatalist = self._exec_eternus_cli('show_volume_qos')
-        if rc != 0:
+        if rc != CONSTANTS.RC_OK:
             msg = (_('_get_qos_category, '
                      'show_volume_qos failed. '
                      'Return code: %(rc)lu, '
@@ -3427,7 +3395,7 @@ class FJDXCommon(object):
         rc, emsg, clidata = self._exec_eternus_cli(
             'set_qos_bandwidth_limit', **param_dict)
 
-        if rc != 0:
+        if rc != CONSTANTS.RC_OK:
             msg = (_('_set_limit, '
                      'set_qos_bandwidth_limit failed. '
                      'Return code: %(rc)lu, '
@@ -3506,7 +3474,7 @@ class FJDXCommon(object):
                 WaitForCopyState=self._pywbem_uint(8, '16'),
                 Synchronization=sdvsession)
 
-            if rc != 0:
+            if rc != CONSTANTS.RC_OK:
                 msg = (_('revert_to_snapshot, '
                          '_exec_eternus_service error, '
                          'volume: %(volume)s, '
@@ -3541,7 +3509,7 @@ class FJDXCommon(object):
                     'start_copy_opc',
                     **param_dict)
 
-                if rc != 0:
+                if rc != CONSTANTS.RC_OK:
                     msg = (_('revert_to_snapshot, '
                              'start_copy_opc failed. '
                              'Return code: %(rc)lu, '
@@ -3571,7 +3539,7 @@ class FJDXCommon(object):
             **param
         )
 
-        if rc != 0:
+        if rc != CONSTANTS.RC_OK:
             msg = (_('_get_copy_sessions_list, '
                      'get copy sessions failed. '
                      'Return code: %(rc)lu, '

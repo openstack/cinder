@@ -102,6 +102,25 @@ Perform the following steps using ETERNUS Web GUI or ETERNUS CLI.
 #. Ensure LAN connection between cinder controller and MNT port of ETERNUS DX
    and SAN connection between Compute nodes and CA ports of ETERNUS DX.
 
+#. (Optional) If you want to use a public key to SSH to the ETERNUS DX storage,
+   generate the SSH key, and upload the ``eternus.ietf`` file to the ETERNUS
+   storage.
+
+   For information about how to set the public key, refer to the ETERNUS Web
+   GUI manuals.
+
+   .. code-block:: console
+
+      $ ssh-keygen -t rsa -N "" -f ./eternus -m PEM
+      $ ssh-keygen -e -f ./eternus.pub > ./eternus.ietf
+
+   If the public key(eternus.ietf) that was created is deleted by mistake, use
+   the following command to recreate the key.
+
+   .. code-block:: console
+
+      $ ssh-keygen -e -f /root/.ssh/eternus.pub > ./eternus.ietf
+
 Configuration
 ~~~~~~~~~~~~~
 
@@ -219,11 +238,14 @@ Configuration example
       volume_driver = cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_fc.FJDXFCDriver
       cinder_eternus_config_file = /etc/cinder/fc.xml
       volume_backend_name = FC
+      fujitsu_passwordless = False
 
       [DXISCSI]
       volume_driver = cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_iscsi.FJDXISCSIDriver
       cinder_eternus_config_file = /etc/cinder/iscsi.xml
       volume_backend_name = ISCSI
+      fujitsu_passwordless = True
+      fujitsu_private_key_path = /etc/cinder/eternus
 
 #. Create the driver configuration files ``fc.xml`` and ``iscsi.xml``.
 

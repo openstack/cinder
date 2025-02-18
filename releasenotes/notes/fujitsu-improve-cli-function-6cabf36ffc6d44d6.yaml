@@ -1,0 +1,40 @@
+---
+features:
+  - |
+    Fujitsu Eternus DX driver: Added support SSH key.
+
+    Added the method for connecting to Eternus Storage using SSH key.
+    The connection method can be selected by setting the value of parameter
+    ``fujitsu_passwordless``, which has a default value of ``True``.
+
+    * When ``fujitsu_passwordless`` is set to ``True``, SSH key is used for
+      connecting to the storage. Additionally, ``fujitsu_private_key_path``
+      needs to be set to the path of the SSH private key.
+
+    * When ``fujitsu_passwordless`` is set to ``False``, password is used for
+      SSH connection to the storage.
+
+    See the `Fujitsu ETERNUS DX driver documentation
+    <https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/fujitsu-eternus-dx-driver.html>`_
+    for details.
+upgrade:
+  - |
+    Fujitsu Eternus DX driver: Added SSH key and password connection switching
+
+    Added the method for connecting to Eternus Storage using SSH key.
+    The connection method can be selected by setting the value of parameter
+    ``fujitsu_passwordless``, which has a default value of ``True``.
+
+    For upgrading from previous versions that relied on password authentication,
+    you must explicitly set ``fujitsu_passwordless = False`` in the
+    configuration. This ensures backward compatibility with the legacy
+    password-based workflow.
+
+    The default True value enforces key-based auth for new deployments, aligning
+    with security best practices at the cost of a minor configuration adjustment
+    for existing users.
+fixes:
+  - |
+    Fujitsu Eternus DX driver `bug #2048850
+    <https://bugs.launchpad.net/cinder/+bug/2048850>`_:
+    Added parsing of error messages when CLI execution fails.
