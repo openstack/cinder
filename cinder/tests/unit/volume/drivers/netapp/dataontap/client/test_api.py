@@ -168,15 +168,23 @@ class NetAppApiServerTests(test.TestCase):
 
         mock_invoke.assert_called_with(zapi_fakes.FAKE_XML_STR)
 
-    def test__build_opener_not_implemented_error(self):
-        """Tests whether certificate style authorization raises Exception"""
-        self.root._auth_style = 'not_basic_auth'
+    def test_build_opener_with_certificate_auth(self):
+        """Tests whether build opener works with """
+        """valid certificate parameters"""
+        self.root._private_key_file = 'fake_key.pem'
+        self.root._certificate_file = 'fake_cert.pem'
+        auth_handler = self.mock_object(self.root,
+                                        '_create_certificate_auth_handler',
+                                        mock.Mock(return_value='fake_auth'))
+        expected_opener = 'fake_auth'
+        self.mock_object(urllib.request, 'build_opener', auth_handler)
+        self.root._build_opener()
+        self.assertEqual(self.root._opener, expected_opener)
+        self.root._create_certificate_auth_handler.assert_called()
 
-        self.assertRaises(NotImplementedError, self.root._build_opener)
-
-    def test__build_opener_valid(self):
-        """Tests whether build opener works with valid parameters"""
-        self.root._auth_style = 'basic_auth'
+    def test__build_opener_default(self):
+        """Tests whether build opener works with """
+        """default(basic auth) parameters"""
         mock_invoke = self.mock_object(urllib.request, 'build_opener')
 
         self.root._build_opener()
@@ -837,7 +845,9 @@ class NetAppRestApiServerTests(test.TestCase):
 
         self.assertEqual(expected_vserver, res)
 
-    def test__build_session(self):
+    def test__build_session_with_basic_auth(self):
+        """Tests whether build session works with """
+        """default(basic auth) parameters"""
         fake_session = mock.Mock()
         mock_requests_session = self.mock_object(
             requests, 'Session', mock.Mock(return_value=fake_session))
@@ -851,6 +861,28 @@ class NetAppRestApiServerTests(test.TestCase):
         self.assertEqual(fake_session, self.rest_client._session)
         self.assertEqual('fake_auth', self.rest_client._session.auth)
         self.assertEqual('fake_ssl', self.rest_client._session.verify)
+        self.assertEqual(zapi_fakes.FAKE_HEADERS,
+                         self.rest_client._session.headers)
+        mock_requests_session.assert_called_once_with()
+        mock_auth.assert_called_once_with()
+
+    def test__build_session_with_certificate_auth(self):
+        """Tests whether build session works with """
+        """valid certificate parameters"""
+        self.rest_client._private_key_file = 'fake_key.pem'
+        self.rest_client._certificate_file = 'fake_cert.pem'
+        self.rest_client._certificate_host_validation = False
+        fake_session = mock.Mock()
+        mock_requests_session = self.mock_object(
+            requests, 'Session', mock.Mock(return_value=fake_session))
+        mock_auth = self.mock_object(
+            self.rest_client, '_create_certificate_auth_handler',
+            mock.Mock(return_value=('fake_cert', 'fake_verify')))
+        self.rest_client._build_session(zapi_fakes.FAKE_HEADERS)
+        self.assertEqual(fake_session, self.rest_client._session)
+        self.assertEqual(('fake_cert', 'fake_verify'),
+                         (self.rest_client._session.cert,
+                          self.rest_client._session.verify))
         self.assertEqual(zapi_fakes.FAKE_HEADERS,
                          self.rest_client._session.headers)
         mock_requests_session.assert_called_once_with()
@@ -880,3 +912,33 @@ class NetAppRestApiServerTests(test.TestCase):
 
         expected = auth.HTTPBasicAuth(username, password)
         self.assertEqual(expected.__dict__, res.__dict__)
+
+    def test__create_certificate_auth_handler_default(self):
+        """Test whether create certificate auth handler """
+        """works with default params"""
+        self.rest_client._private_key_file = 'fake_key.pem'
+        self.rest_client._certificate_file = 'fake_cert.pem'
+        self.rest_client._certificate_host_validation = False
+        cert = self.rest_client._certificate_file, \
+            self.rest_client._private_key_file
+        self.rest_client._session = mock.Mock()
+        if not self.rest_client._certificate_host_validation:
+            self.assertFalse(self.rest_client._certificate_host_validation)
+        res = self.rest_client._create_certificate_auth_handler()
+        self.assertEqual(res,
+                         (cert, self.rest_client._certificate_host_validation))
+
+    def test__create_certificate_auth_handler_with_host_validation(self):
+        """Test whether create certificate auth handler """
+        """works with host validation enabled"""
+        self.rest_client._private_key_file = 'fake_key.pem'
+        self.rest_client._certificate_file = 'fake_cert.pem'
+        self.rest_client._ca_certificate_file = 'fake_ca_cert.crt'
+        self.rest_client._certificate_host_validation = True
+        cert = self.rest_client._certificate_file, \
+            self.rest_client._private_key_file
+        self.rest_client._session = mock.Mock()
+        if self.rest_client._certificate_host_validation:
+            self.assertTrue(self.rest_client._certificate_host_validation)
+        res = self.rest_client._create_certificate_auth_handler()
+        self.assertEqual(res, (cert, self.rest_client._ca_certificate_file))

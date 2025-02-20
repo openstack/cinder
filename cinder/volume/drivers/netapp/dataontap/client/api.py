@@ -20,7 +20,9 @@
 Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
 import random
+import ssl
 import urllib
+
 
 from eventlet import greenthread
 from eventlet import semaphore
@@ -66,21 +68,24 @@ class NaServer(object):
     URL_FILER = 'servlets/netapp.servlets.admin.XMLrequest_filer'
     URL_DFM = 'apis/XMLrequest'
     NETAPP_NS = 'http://www.netapp.com/filer/admin'
-    STYLE_LOGIN_PASSWORD = 'basic_auth'
-    STYLE_CERTIFICATE = 'certificate_auth'
 
     def __init__(self, host, server_type=SERVER_TYPE_FILER,
                  transport_type=TRANSPORT_TYPE_HTTP,
-                 style=STYLE_LOGIN_PASSWORD, username=None,
-                 password=None, port=None, api_trace_pattern=None):
+                 username=None,
+                 password=None, port=None, api_trace_pattern=None,
+                 private_key_file=None, certificate_file=None,
+                 ca_certificate_file=None, certificate_host_validation=None):
         self._host = host
         self.set_server_type(server_type)
         self.set_transport_type(transport_type)
-        self.set_style(style)
         if port:
             self.set_port(port)
         self._username = username
         self._password = password
+        self._private_key_file = private_key_file
+        self._certificate_file = certificate_file
+        self._ca_certificate_file = ca_certificate_file
+        self._certificate_host_validation = certificate_host_validation
         self._refresh_conn = True
 
         if api_trace_pattern is not None:
@@ -189,10 +194,8 @@ class NaServer(object):
         """Invoke the API on the server."""
         if not na_element or not isinstance(na_element, NaElement):
             raise ValueError('NaElement must be supplied to invoke API')
-
         request, request_element = self._create_request(na_element,
                                                         enable_tunneling)
-
         if not hasattr(self, '_opener') or not self._opener \
                 or self._refresh_conn:
             self._build_opener()
@@ -223,14 +226,14 @@ class NaServer(object):
         result = self.send_http_request(na_element, enable_tunneling)
         if result.has_attr('status') and result.get_attr('status') == 'passed':
             return result
-        code = result.get_attr('errno')\
-            or result.get_child_content('errorno')\
+        code = result.get_attr('errno') \
+            or result.get_child_content('errorno') \
             or 'ESTATUSFAILED'
         if code == ESIS_CLONE_NOT_LICENSED:
             msg = 'Clone operation failed: FlexClone not licensed.'
         else:
-            msg = result.get_attr('reason')\
-                or result.get_child_content('reason')\
+            msg = result.get_attr('reason') \
+                or result.get_child_content('reason') \
                 or 'Execution status is failed due to unknown reason'
         raise NaApiError(code, msg)
 
@@ -299,10 +302,10 @@ class NaServer(object):
                                   self._url)
 
     def _build_opener(self):
-        if self._auth_style == NaServer.STYLE_LOGIN_PASSWORD:
-            auth_handler = self._create_basic_auth_handler()
-        else:
+        if self._private_key_file and self._certificate_file:
             auth_handler = self._create_certificate_auth_handler()
+        else:
+            auth_handler = self._create_basic_auth_handler()
         opener = urllib.request.build_opener(auth_handler)
         self._opener = opener
 
@@ -314,7 +317,17 @@ class NaServer(object):
         return auth_handler
 
     def _create_certificate_auth_handler(self):
-        raise NotImplementedError()
+        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        if not self._certificate_host_validation:
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+        if self._certificate_file and self._private_key_file:
+            context.load_cert_chain(certfile=self._certificate_file,
+                                    keyfile=self._private_key_file)
+            if self._ca_certificate_file:
+                context.load_verify_locations(cafile=self._ca_certificate_file)
+        auth_handler = urllib.request.HTTPSHandler(context=context)
+        return auth_handler
 
     def __str__(self):
         return "server: %s" % self._host
@@ -606,10 +619,9 @@ class SSHUtil(object):
         response = stdout.channel.recv(999)
         if expected_prompt_text not in response.strip().decode():
             msg = _("Unexpected output. Expected [%(expected)s] but "
-                    "received [%(output)s]") % {
-                'expected': expected_prompt_text,
-                'output': response.strip(),
-            }
+                    "received [%(output)s]")\
+                % {'expected': expected_prompt_text,
+                   'output': response.strip(), }
             LOG.error(msg)
             stdin.close()
             stdout.close()
@@ -651,7 +663,6 @@ REST_NAMESPACE_EOBJECTNOTFOUND = ('72090006', '72090006')
 
 
 class RestNaServer(object):
-
     TRANSPORT_TYPE_HTTP = 'http'
     TRANSPORT_TYPE_HTTPS = 'https'
     HTTP_PORT = '80'
@@ -664,12 +675,18 @@ class RestNaServer(object):
 
     def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
                  ssl_cert_path=None, username=None, password=None, port=None,
-                 api_trace_pattern=None):
+                 api_trace_pattern=None,
+                 private_key_file=None, certificate_file=None,
+                 ca_certificate_file=None, certificate_host_validation=None):
         self._host = host
         self.set_transport_type(transport_type)
         self.set_port(port=port)
         self._username = username
         self._password = password
+        self._private_key_file = private_key_file
+        self._certificate_file = certificate_file
+        self._ca_certificate_file = ca_certificate_file
+        self._certificate_host_validation = certificate_host_validation
 
         if api_trace_pattern is not None:
             na_utils.setup_api_trace_pattern(api_trace_pattern)
@@ -799,9 +816,12 @@ class RestNaServer(object):
         max_retries = Retry(total=5, connect=5, read=2, backoff_factor=1)
         adapter = HTTPAdapter(max_retries=max_retries)
         self._session.mount('%s://' % self._protocol, adapter)
-
-        self._session.auth = self._create_basic_auth_handler()
-        self._session.verify = self._ssl_verify
+        if self._private_key_file and self._certificate_file:
+            self._session.cert, self._session.verify\
+                = self._create_certificate_auth_handler()
+        else:
+            self._session.auth = self._create_basic_auth_handler()
+            self._session.verify = self._ssl_verify
         self._session.headers = headers
 
     def _build_headers(self, enable_tunneling):
@@ -818,6 +838,20 @@ class RestNaServer(object):
     def _create_basic_auth_handler(self):
         """Creates and returns a basic HTTP auth handler."""
         return auth.HTTPBasicAuth(self._username, self._password)
+
+    def _create_certificate_auth_handler(self):
+        """Creates and returns a certificate auth handler."""
+        self._certificate_host_validation = self._session.verify
+        if self._certificate_file and self._private_key_file \
+                and self._ca_certificate_file:
+            self._session.cert = (self._certificate_file,
+                                  self._private_key_file)
+            if self._certificate_host_validation:
+                self._session.verify = self._ca_certificate_file
+        elif self._certificate_file and self._private_key_file:
+            self._session.cert = (self._certificate_file,
+                                  self._private_key_file)
+        return self._session.cert, self._session.verify
 
     @volume_utils.trace_api(
         filter_function=na_utils.trace_filter_func_rest_api)

@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    The NetApp ONTAP driver now supports Certificate-Based-Authentication (CBA)
+    for operators that desire certificate based authentication instead of user
+    and password.
+    Note: The options for cert-auth take precedence, if all the auth options
+    are defined in the config (both cert and legacy), the legacy ones are
+    ignored.

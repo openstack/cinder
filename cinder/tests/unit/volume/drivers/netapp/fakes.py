@@ -176,6 +176,7 @@ def create_configuration():
     config.append_config_values(na_opts.netapp_connection_opts)
     config.append_config_values(na_opts.netapp_transport_opts)
     config.append_config_values(na_opts.netapp_basicauth_opts)
+    config.append_config_values(na_opts.netapp_certificateauth_opts)
     config.append_config_values(na_opts.netapp_provisioning_opts)
     return config
 

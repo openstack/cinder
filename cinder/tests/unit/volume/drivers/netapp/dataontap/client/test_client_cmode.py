@@ -43,7 +43,11 @@ CONNECTION_INFO = {'hostname': 'hostname',
                    'username': 'admin',
                    'password': 'passw0rd',
                    'vserver': 'fake_vserver',
-                   'api_trace_pattern': 'fake_regex'}
+                   'api_trace_pattern': 'fake_regex',
+                   'private_key_file': 'fake_private_key.pem',
+                   'certificate_file': 'fake_cert.pem',
+                   'ca_certificate_file': 'fake_ca_cert.crt',
+                   'certificate_host_validation': 'False'}
 
 
 @ddt.ddt

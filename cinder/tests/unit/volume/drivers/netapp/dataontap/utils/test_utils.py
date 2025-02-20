@@ -53,6 +53,14 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                           group=self.backend)
         CONF.set_override('netapp_ssl_cert_path', 'fake_ca',
                           group=self.backend)
+        CONF.set_override('netapp_private_key_file', 'fake_private_key.pem',
+                          group=self.backend)
+        CONF.set_override('netapp_certificate_file', 'fake_cert.pem',
+                          group=self.backend)
+        CONF.set_override('netapp_ca_certificate_file', 'fake_ca_cert.crt',
+                          group=self.backend)
+        CONF.set_override('netapp_certificate_host_validation', False,
+                          group=self.backend)
 
     def test_get_backend_configuration(self):
         self.mock_object(utils, 'CONF')
@@ -98,14 +106,22 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
             self.mock_cmode_client.assert_called_once_with(
                 hostname='fake_hostname', password='fake_password',
                 username='fake_user', transport_type='https', port=8866,
-                trace=mock.ANY, vserver=None, api_trace_pattern="fake_regex")
+                trace=mock.ANY, vserver=None, api_trace_pattern="fake_regex",
+                private_key_file='fake_private_key.pem',
+                certificate_file='fake_cert.pem',
+                ca_certificate_file='fake_ca_cert.crt',
+                certificate_host_validation=False)
             self.mock_cmode_rest_client.assert_not_called()
         else:
             self.mock_cmode_rest_client.assert_called_once_with(
                 hostname='fake_hostname', password='fake_password',
                 username='fake_user', transport_type='https', port=8866,
                 trace=mock.ANY, vserver=None, api_trace_pattern="fake_regex",
-                ssl_cert_path='fake_ca', async_rest_timeout=60)
+                ssl_cert_path='fake_ca', async_rest_timeout=60,
+                private_key_file='fake_private_key.pem',
+                certificate_file='fake_cert.pem',
+                ca_certificate_file='fake_ca_cert.crt',
+                certificate_host_validation=False)
             self.mock_cmode_client.assert_not_called()
 
     @ddt.data(True, False)
@@ -124,7 +140,11 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                 hostname='fake_hostname', password='fake_password',
                 username='fake_user', transport_type='https', port=8866,
                 trace=mock.ANY, vserver='fake_vserver',
-                api_trace_pattern="fake_regex")
+                api_trace_pattern="fake_regex",
+                private_key_file='fake_private_key.pem',
+                certificate_file='fake_cert.pem',
+                ca_certificate_file='fake_ca_cert.crt',
+                certificate_host_validation=False)
             self.mock_cmode_rest_client.assert_not_called()
         else:
             self.mock_cmode_rest_client.assert_called_once_with(
@@ -132,7 +152,11 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                 username='fake_user', transport_type='https', port=8866,
                 trace=mock.ANY, vserver='fake_vserver',
                 api_trace_pattern="fake_regex", ssl_cert_path='fake_ca',
-                async_rest_timeout = 60)
+                async_rest_timeout = 60,
+                private_key_file='fake_private_key.pem',
+                certificate_file='fake_cert.pem',
+                ca_certificate_file='fake_ca_cert.crt',
+                certificate_host_validation=False)
             self.mock_cmode_client.assert_not_called()
 
 

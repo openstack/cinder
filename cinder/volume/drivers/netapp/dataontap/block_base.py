@@ -65,18 +65,19 @@ class NetAppLun(object):
 
     def __str__(self, *args, **kwargs):
         return 'NetApp LUN [handle:%s, name:%s, size:%s, metadata:%s]' % (
-               self.handle, self.name, self.size, self.metadata)
+            self.handle, self.name, self.size, self.metadata)
 
 
 class NetAppBlockStorageLibrary(
         object,
         metaclass=volume_utils.TraceWrapperMetaclass):
     """NetApp block storage library for Data ONTAP."""
-
     # do not increment this as it may be used in volume type definitions
     VERSION = "1.0.0"
-    REQUIRED_FLAGS = ['netapp_login', 'netapp_password',
-                      'netapp_server_hostname']
+    REQUIRED_FLAGS_BASIC = ['netapp_login', 'netapp_password',
+                            'netapp_server_hostname']
+    REQUIRED_FLAGS_CERT = ['netapp_private_key_file',
+                           'netapp_certificate_file']
     ALLOWED_LUN_OS_TYPES = ['linux', 'aix', 'hpux', 'image', 'windows',
                             'windows_2008', 'windows_gpt', 'solaris',
                             'solaris_efi', 'netware', 'openvms', 'hyper_v']
@@ -109,6 +110,8 @@ class NetAppBlockStorageLibrary(
         self.configuration = kwargs['configuration']
         self.configuration.append_config_values(na_opts.netapp_connection_opts)
         self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
+        self.configuration.append_config_values(
+            na_opts.netapp_certificateauth_opts)
         self.configuration.append_config_values(na_opts.netapp_transport_opts)
         self.configuration.append_config_values(
             na_opts.netapp_provisioning_opts)
@@ -137,13 +140,18 @@ class NetAppBlockStorageLibrary(
         reserved_percentage = 100 * int(reserved_ratio)
         msg = ('The "netapp_size_multiplier" configuration option is '
                'deprecated and will be removed in the Mitaka release. '
-               'Please set "reserved_percentage = %d" instead.') % (
-                   reserved_percentage)
+               'Please set "reserved_percentage = %d" instead.') \
+            % reserved_percentage
         versionutils.report_deprecated_feature(LOG, msg)
         return reserved_percentage
 
     def do_setup(self, context):
-        na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
+        if self.configuration.netapp_private_key_file or\
+                self.configuration.netapp_certificate_file:
+            na_utils.check_flags(self.REQUIRED_FLAGS_CERT,
+                                 self.configuration)
+        else:
+            na_utils.check_flags(self.REQUIRED_FLAGS_BASIC, self.configuration)
         self.lun_ostype = (self.configuration.netapp_lun_ostype
                            or self.DEFAULT_LUN_OS)
         self.host_type = (self.configuration.netapp_host_type
@@ -242,9 +250,9 @@ class NetAppBlockStorageLibrary(
             na_utils.get_qos_policy_group_name_from_info(
                 qos_policy_group_info))
         qos_policy_group_is_adaptive = (volume_utils.is_boolean_str(
-            extra_specs.get('netapp:qos_policy_group_is_adaptive')) or
-            na_utils.is_qos_policy_group_spec_adaptive(
-                qos_policy_group_info))
+            extra_specs.get('netapp:qos_policy_group_is_adaptive'))
+            or na_utils.is_qos_policy_group_spec_adaptive
+            (qos_policy_group_info))
 
         try:
             self._create_lun(pool_name, lun_name, size, metadata,
@@ -367,9 +375,9 @@ class NetAppBlockStorageLibrary(
             na_utils.get_qos_policy_group_name_from_info(
                 qos_policy_group_info))
         qos_policy_group_is_adaptive = (volume_utils.is_boolean_str(
-            extra_specs.get('netapp:qos_policy_group_is_adaptive')) or
-            na_utils.is_qos_policy_group_spec_adaptive(
-                qos_policy_group_info))
+            extra_specs.get('netapp:qos_policy_group_is_adaptive'))
+            or na_utils.is_qos_policy_group_spec_adaptive
+            (qos_policy_group_info))
 
         try:
             self._clone_lun(
@@ -882,8 +890,8 @@ class NetAppBlockStorageLibrary(
         LOG.info("Unmanaged LUN with current path %(path)s and uuid "
                  "%(uuid)s.",
                  {'path': managed_lun.get_metadata_property('Path'),
-                  'uuid': managed_lun.get_metadata_property('UUID')
-                  or 'unknown'})
+                  'uuid': managed_lun.get_metadata_property('UUID') or
+                  'unknown'})
 
     def initialize_connection_iscsi(self, volume, connector):
         """Driver entry point to attach a volume to an instance.

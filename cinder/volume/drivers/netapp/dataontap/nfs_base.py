@@ -49,7 +49,6 @@ from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
 from cinder.volume import volume_utils
 
-
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
@@ -67,8 +66,10 @@ class NetAppNfsDriver(driver.ManageableVD,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_CI"
 
-    REQUIRED_FLAGS = ['netapp_login', 'netapp_password',
-                      'netapp_server_hostname']
+    REQUIRED_FLAGS_BASIC = ['netapp_login', 'netapp_password',
+                            'netapp_server_hostname']
+    REQUIRED_FLAGS_CERT = ['netapp_private_key_file',
+                           'netapp_certificate_file']
     DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
     DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
 
@@ -81,6 +82,8 @@ class NetAppNfsDriver(driver.ManageableVD,
         super(NetAppNfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(na_opts.netapp_connection_opts)
         self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
+        self.configuration.append_config_values(
+            na_opts.netapp_certificateauth_opts)
         self.configuration.append_config_values(na_opts.netapp_transport_opts)
         self.configuration.append_config_values(na_opts.netapp_img_cache_opts)
         self.configuration.append_config_values(na_opts.netapp_nfs_extra_opts)
@@ -90,7 +93,12 @@ class NetAppNfsDriver(driver.ManageableVD,
     def do_setup(self, context):
         super(NetAppNfsDriver, self).do_setup(context)
         self._context = context
-        na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
+        if self.configuration.netapp_private_key_file or\
+                self.configuration.netapp_certificate_file:
+            na_utils.check_flags(self.REQUIRED_FLAGS_CERT,
+                                 self.configuration)
+        else:
+            na_utils.check_flags(self.REQUIRED_FLAGS_BASIC, self.configuration)
         self.zapi_client = None
 
     def check_for_setup_error(self):
@@ -542,6 +550,7 @@ class NetAppNfsDriver(driver.ManageableVD,
 
     def _do_clone_rel_img_cache(self, src, dst, share, cache_file):
         """Do clone operation w.r.t image cache file."""
+
         @utils.synchronized(cache_file, external=True)
         def _do_clone():
             dir = self._get_mount_point_for_share(share)
@@ -552,6 +561,7 @@ class NetAppNfsDriver(driver.ManageableVD,
                                                     share=share)
                 src_path = '%s/%s' % (dir, src)
                 os.utime(src_path, None)
+
         _do_clone()
 
     def _clean_image_cache(self):
