@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    Quobyte driver: The python ``psutil`` module is no longer a requirement for
+    cinder, so it may need to be installed separately if you are using Quobyte.
+    This can be done by specifying ``quobyte`` extras if installing via pip
+    (for example, ``pip install cinder[quobyte]``) or by installing ``psutil``
+    from the package appropriate for your operating system and ensuring that
+    it is accessible to the cinder volume service.
