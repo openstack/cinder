@@ -318,7 +318,8 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
                            container_format='bare',
                            vmware_disktype='streamOptimized',
                            vmware_adaptertype='lsiLogic',
-                           is_public=True):
+                           is_public=True,
+                           virtual_size=1 * units.Gi):
         return {'id': _id,
                 'name': name,
                 'disk_format': disk_format,
@@ -328,6 +329,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
                                'vmware_adaptertype': vmware_adaptertype,
                                },
                 'is_public': is_public,
+                'virtual_size': virtual_size,
                 }
 
     @mock.patch.object(FCD_DRIVER, '_get_adapter_type')
