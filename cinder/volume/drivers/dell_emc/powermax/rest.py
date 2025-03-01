@@ -1623,7 +1623,7 @@ class PowerMaxRest(object):
                 self.delete_resource(array, SLOPROVISIONING,
                                      "volume", device_id)
 
-    @retry(retry_exc_tuple, interval=2, retries=3)
+    @retry(retry_exc_tuple, interval=2, retries=8)
     def find_mv_connections_for_vol(self, array, maskingview, device_id):
         """Find the host_lun_id for a volume in a masking view.
 
@@ -1646,28 +1646,42 @@ class PowerMaxRest(object):
             try:
                 masking_view_conn = connection_info.get(
                     'maskingViewConnection')
-                if masking_view_conn and isinstance(
-                        masking_view_conn, list):
+                if (masking_view_conn and isinstance(
+                        masking_view_conn, list) and
+                        len(masking_view_conn) > 0):
                     host_lun_id = masking_view_conn[0].get(
                         'host_lun_address')
                     if host_lun_id:
                         host_lun_id = int(host_lun_id, 16)
                     else:
-                        exception_message = (
-                            _('Unable to get host_lun_address for '
-                              'device %(dev)s on masking view %(mv)s. '
-                              'Retrying...')
-                            % {'dev': device_id, 'mv': maskingview})
+                        exception_message = (_("Unable to get "
+                                               "host_lun_address for device "
+                                               "%(dev)s on masking view "
+                                               "%(mv)s. Retrying...")
+                                             % {"dev": device_id,
+                                                "mv": maskingview})
                         LOG.warning(exception_message)
                         raise exception.VolumeBackendAPIException(
                             message=exception_message)
+                else:
+                    exception_message = (_("Unable to retrieve connection "
+                                           "information for volume %(vol)s "
+                                           "in masking view %(mv)s. "
+                                           "Retrying...")
+                                         % {"vol": device_id,
+                                            "mv": maskingview})
+                    LOG.warning(exception_message)
+                    raise exception.VolumeBackendAPIException(
+                        message=exception_message)
             except Exception as e:
-                exception_message = (
-                    _("Unable to retrieve connection information "
-                      "for volume %(vol)s in masking view %(mv)s. "
-                      "Exception received: %(e)s. Retrying...")
-                    % {'vol': device_id, 'mv': maskingview,
-                       'e': e})
+                exception_message = (_("Unable to retrieve connection "
+                                       "information for volume %(vol)s "
+                                       "in masking view %(mv)s. "
+                                       "Exception received: %(e)s. "
+                                       "Retrying...")
+                                     % {"vol": device_id,
+                                        "mv": maskingview,
+                                        "e": e})
                 LOG.warning(exception_message)
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)
