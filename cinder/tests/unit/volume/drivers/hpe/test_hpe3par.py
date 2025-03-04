@@ -691,6 +691,11 @@ class HPE3PARBaseDriver(test.TestCase):
                           'minor': 10,
                           'revision': 0}
 
+    wsapi_version_clone = {'major': 1,
+                           'build': 40600052,
+                           'minor': 10,
+                           'revision': 0}
+
     # Use this to point to latest version of wsapi
     wsapi_version_latest = wsapi_version_for_compression
 
@@ -2666,13 +2671,19 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 self.standard_login +
                 expected)
 
-    @ddt.data('volume', 'volume_name_id')
-    def test_create_cloned_volume(self, volume_attr):
+    @ddt.data({'volume_attr': 'volume', 'wsapi_version': None},
+              {'volume_attr': 'volume_name_id', 'wsapi_version': None},
+              {'volume_attr': 'volume',
+               'wsapi_version': HPE3PARBaseDriver.wsapi_version_clone},
+              {'volume_attr': 'volume_name_id',
+               'wsapi_version': HPE3PARBaseDriver.wsapi_version_clone})
+    @ddt.unpack
+    def test_create_cloned_volume(self, volume_attr, wsapi_version):
         src_vref = getattr(self, volume_attr)
         vol_name = getattr(self, volume_attr.upper() + '_3PAR_NAME')
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
+        mock_client = self.setup_driver(wsapi_version=wsapi_version)
         mock_client.getVolume.return_value = {'name': mock.ANY}
         mock_client.copyVolume.return_value = {'taskid': 1}
         mock_client.getStorageSystemInfo.return_value = {
@@ -2690,11 +2701,24 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                       'host': volume_utils.append_host(self.FAKE_HOST,
                                                        HPE3PAR_CPG2),
                       'source_volid': src_vref.id}
-            model_update = self.driver.create_cloned_volume(volume, src_vref)
+
+            if not wsapi_version:
+                # (i) old/default
+                model_update = self.driver.create_cloned_volume(volume,
+                                                                src_vref)
+            else:
+                # (ii) wsapi having support for comment in cloned volume
+                common = self.driver._login()
+                model_update = common.create_cloned_volume(volume, src_vref)
+
             self.assertIsNone(model_update)
             # snapshot name is random
             snap_name = mock.ANY
             optional = mock.ANY
+            optional_fields = {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
+                               'tdvv': False, 'online': True}
+            if wsapi_version:
+                optional_fields['comment'] = mock.ANY
 
             expected = [
                 mock.call.createSnapshot(snap_name, vol_name, optional),
@@ -2703,8 +2727,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     snap_name,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     HPE3PAR_CPG2,
-                    {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
-                     'tdvv': False, 'online': True})]
+                    optional_fields)]
 
             mock_client.assert_has_calls(expected)
 
