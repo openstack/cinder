@@ -1848,6 +1848,49 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             self.driver.create_cloned_volume, vol, src_vol)
         self.assertFalse(self.array.extend_volume.called)
 
+    # Tests cloning a volume that is not replicated type with QoS
+    @ddt.data(
+        {
+            "qos_name": "qos-iops-bws",
+            "qos_spec": dict(QOS_IOPS_BWS),
+            "qos_data": {"iops_limit": '100', "bandwidth_limit": '1048576'}
+        },
+        {
+            "qos_name": "qos-iops",
+            "qos_spec": dict(QOS_IOPS),
+            "qos_data": {"iops_limit": '100'}
+        },
+        {
+            "qos_name": "qos-bws",
+            "qos_spec": dict(QOS_BWS),
+            "qos_data": {"bandwidth_limit": '1048576'}
+        },
+    )
+    @mock.patch(BASE_DRIVER_OBJ + "._get_qos_settings")
+    @mock.patch(BASE_DRIVER_OBJ + ".set_qos")
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
+    def test_create_cloned_volume_qos(self, qos_info,
+                                      mock_fa,
+                                      mock_qos,
+                                      mock_qos_specs):
+        ctxt = context.get_admin_context()
+        qos = qos_specs.create(ctxt,
+                               qos_info["qos_name"],
+                               qos_info["qos_spec"])
+        qos_data = self.flasharray.Qos(**qos_info["qos_data"])
+        vol, vol_name = self.new_fake_vol(set_provider_id=False)
+        src_vol, src_name = self.new_fake_vol(spec={"size": 1},
+                                              type_qos_specs_id=qos.id)
+        mock_data = self.array.flasharray.VolumePost(names=[vol_name],
+                                                     source=
+                                                     pure.flasharray.
+                                                     reference(name=src_name),
+                                                     qos=qos_data)
+        mock_fa.return_value = mock_data
+        mock_qos_specs.return_value = qos
+        self.driver.create_cloned_volume(vol, src_vol)
+        self.driver.set_qos.assert_called_with(self.array, vol_name, qos)
+
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
     def test_create_cloned_volume_sync_rep(self, mock_fa):
         repl_extra_specs = {
