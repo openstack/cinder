@@ -59,6 +59,7 @@ import glob
 import itertools
 import logging as python_logging
 import os
+from pathlib import Path
 import re
 import sys
 import time
@@ -75,6 +76,7 @@ import tabulate
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import config  # noqa
 from cinder import context
+from cinder import coordination
 from cinder import db
 from cinder.db import migration as db_migration
 from cinder.db.sqlalchemy import api as db_api
@@ -1037,6 +1039,112 @@ class UtilCommands(object):
                     _err(filename, exc)
 
 
+class SapCommands:
+    """Methods added for SAP-specific purposes"""
+
+    @args('--dry-run', action='store_true', default=False,
+          help='Do not delete any files.')
+    @args('--verbose', action='store_true', default=False,
+          help='Print some extra messages')
+    @args('--batch-size', default=10000, type=int,
+          help='Read, parse and process this many lock files')
+    def clean_old_lock_files(self, dry_run, verbose, batch_size):
+        """List all lock files and delete orphaned ones
+
+        We have to list the lock files first and the volumes and snapshots
+        afterwards to make sure we do not delete a lock file for a
+        parallel-created volume/snapshot.
+        """
+        if dry_run:
+            print("Starting in DRY-RUN mode")
+
+        print(f"Processing up to {batch_size} lock files (see --batch-size)")
+
+        # check if we use file-based locking and find the lock patch
+        backend_url = CONF.coordination.backend_url
+        if not backend_url or not backend_url.startswith('file://'):
+            print("Not configured for file-based locks. No cleanup possible.")
+            return 1
+
+        # NOTE(jkulik): We start it here so it parses the config and we can get
+        # the directory from it.
+        coordination.COORDINATOR.start()
+        lock_file_dir = Path(coordination.COORDINATOR.coordinator._dir)
+        if not lock_file_dir.exists():
+            print("Lock file path {lock_file_dir} does not exist.")
+            return 2
+
+        # list the existing lock files and parse their volume/snapshot UUID
+        # we're mainly interested in files matching
+        # cinder-ffc5bc4b-3260-4eef-932f-a41219481dc9-delete_volume while the
+        # postfix -delete_volume could be any cinder.virt.manager function
+        # call, so we ignore it
+        # Additionally, there can be "cinder-{UUID}" files without prefix,
+        # which can contain a volume or image UUID.
+        # There's also a lock of the form
+        # cinder-attachment_update-{volume_uuid}-{connector_host}
+        lock_files = []
+        for p in lock_file_dir.iterdir():
+            if not p.is_file():
+                continue
+
+            if len(lock_files) >= batch_size:
+                print(f"Reached limit imposed by --batch-size={batch_size}")
+                break
+
+            UUID_RE = ('(?P<uuid>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-'
+                       '[a-f0-9]{4}-[a-f0-9]{12})')
+            m = re.match(f"cinder-{UUID_RE}(?P<marker>-)?", p.name)
+            if m:
+                lock_files.append((m['uuid'], p, m['marker'] is not None))
+                continue
+
+            m = re.match(f"cinder-attachment_update-{UUID_RE}-", p.name)
+            if m:
+                lock_files.append((m['uuid'], p, True))
+                continue
+
+            if verbose:
+                print(f"Ignoring {p.name} not matching regexes")
+
+        print(f"Found {len(lock_files)} lock files")
+
+        # list the existing volumes and snapshots
+        existing_uuids = set()
+        ctxt = context.get_admin_context()
+
+        query = db_api.model_query(ctxt, models.Volume.id, read_deleted="no")
+        existing_uuids.update(x[0] for x in query.all())
+
+        query = db_api.model_query(ctxt, models.Snapshot.id, read_deleted="no")
+        existing_uuids.update(x[0] for x in query.all())
+
+        if not existing_uuids:
+            print("No volume and snapshot UUIDs found.")
+            return 3
+
+        # remove lock files not matching any volumes
+        removed_count = 0
+        for uuid_, file_path, is_volume_or_snapshot in lock_files:
+            if not is_volume_or_snapshot:
+                # TODO(jkulik): We need to implement getting images to handle
+                # these or decide that getting images is not imporant enough.
+                continue
+
+            if uuid_ in existing_uuids:
+                if verbose:
+                    print(f"Keeping {p.name} as {uuid_} exists.")
+                continue
+
+            if not dry_run:
+                file_path.unlink(missing_ok=True)
+            removed_count += 1
+            if removed_count % 100 == 0:
+                print("Removed 100 files")
+
+        print(f"Removed {removed_count} files in total")
+
+
 CATEGORIES = {
     'backup': BackupCommands,
     'config': ConfigCommands,
@@ -1049,6 +1157,7 @@ CATEGORIES = {
     'version': VersionCommands,
     'volume': VolumeCommands,
     'util': UtilCommands,
+    'sap': SapCommands,
 }
 
 
