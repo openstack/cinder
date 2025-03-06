@@ -213,7 +213,15 @@ netapp_replication_opts = [
                min=60,
                default=360,  # Default to six minutes
                help='Sets time in seconds to wait for a replication volume '
-                    'create to complete and go online.')]
+                    'create to complete and go online.'),
+    cfg.StrOpt('netapp_replication_policy',
+               default='MirrorAllSnapshots',
+               help='This option defines the replication policy to be used '
+                    'while creating snapmirror relationship. Default is '
+                    'MirrorAllSnapshots which is based on async-mirror.'
+                    'User can pass values like Sync, StrictSync for '
+                    'synchronous snapmirror relationship (SM-S) to achieve '
+                    'zero RPO')]
 
 netapp_support_opts = [
     cfg.StrOpt('netapp_api_trace_pattern',

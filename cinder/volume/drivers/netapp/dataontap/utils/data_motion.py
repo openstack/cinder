@@ -91,8 +91,28 @@ class DataMotionMixin(object):
                     replication_aggregate_map.pop('backend_id')
                     aggregate_map = replication_aggregate_map
                     break
-
         return aggregate_map
+
+    def get_replication_policy(self, config):
+        """Get replication policy for the configured replication targets."""
+        return config.safe_get('netapp_replication_policy') or \
+            "MirrorAllSnapshots"
+
+    def is_sync_mirror_policy(self, replication_policy):
+        return "Sync" in replication_policy or "StrictSync" in \
+            replication_policy
+
+    def is_active_sync_asymmetric_policy(self, replication_policy):
+        return "AutomatedFailOver" in replication_policy
+
+    def is_active_sync_configured(self, configuration):
+        replication_enabled = (
+            True if self.get_replication_backend_names(
+                configuration) else False)
+        if replication_enabled:
+            return self.get_replication_policy(configuration) == \
+                "AutomatedFailOver"
+        return False
 
     def get_snapmirrors(self, src_backend_name, dest_backend_name,
                         src_flexvol_name=None, dest_flexvol_name=None):
@@ -123,7 +143,8 @@ class DataMotionMixin(object):
         return snapmirrors
 
     def create_snapmirror(self, src_backend_name, dest_backend_name,
-                          src_flexvol_name, dest_flexvol_name):
+                          src_flexvol_name, dest_flexvol_name,
+                          replication_policy):
         """Set up a SnapMirror relationship b/w two FlexVols (cinder pools)
 
         1. Create SnapMirror relationship
@@ -140,10 +161,16 @@ class DataMotionMixin(object):
             src_backend_name)
         src_vserver = source_backend_config.netapp_vserver
 
-        dest_client = config_utils.get_client_for_backend(
-            dest_backend_name, vserver_name=dest_vserver)
-        src_client = config_utils.get_client_for_backend(
-            src_backend_name, vserver_name=src_vserver)
+        if replication_policy == "AutomatedFailOver":
+            dest_client = config_utils.get_client_for_backend(
+                dest_backend_name, vserver_name=dest_vserver, force_rest=True)
+            src_client = config_utils.get_client_for_backend(
+                src_backend_name, vserver_name=src_vserver, force_rest=True)
+        else:
+            dest_client = config_utils.get_client_for_backend(
+                dest_backend_name, vserver_name=dest_vserver)
+            src_client = config_utils.get_client_for_backend(
+                src_backend_name, vserver_name=src_vserver)
 
         provisioning_options = (
             src_client.get_provisioning_options_from_flexvol(
@@ -160,9 +187,23 @@ class DataMotionMixin(object):
                 dest_flexvol_name,
                 pool_is_flexgroup=pool_is_flexgroup)
 
+        sync_mirror_policy = self.is_sync_mirror_policy(replication_policy)
+        active_sync_asymmetric_policy = self.is_active_sync_asymmetric_policy(
+            replication_policy)
+        src_cg = "cg_" + src_flexvol_name if active_sync_asymmetric_policy \
+            else ""
+        dest_cg = "cg_" + dest_flexvol_name if active_sync_asymmetric_policy \
+            else ""
+        src_cg_path = "/cg/" + str(src_cg)
+        dest_cg_path = "/cg/" + str(dest_cg)
+
         # 2. Check if SnapMirror relationship exists
-        existing_mirrors = dest_client.get_snapmirrors(
-            src_vserver, src_flexvol_name, dest_vserver, dest_flexvol_name)
+        if active_sync_asymmetric_policy:
+            existing_mirrors = dest_client.get_snapmirrors(
+                src_vserver, src_cg_path, dest_vserver, dest_cg_path)
+        else:
+            existing_mirrors = dest_client.get_snapmirrors(
+                src_vserver, src_flexvol_name, dest_vserver, dest_flexvol_name)
 
         msg_payload = {
             'src_vserver': src_vserver,
@@ -173,34 +214,45 @@ class DataMotionMixin(object):
 
         # 3. Create and initialize SnapMirror if it doesn't already exist
         if not existing_mirrors:
-
-            # TODO(gouthamr): Change the schedule from hourly to a config value
+            # TODO(gouthamr): Change the schedule from hourly to config value
             msg = ("Creating a SnapMirror relationship between "
-                   "%(src_vserver)s:%(src_volume)s and %(dest_vserver)s:"
+                   "%(src_vserver)s:%(src_flexvol_name)s and %(dest_vserver)s:"
                    "%(dest_volume)s.")
             LOG.debug(msg, msg_payload)
 
             try:
+                if active_sync_asymmetric_policy:
+                    src_client.create_ontap_consistency_group(
+                        src_vserver, src_flexvol_name, src_cg)
+
                 dest_client.create_snapmirror(
                     src_vserver,
                     src_flexvol_name,
                     dest_vserver,
                     dest_flexvol_name,
-                    schedule='hourly',
-                    relationship_type=('extended_data_protection'
-                                       if pool_is_flexgroup
-                                       else 'data_protection'))
-
-                msg = ("Initializing SnapMirror transfers between "
-                       "%(src_vserver)s:%(src_volume)s and %(dest_vserver)s:"
-                       "%(dest_volume)s.")
-                LOG.debug(msg, msg_payload)
+                    src_cg,
+                    dest_cg,
+                    schedule=None
+                    if sync_mirror_policy or active_sync_asymmetric_policy
+                    else 'hourly',
+                    policy=replication_policy,
+                    relationship_type=(
+                        'extended_data_protection'
+                        if pool_is_flexgroup or sync_mirror_policy
+                        else 'data_protection'))
 
                 # Initialize async transfer of the initial data
-                dest_client.initialize_snapmirror(src_vserver,
-                                                  src_flexvol_name,
-                                                  dest_vserver,
-                                                  dest_flexvol_name)
+                if active_sync_asymmetric_policy:
+                    src_flexvol_name = src_cg_path
+                    dest_flexvol_name = dest_cg_path
+                if not sync_mirror_policy:
+                    msg = ("Initializing SnapMirror transfers between "
+                           "%(src_vserver)s:%(src_volume)s and "
+                           "%(dest_vserver)s:%(dest_volume)s.")
+                    LOG.debug(msg, msg_payload)
+                    dest_client.initialize_snapmirror(
+                        src_vserver, src_flexvol_name, dest_vserver,
+                        dest_flexvol_name, active_sync_asymmetric_policy)
             except netapp_api.NaApiError as e:
                 with excutils.save_and_reraise_exception() as raise_ctxt:
                     if (e.code == netapp_api.EAPIERROR and
@@ -219,7 +271,11 @@ class DataMotionMixin(object):
         # 4. Try to repair SnapMirror if existing
         else:
             snapmirror = existing_mirrors[0]
-            if snapmirror.get('mirror-state') != 'snapmirrored':
+            if active_sync_asymmetric_policy:
+                src_flexvol_name = src_cg_path
+                dest_flexvol_name = dest_cg_path
+            if snapmirror.get('mirror-state') != 'snapmirrored' and \
+                    snapmirror.get('mirror-state') != 'in_sync':
                 try:
                     msg = ("SnapMirror between %(src_vserver)s:%(src_volume)s "
                            "and %(dest_vserver)s:%(dest_volume)s is in "
@@ -556,6 +612,7 @@ class DataMotionMixin(object):
     def ensure_snapmirrors(self, config, src_backend_name, src_flexvol_names):
         """Ensure all the SnapMirrors needed for whole-backend replication."""
         backend_names = self.get_replication_backend_names(config)
+        replication_policy = self.get_replication_policy(config)
         for dest_backend_name in backend_names:
             for src_flexvol_name in src_flexvol_names:
 
@@ -571,7 +628,8 @@ class DataMotionMixin(object):
                     self.create_snapmirror(src_backend_name,
                                            dest_backend_name,
                                            src_flexvol_name,
-                                           dest_flexvol_name)
+                                           dest_flexvol_name,
+                                           replication_policy)
                 try:
                     _try_create_snapmirror()
                 except na_utils.NetAppDriverException as e:
@@ -753,39 +811,63 @@ class DataMotionMixin(object):
             msg = _("Cannot failover to the same host as the primary.")
             raise exception.InvalidReplicationTarget(reason=msg)
 
-        replication_targets = self.get_replication_backend_names(
-            self.configuration)
+        # Added logic to handle failback from the secondary to old primary
+        # This condition is needed when the DR/replication conditions are
+        # restored back to normal state
+        if secondary_id == "default":
+            LOG.debug('Fails back to primary')
+            volume_updates = []
+            volume_update = []
+            # Update the ZAPI client to the backend we failed over to
+            active_backend_name = self.backend_name
+            self._update_zapi_client(active_backend_name)
+            self.failed_over = False
+            self.failed_over_backend_name = active_backend_name
+            for volume in volumes:
+                volume_update = []
+                replication_status = fields.ReplicationStatus.ENABLED
+                volume_update = {
+                    'volume_id': volume['id'],
+                    'updates': {'replication_status': replication_status},
+                }
+            volume_updates.append(volume_update)
+            return active_backend_name, volume_updates, []
 
-        if not replication_targets:
-            msg = _("No replication targets configured for backend "
-                    "%s. Cannot failover.")
-            raise exception.InvalidReplicationTarget(reason=msg % self.host)
-        elif secondary_id and secondary_id not in replication_targets:
-            msg = _("%(target)s is not among replication targets configured "
-                    "for back end %(host)s. Cannot failover.")
-            payload = {
-                'target': secondary_id,
-                'host': self.host,
-            }
-            raise exception.InvalidReplicationTarget(reason=msg % payload)
+        else:
+            replication_targets = self.get_replication_backend_names(
+                self.configuration)
 
-        flexvols = self.ssc_library.get_ssc_flexvol_names()
+            if not replication_targets:
+                msg = _("No replication targets configured for backend "
+                        "%s. Cannot failover.")
+                raise exception.InvalidReplicationTarget(
+                    reason=msg % self.host)
+            if secondary_id and secondary_id not in replication_targets:
+                msg = _("%(target)s is not among replication targets "
+                        "configured for back end %(host)s. Cannot failover.")
+                payload = {
+                    'target': secondary_id,
+                    'host': self.host,
+                }
+                raise exception.InvalidReplicationTarget(reason=msg % payload)
 
-        try:
-            active_backend_name, volume_updates = self._complete_failover(
-                self.backend_name, replication_targets, flexvols, volumes,
-                failover_target=secondary_id)
-        except na_utils.NetAppDriverException as e:
-            msg = _("Could not complete failover: %s") % e
-            raise exception.UnableToFailOver(reason=msg)
+            flexvols = self.ssc_library.get_ssc_flexvol_names()
 
-        # Update the ZAPI client to the backend we failed over to
-        self._update_zapi_client(active_backend_name)
+            try:
+                active_backend_name, volume_updates = self._complete_failover(
+                    self.backend_name, replication_targets, flexvols, volumes,
+                    failover_target=secondary_id)
+            except na_utils.NetAppDriverException as e:
+                msg = _("Could not complete failover: %s") % e
+                raise exception.UnableToFailOver(reason=msg)
 
-        self.failed_over = True
-        self.failed_over_backend_name = active_backend_name
+            # Update the ZAPI client to the backend we failed over to
+            self._update_zapi_client(active_backend_name)
 
-        return active_backend_name, volume_updates, []
+            self.failed_over = True
+            self.failed_over_backend_name = active_backend_name
+
+            return active_backend_name, volume_updates, []
 
     def _failover(self, context, volumes, secondary_id=None, groups=None):
         """Failover to replication target."""
@@ -793,33 +875,55 @@ class DataMotionMixin(object):
             msg = _("Cannot failover to the same host as the primary.")
             raise exception.InvalidReplicationTarget(reason=msg)
 
-        replication_targets = self.get_replication_backend_names(
-            self.configuration)
+        # Added logic to handle failback from the secondary to old primary
+        # This condition is needed when the DR/replication conditions are
+        # restored back to normal state
+        if secondary_id == "default":
+            LOG.debug('Fails back to primary inside _failover')
+            volume_updates = []
+            volume_update = []
+            # Update the ZAPI client to the backend we failed over to
+            active_backend_name = self.backend_name
+            self._update_zapi_client(active_backend_name)
+            self.failed_over = False
+            self.failed_over_backend_name = active_backend_name
+            for volume in volumes:
+                replication_status = fields.ReplicationStatus.ENABLED
+                volume_update = {
+                    'volume_id': volume['id'],
+                    'updates': {'replication_status': replication_status},
+                }
+            volume_updates.append(volume_update)
+            return active_backend_name, volume_updates, []
+        else:
+            replication_targets = self.get_replication_backend_names(
+                self.configuration)
 
-        if not replication_targets:
-            msg = _("No replication targets configured for backend "
-                    "%s. Cannot failover.")
-            raise exception.InvalidReplicationTarget(reason=msg % self.host)
-        elif secondary_id and secondary_id not in replication_targets:
-            msg = _("%(target)s is not among replication targets configured "
-                    "for back end %(host)s. Cannot failover.")
-            payload = {
-                'target': secondary_id,
-                'host': self.host,
-            }
-            raise exception.InvalidReplicationTarget(reason=msg % payload)
+            if not replication_targets:
+                msg = _("No replication targets configured for backend "
+                        "%s. Cannot failover.")
+                raise exception.InvalidReplicationTarget(
+                    reason=msg % self.host)
+            if secondary_id and secondary_id not in replication_targets:
+                msg = _("%(target)s is not among replication targets "
+                        "configured for back end %(host)s. Cannot failover.")
+                payload = {
+                    'target': secondary_id,
+                    'host': self.host,
+                }
+                raise exception.InvalidReplicationTarget(reason=msg % payload)
 
-        flexvols = self.ssc_library.get_ssc_flexvol_names()
+            flexvols = self.ssc_library.get_ssc_flexvol_names()
 
-        try:
-            active_backend_name, volume_updates = self._complete_failover(
-                self.backend_name, replication_targets, flexvols, volumes,
-                failover_target=secondary_id)
-        except na_utils.NetAppDriverException as e:
-            msg = _("Could not complete failover: %s") % e
-            raise exception.UnableToFailOver(reason=msg)
+            try:
+                active_backend_name, volume_updates = self._complete_failover(
+                    self.backend_name, replication_targets, flexvols, volumes,
+                    failover_target=secondary_id)
+            except na_utils.NetAppDriverException as e:
+                msg = _("Could not complete failover: %s") % e
+                raise exception.UnableToFailOver(reason=msg)
 
-        return active_backend_name, volume_updates, []
+            return active_backend_name, volume_updates, []
 
     def _failover_completed(self, context, secondary_id=None):
         """Update volume node when `failover` is completed."""

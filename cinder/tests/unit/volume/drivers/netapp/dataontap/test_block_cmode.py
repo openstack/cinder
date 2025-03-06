@@ -121,6 +121,51 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         mock_get_ontap_version.assert_called_once_with(cached=False)
         mock_get_cluster_nodes_info.assert_called_once_with()
 
+    @ddt.data(fake.AFF_SYSTEM_NODES_INFO,
+              fake.FAS_SYSTEM_NODES_INFO,
+              fake.HYBRID_SYSTEM_NODES_INFO)
+    @mock.patch.object(client_base.Client, 'get_ontap_version',
+                       return_value='9.6')
+    @mock.patch.object(perf_cmode, 'PerformanceCmodeLibrary', mock.Mock())
+    @mock.patch.object(client_base.Client, 'get_ontapi_version',
+                       mock.MagicMock(return_value=(1, 20)))
+    @mock.patch.object(capabilities.CapabilitiesLibrary,
+                       'cluster_user_supported')
+    @mock.patch.object(capabilities.CapabilitiesLibrary,
+                       'check_api_permissions')
+    @mock.patch.object(na_utils, 'check_flags')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, 'do_setup')
+    def test_do_setup_with_replication(self, cluster_nodes_info,
+                                       super_do_setup, mock_check_flags,
+                                       mock_check_api_permissions,
+                                       mock_cluster_user_supported,
+                                       mock_get_ontap_version):
+        """Tests setup method when replication is enabled"""
+        self.mock_object(client_base.Client, '_init_ssh_client')
+        mock_get_cluster_nodes_info = self.mock_object(
+            client_cmode.Client, '_get_cluster_nodes_info',
+            return_value=cluster_nodes_info)
+        self.mock_object(
+            dot_utils, 'get_backend_configuration',
+            return_value=self.get_config_cmode())
+        context = mock.Mock()
+        self.replication_enabled = True
+        self.replication_policy = "AutomatedFailOver"
+        self.replication_backends = ['target_1', 'target_2']
+        self.mock_object(self.library, 'get_replication_backend_names',
+                         return_value=self.replication_backends)
+        self.mock_object(self.library, 'get_replication_policy',
+                         return_value=self.replication_policy)
+
+        self.library.do_setup(context)
+
+        super_do_setup.assert_called_once_with(context)
+        self.assertEqual(1, mock_check_flags.call_count)
+        mock_check_api_permissions.assert_called_once_with()
+        mock_cluster_user_supported.assert_called_once_with()
+        mock_get_ontap_version.assert_called_once_with(cached=False)
+        mock_get_cluster_nodes_info.assert_called_once_with()
+
     def test_check_for_setup_error(self):
         super_check_for_setup_error = self.mock_object(
             block_base.NetAppBlockStorageLibrary, 'check_for_setup_error')

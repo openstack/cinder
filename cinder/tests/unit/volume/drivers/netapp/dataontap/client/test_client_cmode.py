@@ -3570,10 +3570,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
     @ddt.unpack
     def test_create_snapmirror(self, schedule, policy):
         self.mock_object(self.client.connection, 'send_request')
-
+        fake_client.SM_SOURCE_CG = None
+        fake_client.SM_DESTINATION_CG = None
         self.client.create_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
             fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            fake_client.SM_SOURCE_CG, fake_client.SM_DESTINATION_CG,
             schedule=schedule, policy=policy)
 
         snapmirror_create_args = {

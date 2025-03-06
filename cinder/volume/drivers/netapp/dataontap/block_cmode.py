@@ -76,8 +76,9 @@ class NetAppBlockStorageCmodeLibrary(
                                                              **kwargs)
         self.configuration.append_config_values(na_opts.netapp_cluster_opts)
         self.driver_mode = 'cluster'
-        self.failed_over_backend_name = kwargs.get('active_backend_id')
-        self.failed_over = self.failed_over_backend_name is not None
+        self.failed_over_backend_name = kwargs.get('active_backend_id').\
+            strip() if kwargs.get('active_backend_id') is not None else None
+        self.failed_over = bool(self.failed_over_backend_name)
         self.replication_enabled = (
             True if self.get_replication_backend_names(
                 self.configuration) else False)
@@ -91,6 +92,18 @@ class NetAppBlockStorageCmodeLibrary(
             self.failed_over_backend_name or self.backend_name)
         self.vserver = self.zapi_client.vserver
 
+        self.dest_zapi_client = None
+        if self.replication_enabled:
+            if self.get_replication_policy(self.configuration) == \
+                    "AutomatedFailOver":
+                backend_names = self.get_replication_backend_names(
+                    self.configuration)
+                for dest_backend_name in backend_names:
+                    dest_backend_config = dot_utils.get_backend_configuration(
+                        dest_backend_name)
+                    dest_vserver = dest_backend_config.netapp_vserver
+                    self.dest_zapi_client = dot_utils.get_client_for_backend(
+                        dest_backend_name, vserver_name=dest_vserver)
         # Storage service catalog
         self.ssc_library = capabilities.CapabilitiesLibrary(
             self.driver_protocol, self.vserver, self.zapi_client,
