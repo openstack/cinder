@@ -1022,49 +1022,6 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(expected_result, address_list)
 
-    def test__list_vservers(self):
-        api_response = fake_client.VSERVER_DATA_LIST_RESPONSE_REST
-        self.mock_object(self.client,
-                         'send_request',
-                         return_value=api_response)
-        result = self.client._list_vservers()
-        query = {
-            'fields': 'name',
-        }
-        self.client.send_request.assert_has_calls([
-            mock.call('/svm/svms', 'get', query=query,
-                      enable_tunneling=False)])
-        self.assertListEqual(
-            [fake_client.VSERVER_NAME, fake_client.VSERVER_NAME_2], result)
-
-    def test_list_vservers_not_found(self):
-        api_response = fake_client.NO_RECORDS_RESPONSE_REST
-        self.mock_object(self.client,
-                         'send_request',
-                         return_value=api_response)
-        result = self.client._list_vservers()
-        self.assertListEqual([], result)
-
-    def test_get_ems_log_destination_vserver(self):
-        mock_list_vservers = self.mock_object(
-            self.client,
-            '_list_vservers',
-            return_value=[fake_client.VSERVER_NAME])
-        result = self.client._get_ems_log_destination_vserver()
-        mock_list_vservers.assert_called_once_with()
-        self.assertEqual(fake_client.VSERVER_NAME, result)
-
-    def test_get_ems_log_destination_vserver_not_found(self):
-        mock_list_vservers = self.mock_object(
-            self.client,
-            '_list_vservers',
-            return_value=[])
-
-        self.assertRaises(exception.NotFound,
-                          self.client._get_ems_log_destination_vserver)
-
-        mock_list_vservers.assert_called_once_with()
-
     def test_send_ems_log_message(self):
 
         message_dict = {
@@ -1091,8 +1048,6 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'event_description': message_dict['event-description'],
         }
 
-        self.mock_object(self.client, '_get_ems_log_destination_vserver',
-                         return_value='vserver_name')
         self.mock_object(self.client, 'send_request')
 
         self.client.send_ems_log_message(message_dict)

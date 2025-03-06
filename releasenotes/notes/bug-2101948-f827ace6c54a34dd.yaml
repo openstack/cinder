@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2101948
+    <https://bugs.launchpad.net/cinder/+bug/2101948>`_: Fixed an issue in
+    the ONTAP REST path where EMS logging could switch the active vserver on
+    a shared connection. With urllib3 connection pooling and concurrent
+    requests, this could route in-flight API calls to the wrong SVM and cause
+    failures like ``NetAppDriverException: Volume "sharename" not found``.
