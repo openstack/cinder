@@ -2839,9 +2839,31 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('/snapmirror/relationships/', 'post', body=body)])
 
-    @ddt.data({'policy': 'AutomatedFailOver'})
+    @ddt.data(
+        {
+            'policy': None,
+            'sm_source_cg': fake_client.SM_SOURCE_CG,
+            'sm_destination_cg': fake_client.SM_DESTINATION_CG,
+        },
+        {
+            'policy': None,
+            'sm_source_cg': None,
+            'sm_destination_cg': None,
+        },
+        {
+            'policy': 'AutomatedFailOver',
+            'sm_source_cg': fake_client.SM_SOURCE_CG,
+            'sm_destination_cg': fake_client.SM_DESTINATION_CG,
+        },
+        {
+            'policy': 'AutomatedFailOver',
+            'sm_source_cg': None,
+            'sm_destination_cg': None,
+        },
+    )
     @ddt.unpack
-    def test_create_snapmirror_active_sync(self, policy):
+    def test_create_snapmirror_active_sync(self, policy,
+                                           sm_source_cg, sm_destination_cg):
         """Tests creation of snapmirror with active sync"""
         api_responses = [
             {
@@ -2850,34 +2872,46 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                 },
             },
         ]
+        body = {}
         self.mock_object(self.client, 'send_request',
                          side_effect = copy.deepcopy(api_responses))
         self.client.create_snapmirror(
             fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
             fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
-            fake_client.SM_SOURCE_CG, fake_client.SM_DESTINATION_CG,
+            sm_source_cg, sm_destination_cg,
             policy=policy)
 
-        if fake_client.SM_SOURCE_VSERVER is not None and \
-                fake_client.SM_SOURCE_CG is not None:
+        if sm_source_cg is not None and sm_destination_cg is not None:
             body = {
                 'source': {
                     'path':
                         fake_client.SM_SOURCE_VSERVER + ':/cg/' +
-                        fake_client.SM_SOURCE_CG,
+                        sm_source_cg,
                     'consistency_group_volumes': [
                         {'name': fake_client.SM_SOURCE_VOLUME}]
                 },
                 'destination': {
                         'path': fake_client.SM_DEST_VSERVER + ':/cg/' +
-                        fake_client.SM_DESTINATION_CG,
+                        sm_destination_cg,
                         'consistency_group_volumes': [
                             {'name': fake_client.SM_DEST_VOLUME}]
                 }
             }
+        else:
+            body = {
+                'source': {
+                    'path': fake_client.SM_SOURCE_VSERVER + ':' +
+                    fake_client.SM_SOURCE_VOLUME
+                },
+                'destination': {
+                    'path': fake_client.SM_DEST_VSERVER + ':' +
+                    fake_client.SM_DEST_VOLUME
+                },
+            }
+
         if policy:
             body['policy'] = {'name': policy}
-        if body is not None:
+        if bool(body):
             self.client.send_request.assert_has_calls([
                 mock.call('/snapmirror/relationships/', 'post', body=body)])
 
