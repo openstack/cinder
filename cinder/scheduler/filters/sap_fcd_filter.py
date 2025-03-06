@@ -51,15 +51,18 @@ class SAPFCDFilter(filters.BaseBackendFilter):
         # backend, we want to ensure that the pool is the same as the
         # original backend.
 
-        #   name@backend#pool
+        # host@backend#pool
+
         # This is the backend passed in to the filter.
         filter_pool = extract_host(backend_state.host, 'pool')
-        filter_backend = extract_host(backend_state.host, 'backend')
+        filter_host = extract_host(backend_state.host, 'host')
 
         # This is the original host, backend and pool that the volume
         # was created on.
         orig_host = vol.get('host')
-        orig_backend = extract_host(orig_host, 'backend')
+        orig_host_name = extract_host(orig_host, 'host')
+        # This returns name@backend.  We only want the backend.
+        orig_backend = extract_host(orig_host, 'backend').split('@')[1]
         orig_pool = extract_host(orig_host, 'pool')
 
         # This is the destination host, backend and pool that the volume
@@ -70,25 +73,28 @@ class SAPFCDFilter(filters.BaseBackendFilter):
         # You can issue a migrate command with a destination pool
         # if it's on the same host.
         destination_host = spec.get('destination_host')
-        dest_backend = extract_host(destination_host, 'backend')
+        dest_backend = extract_host(destination_host, 'backend').split('@')[1]
 
         if orig_backend != dest_backend:
-            # We only want to pass if the pool is the same as the original pool
-            # This is to ensure that a cross vcenter migration lands on the
-            # same pool as the source vcenter.  This prevents data movement.
-            if filter_backend == dest_backend and filter_pool == orig_pool:
-                # We will allow a migration to the same pool on a different
-                # backend host.
-                LOG.debug("Allow migration to %s", backend_state.host)
-                return True
-            else:
-                LOG.debug("Deny migration to %s", backend_state.host)
-                return False
-        else:
-            # The destination backend is the same as the original backend.
-            # We will allow the migration.  This is when the volume is
-            # being migrated on the same vcenter.  Most likely to move
-            # the volume to a different pool on the same vcenter.
-            LOG.debug("Allow migration on same vcenter to %s",
-                      backend_state.host)
+            LOG.debug("Allow migration to different backend %s %s %s",
+                      orig_backend, dest_backend, backend_state.host)
             return True
+
+        # we stay on the backend
+
+        # if we move to the same pool on _any_ other host, that's fine with us
+        if orig_pool == filter_pool:
+            LOG.debug("Allow migration to same pool %s %s %s",
+                      orig_pool, filter_pool, backend_state.host)
+            return True
+
+        # we switch pools
+
+        # if we move on the same host, it's fine if we switch pools
+        if orig_host_name == filter_host:
+            LOG.debug("Allow migration to same host %s %s %s",
+                      orig_host_name, filter_host, backend_state.host)
+            return True
+
+        LOG.debug("Deny migration to %s", backend_state.host)
+        return False
