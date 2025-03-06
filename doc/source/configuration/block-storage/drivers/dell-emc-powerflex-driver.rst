@@ -37,9 +37,13 @@ compatible:
 
 * PowerFlex 3.6.0
 
-* PowerFlex 4.0.x
+* PowerFlex 4.x
 
-* PowerFlex 4.5.x
+At the time of publication, the Dell PowerFlex Block Storage driver
+has been tested against the following version series of VxFlex OS
+and PowerFlex and found to be compatible: 3.6, 4.0, 4.5,and 4.6.
+You can find the current list of compatible versions at
+https://elabnavigator.dell.com/eln/elnhome.
 
 Please consult the :ref:`powerflex_docs`
 to determine supported operating systems for each version
