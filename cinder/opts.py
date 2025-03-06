@@ -411,6 +411,8 @@ def list_opts():
                 cinder_volume_drivers_netapp_options.netapp_connection_opts,
                 cinder_volume_drivers_netapp_options.netapp_transport_opts,
                 cinder_volume_drivers_netapp_options.netapp_basicauth_opts,
+                cinder_volume_drivers_netapp_options.
+                netapp_certificateauth_opts,
                 cinder_volume_drivers_netapp_options.netapp_cluster_opts,
                 cinder_volume_drivers_netapp_options.netapp_provisioning_opts,
                 cinder_volume_drivers_netapp_options.netapp_img_cache_opts,

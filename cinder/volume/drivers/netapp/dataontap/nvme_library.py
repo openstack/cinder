@@ -63,8 +63,10 @@ class NetAppNVMeStorageLibrary(
 
     # do not increment this as it may be used in volume type definitions.
     VERSION = "1.0.0"
-    REQUIRED_FLAGS = ['netapp_login', 'netapp_password',
-                      'netapp_server_hostname']
+    REQUIRED_FLAGS_BASIC = ['netapp_login', 'netapp_password',
+                            'netapp_server_hostname']
+    REQUIRED_FLAGS_CERT = ['netapp_private_key_file',
+                           'netapp_certificate_file']
     ALLOWED_NAMESPACE_OS_TYPES = ['aix', 'linux', 'vmware', 'windows']
     ALLOWED_SUBSYSTEM_HOST_TYPES = ['aix', 'linux', 'vmware', 'windows']
     DEFAULT_NAMESPACE_OS = 'linux'
@@ -93,6 +95,8 @@ class NetAppNVMeStorageLibrary(
         self.configuration = kwargs['configuration']
         self.configuration.append_config_values(na_opts.netapp_connection_opts)
         self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
+        self.configuration.append_config_values(
+            na_opts.netapp_certificateauth_opts)
         self.configuration.append_config_values(na_opts.netapp_transport_opts)
         self.configuration.append_config_values(
             na_opts.netapp_provisioning_opts)
@@ -107,7 +111,13 @@ class NetAppNVMeStorageLibrary(
         self.loopingcalls = loopingcalls.LoopingCalls()
 
     def do_setup(self, context):
-        na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
+        if self.configuration.netapp_private_key_file or\
+                self.configuration.netapp_certificate_file:
+            na_utils.check_flags(self.REQUIRED_FLAGS_CERT,
+                                 self.configuration)
+        else:
+            na_utils.check_flags(self.REQUIRED_FLAGS_BASIC,
+                                 self.configuration)
         self.namespace_ostype = (self.configuration.netapp_namespace_ostype
                                  or self.DEFAULT_NAMESPACE_OS)
         self.host_type = (self.configuration.netapp_host_type

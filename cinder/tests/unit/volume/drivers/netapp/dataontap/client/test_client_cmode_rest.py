@@ -41,7 +41,12 @@ CONNECTION_INFO = {'hostname': 'hostname',
                    'password': 'passw0rd',
                    'vserver': 'fake_vserver',
                    'ssl_cert_path': 'fake_ca',
-                   'api_trace_pattern': 'fake_regex'}
+                   'api_trace_pattern': 'fake_regex',
+                   'private_key_file': 'fake_private_key.pem',
+                   'certificate_file': 'fake_cert.pem',
+                   'ca_certificate_file': 'fake_ca_cert.crt',
+                   'certificate_host_validation': 'False'
+                   }
 
 
 @ddt.ddt

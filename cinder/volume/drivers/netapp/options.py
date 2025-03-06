@@ -88,6 +88,80 @@ netapp_basicauth_opts = [
                      'specified in the netapp_login option.'),
                secret=True), ]
 
+netapp_certificateauth_opts = [
+    cfg.StrOpt('netapp_private_key_file',
+               sample_default='/path/to/private_key.key',
+               help=("""
+                     This option is applicable for both self signed and ca
+                     verified certificates.
+
+                     For self signed certificate: Absolute path to the file
+                     containing the private key associated with the self
+                     signed certificate. It is a sensitive file that should
+                     be kept secure and protected. The private key is used
+                     to sign the certificate and establish the authenticity
+                     and integrity of the certificate during the
+                     authentication process.
+
+                     For ca verified certificate: Absolute path to the file
+                     containing the private key associated with the
+                     certificate. It is generated when creating the
+                     certificate signingrequest (CSR) and should be kept
+                     secure and protected. The private key is used to sign
+                     the CSR and later used to establish secure connections
+                     and authenticate the entity.
+                     """),
+               secret=True),
+    cfg.StrOpt('netapp_certificate_file',
+               sample_default='/path/to/certificate.pem',
+               help=("""
+                     This option is applicable for both self signed and ca
+                     verified certificates.
+
+                     For self signed certificate: Absolute path to the file
+                     containing the self-signed digital certificate itself.
+                     It includes information about the entity such as the
+                     common name (e.g., domain name), organization details,
+                     validity period, and public key. The certificate file
+                     is generated based on the private key and is used by
+                     clients or systems to verify the entity identity during
+                     the authentication process.
+
+                     For ca verified certificate: Absolute path to the file
+                     containing the digital certificate issued by the
+                     trusted third-party certificate authority (CA). It
+                     includes information about the entity identity, public
+                     key, and the CA that issued the certificate. The
+                     certificate file is used by clients or systems to verify
+                     the authenticity and integrity of the entity during the
+                     authentication process.
+                     """),
+               secret=True),
+    cfg.StrOpt('netapp_ca_certificate_file',
+               sample_default='/path/to/ca_certificate.crt',
+               help=("""
+                     This option is applicable only for a ca verified
+                     certificate.
+
+                     Ca verified file: Absolute path to the file containing
+                     the public key certificate of the trusted third-party
+                     certificate authority (CA) that issued the certificate.
+                     It is used by clients or systems to validate the
+                     authenticity of the certificate presented by the
+                     entity. The CA certificate file is typically pre
+                     configured in the trust store of clients or systems to
+                     establish trust in certificates issued by that CA.
+                     """),
+               secret=True),
+    cfg.BoolOpt('netapp_certificate_host_validation',
+                default=False,
+                help=('This option is used only if netapp_private_key_file'
+                      ' and netapp_certificate_file files are passed in the'
+                      ' configuration.'
+                      ' By default certificate verification is disabled'
+                      ' and to verify the certificates please set the value'
+                      ' to True.')), ]
+
 netapp_provisioning_opts = [
     cfg.FloatOpt('netapp_size_multiplier',
                  default=NETAPP_SIZE_MULTIPLIER_DEFAULT,
@@ -245,6 +319,7 @@ CONF.register_opts(netapp_proxy_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_connection_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_transport_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_basicauth_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_certificateauth_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_cluster_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_provisioning_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_img_cache_opts, group=conf.SHARED_CONF_GROUP)

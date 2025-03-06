@@ -71,14 +71,38 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         username = kwargs['username']
         password = kwargs['password']
         api_trace_pattern = kwargs['api_trace_pattern']
-        self.connection = netapp_api.RestNaServer(
-            host=host,
-            transport_type=kwargs['transport_type'],
-            ssl_cert_path=kwargs.pop('ssl_cert_path'),
-            port=kwargs['port'],
-            username=username,
-            password=password,
-            api_trace_pattern=api_trace_pattern)
+        private_key_file = kwargs['private_key_file']
+        certificate_file = kwargs['certificate_file']
+        ca_certificate_file = kwargs['ca_certificate_file']
+        certificate_host_validation = kwargs['certificate_host_validation']
+        if private_key_file and certificate_file and ca_certificate_file:
+            self.connection = netapp_api.RestNaServer(
+                host=host,
+                transport_type='https',
+                port=kwargs['port'],
+                private_key_file=private_key_file,
+                certificate_file=certificate_file,
+                ca_certificate_file=ca_certificate_file,
+                certificate_host_validation=certificate_host_validation,
+                api_trace_pattern=api_trace_pattern)
+        elif private_key_file and certificate_file:
+            self.connection = netapp_api.RestNaServer(
+                host=host,
+                transport_type='https',
+                port=kwargs['port'],
+                private_key_file=private_key_file,
+                certificate_file=certificate_file,
+                certificate_host_validation=certificate_host_validation,
+                api_trace_pattern=api_trace_pattern)
+        else:
+            self.connection = netapp_api.RestNaServer(
+                host=host,
+                transport_type=kwargs['transport_type'],
+                ssl_cert_path=kwargs.pop('ssl_cert_path'),
+                port=kwargs['port'],
+                username=username,
+                password=password,
+                api_trace_pattern=api_trace_pattern)
 
         self.async_rest_timeout = kwargs.get('async_rest_timeout', 60)
 
