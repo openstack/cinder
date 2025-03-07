@@ -870,7 +870,9 @@ class SapCommands:
           help='Do not delete any files.')
     @args('--verbose', action='store_true', default=False,
           help='Print some extra messages')
-    def clean_old_lock_files(self, dry_run, verbose):
+    @args('--batch-size', default=10000, type=int,
+          help='Read, parse and process this many lock files')
+    def clean_old_lock_files(self, dry_run, verbose, batch_size):
         """List all lock files and delete orphaned ones
 
         We have to list the lock files first and the volumes and snapshots
@@ -879,6 +881,8 @@ class SapCommands:
         """
         if dry_run:
             print("Starting in DRY-RUN mode")
+
+        print(f"Processing up to {batch_size} lock files (see --batch-size)")
 
         # check if we use file-based locking and find the lock patch
         backend_url = CONF.coordination.backend_url
@@ -907,6 +911,10 @@ class SapCommands:
         for p in lock_file_dir.iterdir():
             if not p.is_file():
                 continue
+
+            if len(lock_files) >= batch_size:
+                print(f"Reached limit imposed by --batch-size={batch_size}")
+                break
 
             UUID_RE = ('(?P<uuid>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-'
                        '[a-f0-9]{4}-[a-f0-9]{12})')
