@@ -625,7 +625,10 @@ PERF_INFO = {
     'write_bytes_per_sec': 2827943,
     'time': '2015-12-17T21:50:55Z',
     'usec_per_read_op': 192,
-    'queue_depth': 4,
+    'queue_depth': 4,  # Deprecated - to be removed in 2026.1 cycle
+    'queue_usec_per_mirrored_write_op': 1,
+    'queue_usec_per_read_op': 2,
+    'queue_usec_per_write_op': 3,
 }
 PERF_INFO_RAW = [PERF_INFO]
 
@@ -5136,6 +5139,11 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
             'usec_per_read_op': PERF_INFO['usec_per_read_op'],
             'usec_per_write_op': PERF_INFO['usec_per_write_op'],
             'queue_depth': PERF_INFO['queue_depth'],
+            'queue_usec_per_mirrored_write_op': PERF_INFO[
+                'queue_usec_per_mirrored_write_op'
+            ],
+            'queue_usec_per_read_op': PERF_INFO['queue_usec_per_read_op'],
+            'queue_usec_per_write_op': PERF_INFO['queue_usec_per_write_op'],
             'replication_capability': 'sync',
             'replication_enabled': False,
             'replication_type': [],

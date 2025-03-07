@@ -361,6 +361,9 @@ A large number of metrics are reported by the volume driver which can be useful
 in implementing more control over volume placement in multi-backend
 environments using the driver filter and weighter methods.
 
+Performance metrics are provided based on an average over the previous
+30 seconds.
+
 Metrics reported include, but are not limited to:
 
 .. code-block:: text
@@ -378,7 +381,9 @@ Metrics reported include, but are not limited to:
    output_per_sec
    usec_per_read_op
    usec_per_read_op
-   queue_depth
+   queue_usec_per_mirrored_write_op
+   queue_usec_per_read_op
+   queue_usec_per_write_op
    replication_type
 
 .. note::

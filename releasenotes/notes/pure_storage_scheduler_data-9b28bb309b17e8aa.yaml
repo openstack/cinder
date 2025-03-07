@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Pure Storage: Added additional IO queueing performance characteristics
+    ``queue_usec_per_mirrored_write_op``, ``queue_usec_per_read_op`` and
+    ``queue_usec_per_write_op``, to array statistics used by the scheduler.
+  - |
+    Pure Storage: Changed performance metrics to report average over the previous
+    30 seconds, rather than using point-in-time information.
+deprecations:
+  - |
+    Pure Storage: Deprecation of ``queue_depth`` performance characteristic
+    return by array statistics. This will be fully removed in the 2026.1 release.
