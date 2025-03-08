@@ -1086,8 +1086,15 @@ class PureBaseVolumeDriver(san.SanDriver):
         total_capacity = float(space_info.capacity) / units.Gi
         used_space = float(space_info.space.total_physical) / units.Gi
         free_space = float(total_capacity - used_space)
-        provisioned_space = float(space_info.space.
-                                  total_provisioned) / units.Gi
+        # If array uses Evergreen/One model then total_provisioned
+        # is not reported so use the closest value avaible in that
+        # consumption model
+        try:
+            provisioned_space = float(space_info.space.
+                                      total_provisioned) / units.Gi
+        except AttributeError:
+            provisioned_space = float(space_info.space.
+                                      used_provisioned) / units.Gi
         total_reduction = float(space_info.space.total_reduction)
         total_vols = len(volumes)
         total_hosts = len(hosts)

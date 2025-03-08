@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #2090310 <https://bugs.launchpad.net/cinder/+bug/2090310>`_:
+    [Pure Storage] Fixed issue with FlashArray using the Evergreen//One
+    consumption model not reporting ``total_provisioned``. Used
+    ``used_provisoned`` instead in this case.
