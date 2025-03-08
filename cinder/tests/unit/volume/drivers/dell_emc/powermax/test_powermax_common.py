@@ -4900,3 +4900,34 @@ class PowerMaxCommonTest(test.TestCase):
         self.mock_object(self.common, 'configuration', configuration)
         kwargs_returned = self.common.get_attributes_from_cinder_config()
         self.assertEqual(kwargs_expected, kwargs_returned)
+
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_device_snapvx')
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snapshot_list',
+                       side_effect=([{'snapshotName': 'temp-clone-snapshot'}],
+                                    []))
+    @mock.patch.object(rest.PowerMaxRest, 'find_snap_vx_sessions',
+                       side_effect=[(None, None)])
+    def test_cleanup_device_retry_1(self, mock_snapvx,
+                                    mock_ss_list, mock_clean):
+        self.common._cleanup_device_retry(
+            self.data.array, self.data.device_id, self.data.extra_specs)
+        self.assertEqual(2, mock_ss_list.call_count)
+        self.assertEqual(1, mock_snapvx.call_count)
+        self.assertEqual(2, mock_clean.call_count)
+
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_device_snapvx')
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snapshot_list',
+                       return_value=[{'snapshotName': 'temp-clone-snapshot'}])
+    @mock.patch.object(rest.PowerMaxRest, 'find_snap_vx_sessions',
+                       side_effect=[(None, None)])
+    def test_cleanup_device_retry_2(self, mock_snapvx,
+                                    mock_ss_list, mock_clean):
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.common._cleanup_device_retry,
+            self.data.array,
+            self.data.device_id,
+            self.data.extra_specs)
+        self.assertEqual(7, mock_ss_list.call_count)
+        self.assertEqual(0, mock_snapvx.call_count)
+        self.assertEqual(7, mock_clean.call_count)
