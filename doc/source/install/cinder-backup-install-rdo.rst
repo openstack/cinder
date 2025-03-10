@@ -48,6 +48,15 @@ Install and configure components
 
        $ openstack catalog show object-store
 
+#. In order for the cinder-backup tab to be enabled in your dashboard
+   the following lines must be present in your ``local_settings.py``:
+
+      .. path /etc/openstack-dashboard/local_settings.py
+      .. code-block:: ini
+
+         OPENSTACK_CINDER_FEATURES = {
+             'enable_backup': True
+         }
 
 Finalize installation
 ---------------------
