@@ -590,7 +590,34 @@ NON_ISCSI_PORT = {
     "portal": None,
     "wwn": "5001500150015081",
 }
-NVME_PORTS_WITH = NVME_PORTS + [NON_ISCSI_PORT]
+ISCSI_LACP_PORTS = [
+    {
+        "name": "lacp2",
+        "iqn": TARGET_IQN,
+        "nqn": None,
+        "portal": None,
+        "wwn": None,
+    },
+]
+NVME_LACP_PORTS = [
+    {
+        "name": "lacp0",
+        "iqn": None,
+        "nqn": TARGET_NQN,
+        "portal": None,
+        "wwn": None,
+    },
+    {
+        "name": "lacp1",
+        "iqn": None,
+        "nqn": TARGET_NQN,
+        "portal": None,
+        "wwn": None,
+    },
+]
+NVME_PORTS_WITH = NVME_PORTS + [NON_ISCSI_PORT] + NVME_LACP_PORTS
+ISCSI_PORTS_WITH = ISCSI_PORTS + ISCSI_LACP_PORTS
+PORTS_WITH = ISCSI_PORTS + [NON_ISCSI_PORT] + ISCSI_LACP_PORTS
 PORTS_WITH = ISCSI_PORTS + [NON_ISCSI_PORT]
 PORTS_WITHOUT = [NON_ISCSI_PORT]
 TOTAL_CAPACITY = 50.0
@@ -1172,6 +1199,56 @@ QOS_BWS = {"maxBWS": "1"}
 ARRAY_RESPONSE = {
     'status_code': 200
 }
+INTERFACES = [
+    {
+        'name': 'ct0.eth4',
+        'services': ['nvme-tcp'],
+        'eth': {'address': '1.1.1.1',
+                'subtype': 'physical'},
+    },
+    {
+        'name': 'ct0.eth5',
+        'services': ['iscsi'],
+        'eth': {'address': '2.2.2.2',
+                'subtype': 'physical'},
+    },
+    {
+        'name': 'ct0.eth20',
+        'services': ['nvme-roce'],
+        'eth': {'address': '3.3.3.3',
+                'subtype': 'physical'}
+    },
+    {
+        'name': 'ct0.fc4',
+        'services': ['nvme-fc'],
+        'eth': {'address': None,
+                'subtype': 'physical'},
+    },
+    {
+        'name': 'lacp0',
+        'services': ['nvme-roce'],
+        'eth': {'address': '4.4.4.4',
+                'subtype': 'lacp_bond'},
+    },
+    {
+        'name': 'lacp1',
+        'services': ['nvme-tcp'],
+        'eth': {'address': '5.5.5.5',
+                'subtype': 'lacp_bond'},
+    },
+    {
+        'name': 'lacp2',
+        'services': ['iscsi'],
+        'eth': {'address': '6.6.6.6',
+                'subtype': 'lacp_bond'},
+    },
+    {
+        'name': 'ct0.fc1',
+        'services': ['scsi-fc'],
+        'eth': {'address': None,
+                'subtype': 'physical'},
+    }
+]
 
 
 class PureDriverTestCase(test.TestCase):
@@ -4498,21 +4575,27 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
     def test_get_target_iscsi_ports(self):
         self.array.get_controllers.return_value = CTRL_OBJ
         self.array.get_ports.return_value = VALID_ISCSI_PORTS
+        self.array.get_network_interfaces.return_value = ValidResponse(
+            200, None, 1, [DotNotation(INTERFACES[1])], {})
         ret = self.driver._get_target_iscsi_ports(self.array)
-        self.assertEqual(ISCSI_PORTS[0:4], ret)
+        self.assertEqual(ISCSI_PORTS[0:4], ret[0:4])
 
     def test_get_target_iscsi_ports_with_iscsi_and_fc(self):
         self.array.get_controllers.return_value = CTRL_OBJ
-        PORTS_DATA = [DotNotation(i) for i in PORTS_WITH]
+        PORTS_DATA = [DotNotation(i) for i in ISCSI_PORTS_WITH]
         ifc_ports = ValidResponse(200, None, 1, PORTS_DATA, {})
         self.array.get_ports.return_value = ifc_ports
+        self.array.get_network_interfaces.return_value = ValidResponse(
+            200, None, 1, [DotNotation(INTERFACES[0])], {})
         ret = self.driver._get_target_iscsi_ports(self.array)
-        self.assertEqual(ISCSI_PORTS, ret)
+        self.assertEqual(ISCSI_PORTS_WITH[0:9], ret[0:9])
 
     def test_get_target_iscsi_ports_with_no_ports(self):
         # Should raise an exception if there are no ports
         self.array.get_controllers.return_value = CTRL_OBJ
         no_ports = ValidResponse(200, None, 1, [], {})
+        self.array.get_network_interfaces.return_value = ValidResponse(
+            200, None, 1, [], {})
         self.array.get_ports.return_value = no_ports
         self.assertRaises(pure.PureDriverException,
                           self.driver._get_target_iscsi_ports,
@@ -4522,6 +4605,8 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         # Should raise an exception of there are no iscsi ports
         self.array.get_controllers.return_value = CTRL_OBJ
         PORTS_NOISCSI = [DotNotation(i) for i in PORTS_WITHOUT]
+        self.array.get_network_interfaces.return_value = ValidResponse(
+            200, None, 1, [DotNotation(INTERFACES[3])], {})
         self.array.get_ports.\
             return_value = ValidResponse(200, None, 1, PORTS_NOISCSI, {})
         self.assertRaises(pure.PureDriverException,
@@ -5669,18 +5754,20 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
                  {'name': 'CT0.FC4',
                   'wwn': TARGET_WWN,
                   'iqn': None,
+                  'nqn': TARGET_NQN},
+                 {'name': 'LACP0',
+                  'wwn': None,
+                  'iqn': None,
+                  'nqn': TARGET_NQN},
+                 {'name': 'LACP1',
+                  'wwn': None,
+                  'iqn': None,
                   'nqn': TARGET_NQN}]
-        interfaces = [
-            {'name': 'ct0.eth4', 'services': ['nvme-tcp']},
-            {'name': 'ct0.eth5', 'services': ['iscsi']},
-            {'name': 'ct0.eth20', 'services': ['nvme-roce']},
-            {'name': 'ct0.fc4', 'services': ['nvme-fc']}
-        ]
         # Test for the nvme-tcp port
         self.driver.configuration.pure_nvme_transport = "tcp"
         self.array.get_controllers.return_value = CTRL_OBJ
         nvme_interfaces = ValidResponse(200, None, 4,
-                                        [DotNotation(interfaces[x])
+                                        [DotNotation(INTERFACES[x])
                                          for x in range(4)], {})
         self.array.get_network_interfaces.return_value = nvme_interfaces
         nvme_ports = ValidResponse(200, None, 4,
@@ -5703,17 +5790,37 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
         # Test for the nvme-roce port
         self.driver.configuration.pure_nvme_transport = "roce"
         nvme_roce_interface = ValidResponse(200, None, 1,
-                                            [DotNotation(interfaces[2])], {})
+                                            [DotNotation(INTERFACES[2])], {})
         self.array.get_network_interfaces.return_value = nvme_roce_interface
         nvme_roce_ports = ValidResponse(200, None, 1,
                                         [DotNotation(ports[2])], {})
         self.array.get_ports.return_value = nvme_roce_ports
         ret = self.driver._get_target_nvme_ports(self.array)
-        self.assertEqual([ports[2]], ret)
+        self.assertEqual([ports[2]], [ret[0]])
+        # Test for the nvme-roce LACP port
+        self.driver.configuration.pure_nvme_transport = "roce"
+        nvme_roce_interface = ValidResponse(200, None, 1,
+                                            [DotNotation(INTERFACES[4])], {})
+        self.array.get_network_interfaces.return_value = nvme_roce_interface
+        nvme_roce_ports = ValidResponse(200, None, 1,
+                                        [DotNotation(ports[4])], {})
+        self.array.get_ports.return_value = nvme_roce_ports
+        ret = self.driver._get_target_nvme_ports(self.array)
+        self.assertEqual([ports[4]], [ret[0]])
+        # Test for the nvme-tcp LACP port
+        self.driver.configuration.pure_nvme_transport = "tcp"
+        nvme_roce_interface = ValidResponse(200, None, 1,
+                                            [DotNotation(INTERFACES[5])], {})
+        self.array.get_network_interfaces.return_value = nvme_roce_interface
+        nvme_roce_ports = ValidResponse(200, None, 1,
+                                        [DotNotation(ports[5])], {})
+        self.array.get_ports.return_value = nvme_roce_ports
+        ret = self.driver._get_target_nvme_ports(self.array)
+        self.assertEqual([ports[5]], [ret[0]])
         # Test for empty dict if only nvme-fc port
         self.driver.configuration.pure_nvme_transport = "roce"
         nvme_fc_interface = ValidResponse(200, None, 1,
-                                          [DotNotation(interfaces[3])], {})
+                                          [DotNotation(INTERFACES[3])], {})
         self.array.get_network_interfaces.return_value = nvme_fc_interface
         nvme_fc_ports = ValidResponse(200, None, 1,
                                       [DotNotation(ports[3])], {})
@@ -5725,7 +5832,9 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
         # Should raise an exception if there are no ports
         self.array.get_controllers.return_value = CTRL_OBJ
         nvme_no_ports = ValidResponse(200, None, 1, [], {})
+        nvme_no_interfaces = ValidResponse(200, None, 1, [], {})
         self.array.get_ports.return_value = nvme_no_ports
+        self.array.get_network_interfaces.return_value = nvme_no_interfaces
         self.assertRaises(
             pure.PureDriverException,
             self.driver._get_target_nvme_ports,
@@ -5735,8 +5844,12 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
     def test_get_target_nvme_ports_with_only_fc_ports(self):
         # Should raise an exception of there are no nvme ports
         self.array.get_controllers.return_value = CTRL_OBJ
-        nvme_noports = ValidResponse(200, None, 1, [PORTS_WITHOUT], {})
+        PORTS_NONVME = [DotNotation(i) for i in PORTS_WITHOUT]
+        nvme_noports = ValidResponse(200, None, 1, PORTS_NONVME, {})
+        nvme_nointerfaces = ValidResponse(200, None, 1,
+                                          [DotNotation(INTERFACES[3])], {})
         self.array.get_ports.return_value = nvme_noports
+        self.array.get_network_interfaces.return_value = nvme_nointerfaces
         self.assertRaises(
             pure.PureDriverException,
             self.driver._get_target_nvme_ports,
