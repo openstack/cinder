@@ -3280,8 +3280,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             'name': volume.name,
             'id': fcd_loc.fcd_id,
             'ds_ref_val': fcd_loc.ds_ref_val,
-            'ds_name': volume_utils.extract_host(
-                volume.host, level='pool'),
+            'ds_name': volume.provider_location.split('@')[1],
             'adapter_type': self._get_adapter_type(volume),
             'profile_id': self._get_storage_profile_id(volume),
             'volume': "",
@@ -3409,8 +3408,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         volume.update({'provider_location': prov_loc})
         volume.save()
         if vol_status == 'in-use':
+            # refresh vmdk_path due to migration
+            vmdk_path = self.volumeops.get_vmdk_path_for_fcd(
+                fcd_loc=fcd_loc_new)
+
             self._update_fcd_attachment_info_for_nova(
-                context, volume, fcd_loc,
+                context, volume, fcd_loc_new,
                 vmdk_path, dc_ref
             )
         return (True, None)

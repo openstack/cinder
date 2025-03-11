@@ -318,6 +318,9 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             backing_moref = backing.value
             vmdk_path = self.volumeops.get_vmdk_path(backing)
             datacenter = self.volumeops.get_dc(backing)
+        else:
+            vmdk_path = self.volumeops.get_vmdk_path_for_fcd(fcd_loc=fcd_loc)
+            datacenter = self.volumeops.get_dc(fcd_loc.ds_ref())
 
         connection_info = {
             'driver_volume_type': self.STORAGE_TYPE,
@@ -929,7 +932,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         vmdk_path = self.volumeops.get_vmdk_path_for_fcd(fcd_loc=fcd_loc_new)
 
         self._update_fcd_attachment_info_for_nova(
-            context, volume, prov_loc,
+            context, volume, fcd_loc_new,
             vmdk_path,
             dc_ref
         )
