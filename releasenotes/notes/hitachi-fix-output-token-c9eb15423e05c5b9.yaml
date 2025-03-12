@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    Hitachi driver `bug #2040966
+    <https://bugs.launchpad.net/cinder/+bug/2040966>`_:
+    Mask a token for REST API session.
+  - |
+    NEC V driver `bug #2040966
+    <https://bugs.launchpad.net/cinder/+bug/2040966>`_:
+    Mask a token for REST API session.
+  - |
+    HPE XP driver `bug #2040966
+    <https://bugs.launchpad.net/cinder/+bug/2040966>`_:
+    Mask a token for REST API session.
