@@ -2758,7 +2758,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(BASE_DRIVER_OBJ + "._rename_volume_object")
     def test_manage_existing(self, mock_rename):
         ref_name = 'vol1'
-        volume_ref = {'name': ref_name}
+        volume_ref = {'source-name': ref_name}
         self.array.get_volumes.return_value = MPV
         self.array.get_connections.return_value = []
         vol, vol_name = self.new_fake_vol(set_provider_id=False)
@@ -2776,7 +2776,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assert_error_propagates(
             [mock_rename, mock_validate],
             self.driver.manage_existing,
-            vol, {'name': 'vol1'}
+            vol, {'source-name': 'vol1'}
         )
 
     def test_manage_existing_bad_ref(self):
@@ -2787,15 +2787,15 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing,
-                          vol, {'name': ''})
+                          vol, {'source-name': ''})
 
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing,
-                          vol, {'name': None})
+                          vol, {'source-name': None})
 
     def test_manage_existing_sync_repl_type(self):
         ref_name = 'vol1'
-        volume_ref = {'name': ref_name}
+        volume_ref = {'source-name': ref_name}
         type_spec = {
             'replication_type': '<in> sync',
             'replication_enabled': '<is> true',
@@ -2810,7 +2810,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     def test_manage_existing_vol_in_pod(self):
         ref_name = 'somepod::vol1'
-        volume_ref = {'name': ref_name}
+        volume_ref = {'source-name': ref_name}
         self.array.get_connections.return_value = []
         vol, vol_name = self.new_fake_vol(set_provider_id=False)
 
@@ -2829,12 +2829,12 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                          [DotNotation(cvol[0])], {})
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing,
-                          vol, {'name': ref_name})
+                          vol, {'source-name': ref_name})
         self.assertFalse(mock_rename.called)
 
     def test_manage_existing_get_size(self):
         ref_name = 'vol1'
-        volume_ref = {'name': ref_name}
+        volume_ref = {'source-name': ref_name}
         expected_size = 3
         self.array.get_volumes.return_value = MPV
         vol, _ = self.new_fake_vol(set_provider_id=False)
@@ -2850,7 +2850,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         vol, _ = self.new_fake_vol(set_provider_id=False)
         self.assert_error_propagates([mock_validate],
                                      self.driver.manage_existing_get_size,
-                                     vol, {'name': 'vol1'})
+                                     vol, {'source-name': 'vol1'})
 
     def test_manage_existing_get_size_bad_ref(self):
         vol, _ = self.new_fake_vol(set_provider_id=False)
@@ -2860,11 +2860,11 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size,
-                          vol, {'name': ''})
+                          vol, {'source-name': ''})
 
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size,
-                          vol, {'name': None})
+                          vol, {'source-name': None})
 
     @mock.patch(BASE_DRIVER_OBJ + "._rename_volume_object")
     def test_unmanage(self, mock_rename):
@@ -2908,7 +2908,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(BASE_DRIVER_OBJ + "._rename_volume_object")
     def test_manage_existing_snapshot(self, mock_rename):
         ref_name = PURE_SNAPSHOT['name']
-        snap_ref = {'name': ref_name}
+        snap_ref = {'source-name': ref_name}
         snap, snap_name = self.new_fake_snap()
         vol_rsp = ValidResponse(200, None, 1,
                                 [DotNotation(PURE_SNAPSHOT)], {})
@@ -2925,7 +2925,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     def test_manage_existing_snapshot_multiple_snaps_on_volume(self,
                                                                mock_rename):
         ref_name = PURE_SNAPSHOT['name']
-        snap_ref = {'name': ref_name}
+        snap_ref = {'source-name': ref_name}
         pure_snaps = [PURE_SNAPSHOT]
         snap, snap_name = self.new_fake_snap()
         for i in range(5):
@@ -2948,7 +2948,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assert_error_propagates(
             [mock_validate],
             self.driver.manage_existing_snapshot,
-            snap, {'name': PURE_SNAPSHOT['name']}
+            snap, {'source-name': PURE_SNAPSHOT['name']}
         )
 
     def test_manage_existing_snapshot_bad_ref(self):
@@ -2961,13 +2961,13 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         snap, _ = self.new_fake_snap()
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_snapshot,
-                          snap, {'name': ''})
+                          snap, {'source-name': ''})
 
     def test_manage_existing_snapshot_none_ref(self):
         snap, _ = self.new_fake_snap()
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_snapshot,
-                          snap, {'name': None})
+                          snap, {'source-name': None})
 
     def test_manage_existing_snapshot_volume_ref_not_exist(self):
         snap, _ = self.new_fake_snap()
@@ -2976,11 +2976,11 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.get_volumes.return_value = err_rsp
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_snapshot,
-                          snap, {'name': 'non-existing-volume.snap1'})
+                          snap, {'source-name': 'non-existing-volume.snap1'})
 
     def test_manage_existing_snapshot_ref_not_exist(self):
         ref_name = PURE_SNAPSHOT['name'] + '-fake'
-        snap_ref = {'name': ref_name}
+        snap_ref = {'source-name': ref_name}
         snap, _ = self.new_fake_snap()
         err_rsp = ErrorResponse(400, [DotNotation({'message':
                                       'does not exist'})], {})
@@ -2991,7 +2991,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     def test_manage_existing_snapshot_get_size(self):
         ref_name = PURE_SNAPSHOT['name']
-        snap_ref = {'name': ref_name}
+        snap_ref = {'source-name': ref_name}
         self.array.get_volumes.return_value = MPV
         self.array.get_volume_snapshots.return_value = MPS
         snap, _ = self.new_fake_snap()
@@ -3023,13 +3023,13 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         snap, _ = self.new_fake_snap()
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_snapshot_get_size,
-                          snap, {'name': ''})
+                          snap, {'source-name': ''})
 
     def test_manage_existing_snapshot_get_size_none_ref(self):
         snap, _ = self.new_fake_snap()
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_snapshot_get_size,
-                          snap, {'name': None})
+                          snap, {'source-name': None})
 
     def test_manage_existing_snapshot_get_size_volume_ref_not_exist(self):
         snap, _ = self.new_fake_snap()
@@ -3038,7 +3038,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.get_volumes.return_value = err_rsp
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_snapshot_get_size,
-                          snap, {'name': 'non-existing-volume.snap1'})
+                          snap, {'source-name': 'non-existing-volume.snap1'})
 
     @ddt.data(
         # 96 chars, will exceed allowable length
@@ -4215,7 +4215,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                       mock_qos):
         ctxt = context.get_admin_context()
         ref_name = 'vol1'
-        volume_ref = {'name': ref_name}
+        volume_ref = {'source-name': ref_name}
         qos = qos_specs.create(ctxt, "qos-iops-bws", QOS_IOPS_BWS)
         vol, vol_name = self.new_fake_vol(set_provider_id=False,
                                           type_qos_specs_id=qos.id)

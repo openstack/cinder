@@ -1509,17 +1509,19 @@ class PureBaseVolumeDriver(san.SanDriver):
         Will return volume or snapshot information from the array for
         the object specified by existing_ref.
         """
-        if "name" not in existing_ref or not existing_ref["name"]:
+        if ("source-name" not in existing_ref
+                or not existing_ref["source-name"]):
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref,
-                reason=_("manage_existing requires a 'name'"
+                reason=_("manage_existing requires a 'source-name'"
                          " key to identify an existing volume."))
 
         if is_snap:
             # Purity snapshot names are prefixed with the source volume name.
-            ref_vol_name, ref_snap_suffix = existing_ref['name'].split('.')
+            ref_vol_name, ref_snap_suffix = existing_ref['source-name'].split(
+                '.')
         else:
-            ref_vol_name = existing_ref['name']
+            ref_vol_name = existing_ref['source-name']
 
         if not is_snap and '::' in ref_vol_name:
             # Don't allow for managing volumes in a pod
@@ -1533,7 +1535,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             if volume_info:
                 if is_snap:
                     snapres = current_array.get_volume_snapshots(
-                        names=[existing_ref['name']])
+                        names=[existing_ref['source-name']])
                     if snapres.status_code == 200:
                         snap = list(snapres.items)[0]
                         return snap
@@ -1553,7 +1555,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         # to throw an Invalid Reference exception.
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref,
-            reason=_("Unable to find Purity ref with name=%s") % ref_vol_name)
+            reason=(_("Unable to find Purity ref with source-name=%s")
+                    % ref_vol_name))
 
     def _add_to_group_if_needed(self, volume, vol_name):
         if volume['group_id']:
@@ -1720,7 +1723,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._validate_manage_existing_vol_type(volume)
         self._validate_manage_existing_ref(existing_ref)
 
-        ref_vol_name = existing_ref['name']
+        ref_vol_name = existing_ref['source-name']
         current_array = self._get_current_array()
         volume_data = list(current_array.get_volumes(
             names=[ref_vol_name]).items)[0]
@@ -1832,7 +1835,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         Purity.
         """
         self._validate_manage_existing_ref(existing_ref, is_snap=True)
-        ref_snap_name = existing_ref['name']
+        ref_snap_name = existing_ref['source-name']
         new_snap_name = self._get_snap_name(snapshot)
         LOG.info("Renaming existing snapshot %(ref_name)s to "
                  "%(new_name)s", {"ref_name": ref_snap_name,
