@@ -2821,6 +2821,31 @@ class PureBaseVolumeDriver(san.SanDriver):
                                 " eradicated - will recreate.", name)
                     source_array.delete_pods(names=[name])
                     self._create_pod_if_not_exist(source_array, name)
+        else:
+            if self._array.safemode:
+                # Now we check to ensure that the created pod does not have a
+                # safemode protection group attached to it as this is not
+                # supported by Cinder
+                safemode_pg = list(
+                    source_array.get_container_default_protections(
+                        names=[name]).items)[0].default_protections
+                if safemode_pg:
+                    pgname = safemode_pg[0].name
+                    res = source_array.patch_container_default_protections(
+                        names=[name],
+                        container_default_protection=(
+                            flasharray.ContainerDefaultProtection(
+                                default_protections=[])))
+                    if res.status_code != 200:
+                        LOG.warning("Failed to remove Default Protection "
+                                    "Container: %s", res.errors[0])
+                    else:
+                        source_array.patch_protection_groups(
+                            names=[pgname],
+                            protection_group=flasharray.ProtectionGroup(
+                                destroyed=True))
+                        source_array.delete_protection_groups(
+                            names=[pgname])
 
     @pure_driver_debug_trace
     def _create_protection_group_if_not_exist(self, source_array, pgname):
