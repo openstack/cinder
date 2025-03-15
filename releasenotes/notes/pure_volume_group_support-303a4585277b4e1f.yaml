@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    [Pure Storage] Volume Group support added through new vendor-specific volume type
+    extra-specs. Volume Groups can be used to isolate tenant volumes into their own area
+    in a FlashArray, and this volume group can have tenant-wide storage QoS for the
+    volume group. Full replication support is also available for volumes in volume groups
+    and exisitng volume group volumes (such as VMware vVols) can be managed directly.
