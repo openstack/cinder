@@ -246,7 +246,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         provider_loc = mock.sentinel.provider_loc
         self._driver._delete_fcd(provider_loc)
         from_provider_loc.test_assert_called_once_with(provider_loc)
-        vops.delete_fcd.assert_called_once_with(fcd_loc, delete_folder=True)
+        vops.delete_fcd.assert_called_once_with(fcd_loc, delete_folder=False)
 
     @mock.patch.object(FCD_DRIVER, '_provider_location_to_moref_location')
     @mock.patch.object(FCD_DRIVER, '_delete_fcd')

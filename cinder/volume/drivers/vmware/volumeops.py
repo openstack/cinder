@@ -2226,7 +2226,7 @@ class VMwareVolumeOps(object):
         LOG.debug("Created fcd: %s.", fcd_loc)
         return fcd_loc
 
-    def delete_fcd(self, fcd_location, delete_folder=True):
+    def delete_fcd(self, fcd_location, delete_folder=False):
         cf = self._session.vim.client.factory
         vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
         vmdk_file = self.get_vmdk_path_for_fcd(fcd_location.ds_ref(),
