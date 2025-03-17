@@ -245,7 +245,7 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         return {'provider_location': provider_location}
 
     @volume_utils.trace
-    def _delete_fcd(self, provider_loc, delete_folder=True):
+    def _delete_fcd(self, provider_loc, delete_folder=False):
         fcd_loc = vops.FcdLocation.from_provider_location(provider_loc)
         self.volumeops.delete_fcd(fcd_loc, delete_folder=delete_folder)
 
