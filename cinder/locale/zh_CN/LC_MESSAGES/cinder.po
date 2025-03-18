@@ -20,7 +20,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2024-09-04 23:51+0000\n"
+"POT-Creation-Date: 2025-03-17 14:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4203,10 +4203,6 @@ msgstr "无法从后端访存连接信息。"
 #, python-format
 msgid "Unable to fetch connection information from backend: %(err)s"
 msgstr "无法从后端访存连接信息：%(err)s"
-
-#, python-format
-msgid "Unable to find Purity ref with name=%s"
-msgstr "找不到名称为 %s 的 Purity ref"
 
 #, python-format
 msgid "Unable to find Volume Group: %(vg_name)s"
