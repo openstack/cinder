@@ -119,6 +119,23 @@ Create a volume type for multi tenancy:
 
    $ openstack volume type create --property lightos:project_name=project-01 type-with-mt
 
+Quality of Service (QoS) Support
+--------------------------------
+
+The Lightbits driver allows administrators to better manage and optimize
+storage performance by associating QoS policies with volume types.
+
+- Administrators must first create the required QoS policy on the Lightbits
+   cluster.
+- Once the QoS policy is created, it can be linked to a volume type in
+   the system using the policy's unique UUID.
+
+Example:
+
+.. code-block:: bash
+
+   openstack volume type create LightbitsWithQos --property volume_backend_name=<backend_name> --property=lightos:qos_policy=<uuid>
+
 NVNe/TCP and Asymmetric Namespace Access (ANA)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
