@@ -544,7 +544,7 @@ class NetAppNVMeStorageLibrary(
             # Add driver capabilities and config info
             pool['QoS_support'] = False
             pool['multiattach'] = True
-            pool['online_extend_support'] = False
+            pool['online_extend_support'] = True
             pool['consistencygroup_support'] = True
             pool['consistent_group_snapshot_enabled'] = True
             pool['reserved_percentage'] = self.reserved_percentage
