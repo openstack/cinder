@@ -17,6 +17,7 @@
 import binascii
 import collections
 import errno
+import hashlib
 import inspect
 import json
 import math
@@ -35,7 +36,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import imageutils
-from oslo_utils.secretutils import md5
 from oslo_utils import units
 
 from cinder import compute
@@ -1041,7 +1041,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         """
         if isinstance(base_str, str):
             base_str = base_str.encode('utf-8')
-        return md5(base_str, usedforsecurity=False).hexdigest()
+        return hashlib.md5(base_str, usedforsecurity=False).hexdigest()
 
     def _get_mount_point_for_share(self, share: str) -> str:
         """Return mount point for share.

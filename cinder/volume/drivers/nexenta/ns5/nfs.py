@@ -14,12 +14,12 @@
 #    under the License.
 
 import errno
+import hashlib
 import os
 import posixpath
 import uuid
 
 from oslo_log import log as logging
-from oslo_utils.secretutils import md5
 from oslo_utils import units
 
 from cinder.common import constants
@@ -770,7 +770,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         share = self._get_volume_share(volume)
         if isinstance(share, str):
             share = share.encode('utf-8')
-        path = md5(share, usedforsecurity=False).hexdigest()
+        path = hashlib.md5(share, usedforsecurity=False).hexdigest()
         return os.path.join(self.mount_point_base, path)
 
     def local_path(self, volume):

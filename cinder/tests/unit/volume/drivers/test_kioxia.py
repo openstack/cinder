@@ -10,10 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import hashlib
 import unittest
 from unittest import mock
-
-from oslo_utils.secretutils import md5
 
 from cinder import exception
 from cinder.tests.unit import test
@@ -695,7 +694,8 @@ class KioxiaVolumeTestCase(test.TestCase):
     def test_convert_host_name(self):
         name = 'ks-node3-000c2960a794-000c2960a797'
         result = self.driver._convert_host_name(name)
-        expected = md5(name.encode('utf-8'), usedforsecurity=False).hexdigest()
+        expected = hashlib.md5(name.encode('utf-8'),
+                               usedforsecurity=False).hexdigest()
         self.assertEqual(result, expected)
 
     def test_create_export(self):
