@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Cinder now supports setting-up cgroups with the cgroups v2 API, which is
+    used when doing migration of block device with the LVM backend.
