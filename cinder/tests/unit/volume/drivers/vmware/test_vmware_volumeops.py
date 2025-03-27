@@ -2022,14 +2022,16 @@ class VolumeOpsTestCase(test.TestCase):
         self.session.wait_for_task.assert_called_once_with(task)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'file_list_in_folder')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 'get_dc')
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 'get_vmdk_path_for_fcd')
     def test_delete_fcd(self, get_vmdk_path_for_fcd,
-                        get_dc):
+                        get_dc, file_list):
         task = mock.sentinel.task
         self.session.invoke_api.return_value = task
-
+        file_list.return_value = []
         fcd_location = mock.Mock()
         fcd_id = mock.sentinel.fcd_id
         fcd_location.id.return_value = fcd_id

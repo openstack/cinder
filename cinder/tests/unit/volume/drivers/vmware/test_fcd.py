@@ -237,16 +237,18 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
             get_disk_type.assert_not_called()
             vops.create_fcd.assert_not_called()
 
+    @mock.patch.object(volumeops.VMwareVolumeOps,
+                       'file_list_in_folder')
     @mock.patch.object(volumeops.FcdLocation, 'from_provider_location')
     @mock.patch.object(FCD_DRIVER, 'volumeops')
-    def test_delete_fcd(self, vops, from_provider_loc):
+    def test_delete_fcd(self, vops, from_provider_loc, file_list):
         fcd_loc = mock.sentinel.fcd_loc
         from_provider_loc.return_value = fcd_loc
-
+        file_list.return_value = []
         provider_loc = mock.sentinel.provider_loc
         self._driver._delete_fcd(provider_loc)
         from_provider_loc.test_assert_called_once_with(provider_loc)
-        vops.delete_fcd.assert_called_once_with(fcd_loc, delete_folder=False)
+        vops.delete_fcd.assert_called_once_with(fcd_loc, delete_folder=True)
 
     @mock.patch.object(FCD_DRIVER, '_provider_location_to_moref_location')
     @mock.patch.object(FCD_DRIVER, '_delete_fcd')
