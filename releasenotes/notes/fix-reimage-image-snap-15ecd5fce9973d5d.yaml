@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #2062539 <https://bugs.launchpad.net/cinder/+bug/2062539>`_: Fixed
+    reimage operation when the image is backed by a volume snapshot.

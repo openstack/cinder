@@ -26,6 +26,7 @@ from cinder.api.schemas import volume_actions as volume_action
 from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
+from cinder.image import glance
 from cinder.policies import volume_actions as policy
 from cinder import volume
 from cinder.volume import volume_utils
@@ -327,6 +328,42 @@ class VolumeActionsController(wsgi.Controller):
 
         self.volume_api.update(context, volume, update_dict)
 
+    def _get_image_snapshot_and_check_size(self, context, image_uuid,
+                                           volume_size):
+        image_snapshot = None
+        if image_uuid:
+            image_service = glance.get_default_image_service()
+            image_meta = image_service.show(context, image_uuid)
+            if image_meta is not None:
+                bdms = image_meta.get('properties', {}).get(
+                    'block_device_mapping', [])
+                if bdms:
+                    boot_bdm = [bdm for bdm in bdms if (
+                        bdm.get('source_type') == 'snapshot' and
+                        bdm.get('boot_index') == 0)]
+                    if boot_bdm:
+                        try:
+                            # validate size
+                            image_snap_size = boot_bdm[0].get('volume_size')
+                            if image_snap_size > volume_size:
+                                msg = (_(
+                                    "Volume size must be greater than the "
+                                    "image size. (Image: %(img_size)s, "
+                                    "Volume: %(vol_size)s).") % {
+                                        'img_size': image_snap_size,
+                                        'vol_size': volume_size})
+                                raise webob.exc.HTTPBadRequest(explanation=msg)
+                            image_snapshot = self.volume_api.get_snapshot(
+                                context, boot_bdm[0].get('snapshot_id'))
+                        except exception.NotFound:
+                            explanation = _(
+                                'Nova specific image is found, but boot '
+                                'volume snapshot id:%s not found.'
+                            ) % boot_bdm[0].get('snapshot_id')
+                            raise webob.exc.HTTPNotFound(
+                                explanation=explanation)
+        return image_snapshot
+
     @wsgi.Controller.api_version(mv.SUPPORT_REIMAGE_VOLUME)
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reimage')
@@ -341,9 +378,11 @@ class VolumeActionsController(wsgi.Controller):
         reimage_reserved = strutils.bool_from_string(reimage_reserved,
                                                      strict=True)
         image_id = params['image_id']
+        image_snap = self._get_image_snapshot_and_check_size(
+            context, image_id, volume.size)
         try:
             self.volume_api.reimage(context, volume, image_id,
-                                    reimage_reserved)
+                                    reimage_reserved, image_snap)
         except exception.InvalidVolume as error:
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
 

@@ -2689,7 +2689,8 @@ class API(base.Base):
         volume_utils.notify_about_volume_usage(ctxt, volume, "detach.end")
         return volume.volume_attachment
 
-    def reimage(self, context, volume, image_id, reimage_reserved=False):
+    def reimage(self, context, volume, image_id, reimage_reserved=False,
+                image_snap=None):
         if volume.status in ['reserved']:
             context.authorize(vol_action_policy.REIMAGE_RESERVED_POLICY,
                               target_obj=volume)
@@ -2717,6 +2718,10 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
         image_meta = self.image_service.show(context, image_id)
         try:
+            # If the source of the image is a volume snapshot
+            # (image_snap is not None), we will get image 'size' as 0 and
+            # 'virtual_size' as None but at least we will verify the image
+            # 'status' and 'min_disk' properties.
             volume_utils.check_image_metadata(image_meta, volume['size'])
         # Currently we only raise InvalidInput and ImageUnacceptable
         # exceptions in the check_image_metadata call but having Exception
@@ -2725,16 +2730,18 @@ class API(base.Base):
         # Also this helps makes adding new exceptions easier in the future.
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception("Failed to reimage volume %(volume_id)s with "
-                              "image %(image_id)s",
-                              {'volume_id': volume.id, 'image_id': image_id})
+                LOG.exception("Failed to reimage volume %(volume_id)s "
+                              "with image %(image_id)s",
+                              {'volume_id': volume.id,
+                               'image_id': image_id})
                 volume.conditional_update(
                     {'status': volume.model.previous_status,
                      'previous_status': None},
                     {'status': 'downloading'})
         self.volume_rpcapi.reimage(context,
                                    volume,
-                                   image_meta)
+                                   image_meta,
+                                   image_snap=image_snap)
 
 
 class HostAPI(base.Base):
