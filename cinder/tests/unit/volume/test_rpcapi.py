@@ -677,11 +677,16 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
                            group=self.fake_group,
                            version='3.14')
 
-    def test_reimage(self):
+    @ddt.data('3.18', '3.20')
+    def test_reimage(self, version):
+        if version == '3.18':
+            self.can_send_version_mock.side_effect = (
+                True, True, False, False)
         self._test_rpc_api('reimage', rpc_method='cast',
                            server=self.fake_volume_obj.host,
                            volume=self.fake_volume_obj,
                            image_meta={'id': fake.IMAGE_ID,
                                        'container_format': 'fake_type',
                                        'disk_format': 'fake_format'},
-                           version='3.18')
+                           image_snap='fake_snap',
+                           version=version)
