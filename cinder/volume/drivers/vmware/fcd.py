@@ -502,7 +502,11 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
 
         # Extend the volume if needed
         # break this up to 2 lines to pass pep8
-        image_gib = int(metadata['virtual_size'] / units.Gi)
+        if hasattr(metadata, 'virtual_size'):
+            image_gib = int(metadata['virtual_size'] / units.Gi)
+        else:
+            image_gib = int(self.volumeops.get_vmdk_size_for_fcd(
+                fcd_loc=fcd_loc) / units.Gi)
         image_size = 1 if image_gib == 0 else image_gib
         self._extend_if_needed(fcd_loc, image_size, volume.size)
         self.volumeops.update_fcd_vmdk_uuid(ds_ref,

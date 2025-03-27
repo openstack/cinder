@@ -2173,6 +2173,21 @@ class VMwareVolumeOps(object):
         vmdk_path = fcd_obj.config.backing.filePath
         return vmdk_path
 
+    def get_vmdk_size_for_fcd(self, ds_ref=None, disk_id=None, fcd_loc=None):
+        cf = self._session.vim.client.factory
+        if fcd_loc:
+            ds_ref = fcd_loc.ds_ref()
+            disk_id = fcd_loc.id(cf)
+        vstorage_mgr = self._session.vim.service_content.vStorageObjectManager
+        fcd_obj = self._session.invoke_api(
+            self._session.vim,
+            'RetrieveVStorageObject',
+            vstorage_mgr,
+            id=disk_id,
+            datastore=ds_ref)
+        size_mb = fcd_obj.config.capacityInMB
+        return size_mb
+
     @volume_utils.trace
     def update_fcd_vmdk_uuid(self, ds_ref, vmdk_path, cinder_uuid):
         def cinder_uuid_to_vmwhex(cinder_uuid):
