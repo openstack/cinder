@@ -3554,6 +3554,18 @@ class PureBaseVolumeDriver(san.SanDriver):
                 ports += list(
                     array.get_ports(filter="name='" + controller + ".*'").items
                 )
+            lacps = list(
+                array.get_network_interfaces(
+                    filter="eth.subtype='lacp_bond'"
+                ).items
+            )
+            if lacps:
+                for lacp in range(0, len(lacps)):
+                    ports += list(
+                        array.get_ports(
+                            names=[lacps[lacp].name.upper()]
+                        ).items
+                    )
         return ports
 
 
@@ -4202,13 +4214,13 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         valid_nvme_ports = []
         nvme_ports = [port for port in ports if getattr(port, "nqn", None)]
         for port in range(0, len(nvme_ports)):
-            if "ETH" in nvme_ports[port].name:
-                port_detail = list(array.get_network_interfaces(
-                    names=[nvme_ports[port].name]
-                ).items)[0]
-                if port_detail.services[0] == "nvme-" + \
-                        self.configuration.pure_nvme_transport:
-                    valid_nvme_ports.append(nvme_ports[port])
+            port_detail = list(array.get_network_interfaces(
+                names=[nvme_ports[port].name.lower()]
+            ).items)[0]
+            if hasattr(port_detail.eth, "address") and (
+                    port_detail.services[0] == "nvme-" +
+                    self.configuration.pure_nvme_transport):
+                valid_nvme_ports.append(nvme_ports[port])
         if not nvme_ports:
             raise PureDriverException(
                 reason=_("No %(type)s enabled ports on target array.") %
