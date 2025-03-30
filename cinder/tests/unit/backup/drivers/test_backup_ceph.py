@@ -1646,36 +1646,34 @@ class VolumeMetadataBackupTestCase(test.TestCase):
         def _mock_write(data):
             obj_data.append(data)
             called.append('write')
+            # record the thread that the write() was called in so we can
+            # check it later
             thread_dict['thread'] = threading.current_thread()
 
-        self.mb.get = mock.Mock()
-        self.mb.get.side_effect = mock_read
+        self.mock_rados.Object.return_value.write = _mock_write
+        self.mb._exists = mock.Mock()
         serialized_meta_1 = jsonutils.dumps({'foo': 'bar'})
         serialized_meta_2 = jsonutils.dumps({'doo': 'dah'})
 
-        with mock.patch.object(ceph.VolumeMetadataBackup, 'set') as mock_write:
-            mock_write.side_effect = _mock_write
+        # this metadatum does not yet exist.
+        self.mb._exists.return_value = False
 
-            self.mb.set(serialized_meta_1)
-            self.assertEqual(serialized_meta_1, self.mb.get())
-            self.assertTrue(self.mb.get.called)
+        self.mb.set(serialized_meta_1)
 
-            self.mb._exists = mock.Mock()
-            self.mb._exists.return_value = True
+        # verify correct content
+        self.assertEqual(serialized_meta_1.encode('utf-8'), mock_read())
+        # verify that the write() was called in a tpool.Proxy thread
+        self.assertNotEqual(thread_dict['thread'], threading.current_thread())
 
-        # use the unmocked set() method.
+        # now the metadata exists ...
+        self.mb._exists.return_value = True
         self.assertRaises(exception.VolumeMetadataBackupExists,
                           self.mb.set, serialized_meta_2)
+        # ... and its content should still be the original metadata
+        self.assertEqual(serialized_meta_1.encode('utf-8'), mock_read())
 
-        # check the meta obj state has not changed.
-        self.assertEqual(serialized_meta_1, self.mb.get())
-
+        # write should only have been called once during this test
         self.assertEqual(['write', 'read', 'read'], called)
-
-        self.mb._exists.return_value = False
-        self.mb.set(serialized_meta_2)
-        self.assertNotEqual(thread_dict['thread'],
-                            threading.current_thread)
 
     @common_meta_backup_mocks
     def test_get(self):
@@ -1688,20 +1686,24 @@ class VolumeMetadataBackupTestCase(test.TestCase):
         self.assertEqual('meta', self.mb.get())
 
     @common_meta_backup_mocks
-    def remove_if_exists(self):
+    def test_remove_if_exists(self):
         thread_dict = {}
 
-        def mock_side_effect():
+        def mock_remove():
+            # record the thread running this function
             thread_dict['thread'] = threading.current_thread()
 
-        with mock.patch.object(self.mock_rados.Object, 'remove') as \
-                mock_remove:
-            mock_remove.side_effect = self.mock_rados.ObjectNotFound
-            self.mb.remove_if_exists()
-            self.assertEqual([MockObjectNotFoundException], RAISED_EXCEPTIONS)
+        # case 1: remove() succeeds
+        self.mock_rados.Object.return_value.remove = mock_remove
+        self.mb.remove_if_exists()
+        self.assertEqual([], RAISED_EXCEPTIONS)
+        # make sure remove() was called from a tpool.Proxy thread
+        self.assertNotEqual(thread_dict['thread'], threading.current_thread())
 
-            self.mock_rados.Object.remove.side_effect = mock_side_effect
-            self.mb.remove_if_exists()
-            self.assertEqual([], RAISED_EXCEPTIONS)
-            self.assertNotEqual(thread_dict['thread'],
-                                threading.current_thread)
+        # case 2: remove() raises object not found (the function under
+        # test is not supposed to raise in this case)
+        rm_mock = mock.Mock()
+        rm_mock.side_effect = self.mock_rados.ObjectNotFound
+        self.mock_rados.Object.return_value.remove = rm_mock
+        self.mb.remove_if_exists()
+        self.assertEqual([MockObjectNotFoundException], RAISED_EXCEPTIONS)
