@@ -1032,7 +1032,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         if qos_specs_id is not None:
             ctxt = context.get_admin_context()
             vol_qos_specs = qos_specs.get_qos_specs(ctxt, qos_specs_id)
-            LOG.debug('qos_specs: %s', qos_specs)
+            LOG.debug('qos_specs: %s', vol_qos_specs)
             if vol_qos_specs['consumer'] in ('back-end', 'both'):
                 return vol_qos_specs['specs']
         return None
@@ -2587,7 +2587,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                   ' %(qos_value)s', {'qos_key': qos_key,
                                                      'qos_value': qos_val})
                     else:
-                        LOG.warning('qos_specs: the requested qos key'
+                        LOG.warning('qos_specs: the requested qos key '
                                     '%(qos_key)s does not exist',
                                     {'qos_key': qos_key,
                                      'qos_value': qos_val})
