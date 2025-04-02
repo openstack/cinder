@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #2105961 <https://bugs.launchpad.net/cinder/+bug/2105961>`_: Fixed
+    issue in NVMe-oF target driver to validate the ``nqn`` property (NVMe-oF)
+    instead of the ``initiator`` property (iSCSI) in the connector which caused
+    attachment failures in non-iSCSI environments.

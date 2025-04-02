@@ -835,7 +835,7 @@ class SpdkDriverTestCase(test.TestCase):
             self.driver.initialize_connection(db_volume, target_connector)
 
     def test_validate_connector(self):
-        mock_connector = {'initiator': 'fake_init'}
+        mock_connector = {'nqn': 'fake-nqn'}
         self.assertTrue(self.driver.validate_connector(mock_connector))
 
     def test_terminate_connection(self):

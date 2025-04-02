@@ -189,12 +189,13 @@ class TestNVMeOFDriver(tf.TargetDriverFixture):
                                                      mock.sentinel.uuid)
         self.assertEqual(expected_return, res)
 
-    def test_validate_connector(self):
-        mock_connector = {'initiator': 'fake_init'}
+    @ddt.data({'nqn': 'fake-nqn'},
+              {'nqn': 'fake-nqn', 'initiator': 'fake-iqn'})
+    def test_validate_connector(self, mock_connector):
         self.assertTrue(self.target.validate_connector(mock_connector))
 
-    def test_validate_connector_not_found(self):
-        mock_connector = {'fake_init'}
+    @ddt.data({'initiator': 'fake-iqn'}, {})
+    def test_validate_connector_not_found(self, mock_connector):
         self.assertRaises(exception.InvalidConnectorException,
                           self.target.validate_connector,
                           mock_connector)
