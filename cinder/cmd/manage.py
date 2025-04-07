@@ -57,12 +57,17 @@ from pathlib import Path
 import re
 import sys
 import time
+import os
 
+# from cinder.compute import nova
 from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_db.sqlalchemy import migration
 from oslo_log import log as logging
 from oslo_utils import timeutils
+from sqlalchemy import update
+from sqlalchemy import and_
+# from openstack import connection
 import tabulate
 
 # Need to register global_opts
@@ -865,6 +870,298 @@ class ConsistencyGroupCommands(object):
 
 class SapCommands:
     """Methods added for SAP-specific purposes"""
+
+    @staticmethod
+    def _fix_orphan_attachments(orphan_attachments_instance_ids, fix_limit):
+        if len(orphan_attachments_instance_ids) > fix_limit:
+            print(f"WARNING: More orphan attachments than fix_limit\
+                  ({len(orphan_attachments_instance_ids)} > {fix_limit})")
+            return
+        session = db_api.get_session()
+        now = timeutils.utcnow()
+        session.execute(
+            update(models.VolumeAttachment)
+            .where(models.VolumeAttachment.instance_uuid.in_(
+                orphan_attachments_instance_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.commit()
+
+    @staticmethod
+    def _get_orphan_attachments(ctxt):
+        query = db_api.model_query(ctxt, models.VolumeAttachment,
+                                   read_deleted="no")
+        volume_attachments = {va.id: va.instance_uuid for va in query.all()}
+        # TODO: openstack sdk not available in tox testing env, use
+        # cinder.compute.nova or DB
+        conn = connection.Connection(
+            auth_url=os.getenv('OS_AUTH_URL'),
+            project_name=os.getenv('OS_PROJECT_NAME'),
+            project_domain_name=os.getenv('OS_PROJECT_DOMAIN_NAME'),
+            username=os.getenv('OS_USERNAME'),
+            user_domain_name=os.getenv('OS_USER_DOMAIN_NAME'),
+            password=os.getenv('OS_PASSWORD'),
+            identity_api_version="3"
+        )
+        # Question: Is the openstack sdk doing sth. different than db lookup?
+        # Is a db lookup an alternative?
+        nova_instances = {instance.id: instance for instance in
+                          conn.compute.servers(details=False, all_projects=1)}
+        # filter volume_attachment dict by existing nova instances
+        orphan_attachments = {
+            attachment_id: server_id for attachment_id, server_id in
+            volume_attachments.items() if server_id not in nova_instances
+        }
+        return orphan_attachments
+
+    @staticmethod
+    def _delete_error_deleting_volumes(volume_ids, now=None):
+        session = db_api.get_session()
+        if now is None:
+            now = timeutils.utcnow()
+        session.execute(
+            update(models.VolumeAdminMetadata)
+            .where(models.VolumeAdminMetadata.volume_id.in_(volume_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.execute(
+            update(models.VolumeMetadata)
+            .where(models.VolumeMetadata.volume_id.in_(volume_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.execute(
+            update(models.VolumeAttachment)
+            .where(models.VolumeAttachment.volume_id.in_(volume_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.execute(
+            update(models.Volume)
+            .where(models.Volume.id.in_(volume_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.commit()
+ 
+    @staticmethod
+    def _delete_error_deleting_snapshots(snapshot_ids, now=None):
+        session = db_api.get_session()
+        if now is None:
+            now = timeutils.utcnow()
+        session.execute(
+            update(models.Snapshot)
+            .where(models.Snapshot.id.in_(snapshot_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.commit()
+    
+    @staticmethod
+    def _delete_wrong_admin_metadata(metadata_ids, now=None):
+        session = db_api.get_session()
+        if now is None:
+            now = timeutils.utcnow()
+        session.execute(
+            update(models.VolumeAdminMetadata)
+            .where(models.VolumeAdminMetadata.id.in_(metadata_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.commit()
+    
+    @staticmethod
+    def _delete_wrong_volume_attachment(attachment_ids, now=None):
+        session = db_api.get_session()
+        if now is None:
+            now = timeutils.utcnow()
+        session.execute(
+            update(models.VolumeAttachment)
+            .where(models.VolumeAttachment.id.in_(attachment_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.commit()
+    
+    @staticmethod
+    def _delete_wrong_glance_metadata_volume(metadata_ids, now=None):
+        session = db_api.get_session()
+        if now is None:
+            now = timeutils.utcnow()
+        session.execute(
+            update(models.VolumeGlanceMetadata)
+            .where(models.VolumeGlanceMetadata.id.in_(metadata_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.commit()
+    
+    @staticmethod
+    def _delete_wrong_glance_metadata_snapshot(metadata_ids, now=None):
+        session = db_api.get_session()
+        if now is None:
+            now = timeutils.utcnow()
+        session.execute(
+            update(models.VolumeGlanceMetadata)
+            .where(models.VolumeGlanceMetadata.id.in_(metadata_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.commit()
+    
+    @staticmethod
+    def _delete_wrong_metadata_volume(metadata_ids, now=None):
+        session = db_api.get_session()
+        if now is None:
+            now = timeutils.utcnow()
+        session.execute(
+            update(models.VolumeMetadata)
+            .where(models.VolumeMetadata.id.in_(metadata_ids))
+            .values(updated_at=now, deleted_at=now, deleted=1)
+        )
+        session.commit()
+    
+    @staticmethod
+    def _remove_volumes_in_state_error_deleting(ctxt, dry_run, now=None):
+        query = db_api.model_query(ctxt, models.Volume, read_deleted="no").\
+            filter_by(status="error_deleting")
+        error_deleting_volumes = [v.id for v in query.all()]
+        if len(error_deleting_volumes) == 0:
+            print("No volumes in state `error_deleting` found")
+        else:
+            print(f"found volumes {error_deleting_volumes.join(', ')}\
+                   in state `error_deleting`, marking for deletion")
+        if not dry_run and len(error_deleting_volumes) > 0:
+            SapCommands._delete_error_deleting_volumes(ctxt,
+                                                       error_deleting_volumes,
+                                                       now)
+            print("Volumes deleted")
+
+    @args('--fix-limit', default=25,
+          help='Maximum number of inconsistencies to fix automatically.')
+    @args('--dry-run', action='store_true', default=False,
+          help='Do not delete any files.')
+    def consistency(self, dry_run: bool, fix_limit: int) -> None:
+        ctxt = context.get_admin_context()
+        """
+        # Remove volume attachments to non existing instances
+        orphan_attachments = self._get_orphan_attachments(ctxt)
+        print(f"Found {len(orphan_attachments)} orphaned volume attachments \
+              (volume attachments to non-existing VM's).")
+        if not dry_run and len(orphan_attachments > 0):
+            print("Try to fix orphan attachments")
+            self._fix_orphan_attachments(orphan_attachments.values(),
+                                         fix_limit)
+            print(f"Marked volume attachments\
+                  {list(orphan_attachments.keys()).join(', ')} as deleted.")
+        """
+        self._remove_volumes_in_state_error_deleting(ctxt, dry_run=dry_run)
+
+        # Remove snapshots in state "error_deleting"
+        query = db_api.model_query(ctxt, models.Snapshot, read_deleted="no").\
+            filter_by(status="error_deleting")
+        error_deleting_snapshots = [s.id for s in query.all()]
+        if len(error_deleting_snapshots) == 0:
+            print("No snapshots in state `error_deleting` found")
+        else:
+            print(f"found snapshots {error_deleting_snapshots.join(', ')}\
+                   in state `error_deleting`, marking for deletion")
+        if not dry_run and len(error_deleting_snapshots) > 0:
+            self._delete_error_deleting_snapshots(error_deleting_snapshots)
+            print("Snapshots deleted")
+
+        # Remove admin_metadata of deleted volumes
+        query = db_api.model_query(ctxt, models.VolumeAdminMetadata,
+                                   read_deleted="yes").\
+            join(models.Volume,
+                 models.VolumeAdminMetadata.volume_id == models.Volume.id).\
+            filter(
+                and_(models.Volume.deleted == 1,
+                     models.VolumeAdminMetadata.deleted == 0))
+        wrong_admin_metadata = [v.VolumeAdminMetadata.id for v in query.all()]
+        if len(wrong_admin_metadata) == 0:
+            print("No admin metadata found that is linked to deleted volumes")
+        else:
+            print(f"found admin metadata {wrong_admin_metadata.join(', ')} for\
+                  volumes that are already deleted, marking for deletion")
+        if not dry_run and len(wrong_admin_metadata) > 0:
+            self._delete_wrong_admin_metadata(wrong_admin_metadata)
+            print("Wrong admin metadata deleted")
+
+        # Remove glance_metadata of deleted volumes
+        query = db_api.model_query(ctxt, models.VolumeGlanceMetadata,
+                                   read_deleted="yes").\
+            join(models.Volume,
+                 models.VolumeGlanceMetadata.volume_id == models.Volume.id).\
+            filter(
+                and_(models.Volume.deleted == 1,
+                     models.VolumeGlanceMetadata.deleted == 0))
+        wrong_glance_metadata_volume = [v.VolumeGlanceMetadata.id for v in
+                                        query.all()]
+        if len(wrong_glance_metadata_volume) == 0:
+            print("No glance metadata found that is linked to deleted volumes")
+        else:
+            print("found glance metadata"
+                  f"{wrong_glance_metadata_volume.join(', ')} volumes that are"
+                  "already deleted, marking for deletion")
+        if not dry_run and len(wrong_glance_metadata_volume) > 0:
+            self._delete_wrong_glance_metadata_volume(
+                wrong_glance_metadata_volume)
+            print("Wrong glance metadata of volumes deleted")
+
+        # Remove glance_metadata of deleted snapshots
+        query = db_api.model_query(ctxt, models.VolumeGlanceMetadata,
+                                   read_deleted="yes").\
+            join(models.Snapshot,
+                 models.VolumeGlanceMetadata.snapshot_id == models.Snapshot.id).\
+            filter(
+                and_(models.Snapshot.deleted == 1,
+                     models.VolumeGlanceMetadata.deleted == 0))
+        wrong_glance_metadata_snapshot = [v.VolumeGlanceMetadata.id for v in
+                                          query.all()]
+        if len(wrong_glance_metadata_snapshot) == 0:
+            print("No glance metadata found that is linked to deleted volumes")
+        else:
+            print("found glance metadata "
+                  f"{wrong_glance_metadata_snapshot.join(', ')} "
+                  "volumes that are already deleted, marking for deletion")
+        if not dry_run and len(wrong_glance_metadata_snapshot) > 0:
+            self._delete_wrong_metadata_snapshot(
+                wrong_glance_metadata_snapshot)
+            print("Wrong glance metadata of snapshots deleted")
+
+        # Remove metadata of deleted volumes
+        query = db_api.model_query(ctxt, models.VolumeMetadata,
+                                   read_deleted="yes").\
+            join(models.Volume,
+                 models.VolumeMetadata.volume_id == models.Volume.id).\
+            filter(
+                and_(models.Volume.deleted == 1,
+                     models.VolumeMetadata.deleted == 0))
+        wrong_metadata_volume = [v.VolumeMetadata.id for v in query.all()]
+        if len(wrong_metadata_volume) == 0:
+            print("No metadata found that is linked to deleted volumes")
+        else:
+            print(f"found metadata {wrong_metadata_volume.join(', ')} volumes "
+                  "that are already deleted, marking for deletion")
+        if not dry_run and len(wrong_metadata_volume) > 0:
+            self._delete_wrong_metadata_volume(wrong_metadata_volume)
+            print("Wrong metadata of volumes deleted")
+
+        # Remove Volume attachments of deleted volumes
+        # TODO: Test join
+        query = db_api.model_query(ctxt, models.VolumeAttachment,
+                                   read_deleted="yes").\
+            join(models.Volume,
+                 models.VolumeAttachment.volume_id == models.Volume.id).\
+            filter(
+                and_(models.Volume.deleted == 1,
+                     models.VolumeAttachment.deleted == 0))
+        wrong_volume_attachment = [v.VolumeAttachment.id for v in query.all()]
+        if len(wrong_volume_attachment) == 0:
+            print("No volume attachment found that is linked to deleted"
+                  " volumes")
+        else:
+            print(f"found attachments {wrong_volume_attachment.join(', ')} for\
+                  volumes that are already deleted, marking for deletion")
+        if not dry_run and len(wrong_volume_attachment) > 0:
+            self._delete_wrong_volume_attachment(wrong_volume_attachment)
+            print("Wrong volume_attachments deleted")
+        # Remove group_volume_type_mapping of deleted groups
+
+        # Fix missing deleted_at timestamps
 
     @args('--dry-run', action='store_true', default=False,
           help='Do not delete any files.')
