@@ -44,7 +44,8 @@ class SAPFCDFilter(filters.BaseBackendFilter):
         spec = filter_properties.get('request_spec', {})
         vol = spec.get('volume_properties', {})
 
-        if spec.get('operation') != 'migrate_volume':
+        valid_ops = ['migrate_volume', 'find_backend_for_connector']
+        if spec.get('operation') not in valid_ops:
             return True
 
         # We are migrating a volume.  If we are migrating to a different
