@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Pure Storage `bug #2101859
+    <https://bugs.launchpad.net/cinder/+bug/2101859>`_: Fixed issue where
+    LACP bonds were not been correctly identified as NVMe targets.

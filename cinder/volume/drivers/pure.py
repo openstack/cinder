@@ -3446,7 +3446,7 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         valid_nvme_ports = []
         nvme_ports = [port for port in ports if port["nqn"]]
         for port in range(0, len(nvme_ports)):
-            if "ETH" in nvme_ports[port]["name"]:
+            if "FC" not in nvme_ports[port]["name"]:
                 port_detail = array.get_network_interface(
                     interface=nvme_ports[port]["name"]
                 )
