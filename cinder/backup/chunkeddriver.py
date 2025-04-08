@@ -77,7 +77,7 @@ def _write_nonzero(volume_file, volume_offset, content):
         # The len(chunk) may be smaller than chunk_length. It's okay.
         if not volume_utils.is_all_zero(chunk):
             volume_file.seek(volume_offset + chunk_offset)
-            volume_file.write(chunk)
+            volume_file.write(chunk.tobytes())
 
 
 def _write_volume(volume_is_new, volume_file, volume_offset, content):
