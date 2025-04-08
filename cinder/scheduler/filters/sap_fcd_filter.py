@@ -73,8 +73,21 @@ class SAPFCDFilter(filters.BaseBackendFilter):
         # new backend host first.  This prevents data movement.
         # You can issue a migrate command with a destination pool
         # if it's on the same host.
+
+        # For a migrate_volume operation, the destination host can be
+        # specified in the request spec. That is the destination host
+        # the admin wants the volume to be migrated to.
         destination_host = spec.get('destination_host')
-        dest_backend = extract_host(destination_host, 'backend').split('@')[1]
+        if destination_host:
+            dest_backend = extract_host(
+                destination_host, 'backend').split('@')[1]
+        else:
+            # For a find_backend_for_connector operation, the destination
+            # host is the host that the connector is being migrated to as
+            # there is no destination_host specified in the request spec.
+            destination_host = backend_state.host
+            dest_backend = extract_host(
+                destination_host, 'backend').split('@')[1]
 
         if orig_backend != dest_backend:
             LOG.debug("Allow migration to different backend %s %s %s",
