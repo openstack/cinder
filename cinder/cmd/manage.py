@@ -967,27 +967,20 @@ class SapCommands:
             )
 
     @staticmethod
-    def _remove_volumes_in_state_error_deleting(session,
-                                                ctxt: context.RequestContext,
-                                                dry_run: bool,
-                                                ) -> None:
+    def _get_volumes_ids_in_state_error_deleting(ctxt: context.RequestContext
+                                             ) -> list[str]:
         query = db_api.model_query(ctxt, models.Volume.id, read_deleted="no").\
             filter_by(status="error_deleting")
         ids = [v[0] for v in query.all()]
         if len(ids) == 0:
             print("No volumes in state `error_deleting` found")
         else:
-            print(f"found volumes {ids.join(', ')}\
-                   in state `error_deleting`, marking as deleted")
-        if not dry_run and len(ids) > 0:
-            SapCommands._delete_error_deleting_volumes(session, ctxt, ids)
-            print("Volumes marked as deleted")
+            print(f"found volumes {ids.join(', ')} in state `error_deleting`")
+        return
 
     @staticmethod
-    def _remove_snapshots_in_state_error_deleting(
-            session,
-            ctxt: context.RequestContext,
-            dry_run: bool) -> None:
+    def _get_snapshots_ids_in_state_error_deleting(ctxt: context.RequestContext
+                                               ) -> list[str]:
         query = db_api.model_query(ctxt, models.Snapshot.id,
                                    read_deleted="no").filter_by(
                                        status="error_deleting")
@@ -995,16 +988,12 @@ class SapCommands:
         if len(ids) == 0:
             print("No snapshots in state `error_deleting` found")
         else:
-            print(f"found snapshots {ids.join(', ')}\
-                   in state `error_deleting`, marked as deleted")
-        if not dry_run and len(ids) > 0:
-            SapCommands._mark_deleted_by_ids(session, models.Snapshot, ids)
-            print("Snapshots marked as deleted")
+            print(f"found snapshots {ids.join(', ')} in state `error_deleting`")
+        return ids
     
     @staticmethod
-    def _remove_admin_metadata_of_deleted_volumes(session,
-                                                  ctxt: context.RequestContext,
-                                                  dry_run: bool) -> None:
+    def _get_admin_metadata_ids_of_deleted_volumes(ctxt: context.RequestContext
+                                               ) -> list[int]:
         query = db_api.model_query(ctxt, models.VolumeAdminMetadata.id,
                                    read_deleted="no").\
             join(models.Volume,
@@ -1017,18 +1006,12 @@ class SapCommands:
             print("No admin metadata found that is linked to deleted volumes")
         else:
             print(f"found admin metadata {ids.join(', ')} for\
-                  volumes that are already deleted, marking as deleted")
-        if not dry_run and len(ids) > 0:
-            SapCommands._mark_deleted_by_ids(session,
-                                             models.VolumeAdminMetadata,
-                                             ids)
-            print("Wrong admin metadata marked as deleted")
+                  volumes that are already deleted")
+        return ids
     
     @staticmethod
-    def _remove_glance_metadata_of_deleted_volumes(
-            session,
-            ctxt: context.RequestContext,
-            dry_run: bool) -> None:
+    def _get_glance_metadata_ids_of_deleted_volumes(ctxt: context.RequestContext
+                                                ) -> list[int]:
         query = db_api.model_query(ctxt, models.VolumeGlanceMetadata.id,
                                    read_deleted="yes").\
             join(models.Volume,
@@ -1041,19 +1024,13 @@ class SapCommands:
         if len(ids) == 0:
             print("No glance metadata found that is linked to deleted volumes")
         else:
-            print(f"found glance metadata {ids.join(', ')} volumes that are"
-                  "already deleted, marked as deleted")
-        if not dry_run and len(ids) > 0:
-            SapCommands._mark_deleted_by_ids(session,
-                                             models.VolumeGlanceMetadata,
-                                             ids)
-            print("Wrong glance metadata of volumes marked deleted")
+            print(f"found glance metadata {ids.join(', ')} of volumes that are"
+                  "already deleted")
+        return ids
     
     @staticmethod
-    def _remove_glance_metadata_of_deleted_snapshots(
-            session,
-            ctxt: context.RequestContext,
-            dry_run: bool) -> None:
+    def _get_glance_metadata_ids_of_deleted_snapshots(
+        ctxt: context.RequestContext) -> list[int]
         query = db_api.model_query(ctxt, models.VolumeGlanceMetadata.id,
                                    read_deleted="yes").\
             join(models.Snapshot,
@@ -1066,18 +1043,12 @@ class SapCommands:
         if len(ids) == 0:
             print("No glance metadata found that is linked to deleted volumes")
         else:
-            print(f"found glance metadata {ids.join(', ')} "
-                  "volumes that are already deleted, marking for deletion")
-        if not dry_run and len(ids) > 0:
-            SapCommands._mark_deleted_by_ids(session,
-                                             models.VolumeGlanceMetadata,
-                                             ids)
-            print("Wrong glance metadata of snapshots marked as deleted")
+            print(f"found glance metadata {ids.join(', ')} of snapshots "
+                  "that are already deleted")
+        return ids
     
     @staticmethod
-    def _remove_metadata_of_deleted_volumes(session,
-                                            ctxt: context.RequestContext,
-                                            dry_run: bool) -> None:
+    def _get_metadata_ids_of_deleted_volumes(ctxt: context.RequestContext) -> list[int]:
         query = db_api.model_query(ctxt, models.VolumeMetadata.id,
                                    read_deleted="yes").\
             join(models.Volume,
@@ -1085,16 +1056,31 @@ class SapCommands:
             filter(
                 and_(models.Volume.deleted == 1,
                      models.VolumeMetadata.deleted == 0))
-        ids = [v.VolumeMetadata.id for v in query.all()]
+        ids = [v[0] for v in query.all()]
         if len(ids) == 0:
             print("No metadata found that is linked to deleted volumes")
         else:
-            print(f"found metadata {ids.join(', ')} volumes "
-                  "that are already deleted, marking for deletion")
-        if not dry_run and len(ids) > 0:
-            SapCommands._mark_deleted_by_ids(session, models.VolumeMetadata,
-                                             ids)
-            print("Wrong metadata of volumes marked as deleted")
+            print(f"found metadata {ids.join(', ')} of volumes "
+                  "that are already deleted")
+        return ids
+    
+    def _get_volume_attachments_of_deleted_volumes(
+            ctxt: context.RequestContext) -> list[str]:
+        query = db_api.model_query(ctxt, models.VolumeAttachment.id,
+                                   read_deleted="yes").\
+            join(models.Volume,
+                 models.VolumeAttachment.volume_id == models.Volume.id).\
+            filter(
+                and_(models.Volume.deleted == 1,
+                     models.VolumeAttachment.deleted == 0))
+        ids = [v[0] for v in query.all()]
+        if len(ids) == 0:
+            print("No volume attachment found that is linked to deleted"
+                  " volume")
+        else:
+            print(f"found attachments {ids.join(', ')} for\
+                  volumes that are already deleted")
+        return ids
 
     @args('--fix-limit', default=25,
           help='Maximum number of inconsistencies to fix automatically.')
@@ -1115,37 +1101,50 @@ class SapCommands:
             print(f"Marked volume attachments\
                   {list(orphan_attachments.keys()).join(', ')} as deleted.")
         """
-        self._remove_volumes_in_state_error_deleting(session, ctxt,
-                                                     dry_run=dry_run)
-        self._remove_snapshots_in_state_error_deleting(session, ctxt,
-                                                       dry_run=dry_run)
-        self._remove_admin_metadata_of_deleted_volumes(session, ctxt,
-                                                       dry_run=dry_run)
-        self._remove_glance_metadata_of_deleted_volumes(session, ctxt,
-                                                        dry_run=dry_run)
-        self._remove_glance_metadata_of_deleted_snapshots(session, ctxt,
-                                                          dry_run=dry_run)
+        volume_metadata_ids = self._get_volumes_ids_in_state_error_deleting(ctxt)
+        if not dry_run and len(volume_metadata_ids) > 0:
+            SapCommands._mark_deleted_by_ids(session, models.VolumeMetadata,
+                                             volume_metadata_ids)
+            print("Volumes in state error_deleting marked as deleted")
+        snapshot_ids = self._get_snapshots_ids_in_state_error_deleting(ctxt)
+        if not dry_run and len(snapshot_ids) > 0:
+            SapCommands._mark_deleted_by_ids(session, models.Snapshot,
+                                             snapshot_ids)
+            print("Snapshots in state error_deleting marked as deleted")
+        admin_metadata_ids =\
+            self._get_admin_metadata_ids_of_deleted_volumes(ctxt)
+        if not dry_run and len(admin_metadata_ids) > 0:
+            SapCommands._mark_deleted_by_ids(session,
+                                             models.VolumeAdminMetadata,
+                                             admin_metadata_ids)
+            print("Admin metadata of deleted volumes marked as deleted")
+        glance_metadata_ids =\
+            self._get_glance_metadata_ids_of_deleted_volumes(ctxt)
+        if not dry_run and len(glance_metadata_ids2) > 0:
+            SapCommands._mark_deleted_by_ids(session,
+                                             models.VolumeGlanceMetadata,
+                                             glance_metadata_ids)
+            print("Glance metadata of deleted volumes marked deleted")
+        glance_metadata_ids2 =\
+            self._get_glance_metadata_ids_of_deleted_snapshots(session)
+        if not dry_run and len(glance_metadata_ids2) > 0:
+            SapCommands._mark_deleted_by_ids(session,
+                                             models.VolumeGlanceMetadata,
+                                             glance_metadata_ids2)
+            print("Glance metadata of deleted snapshots marked as deleted")
         # Remove metadata of deleted volumes
+        metadata_ids = self._get_metadata_ids_of_deleted_volumes(ctxt)
+        if not dry_run and len(metadata_ids) > 0:
+            SapCommands._mark_deleted_by_ids(session, models.VolumeMetadata,
+                                             metadata_ids)
+            print("Metadata of deleted volumes marked as deleted")
+        volume_attachment_ids =\
+            self._get_volume_attachments_of_deleted_volumes(ctxt)
+        if not dry_run and len(volume_attachment_ids) > 0:
+            self._mark_deleted_by_ids(session, models.VolumeAttachment,
+                                      volume_attachment_ids)
+            print("Volume attachments of deleted volumes marked as deleted")
 
-        # Remove Volume attachments of deleted volumes
-        # TODO: Test join
-        query = db_api.model_query(ctxt, models.VolumeAttachment,
-                                   read_deleted="yes").\
-            join(models.Volume,
-                 models.VolumeAttachment.volume_id == models.Volume.id).\
-            filter(
-                and_(models.Volume.deleted == 1,
-                     models.VolumeAttachment.deleted == 0))
-        wrong_volume_attachment = [v.VolumeAttachment.id for v in query.all()]
-        if len(wrong_volume_attachment) == 0:
-            print("No volume attachment found that is linked to deleted"
-                  " volumes")
-        else:
-            print(f"found attachments {wrong_volume_attachment.join(', ')} for\
-                  volumes that are already deleted, marking for deletion")
-        if not dry_run and len(wrong_volume_attachment) > 0:
-            self._delete_wrong_volume_attachment(wrong_volume_attachment)
-            print("Wrong volume_attachments deleted")
         # Remove group_volume_type_mapping of deleted groups
 
         # Fix missing deleted_at timestamps
