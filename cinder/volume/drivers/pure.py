@@ -762,6 +762,12 @@ class PureBaseVolumeDriver(san.SanDriver):
                                vol_name,
                                src_vref["size"],
                                volume["size"])
+        # Check if the volume_type has QoS settings and if so
+        # apply them to the newly created volume
+        qos = None
+        qos = self._get_qos_settings(volume.volume_type)
+        if qos:
+            self.set_qos(current_array, vol_name, qos)
 
         return self._setup_volume(current_array, volume, vol_name)
 
