@@ -923,7 +923,6 @@ class SapCommands:
 
     @staticmethod
     def _delete_error_deleting_volumes(session, volume_ids: list[str],
-
                                        now: Optional[datetime] = None) -> None:
         if now is None:
             now = timeutils.utcnow()
@@ -1013,7 +1012,7 @@ class SapCommands:
     def _get_glance_metadata_ids_of_deleted_volumes(ctxt: context.RequestContext
                                                 ) -> list[int]:
         query = db_api.model_query(ctxt, models.VolumeGlanceMetadata.id,
-                                   read_deleted="yes").\
+                                   read_deleted="no").\
             join(models.Volume,
                  models.VolumeGlanceMetadata.volume_id == models.Volume.id).\
             filter(
@@ -1032,7 +1031,7 @@ class SapCommands:
     def _get_glance_metadata_ids_of_deleted_snapshots(
         ctxt: context.RequestContext) -> list[int]
         query = db_api.model_query(ctxt, models.VolumeGlanceMetadata.id,
-                                   read_deleted="yes").\
+                                   read_deleted="no").\
             join(models.Snapshot,
                  models.VolumeGlanceMetadata.snapshot_id == models.Snapshot.id).\
             filter(
@@ -1050,7 +1049,7 @@ class SapCommands:
     @staticmethod
     def _get_metadata_ids_of_deleted_volumes(ctxt: context.RequestContext) -> list[int]:
         query = db_api.model_query(ctxt, models.VolumeMetadata.id,
-                                   read_deleted="yes").\
+                                   read_deleted="no").\
             join(models.Volume,
                  models.VolumeMetadata.volume_id == models.Volume.id).\
             filter(
@@ -1064,10 +1063,11 @@ class SapCommands:
                   "that are already deleted")
         return ids
     
+    @staticmethod
     def _get_volume_attachments_of_deleted_volumes(
             ctxt: context.RequestContext) -> list[str]:
         query = db_api.model_query(ctxt, models.VolumeAttachment.id,
-                                   read_deleted="yes").\
+                                   read_deleted="no").\
             join(models.Volume,
                  models.VolumeAttachment.volume_id == models.Volume.id).\
             filter(
@@ -1081,6 +1081,53 @@ class SapCommands:
             print(f"found attachments {ids.join(', ')} for\
                   volumes that are already deleted")
         return ids
+    
+    @staticmethod
+    def _get_group_volume_type_mapping_of_deleted_groups(
+            ctxt: context.RequestContext) -> list[int]:
+        query = db_api.model_query(ctxt, models.GroupVolumeTypeMapping.id,
+                                   read_deleted="no").\
+            join(models.Group,
+                 models.GroupVolumeTypeMapping.group_id == models.Group.id).\
+            filter(
+                and_(models.Group.deleted == 1,
+                     models.GroupVolumeTypeMapping.deleted == 0))
+        ids = [v[0] for v in query.all()]
+        if len(ids) == 0:
+            print("No group volume type mapping found that is linked to" 
+                  "deleted group")
+        else:
+            print(f"found group volume type mapping {ids.join(', ')} for "
+                  "groups that are already deleted")
+        return ids
+
+    @staticmethod
+    def _get_service_ids_linked_to_deleted_volumes(
+            ctxt: context.RequestContext) -> list[int]:
+        query = db_api.model_query(ctxt, models.Service.id,
+                                   read_deleted="no").\
+            join(models.Volume,
+                 models.Service.uuid == models.Volume.service_uuid).\
+            filter(
+                and_(models.Volume.deleted == 1,
+                     models.Service.deleted == 0))
+        ids = [v[0] for v in query.all()]
+        if len(ids) == 0:
+            print("No service found that is linked to deleted volumes")
+        else:
+            print(f"found service {ids.join(', ')} for volumes that are "
+                  "already deleted")
+        return ids
+
+    @staticmethod
+    def _get_ids_set_deleted_flag_and_unset_deleted_at(
+            ctxt: context.RequestContext, model: Type[CinderBaseModelType]
+            ) -> list[str | int]:
+        query = db_api.model_query(ctxt, model.id, read_deleted="no").\
+            filter(
+                and_(model.deleted == 1,
+                     model.deleted_at == None))
+        return [v[0] for v in query.all()]
 
     @args('--fix-limit', default=25,
           help='Maximum number of inconsistencies to fix automatically.')
@@ -1106,11 +1153,13 @@ class SapCommands:
             SapCommands._mark_deleted_by_ids(session, models.VolumeMetadata,
                                              volume_metadata_ids)
             print("Volumes in state error_deleting marked as deleted")
+        
         snapshot_ids = self._get_snapshots_ids_in_state_error_deleting(ctxt)
         if not dry_run and len(snapshot_ids) > 0:
             SapCommands._mark_deleted_by_ids(session, models.Snapshot,
                                              snapshot_ids)
             print("Snapshots in state error_deleting marked as deleted")
+        
         admin_metadata_ids =\
             self._get_admin_metadata_ids_of_deleted_volumes(ctxt)
         if not dry_run and len(admin_metadata_ids) > 0:
@@ -1118,6 +1167,7 @@ class SapCommands:
                                              models.VolumeAdminMetadata,
                                              admin_metadata_ids)
             print("Admin metadata of deleted volumes marked as deleted")
+        
         glance_metadata_ids =\
             self._get_glance_metadata_ids_of_deleted_volumes(ctxt)
         if not dry_run and len(glance_metadata_ids2) > 0:
@@ -1125,6 +1175,7 @@ class SapCommands:
                                              models.VolumeGlanceMetadata,
                                              glance_metadata_ids)
             print("Glance metadata of deleted volumes marked deleted")
+        
         glance_metadata_ids2 =\
             self._get_glance_metadata_ids_of_deleted_snapshots(session)
         if not dry_run and len(glance_metadata_ids2) > 0:
@@ -1132,12 +1183,13 @@ class SapCommands:
                                              models.VolumeGlanceMetadata,
                                              glance_metadata_ids2)
             print("Glance metadata of deleted snapshots marked as deleted")
-        # Remove metadata of deleted volumes
+        
         metadata_ids = self._get_metadata_ids_of_deleted_volumes(ctxt)
         if not dry_run and len(metadata_ids) > 0:
             SapCommands._mark_deleted_by_ids(session, models.VolumeMetadata,
                                              metadata_ids)
             print("Metadata of deleted volumes marked as deleted")
+        
         volume_attachment_ids =\
             self._get_volume_attachments_of_deleted_volumes(ctxt)
         if not dry_run and len(volume_attachment_ids) > 0:
@@ -1145,9 +1197,33 @@ class SapCommands:
                                       volume_attachment_ids)
             print("Volume attachments of deleted volumes marked as deleted")
 
-        # Remove group_volume_type_mapping of deleted groups
+        group_volume_type_mapping_ids =\
+            self._get_group_volume_type_mapping_of_deleted_groups(ctxt)
+        if not dry_run and len(group_volume_type_mapping_ids) > 0:
+            self._mark_deleted_by_ids(session,
+                                      models.GroupVolumeTypeMapping,
+                                      group_volume_type_mapping_ids)
+            print("Group volume type mapping of deleted groups marked as \
+                  deleted")
 
         # Fix missing deleted_at timestamps
+        for model in [models.VolumeAttachment, models.Snapshot]:
+            ids = self._get_ids_set_deleted_flag_and_unset_deleted_at(
+                ctxt, model)
+            print(f"Found {len(ids)} rows with set deleted flag and unset"
+                  f"deleted_at for table {model} ")
+            if not dry_run and len(ids) > 0:
+                self._mark_deleted_by_ids(session, model, ids)
+                print("Rows with set deleted flag and unset deleted_at of "
+                      "model{model.__name__} marked as deleted")
+        
+        service_ids = self._get_service_ids_linked_to_deleted_volumes(ctxt)
+        print(f"Found {len(service_ids)} services linked to deleted volumes: "
+              f" {serivce_ids}")
+        if not dry_run and len(service_ids) > 0:
+            self._mark_deleted_by_ids(session, models.Service, service_ids)
+            print("Services linked to deleted volumes marked as deleted")
+
 
     @args('--dry-run', action='store_true', default=False,
           help='Do not delete any files.')
