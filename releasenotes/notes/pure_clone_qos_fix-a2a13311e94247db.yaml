@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Pure Storage driver `bug #2100547
+    <https://bugs.launchpad.net/cinder/+bug/2100547>`_: Fixed issue where
+    volumes created as clones from a source image volume do get
+    the defined QoS settings associated with the volume type used.
