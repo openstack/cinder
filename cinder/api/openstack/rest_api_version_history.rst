@@ -381,7 +381,27 @@ Add ``count`` field to volume, backup and snapshot list and detail APIs.
 
 3.46
 ----
-Support create volume by Nova specific image (0 size image).
+Modify the behavior of the volume-create (``POST /v3/volumes``) call when
+passing an ``imageRef`` in the request body.  Prior to this microversion,
+the image was simply downloaded and written to the volume.  However, when
+a volume is attached to a server, it is possible to use the Compute API
+server ``createImage`` action to create an instance snapshot of the volume.
+This is a zero-byte image in the Image Service that has a
+``block_device_mapping`` image property whose value contains ``snapshot``
+as the ``source_type`` and a ``snapshot_id`` reference to a volume snapshot
+in the Block Storage service.  From microversion 3.46 and later, when a
+volume-create request is made referring to such an image, instead of using
+the image to create a volume, the snapshot it references will be used.
+
+.. note::
+   Due to changes to cinder to handle image-related CVEs, making a
+   volume-create call with an imageRef referring to a nova instance
+   snapshot specifying a microversion less than 3.46 may create a volume
+   in ``error`` status.  This occurs when the ``disk_format`` property
+   of the image is something other than ``raw``, because for non-raw
+   formats, even an image containing no data will consist of more than
+   zero bytes, and thus the image is rejected as being of a different
+   format than is claimed.
 
 3.47
 ----
