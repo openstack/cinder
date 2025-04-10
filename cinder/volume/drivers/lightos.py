@@ -512,6 +512,63 @@ class LightOSVolumeDriver(driver.VolumeDriver):
             timeout=timeout,
             volume_name=vol_name)
 
+    def _get_lightos_volume_with_retry(
+            self,
+            project_name,
+            vol_uuid=None,
+            vol_name=None,
+            retry_timeout=10):
+        """Get LightOS volume with retry logic for 10 seconds by default.
+        
+        Args:
+            project_name: The project name
+            vol_uuid: Volume UUID (optional)
+            vol_name: Volume name (optional)
+            retry_timeout: How long to retry in seconds (default: 10)
+            
+        Returns:
+            Tuple of (status_code, response_data)
+        """
+        assert vol_uuid or vol_name, 'LightOS volume name or UUID must be specified'
+        
+        end_time = time.time() + retry_timeout
+        last_status = None
+        last_response = None
+        
+        while time.time() < end_time:
+            try:
+                status, response = self._get_lightos_volume(
+                    project_name=project_name,
+                    timeout=self.logical_op_timeout,
+                    vol_uuid=vol_uuid,
+                    vol_name=vol_name)
+                
+                # If we get a successful response, return immediately
+                if status in [httpstatus.OK, httpstatus.NOT_FOUND] and response:
+                    return status, response
+                    
+                # Store the last response for potential return
+                last_status = status
+                last_response = response
+                
+                # If it's not found, we might want to continue retrying
+                # in case the volume is still being created
+                if status != httpstatus.NOT_FOUND:
+                    # For other errors, we might want to retry as well
+                    pass
+                    
+            except Exception as e:
+                LOG.debug('Exception while getting LightOS volume: %s', str(e))
+                last_status = None
+                last_response = str(e)
+            
+            # Don't sleep on the last iteration to avoid unnecessary delay
+            if time.time() < end_time:
+                time.sleep(1)
+        
+        # Return the last status and response if we've exhausted retries
+        return last_status, last_response
+
     def _lightos_volname(self, volume):
         volid = volume.name_id
         lightos_volname = CONF.volume_name_template % volid
@@ -1354,6 +1411,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
         return True
 
+    
     def _wait_for_volume_acl(
             self,
             project_name,
@@ -1585,6 +1643,13 @@ class LightOSVolumeDriver(driver.VolumeDriver):
             hostnqn)
 
         project_name = self._get_lightos_project_name(volume)
+        status, resp = self._get_lightos_volume_with_retry(project_name, vol_uuid=volume.id)
+        # if the volume is missing we can just return
+        if status == httpstatus.NOT_FOUND:
+            LOG.debug(
+                'terminate_connection: volume %s not found, nothing to do',
+                volume)
+            return
 
         if not hostnqn:
             if force:
@@ -1605,9 +1670,10 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                                          host_ips)
         if not success or not self._wait_for_volume_acl(
                 project_name, lightos_volname, hostnqn, False):
-            LOG.warning(
-                'Could not remove ACL for hostnqn %s LightOS \
+            msg = 'Could not remove ACL for hostnqn %s LightOS \
                 volume %s, limping along',
+            LOG.warning(
+                msg,
                 hostnqn,
                 lightos_volname)
 

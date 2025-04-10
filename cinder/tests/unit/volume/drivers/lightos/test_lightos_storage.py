@@ -881,6 +881,29 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
 
+    def test_terminate_connection_no_api_response(self):
+        InitialConnectorMock.nqn = "hostnqn1"
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                    name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+        def send_cmd_mock(cmd, **kwargs):
+            if cmd == "get_volume":
+                return (httpstatus.NOT_FOUND, {})
+            if cmd == "get_volume_by_name":
+                return (httpstatus.NOT_FOUND, {})
+            return cluster_send_cmd(cmd, **kwargs)
+        cluster_send_cmd = deepcopy(self.driver.cluster.send_cmd)
+        self.driver.cluster.send_cmd = send_cmd_mock
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.terminate_connection, volume,
+                          get_connector_properties())
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
     def test_terminate_connection_with_empty_hostnqn_should_fail(self):
         InitialConnectorMock.nqn = ""
         InitialConnectorMock.found_discovery_client = True
