@@ -1327,17 +1327,22 @@ class NfsDriverTestCase(test.TestCase):
             dest_volume = self._simple_volume()
             src_volume = self._simple_volume()
 
+        # snapshot img_info
         fake_snap = fake_snapshot.fake_snapshot_obj(self.context)
         fake_snap.volume = src_volume
-
         img_out = qemu_img_info % {'volid': src_volume.id,
                                    'snapid': fake_snap.id,
                                    'size_gb': src_volume.size,
                                    'size_b': src_volume.size * units.Gi}
-
         img_info = imageutils.QemuImgInfo(img_out, format='json')
+
+        # backing file img_info
+        img_out = QEMU_IMG_INFO_OUT1 % {'volid': src_volume.id,
+                                        'size_b': src_volume.size * units.Gi}
+        bk_img_info = imageutils.QemuImgInfo(img_out, format='json')
+
         mock_img_info = self.mock_object(image_utils, 'qemu_img_info')
-        mock_img_info.return_value = img_info
+        mock_img_info.side_effect = [img_info, bk_img_info]
         mock_convert_image = self.mock_object(image_utils, 'convert_image')
 
         vol_dir = os.path.join(self.TEST_MNT_POINT_BASE,
@@ -1361,21 +1366,27 @@ class NfsDriverTestCase(test.TestCase):
                                        dest_encryption_key_id)
 
         mock_read_info_file.assert_called_once_with(info_path)
-        mock_img_info.assert_called_once_with(snap_path,
-                                              force_share=True,
-                                              run_as_root=True,
-                                              allow_qcow2_backing_file=True)
+        snap_info_call = mock.call(snap_path,
+                                   force_share=True, run_as_root=True,
+                                   allow_qcow2_backing_file=True)
+        src_info_call = mock.call(src_vol_path,
+                                  force_share=True, run_as_root=True,
+                                  allow_qcow2_backing_file=True)
+        self.assertEqual(2, mock_img_info.call_count)
+        mock_img_info.assert_has_calls([snap_info_call, src_info_call])
         used_qcow = nfs_conf['nfs_qcow2_volumes']
         if encryption:
             mock_convert_image.assert_called_once_with(
                 src_vol_path, dest_vol_path, 'luks',
                 passphrase_file='/tmp/passfile',
                 run_as_root=True,
-                src_passphrase_file='/tmp/imgfile')
+                src_passphrase_file='/tmp/imgfile',
+                data=bk_img_info)
         else:
             mock_convert_image.assert_called_once_with(
                 src_vol_path, dest_vol_path, 'qcow2' if used_qcow else 'raw',
-                run_as_root=True)
+                run_as_root=True,
+                data=bk_img_info)
         mock_permission.assert_called_once_with(dest_vol_path)
 
     @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT3, 'available'],
@@ -1443,7 +1454,7 @@ class NfsDriverTestCase(test.TestCase):
         used_qcow = nfs_conf['nfs_qcow2_volumes']
         mock_convert_image.assert_called_once_with(
             src_volume_path, new_volume_path, 'qcow2' if used_qcow else 'raw',
-            run_as_root=True)
+            run_as_root=True, data=img_info)
         mock_ensure.assert_called_once()
         mock_find_share.assert_called_once_with(new_volume)
 
