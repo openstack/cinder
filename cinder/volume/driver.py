@@ -116,17 +116,6 @@ volume_opts = [
     cfg.StrOpt('chiscsi_conf',
                default='/etc/chelsio-iscsi/chiscsi.conf',
                help='Chiscsi (CXT) global defaults configuration file'),
-    cfg.StrOpt('iscsi_iotype',
-               default='fileio',
-               choices=[('blockio', 'perform Block IO'),
-                        ('fileio', '(default) perform File IO'),
-                        ('auto',
-                         'Cinder will autodetect the type of backing device')],
-               help='For ietadm: sets the IO behavior of the iSCSI target',
-               deprecated_for_removal=True,
-               deprecated_since='2024.2',
-               deprecated_reason='No longer used (was for ietadm).'
-               ),
     cfg.StrOpt('volume_dd_blocksize',
                default='1M',
                help='The default block size used when copying/clearing '
