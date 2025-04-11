@@ -142,8 +142,8 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
         <fcd_id>@<datastore moref>
         """
         fcd_id, ds_name = ds_location.split('@')
-        (_, _, ds_ref) = self.ds_sel.select_datastore_by_name(ds_name)
-        return "%s@%s" % (fcd_id, ds_ref.datastore.value)
+        ds_ref = self.ds_sel.get_ds_ref_by_name(ds_name)
+        return "%s@%s" % (fcd_id, vim_util.get_moref_value(ds_ref))
 
     def _snap_provider_location_to_ds_name_location(self, moref_location):
         """Translate the provider location to the datastore name for snapshot.

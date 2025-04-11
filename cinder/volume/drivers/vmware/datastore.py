@@ -359,6 +359,24 @@ class DatastoreSelector(object):
 
         return datastores
 
+    def get_ds_ref_by_name(self, name):
+        vim = self._session.vim
+
+        retrieve_result = self._session.invoke_api(
+            vim_util,
+            'get_objects',
+            vim,
+            'Datastore',
+            self._max_objects,
+            properties_to_collect=['name'])
+
+        with vim_util.WithRetrieval(vim, retrieve_result) as objects:
+            for obj_content in objects:
+                props = self._get_object_properties(obj_content)
+                if props['name'] == name:
+                    return obj_content.obj
+        return None
+
     def select_datastore_by_name(self, name):
         """Find a datastore by it's name.
 
