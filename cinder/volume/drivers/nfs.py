@@ -643,6 +643,8 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         # when this snapshot was created.
         img_info = self._qemu_img_info(forward_path, snapshot.volume.name)
         path_to_snap_img = os.path.join(vol_path, img_info.backing_file)
+        snap_backing_file_img_info = self._qemu_img_info(path_to_snap_img,
+                                                         snapshot.volume.name)
 
         path_to_new_vol = self._local_path_volume(volume)
 
@@ -688,11 +690,13 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
                         'luks',
                         passphrase_file=new_pass_file.name,
                         src_passphrase_file=src_pass_file.name,
-                        run_as_root=self._execute_as_root)
+                        run_as_root=self._execute_as_root,
+                        data=snap_backing_file_img_info)
         else:
             image_utils.convert_image(path_to_snap_img,
                                       path_to_new_vol,
                                       out_format,
-                                      run_as_root=self._execute_as_root)
+                                      run_as_root=self._execute_as_root,
+                                      data=snap_backing_file_img_info)
 
         self._set_rw_permissions_for_all(path_to_new_vol)
