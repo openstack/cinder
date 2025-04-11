@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NFS driver `bug #2074377
+    <https://bugs.launchpad.net/cinder/+bug/2074377>`_: Fixed regression
+    caused by change I65857288b797 (the mitigation for CVE-2024-32498)
+    that was preventing the creation of a new volume from the second and
+    subsequent snapshots of an existing volume.

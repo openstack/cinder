@@ -376,18 +376,20 @@ def check_qemu_img_version(minimum_version: str) -> None:
         raise exception.VolumeBackendAPIException(data=_msg)
 
 
-def _convert_image(prefix: tuple,
-                   source: str,
-                   dest: str,
-                   out_format: str,
-                   out_subformat: Optional[str] = None,
-                   src_format: Optional[str] = None,
-                   run_as_root: bool = True,
-                   cipher_spec: Optional[dict] = None,
-                   passphrase_file: Optional[str] = None,
-                   compress: bool = False,
-                   src_passphrase_file: Optional[str] = None,
-                   disable_sparse: bool = False) -> None:
+def _convert_image(
+        prefix: tuple,
+        source: str,
+        dest: str,
+        out_format: str,
+        out_subformat: Optional[str] = None,
+        src_format: Optional[str] = None,
+        run_as_root: bool = True,
+        cipher_spec: Optional[dict] = None,
+        passphrase_file: Optional[str] = None,
+        compress: bool = False,
+        src_passphrase_file: Optional[str] = None,
+        disable_sparse: bool = False,
+        src_img_info: Optional[imageutils.QemuImgInfo] = None) -> None:
     """Convert image to other format.
 
     NOTE: If the qemu-img convert command fails and this function raises an
@@ -406,6 +408,8 @@ def _convert_image(prefix: tuple,
     :param compress: compress w/ qemu-img when possible (best effort)
     :param src_passphrase_file: filename containing source volume's
                                 luks passphrase
+    :param src_img_info: a imageutils.QemuImgInfo object from this image,
+                            or None
     """
 
     # Check whether O_DIRECT is supported and set '-t none' if it is
@@ -462,17 +466,34 @@ def _convert_image(prefix: tuple,
     # some incredible event this is 0 (cirros image?) don't barf
     if duration < 1:
         duration = 1
-    try:
-        image_size = qemu_img_info(source,
-                                   run_as_root=run_as_root).virtual_size
-    except ValueError as e:
+
+    image_info = src_img_info
+    if not image_info:
+        try:
+            image_info = qemu_img_info(source, run_as_root=run_as_root)
+        except Exception:
+            # NOTE: at this point, the image conversion has already
+            # happened, and all that's left is some performance logging.
+            # So ignoring an exception from qemu_img_info here is not a
+            # security risk.  I'm afraid that if we are too strict here
+            # we will cause a regression, given that the converted image
+            # source could be cinder glance_store, Glance, or one of
+            # cinder's own backend drivers.  The nfs driver knows
+            # to pass in a src_img_info object, but others may not.
+            #
+            # We are catching the most general Exception here for a
+            # similar reason: the image conversion has already happened.
+            # If the conversion raised a ProcessExecutionError, we would
+            # never have reached this point.  But a PEE now is meaningless,
+            # so we ignore it.
+            pass
+    if not image_info or image_info.virtual_size is None:
         msg = ("The image was successfully converted, but image size "
-               "is unavailable. src %(src)s, dest %(dest)s. %(error)s")
-        LOG.info(msg, {"src": source,
-                       "dest": dest,
-                       "error": e})
+               "is unavailable. src %(src)s, dest %(dest)s")
+        LOG.info(msg, {"src": source, "dest": dest})
         return
 
+    image_size = image_info.virtual_size
     fsz_mb = image_size / units.Mi
     mbps = (fsz_mb / duration)
     msg = ("Image conversion details: src %(src)s, size %(sz).2f MB, "
@@ -539,7 +560,8 @@ def convert_image(source: str,
                        passphrase_file=passphrase_file,
                        compress=compress,
                        src_passphrase_file=src_passphrase_file,
-                       disable_sparse=disable_sparse)
+                       disable_sparse=disable_sparse,
+                       src_img_info=data)
 
 
 def resize_image(source: str,
