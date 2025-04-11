@@ -496,6 +496,80 @@ class TestConvertImage(test.TestCase):
         mock_log.assert_called_with('Insufficient free space on fakedir for'
                                     ' image conversion.')
 
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.image.image_utils._get_qemu_convert_cmd')
+    @mock.patch('cinder.utils.is_blk_device', return_value=False)
+    @mock.patch.object(image_utils.LOG, 'info')
+    @mock.patch.object(image_utils.LOG, 'debug')
+    def test__convert_image_no_virt_size(self,
+                                         mock_debug_log,
+                                         mock_info_log,
+                                         mock_isblk,
+                                         mock_cmd,
+                                         mock_execute,
+                                         mock_info):
+        """Make sure we don't try to do math with a None value"""
+        prefix = ('cgexec', '-g', 'blkio:cg')
+        source = '/source'
+        dest = '/dest'
+        out_format = 'unspecified'
+
+        # 1. no qemu_img_info passed in and qemu_img_info() raises exc
+        mock_info.side_effect = processutils.ProcessExecutionError
+        image_utils._convert_image(prefix, source, dest, out_format)
+        mock_debug_log.assert_not_called()
+        log_msg = mock_info_log.call_args.args[0]
+        self.assertIn("image size is unavailable", log_msg)
+
+        mock_info.reset_mock(side_effect=True)
+        mock_info_log.reset_mock()
+
+        # 2. no qemu_img_info passed in, returned obj has no virtual_size
+        mock_info.return_value = imageutils.QemuImgInfo()
+        image_utils._convert_image(prefix, source, dest, out_format)
+        mock_debug_log.assert_not_called()
+        log_msg = mock_info_log.call_args.args[0]
+        self.assertIn("image size is unavailable", log_msg)
+
+        mock_info.reset_mock(return_value=True)
+        mock_info_log.reset_mock()
+
+        # 3. no qemu_img_info passed in, returned obj has virtual_size
+        mock_info.return_value = imageutils.QemuImgInfo(
+            '{"virtual-size": 1073741824}', format='json')
+        image_utils._convert_image(prefix, source, dest, out_format)
+        log_msg = mock_debug_log.call_args.args[0]
+        self.assertIn("Image conversion details", log_msg)
+        log_msg = mock_info_log.call_args.args[0]
+        self.assertIn("Converted", log_msg)
+
+        mock_info.reset_mock()
+        mock_debug_log.reset_mock()
+        mock_info_log.reset_mock()
+
+        # 4. qemu_img_info passed in but without virtual_size
+        src_img_info = imageutils.QemuImgInfo()
+        image_utils._convert_image(prefix, source, dest, out_format,
+                                   src_img_info=src_img_info)
+        mock_info.assert_not_called()
+        mock_debug_log.assert_not_called()
+        log_msg = mock_info_log.call_args.args[0]
+        self.assertIn("image size is unavailable", log_msg)
+
+        mock_info_log.reset_mock()
+
+        # 5. qemu_img_info passed in with virtual_size
+        src_img_info = imageutils.QemuImgInfo('{"virtual-size": 1073741824}',
+                                              format='json')
+        image_utils._convert_image(prefix, source, dest, out_format,
+                                   src_img_info=src_img_info)
+        mock_info.assert_not_called()
+        log_msg = mock_debug_log.call_args.args[0]
+        self.assertIn("Image conversion details", log_msg)
+        log_msg = mock_info_log.call_args.args[0]
+        self.assertIn("Converted", log_msg)
+
 
 @ddt.ddt
 class TestResizeImage(test.TestCase):
