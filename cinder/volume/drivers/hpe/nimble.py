@@ -318,7 +318,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                                    self._group_target_enabled,
                                    self._storage_protocol,
                                    pool_name)
-        if (volume['size'] > snapshot['volume_size']):
+        if volume['size'] > snapshot['volume_size']:
             vol_size = volume['size'] * units.Ki
             reserve_size = 100 if reserve else 0
             data = {"data": {'size': vol_size,

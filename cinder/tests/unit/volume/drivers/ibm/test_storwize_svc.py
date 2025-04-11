@@ -800,7 +800,7 @@ port_speed!N/A
                 value1 = filter1.split('=')[1]
                 value2 = filter2.split('=')[1]
                 for v in ports:
-                    if (str(v[5]) == value1 and str(v[7]) == value2):
+                    if str(v[5]) == value1 and str(v[7]) == value2:
                         rows.append(v)
             else:
                 value = kwargs['filtervalue'].split('=')[1]

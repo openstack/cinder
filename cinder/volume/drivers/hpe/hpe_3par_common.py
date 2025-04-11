@@ -1590,7 +1590,7 @@ class HPE3PARCommon(object):
         """We have to use a safe hostname length for 3PAR host names."""
         hostname = connector['host']
         unique_fqdn_network = configuration.unique_fqdn_network
-        if (not unique_fqdn_network and connector.get('initiator')):
+        if not unique_fqdn_network and connector.get('initiator'):
             iqn = connector.get('initiator')
             iqn = iqn.replace(":", "-")
             return iqn[::-1][:31]

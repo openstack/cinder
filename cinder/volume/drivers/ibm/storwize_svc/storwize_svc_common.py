@@ -4439,7 +4439,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             if 'IOThrottle_rate' in model_update['metadata']:
                 del model_update['metadata']['IOThrottle_rate']
         model_update['host'] = volume['host']
-        return (model_update)
+        return model_update
 
     def add_vdisk_copy(self, volume, dest_pool, vol_type, auto_delete=False):
         return self._helpers.add_vdisk_copy(volume, dest_pool,

@@ -218,7 +218,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
         """
         nsinfo_list = []
         for line in switch_data:
-            if not (" N " in line):
+            if " N " not in line:
                 continue
             linesplit = line.split()
             if len(linesplit) > 2:

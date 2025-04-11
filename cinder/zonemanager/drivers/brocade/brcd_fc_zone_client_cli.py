@@ -162,7 +162,7 @@ class BrcdFCZoneClientCLI(object):
                 'zone_members_with_sep': zone_members_with_sep}
             LOG.debug("Creating zone, cmd to run %s", cmd)
             self.apply_zone_change(cmd.split())
-            if (iterator_count > 0):
+            if iterator_count > 0:
                 zone_with_sep += ';'
             iterator_count += 1
             zone_with_sep += zone
@@ -243,7 +243,7 @@ class BrcdFCZoneClientCLI(object):
                 'zone_members_with_sep': zone_members_with_sep}
             LOG.debug("Updating zone, cmd to run %s", cmd)
             self.apply_zone_change(cmd.split())
-            if (iterator_count > 0):
+            if iterator_count > 0:
                 zone_with_sep += ';'
             iterator_count += 1
             zone_with_sep += zone
@@ -348,19 +348,17 @@ class BrcdFCZoneClientCLI(object):
         self.apply_zone_change(cmd.split())
 
     def _cfg_trans_abort(self):
-        is_abortable = self._is_trans_abortable()
-        if (is_abortable):
+        if self._is_trans_abortable():
             self.apply_zone_change([zone_constant.CFG_ZONE_TRANS_ABORT])
 
     def _is_trans_abortable(self):
-        is_abortable = False
         stdout, stderr = None, None
         stdout, stderr = self._run_ssh(
             [zone_constant.CFG_SHOW_TRANS], True, 1)
         output = stdout.splitlines()
         is_abortable = False
         for line in output:
-            if (zone_constant.TRANS_ABORTABLE in line):
+            if zone_constant.TRANS_ABORTABLE in line:
                 is_abortable = True
                 break
         if stderr:

@@ -180,7 +180,7 @@ class API(base.Base):
         idx = 0
         while idx < len(services):
             srv = services[idx]
-            if (self._az_matched(srv, availability_zone) and srv.is_up):
+            if self._az_matched(srv, availability_zone) and srv.is_up:
                 return srv.host
             idx = idx + 1
         return None

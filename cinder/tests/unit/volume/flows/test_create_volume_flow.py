@@ -1355,7 +1355,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
     def test_get_flow(self, is_migration_target, use_quota, flow_mock,
                       extract_ref_mock, onfailure_mock, extract_spec_mock,
                       notify_mock, create_mock, onfinish_mock, load_mock):
-        assert (isinstance(is_migration_target, bool))
+        self.assertIsInstance(is_migration_target, bool)
         filter_properties = {'retry': mock.sentinel.retry}
         tasks = [mock.call(extract_ref_mock.return_value),
                  mock.call(onfailure_mock.return_value),

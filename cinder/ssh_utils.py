@@ -115,11 +115,11 @@ class SSHPool(pools.Pool):
         self.resize(1)
         # release all but the last connection using
         # get and put to allow any get waiters to complete.
-        while (self.waiting() or self.current_size > 1):
+        while self.waiting() or self.current_size > 1:
             conn = self.get()
             self.put(conn)
         # Now free everthing that is left
-        while (self.free_items):
+        while self.free_items:
             self.free_items.popleft().close()
             self.current_size -= 1
 

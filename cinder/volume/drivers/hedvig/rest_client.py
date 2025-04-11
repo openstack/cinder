@@ -382,7 +382,7 @@ class RestClient(object):
 
         if obj['status'] != 'ok':
             msg = "is not mapped to the specified controller"
-            if (msg not in obj['message']):
+            if msg not in obj['message']:
                 errmsg = _('REST call status - %s') % obj['status']
                 raise exception.VolumeDriverException(errmsg)
 
