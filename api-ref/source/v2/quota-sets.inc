@@ -146,8 +146,7 @@ Request
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/quotas-delete-response.json
-   :language: javascript
+There is no body content for the response of a successful DELETE operation.
 
 Get default quotas
 ~~~~~~~~~~~~~~~~~~

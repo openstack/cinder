@@ -686,7 +686,7 @@ Upgrade Notes
 
 .. releasenotes/notes/remove-eqlx-deprecated-options-89ba02c41d4da62a.yaml @ b'c5630ce51dd7b3902bbf204707a3ae6674884109'
 
-- 
+-
   Removing the Dell EqualLogic driver's deprecated configuration options.
   Please replace old options in your cinder.conf with the new one.
 

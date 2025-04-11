@@ -504,8 +504,6 @@ test_update_migrated_volume_smp:
 
 test_create_group_snap:
 
-test_create_cgsnapshot:
-
 test_create_cloned_cg:
 
 test_create_cloned_group:

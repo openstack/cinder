@@ -15,6 +15,6 @@
         ],
         "name": "first volume",
         "volume_id": "%(uuid)s",
-	"no_snapshots": false
+        "no_snapshots": false
     }
 }
