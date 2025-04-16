@@ -490,6 +490,7 @@ class QuotaCommands(object):
         ctxt = context.get_admin_context()
         # Get the quota usage types and their sync methods
         resources = quota.QUOTAS.resources
+        resources.update(quota.GROUP_QUOTAS.resources)
 
         # Get all project ids that have quota usage. Method doesn't lock
         # projects, since newly added projects should not be out of sync and

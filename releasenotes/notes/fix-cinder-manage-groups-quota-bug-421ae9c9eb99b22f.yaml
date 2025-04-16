@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #2107451 <https://bugs.launchpad.net/cinder/+bug/2107451>`_: Fixed
+    crash of `cinder-manage quota sync` if there is a row in the
+    quota_usage table with the value groups for column resource
