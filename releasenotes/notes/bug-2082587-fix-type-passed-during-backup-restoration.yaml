@@ -1,5 +1,5 @@
 ---
 fixes:
   - |
-    `Bug #2082587 <https://bugs.launchpad.net/cinder/+bug/2082587>` _: Fixed
-     backup restoration throwing TypeError on new volume.
+    `Bug #2082587 <https://bugs.launchpad.net/cinder/+bug/2082587>`_: Fixed
+    backup restoration throwing TypeError on new volume.
