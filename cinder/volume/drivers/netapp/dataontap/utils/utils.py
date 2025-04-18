@@ -84,6 +84,7 @@ def get_client_for_backend(backend_name, vserver_name=None, force_rest=False):
     if config.netapp_use_legacy_client and not force_rest:
         client = client_cmode.Client(
             transport_type=config.netapp_transport_type,
+            ssl_cert_path=config.netapp_ssl_cert_path,
             username=config.netapp_login,
             password=config.netapp_password,
             hostname=config.netapp_server_hostname,

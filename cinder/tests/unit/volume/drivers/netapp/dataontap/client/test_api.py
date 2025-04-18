@@ -43,6 +43,37 @@ class NetAppApiServerTests(test.TestCase):
         self.root = netapp_api.NaServer('127.0.0.1')
         super(NetAppApiServerTests, self).setUp()
 
+    @ddt.data(
+        {'host': '127.0.0.1', 'ssl_cert_path': None,
+         'port': 8080, 'api_trace_pattern': None
+         },
+        {'host': '127.0.0.1', 'ssl_cert_path': '/test/fake_cert.pem',
+         'port': 8080, 'api_trace_pattern': 'pattern'
+         },
+    )
+    @ddt.unpack
+    def test__init__ssl_verify(self, host, ssl_cert_path, port,
+                               api_trace_pattern):
+
+        with mock.patch(
+            'cinder.volume.drivers.netapp.utils.setup_api_trace_pattern'
+        ) as mock_trace:
+            server = netapp_api.NaServer(
+                host=host,
+                ssl_cert_path=ssl_cert_path,
+                port=port,
+                api_trace_pattern=api_trace_pattern
+            )
+
+            self.assertEqual(server._host, host)
+            self.assertEqual(server._port, str(port) if port else None)
+            self.assertEqual(server._refresh_conn, True)
+
+            if api_trace_pattern:
+                mock_trace.assert_called_once_with(api_trace_pattern)
+            else:
+                mock_trace.assert_not_called()
+
     @ddt.data(None, 'ftp')
     def test_set_transport_type_value_error(self, transport_type):
         """Tests setting an invalid transport type"""
@@ -190,6 +221,31 @@ class NetAppApiServerTests(test.TestCase):
         self.root._build_opener()
 
         self.assertTrue(mock_invoke.called)
+
+    @mock.patch('ssl._create_unverified_context')
+    @mock.patch('urllib.request.build_opener')
+    def test_build_opener_with_ssl_verification_disabled(
+            self, mock_build_opener, mock_unverified_context):
+        self.root._ssl_verify = False
+        mock_unverified_context.return_value = 'mock_unverified_context'
+
+        self.root._build_opener()
+
+        mock_unverified_context.assert_called_once()
+        mock_build_opener.assert_called_once()
+
+    @mock.patch('urllib.request.HTTPPasswordMgrWithDefaultRealm')
+    @mock.patch('urllib.request.build_opener')
+    def test_build_opener_with_basic_auth(self, mock_build_opener,
+                                          mock_password_mgr):
+        self.root._username = 'user'
+        self.root._password = 'pass'
+        mock_password_mgr.return_value = mock.Mock()
+
+        self.root._build_opener()
+
+        mock_password_mgr.assert_called_once()
+        mock_build_opener.assert_called_once()
 
     @ddt.data(None, zapi_fakes.FAKE_XML_STR)
     def test_send_http_request_value_error(self, na_element):
