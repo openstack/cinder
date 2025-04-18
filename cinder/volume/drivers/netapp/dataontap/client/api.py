@@ -71,8 +71,8 @@ class NaServer(object):
 
     def __init__(self, host, server_type=SERVER_TYPE_FILER,
                  transport_type=TRANSPORT_TYPE_HTTP,
-                 username=None,
-                 password=None, port=None, api_trace_pattern=None,
+                 ssl_cert_path=None, username=None, password=None, port=None,
+                 api_trace_pattern=None,
                  private_key_file=None, certificate_file=None,
                  ca_certificate_file=None, certificate_host_validation=None):
         self._host = host
@@ -87,6 +87,7 @@ class NaServer(object):
         self._ca_certificate_file = ca_certificate_file
         self._certificate_host_validation = certificate_host_validation
         self._refresh_conn = True
+        self._ssl_cert_path = ssl_cert_path
 
         if api_trace_pattern is not None:
             na_utils.setup_api_trace_pattern(api_trace_pattern)
@@ -306,7 +307,16 @@ class NaServer(object):
             auth_handler = self._create_certificate_auth_handler()
         else:
             auth_handler = self._create_basic_auth_handler()
-        opener = urllib.request.build_opener(auth_handler)
+
+        # Create an SSL context based on _ssl_cert_path
+        if isinstance(self._ssl_cert_path, str):  # with cert path
+            ssl_context = (
+                ssl.create_default_context(cafile=self._ssl_cert_path))
+        else:  # Disable SSL verification
+            ssl_context = ssl._create_unverified_context()
+
+        https_handler = urllib.request.HTTPSHandler(context=ssl_context)
+        opener = urllib.request.build_opener(auth_handler, https_handler)
         self._opener = opener
 
     def _create_basic_auth_handler(self):

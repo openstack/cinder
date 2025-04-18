@@ -1,0 +1,18 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: Added support for self-signed certificate
+    support for HTTPS transport for management communication between
+    Cinder and NetApp ONTAP.
+
+    ONTAP systems utilize self-signed certificates for HTTPS management
+    access by default. These certificates are generated automatically
+    during the initial setup or deployment of ONTAP. When ssl_cert_path
+    is configured with the extracted certificate file (.PEM format),
+    Cinder establishes HTTPS communication with full certificate validation.
+    When ssl_cert_path is not provided, Cinder automatically uses HTTPS
+    with an unverified SSL context, which provides encrypted communication
+    but skips certificate validation. This allows secure transport while
+    maintaining ease of configuration with ONTAP's default self-signed
+    certificates. Administrators can extract the certificate using tools
+    such as openssl or curl for full certificate validation if desired.
