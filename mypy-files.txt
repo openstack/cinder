@@ -43,6 +43,7 @@ cinder/service.py
 cinder/utils.py
 cinder/volume/__init__.py
 cinder/volume/api.py
+cinder/volume/drivers/nfs.py
 cinder/volume/drivers/rbd.py
 cinder/volume/drivers/remotefs.py
 cinder/volume/flows/api/create_volume.py

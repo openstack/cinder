@@ -19,6 +19,7 @@ import errno
 import os
 import tempfile
 import time
+import typing
 
 from castellan import key_manager
 from os_brick.remotefs import remotefs as remotefs_brick
@@ -100,9 +101,9 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         self.configuration.append_config_values(nfs_opts)
         root_helper = utils.get_root_helper()
         # base bound to instance is used in RemoteFsConnector.
-        self.base = getattr(self.configuration,
-                            'nfs_mount_point_base')
-        self.base = os.path.realpath(self.base)
+        base = getattr(self.configuration,
+                       'nfs_mount_point_base')
+        self.base = os.path.realpath(base)
         opts = getattr(self.configuration,
                        'nfs_mount_options')
 
@@ -533,7 +534,9 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         data = self._stats
 
         global_capacity = data['total_capacity_gb']
+        global_capacity = typing.cast(float, global_capacity)
         global_free = data['free_capacity_gb']
+        global_free = typing.cast(float, global_free)
 
         thin_enabled = self.configuration.nfs_sparsed_volumes
         if thin_enabled:
