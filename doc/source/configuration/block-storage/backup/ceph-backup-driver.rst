@@ -21,6 +21,26 @@ stored as snapshots so that minimal space is consumed in the backup
 store. It takes far less time to restore a volume than to take a full
 copy.
 
+By default, all incremental backups are held on the source volume storage,
+which can take up much disk space on the usually more expensive
+primary storage compared to backup storage. Enabling the option
+``backup_ceph_max_snapshots`` can save disk space on the source
+volume storage by only keeping a limited number of snapshots per backup volume.
+After every successful creation of a new incremental backup, the Ceph backup
+driver will then ensure that excess snapshots of the corresponding backup
+volume are deleted so that only the ``backup_ceph_max_snapshots``
+most recent snapshots are kept on the primary storage.
+However, this can cause incremental backups to automatically become full
+backups instead if a user manually deleted at least
+``backup_ceph_max_snapshots`` incremental backups. In that case
+the next snapshot, being a full backup, will require more disk space on
+the backup storage and will take longer to complete than an incremental
+backup would have.
+
+Thus, the option allows to configure a tradeoff between required space on the
+source volume storage and required space on the backup storage as well as a
+longer backup process under the above conditions.
+
 .. note::
 
     Block Storage enables you to:
@@ -57,3 +77,4 @@ This example shows the default options for the Ceph backup driver.
     backup_ceph_pool = backups
     backup_ceph_stripe_unit = 0
     backup_ceph_stripe_count = 0
+    backup_ceph_max_snapshots = 0
