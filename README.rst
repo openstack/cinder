@@ -2,11 +2,6 @@
 OpenStack Cinder
 ================
 
-.. image:: https://governance.openstack.org/tc/badges/cinder.svg
-    :target: https://governance.openstack.org/tc/reference/tags/index.html
-
-.. Change things from this point on
-
 OpenStack Cinder is a storage service for an open cloud computing service.
 
 You can learn more about Cinder at:
@@ -31,4 +26,5 @@ You can raise bugs on `Launchpad <https://bugs.launchpad.net/cinder>`__
 
 Python client
 -------------
+
 `Python Cinderclient <https://opendev.org/openstack/python-cinderclient>`__
