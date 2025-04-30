@@ -94,6 +94,7 @@ class PowerMaxMaskingTest(test.TestCase):
     @mock.patch.object(masking.PowerMaxMasking,
                        'get_or_create_masking_view_and_map_lun')
     def test_setup_masking_view(self, mock_get_or_create_mv):
+        mock_get_or_create_mv.return_value = {}, None
         self.driver.masking.setup_masking_view(
             self.data.array, self.data.test_volume,
             self.maskingviewdict, self.extra_specs)
@@ -105,27 +106,27 @@ class PowerMaxMaskingTest(test.TestCase):
                        '_check_adding_volume_to_storage_group')
     @mock.patch.object(masking.PowerMaxMasking, '_move_vol_from_default_sg',
                        return_value=None)
-    @mock.patch.object(masking.PowerMaxMasking, '_get_or_create_masking_view',
-                       side_effect=[None, 'Error in masking view retrieval',
-                                    exception.VolumeBackendAPIException])
-    @mock.patch.object(rest.PowerMaxRest, 'get_element_from_masking_view',
-                       side_effect=[tpd.PowerMaxData.port_group_name_i,
-                                    Exception('Exception')])
+    @mock.patch.object(
+        masking.PowerMaxMasking, '_get_or_create_masking_view',
+        side_effect=[None, 'Error in masking view retrieval',
+                     exception.VolumeBackendAPIException(
+                         'must supply a valid pre-created port group'
+                     )])
     def test_get_or_create_masking_view_and_map_lun(
-            self, mock_masking_view_element, mock_masking, mock_move,
+            self, mock_masking, mock_move,
             mock_add_volume, mock_validate):
-        rollback_dict = (
+        rollback_dict, error_msg = (
             self.driver.masking.get_or_create_masking_view_and_map_lun(
                 self.data.array, self.data.test_volume,
                 self.maskingviewdict['maskingview_name'],
                 self.maskingviewdict, self.extra_specs))
         self.assertEqual(self.maskingviewdict, rollback_dict)
-        self.assertRaises(
-            exception.VolumeBackendAPIException,
-            self.driver.masking.get_or_create_masking_view_and_map_lun,
-            self.data.array, self.data.test_volume,
-            self.maskingviewdict['maskingview_name'],
-            self.maskingviewdict, self.extra_specs)
+        rollback_dict, error_msg = (
+            self.driver.masking.get_or_create_masking_view_and_map_lun(
+                self.data.array, self.data.test_volume,
+                self.maskingviewdict['maskingview_name'],
+                self.maskingviewdict, self.extra_specs))
+        self.assertEqual(error_msg, "Error in masking view retrieval")
         self.maskingviewdict['slo'] = None
         self.assertRaises(
             exception.VolumeBackendAPIException,

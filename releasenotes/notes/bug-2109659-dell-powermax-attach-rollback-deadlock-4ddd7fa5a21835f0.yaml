@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Dell PowerMax Driver `Bug #2109659
+    <https://bugs.launchpad.net/cinder/+bug/2109659>`_: Fixed
+    the issue that the rollback of attach volume hangs in
+    Dell PowerMax driver.

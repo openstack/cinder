@@ -32,6 +32,7 @@ from cinder.volume import volume_utils
 LOG = logging.getLogger(__name__)
 
 CREATE_IG_ERROR = "is already in use in another Initiator Group"
+GET_PG_ERROR = "must supply a valid pre-created port group"
 
 
 class PowerMaxMasking(object):
@@ -50,15 +51,37 @@ class PowerMaxMasking(object):
     def setup_masking_view(
             self, serial_number, volume, masking_view_dict, extra_specs):
 
-        @coordination.synchronized("emc-mv-{maskingview_name}-{serial_number}")
-        def do_get_or_create_masking_view_and_map_lun(
-                maskingview_name, serial_number):
-            return self.get_or_create_masking_view_and_map_lun(
-                serial_number, volume, maskingview_name, masking_view_dict,
-                extra_specs)
-        return do_get_or_create_masking_view_and_map_lun(
-            masking_view_dict[utils.MV_NAME], serial_number)
+        maskingview_name = masking_view_dict[utils.MV_NAME]
+        volume_name = masking_view_dict[utils.VOL_NAME]
+        device_id = masking_view_dict[utils.DEVICE_ID]
 
+        rollback_dict, error_message = (
+            self.get_or_create_masking_view_and_map_lun(
+                serial_number, volume, maskingview_name, masking_view_dict,
+                extra_specs))
+
+        if error_message:
+            # Rollback code if we cannot complete any of the steps above
+            # successfully then we must roll back by adding the volume back to
+            # the default storage group for that slo/workload combination.
+
+            self.check_if_rollback_action_for_masking_required(
+                serial_number, volume, device_id, rollback_dict)
+
+            exception_message = (_(
+                "Failed to get, create or add volume %(volumeName)s "
+                "to masking view %(maskingview_name)s. "
+                "The error message received was %(errorMessage)s.")
+                % {'maskingview_name': maskingview_name,
+                   'volumeName': volume_name,
+                   'errorMessage': error_message})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
+
+        return rollback_dict
+
+    @coordination.synchronized("emc-mv-{maskingview_name}-{serial_number}")
     def get_or_create_masking_view_and_map_lun(
             self, serial_number, volume, maskingview_name, masking_view_dict,
             extra_specs):
@@ -71,11 +94,10 @@ class PowerMaxMasking(object):
         :param maskingview_name: the masking view name
         :param masking_view_dict: the masking view dict
         :param extra_specs: the extra specifications
-        :returns: rollback_dict
+        :returns: rollback_dict, error_message
         :raises: VolumeBackendAPIException
         """
         storagegroup_name = masking_view_dict[utils.SG_NAME]
-        volume_name = masking_view_dict[utils.VOL_NAME]
         masking_view_dict[utils.EXTRA_SPECS] = extra_specs
         device_id = masking_view_dict[utils.DEVICE_ID]
         rep_mode = extra_specs.get(utils.REP_MODE, None)
@@ -110,29 +132,16 @@ class PowerMaxMasking(object):
                 "Attempting rollback.",
                 {'maskingview_name': masking_view_dict[utils.MV_NAME]})
             error_message = str(e)
+            if GET_PG_ERROR in error_message:
+                # Port group sanity check failed.
+                # As masking view is not created yet,
+                # no need to perform rollback.
+                # Raise the exception again to interupt attch volume.
+                raise e
 
         rollback_dict['default_sg_name'] = default_sg_name
 
-        if error_message:
-            # Rollback code if we cannot complete any of the steps above
-            # successfully then we must roll back by adding the volume back to
-            # the default storage group for that slo/workload combination.
-
-            self.check_if_rollback_action_for_masking_required(
-                serial_number, volume, device_id, rollback_dict)
-
-            exception_message = (_(
-                "Failed to get, create or add volume %(volumeName)s "
-                "to masking view %(maskingview_name)s. "
-                "The error message received was %(errorMessage)s.")
-                % {'maskingview_name': maskingview_name,
-                   'volumeName': volume_name,
-                   'errorMessage': error_message})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(
-                message=exception_message)
-
-        return rollback_dict
+        return rollback_dict, error_message
 
     def _validate_attach(
             self, serial_number, device_id, dest_sg_name, dest_mv_name):
@@ -471,8 +480,8 @@ class PowerMaxMasking(object):
         """
         start_time = time.time()
 
-        @coordination.synchronized("emc-sg-{child_sg}-{serial_number}")
-        @coordination.synchronized("emc-sg-{parent_sg}-{serial_number}")
+        @coordination.synchronized("emc-sg-{child_sg}-{serial_number}",
+                                   "emc-sg-{parent_sg}-{serial_number}")
         def do_add_sg_to_sg(child_sg, parent_sg, serial_number):
             # Check if another process has added the child to the
             # parent sg while this process was waiting for the lock
@@ -1509,9 +1518,9 @@ class PowerMaxMasking(object):
             parent_sg_name = self.rest.get_element_from_masking_view(
                 serial_number, masking_name, storagegroup=True)
 
-            @coordination.synchronized("emc-mv-{parent_name}-{serial_number}")
-            @coordination.synchronized("emc-mv-{mv_name}-{serial_number}")
-            @coordination.synchronized("emc-sg-{sg_name}-{serial_number}")
+            @coordination.synchronized("emc-mv-{parent_name}-{serial_number}",
+                                       "emc-mv-{mv_name}-{serial_number}",
+                                       "emc-sg-{sg_name}-{serial_number}")
             def do_remove_volume_from_sg(
                     mv_name, sg_name, parent_name, serial_number):
                 # Make sure volume hasn't been recently removed from the sg
