@@ -59,11 +59,26 @@ following capabilities in the OpenStack Block Storage API
 
 * **maxBWS** - Maximum bandwidth limit in MB/s. Range: 1 - 524288 (512GB/s)
 
+* **maxIOPS_per_GB** - Maximum number of IOPs allowed for volume based on
+                       capacity. Range: 100 - 100M
+
+* **maxBWS_per_GB** - Maximum bandwidth limit in MB/s based on capacity.
+                      Range: 1 - 524288 (512GB/s)
+
+If both max and per_GB values are provided for a QoS type, the max value will
+take precedence.
+
+If the calculated per_GB value for a volume based on capacity is greater
+than the maximum allowed value, the maximum allowed values will be applied.
+
 The qos keys above must be created and asscoiated to a volume type. For
 information on how to set the key-value pairs and associate them with a
 volume type see the `volume qos
 <https://docs.openstack.org/python-openstackclient/latest/cli/command-objects/volume-qos.html>`_
 section in the OpenStack Client command list.
+
+QoS settings are not applied to any volume in a volume group as these are
+controlled at the volume group level.
 
 Configure OpenStack and Purity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

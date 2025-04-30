@@ -228,7 +228,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     """Performs volume management on Pure Storage FlashArray."""
 
     SUPPORTS_ACTIVE_ACTIVE = True
-    PURE_QOS_KEYS = ['maxIOPS', 'maxBWS']
+    PURE_QOS_KEYS = ['maxIOPS', 'maxBWS', 'maxIOPS_per_GB', 'maxBWS_per_GB']
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Pure_Storage_CI"
 
@@ -346,7 +346,19 @@ class PureBaseVolumeDriver(san.SanDriver):
                             target_array)
 
     @pure_driver_debug_trace
-    def set_qos(self, array, vol_name, qos):
+    def set_qos(self, array, vol_name, vol_size, qos):
+        # max_IOPS and max_BWS override the per GB IOPS and BW values if
+        # both are provided. If only a per GB value is provided then
+        # we must ensure, based on volume size, the IOPS or BW values
+        # do not exceed the maximum limits for these values allowed per
+        # volume.
+        if qos['maxIOPS'] == 0 and qos['maxIOPS_per_GB']:
+            qos['maxIOPS'] = min(MAX_IOPS,
+                                 int(qos['maxIOPS_per_GB']) * vol_size)
+        if qos['maxBWS'] == 0 and qos['maxBWS_per_GB']:
+            qos['maxBWS'] = min(MAX_BWS,
+                                int(qos['maxBWS_per_GB']) * vol_size)
+
         if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
             array.patch_volumes(names=[vol_name],
                                 volume=flasharray.VolumePatch(
@@ -444,6 +456,19 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     @pure_driver_debug_trace
     def create_with_qos(self, array, vol_name, vol_size, qos):
+        # max_IOPS and max_BWS override the per GB IOPS and BW values if
+        # both are provided. Iif only a per GB value is provided then
+        # we must ensure, based on volume size, the IOPS or BW values
+        # do not exceed the maximum limits for these values allowed per
+        # volume.
+        gb_size = vol_size / units.Gi
+        if qos['maxIOPS'] == 0 and qos['maxIOPS_per_GB']:
+            qos['maxIOPS'] = min(MAX_IOPS,
+                                 int(qos['maxIOPS_per_GB']) * gb_size)
+        if qos['maxBWS'] == 0 and qos['maxBWS_per_GB']:
+            qos['maxBWS'] = min(MAX_BWS,
+                                int(qos['maxBWS_per_GB']) * gb_size)
+
         if self._array.safemode:
             if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
                 array.post_volumes(names=[vol_name],
@@ -826,7 +851,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                                snapshot["volume_size"],
                                volume["size"])
         if qos is not None:
-            self.set_qos(current_array, vol_name, qos)
+            self.set_qos(current_array, vol_name, snapshot["volume_size"], qos)
         else:
             current_array.patch_volumes(names=[vol_name],
                                         volume=flasharray.VolumePatch(
@@ -938,11 +963,15 @@ class PureBaseVolumeDriver(san.SanDriver):
                                vol_name,
                                src_vref["size"],
                                volume["size"])
-        # Check if the volume_type has QoS settings and if so
-        # apply them to the newly created volume
-        qos = self._get_qos_settings(volume.volume_type)
-        if qos:
-            self.set_qos(current_array, vol_name, qos)
+        type_id = volume.get('volume_type_id')
+        ctxt = context.get_admin_context()
+        if type_id is not None:
+            volume_type = volume_types.get_volume_type(ctxt, type_id)
+            # Check if the volume_type has QoS settings and if so
+            # apply them to the newly created volume
+            qos = self._get_qos_settings(volume_type)
+            if qos is not None:
+                self.set_qos(current_array, vol_name, volume["size"], qos)
 
         return self._setup_volume(current_array, volume, vol_name)
 
@@ -1385,17 +1414,25 @@ class PureBaseVolumeDriver(san.SanDriver):
         return thin_provisioning
 
     @pure_driver_debug_trace
-    def extend_volume(self, volume, new_size):
+    def extend_volume(self, volume, new_size_gb):
         """Extend volume to new_size."""
 
         # Get current array in case we have failed over via replication.
         current_array = self._get_current_array()
 
         vol_name = self._get_vol_name(volume)
-        new_size = new_size * units.Gi
+        new_size = new_size_gb * units.Gi
         current_array.patch_volumes(names=[vol_name],
                                     volume=flasharray.VolumePatch(
                                     provisioned=new_size))
+        ctxt = context.get_admin_context()
+        type_id = volume.get('volume_type_id')
+        if type_id is not None:
+            volume_type = volume_types.get_volume_type(ctxt, type_id)
+            LOG.debug("QOS volume type: '%s'", volume_type)
+            qos = self._get_qos_settings(volume_type)
+            if qos is not None:
+                self.set_qos(current_array, vol_name, new_size, qos)
 
     def _add_volume_to_consistency_group(self, group, vol_name):
         pgroup_name = self._get_pgroup_name(group)
@@ -1949,7 +1986,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         qos = None
         qos = self._get_qos_settings(volume.volume_type)
         if qos:
-            self.set_qos(current_array, new_vol_name, qos)
+            vol_size = int(volume_data.provisioned / units.Gi)
+            self.set_qos(current_array, new_vol_name, vol_size, qos)
         volume.provider_id = new_vol_name
         async_enabled = self._enable_async_replication_if_needed(current_array,
                                                                  volume)
@@ -2403,7 +2441,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         if qos == {}:
             return None
         else:
-            # Check set vslues are within limits
+            # Check set values are within limits
             iops_qos = int(qos.get('maxIOPS', 0))
             bw_qos = int(qos.get('maxBWS', 0)) * MIN_BWS
             if iops_qos != 0 and not (MIN_IOPS <= iops_qos <= MAX_IOPS):
@@ -2419,6 +2457,8 @@ class PureBaseVolumeDriver(san.SanDriver):
 
             qos['maxIOPS'] = iops_qos
             qos['maxBWS'] = bw_qos
+            qos['maxIOPS_per_GB'] = int(qos.get('maxIOPS_per_GB', 0))
+            qos['maxBWS_per_GB'] = int(qos.get('maxBWS_per_GB', 0)) * MIN_BWS
         return qos
 
     def _generate_purity_vol_name(self, volume):
@@ -2769,7 +2809,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         qos = self._get_qos_settings(new_type)
         vol_name = self._generate_purity_vol_name(volume)
         if qos is not None:
-            self.set_qos(current_array, vol_name, qos)
+            self.set_qos(current_array, vol_name, volume["size"], qos)
         else:
             current_array.patch_volumes(names=[vol_name],
                                         volume=flasharray.VolumePatch(
