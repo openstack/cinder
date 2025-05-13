@@ -205,6 +205,10 @@
         # to turn this on (currently defaults to false):
         # MYSQL_REDUCE_MEMORY: true
       devstack_local_conf:
+        post-config:
+          $GLANCE_API_CONF:
+            DEFAULT:
+              do_secure_hash: False
         test-config:
           $TEMPEST_CONFIG:
             volume-feature-enabled:
