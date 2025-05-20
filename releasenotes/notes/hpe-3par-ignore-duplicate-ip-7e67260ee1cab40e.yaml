@@ -1,0 +1,5 @@
+fixes:
+  - |
+    HPE 3par driver `bug #2112433
+    <https://bugs.launchpad.net/cinder/+bug/2112433>`_: Fixed failure
+    observed when vlan ip is same as iSCSI ip by ignoring the duplicate ip
