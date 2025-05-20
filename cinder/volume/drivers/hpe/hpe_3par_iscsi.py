@@ -132,10 +132,11 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.7 - Use vlan iscsi ips. Bug #2015034
         4.0.8 - Add ipv6 support. Bug #2045411
         4.0.9 - getWsApiVersion now requires login
+        4.0.10 - Ignore duplicate IP address in iSCSI/vlan ip
 
     """
 
-    VERSION = "4.0.9"
+    VERSION = "4.0.10"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -330,6 +331,8 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         for port in ready_ports:
             iscsi_ip = port['IPAddr']
             if iscsi_ip in target_portal_ips:
+                LOG.debug("for iscsi ip: %(ip)s, create vlun or use existing",
+                          {'ip': iscsi_ip})
                 lun_id = (
                     self._vlun_create_or_use_existing(
                         volume, common, host, iscsi_ips,
@@ -338,26 +341,31 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                         target_portal_ips,
                         existing_vluns, iscsi_ip,
                         lun_id, port))
+            else:
+                LOG.debug("iscsi ip: %(ip)s was not found in "
+                          "hpe3par_iscsi_ips list defined in "
+                          "cinder.conf.", {'ip': iscsi_ip})
 
             if 'iSCSIVlans' in port:
+                LOG.debug("for port IPAddr: %(ip)s, the iSCSIVlans are: "
+                          "%(vlans)s",
+                          {'ip': iscsi_ip, 'vlans': port['iSCSIVlans']})
                 for vip in port['iSCSIVlans']:
-                    iscsi_ip = vip['IPAddr']
-                    if iscsi_ip in target_portal_ips:
-                        LOG.debug("vlan ip: %(ip)s", {'ip': iscsi_ip})
-
+                    vlan_ip = vip['IPAddr']
+                    # if vlan_ip is in cinder.conf and
+                    # vlan_ip is not same as iscsi_ip
+                    # only then proceed with lun creation
+                    if vlan_ip in target_portal_ips and vlan_ip != iscsi_ip:
+                        LOG.debug("for vlan ip: %(ip)s, create vlun or use "
+                                  "existing", {'ip': vlan_ip})
                         lun_id = (
                             self._vlun_create_or_use_existing(
                                 volume, common, host, iscsi_ips,
                                 target_portals, target_iqns,
                                 target_luns, remote_client,
                                 target_portal_ips,
-                                existing_vluns, iscsi_ip,
+                                existing_vluns, vlan_ip,
                                 lun_id, port))
-
-            else:
-                LOG.warning("iSCSI IP: '%s' was not found in "
-                            "hpe3par_iscsi_ips list defined in "
-                            "cinder.conf.", iscsi_ip)
 
     @volume_utils.trace
     @coordination.synchronized('3par-{volume.id}')
