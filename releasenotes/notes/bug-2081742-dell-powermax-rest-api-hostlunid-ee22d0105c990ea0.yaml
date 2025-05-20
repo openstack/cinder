@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Dell PowerMax Driver `bug #2081742
+    <https://bugs.launchpad.net/cinder/+bug/2081742>`_: The REST
+    API calls for the masking view connection do not return
+    the HostLUN ID immediately. To address this, an exception
+    has been added to implement a retry mechanism.
