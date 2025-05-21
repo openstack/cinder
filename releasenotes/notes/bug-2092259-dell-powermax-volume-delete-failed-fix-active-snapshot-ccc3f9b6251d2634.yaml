@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Dell PowerMax Driver `bug #2092259
+    <https://bugs.launchpad.net/cinder/+bug/2092259>`_: Before
+    a volume can be deleted, the driver issues a command to clean up
+    active snapshots in the backend and then polls the backend
+    to make sure the cleanup has occurred.
+    This fix enhances the polling mechanism to give the backend
+    more time to do the cleanup, thereby increasing the probability
+    that the driver will be able to make a successful volume deletion
+    request.
