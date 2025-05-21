@@ -17,6 +17,7 @@ import json
 import pathlib
 from unittest import mock
 
+import ddt
 import requests.exceptions
 
 from cinder import exception
@@ -26,6 +27,7 @@ from cinder.volume.drivers.dell_emc.powerflex import driver
 from cinder.volume.drivers.dell_emc.powerflex import rest_client
 
 
+@ddt.ddt
 class TestPowerFlexClient(test.TestCase):
 
     params = {'protectionDomainId': '1',
@@ -36,12 +38,12 @@ class TestPowerFlexClient(test.TestCase):
               'compressionMethod': 'None'}
 
     expected_status_code = 500
-    status_code_ok = mock.Mock(status_code=http_client.OK)
-    status_code_bad = mock.Mock(status_code=http_client.BAD_REQUEST)
     response_error = {"errorCode": "123", "message": "Error message"}
 
     def setUp(self):
         super(TestPowerFlexClient, self).setUp()
+        self.status_code_ok = mock.Mock(status_code=http_client.OK)
+        self.status_code_bad = mock.Mock(status_code=http_client.BAD_REQUEST)
         self.configuration = conf.Configuration(driver.powerflex_opts,
                                                 conf.SHARED_CONF_GROUP)
         self._set_overrides()
@@ -499,3 +501,149 @@ class TestPowerFlexClient(test.TestCase):
                                    self.client.create_nvme_host,
                                    self.host_nqn, self.host_name)
             self.assertIn("Failed to create nvme host: Error message.", ex.msg)
+
+    @mock.patch("cinder.volume.drivers.dell_emc."
+                "powerflex.rest_client.RestClient._get_protection_domain_id")
+    @mock.patch.object(rest_client.RestClient,
+                       'execute_powerflex_post_request')
+    def test_init_powerflex_gen_type_success(self,
+                                             mock_post,
+                                             mock_get_domain_id):
+        domain_name = "domain-A"
+        domain_id = "domain-id-123"
+        mock_get_domain_id.return_value = domain_id
+
+        mock_response = mock.Mock()
+        mock_response.status_code = http_client.OK
+        mock_post.return_value = (mock_response, [{"genType": "EC"}])
+
+        result = self.client.init_powerflex_gen_type(domain_name)
+
+        self.assertEqual("EC", result)
+        mock_get_domain_id.assert_called_once_with(domain_name)
+        mock_post.assert_called_once_with(
+            "/types/ProtectionDomain/instances/action/queryBySelectedIds",
+            {"ids": [domain_id]}
+        )
+
+    @mock.patch("cinder.volume.drivers.dell_emc."
+                "powerflex.rest_client.RestClient._get_protection_domain_id")
+    @mock.patch.object(rest_client.RestClient,
+                       'execute_powerflex_post_request')
+    def test_init_powerflex_gen_type_multiple_pools_same_gen_type(
+            self, mock_post, mock_get_domain_id):
+        """Test that multiple pools with the same gen type are handled."""
+
+        pools = [
+            ("domain-A", "domain-id-1"),
+            ("domain-B", "domain-id-2"),
+            ("domain-C", "domain-id-3"),
+        ]
+        mock_get_domain_id.side_effect = [did for _, did in pools]
+
+        mock_response = mock.Mock()
+        mock_response.status_code = http_client.OK
+        mock_post.side_effect = [
+            (mock_response, [{"genType": "EC"}]),
+            (mock_response, [{"genType": "EC"}]),
+            (mock_response, [{"genType": "EC"}]),
+        ]
+
+        for domain_name, _ in pools:
+            result = self.client.init_powerflex_gen_type(domain_name)
+            self.assertEqual("EC", result)
+
+        self.assertTrue(self.client.check_powerflex_ec_version())
+        self.assertEqual(mock_get_domain_id.call_count, 3)
+        self.assertEqual(mock_post.call_count, 3)
+
+    @mock.patch("cinder.volume.drivers.dell_emc.powerflex."
+                "rest_client.RestClient._get_protection_domain_id")
+    @mock.patch.object(rest_client.RestClient,
+                       'execute_powerflex_post_request')
+    def test_init_powerflex_gen_type_failure(self,
+                                             mock_post,
+                                             mock_get_domain_id):
+        domain_name = "domain-B"
+        domain_id = "domain-id-456"
+        mock_get_domain_id.return_value = domain_id
+
+        mock_response = mock.Mock()
+        mock_response.status_code = http_client.INTERNAL_SERVER_ERROR
+        mock_post.return_value = (mock_response, [])
+
+        ex = self.assertRaises(exception.VolumeBackendAPIException,
+                               self.client.init_powerflex_gen_type,
+                               domain_name
+                               )
+
+        self.assertIn(str(domain_id), str(ex))
+        mock_get_domain_id.assert_called_once_with(domain_name)
+        mock_post.assert_called_once()
+
+    @ddt.data(
+        ("EC", True),
+        (None, False),
+        ("Mirroring", False),
+        ("eC", True),
+    )
+    @ddt.unpack
+    def test_check_powerflex_ec_version(self, gen_type, expected):
+        self.client.powerflex_gen_type = gen_type
+        self.assertEqual(expected,
+                         self.client.check_powerflex_ec_version())
+
+    @mock.patch("cinder.volume.drivers.dell_emc.powerflex."
+                "rest_client.RestClient._get_protection_domain_id")
+    @mock.patch.object(rest_client.RestClient,
+                       'execute_powerflex_post_request')
+    def test_init_powerflex_gen_type_v4_backward_compat(
+            self, mock_post, mock_get_domain_id):
+        """Test backward compatibility with v4 non-EC (Mirroring) system.
+
+        On a v4 PowerFlex system the protection domain genType is
+        'Mirroring'. check_powerflex_ec_version() must return False so
+        that legacy code paths (granularity rounding, temp snapshots,
+        etc.) remain active.
+        """
+
+        domain_name = "domain-v4"
+        domain_id = "domain-id-v4"
+        mock_get_domain_id.return_value = domain_id
+
+        mock_response = mock.Mock()
+        mock_response.status_code = http_client.OK
+        mock_post.return_value = (mock_response, [{"genType": "Mirroring"}])
+
+        result = self.client.init_powerflex_gen_type(domain_name)
+
+        self.assertEqual("Mirroring", result)
+        self.assertFalse(self.client.check_powerflex_ec_version())
+        mock_get_domain_id.assert_called_once_with(domain_name)
+        mock_post.assert_called_once_with(
+            "/types/ProtectionDomain/instances/action/queryBySelectedIds",
+            {"ids": [domain_id]}
+        )
+
+    @mock.patch("cinder.volume.drivers.dell_emc."
+                "powerflex.utils.id_to_base64", return_value="snap-encoded")
+    @mock.patch.object(rest_client.RestClient,
+                       'execute_powerflex_post_request')
+    def test_snapshot_volume_from_source_true(self,
+                                              mock_post,
+                                              mock_id_to_base64):
+        volume_id = "vol-123"
+        snapshot_id = "snap-456"
+
+        mock_response = mock.Mock()
+        mock_response.status_code = http_client.OK
+        mock_post.return_value = (mock_response,
+                                  {"volumeIdList": ["snap-vol-789"]})
+
+        result = self.client.snapshot_volume(volume_id,
+                                             snapshot_id,
+                                             from_source=True)
+
+        self.assertEqual("snap-vol-789", result)
+        mock_post.assert_called_once()
+        mock_id_to_base64.assert_called_once_with(snapshot_id)

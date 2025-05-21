@@ -224,6 +224,11 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
             msg = (_("Must specify storage pools. "
                      "Option: powerflex_storage_pools."))
             raise exception.InvalidInput(reason=msg)
+        # initialize generation type from the first pool's protection domain.
+        # Checking only the first pool is sufficient because the backend
+        # enforces a consistent gentype across all pools.
+        first_pd = self.storage_pools[0].split(":")[0]
+        client.init_powerflex_gen_type(first_pd)
         # validate the storage pools and check if zero padding is enabled
         for pool in self.storage_pools:
             try:
@@ -624,6 +629,11 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
                 compression = "Normal"
         return provisioning, compression
 
+    def _get_actual_vol_size(self, vol_size):
+        if self._get_client().check_powerflex_ec_version():
+            return vol_size
+        return flex_utils.round_to_num_gran(vol_size)
+
     def create_volume(self, volume):
         """Create volume on PowerFlex storage backend.
 
@@ -632,8 +642,8 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
         """
 
         client = self._get_client()
-
-        self._check_volume_size(volume.size)
+        if not client.check_powerflex_ec_version():
+            self._check_volume_size(volume.size)
         protection_domain_name, storage_pool_name = (
             self._extract_domain_and_pool_from_host(volume.host)
         )
@@ -660,12 +670,19 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
                                            volume.size,
                                            provisioning,
                                            compression)
-        real_size = int(flex_utils.round_to_num_gran(volume.size))
+        real_size = int(self._get_actual_vol_size(volume.size))
         model_updates = {
             "provider_id": provider_id,
-            "size": real_size,
             "replication_status": fields.ReplicationStatus.DISABLED,
         }
+        # Only return size in model_updates if the volume is not being created
+        # from an image download. When creating from image, Cinder will extend
+        # the volume to the original requested size after creation, and we
+        # should not override the database size with the virtual_size.
+        # Check if volume has glance_metadata as an indicator of
+        # image creation.
+        if not volume.glance_metadata:
+            model_updates["size"] = real_size
         LOG.info("Successfully created volume %(vol_id)s. "
                  "Volume size: %(size)s. PowerFlex volume name: %(vol_name)s, "
                  "id: %(provider_id)s.",
@@ -765,7 +782,9 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
 
         client = self._get_client()
 
-        provider_id = client.snapshot_volume(source.provider_id, volume.id)
+        provider_id = client.snapshot_volume(source.provider_id,
+                                             volume.id,
+                                             from_source=True)
         model_updates = {
             "provider_id": provider_id,
             "replication_status": fields.ReplicationStatus.DISABLED,
@@ -788,8 +807,12 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
         except AttributeError:
             source_size = source.size
         if volume.size > source_size:
-            real_size = flex_utils.round_to_num_gran(volume.size)
+            real_size = self._get_actual_vol_size(volume.size)
             client.extend_volume(provider_id, real_size)
+        # Include the actual volume size in model_updates to ensure
+        # Cinder database reflects the correct size from PowerFlex
+        real_size = int(self._get_actual_vol_size(volume.size))
+        model_updates["size"] = real_size
         if volume.is_replicated():
             self._setup_volume_replication(volume, provider_id)
             model_updates["replication_status"] = (
@@ -821,10 +844,15 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
 
         LOG.info("Extend volume %(vol_id)s to size %(size)s.",
                  {"vol_id": volume.id, "size": new_size})
-        volume_new_size = flex_utils.round_to_num_gran(new_size)
-        volume_real_old_size = flex_utils.round_to_num_gran(volume.size)
-        if volume_real_old_size == volume_new_size:
-            return
+        if self._get_client().check_powerflex_ec_version():
+            if new_size == volume.size:
+                return
+            volume_new_size = new_size
+        else:
+            volume_new_size = flex_utils.round_to_num_gran(new_size)
+            volume_real_old_size = flex_utils.round_to_num_gran(volume.size)
+            if volume_real_old_size == volume_new_size:
+                return
         if volume.is_replicated():
             pair_id, remote_pair_id, vol_id, remote_vol_id = (
                 self._get_client().get_volumes_pair_attrs("localVolumeId",
@@ -1175,21 +1203,15 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
         """
 
         client = self._get_client()
-        url = "/types/StoragePool/instances/action/querySelectedStatistics"
 
         LOG.info("Query stats for Storage Pool %s.", pool_name)
         pool_id = client.get_storage_pool_id(domain_name, pool_name)
-        props = self._get_queryable_statistics("StoragePool", pool_id)
-        params = {"ids": [pool_id], "properties": props}
-        r, response = client.execute_powerflex_post_request(url, params)
-        if r.status_code != http_client.OK:
-            msg = (_("Failed to query stats for Storage Pool %s.") % pool_name)
-            raise exception.VolumeBackendAPIException(data=msg)
-        # there is always exactly one value in response
-        raw_pool_stats, = response.values()
-        total_capacity_gb, free_capacity_gb, provisioned_capacity = (
-            self._compute_pool_stats(raw_pool_stats)
-        )
+        if client.check_powerflex_ec_version():
+            total_capacity_gb, free_capacity_gb, provisioned_capacity = (
+                self._get_ec_queryable_statistics(pool_id, pool_name))
+        else:
+            total_capacity_gb, free_capacity_gb, provisioned_capacity = (
+                self._get_legacy_queryable_statistics(pool_id, pool_name))
         LOG.info("Free capacity of Storage Pool %(domain)s:%(pool)s: "
                  "%(free)s, total capacity: %(total)s, "
                  "provisioned capacity: %(prov)s.",
@@ -1201,6 +1223,56 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
                      "prov": provisioned_capacity,
                  })
 
+        return total_capacity_gb, free_capacity_gb, provisioned_capacity
+
+    def _get_legacy_queryable_statistics(self, pool_id, pool_name):
+        client = self._get_client()
+        url = "/types/StoragePool/instances/action/querySelectedStatistics"
+        props = self._get_queryable_statistics("StoragePool", pool_id)
+        params = {"ids": [pool_id], "properties": props}
+        r, response = client.execute_powerflex_post_request(url, params)
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query stats for Storage Pool %s.")
+                   % pool_name)
+            raise exception.VolumeBackendAPIException(data=msg)
+        # there is always exactly one value in response
+        raw_pool_stats, = response.values()
+        return self._compute_pool_stats(raw_pool_stats)
+
+    def _get_ec_queryable_statistics(self, pool_id, pool_name):
+        client = self._get_client()
+        url = "/rest/v1/metrics/query"
+        requested_metrics = [
+            "physical_total",
+            "logical_provisioned",
+            "physical_free",
+        ]
+        params = {
+            "resource_type": "storage_pool",
+            "ids": [pool_id],
+            "metrics": requested_metrics,
+        }
+        r, response = client.execute_powerflex_post_request(
+            url, params, ec_request=True
+        )
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query stats for Storage Pool %s: %s")
+                   % (pool_name, r.text))
+            raise exception.VolumeBackendAPIException(data=msg)
+        results = response.get("resources")
+        if not results:
+            msg = (_("No resources found in metrics response for "
+                     "Storage Pool %(pool)s. Response data: %(response)s")
+                   % {"pool": pool_name, "response": response})
+            raise exception.VolumeBackendAPIException(data=msg)
+        metrics_data = results[0]["metrics"]
+        metric_map = {
+            m["name"]: flex_utils.convert_bytes_to_gib(m["values"][0])
+            for m in metrics_data
+        }
+        total_capacity_gb = metric_map.get("physical_total")
+        free_capacity_gb = metric_map.get("physical_free")
+        provisioned_capacity = metric_map.get("logical_provisioned")
         return total_capacity_gb, free_capacity_gb, provisioned_capacity
 
     def _compute_pool_stats(self, stats):
@@ -1947,7 +2019,7 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
         pass
 
     def backup_use_temp_snapshot(self):
-        return True
+        return not self._get_client().check_powerflex_ec_version()
 
 
 @interface.volumedriver
