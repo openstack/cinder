@@ -21,6 +21,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
@@ -749,6 +750,7 @@ class NetAppNVMeStorageLibrary(
         for _path, _subsystem in namespace_unmap_list:
             self.client.unmap_namespace(_path, _subsystem)
 
+    @coordination.synchronized('netapp-terminate-nvme-connection-{volume.id}')
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance.
 
@@ -756,6 +758,11 @@ class NetAppNVMeStorageLibrary(
         no longer access it.
         """
 
+        if connector and na_utils.is_multiattach_to_host(
+                volume,
+                connector
+        ):
+            return
         name = volume['name']
         host_nqn = None
         if connector is None:

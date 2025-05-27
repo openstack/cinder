@@ -768,6 +768,21 @@ test_volume.qos = {'qos_policy_group': None}
 test_volume.host = 'fakehost@backbackend#fakepool'
 test_volume.name = 'fakename'
 test_volume.size = SIZE
+test_volume.multiattach = False
+
+
+class test_namespace_volume(object):
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+
+test_namespace_volume = test_namespace_volume()
+test_namespace_volume.name = NAMESPACE_NAME
+test_namespace_volume.size = SIZE
+test_namespace_volume.id = VOLUME_ID
+test_namespace_volume.host = HOST_STRING
+test_namespace_volume.attach_status = DETACHED
 
 
 class test_snapshot(object):

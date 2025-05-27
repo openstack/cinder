@@ -12,9 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Mock unit tests for the NetApp block storage library"""
-
+from concurrent.futures import ThreadPoolExecutor
 import copy
 from unittest import mock
+from unittest.mock import patch
 import uuid
 
 import ddt
@@ -921,10 +922,45 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_get_namespace_attr',
                          return_value=fake.NAMESPACE_METADATA)
         self.mock_object(self.library, '_unmap_namespace')
-
-        self.library.terminate_connection(fake.NAMESPACE_VOLUME, connector)
+        self.mock_object(na_utils, 'is_multiattach_to_host',
+                         return_value=False)
+        namespace_volume = copy.deepcopy(fake.test_namespace_volume)
+        self.library.terminate_connection(namespace_volume, connector)
 
         self.library._get_namespace_attr.assert_called_once_with(
-            fake.NAMESPACE_NAME, 'metadata')
+            namespace_volume.name, 'metadata')
         host = connector['nqn'] if connector else None
         self.library._unmap_namespace(fake.PATH_NAMESPACE, host)
+
+        if connector:
+            na_utils.is_multiattach_to_host.assert_called_once_with(
+                namespace_volume, connector)
+
+    @mock.patch.object(na_utils, 'is_multiattach_to_host',
+                       return_value=False)
+    def test_terminate_connection_parallel(self,
+                                           mock_is_multiattach_to_host):
+        def execute_terminate_connection(connector):
+            mock_log = patch('self.library.LOG').start()
+            self.library.terminate_connection(fake.NAMESPACE_VOLUME,
+                                              connector)
+            self.library._get_namespace_attr.assert_called_once_with(
+                fake.NAMESPACE_NAME,
+                'metadata')
+            host = connector['nqn'] if connector else None
+            self.library._unmap_namespace.assert_called_once_with(
+                fake.PATH_NAMESPACE, host)
+
+            if connector:
+                mock_is_multiattach_to_host.assert_called_once_with(
+                    fake.NAMESPACE_VOLUME, connector)
+            else:
+                mock_log.debug.assert_called_with('Unmapping namespace '
+                                                  '%(name)s from all hosts.',
+                                                  {'name': fake.
+                                                   NAMESPACE_VOLUME['name']})
+            mock_log.stop()
+
+        connector_list = [None, {'nqn': fake.HOST_NQN}]
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            executor.map(execute_terminate_connection, connector_list)
