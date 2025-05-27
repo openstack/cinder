@@ -19,7 +19,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Mock unit tests for the NetApp block storage library"""
-
+from concurrent.futures import ThreadPoolExecutor
 import copy
 import itertools
 from unittest import mock
@@ -544,8 +544,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         mock_get_lun_attr.return_value = {'Path': fake.LUN_PATH}
         mock_unmap_lun.return_value = None
         mock_has_luns_mapped_to_initiators.return_value = True
-
-        target_info = self.library.terminate_connection_fc(fake.FC_VOLUME,
+        volume = copy.deepcopy(fake.test_volume)
+        target_info = self.library.terminate_connection_fc(volume,
                                                            fake.FC_CONNECTOR)
 
         self.assertDictEqual(target_info, fake.FC_TARGET_INFO_EMPTY)
@@ -570,11 +570,90 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         mock_has_luns_mapped_to_initiators.return_value = False
         mock_build_initiator_target_map.return_value = (fake.FC_TARGET_WWPNS,
                                                         fake.FC_I_T_MAP, 4)
-
-        target_info = self.library.terminate_connection_fc(fake.FC_VOLUME,
+        volume = copy.deepcopy(fake.test_volume)
+        target_info = self.library.terminate_connection_fc(volume,
                                                            fake.FC_CONNECTOR)
 
         self.assertDictEqual(target_info, fake.FC_TARGET_INFO_UNMAP)
+
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_has_luns_mapped_to_initiators')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_unmap_lun')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_get_lun_attr')
+    def test_terminate_connection_fc_multiattach(
+            self,
+            mock_get_lun_attr,
+            mock_unmap_lun,
+            mock_has_luns_mapped_to_initiators):
+
+        volume = copy.deepcopy(fake.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [
+            {'attach_status': fake.ATTACHED, 'attached_host': fake.HOST_NAME},
+            {'attach_status': fake.ATTACHED, 'attached_host': fake.HOST_NAME},
+        ]
+        mock_get_lun_attr.return_value = {'Path': fake.LUN_PATH}
+        mock_unmap_lun.return_value = None
+        mock_has_luns_mapped_to_initiators.return_value = True
+        self.library.terminate_connection_fc(volume, fake.FC_CONNECTOR)
+        mock_unmap_lun.assert_called_once_with(fake.LUN_PATH,
+                                               fake.FC_FORMATTED_INITIATORS)
+
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_has_luns_mapped_to_initiators')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_unmap_lun')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_get_lun_attr')
+    def test_terminate_connection_fc_last_attachment(
+            self,
+            mock_get_lun_attr,
+            mock_unmap_lun,
+            mock_has_luns_mapped_to_initiators):
+
+        volume = copy.deepcopy(fake.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [
+            {'attach_status': fake.ATTACHED, 'attached_host': fake.HOST_NAME},
+        ]
+        mock_get_lun_attr.return_value = {'Path': fake.LUN_PATH}
+        mock_unmap_lun.return_value = None
+        mock_has_luns_mapped_to_initiators.return_value = True
+        self.library.terminate_connection_fc(volume, fake.FC_CONNECTOR)
+        mock_unmap_lun.assert_called_once_with(fake.LUN_PATH,
+                                               fake.FC_FORMATTED_INITIATORS)
+
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_has_luns_mapped_to_initiators')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_unmap_lun')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_get_lun_attr')
+    def test_terminate_connection_fc_multiattach_cleanup(
+            self, mock_get_lun_attr, mock_unmap_lun,
+            mock_has_luns_mapped_to_initiators):
+        volume = copy.deepcopy(fake.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [
+            {'attach_status': fake.ATTACHED, 'attached_host': fake.HOST_NAME},
+            {'attach_status': fake.ATTACHED, 'attached_host': fake.HOST_NAME},
+        ]
+        connector = fake.FC_CONNECTOR
+
+        mock_get_lun_attr.return_value = {'Path': fake.LUN_PATH}
+        mock_unmap_lun.return_value = None
+        mock_has_luns_mapped_to_initiators.return_value = True
+
+        def terminate_connection(*args, **kwargs):
+            self.library.terminate_connection_fc(volume, connector)
+
+        # Run the termination operation in parallel using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            list(executor.map(terminate_connection, range(2)))
+
+        # Ensure that the LUN maps are cleaned up correctly for both
+        # parallel operations
+        self.assertEqual(mock_unmap_lun.call_count, 2)
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_get_fc_target_wwpns')

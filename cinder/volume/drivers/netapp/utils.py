@@ -34,6 +34,7 @@ from oslo_utils import netutils
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder import utils
 from cinder import version
 from cinder.volume import qos_specs
@@ -559,6 +560,24 @@ def qos_min_feature_name(is_nfs, node_name):
         return 'QOS_MIN_NFS_' + node_name
     else:
         return 'QOS_MIN_BLOCK_' + node_name
+
+
+def is_multiattach_to_host(volume, connector):
+    # With multi-attach enabled, a single volume can be attached to multiple
+    # instances. If multiple instances are running on the same nova host, the
+    # volume should remain attached to the nova host until it is detached
+    # from the last instance on that host.
+
+    if not volume.multiattach or not volume.volume_attachment:
+        return False
+    attachment = [
+        attach_info
+        for attach_info in volume.volume_attachment
+        if attach_info['attach_status'] == fields.VolumeAttachStatus.ATTACHED
+        and attach_info['attached_host'] == connector.get('host')
+    ]
+    LOG.debug('is_multiattach_to_host: attachment %s.', attachment)
+    return len(attachment) > 1
 
 
 class hashabledict(dict):

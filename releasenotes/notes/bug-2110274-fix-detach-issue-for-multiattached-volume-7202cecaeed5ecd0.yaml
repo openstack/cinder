@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Volumes with multi-attach type can be connected to multiple instances.
+    Additional logic has been implemented for FCP/NVMe protocols to handle
+    the removal of cinder volumes from multiple instances. For more details,
+    please check
+    `Launchpad bug #2110274 <https://bugs.launchpad.net/cinder/+bug/2110274>`_
