@@ -14,7 +14,7 @@
         - cinder-mypy
         - cinder-tox-bandit-baseline:
             voting: false
-        - openstack-tox-functional-py39:
+        - openstack-tox-functional-py310:
             irrelevant-files: &functional-irrelevant-files
               - ^.*\.rst$
               - ^cinder/locale/.*$
@@ -23,7 +23,7 @@
               - ^doc/.*$
               - ^releasenotes/.*$
               - ^reno.yaml$
-        - openstack-tox-functional-py311:
+        - openstack-tox-functional-py312:
             irrelevant-files: *functional-irrelevant-files
         - cinder-rally-task:
             voting: false
