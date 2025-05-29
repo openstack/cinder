@@ -226,6 +226,10 @@ parameters as follows:
 Connector configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+.. note::
+
+   Since 2025.2 release, users do not need to create connector configuration.
+
 Before using attach/detach volume operations PowerFlex connector must be
 properly configured. On each node where PowerFlex SDC is installed do the
 following:

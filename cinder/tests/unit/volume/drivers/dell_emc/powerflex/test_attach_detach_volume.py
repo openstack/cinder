@@ -29,13 +29,6 @@ class TestAttachDetachVolume(powerflex.TestPowerFlexDriver):
             ctx, **{'provider_id': fake.PROVIDER_ID})
         self.driver.connector = FakeConnector()
 
-    def test_attach_volume(self):
-        path = self.driver._sio_attach_volume(self.volume)
-        self.assertEqual(self.fake_path, path)
-
-    def test_detach_volume(self):
-        self.driver._sio_detach_volume(self.volume)
-
 
 class FakeConnector(object):
     def connect_volume(self, connection_properties):

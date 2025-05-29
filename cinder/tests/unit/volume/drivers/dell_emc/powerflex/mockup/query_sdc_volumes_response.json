@@ -1,0 +1,128 @@
+[
+    {
+        "managedBy": "ScaleIO",
+        "originalExpiryTime": 0,
+        "retentionLevels": [],
+        "snplIdOfSourceVolume": null,
+        "volumeReplicationState": "UnmarkedForReplication",
+        "mappedSdcInfo": [
+            {
+                "limitIops": 0,
+                "limitBwInMbps": 0,
+                "isDirectBufferMapping": false,
+                "sdcId": "01f7117d0000000b",
+                "sdcIp": "192.168.10.12",
+                "sdcName": null,
+                "accessMode": "ReadWrite",
+                "nqn": null,
+                "hostType": "SdcHost"
+            }
+        ],
+        "replicationJournalVolume": false,
+        "replicationTimeStamp": 0,
+        "name": "yian_sdc_1",
+        "creationTime": 1746889338,
+        "storagePoolId": "fa85edfd00000000",
+        "dataLayout": "MediumGranularity",
+        "compressionMethod": "NotApplicable",
+        "vtreeId": "2b713ee600000007",
+        "sizeInKb": 8388608,
+        "volumeClass": "defaultclass",
+        "accessModeLimit": "ReadWrite",
+        "pairIds": null,
+        "volumeType": "ThinProvisioned",
+        "consistencyGroupId": null,
+        "ancestorVolumeId": null,
+        "notGenuineSnapshot": false,
+        "secureSnapshotExpTime": 0,
+        "useRmcache": false,
+        "snplIdOfAutoSnapshot": null,
+        "lockedAutoSnapshot": false,
+        "lockedAutoSnapshotMarkedForRemoval": false,
+        "autoSnapshotGroupId": null,
+        "timeStampIsAccurate": false,
+        "nsid": 12,
+        "id": "694a2d140000000b",
+        "links": [
+            {
+                "rel": "self",
+                "href": "/api/instances/Volume::694a2d140000000b"
+            },
+            {
+                "rel": "/api/Volume/relationship/Statistics",
+                "href": "/api/instances/Volume::694a2d140000000b/relationships/Statistics"
+            },
+            {
+                "rel": "/api/parent/relationship/vtreeId",
+                "href": "/api/instances/VTree::2b713ee600000007"
+            },
+            {
+                "rel": "/api/parent/relationship/storagePoolId",
+                "href": "/api/instances/StoragePool::fa85edfd00000000"
+            }
+        ]
+    },
+    {
+        "managedBy": "ScaleIO",
+        "originalExpiryTime": 0,
+        "retentionLevels": [],
+        "snplIdOfSourceVolume": null,
+        "volumeReplicationState": "UnmarkedForReplication",
+        "mappedSdcInfo": [
+            {
+                "limitIops": 0,
+                "limitBwInMbps": 0,
+                "isDirectBufferMapping": false,
+                "sdcId": "01f7117d0000000b",
+                "sdcIp": "192.168.10.12",
+                "sdcName": null,
+                "accessMode": "ReadWrite",
+                "nqn": null,
+                "hostType": "SdcHost"
+            }
+        ],
+        "replicationJournalVolume": false,
+        "replicationTimeStamp": 0,
+        "name": "yian_sdc_0",
+        "creationTime": 1746886943,
+        "storagePoolId": "fa85edfd00000000",
+        "dataLayout": "MediumGranularity",
+        "compressionMethod": "NotApplicable",
+        "vtreeId": "2b713ee500000002",
+        "sizeInKb": 8388608,
+        "volumeClass": "defaultclass",
+        "accessModeLimit": "ReadWrite",
+        "pairIds": null,
+        "volumeType": "ThinProvisioned",
+        "consistencyGroupId": null,
+        "ancestorVolumeId": null,
+        "notGenuineSnapshot": false,
+        "secureSnapshotExpTime": 0,
+        "useRmcache": false,
+        "snplIdOfAutoSnapshot": null,
+        "lockedAutoSnapshot": false,
+        "lockedAutoSnapshotMarkedForRemoval": false,
+        "autoSnapshotGroupId": null,
+        "timeStampIsAccurate": false,
+        "nsid": 10,
+        "id": "694a2d1300000009",
+        "links": [
+            {
+                "rel": "self",
+                "href": "/api/instances/Volume::694a2d1300000009"
+            },
+            {
+                "rel": "/api/Volume/relationship/Statistics",
+                "href": "/api/instances/Volume::694a2d1300000009/relationships/Statistics"
+            },
+            {
+                "rel": "/api/parent/relationship/vtreeId",
+                "href": "/api/instances/VTree::2b713ee500000002"
+            },
+            {
+                "rel": "/api/parent/relationship/storagePoolId",
+                "href": "/api/instances/StoragePool::fa85edfd00000000"
+            }
+        ]
+    }
+]

@@ -1,0 +1,51 @@
+{
+    "hostOsFullType": null,
+    "systemId": "2c4a220db6e0520f",
+    "name": null,
+    "mdmConnectionState": "Connected",
+    "softwareVersionInfo": "R5_5.0.0",
+    "peerMdmId": null,
+    "sdtId": null,
+    "sdcApproved": true,
+    "sdcAgentActive": false,
+    "mdmIpAddressesCurrent": false,
+    "sdcIp": "192.168.10.12",
+    "sdcIps": [
+        "192.168.10.12"
+    ],
+    "osType": "Linux",
+    "perfProfile": "HighPerformance",
+    "socketAllocationFailure": null,
+    "memoryAllocationFailure": null,
+    "versionInfo": "R5_5.0.0",
+    "nqn": null,
+    "maxNumPaths": null,
+    "maxNumSysPorts": null,
+    "sdcType": "AppSdc",
+    "sdcGuid": "028888FA-502A-4FAC-A888-1FA3B256358C",
+    "installedSoftwareVersionInfo": "R5_5.0.0",
+    "kernelVersion": "5.15.179",
+    "kernelBuildNumber": null,
+    "sdcApprovedIps": null,
+    "hostType": "SdcHost",
+    "sdrId": null,
+    "id": "01f7117d0000000b",
+    "links": [
+        {
+            "rel": "self",
+            "href": "/api/instances/Sdc::01f7117d0000000b"
+        },
+        {
+            "rel": "/api/Sdc/relationship/Statistics",
+            "href": "/api/instances/Sdc::01f7117d0000000b/relationships/Statistics"
+        },
+        {
+            "rel": "/api/Sdc/relationship/Volume",
+            "href": "/api/instances/Sdc::01f7117d0000000b/relationships/Volume"
+        },
+        {
+            "rel": "/api/parent/relationship/systemId",
+            "href": "/api/instances/System::2c4a220db6e0520f"
+        }
+    ]
+}

@@ -18,6 +18,7 @@ from cinder import context
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import powerflex
+from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
 
 
 class TestInitializeConnection(powerflex.TestPowerFlexDriver):
@@ -25,65 +26,71 @@ class TestInitializeConnection(powerflex.TestPowerFlexDriver):
         """Setup a test case environment."""
 
         super(TestInitializeConnection, self).setUp()
-        self.connector = {}
+        self.connector = {'sdc_guid': 'fake_guid'}
         self.ctx = (
             context.RequestContext('fake', 'fake', True, auth_token=True))
         self.volume = fake_volume.fake_volume_obj(
             self.ctx, **{'provider_id': fake.PROVIDER_ID})
+        self.sdc = {
+            "id": "sdc1",
+        }
+        self.HTTPS_MOCK_RESPONSES = {
+            self.RESPONSE_MODE.Valid: {
+                'types/Sdc/instances':
+                [{'id': "sdc1", 'sdcGuid': 'fake_guid'}],
+                'instances/Volume::{}/action/setMappedSdcLimits'.format(
+                    self.volume.provider_id
+                ): mocks.MockHTTPSResponse({}, 200),
+            },
+        }
 
     def test_only_qos(self):
         qos = {'maxIOPS': 1000, 'maxBWS': 2048}
         extraspecs = {}
-        connection_properties = (
-            self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(1000, int(connection_properties['iopsLimit']))
-        self.assertEqual(2048, int(connection_properties['bandwidthLimit']))
+        self._initialize_connection(qos, extraspecs)['data']
+        self.driver.primary_client.set_sdc_limits.assert_called_once_with(
+            self.volume.provider_id, self.sdc["id"], '2048', '1000')
 
     def test_no_qos(self):
         qos = {}
         extraspecs = {}
-        connection_properties = (
-            self._initialize_connection(qos, extraspecs)['data'])
-        self.assertIsNone(connection_properties['iopsLimit'])
-        self.assertIsNone(connection_properties['bandwidthLimit'])
+        self._initialize_connection(qos, extraspecs)['data']
+        self.driver.primary_client.set_sdc_limits.assert_not_called
 
     def test_qos_scaling_and_max(self):
         qos = {'maxIOPS': 100, 'maxBWS': 2048, 'maxIOPSperGB': 10,
                'maxBWSperGB': 128}
         extraspecs = {}
         self.volume.size = 8
-        connection_properties = (
-            self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(80, int(connection_properties['iopsLimit']))
-        self.assertEqual(1024, int(connection_properties['bandwidthLimit']))
+        self._initialize_connection(qos, extraspecs)['data']
+        self.driver.primary_client.set_sdc_limits.assert_called_once_with(
+            self.volume.provider_id, self.sdc["id"], '1024', '80')
 
         self.volume.size = 24
-        connection_properties = (
-            self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(100, int(connection_properties['iopsLimit']))
-        self.assertEqual(2048, int(connection_properties['bandwidthLimit']))
+        self._initialize_connection(qos, extraspecs)['data']
+        self.driver.primary_client.set_sdc_limits.assert_called_once_with(
+            self.volume.provider_id, self.sdc["id"], '2048', '100')
 
     def test_qos_scaling_no_max(self):
         qos = {'maxIOPSperGB': 10, 'maxBWSperGB': 128}
         extraspecs = {}
         self.volume.size = 8
-        connection_properties = (
-            self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(80, int(connection_properties['iopsLimit']))
-        self.assertEqual(1024, int(connection_properties['bandwidthLimit']))
+        self._initialize_connection(qos, extraspecs)['data']
+        self.driver.primary_client.set_sdc_limits.assert_called_once_with(
+            self.volume.provider_id, self.sdc["id"], '1024', '80')
 
     def test_qos_round_up(self):
         qos = {'maxBWS': 2000, 'maxBWSperGB': 100}
         extraspecs = {}
         self.volume.size = 8
-        connection_properties = (
-            self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(1024, int(connection_properties['bandwidthLimit']))
+        self._initialize_connection(qos, extraspecs)['data']
+        self.driver.primary_client.set_sdc_limits.assert_called_once_with(
+            self.volume.provider_id, self.sdc["id"], '1024', None)
 
         self.volume.size = 24
-        connection_properties = (
-            self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(2048, int(connection_properties['bandwidthLimit']))
+        self._initialize_connection(qos, extraspecs)['data']
+        self.driver.primary_client.set_sdc_limits.assert_called_once_with(
+            self.volume.provider_id, self.sdc["id"], '2048', None)
 
     def test_vol_id(self):
         extraspecs = qos = {}
@@ -97,4 +104,18 @@ class TestInitializeConnection(powerflex.TestPowerFlexDriver):
         self.driver._get_volumetype_qos.return_value = qos
         self.driver._get_volumetype_extraspecs = mock.MagicMock()
         self.driver._get_volumetype_extraspecs.return_value = extraspecs
-        return self.driver.initialize_connection(self.volume, self.connector)
+        self.driver._attach_volume_to_host = mock.MagicMock(
+            return_value=None
+        )
+        self.driver._check_volume_mapped = mock.MagicMock(
+            return_value=None
+        )
+        self.driver.primary_client.set_sdc_limits = mock.MagicMock()
+        res = self.driver.initialize_connection(self.volume, self.connector)
+        self.driver._get_volumetype_extraspecs.assert_called_once_with(
+            self.volume)
+        self.driver._attach_volume_to_host.assert_called_once_with(
+            self.volume, self.sdc['id'])
+        self.driver._check_volume_mapped.assert_called_once_with(
+            self.sdc['id'], self.volume.provider_id)
+        return res
