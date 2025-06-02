@@ -379,6 +379,58 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             qos_policy_group_is_adaptive=False,
             source_snapshot=None, is_snapshot=True)
 
+    def test_clone_lun_busy_exception(self):
+        """Test for when clone lun is throwing device busy error."""
+        self.library._get_lun_attr = mock.Mock(
+            return_value={'Volume': 'fakeLUN'})
+        self.library.zapi_client = mock.Mock()
+        lun = fake.FAKE_LUN_GET_ITER_RESULT
+        self.library.zapi_client.get_lun_by_args.return_value = lun
+        self.library._add_lun_to_table = mock.Mock()
+        msg = 'Device busy'
+        self.mock_object(self.library.zapi_client,
+                         'clone_lun',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                             message=msg)))
+        self.mock_object(self.library,
+                         '_retry_clone_lun',
+                         mock.Mock(return_value=None)
+                         )
+        self.library._clone_lun('fakeLUN', 'newFakeLUN', is_snapshot=True)
+
+        self.library.zapi_client.clone_lun.assert_called_once_with(
+            'fakeLUN', 'fakeLUN', 'newFakeLUN', 'true', block_count=0,
+            dest_block=0, src_block=0, qos_policy_group_name=None,
+            qos_policy_group_is_adaptive=False,
+            source_snapshot=None, is_snapshot=True)
+
+    def test__retry_clone_lun_success(self):
+        self.library.zapi_client = mock.Mock()
+        self.library._retry_clone_lun('fakeSourceLUN',
+                                      'fakeLUN',
+                                      'newFakeLUN',
+                                      'false',
+                                      )
+        self.library.zapi_client.clone_lun.assert_called_once_with(
+            'fakeSourceLUN', 'fakeLUN', 'newFakeLUN', 'false', block_count=0,
+            dest_block=0, src_block=0, qos_policy_group_name=None,
+            qos_policy_group_is_adaptive=False, source_snapshot=None,
+            is_snapshot=False)
+
+    def test_retry_clone_lun_failure(self):
+        self.library.zapi_client = mock.Mock()
+        self.mock_object(self.library.zapi_client,
+                         'clone_lun',
+                         mock.Mock(
+                             side_effect=na_utils.NetAppDriverException),
+                         )
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.library._retry_clone_lun,
+            'fakeLUN', 'fakeLUN',
+            'newFakeLUN', 'false',
+        )
+
     def test_get_fc_target_wwpns(self):
         ports = [fake.FC_FORMATTED_TARGET_WWPNS[0],
                  fake.FC_FORMATTED_TARGET_WWPNS[1]]
