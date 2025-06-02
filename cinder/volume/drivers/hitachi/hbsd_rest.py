@@ -1,4 +1,5 @@
 # Copyright (C) 2020, 2024, Hitachi, Ltd.
+# Copyright (C) 2025, Hitachi Vantara
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -112,6 +113,7 @@ _CAPACITY_SAVING_DR_MODE = {
     '': 'disabled',
     None: 'disabled',
 }
+_DRS_MODE = common.DRS_MODE
 
 REST_VOLUME_OPTS = [
     cfg.BoolOpt(
@@ -253,7 +255,8 @@ def _check_ldev_manageability(self, ldev_info, ldev, existing_ref):
     if (not ldev_info['emulationType'].startswith('OPEN-V') or
             len(attributes) < 2 or
             not attributes.issubset(
-                set(['CVS', self.driver_info['hdp_vol_attr'],
+                set(['CVS', utils.DRS_VOL_ATTR, utils.VC_VOL_ATTR,
+                     self.driver_info['hdp_vol_attr'],
                      self.driver_info['hdt_vol_attr']]))):
         msg = self.output_log(MSG.INVALID_LDEV_ATTR_FOR_MANAGE, ldev=ldev,
                               ldevtype=self.driver_info['nvol_ldev_type'])
@@ -341,6 +344,16 @@ class HBSDREST(common.HBSDCommon):
             self.raise_error(msg)
         body['dataReductionMode'] = dr_mode
 
+    def _set_drs_mode(self, body, drs):
+        drs_mode = _DRS_MODE.get(drs, False)
+        if not drs_mode:
+            msg = self.output_log(
+                MSG.INVALID_EXTRA_SPEC_KEY,
+                key=self.driver_info['driver_dir_name'] + ':drs',
+                value=drs)
+            self.raise_error(msg)
+        body['isDataReductionSharedVolumeEnabled'] = drs_mode
+
     def _create_ldev_on_storage(self, size, extra_specs, pool_id, ldev_range):
         """Create an LDEV on the storage system."""
         body = {
@@ -349,11 +362,17 @@ class HBSDREST(common.HBSDCommon):
             'isParallelExecutionEnabled': True,
         }
         capacity_saving = None
+        has_drs = False
         if self.driver_info.get('driver_dir_name'):
             capacity_saving = extra_specs.get(
                 self.driver_info['driver_dir_name'] + ':capacity_saving')
+            drs_spec_name = self.driver_info['driver_dir_name'] + ':drs'
+            has_drs = drs_spec_name in extra_specs
+            drs = extra_specs.get(drs_spec_name)
         if capacity_saving:
             self._set_dr_mode(body, capacity_saving)
+        if has_drs:
+            self._set_drs_mode(body, drs)
         if self.storage_info['ldev_range']:
             min_ldev, max_ldev = self.storage_info['ldev_range'][:2]
             body['startLdevId'] = min_ldev
@@ -389,7 +408,8 @@ class HBSDREST(common.HBSDCommon):
         """Delete the specified LDEV from the storage."""
         result = self.get_ldev_info(['emulationType',
                                      'dataReductionMode',
-                                     'dataReductionStatus'], ldev)
+                                     'dataReductionStatus',
+                                     'parentLdevId'], ldev)
         if result['dataReductionStatus'] == 'FAILED':
             msg = self.output_log(
                 MSG.CONSISTENCY_NOT_GUARANTEE, ldev=ldev)
@@ -405,6 +425,22 @@ class HBSDREST(common.HBSDCommon):
         self.client.delete_ldev(
             ldev, body,
             timeout_message=(MSG.LDEV_DELETION_WAIT_TIMEOUT, {'ldev': ldev}))
+
+        # If we have a managed parent that is no longer a parent,
+        # delete it.
+        if result['parentLdevId']:
+            parent_ldev = int(result['parentLdevId'])
+            parent_info = self.get_ldev_info(['attributes', 'label'],
+                                             parent_ldev)
+            if ((not parent_info['attributes'] or
+                utils.VCP_VOL_ATTR not in parent_info['attributes']) and
+                (parent_info['label'] and
+                 parent_info['label'] == common.STR_MANAGED_VCP_LDEV_NAME)):
+                LOG.debug("Deleting managed VCP LDEV %d.", parent_ldev)
+                self.client.delete_ldev(
+                    parent_ldev, body,
+                    timeout_message=(MSG.LDEV_DELETION_WAIT_TIMEOUT,
+                                     {'ldev': parent_ldev}))
 
     def _get_snap_pool_id(self, pvol):
         return (
@@ -484,7 +520,7 @@ class HBSDREST(common.HBSDCommon):
                     self.output_log(
                         MSG.DELETE_PAIR_FAILED, pvol=pvol, svol=svol)
 
-    def _create_clone_pair(self, pvol, svol, snap_pool_id):
+    def _create_regular_clone_pair(self, pvol, svol, snap_pool_id):
         """Create a clone copy pair on the storage."""
         snapshot_name = '%(prefix)s%(svol)s' % {
             'prefix': self.driver_info['driver_prefix'] + '-clone',
@@ -525,6 +561,87 @@ class HBSDREST(common.HBSDCommon):
                 except exception.VolumeDriverException:
                     self.output_log(
                         MSG.DELETE_PAIR_FAILED, pvol=pvol, svol=svol)
+
+    def _can_config_vclone(self, pvol, svol, snap_pool_id):
+        """Determine if we can configure vClone (=DRS + matching pool)"""
+        chk_list = ['dataReductionStatus', 'poolId', 'attributes']
+        pinfo = self.get_ldev_info(chk_list, pvol)
+        sinfo = self.get_ldev_info(chk_list, svol)
+        LOG.debug("vclone-chk.Pinfo=%s, Sinfo=%s", repr(pinfo), repr(sinfo))
+        if (not pinfo['attributes'] or
+           utils.DRS_VOL_ATTR not in pinfo['attributes'] or
+           not sinfo['attributes'] or
+           utils.DRS_VOL_ATTR not in sinfo['attributes']):
+            return False
+        if (pinfo['poolId'] != snap_pool_id or
+                sinfo['poolId'] != snap_pool_id):
+            return False
+        return True
+
+    def _create_vclone_pair(self, pvol, svol, snap_pool_id):
+        """Create a copy pair, then convert to vClone."""
+        snapshot_name = '%(prefix)s%(svol)s' % {
+            'prefix': self.driver_info['driver_prefix'] + '-vclone',
+            'svol': svol % _SNAP_HASH_SIZE,
+        }
+        ss_result = None
+        try:
+            body = {"snapshotGroupName": snapshot_name,
+                    "snapshotPoolId": self._get_snap_pool_id(pvol),
+                    "pvolLdevId": pvol,
+                    "svolLdevId": svol,
+                    "isConsistencyGroup": False,
+                    "isDataReductionForceCopy": True,
+                    "canCascade": True}
+            self.client.add_snapshot(body)
+        except exception.VolumeDriverException as ex:
+            if (utils.safe_get_err_code(ex.kwargs.get('errobj')) ==
+                    rest_api.INVALID_SNAPSHOT_POOL and
+                    not self.conf.hitachi_snap_pool):
+                msg = self.output_log(
+                    MSG.INVALID_PARAMETER,
+                    param=self.driver_info['param_prefix'] + '_snap_pool')
+                self.raise_error(msg)
+            else:
+                raise
+        try:
+            self._wait_copy_pair_status(svol, set([PAIR]))
+            LOG.debug("_wait_copy_pair_status[PAIR] done.svol=%d", svol)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    self._delete_pair_from_storage(pvol, svol)
+                except exception.VolumeDriverException:
+                    self.output_log(
+                        MSG.DELETE_PAIR_FAILED, pvol=pvol, svol=svol)
+        try:
+            ss_result = self.client.get_snapshot_by_svol(svol)
+            LOG.debug("snapshot result=%s,svol=%d", repr(ss_result), svol)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                msg = self.output_log(
+                    MSG.GET_SNAPSHOT_FROM_SVOL_FAILURE, svol=repr(svol))
+                LOG.error(msg)
+                self._delete_pair_from_storage(pvol, svol)
+                self.raise_error(msg)
+        try:
+            ss_id = ss_result['data'][0]['snapshotId']
+            self.client.snapshot_pair_to_vclone(ss_id)
+            LOG.debug("ss2vclone svol=%d", svol)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                msg = self.output_log(
+                    MSG.VCLONE_PAIR_FAILED, pvol=repr(pvol), svol=repr(svol))
+                LOG.error(msg)
+                self._delete_pair_from_storage(pvol, svol)
+                self.raise_error(msg)
+
+    def _create_clone_pair(self, pvol, svol, snap_pool_id):
+        """Check on the new pair configuration to see if it is TIA(=vClone)."""
+        if self._can_config_vclone(pvol, svol, snap_pool_id):
+            self._create_vclone_pair(pvol, svol, snap_pool_id)
+        else:
+            self._create_regular_clone_pair(pvol, svol, snap_pool_id)
 
     def create_pair_on_storage(
             self, pvol, svol, snap_pool_id, is_snapshot=False):
@@ -847,7 +964,8 @@ class HBSDREST(common.HBSDCommon):
             targets['list'], mapped_targets['list'])
         unmap_targets['list'].sort(
             reverse=True,
-            key=lambda port: (port.get('portId'), port.get('hostGroupNumber')))
+            key=lambda port: (port.get('portId'),
+                              port.get('hostGroupNumber')))
         self.unmap_ldev(unmap_targets, ldev)
 
         if self.conf.hitachi_group_delete:
@@ -861,10 +979,23 @@ class HBSDREST(common.HBSDCommon):
             for port in ldev_info['ports']:
                 targets['list'].append(port)
 
+    def is_ldev_drs(self, ldev):
+        """Determine if the given LDEV is a DRS volume."""
+        ldev_info = self.get_ldev_info(['attributes'], ldev)
+
+        if (ldev_info['attributes'] and
+           utils.DRS_VOL_ATTR in ldev_info['attributes']):
+            return True
+
+        return False
+
     def extend_ldev(self, ldev, old_size, new_size):
         """Extend the specified LDEV to the specified new size."""
         body = {"parameters": {"additionalByteFormatCapacity":
                                '%sG' % (new_size - old_size)}}
+        if self.is_ldev_drs(ldev):
+            body['parameters']['enhancedExpansion'] = True
+
         self.client.extend_ldev(ldev, body)
 
     def get_pool_info(self, pool_id, result=None):
@@ -1528,7 +1659,8 @@ class HBSDREST(common.HBSDCommon):
 
         return True, None
 
-    def _is_modifiable_dr_value(self, dr_mode, dr_status, new_dr_mode, volume):
+    def _is_modifiable_dr_value(self, dr_mode, dr_status,
+                                new_dr_mode, is_drs, volume):
         if (dr_status == 'REHYDRATING' and
                 new_dr_mode == 'compression_deduplication'):
             self.output_log(MSG.VOLUME_IS_BEING_REHYDRATED,
@@ -1541,6 +1673,8 @@ class HBSDREST(common.HBSDCommon):
                             volume_type=volume['volume_type']['name'])
             return False
         elif new_dr_mode == 'disabled':
+            if is_drs:
+                return False
             return dr_status in _DISABLE_ABLE_DR_STATUS.get(dr_mode, ())
         elif new_dr_mode == 'compression_deduplication':
             return dr_status in _DEDUPCOMP_ABLE_DR_STATUS.get(dr_mode, ())
@@ -1573,6 +1707,8 @@ class HBSDREST(common.HBSDCommon):
 
         extra_specs_capacity_saving = None
         new_capacity_saving = None
+        extra_specs_drs = False
+        new_drs = None
         allowed_extra_specs = []
         if self.driver_info.get('driver_dir_name'):
             extra_specs_capacity_saving = (
@@ -1580,6 +1716,12 @@ class HBSDREST(common.HBSDCommon):
             new_capacity_saving = (
                 new_type['extra_specs'].get(extra_specs_capacity_saving))
             allowed_extra_specs.append(extra_specs_capacity_saving)
+
+            extra_specs_drs = (
+                self.driver_info['driver_dir_name'] + ':drs')
+            new_drs = (
+                new_type['extra_specs'].get(extra_specs_drs))
+
         new_dr_mode = _CAPACITY_SAVING_DR_MODE.get(new_capacity_saving)
         if not new_dr_mode:
             msg = self.output_log(
@@ -1587,6 +1729,7 @@ class HBSDREST(common.HBSDCommon):
                 key=extra_specs_capacity_saving,
                 value=new_capacity_saving)
             self.raise_error(msg)
+
         ldev = self.get_ldev(volume)
         if ldev is None:
             msg = self.output_log(
@@ -1594,7 +1737,19 @@ class HBSDREST(common.HBSDCommon):
                 id=volume['id'])
             self.raise_error(msg)
         ldev_info = self.get_ldev_info(
-            ['dataReductionMode', 'dataReductionStatus', 'poolId'], ldev)
+            ['dataReductionMode', 'dataReductionStatus',
+             'poolId', 'attributes'], ldev)
+
+        # The DRS mode is not allowed to change.
+        is_current_drs = ldev_info['attributes'] and (
+            utils.DRS_VOL_ATTR in ldev_info['attributes'])
+        if _DRS_MODE.get(new_drs, False) is not is_current_drs:
+            msg = self.output_log(
+                MSG.FAILED_CHANGE_VOLUME_TYPE,
+                key=extra_specs_drs,
+                value=new_drs)
+            self.raise_error(msg)
+
         old_pool_id = ldev_info['poolId']
         new_pool_id = host['capabilities']['location_info'].get('pool_id')
         if (not _check_specs_diff(diff, allowed_extra_specs)
@@ -1610,7 +1765,10 @@ class HBSDREST(common.HBSDCommon):
                 ['dataReductionMode', 'dataReductionStatus'], ldev)
             if not self._is_modifiable_dr_value(
                     ldev_info['dataReductionMode'],
-                    ldev_info['dataReductionStatus'], new_dr_mode, volume):
+                    ldev_info['dataReductionStatus'],
+                    new_dr_mode,
+                    _DRS_MODE.get(new_drs, False),
+                    volume):
                 return False
 
             self._modify_capacity_saving(ldev, new_dr_mode)
@@ -1628,7 +1786,9 @@ class HBSDREST(common.HBSDCommon):
         self._wait_copy_pair_status(svol, set([SMPL, PSUE]))
         status = self._get_copy_pair_status(svol)
         if status == PSUE:
-            msg = self.output_log(MSG.VOLUME_COPY_FAILED, pvol=pvol, svol=svol)
+            msg = self.output_log(MSG.VOLUME_COPY_FAILED,
+                                  pvol=pvol,
+                                  svol=svol)
             self.raise_error(msg)
 
     def create_target_name(self, connector):

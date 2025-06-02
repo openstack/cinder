@@ -1,4 +1,5 @@
-# Copyright (C) 2022, 2024, Hitachi, Ltd.
+# Copyright (C) 2020, 2024, Hitachi, Ltd.
+# Copyright (C) 2025, Hitachi Vantara
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -606,6 +607,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.configuration.hitachi_copy_speed = 3
         self.configuration.hitachi_copy_check_interval = 3
         self.configuration.hitachi_async_copy_check_interval = 10
+        self.configuration.hitachi_manage_drs_volumes = False
 
         self.configuration.san_login = CONFIG_MAP['user_id']
         self.configuration.san_password = CONFIG_MAP['user_pass']
@@ -1026,9 +1028,11 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.extend_volume(TEST_VOLUME[0], 256)
-        self.assertEqual(4, request.call_count)
+        self.assertEqual(6, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     def test_extend_volume_replication(self, request):
@@ -1070,7 +1074,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                 500, ERROR_RESULT, headers={'Content-Type': 'json'})
         request.side_effect = _request_side_effect
         self.driver.extend_volume(TEST_VOLUME[4], 256)
-        self.assertEqual(23, request.call_count)
+        self.assertEqual(27, request.call_count)
 
     @mock.patch.object(driver.FibreChannelDriver, "get_goodness_function")
     @mock.patch.object(driver.FibreChannelDriver, "get_filter_function")
@@ -1161,6 +1165,8 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -1173,7 +1179,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         ret = self.driver.create_cloned_volume(TEST_VOLUME[0], TEST_VOLUME[1])
         actual = {'provider_location': '1'}
         self.assertEqual(actual, ret)
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -1226,7 +1232,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                 {'pldev': 1, 'sldev': 2,
                  'remote-copy': hbsd_utils.MIRROR_ATTR})}
         self.assertEqual(actual, ret)
-        self.assertEqual(23, request.call_count)
+        self.assertEqual(25, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -1239,6 +1245,8 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -1252,7 +1260,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
             TEST_VOLUME[0], TEST_SNAPSHOT[0])
         actual = {'provider_location': '1'}
         self.assertEqual(actual, ret)
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
 
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
@@ -1561,6 +1569,8 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -1574,7 +1584,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
             self.ctxt, TEST_GROUP[1], [TEST_VOLUME[1]],
             source_group=TEST_GROUP[0], source_vols=[TEST_VOLUME[0]]
         )
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
         actual = (
             None,
             [{'id': TEST_VOLUME[1]['id'],
@@ -1613,7 +1623,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                           source_group=TEST_GROUP[0],
                           source_vols=[TEST_VOLUME[0], TEST_VOLUME[3]]
                           )
-        self.assertEqual(10, request.call_count)
+        self.assertEqual(11, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -1626,6 +1636,8 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -1639,7 +1651,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
             self.ctxt, TEST_GROUP[0], [TEST_VOLUME[0]],
             group_snapshot=TEST_GROUP_SNAP[0], snapshots=[TEST_SNAPSHOT[0]]
         )
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
         actual = (
             None,
             [{'id': TEST_VOLUME[0]['id'],
@@ -1771,4 +1783,4 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                           TEST_VOLUME[5])
         self.assertEqual(2, get_volume_type_extra_specs.call_count)
         self.assertEqual(1, get_volume_type_qos_specs.call_count)
-        self.assertEqual(14, request.call_count)
+        self.assertEqual(16, request.call_count)
