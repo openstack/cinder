@@ -59,6 +59,10 @@ Supported storages:
 | VSP G1000,      |                        |
 | VSP G1500       |                        |
 +-----------------+------------------------+
+| VSP One B24,    | A3-04-20 or later      |
+| B26,            |                        |
+| B28             |                        |
++-----------------+------------------------+
 
 Required storage licenses:
 
@@ -68,9 +72,11 @@ Required storage licenses:
   - Hitachi Dynamic Provisioning
 * Hitachi Local Replication (Hitachi Thin Image)
 
+* Deduplication and compression (VSP One Block)
+
 Optional storage licenses:
 
-* Deduplication and compression
+* Deduplication and compression (non-VSP One Block)
 
 * Global-Active Device
 
@@ -99,6 +105,7 @@ Hitachi block storage driver also supports the following additional features:
 * Global-Active Device
 * Maximum number of copy pairs and consistency groups
 * Data deduplication and compression
+* DRS volumes
 * Port scheduler
 * Port assignment using extra spec
 * Configuring Quality of Service (QoS) settings
@@ -622,6 +629,71 @@ Deleting a volume with deduplication and compression enabled
 The cinder delete command finishes when the storage system starts the LDEV
 deletion process. The LDEV cannot be reused until the LDEV deletion process is
 completed on the storage system.
+
+DRS volumes
+----------------------------------
+
+Use DRS volumes to improve storage utilization using data
+reduction and data sharing.
+
+DRS volumes are required for VSP One Block series storage
+when performing Clone operations.
+
+DRS volumes may not have the DRS or deduplication and
+compression configuration modified or removed through
+retyping.
+
+For details,
+see `Capacity saving function: data deduplication and compression`_
+in the `Provisioning Guide`_.
+
+**Enabling DRS**
+
+To use the DRS functionality on the storage models, your storage
+administrator must first enable the deduplication and compression for the DP
+pool.
+
+For details about how to enable this setting, see the description of pool
+management in the
+`Hitachi Command Suite Configuration Manager REST API Reference Guide`_ or the
+`Hitachi Ops Center API Configuration Manager REST API Reference Guide`_.
+
+.. note::
+
+   * Do not set a subscription limit (virtualVolumeCapacityRate) for the DP
+     pool.
+
+Creating a volume with DRS enabled
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+To create a volume with the DRS setting enabled,
+enable deduplication and compression and DRS for the relevant volume type.
+
+**Procedure**
+
+1. To enable the deduplication and compression setting, specify the value
+``deduplication_compression`` for ``hbsd:capacity_saving`` in the extra specs
+for the volume type.
+
+2. To enable the DRS setting, speciy the value ``<is> True`` for ``hbsd:drs``
+in the extra specs for the volume type.
+
+3. When creating a volume of the volume type created in the previous steps,
+you can create a volume with the deduplication and compression function and
+DRS function enabled.
+
+Deleting a volume with deduplication and compression enabled
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+The cinder delete command finishes when the storage system starts the LDEV
+deletion process. The LDEV cannot be reused until the LDEV deletion process is
+completed on the storage system.
+
+.. note::
+
+   * When deleting a volume that has been cloned using Thin Image Advanced and
+     vClone (DRS volumes + same pool), the vClone parent volume cannot be deleted
+     until all children have been deleted.
 
 Port scheduler
 --------------

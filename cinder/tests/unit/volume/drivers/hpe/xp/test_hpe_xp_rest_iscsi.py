@@ -356,6 +356,7 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
         self.configuration.hpexp_copy_speed = 3
         self.configuration.hpexp_copy_check_interval = 3
         self.configuration.hpexp_async_copy_check_interval = 10
+        self.configuration.hpexp_manage_drs_volumes = False
 
         self.configuration.san_login = CONFIG_MAP['user_id']
         self.configuration.san_password = CONFIG_MAP['user_pass']
@@ -518,9 +519,11 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
     def test_extend_volume(self, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.extend_volume(TEST_VOLUME[0], 256)
-        self.assertEqual(3, request.call_count)
+        self.assertEqual(5, request.call_count)
 
     @mock.patch.object(driver.ISCSIDriver, "get_goodness_function")
     @mock.patch.object(driver.ISCSIDriver, "get_filter_function")
@@ -602,6 +605,8 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         get_volume_type_extra_specs.return_value = {}
@@ -611,7 +616,7 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
             {'location_info': {'pool_id': 30}}]
         vol = self.driver.create_cloned_volume(TEST_VOLUME[0], TEST_VOLUME[1])
         self.assertEqual('1', vol['provider_location'])
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -622,6 +627,8 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         get_volume_type_extra_specs.return_value = {}
@@ -632,7 +639,7 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
         vol = self.driver.create_volume_from_snapshot(
             TEST_VOLUME[0], TEST_SNAPSHOT[0])
         self.assertEqual('1', vol['provider_location'])
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -888,6 +895,8 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         get_volume_type_extra_specs.return_value = {}
@@ -899,7 +908,7 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
             self.ctxt, TEST_GROUP[1], [TEST_VOLUME[1]],
             source_group=TEST_GROUP[0], source_vols=[TEST_VOLUME[0]]
         )
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
         actual = (
             None, [{'id': TEST_VOLUME[1]['id'], 'provider_location': '1'}])
         self.assertTupleEqual(actual, ret)
@@ -913,6 +922,8 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         get_volume_type_extra_specs.return_value = {}
@@ -924,7 +935,7 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
             self.ctxt, TEST_GROUP[0], [TEST_VOLUME[0]],
             group_snapshot=TEST_GROUP_SNAP[0], snapshots=[TEST_SNAPSHOT[0]]
         )
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
         actual = (
             None, [{'id': TEST_VOLUME[0]['id'], 'provider_location': '1'}])
         self.assertTupleEqual(actual, ret)

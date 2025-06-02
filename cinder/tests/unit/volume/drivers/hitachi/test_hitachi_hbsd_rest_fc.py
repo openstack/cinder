@@ -1,4 +1,5 @@
 # Copyright (C) 2020, 2024, Hitachi, Ltd.
+# Copyright (C) 2025, Hitachi Vantara
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -17,6 +18,7 @@
 import functools
 from unittest import mock
 
+import ddt
 from oslo_config import cfg
 from oslo_utils import units
 import requests
@@ -213,6 +215,17 @@ COMPLETED_FAILED_RESULT_LU_DEFINED = {
     },
 }
 
+COMPLETED_FAILED_RESULT = {
+    "status": "Completed",
+    "state": "Failed",
+    "error": {
+        "errorCode": {
+            "SSB1": "1111",
+            "SSB2": "2222",
+        },
+    },
+}
+
 GET_LDEV_RESULT = {
     "emulationType": "OPEN-V-CVS",
     "blockCapacity": 2097152,
@@ -295,6 +308,100 @@ GET_LDEV_RESULT_PAIR_STATUS_TEST = {
     "dataReductionMode": "disabled"
 }
 
+GET_LDEV_RESULT_DRS = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 2097152,
+    "attributes": ["CVS", "HDP", "DRS"],
+    "status": "NML",
+    "poolId": 30,
+    "dataReductionStatus": "ENABLED",
+    "dataReductionMode": "compression_deduplication",
+    "label": "00000000000000000000000000000000",
+}
+
+GET_LDEV_RESULT_DRS_WITH_PARENT = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 2097152,
+    "attributes": ["CVS", "HDP", "DRS"],
+    "status": "NML",
+    "poolId": 30,
+    "dataReductionStatus": "ENABLED",
+    "dataReductionMode": "compression_deduplication",
+    "label": "00000000000000000000000000000000",
+    "parentLdevId": 10,
+}
+
+GET_LDEV_RESULT_DRS_MANAGED_PARENT = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 2097152,
+    "attributes": ["CVS", "HDP", "DRS"],
+    "status": "NML",
+    "poolId": 30,
+    "dataReductionStatus": "ENABLED",
+    "dataReductionMode": "compression_deduplication",
+    "label": "HBSD-VCP",
+}
+
+GET_LDEV_RESULT_VCP_MANAGED_PARENT = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 2097152,
+    "attributes": ["CVS", "HDP", "DRS", "VCP"],
+    "status": "NML",
+    "poolId": 30,
+    "dataReductionStatus": "ENABLED",
+    "dataReductionMode": "compression_deduplication",
+    "label": "HBSD-VCP",
+    "parentLdevId": 10,
+}
+
+GET_LDEV_RESULT_VCP_MANAGED_PARENT_LARGE = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 137438953472,
+    "attributes": ["CVS", "HDP", "DRS", "VCP"],
+    "status": "NML",
+    "poolId": 30,
+    "dataReductionStatus": "ENABLED",
+    "dataReductionMode": "compression_deduplication",
+    "label": "HBSD-VCP",
+    "parentLdevId": 10,
+}
+
+GET_LDEV_RESULT_VCP_LARGE = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 137438953472,
+    "attributes": ["CVS", "HDP", "DRS", "VCP"],
+    "status": "NML",
+    "poolId": 30,
+    "dataReductionStatus": "ENABLED",
+    "dataReductionMode": "compression_deduplication",
+    "label": "00000000000000000000000000000000",
+    "parentLdevId": 10,
+}
+
+GET_LDEV_RESULT_VC = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 2097152,
+    "attributes": ["CVS", "HDP", "DRS", "VC"],
+    "status": "NML",
+    "poolId": 30,
+    "dataReductionStatus": "ENABLED",
+    "dataReductionMode": "compression_deduplication",
+    "label": "00000000000000000000000000000000",
+    "parentLdevId": 10,
+}
+
+GET_LDEV_RESULT_VCP = {
+    "emulationType": "OPEN-V-CVS",
+    "blockCapacity": 2097152,
+    "attributes": ["CVS", "HDP", "DRS", "VCP"],
+    "status": "NML",
+    "poolId": 30,
+    "dataReductionStatus": "ENABLED",
+    "dataReductionMode": "compression_deduplication",
+    "label": "00000000000000000000000000000000",
+    "parentLdevId": 10,
+}
+
 GET_POOL_RESULT = {
     "availableVolumeCapacity": 480144,
     "totalPoolCapacity": 507780,
@@ -309,6 +416,7 @@ GET_SNAPSHOTS_RESULT = {
             "pvolLdevId": 0,
             "muNumber": 1,
             "svolLdevId": 1,
+            "snapshotId": "0,1",
         },
     ],
 }
@@ -321,6 +429,7 @@ GET_SNAPSHOTS_RESULT_PAIR = {
             "pvolLdevId": 0,
             "muNumber": 1,
             "svolLdevId": 1,
+            "snapshotId": "0,1",
         },
     ],
 }
@@ -333,6 +442,7 @@ GET_SNAPSHOTS_RESULT_BUSY = {
             "pvolLdevId": 0,
             "muNumber": 1,
             "svolLdevId": 1,
+            "snapshotId": "0,1",
         },
     ],
 }
@@ -501,6 +611,7 @@ class FakeResponse():
         return self.data
 
 
+@ddt.ddt
 class HBSDRESTFCDriverTest(test.TestCase):
     """Unit test class for HBSD REST interface fibre channel module."""
 
@@ -555,6 +666,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.configuration.hitachi_copy_speed = 3
         self.configuration.hitachi_copy_check_interval = 3
         self.configuration.hitachi_async_copy_check_interval = 10
+        self.configuration.hitachi_manage_drs_volumes = False
         self.configuration.hitachi_port_scheduler = False
         self.configuration.hitachi_group_name_format = None
 
@@ -863,6 +975,116 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(1, get_volume_type_qos_specs.call_count)
         self.assertEqual(2, request.call_count)
 
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume_drs(
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
+        self.override_config('hitachi_manage_drs_volumes', False,
+                             group=conf.SHARED_CONF_GROUP)
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_volume(TEST_VOLUME[3])
+        args, kwargs = request.call_args_list[0]
+        body = kwargs['json']
+        self.assertEqual(body.get('dataReductionMode'),
+                         'compression_deduplication')
+        self.assertEqual(body.get('isDataReductionSharedVolumeEnabled'),
+                         True)
+        self.assertEqual('1', ret['provider_location'])
+        get_volume_type_extra_specs.assert_called_once_with(TEST_VOLUME[3].id)
+        get_volume_type_qos_specs.assert_called_once_with(
+            TEST_VOLUME[3].volume_type.id)
+        self.assertEqual(2, request.call_count)
+
+    @ddt.data('<is> False', False, 'False', 'Sheep', None)
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume_drs_explicit_false_or_invalid(
+            self, false_drs_setting, get_volume_type_qos_specs,
+            get_volume_type_extra_specs, request):
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': false_drs_setting,
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_volume,
+                          TEST_VOLUME[3])
+        get_volume_type_extra_specs.assert_called_once_with(TEST_VOLUME[3].id)
+        get_volume_type_qos_specs.assert_called_once_with(
+            TEST_VOLUME[3].volume_type.id)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume_drs_managed(
+            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            request):
+        self.driver.common.conf.hitachi_manage_drs_volumes = True
+        # Inexplicably, the below does not work.
+        # self.override_config('hitachi_manage_drs_volumes', True,
+        #                     group=conf.SHARED_CONF_GROUP)
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.side_effect = [FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT_PAIR),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT_PAIR),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_volume(TEST_VOLUME[3])
+        args, kwargs = request.call_args_list[0]
+        body = kwargs['json']
+        self.assertEqual(body.get('dataReductionMode'),
+                         'compression_deduplication')
+        self.assertEqual(body.get('isDataReductionSharedVolumeEnabled'),
+                         True)
+        args, kwargs = request.call_args_list[1]
+        body = kwargs['json']
+        self.assertEqual(body.get('label'), 'HBSD-VCP')
+        args, kwargs = request.call_args_list[3]
+        body = kwargs['json']
+        self.assertEqual(body.get('dataReductionMode'),
+                         'compression_deduplication')
+        self.assertEqual(body.get('isDataReductionSharedVolumeEnabled'),
+                         True)
+        args, kwargs = request.call_args_list[10]
+        body = kwargs['json']
+        self.assertEqual(body.get('label'), '00000000000000000000000000000003')
+        self.assertEqual('1', ret['provider_location'])
+        self.assertEqual(2, get_volume_type_extra_specs.call_count)
+        get_volume_type_qos_specs.assert_called_once_with(
+            TEST_VOLUME[3].volume_type.id)
+        self.assertEqual(11, request.call_count)
+
     @reduce_retrying_time
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -974,12 +1196,58 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(1, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
+    def test_delete_volume_drs(self, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.delete_volume(TEST_VOLUME[0])
+        self.assertEqual(4, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_delete_volume_drs_managed_last_vclone(self, request):
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_MANAGED_PARENT),
+            FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.delete_volume(TEST_VOLUME[0])
+        self.assertEqual(6, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_delete_volume_drs_unmanaged_last_vclone_with_parent(self,
+                                                                 request):
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS)]
+        self.driver.delete_volume(TEST_VOLUME[0])
+        self.assertEqual(5, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_delete_volume_drs_managed_parent_has_more_vclones(self, request):
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+            FakeResponse(200, GET_LDEV_RESULT_VCP_MANAGED_PARENT)]
+        self.driver.delete_volume(TEST_VOLUME[0])
+        self.assertEqual(5, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
     def test_extend_volume(self, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.extend_volume(TEST_VOLUME[0], 256)
-        self.assertEqual(3, request.call_count)
+        self.assertEqual(5, request.call_count)
 
     @mock.patch.object(driver.FibreChannelDriver, "get_goodness_function")
     @mock.patch.object(driver.FibreChannelDriver, "get_filter_function")
@@ -1045,6 +1313,134 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('down', stats["pools"][0]['backend_state'])
         self.assertEqual(1, get_filter_function.call_count)
         self.assertEqual(1, get_goodness_function.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume_drs(self, get_volume_type_qos_specs,
+                               get_volume_type_extra_specs, request):
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_DRS),
+            FakeResponse(200, GET_LDEV_RESULT_DRS),
+            FakeResponse(200, GET_LDEV_RESULT_DRS),
+            FakeResponse(200, GET_LDEV_RESULT_DRS),
+            FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.extend_volume(TEST_VOLUME[0], 256)
+        self.assertEqual(5, request.call_count)
+        body = request.call_args_list[4][1]['json']
+        self.assertIn('enhancedExpansion', body['parameters'])
+        self.assertEqual(body['parameters']['enhancedExpansion'], True)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume_drs_mngd_parent(self, get_volume_type_qos_specs,
+                                           get_volume_type_extra_specs,
+                                           request):
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_VCP_MANAGED_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_VCP_MANAGED_PARENT),
+            FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.extend_volume(TEST_VOLUME[0], 256)
+        self.assertEqual(8, request.call_count)
+        body = request.call_args_list[5][1]['json']
+        self.assertIn('enhancedExpansion', body['parameters'])
+        self.assertEqual(body['parameters']['enhancedExpansion'], True)
+        body = request.call_args_list[7][1]['json']
+        self.assertIn('enhancedExpansion', body['parameters'])
+        self.assertEqual(body['parameters']['enhancedExpansion'], True)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume_drs_lg_mngd_parent(self, get_volume_type_qos_specs,
+                                              get_volume_type_extra_specs,
+                                              request):
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_VCP_MANAGED_PARENT_LARGE),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.extend_volume(TEST_VOLUME[0], 256)
+        self.assertEqual(6, request.call_count)
+        body = request.call_args_list[5][1]['json']
+        self.assertIn('enhancedExpansion', body['parameters'])
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume_drs_lg_unmngd_parent(self,
+                                                get_volume_type_qos_specs,
+                                                get_volume_type_extra_specs,
+                                                request):
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_VCP_LARGE),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.extend_volume(TEST_VOLUME[0], 256)
+        self.assertEqual(6, request.call_count)
+        body = request.call_args_list[5][1]['json']
+        self.assertIn('enhancedExpansion', body['parameters'])
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume_drs_unmngd_parent(self, get_volume_type_qos_specs,
+                                             get_volume_type_extra_specs,
+                                             request):
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_VCP),
+            FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT)]
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.extend_volume,
+                          TEST_VOLUME[0],
+                          256)
+        self.assertEqual(6, request.call_count)
+        body = request.call_args_list[5][1]['json']
+        self.assertIn('enhancedExpansion', body['parameters'])
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -1128,6 +1524,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         get_volume_type_extra_specs.return_value = {}
@@ -1139,7 +1537,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('1', vol['provider_location'])
         self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(1, get_volume_type_qos_specs.call_count)
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -1150,6 +1548,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.common._stats = {}
@@ -1162,7 +1562,35 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('1', vol['provider_location'])
         self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(1, get_volume_type_qos_specs.call_count)
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_vcloned_volume(self, get_volume_type_qos_specs,
+                                   get_volume_type_extra_specs, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT_PAIR),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT_PAIR),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        extra_specs = {"hbsd:drs": "<is> True",
+                       "hbsd:capacity_saving": "deduplication_compression"}
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        vol = self.driver.create_cloned_volume(TEST_VOLUME[0], TEST_VOLUME[1])
+        self.assertEqual('1', vol['provider_location'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
+        self.assertEqual(1, get_volume_type_qos_specs.call_count)
+        self.assertEqual(9, request.call_count)
+        self.assertIn('virtual-clone', request.call_args_list[7][0][1])
 
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
@@ -1393,6 +1821,64 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(2, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_manage_existing_drs(self, get_volume_type_qos_specs,
+                                 get_volume_type_extra_specs, request):
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEVS_RESULT)]
+        ret = self.driver.manage_existing(
+            TEST_VOLUME[0], self.test_existing_ref)
+        self.assertEqual('1', ret['provider_location'])
+        self.assertEqual(1, get_volume_type_qos_specs.call_count)
+        self.assertEqual(3, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_manage_existing_vc(self, get_volume_type_qos_specs,
+                                get_volume_type_extra_specs, request):
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_VC),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEVS_RESULT)]
+        ret = self.driver.manage_existing(
+            TEST_VOLUME[0], self.test_existing_ref)
+        self.assertEqual('1', ret['provider_location'])
+        self.assertEqual(1, get_volume_type_qos_specs.call_count)
+        self.assertEqual(3, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_manage_existing_vcp(self, get_volume_type_qos_specs,
+                                 get_volume_type_extra_specs, request):
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_VCP)]
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing,
+                          TEST_VOLUME[1],
+                          self.test_existing_ref)
+        self.assertEqual(1, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
     def test_unmanage(self, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT)]
@@ -1487,6 +1973,151 @@ class HBSDRESTFCDriverTest(test.TestCase):
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_retype_drs_removed(self, get_volume_type_qos_specs, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_DRS)]
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        host = {
+            'capabilities': {
+                'location_info': {
+                    'pool_id': 30,
+                },
+            },
+        }
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+        }
+        new_type = fake_volume.fake_volume_type_obj(
+            CTXT, id='00000000-0000-0000-0000-{0:012d}'.format(0),
+            extra_specs=extra_specs)
+        old_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        new_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+        }
+        old_type_ref = volume_types.create(self.ctxt, 'old', old_specs)
+        new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
+        diff = volume_types.volume_types_diff(self.ctxt, old_type_ref['id'],
+                                              new_type_ref['id'])[0]
+
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.retype, self.ctxt, TEST_VOLUME[0],
+                          new_type, diff, host)
+        self.assertEqual(1, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_retype_drs_with_csv_removed(self, get_volume_type_qos_specs,
+                                         request):
+        request.side_effect = [
+            FakeResponse(200, GET_LDEV_RESULT_DRS),
+        ]
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        host = {
+            'capabilities': {
+                'location_info': {
+                    'pool_id': 30,
+                },
+            },
+        }
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+        }
+        new_type = fake_volume.fake_volume_type_obj(
+            CTXT, id='00000000-0000-0000-0000-{0:012d}'.format(0),
+            extra_specs=extra_specs)
+        old_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        new_specs = {
+            'hbsd:drs': '<is> True',
+        }
+        old_type_ref = volume_types.create(self.ctxt, 'old', old_specs)
+        new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
+        diff = volume_types.volume_types_diff(self.ctxt, old_type_ref['id'],
+                                              new_type_ref['id'])[0]
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.retype, self.ctxt, TEST_VOLUME[0],
+                          new_type, diff, host)
+        self.assertEqual(1, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_retype_drs_with_csv_disabled(self, get_volume_type_qos_specs,
+                                          request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_DRS),
+                               FakeResponse(200, GET_LDEV_RESULT_DRS)]
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        host = {
+            'capabilities': {
+                'location_info': {
+                    'pool_id': 30,
+                },
+            },
+        }
+        extra_specs = {
+            'hbsd:capacity_saving': 'disable',
+            'hbsd:drs': '<is> True',
+        }
+        new_type = fake_volume.fake_volume_type_obj(
+            CTXT, id='00000000-0000-0000-0000-{0:012d}'.format(0),
+            extra_specs=extra_specs)
+        old_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        new_specs = {
+            'hbsd:capacity_saving': 'disable',
+            'hbsd:drs': '<is> True',
+        }
+        old_type_ref = volume_types.create(self.ctxt, 'old', old_specs)
+        new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
+        diff = volume_types.volume_types_diff(self.ctxt, old_type_ref['id'],
+                                              new_type_ref['id'])[0]
+        ret = self.driver.retype(self.ctxt, TEST_VOLUME[0],
+                                 new_type, diff, host)
+        self.assertEqual(2, request.call_count)
+        self.assertEqual(ret, False)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_retype_drs_added(self, get_volume_type_qos_specs, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT)]
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        host = {
+            'capabilities': {
+                'location_info': {
+                    'pool_id': 30,
+                },
+            },
+        }
+        extra_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        new_type = fake_volume.fake_volume_type_obj(
+            CTXT, id='00000000-0000-0000-0000-{0:012d}'.format(0),
+            extra_specs=extra_specs)
+        old_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+        }
+        new_specs = {
+            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:drs': '<is> True',
+        }
+        old_type_ref = volume_types.create(self.ctxt, 'old', old_specs)
+        new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
+        diff = volume_types.volume_types_diff(self.ctxt, old_type_ref['id'],
+                                              new_type_ref['id'])[0]
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.retype, self.ctxt, TEST_VOLUME[0],
+                          new_type, diff, host)
+        self.assertEqual(1, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_retype_qos(self, get_volume_type_qos_specs, request):
         input_qos_specs = {'qos_specs': {
             'consumer': 'back-end',
@@ -1562,7 +2193,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         ret = self.driver.retype(
             self.ctxt, TEST_VOLUME[0], new_type, diff, host)
         self.assertEqual(1, get_volume_type_qos_specs.call_count)
-        self.assertEqual(16, request.call_count)
+        self.assertEqual(17, request.call_count)
         actual = (True, {'provider_location': '1'})
         self.assertTupleEqual(actual, ret)
 
@@ -1615,7 +2246,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         ret = self.driver.migrate_volume(self.ctxt, TEST_VOLUME[0], host)
         self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(1, get_volume_type_qos_specs.call_count)
-        self.assertEqual(15, request.call_count)
+        self.assertEqual(16, request.call_count)
         actual = (True, {'provider_location': '1'})
         self.assertTupleEqual(actual, ret)
 
@@ -1668,6 +2299,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -1680,7 +2313,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         )
         self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(1, get_volume_type_qos_specs.call_count)
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
         actual = (
             None, [{'id': TEST_VOLUME[1]['id'], 'provider_location': '1'}])
         self.assertTupleEqual(actual, ret)
@@ -1695,6 +2328,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
                                FakeResponse(200, GET_SNAPSHOTS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -1707,7 +2342,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         )
         self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(1, get_volume_type_qos_specs.call_count)
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
         actual = (
             None, [{'id': TEST_VOLUME[0]['id'], 'provider_location': '1'}])
         self.assertTupleEqual(actual, ret)
