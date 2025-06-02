@@ -84,6 +84,11 @@ COMMON_VOLUME_OPTS = [
         min=1, max=600,
         help='Interval in seconds to check asynchronous copying status during '
              'a copy pair deletion or data restoration.'),
+    cfg.BoolOpt(
+        'nec_v_manage_drs_volumes',
+        default=False,
+        help='If true, the driver will create a driver managed vClone parent '
+             'for each non-cloned DRS volume it creates.'),
 ]
 
 REST_VOLUME_OPTS = [
@@ -212,6 +217,8 @@ def update_conf(conf):
         conf.nec_v_copy_check_interval)
     conf.hitachi_async_copy_check_interval = (
         conf.nec_v_async_copy_check_interval)
+    conf.hitachi_manage_drs_volumes = (
+        conf.nec_v_manage_drs_volumes)
 
     # REST_VOLUME_OPTS
     conf.hitachi_rest_disable_io_wait = (

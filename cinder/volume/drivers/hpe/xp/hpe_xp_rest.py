@@ -82,6 +82,11 @@ COMMON_VOLUME_OPTS = [
         default=10,
         min=1, max=600,
         help='Interval in seconds to check copy asynchronously'),
+    cfg.BoolOpt(
+        'hpexp_manage_drs_volumes',
+        default=False,
+        help='If true, the driver will create a driver managed vClone parent '
+             'for each non-cloned DRS volume it creates.'),
 ]
 
 REST_VOLUME_OPTS = [
@@ -226,6 +231,8 @@ class HPEXPRESTFC(hbsd_rest_fc.HBSDRESTFC):
             self.conf.hpexp_copy_check_interval)
         self.conf.hitachi_async_copy_check_interval = (
             self.conf.hpexp_async_copy_check_interval)
+        self.conf.hitachi_manage_drs_volumes = (
+            self.conf.hpexp_manage_drs_volumes)
 
         # REST_VOLUME_OPTS
         self.conf.hitachi_rest_disable_io_wait = (
@@ -297,6 +304,8 @@ class HPEXPRESTISCSI(hbsd_rest_iscsi.HBSDRESTISCSI):
             self.conf.hpexp_copy_check_interval)
         self.conf.hitachi_async_copy_check_interval = (
             self.conf.hpexp_async_copy_check_interval)
+        self.conf.hitachi_manage_drs_volumes = (
+            self.conf.hpexp_manage_drs_volumes)
 
         # REST_VOLUME_OPTS
         self.conf.hitachi_rest_disable_io_wait = (
