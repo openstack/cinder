@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    [Pure Storage] Fixed issue where hypervisor hostnames on replicated
+    backends for synchronously replicated volumes were not the same.

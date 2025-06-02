@@ -499,7 +499,14 @@ FC_WWNS = ["21000024ff59fe9" + str(i + 1) for i in range(len(FC_PORT_NAMES))]
 AC_FC_WWNS = [
     "21000024ff59fab" + str(i + 1) for i in range(len(FC_PORT_NAMES))]
 HOSTNAME = "computenode1"
-PURE_HOST_NAME = pure.PureBaseVolumeDriver._generate_purity_host_name(HOSTNAME)
+SYSTEM_UUID = "420456d9-ec23-e120-7084-a8ce8fde3990"
+CONNECTOR = {
+    "host": HOSTNAME,
+    "system_uuid": SYSTEM_UUID
+}
+PURE_HOST_NAME = (
+    pure.PureBaseVolumeDriver._generate_purity_host_name(CONNECTOR)
+)
 PURE_HOST = {
     "name": PURE_HOST_NAME,
     "host_group": None,
@@ -512,10 +519,22 @@ INITIATOR_NQN = (
 )
 INITIATOR_IQN = "iqn.1993-08.org.debian:01:222"
 INITIATOR_WWN = "5001500150015081abc"
-NVME_CONNECTOR = {"nqn": INITIATOR_NQN, "host": HOSTNAME}
-ISCSI_CONNECTOR = {"initiator": INITIATOR_IQN, "name": HOSTNAME,
-                   "host": DotNotation({"name": HOSTNAME})}
-FC_CONNECTOR = {"wwpns": {INITIATOR_WWN}, "host": HOSTNAME}
+NVME_CONNECTOR = {
+    "nqn": INITIATOR_NQN,
+    "host": HOSTNAME,
+    "system_uuid": SYSTEM_UUID
+}
+ISCSI_CONNECTOR = {
+    "initiator": INITIATOR_IQN,
+    "name": HOSTNAME,
+    "host": DotNotation({"name": HOSTNAME}),
+    "system_uuid": SYSTEM_UUID
+}
+FC_CONNECTOR = {
+    "wwpns": {INITIATOR_WWN},
+    "host": HOSTNAME,
+    "system_uuid": SYSTEM_UUID
+}
 TARGET_NQN = "nqn.2010-06.com.purestorage:flasharray.12345abc"
 AC_TARGET_NQN = "nqn.2010-06.com.purestorage:flasharray.67890def"
 TARGET_IQN = "iqn.2010-06.com.purestorage:flasharray.12345abc"
@@ -1729,13 +1748,17 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertEqual(0, len(model_updates))
 
     def test_generate_purity_host_name(self):
-        result = self.driver._generate_purity_host_name(
-            "really-long-string-thats-a-bit-too-long")
+        connector = {
+            "host": "really-long-string-thats-a-bit-too-long",
+            "system_uuid": SYSTEM_UUID
+        }
+        result = self.driver._generate_purity_host_name(connector)
         self.assertTrue(result.startswith("really-long-string-that-"))
         self.assertTrue(result.endswith("-cinder"))
         self.assertEqual(63, len(result))
         self.assertTrue(bool(pure.GENERATED_NAME.match(result)))
-        result = self.driver._generate_purity_host_name("!@#$%^-invalid&*")
+        connector["host"] = "!@#$%^-invalid&*"
+        result = self.driver._generate_purity_host_name(connector)
         self.assertTrue(result.startswith("invalid---"))
         self.assertTrue(result.endswith("-cinder"))
         self.assertEqual(49, len(result))
@@ -4998,7 +5021,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
                                            ISCSI_CONNECTOR, None, None)
         mock_host.assert_called_with(self.driver, self.array,
                                      ISCSI_CONNECTOR, remote=False)
-        mock_generate.assert_called_with({'name': HOSTNAME})
+        mock_generate.assert_called_with(ISCSI_CONNECTOR)
         self.array.post_hosts.assert_called_with(names=[PURE_HOST_NAME],
                                                  host=mock_post_host())
         self.assertFalse(self.array.patch_hosts.called)
@@ -5304,7 +5327,7 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
         real_result = self.driver._connect(self.array, vol_name, FC_CONNECTOR)
         mock_host.assert_called_with(self.driver, self.array, FC_CONNECTOR,
                                      remote=False)
-        mock_generate.assert_called_with(HOSTNAME)
+        mock_generate.assert_called_with(FC_CONNECTOR)
         self.array.post_hosts.assert_called_with(names=[PURE_HOST_NAME],
                                                  host=mock_post_host())
         self.assertEqual([CONNECTION_DATA], real_result)
@@ -6272,7 +6295,7 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
         mock_host.assert_called_with(
             self.driver, self.array, NVME_CONNECTOR, remote=False
         )
-        mock_generate.assert_called_with(HOSTNAME)
+        mock_generate.assert_called_with(NVME_CONNECTOR)
         self.array.post_hosts.assert_called_with(
             names=[PURE_HOST_NAME], host=mock_post_host()
         )
