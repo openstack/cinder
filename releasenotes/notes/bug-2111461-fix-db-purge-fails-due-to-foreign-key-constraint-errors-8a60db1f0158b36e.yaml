@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    `Bug #2111461 <https://bugs.launchpad.net/cinder/+bug/2111461>`_: Fixed
+    issue preventing cinder-manage command to purge deleted rows due to
+    foreign key constraint errors. This happened as timestamp for bulk
+    delete operations were recalculated per table resulting in slighty
+    different intervals for deleting rows on primary and dependents
+    tables.
