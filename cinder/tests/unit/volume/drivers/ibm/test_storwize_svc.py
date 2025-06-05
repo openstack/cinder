@@ -5746,6 +5746,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'flashcopy_rate': 49,
                'clean_rate': 50,
                'mirror_pool': None,
+               'aux_mirror_pool': None,
                'volume_topology': None,
                'peer_pool': None,
                'storwize_portset': None,
@@ -11796,21 +11797,6 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                          self.driver._aux_backend_helpers)
         self.assertTrue(self.driver._replica_enabled)
 
-    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                       'create_vdisk')
-    def test_storwize_svc_create_stretch_volume_with_replication(self,
-                                                                 create_vdisk):
-        spec = {'mirror_pool': 'openstack1',
-                'replication_enabled': '<is> True',
-                'replication_type': '<in> global'
-                }
-        vol_type = self._create_replica_volume_type(
-            False, opts=spec, vol_type_name='test_type')
-        vol = self._generate_vol_info(vol_type)
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.create_volume, vol)
-        self.assertFalse(create_vdisk.called)
-
     def test_storwize_create_volume_with_mirror_replication(self):
         # Set replication target.
         self.driver.configuration.set_override('replication_device',
@@ -11853,6 +11839,105 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self._create_test_volume,
                           self.gmcv_with_cps86401_type)
+
+    def test_storwize_create_replication_volume_with_mirror_pool(self):
+        """Create a replication volume with mirror_pool option"""
+        # Set replication target
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+
+        # Create MM volume with mirror_pool
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> metro',
+                'drivers:mirror_pool': 'openstack1'}
+        mm_mirror_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='mm_mirror_type')
+        mm_volume, model_update = self._create_test_volume(
+            mm_mirror_type)
+        # Check the parameters and their values
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self.assertEqual('inconsistent_copying',
+                         model_update['metadata']['Mirroring State'])
+        # Delete the MM volume
+        self.driver.delete_volume(mm_volume)
+
+        # Create GM volume with mirror_pool
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> global',
+                'drivers:mirror_pool': 'openstack1'}
+        gm_mirror_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='gm_mirror_type')
+        gm_volume, model_update = self._create_test_volume(
+            gm_mirror_type)
+        # Check the parameters and their values
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self.assertEqual('inconsistent_copying',
+                         model_update['metadata']['Mirroring State'])
+        # Delete the GM volume
+        self.driver.delete_volume(gm_volume)
+
+    def test_storwize_retype_mm_replication_volume_with_mirror_pool(self):
+        """Create a MM replication volume with mirror_pool option and retype
+
+        it to MM replication volume type without mirror pool option
+        """
+        # Set replication target
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        host = {'host': 'openstack@svc#openstack'}
+
+        # Create MM volume
+        mm_volume, model_update = self._create_test_volume(self.mm_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        # Create MM volume-type with mirror_pool option
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> metro',
+                'drivers:mirror_pool': 'openstack1'}
+        mm_mirror_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='mm_mirror_type')
+
+        # Retype the MM-volume to volume-type with mirror_pool option
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, mm_mirror_type['id'], self.mm_type['id'])
+        retyped, model_update = self.driver.retype(
+            self.ctxt, mm_volume, mm_mirror_type, diff, host)
+        self.driver.delete_volume(mm_volume)
+
+    def test_storwize_retype_gm_replication_volume_with_mirror_pool(self):
+        """Create a GM replication volume with mirror_pool option and retype
+
+        it to GM replication volume type without mirror pool option
+        """
+        # Set replication target
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        host = {'host': 'openstack@svc#openstack'}
+
+        # Create GM volume
+        gm_volume, model_update = self._create_test_volume(self.gm_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        # Create GM volume-type with mirror_pool option
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> global',
+                'drivers:mirror_pool': 'openstack1'}
+        gm_mirror_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='gm_mirror_type')
+
+        # Retype the GM-volume to volume-type with mirror_pool option
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, gm_mirror_type['id'], self.gm_type['id'])
+        retyped, model_update = self.driver.retype(
+            self.ctxt, gm_volume, gm_mirror_type, diff, host)
+        self.driver.delete_volume(gm_volume)
 
     @ddt.data((None, None),
               (None, SVC_TARGET_CHILD_POOL), (SVC_SOURCE_CHILD_POOL, None),

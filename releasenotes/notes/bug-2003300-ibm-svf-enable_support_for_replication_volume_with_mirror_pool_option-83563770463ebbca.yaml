@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #2003300
+    <https://bugs.launchpad.net/cinder/+bug/2003300>`_:
+    Enable support for mirror-pool option for metro-mirror
+    replication and global-mirror replication volume-types.

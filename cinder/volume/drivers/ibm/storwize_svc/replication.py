@@ -102,6 +102,7 @@ class StorwizeSVCReplicationGlobalMirror(StorwizeSVCReplication):
             src_attr = self.driver._helpers.get_vdisk_attributes(
                 vref['name'])
             opts['iogrp'] = src_attr['IO_group_id']
+            opts['mirror_pool'] = None
             try:
                 self.target_helpers.create_vdisk(target_vol_name,
                                                  str(vref['size']),
