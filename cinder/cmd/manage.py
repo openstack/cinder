@@ -1048,7 +1048,8 @@ class SapCommands:
           help='Print some extra messages')
     @args('--batch-size', default=10000, type=int,
           help='Read, parse and process this many lock files')
-    def clean_old_lock_files(self, dry_run, verbose, batch_size):
+    def clean_old_lock_files(self, dry_run: bool, verbose: bool,
+                             batch_size: int) -> None:
         """List all lock files and delete orphaned ones
 
         We have to list the lock files first and the volumes and snapshots
@@ -1076,9 +1077,10 @@ class SapCommands:
 
         # list the existing lock files and parse their volume/snapshot UUID
         # we're mainly interested in files matching
-        # cinder-ffc5bc4b-3260-4eef-932f-a41219481dc9-delete_volume while the
-        # postfix -delete_volume could be any cinder.virt.manager function
-        # call, so we ignore it
+        # cinder-ffc5bc4b-3260-4eef-932f-a41219481dc9-delete_volume or with an
+        # optional nfs- (e.g. cinder-nfs-ffc5bc4b-3260-4eef-932f-a41219481dc9)
+        # while the postfix -delete_volume could be any cinder.virt.manager
+        # function call, so we ignore it.
         # Additionally, there can be "cinder-{UUID}" files without prefix,
         # which can contain a volume or image UUID.
         # There's also a lock of the form
@@ -1094,7 +1096,7 @@ class SapCommands:
 
             UUID_RE = ('(?P<uuid>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-'
                        '[a-f0-9]{4}-[a-f0-9]{12})')
-            m = re.match(f"cinder-{UUID_RE}(?P<marker>-)?", p.name)
+            m = re.match(f"cinder-(nfs-)?{UUID_RE}(?P<marker>-)?", p.name)
             if m:
                 lock_files.append((m['uuid'], p, m['marker'] is not None))
                 continue
@@ -1113,11 +1115,14 @@ class SapCommands:
         existing_uuids = set()
         ctxt = context.get_admin_context()
 
-        query = db_api.model_query(ctxt, models.Volume.id, read_deleted="no")
-        existing_uuids.update(x[0] for x in query.all())
+        with db_api.main_context_manager.reader.using(ctxt):
+            query = db_api.model_query(ctxt, models.Volume.id,
+                                       read_deleted="no")
+            existing_uuids.update(x[0] for x in query.all())
 
-        query = db_api.model_query(ctxt, models.Snapshot.id, read_deleted="no")
-        existing_uuids.update(x[0] for x in query.all())
+            query = db_api.model_query(ctxt, models.Snapshot.id,
+                                       read_deleted="no")
+            existing_uuids.update(x[0] for x in query.all())
 
         if not existing_uuids:
             print("No volume and snapshot UUIDs found.")
