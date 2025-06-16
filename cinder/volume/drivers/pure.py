@@ -96,6 +96,8 @@ PURE_OPTS = [
     cfg.StrOpt("pure_replication_pod_name", default="cinder-pod",
                help="Pure Pod name to use for sync replication "
                     "(will be created if it does not exist)."),
+    cfg.StrOpt("pure_ghost_pod_name", default="cinder-ghost-pod",
+               help="Pure Ghost Pod name to retype sync replication."),
     cfg.StrOpt("pure_iscsi_cidr", default="0.0.0.0/0",
                help="CIDR of FlashArray iSCSI targets hosts are allowed to "
                     "connect to. Default will allow connection to any "
@@ -288,6 +290,8 @@ class PureBaseVolumeDriver(san.SanDriver):
             self.configuration.pure_replication_pg_name)
         self._replication_pod_name = (
             self.configuration.pure_replication_pod_name)
+        self._ghost_pod_name = (
+            self.configuration.pure_ghost_pod_name)
         self._replication_interval = (
             self.configuration.pure_replica_interval_default * 1000)
         self._replication_retention_short_term = (
@@ -931,6 +935,150 @@ class PureBaseVolumeDriver(san.SanDriver):
             return True
         return False
 
+    def _disable_async_replication_if_needed(self, array, volume):
+        repl_type = self._get_replication_type_from_vol_type(
+            volume.volume_type)
+        if repl_type != REPLICATION_TYPE_ASYNC:
+            self._disable_async_replication(volume)
+            return True
+        return False
+
+    def _disable_sync_replication_if_needed(self, array, volume, refv):
+        repl_type = self._get_replication_type_from_vol_type(
+            volume.volume_type)
+        if repl_type != REPLICATION_TYPE_SYNC:
+            self._disable_sync_replication(array, volume, refv)
+            return True
+        return False
+
+    def _enable_sync_replication_if_needed(self, array, volume, refv):
+        repl_type = self._get_replication_type_from_vol_type(
+            volume.volume_type)
+        if repl_type == REPLICATION_TYPE_SYNC:
+            self._enable_sync_replication(array, volume, refv)
+            return True
+        return False
+
+    @pure_driver_debug_trace
+    def _stretch_replica(self, array, volume, ghost_pod_name):
+        vol_name = self._get_vol_name(volume)
+        pgdata = list(array.get_protection_groups_volumes(
+                      member_names=[vol_name]).items)
+        pgs = [item['group']['name'] for item in pgdata] or None
+        pod = flasharray.Pod(name=ghost_pod_name)
+        res = array.patch_volumes(names=[vol_name],
+                                  volume=flasharray.VolumePatch(pod=pod),
+                                  remove_from_protection_group_names=pgs)
+        if res.status_code != 200:
+            with excutils.save_and_reraise_exception() as ctxt:
+                ctxt.reraise = True
+                LOG.warning("Unable to add volume to Ghost Pod: %s",
+                            res.errors[0].message)
+        else:
+            self._setup_replicated_pods(
+                self._get_current_array(True),
+                self._active_cluster_target_arrays,
+                ghost_pod_name
+            )
+        return
+
+    @pure_driver_debug_trace
+    def _wait_for_stretch(self, array, ghost_pod_name):
+        while True:
+            pod_check = array.get_pods(names=[ghost_pod_name])
+            pod_stat = list(pod_check.items)
+            status_list = []
+            for system in pod_stat[0].arrays:
+                status_list.append(system.status)
+            if all(status == 'online' for status in status_list):
+                break
+        return
+
+    @pure_driver_debug_trace
+    def _cleanup_ghostpod(self, array, ghost_pod_name):
+        secondaries = [target_array.array_name for target_array in
+                       self._active_cluster_target_arrays]
+        res = array.delete_pods_arrays(group_names=[ghost_pod_name],
+                                       member_names=secondaries)
+        if res.status_code == 200:
+            array.patch_pods(names=[ghost_pod_name],
+                             destroy_contents=True,
+                             pod=flasharray.PodPatch(destroyed=True))
+            array.delete_pods(names=[ghost_pod_name],
+                              eradicate_contents=True)
+        else:
+            with excutils.save_and_reraise_exception() as ctxt:
+                ctxt.reraise = True
+                LOG.warning("Unable to unstretch ghost pod for deletion: %s",
+                            res.errors[0].message)
+        return
+
+    @pure_driver_debug_trace
+    def _get_pgroups(self, array, vol_name):
+        pgdata = list(array.get_protection_groups_volumes(
+                      member_names=[vol_name]).items)
+        pgs = [item['group']['name'] for item in pgdata] or None
+        return pgs
+
+    @pure_driver_debug_trace
+    def _disable_sync_replication(self, array, volume, refname):
+        vol_name = self._get_vol_name(volume)
+        ghost_pod_name = self._ghost_pod_name + "-" + volume.id
+        self._create_pod_if_not_exist(array, ghost_pod_name)
+        self._setup_replicated_pods(
+            self._get_current_array(True),
+            self._active_cluster_target_arrays,
+            ghost_pod_name
+        )
+        self._wait_for_stretch(array, ghost_pod_name)
+        ghost_ref = flasharray.Reference(name=ghost_pod_name)
+        volmv = array.patch_volumes(names=[vol_name],
+                                    volume=flasharray.
+                                    VolumePatch(pod=ghost_ref))
+        if volmv.status_code == 200:
+            secondaries = [target_array.array_name for target_array
+                           in self._active_cluster_target_arrays]
+            array.delete_pods_arrays(group_names=[ghost_pod_name],
+                                     member_names=secondaries)
+            array.patch_volumes(names=[ghost_pod_name + '::' +
+                                       vol_name.split('::')[-1]],
+                                volume=flasharray.VolumePatch
+                                (pod=flasharray.Reference(name="")))
+            array.patch_pods(names=[ghost_pod_name],
+                             destroy_contents=True,
+                             pod=flasharray.PodPatch(destroyed=True))
+            array.delete_pods(names=[ghost_pod_name],
+                              eradicate_contents=True)
+            volume.provider_id = vol_name.split('::')[-1]
+            return True
+        else:
+            return False
+
+    @pure_driver_debug_trace
+    def _enable_sync_replication(self, array, volume, refv):
+        vol_name = self._get_vol_name(volume)
+        cpod = flasharray.Pod(name=self._replication_pod_name)
+        if "::" not in refv:
+            ghost_pod_name = self._ghost_pod_name + "-" + volume.id
+            self._create_pod_if_not_exist(array, ghost_pod_name)
+            self._stretch_replica(array, volume, ghost_pod_name)
+            self._wait_for_stretch(array, ghost_pod_name)
+            volmv = array.patch_volumes(names=[ghost_pod_name
+                                               + '::' + vol_name],
+                                        volume=flasharray.
+                                        VolumePatch(pod=cpod))
+            if volmv.status_code == 200:
+                self._cleanup_ghostpod(array, ghost_pod_name)
+                return True
+        else:
+            volmv = array.patch_volumes(names=[vol_name],
+                                        volume=flasharray.
+                                        VolumePatch(pod=cpod))
+            if volmv.status_code == 200:
+                return True
+
+        return False
+
     def _enable_trisync_replication_if_needed(self, array, volume):
         repl_type = self._get_replication_type_from_vol_type(
             volume.volume_type)
@@ -1000,13 +1148,14 @@ class PureBaseVolumeDriver(san.SanDriver):
         current_array = self._get_current_array()
         # Do a pass over remaining connections on the current array, if
         # we can try and remove any remote connections too.
-        hosts = []
-        res = current_array.get_connections(volume_names=[vol_name])
-        if res.status_code == 200:
-            hosts = list(res.items)
-        for host_info in range(0, len(hosts)):
-            host_name = hosts[host_info].host.name
-            self._disconnect_host(current_array, host_name, vol_name)
+        con_data = current_array.get_connections(
+            volume_names=[vol_name])
+        if con_data.status_code == 200:
+            hosts = list(current_array.get_connections(
+                volume_names=[vol_name]).items)
+            for host_info in range(0, len(hosts)):
+                host_name = hosts[host_info].host.name
+                self._disconnect_host(current_array, host_name, vol_name)
 
         # Finally, it should be safe to delete the volume
         res = current_array.patch_volumes(names=[vol_name],
@@ -1023,7 +1172,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             current_array.delete_volumes(names=[vol_name])
         # Now check to see if deleting this volume left an empty volume
         # group. If so, we delete / eradicate the volume group
-        if "/" in vol_name:
+        if vol_name and "/" in vol_name:
             vgroup = vol_name.split("/")[0]
             self._delete_vgroup_if_empty(current_array, vgroup)
 
@@ -1689,21 +1838,6 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return None, None
 
-    def _validate_manage_existing_vol_type(self, volume):
-        """Ensure the volume type makes sense for being managed.
-
-        We will not allow volumes that need to be sync-rep'd to be managed.
-        There isn't a safe way to automate adding them to the Pod from here,
-        an admin doing the import to Cinder would need to handle that part
-        first.
-        """
-        replication_type = self._get_replication_type_from_vol_type(
-            volume.volume_type)
-        if replication_type == REPLICATION_TYPE_SYNC:
-            raise exception.ManageExistingVolumeTypeMismatch(
-                _("Unable to managed volume with type requiring sync"
-                  " replication enabled."))
-
     def _validate_manage_existing_ref(self, existing_ref, is_snap=False):
         """Ensure that an existing_ref is valid and return volume info
 
@@ -1927,16 +2061,31 @@ class PureBaseVolumeDriver(san.SanDriver):
         raise NotImplementedError()
 
     @pure_driver_debug_trace
+    def _safemode_check(self, array, existing_ref):
+        pgs = self._get_pgroups(array, existing_ref['source-name'])
+        for pg in filter(None, pgs or []):
+            res = array.get_protection_groups(names=[pg])
+            if res.status_code == 200:
+                if list(res.items)[0].retention_lock == 'ratcheted':
+                    raise exception.ManageExistingInvalidReference(
+                        existing_ref=existing_ref,
+                        reason=_("%(driver)s manage_existing cannot manage"
+                                 " a SafeMode protected volume as its not"
+                                 " supported."
+                                 ) % {'driver': self.__class__.__name__})
+
+    @pure_driver_debug_trace
     def manage_existing(self, volume, existing_ref):
         """Brings an existing backend storage object under Cinder management.
 
         We expect a volume name in the existing_ref that matches one in Purity.
         """
-        self._validate_manage_existing_vol_type(volume)
         self._validate_manage_existing_ref(existing_ref)
 
         ref_vol_name = existing_ref['source-name']
         current_array = self._get_current_array()
+        self._safemode_check(current_array, existing_ref)
+        ref_type = self._check_repl(current_array, ref_vol_name)
         volume_data = list(current_array.get_volumes(
             names=[ref_vol_name]).items)[0]
         connected_hosts = volume_data.connection_count
@@ -1947,12 +2096,17 @@ class PureBaseVolumeDriver(san.SanDriver):
                          "connected to hosts. Please disconnect this volume "
                          "from existing hosts before importing"
                          ) % {'driver': self.__class__.__name__})
-        new_vol_name = self._generate_purity_vol_name(volume)
+        orig_vol_name = self._generate_purity_vol_name(volume)
+        new_vol_name = orig_vol_name.split('::')[-1]
+        if "::" in ref_vol_name:
+            ref_name = ref_vol_name.split('::')[0]
+            new_vol_name = ref_name + '::' + new_vol_name
         LOG.info("Renaming existing volume %(ref_name)s to %(new_name)s",
                  {"ref_name": ref_vol_name, "new_name": new_vol_name})
         self._rename_volume_object(ref_vol_name,
                                    new_vol_name,
-                                   raise_not_exist=True)
+                                   raise_not_exist=True,
+                                   manage=True)
         # If existing volume has QoS settings then clear these out
         vol_iops = getattr(volume_data.qos, "iops_limit", None)
         vol_bw = getattr(volume_data.qos, "bandwidth_limit", None)
@@ -2017,20 +2171,45 @@ class PureBaseVolumeDriver(san.SanDriver):
             vol_size = int(volume_data.provisioned / units.Gi)
             self.set_qos(current_array, new_vol_name, vol_size, qos)
         volume.provider_id = new_vol_name
+        if ref_type == REPLICATION_TYPE_ASYNC:
+            self._disable_async_replication_if_needed(current_array, volume)
+        elif ref_type == REPLICATION_TYPE_SYNC:
+            self._disable_sync_replication_if_needed(current_array,
+                                                     volume, ref_vol_name)
         async_enabled = self._enable_async_replication_if_needed(current_array,
                                                                  volume)
+        sync_enabled = self._enable_sync_replication_if_needed(current_array,
+                                                               volume,
+                                                               ref_vol_name)
         repl_status = fields.ReplicationStatus.DISABLED
-        if async_enabled:
+        volume.provider_id = orig_vol_name
+        if async_enabled or sync_enabled:
             repl_status = fields.ReplicationStatus.ENABLED
         result = self._tag_volume(volume_name=new_vol_name,
                                   project=volume.project_id)
         LOG.debug("Volume tags added: %s", result)
         return {
-            'provider_id': new_vol_name,
+            'provider_id': orig_vol_name,
             'replication_status': repl_status,
-            'metadata': {'array_volume_name': new_vol_name,
+            'metadata': {'array_volume_name': orig_vol_name,
                          'array_name': current_array.array_name},
         }
+
+    @pure_driver_debug_trace
+    def _check_repl(self, array, ref_vol_name):
+        repl_type = None
+        if '::' in ref_vol_name:
+            res = array.get_pods(names=[ref_vol_name.split('::')[0]])
+            if list(res.items)[0].array_count >= 2:
+                repl_type = 'sync'
+        else:
+            pgs = self._get_pgroups(array, ref_vol_name)
+            for pg in filter(None, pgs or []):
+                res = array.get_protection_groups(names=[pg])
+                if list(res.items)[0].target_count >= 1:
+                    repl_type = 'async'
+                    break
+        return repl_type
 
     @pure_driver_debug_trace
     def manage_existing_get_size(self, volume, existing_ref):
@@ -2074,7 +2253,8 @@ class PureBaseVolumeDriver(san.SanDriver):
                               old_name,
                               new_name,
                               raise_not_exist=False,
-                              snapshot=False):
+                              snapshot=False,
+                              manage=False):
         """Rename a volume object (could be snapshot) in Purity.
 
         This will not raise an exception if the object does not exist.
@@ -2090,7 +2270,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                 names=[old_name],
                 volume_snapshot=flasharray.VolumePatch(name=new_name))
         else:
-            if "/" in old_name and "::" not in old_name:
+            if not manage and "/" in old_name and "::" not in old_name:
                 interim_name = old_name.split("/")[1]
                 res = current_array.patch_volumes(
                     names=[old_name],
@@ -2102,7 +2282,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                                 {"old_name": old_name,
                                  "error": res.errors[0].message})
                 old_name = interim_name
-            if "/" not in old_name and "::" in old_name:
+            if not manage and "/" not in old_name and "::" in old_name:
                 interim_name = old_name.split("::")[1]
                 res = current_array.patch_volumes(
                     names=[old_name],
@@ -2114,7 +2294,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                                 {"old_name": old_name,
                                  "error": res.errors[0].message})
                 old_name = interim_name
-            if "/" in old_name and "::" in old_name:
+            if not manage and "/" in old_name and "::" in old_name:
                 # This is a VVOL which can't be moved, so have
                 # to take a copy
                 interim_name = old_name.split("/")[1]
@@ -2161,7 +2341,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                  {"ref_name": vol_name, "new_name": unmanaged_vol_name})
         self._untag_volume(vol_name)
         LOG.debug("Volume tags removed")
-        self._rename_volume_object(vol_name, unmanaged_vol_name)
+        self._rename_volume_object(vol_name, unmanaged_vol_name, manage=True)
 
     def manage_existing_snapshot(self, snapshot, existing_ref):
         """Brings an existing backend storage object under Cinder management.
@@ -2698,6 +2878,24 @@ class PureBaseVolumeDriver(san.SanDriver):
         return connection
 
     @pure_driver_debug_trace
+    def _sync_retype_enable(self, volume):
+        if self._active_cluster_target_arrays:
+            self._enable_sync_replication(self._get_current_array(),
+                                          volume, volume.name)
+            volume.provider_id = self._replication_pod_name + '::' \
+                + volume.name + '-cinder'
+            model_update = {"replication_status":
+                            fields.ReplicationStatus.ENABLED,
+                            "metadata": {**volume.metadata,
+                                         "array_volume_name":
+                                         volume.provider_id}
+                            }
+            return model_update
+        else:
+            LOG.error("Sync replication is not enabled on the array")
+
+    # flake8: noqa: C901
+    @pure_driver_debug_trace
     def retype(self, context, volume, new_type, diff, host):
         """Retype from one volume type to another on the same backend.
 
@@ -2744,9 +2942,18 @@ class PureBaseVolumeDriver(san.SanDriver):
                 }
             elif prev_repl_type in [REPLICATION_TYPE_SYNC,
                                     REPLICATION_TYPE_TRISYNC]:
-                # We can't pull a volume out of a stretched pod, indicate
-                # to the volume manager that we need to use a migration instead
-                return False, None
+                if prev_repl_type == REPLICATION_TYPE_TRISYNC:
+                    self._disable_trisync_replication(
+                        self._get_current_array(), volume
+                    )
+                self._disable_sync_replication(self._get_current_array(),
+                                               volume, volume.name)
+                volume.provider_id = volume.name + '-cinder'
+                model_update = {"replication_status":
+                                fields.ReplicationStatus.DISABLED,
+                                "metadata": {**volume.metadata,
+                                             "array_volume_name":
+                                             volume.provider_id}}
         elif not previous_vol_replicated and new_vol_replicated:
             if new_repl_type == REPLICATION_TYPE_ASYNC:
                 # Add to protection group.
@@ -2757,32 +2964,51 @@ class PureBaseVolumeDriver(san.SanDriver):
                 }
             elif new_repl_type in [REPLICATION_TYPE_SYNC,
                                    REPLICATION_TYPE_TRISYNC]:
-                # We can't add a volume to a stretched pod, they must be
-                # created in one, indicate to the volume manager that it
-                # should do a migration.
-                return False, None
+                model_update = self._sync_retype_enable(volume)
+                if new_repl_type == REPLICATION_TYPE_TRISYNC:
+                    self._enable_trisync_replication(
+                        self._get_current_array(), volume
+                    )
         elif previous_vol_replicated and new_vol_replicated:
             if prev_repl_type == REPLICATION_TYPE_ASYNC:
                 if new_repl_type in [REPLICATION_TYPE_SYNC,
                                      REPLICATION_TYPE_TRISYNC]:
-                    # We can't add a volume to a stretched pod, they must be
-                    # created in one, indicate to the volume manager that it
-                    # should do a migration.
-                    return False, None
+                    model_update = self._sync_retype_enable(volume)
+                    if new_repl_type == REPLICATION_TYPE_TRISYNC:
+                        self._enable_trisync_replication(
+                            self._get_current_array(), volume
+                        )
             if prev_repl_type == REPLICATION_TYPE_SYNC:
                 if new_repl_type == REPLICATION_TYPE_ASYNC:
-                    # We can't move a volume in or out of a pod, indicate to
-                    # the manager that it should do a migration for this retype
-                    return False, None
+                    self._disable_sync_replication(self._get_current_array(),
+                                                   volume, volume.name)
+                    self._enable_async_replication(self._get_current_array(),
+                                                   volume)
+                    volume.provider_id = volume.name + '-cinder'
+                    model_update = {"replication_status":
+                                    fields.ReplicationStatus.ENABLED,
+                                    "metadata": {**volume.metadata,
+                                                 "array_volume_name":
+                                                 volume.provider_id}}
                 elif new_repl_type == REPLICATION_TYPE_TRISYNC:
                     # Add to trisync protection group
                     self._enable_trisync_replication(self._get_current_array(),
                                                      volume)
             if prev_repl_type == REPLICATION_TYPE_TRISYNC:
                 if new_repl_type == REPLICATION_TYPE_ASYNC:
-                    # We can't move a volume in or out of a pod, indicate to
-                    # the manager that it should do a migration for this retype
-                    return False, None
+                    self._disable_trisync_replication(
+                        self._get_current_array(), volume
+                    )
+                    self._disable_sync_replication(self._get_current_array(),
+                                                   volume, volume.name)
+                    self._enable_async_replication(self._get_current_array(),
+                                                   volume)
+                    volume.provider_id = volume.name + '-cinder'
+                    model_update = {"replication_status":
+                                    fields.ReplicationStatus.ENABLED,
+                                    "metadata": {**volume.metadata,
+                                                 "array_volume_name":
+                                                 volume.provider_id}}
                 elif new_repl_type == REPLICATION_TYPE_SYNC:
                     # Remove from trisync protection group
                     self._disable_trisync_replication(
@@ -2883,12 +3109,16 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Disable replication on the given volume."""
 
         current_array = self._get_current_array()
+        vol_name = self._get_vol_name(volume)
         LOG.debug("Disabling replication for volume %(id)s residing on "
                   "array %(backend_id)s.",
                   {"id": volume["id"],
                    "backend_id": current_array.backend_id})
+        pgdata = list(current_array.get_protection_groups_volumes(
+                      member_names=[vol_name]).items)
+        pgs = [item['group']['name'] for item in pgdata] or None
         res = current_array.delete_protection_groups_volumes(
-            group_names=[self._replication_pg_name],
+            group_names=pgs,
             member_names=[self._get_vol_name(volume)])
         if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:

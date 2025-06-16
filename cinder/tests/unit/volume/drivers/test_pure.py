@@ -1287,6 +1287,36 @@ INTERFACES = [
     }
 ]
 
+retype_meta = {
+    'metadata': {
+        'array_volume_name': (
+            'cinder-pod::volume-1e5177e7-95e5-4a0f-'
+            'b170-e45f4b469f6a-cinder'
+        )
+    },
+    'replication_status': 'enabled'
+}
+
+retype_repl_off = {
+    'metadata': {
+        'array_volume_name': (
+            'volume-1e5177e7-95e5-4a0f-'
+            'b170-e45f4b469f6a-cinder'
+        )
+    },
+    'replication_status': 'disabled'
+}
+
+retype_async = {
+    'metadata': {
+        'array_volume_name': (
+            'volume-1e5177e7-95e5-4a0f-'
+            'b170-e45f4b469f6a-cinder'
+        )
+    },
+    'replication_status': 'enabled'
+}
+
 
 class PureDriverTestCase(test.TestCase):
     def setUp(self):
@@ -1366,6 +1396,7 @@ class PureBaseSharedDriverTestCase(PureDriverTestCase):
                          return_value=self.array)
         self.driver._replication_pod_name = 'cinder-pod'
         self.driver._replication_pg_name = 'cinder-group'
+        self.driver._ghost_pod_name = 'cinder-ghost-pod'
 
     def new_fake_vol(self, set_provider_id=True, fake_context=None,
                      spec=None, type_extra_specs=None, type_qos_specs_id=None,
@@ -2365,6 +2396,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         expected = [mock.call.flasharray.VolumePatch(names=[vol_name],
                                                      volume=vol),
                     mock.call.get_connections(volume_names = [vol_name]),
+                    mock.call.get_connections(volume_names = [vol_name]),
                     mock.call.patch_volumes(names=[vol_name],
                                             volume=mock_vol_patch()),
                     mock.call.delete_volumes(names=[vol_name])]
@@ -2380,6 +2412,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver.delete_volume(vol)
         expected = [mock.call.flasharray.VolumePatch(names=[vol_name],
                                                      volume=vol),
+                    mock.call.get_connections(volume_names = [vol_name]),
                     mock.call.get_connections(volume_names = [vol_name]),
                     mock.call.delete_connections(host_names=['utest'],
                                                  volume_names = [vol_name]),
@@ -2408,6 +2441,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         expected = [mock.call.flasharray.VolumePatch(names=[vol_name],
                                                      volume=vol),
                     mock.call.get_connections(volume_names = [vol_name]),
+                    mock.call.get_connections(volume_names = [vol_name]),
                     mock.call.patch_volumes(names=[vol_name],
                                             volume=mock_vol_patch())
                     ]
@@ -2430,6 +2464,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver.delete_volume(vol)
         expected = [mock.call.flasharray.VolumePatch(names=[vol_name],
                                                      volume=vol),
+                    mock.call.get_connections(volume_names = [vol_name]),
                     mock.call.get_connections(volume_names = [vol_name]),
                     mock.call.delete_connections(host_names = ['utest'],
                                                  volume_names = [vol_name]),
@@ -3126,9 +3161,15 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         vol, vol_name = self.new_fake_vol(set_provider_id=False)
         self.driver._get_volume_type_extra_spec = mock.Mock(
             return_value={})
+        mock_rsp = ValidResponse(200, None, 1,
+                                 [{"group": {"name": "tstpg"}}], {})
+        self.array.get_protection_groups_volumes.return_value = mock_rsp
+        tpg_rsp = ValidResponse(200, None, 1,
+                                [DotNotation({"target_count": 2})], {})
+        self.array.get_protection_groups.return_value = tpg_rsp
         self.driver.manage_existing(vol, volume_ref)
         mock_rename.assert_called_with(ref_name, vol_name,
-                                       raise_not_exist=True)
+                                       raise_not_exist=True, manage=True)
 
     @mock.patch(BASE_DRIVER_OBJ + '._validate_manage_existing_ref')
     @mock.patch(BASE_DRIVER_OBJ + "._rename_volume_object")
@@ -3139,6 +3180,12 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         vol, _ = self.new_fake_vol(set_provider_id=False)
         self.driver._get_volume_type_extra_spec = mock.Mock(
             return_value={})
+        mock_rsp = ValidResponse(200, None, 1,
+                                 [{"group": {"name": "tstpg"}}], {})
+        self.array.get_protection_groups_volumes.return_value = mock_rsp
+        tpg_rsp = ValidResponse(200, None, 1,
+                                [DotNotation({"target_count": 2})], {})
+        self.array.get_protection_groups.return_value = tpg_rsp
         self.assert_error_propagates(
             [mock_rename, mock_validate],
             self.driver.manage_existing,
@@ -3159,37 +3206,6 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                           self.driver.manage_existing,
                           vol, {'source-name': None})
 
-    def test_manage_existing_sync_repl_type(self):
-        ref_name = 'vol1'
-        volume_ref = {'source-name': ref_name}
-        type_spec = {
-            'replication_type': '<in> sync',
-            'replication_enabled': '<is> true',
-        }
-        self.array.get_connections.return_value = []
-        vol, vol_name = self.new_fake_vol(set_provider_id=False,
-                                          type_extra_specs=type_spec)
-
-        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
-                          self.driver.manage_existing,
-                          vol, volume_ref)
-
-    def test_manage_existing_vol_in_repl_pod(self):
-        ref_name = 'somepod::vol1'
-        volume_ref = {'source-name': ref_name}
-        pod = deepcopy(MANAGEABLE_PODS)
-        pod[0]['array_count'] = 1
-        pod[0]['link_source_count'] = 1
-        pod[0]['link_target_count'] = 1
-        self.array.get_connections.return_value = []
-        self.array.get_pods.return_value = ValidResponse(
-            200, None, 1, [DotNotation(pod[0])], {})
-        vol, vol_name = self.new_fake_vol(set_provider_id=False)
-
-        self.assertRaises(exception.ManageExistingInvalidReference,
-                          self.driver.manage_existing,
-                          vol, volume_ref)
-
     @mock.patch(BASE_DRIVER_OBJ + "._rename_volume_object")
     def test_manage_existing_with_connected_hosts(self, mock_rename):
         ref_name = 'vol1'
@@ -3199,6 +3215,12 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.get_volumes.\
             return_value = ValidResponse(200, None, 1,
                                          [DotNotation(cvol[0])], {})
+        pg_rsp = ValidResponse(
+            200, None, 1, [{"group": {"name": "tstpg"}}], {})
+        self.array.get_protection_groups_volumes.return_value = pg_rsp
+        tpg_rsp = ValidResponse(
+            200, None, 1, [DotNotation({"target_count": 2})], {})
+        self.array.get_protection_groups.return_value = tpg_rsp
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing,
                           vol, {'source-name': ref_name})
@@ -3246,7 +3268,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver.unmanage(vol)
 
         mock_rename.assert_called_with(vol_name,
-                                       unmanaged_vol_name)
+                                       unmanaged_vol_name, manage=True)
 
     @mock.patch(BASE_DRIVER_OBJ + "._rename_volume_object")
     def test_unmanage_error_propagates(self, mock_rename):
@@ -3260,7 +3282,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         vol, vol_name = self.new_fake_vol()
         unmanaged_vol_name = vol_name + UNMANAGED_SUFFIX
         self.driver.unmanage(vol)
-        mock_rename.assert_called_with(vol_name, unmanaged_vol_name)
+        mock_rename.assert_called_with(
+            vol_name, unmanaged_vol_name, manage=True)
 
     @mock.patch(DRIVER_PATH + ".LOG")
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePatch")
@@ -3680,9 +3703,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 'replication_type': '<in> sync',
                 'replication_enabled': '<is> true',
             },
-            expected_model_update=None,
-            # cannot retype via fast path to/from sync rep
-            expected_did_retype=False,
+            expected_model_update=retype_meta,
+            expected_did_retype=True,
             expected_add_to_group=False,
             expected_remove_from_pgroup=False,
         ),
@@ -3695,9 +3717,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 'replication_type': '<in> trisync',
                 'replication_enabled': '<is> true',
             },
-            expected_model_update=None,
-            # cannot retype via fast path to/from sync rep
-            expected_did_retype=False,
+            expected_model_update=retype_meta,
+            expected_did_retype=True,
             expected_add_to_group=False,
             expected_remove_from_pgroup=False,
         ),
@@ -3711,9 +3732,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 'replication_type': '<in> sync',
                 'replication_enabled': '<is> false',
             },
-            expected_model_update=None,
-            # cannot retype via fast path to/from sync rep
-            expected_did_retype=False,
+            expected_model_update=retype_repl_off,
+            expected_did_retype=True,
             expected_add_to_group=False,
             expected_remove_from_pgroup=False,
         ),
@@ -3727,9 +3747,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 'replication_type': '<in> trisync',
                 'replication_enabled': '<is> false',
             },
-            expected_model_update=None,
-            # cannot retype via fast path to/from sync rep
-            expected_did_retype=False,
+            expected_model_update=retype_repl_off,
+            expected_did_retype=True,
             expected_add_to_group=False,
             expected_remove_from_pgroup=False,
         ),
@@ -3743,9 +3762,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 'replication_type': '<in> sync',
                 'replication_enabled': '<is> true',
             },
-            expected_model_update=None,
-            # cannot retype via fast path to/from sync rep
-            expected_did_retype=False,
+            expected_model_update=retype_meta,
+            expected_did_retype=True,
             expected_add_to_group=False,
             expected_remove_from_pgroup=False,
         ),
@@ -3759,9 +3777,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 'replication_type': '<in> trisync',
                 'replication_enabled': '<is> true',
             },
-            expected_model_update=None,
-            # cannot retype via fast path to/from sync rep
-            expected_did_retype=False,
+            expected_model_update=retype_meta,
+            expected_did_retype=True,
             expected_add_to_group=False,
             expected_remove_from_pgroup=False,
         ),
@@ -3775,9 +3792,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 'replication_type': '<in> async',
                 'replication_enabled': '<is> true',
             },
-            expected_model_update=None,
-            # cannot retype via fast path to/from sync rep
-            expected_did_retype=False,
+            expected_model_update=retype_async,
+            expected_did_retype=True,
             expected_add_to_group=False,
             expected_remove_from_pgroup=False,
         ),
@@ -3791,9 +3807,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                 'replication_type': '<in> async',
                 'replication_enabled': '<is> true',
             },
-            expected_model_update=None,
-            # cannot retype via fast path to/from trisync rep
-            expected_did_retype=False,
+            expected_model_update=retype_async,
+            expected_did_retype=True,
             expected_add_to_group=False,
             expected_remove_from_pgroup=False,
         ),
@@ -3828,8 +3843,14 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             expected_remove_from_pgroup=False,
         ),
     )
+    @mock.patch(BASE_DRIVER_OBJ + "._stretch_replica")
+    @mock.patch(BASE_DRIVER_OBJ + "._wait_for_stretch")
+    @mock.patch(BASE_DRIVER_OBJ + "._create_pod_if_not_exist")
     @ddt.unpack
     def test_retype_replication(self,
+                                mock_pod,
+                                mock_wait_stretch,
+                                mock_stretch,
                                 current_spec,
                                 new_spec,
                                 expected_model_update,
@@ -3838,6 +3859,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                 expected_remove_from_pgroup):
         ctxt = context.get_admin_context()
         vol, vol_name = self.new_fake_vol(type_extra_specs=current_spec)
+        secondary = mock.MagicMock()
+        self.driver._active_cluster_target_arrays = [secondary]
         new_type = fake_volume.fake_volume_type_obj(ctxt)
         new_type.extra_specs = new_spec
         get_voltype = "cinder.objects.volume_type.VolumeType.get_by_name_or_id"
@@ -3845,6 +3868,9 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             mock_get_vol_type.return_value = new_type
             self.driver._get_volume_type_extra_spec = mock.Mock(
                 return_value={})
+            pg_rsp = ValidResponse(
+                200, None, 1, [{"group": {"name": "cinder-group"}}], {})
+            self.array.get_protection_groups_volumes.return_value = pg_rsp
             did_retype, model_update = self.driver.retype(
                 ctxt,
                 vol,
@@ -4175,6 +4201,250 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             self.array, vol
         )
 
+    @mock.patch(BASE_DRIVER_OBJ + "._cleanup_ghostpod")
+    @mock.patch(BASE_DRIVER_OBJ + "._wait_for_stretch")
+    @mock.patch(BASE_DRIVER_OBJ + "._stretch_replica")
+    @mock.patch(BASE_DRIVER_OBJ + "._create_pod_if_not_exist")
+    def test_enable_sync_replication(
+            self,
+            mock_pod,
+            mock_stretch,
+            mock_wait_stretch,
+            mock_cleanup):
+        vol, vol_name = self.new_fake_vol()
+        ghost_pod_name = "cinder-ghost-pod-" + vol.id
+        cpod = self.flasharray.Pod(name='cinder-pod')
+        mock_rsp = ValidResponse(200, None, 1, [vol], {})
+        self.array.patch_volumes.return_value = mock_rsp
+        self.driver._enable_sync_replication(self.array, vol, vol_name)
+        mock_pod.assert_called_with(self.array, ghost_pod_name)
+        mock_stretch.assert_called_with(self.array, vol, ghost_pod_name)
+        mock_wait_stretch.assert_called_with(self.array, ghost_pod_name)
+        self.array.patch_volumes.assert_called_with(
+            names=[
+                ghost_pod_name + '::' + vol_name],
+            volume=self.flasharray.VolumePatch(
+                pod=cpod))
+        mock_cleanup.assert_called_with(self.array, ghost_pod_name)
+
+        err_rsp = ErrorResponse(400, [DotNotation({'message':
+                                      'does not exist'})], {})
+        self.array.patch_volumes.return_value = err_rsp
+        self.driver._enable_sync_replication(self.array, vol, vol_name)
+        assert mock_cleanup.call_count == 1
+
+    def test_enable_sync_replication_sync(self):
+        repl_extra_specs = {
+            'replication_type': '<in> sync',
+            'replication_enabled': '<is> true',
+        }
+        vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        cpod = self.flasharray.Pod(name='cinder-pod')
+        self.driver._enable_sync_replication(self.array, vol, vol_name)
+        self.array.patch_volumes.assert_called_with(
+            names=[vol_name], volume=self.flasharray.VolumePatch(pod=cpod))
+
+    @mock.patch(BASE_DRIVER_OBJ + "._wait_for_stretch")
+    @mock.patch(BASE_DRIVER_OBJ + '._setup_replicated_pods')
+    @mock.patch(BASE_DRIVER_OBJ + "._create_pod_if_not_exist")
+    def test_disable_sync_replication(
+            self,
+            mock_pod,
+            mock_setup_pods,
+            mock_wait_stretch):
+        repl_extra_specs = {
+            'replication_type': '<in> sync',
+            'replication_enabled': '<is> true',
+        }
+        vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        ghost_pod_name = "cinder-ghost-pod-" + vol.id
+        ghost_ref = self.flasharray.Reference(name=ghost_pod_name)
+        self.driver._disable_sync_replication(self.array, vol, vol_name)
+        self.array.patch_volumes.assert_called_with(names=[vol_name],
+                                                    volume=self.flasharray.
+                                                    VolumePatch(pod=ghost_ref))
+
+        mock_rsp = ValidResponse(200, None, 1, [vol], {})
+        self.array.patch_volumes.return_value = mock_rsp
+        self.driver._disable_sync_replication(self.array, vol, vol_name)
+        self.array.delete_pods.assert_called_with(names=[ghost_pod_name],
+                                                  eradicate_contents=True)
+        assert vol.provider_id == vol_name.split('::')[-1]
+
+    def test_enable_sync_replication_if_needed(self):
+        repl_extra_specs = {
+            'replication_type': '<in> sync',
+            'replication_enabled': '<is> true',
+        }
+        vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        output = self.driver._enable_sync_replication_if_needed(
+            self.array, vol, vol_name)
+        assert output
+
+        vol, vol_name = self.new_fake_vol()
+        output = self.driver._enable_sync_replication_if_needed(
+            self.array, vol, vol_name)
+        assert output is False
+
+    @mock.patch(BASE_DRIVER_OBJ + "._wait_for_stretch")
+    @mock.patch(BASE_DRIVER_OBJ + '._setup_replicated_pods')
+    @mock.patch(BASE_DRIVER_OBJ + "._create_pod_if_not_exist")
+    def test_disable_sync_replication_if_needed(
+            self, mock_pod, mock_setup_pods, mock_wait_stretch):
+        repl_extra_specs = {
+            'replication_type': '<in> async',
+            'replication_enabled': '<is> true',
+        }
+        vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        output = self.driver._disable_sync_replication_if_needed(
+            self.array, vol, vol_name)
+        assert output
+
+        repl_extra_specs = {
+            'replication_type': '<in> sync',
+            'replication_enabled': '<is> true',
+        }
+        vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        output = self.driver._disable_sync_replication_if_needed(
+            self.array, vol, vol_name)
+        assert output is False
+
+    @mock.patch(BASE_DRIVER_OBJ + "._disable_async_replication")
+    def test_disable_async_replication_if_needed(self, mock_async):
+        repl_extra_specs = {
+            'replication_type': '<in> sync',
+            'replication_enabled': '<is> true',
+        }
+        vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        output = self.driver._disable_async_replication_if_needed(
+            self.array, vol)
+        assert output
+
+        repl_extra_specs = {
+            'replication_type': '<in> async',
+            'replication_enabled': '<is> true',
+        }
+        vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        output = self.driver._disable_async_replication_if_needed(
+            self.array, vol)
+        assert output is False
+
+    @mock.patch(DRIVER_PATH + ".excutils.save_and_reraise_exception")
+    @mock.patch(DRIVER_PATH + ".LOG")
+    @mock.patch(BASE_DRIVER_OBJ + '._setup_replicated_pods')
+    def test_stretch_replica(
+            self,
+            mock_setup_pods,
+            mock_logger,
+            mock_excutils):
+        vol, vol_name = self.new_fake_vol()
+        ghost_pod_name = "cinder-ghost-pod-" + vol.id
+        mock_rsp = ValidResponse(
+            200, None, 1, [{"group": {"name": "tstpg"}}], {})
+        self.array.get_protection_groups_volumes.return_value = mock_rsp
+        mock_patch_rsp = ValidResponse(200, None, 1, [vol], {})
+        self.array.patch_volumes.return_value = mock_patch_rsp
+        self.driver._stretch_replica(self.array, vol, ghost_pod_name)
+        mock_setup_pods.assert_called()
+
+        err_rsp = ErrorResponse(400, [DotNotation({'message':
+                                      'does not exist'})], {})
+        self.array.patch_volumes.return_value = err_rsp
+        self.driver._stretch_replica(self.array, vol, ghost_pod_name)
+        mock_logger.warning.\
+            assert_called_with('Unable to add volume to Ghost Pod: %s',
+                               'does not exist')
+
+    @mock.patch(DRIVER_PATH + ".LOG")
+    @mock.patch(DRIVER_PATH + ".excutils.save_and_reraise_exception")
+    def test_cleanup_ghostpod(self, mock_excutils, mock_logger):
+        vol, vol_name = self.new_fake_vol()
+        ghost_pod_name = "cinder-ghost-pod-" + vol.id
+        mock_rsp = ValidResponse(200, None, 1, [], {})
+        self.array.delete_pods_arrays.return_value = mock_rsp
+        self.driver._cleanup_ghostpod(self.array, ghost_pod_name)
+        self.array.delete_pods.assert_called_with(names=[ghost_pod_name],
+                                                  eradicate_contents=True)
+
+        err_rsp = ErrorResponse(400, [DotNotation({'message':
+                                      'does not exist'})], {})
+        self.array.delete_pods_arrays.return_value = err_rsp
+        self.driver._cleanup_ghostpod(self.array, ghost_pod_name)
+        mock_logger.warning. assert_called_with(
+            'Unable to unstretch ghost pod for deletion: %s', 'does not exist')
+
+    def test_safemode_check(self):
+        vol, vol_name = self.new_fake_vol()
+        mock_rsp = ValidResponse(
+            200, None, 1, [{"group": {"name": "tstpg"}}], {})
+        self.array.get_protection_groups_volumes.return_value = mock_rsp
+        mock_pg = ValidResponse(
+            200, None, 1, [DotNotation({"retention_lock": "ratcheted"})], {})
+        self.array.get_protection_groups.return_value = mock_pg
+        exc_out = self.assertRaises(exception.ManageExistingInvalidReference,
+                                    self.driver._safemode_check,
+                                    self.array, {"source-name": vol_name})
+        self.assertIn(
+            "SafeMode protected volume as its not supported", str(exc_out))
+
+    def test_check_repl(self):
+        mock_rsp = ValidResponse(
+            200, None, 1, [DotNotation({"array_count": 2})], {})
+        self.array.get_pods.return_value = mock_rsp
+        rtype = self.driver._check_repl(self.array, 'cinderpod::tstvol')
+        assert rtype == 'sync'
+
+        pg_rsp = ValidResponse(
+            200, None, 1, [{"group": {"name": "tstpg"}}], {})
+        self.array.get_protection_groups_volumes.return_value = pg_rsp
+        tpg_rsp = ValidResponse(
+            200, None, 1, [DotNotation({"target_count": 2})], {})
+        self.array.get_protection_groups.return_value = tpg_rsp
+        rtype = self.driver._check_repl(self.array, 'tstvol')
+        assert rtype == 'async'
+
+    @mock.patch(DRIVER_PATH + ".LOG")
+    @mock.patch(BASE_DRIVER_OBJ + '._enable_sync_replication')
+    def test_sync_retype_enable(self, mock_sync, mock_logger):
+        vol, vol_name = self.new_fake_vol()
+        secondary = mock.MagicMock()
+        self.driver._active_cluster_target_arrays = [secondary]
+        fvol = 'cinder-pod::' + vol_name
+        model_update = {"replication_status":
+                        fields.ReplicationStatus.ENABLED,
+                        "metadata": {**vol.metadata,
+                                     "array_volume_name":
+                                         fvol}
+                        }
+        out = self.driver._sync_retype_enable(vol)
+        assert vol.provider_id == fvol
+        assert out == model_update
+
+        self.driver._active_cluster_target_arrays = []
+        self.driver._sync_retype_enable(vol)
+        mock_logger.error.\
+            assert_called_with("Sync replication is not enabled on the array")
+
+    def test_get_pgroups(self):
+        pg_rsp = ValidResponse(
+            200, None, 1, [{"group": {"name": "tstpg"}}], {})
+        self.array.get_protection_groups_volumes.return_value = pg_rsp
+        out = self.driver._get_pgroups(self.array, 'tstvol')
+        assert out == ['tstpg']
+
+    @mock.patch("time.sleep", return_value=None)
+    @mock.patch("time.time")
+    def test_wait_for_stretch(self, mock_time, mock_sleep):
+        vol, vol_name = self.new_fake_vol()
+        ghost_pod_name = "cinder-ghost-pod-" + vol.id
+        mock_rsp0 = ValidResponse(200, None, 1, [DotNotation(
+            {"arrays": [{"name": "array-tst", "status": "offline"}]})], {})
+
+        mock_rsp1 = ValidResponse(200, None, 1, [DotNotation(
+            {"arrays": [{"name": "array-tst", "status": "online"}]})], {})
+        self.array.get_pods.side_effect = [mock_rsp0, mock_rsp1]
+        self.driver._wait_for_stretch(self.array, ghost_pod_name)
+
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
     @mock.patch(BASE_DRIVER_OBJ + '._get_flasharray')
     @mock.patch(BASE_DRIVER_OBJ + '._find_async_failover_target')
@@ -4370,6 +4640,9 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     def test_disable_replication_success(self):
         vol, vol_name = self.new_fake_vol()
+        mock_rsp = ValidResponse(
+            200, None, 1, [{"group": {"name": "cinder-group"}}], {})
+        self.array.get_protection_groups_volumes.return_value = mock_rsp
         self.driver._disable_async_replication(vol)
         self.array.delete_protection_groups_volumes.assert_called_with(
             group_names=[self.driver._replication_pg_name],
@@ -4378,6 +4651,9 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     def test_disable_replication_error_propagates(self):
         vol, _ = self.new_fake_vol()
+        mock_rsp = ValidResponse(
+            200, None, 1, [{"group": {"name": "cinder-group"}}], {})
+        self.array.get_protection_groups_volumes.return_value = mock_rsp
         self.assert_error_propagates(
             [self.array.delete_protection_groups_volumes],
             self.driver._disable_async_replication,
@@ -4390,6 +4666,9 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         err_rsp = ErrorResponse(400, [DotNotation({'message':
                                       'could not be found'})], {})
         self.array.delete_protection_groups_volumes.return_value = err_rsp
+        mock_rsp = ValidResponse(
+            200, None, 1, [{"group": {"name": "cinder-group"}}], {})
+        self.array.get_protection_groups_volumes.return_value = mock_rsp
         self.driver._disable_async_replication(vol)
         self.array.delete_protection_groups_volumes.assert_called_with(
             group_names=[self.driver._replication_pg_name],
@@ -4604,6 +4883,12 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.get_connections.return_value = []
         self.array.get_volumes.return_value = MPV
 
+        pg_rsp = ValidResponse(
+            200, None, 1, [{"group": {"name": "tstpg"}}], {})
+        self.array.get_protection_groups_volumes.return_value = pg_rsp
+        tpg_rsp = ValidResponse(
+            200, None, 1, [DotNotation({"target_count": 2})], {})
+        self.array.get_protection_groups.return_value = tpg_rsp
         self.driver.manage_existing(vol, volume_ref)
         mock_qos.assert_called_with(self.array, vol_name, 3,
                                     {'maxIOPS': 100,

@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Pure Storage: Added support for retyping a
+    simple or async-replicated volume into a
+    sync or trisync-replicated volume.
+    Additionally, the ``cinder manage`` command may
+    now be used to bring existing sync replicated volumes
+    under cinder control, when previously these sort of
+    volumes could not be managed.
