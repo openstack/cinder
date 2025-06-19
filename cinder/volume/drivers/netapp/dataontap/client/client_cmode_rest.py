@@ -1434,7 +1434,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         query = {
             'svm.name': self.vserver,
-            'initiators.name': ' '.join(initiator_list),
+            'initiators.name': ','.join(initiator_list),
             'fields': 'name,protocol,os_type'
         }
 
@@ -1587,7 +1587,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
     def has_luns_mapped_to_initiators(self, initiator_list):
         """Checks whether any LUNs are mapped to the given initiator(s)."""
         query = {
-            'initiators.name': ' '.join(initiator_list),
+            'initiators.name': ','.join(initiator_list),
             'fields': 'lun_maps'
         }
 

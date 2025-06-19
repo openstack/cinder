@@ -1894,7 +1894,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         expected_query = {
             'svm.name': fake_client.VOLUME_VSERVER_NAME,
-            'initiators.name': ' '.join(initiators),
+            'initiators.name': ','.join(initiators),
             'fields': 'name,protocol,os_type'
         }
 
@@ -1919,7 +1919,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         expected_query = {
             'svm.name': fake_client.VOLUME_VSERVER_NAME,
-            'initiators.name': ' '.join(initiators),
+            'initiators.name': ','.join(initiators),
             'fields': 'name,protocol,os_type'
         }
 
@@ -2180,7 +2180,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertTrue(self.client.has_luns_mapped_to_initiators(initiators))
 
         query = {
-            'initiators.name': ' '.join(initiators),
+            'initiators.name': ','.join(initiators),
             'fields': 'lun_maps'
         }
 
@@ -2196,7 +2196,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertFalse(self.client.has_luns_mapped_to_initiators(initiators))
 
         query = {
-            'initiators.name': ' '.join(initiators),
+            'initiators.name': ','.join(initiators),
             'fields': 'lun_maps'
         }
 
@@ -2212,7 +2212,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertFalse(self.client.has_luns_mapped_to_initiators(initiators))
 
         query = {
-            'initiators.name': ' '.join(initiators),
+            'initiators.name': ','.join(initiators),
             'fields': 'lun_maps'
         }
 
