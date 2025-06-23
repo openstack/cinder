@@ -28,11 +28,11 @@ import webob
 from cinder.api import api_utils
 from cinder.api import microversions as mv
 from cinder.common import constants
-if typing.TYPE_CHECKING:
-    from cinder import context
 from cinder import exception
 from cinder.i18n import _
 
+if typing.TYPE_CHECKING:
+    from cinder import context
 
 api_common_opts = [
     cfg.IntOpt('osapi_max_limit',

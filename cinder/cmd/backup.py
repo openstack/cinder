@@ -44,8 +44,6 @@ from oslo_log import log as logging
 from oslo_privsep import priv_context
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
-if typing.TYPE_CHECKING:
-    import oslo_service
 
 # Need to register global_opts
 from cinder.common import config  # noqa
@@ -57,6 +55,8 @@ from cinder import service
 from cinder import utils
 from cinder import version
 
+if typing.TYPE_CHECKING:
+    import oslo_service
 
 CONF = cfg.CONF
 

@@ -23,11 +23,11 @@ from oslo_utils import strutils
 import webob
 from webob import exc
 
-if typing.TYPE_CHECKING:
-    # conditional import to avoid a circular import problem from cinderlib
-    from cinder import context
 from cinder import exception
 from cinder.i18n import _
+
+if typing.TYPE_CHECKING:
+    from cinder import context
 
 CONF = cfg.CONF
 CONF.import_group('keystone_authtoken',
