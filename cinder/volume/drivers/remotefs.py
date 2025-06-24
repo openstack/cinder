@@ -858,7 +858,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                             basedir: str,
                             ext_bf_template=None,
                             force_share=False,
-                            run_as_root=False) -> imageutils.QemuImgInfo:
+                            run_as_root=False,
+                            img_format=None) -> imageutils.QemuImgInfo:
         """Sanitize image_utils' qemu_img_info.
 
         This code expects to deal only with relative filenames.
@@ -877,7 +878,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         info = image_utils.qemu_img_info(path,
                                          force_share=force_share,
                                          run_as_root=run_as_root,
-                                         allow_qcow2_backing_file=True)
+                                         allow_qcow2_backing_file=True,
+                                         img_format=img_format)
         if info.image:
             info.image = os.path.basename(info.image)
         if info.backing_file:

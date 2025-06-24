@@ -336,6 +336,13 @@ NFS_CONFIG4 = {'max_over_subscription_ratio': 20.0,
                'nas_secure_file_permissions': 'false',
                'nas_secure_file_operations': 'true'}
 
+VOLUME_ADMIN_METADATA_QCOW2_FORMAT = {
+    'format': 'qcow2'
+}
+VOLUME_ADMIN_METADATA_RAW_FORMAT = {
+    'format', 'raw'
+}
+
 QEMU_IMG_INFO_OUT1 = """{
     "filename": "%(volid)s",
     "format": "raw",
@@ -1372,10 +1379,12 @@ class NfsDriverTestCase(test.TestCase):
         mock_read_info_file.assert_called_once_with(info_path)
         snap_info_call = mock.call(snap_path,
                                    force_share=True, run_as_root=True,
-                                   allow_qcow2_backing_file=True)
+                                   allow_qcow2_backing_file=True,
+                                   img_format=None)
         src_info_call = mock.call(src_vol_path,
                                   force_share=True, run_as_root=True,
-                                  allow_qcow2_backing_file=True)
+                                  allow_qcow2_backing_file=True,
+                                  img_format=None)
         self.assertEqual(2, mock_img_info.call_count)
         mock_img_info.assert_has_calls([snap_info_call, src_info_call])
         used_qcow = nfs_conf['nfs_qcow2_volumes']
@@ -1483,16 +1492,22 @@ class NfsDriverTestCase(test.TestCase):
                           new_volume,
                           fake_snap)
 
-    @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT1],
-              [NFS_CONFIG2, QEMU_IMG_INFO_OUT2],
-              [NFS_CONFIG3, QEMU_IMG_INFO_OUT1],
-              [NFS_CONFIG4, QEMU_IMG_INFO_OUT2])
+    @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT1, 'raw'],
+              [NFS_CONFIG2, QEMU_IMG_INFO_OUT2, 'qcow2'],
+              [NFS_CONFIG3, QEMU_IMG_INFO_OUT1, 'raw'],
+              [NFS_CONFIG4, QEMU_IMG_INFO_OUT2, 'qcow2'])
     @ddt.unpack
-    def test_initialize_connection(self, nfs_confs, qemu_img_info):
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    @mock.patch('cinder.context.get_admin_context')
+    def test_initialize_connection(self, nfs_confs, qemu_img_info,
+                                   expected_format, mock_get_admin_context,
+                                   mock_volume_get_by_id):
         self._set_driver(extra_confs=nfs_confs)
         drv = self._driver
 
         volume = self._simple_volume()
+        volume.admin_metadata = {'format': expected_format}
+
         vol_dir = os.path.join(self.TEST_MNT_POINT_BASE,
                                drv._get_hash_str(volume.provider_location))
         vol_path = os.path.join(vol_dir, volume.name)
@@ -1510,17 +1525,24 @@ class NfsDriverTestCase(test.TestCase):
         mock_img_utils.assert_called_once_with(vol_path,
                                                force_share=True,
                                                run_as_root=True,
-                                               allow_qcow2_backing_file=True)
+                                               allow_qcow2_backing_file=True,
+                                               img_format=expected_format)
+
         self.assertEqual('nfs', conn_info['driver_volume_type'])
         self.assertEqual(volume.name, conn_info['data']['name'])
         self.assertEqual(self.TEST_MNT_POINT_BASE,
                          conn_info['mount_point_base'])
+        self.assertEqual(expected_format, conn_info['data']['format'])
 
     @mock.patch.object(image_utils, 'qemu_img_info')
-    def test_initialize_connection_raise_exception(self, mock_img_info):
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_initialize_connection_raise_exception(self, mock_get,
+                                                   mock_img_info):
         self._set_driver()
         drv = self._driver
         volume = self._simple_volume()
+        volume.admin_metadata = {}
+        mock_get.return_value = volume
 
         qemu_img_output = """{
     "filename": "%s",
@@ -1538,10 +1560,14 @@ class NfsDriverTestCase(test.TestCase):
                                None)
 
     @mock.patch.object(image_utils, 'qemu_img_info')
-    def test_initialize_connection_raise_on_wrong_size(self, mock_img_info):
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_initialize_connection_raise_on_wrong_size(self, mock_get,
+                                                       mock_img_info):
         self._set_driver()
         drv = self._driver
         volume = self._simple_volume()
+        volume.admin_metadata = {}
+        mock_get.return_value = volume
 
         qemu_img_output = """{
     "filename": "%s",
