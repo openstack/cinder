@@ -283,7 +283,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._replication_pod_name = (
             self.configuration.pure_replication_pod_name)
         self._replication_interval = (
-            self.configuration.pure_replica_interval_default)
+            self.configuration.pure_replica_interval_default * 1000)
         self._replication_retention_short_term = (
             self.configuration.pure_replica_retention_short_term_default)
         self._replication_retention_long_term = (

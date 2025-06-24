@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Pure Storage driver `bug #2115284
+    <https://bugs.launchpad.net/cinder/+bug/2115284>`_: snapshot replication
+    interval in `cinder.conf` is set in seconds, but the backend expects
+    it in milliseconds. Added fix to handle the conversion.

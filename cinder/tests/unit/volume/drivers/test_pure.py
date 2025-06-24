@@ -1471,6 +1471,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
              "san_ip": "1.2.3.4",
              "api_token": "abc123"}]
         mock_getarray().get_arrays.return_value = VALID_GET_ARRAY_PRIMARY
+        self.mock_config.pure_replica_interval_default = (
+            REPLICATION_INTERVAL_IN_SEC)
         self.driver.parse_replication_configs()
         self.assertEqual(1, len(self.driver._replication_target_arrays))
         self.assertEqual(mock_getarray(),
@@ -1503,6 +1505,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
              "san_ip": "1.2.3.5",
              "api_token": "abc124"}]
         mock_getarray.side_effect = [self.array, self.async_array2]
+        self.mock_config.pure_replica_interval_default = (
+            REPLICATION_INTERVAL_IN_SEC)
         self.driver.parse_replication_configs()
         self.assertEqual(2, len(self.driver._replication_target_arrays))
         self.assertEqual(self.array, self.driver._replication_target_arrays[0])
@@ -1526,7 +1530,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         retention = mock.MagicMock()
         mock_generate_replication_retention.return_value = retention
         mock_setup_repl_pgroups.return_value = None
-
+        self.mock_config.pure_replica_interval_default = (
+            REPLICATION_INTERVAL_IN_SEC)
         # Test single array configured
         self.mock_config.safe_get.return_value = [
             {
@@ -1561,7 +1566,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         retention = mock.MagicMock()
         mock_generate_replication_retention.return_value = retention
         mock_setup_repl_pgroups.return_value = None
-
+        self.mock_config.pure_replica_interval_default = (
+            REPLICATION_INTERVAL_IN_SEC)
         # Test single array configured
         self.mock_config.safe_get.return_value = [
             {
@@ -1617,7 +1623,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             mock.call(self.array,
                       [self.async_array2, self.driver._get_flasharray()],
                       'cinder-group',
-                      3600, retention)
+                      REPLICATION_INTERVAL_IN_SEC * 1000, retention)
         ]
         mock_setup_repl_pgroups.assert_has_calls(calls)
 
