@@ -273,7 +273,8 @@ class QuobyteDriverTestCase(test.TestCase):
         mock_qemu_img_info.assert_called_with(mock.sentinel.image_path,
                                               force_share=True,
                                               run_as_root=True,
-                                              allow_qcow2_backing_file=True)
+                                              allow_qcow2_backing_file=True,
+                                              img_format=None)
 
     @ddt.data(['/other_random_path', '/mnt'],
               ['/other_basedir/' + TEST_MNT_HASH + '/volume-' + VOLUME_UUID,
@@ -986,7 +987,8 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume_path,
                 force_share=True,
                 run_as_root=False,
-                allow_qcow2_backing_file=True)
+                allow_qcow2_backing_file=True,
+                img_format=None)
             image_utils.resize_image.assert_called_once_with(volume_path, 3)
 
     def test_copy_volume_from_snapshot(self):
@@ -1034,7 +1036,8 @@ class QuobyteDriverTestCase(test.TestCase):
             snap_path,
             force_share=True,
             run_as_root=False,
-            allow_qcow2_backing_file=True)
+            allow_qcow2_backing_file=True,
+            img_format=None)
         (mock_convert.
          assert_called_once_with(src_vol_path,
                                  dest_vol_path,
@@ -1094,7 +1097,8 @@ class QuobyteDriverTestCase(test.TestCase):
             snap_path,
             force_share=True,
             run_as_root=False,
-            allow_qcow2_backing_file=True)
+            allow_qcow2_backing_file=True,
+            img_format=None)
         self.assertFalse(mock_convert.called,
                          ("_convert_image was called but should not have been")
                          )
@@ -1160,7 +1164,8 @@ class QuobyteDriverTestCase(test.TestCase):
             snap_path,
             force_share=True,
             run_as_root=False,
-            allow_qcow2_backing_file=True)
+            allow_qcow2_backing_file=True,
+            img_format=None)
         (mock_convert.
          assert_called_once_with(
              src_vol_path,
@@ -1225,7 +1230,8 @@ class QuobyteDriverTestCase(test.TestCase):
             snap_path,
             force_share=True,
             run_as_root=False,
-            allow_qcow2_backing_file=True)
+            allow_qcow2_backing_file=True,
+            img_format=None)
         (mock_convert.
          assert_called_once_with(
              src_vol_path,
@@ -1298,7 +1304,8 @@ class QuobyteDriverTestCase(test.TestCase):
             vol_path,
             force_share=True,
             run_as_root=False,
-            allow_qcow2_backing_file=True)
+            allow_qcow2_backing_file=True,
+            img_format=None)
 
         self.assertEqual('raw', conn_info['data']['format'])
         self.assertEqual('quobyte', conn_info['driver_volume_type'])
@@ -1351,7 +1358,8 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume_path,
                 force_share=True,
                 run_as_root=False,
-                allow_qcow2_backing_file=True)
+                allow_qcow2_backing_file=True,
+                img_format=None)
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False,
                 store_id=None, base_image_ref=None, compress=True,
@@ -1406,7 +1414,8 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume_path,
                 force_share=True,
                 run_as_root=False,
-                allow_qcow2_backing_file=True)
+                allow_qcow2_backing_file=True,
+                img_format=None)
             mock_convert_image.assert_called_once_with(
                 volume_path, upload_path, 'raw', run_as_root=False)
             mock_upload_volume.assert_called_once_with(
@@ -1465,7 +1474,8 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume_path,
                 force_share=True,
                 run_as_root=False,
-                allow_qcow2_backing_file=True)
+                allow_qcow2_backing_file=True,
+                img_format=None)
             mock_convert_image.assert_called_once_with(
                 volume_path, upload_path, 'raw', run_as_root=False)
             mock_upload_volume.assert_called_once_with(
