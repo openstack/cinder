@@ -2409,6 +2409,23 @@ class TestTemporaryFileContextManager(test.TestCase):
         mock_delete.assert_called_once_with(mock.sentinel.temporary_file)
 
 
+@ddt.ddt
+class TestGetImageFormat(test.TestCase):
+    @ddt.data(False, True)
+    @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
+    def test_get_image_format(self, allow_qcow2_backing_file,
+                              mock_get_format_if_safe):
+        fake_path = mock.sentinel.fake_path
+        mock_get_format_if_safe.return_value = 'qcow2'
+
+        result = image_utils.get_image_format(
+            fake_path, allow_qcow2_backing_file=allow_qcow2_backing_file)
+
+        self.assertEqual('qcow2', result)
+        mock_get_format_if_safe.assert_called_once_with(
+            path=fake_path, allow_qcow2_backing_file=allow_qcow2_backing_file)
+
+
 class TestImageUtils(test.TestCase):
     def test_get_virtual_size(self):
         image_id = fake.IMAGE_ID

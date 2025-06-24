@@ -98,7 +98,10 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                               stale_snapshot=False,
                               is_active_image=True,
                               is_tmp_snap=False,
-                              encryption=False):
+                              encryption=False,
+                              base_format_exists=True,
+                              base_file_exists=True,
+                              base_file_inspect_format=None):
         # If the snapshot is not the active image, it is guaranteed that
         # another snapshot exists having it as backing file.
 
@@ -135,6 +138,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         else:
             fake_snap_img_info.backing_file = volume_name
         fake_snap_img_info.file_format = 'qcow2'
+        fake_snap_img_info.backing_file_format = 'raw'
         fake_base_img_info.backing_file = None
         fake_base_img_info.file_format = 'raw'
 
@@ -155,6 +159,12 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
         exp_acceptable_states = ['available', 'in-use', 'backing-up',
                                  'deleting', 'downloading']
+
+        if base_format_exists:
+            snapshot.volume.admin_metadata = {'format': 'qcow2',
+                                              'base_format': 'raw'}
+        else:
+            snapshot.volume.admin_metadata = {'format': 'qcow2'}
 
         if volume_in_use:
             snapshot.volume.status = 'backing-up'
@@ -183,8 +193,60 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
         elif is_active_image:
             self._driver._read_info_file.return_value = fake_info
+            mock_vol_save = self.mock_object(snapshot.volume, 'save')
+            mock_exists = self.mock_object(os.path, 'exists')
+            mock_get_image_format = self.mock_object(
+                image_utils, 'get_image_format')
+
+            mock_exists.return_value = base_file_exists
+            mock_get_image_format.return_value = base_file_inspect_format
 
             self._driver._delete_snapshot(snapshot)
+
+            if not base_format_exists:
+                # When base_format does not exist, we expect the function to
+                # try recoverying the information based on the state of
+                # volume's base file.
+                base_path = os.path.join(self._FAKE_MNT_POINT, volume_name)
+                mock_exists.assert_called_once_with(base_path)
+
+                if base_file_exists:
+                    # If base file exists, get_image_format is expected to be
+                    # called for detecting the base file format.
+                    mock_get_image_format.assert_called_once_with(
+                        path=base_path, allow_qcow2_backing_file=True)
+
+                    if base_file_inspect_format == 'raw':
+                        # When format inspection returns 'raw', the
+                        # base_format should be set to 'raw'.
+                        self.assertEqual(
+                            'raw',
+                            snapshot.volume.admin_metadata['base_format'])
+                        self.assertEqual(
+                            'raw',
+                            snapshot.volume.admin_metadata['format'])
+                        mock_vol_save.assert_called_once()
+                    else:
+                        # If inspection fails or returns non-raw (likely
+                        # 'qcow2'), it isn't possible to reliably
+                        # determine the original format. For this reason,
+                        # metadata should NOT be updated.
+                        self.assertNotIn(
+                            'base_format', snapshot.volume.admin_metadata)
+                        # Format should still be qcow2 as before
+                        self.assertEqual(
+                            'qcow2', snapshot.volume.admin_metadata['format'])
+                        # "save" should NOT be called since metadata wasn't
+                        # suposed to be updated.
+                        mock_vol_save.assert_not_called()
+                else:
+                    # When base_format is missing and base file doesn't exist,
+                    # verify base_format and format were set to 'qcow2'.
+                    self.assertEqual(
+                        'qcow2', snapshot.volume.admin_metadata['base_format'])
+                    self.assertEqual(
+                        'qcow2', snapshot.volume.admin_metadata['format'])
+                    mock_vol_save.assert_called_once()
 
             self._driver._img_commit.assert_called_once_with(
                 snapshot_path)
@@ -217,9 +279,10 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
             self._driver._img_commit.assert_called_once_with(
                 snapshot_path)
-            self._driver._rebase_img.assert_called_once_with(
-                fake_upper_snap_path, volume_name,
-                fake_base_img_info.file_format)
+            if volume_in_use:
+                self._driver._rebase_img.assert_called_once_with(
+                    fake_upper_snap_path, volume_name,
+                    fake_base_img_info.file_format)
             self._driver._write_info_file.assert_called_once_with(
                 mock.sentinel.fake_info_path, expected_info)
 
@@ -244,6 +307,45 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                                                  encryption):
         self._test_delete_snapshot(is_active_image=False,
                                    encryption=encryption)
+
+    @ddt.data({'encryption': True}, {'encryption': False})
+    def test_delete_snapshot_base_format_recovery_base_not_exists(self,
+                                                                  encryption):
+        self._test_delete_snapshot(
+            is_active_image=True,
+            encryption=encryption,
+            base_format_exists=False,
+            base_file_exists=False)
+
+    @ddt.data({'encryption': True}, {'encryption': False})
+    def test_delete_snapshot_base_format_recovery_inspect_raw(self,
+                                                              encryption):
+        self._test_delete_snapshot(
+            is_active_image=True,
+            encryption=encryption,
+            base_format_exists=False,
+            base_file_exists=True,
+            base_file_inspect_format='raw')
+
+    @ddt.data({'encryption': True}, {'encryption': False})
+    def test_delete_snapshot_base_format_recovery_inspect_qcow2(self,
+                                                                encryption):
+        self._test_delete_snapshot(
+            is_active_image=True,
+            encryption=encryption,
+            base_format_exists=False,
+            base_file_exists=True,
+            base_file_inspect_format='qcow2')
+
+    @ddt.data({'encryption': True}, {'encryption': False})
+    def test_delete_snapshot_base_format_recovery_inspect_none(self,
+                                                               encryption):
+        self._test_delete_snapshot(
+            is_active_image=True,
+            encryption=encryption,
+            base_format_exists=False,
+            base_file_exists=True,
+            base_file_inspect_format=None)
 
     @ddt.data({'encryption': True}, {'encryption': False})
     def test_delete_stale_snapshot(self, encryption):
@@ -277,6 +379,41 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self._driver._delete.assert_called_once_with(snapshot_path)
         self._driver._write_info_file.assert_called_once_with(
             mock.sentinel.fake_info_path, expected_info)
+
+    @ddt.data({'snap_info': {'active': 'snap2', 'snap1': 'snap1',
+                             'snap2': 'snap2'},
+               'expected_snapshot_ids': ['snap1', 'snap2']},
+              {'snap_info': {},
+               'expected_snapshot_ids': []})
+    @ddt.unpack
+    def test_get_snapshots_from_snap_info(self, snap_info,
+                                          expected_snapshot_ids):
+        result = self._driver._get_snapshots_from_snap_info(snap_info)
+        self.assertEqual(expected_snapshot_ids, result)
+
+    @ddt.data({'read_info': {'active': 'snap2', 'snap1': 'snap1',
+                             'snap2': 'snap2'},
+               'expected_snapshot_ids': ['snap1', 'snap2']},
+              {'read_info': {},
+               'expected_snapshot_ids': []})
+    @ddt.unpack
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_read_info_file')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_local_path_volume_info')
+    def test_get_volume_snapshots(self, mock_local_path_info,
+                                  mock_read_info_file, read_info,
+                                  expected_snapshot_ids):
+
+        mock_volume = mock.sentinel.volume
+        mock_local_path_info.return_value = mock.sentinel.fake_info_path
+        mock_read_info_file.return_value = read_info
+
+        result = self._driver._get_volume_snapshots(volume=mock_volume)
+
+        self.assertEqual(expected_snapshot_ids, result)
+
+        mock_local_path_info.assert_called_once_with(mock_volume)
+        mock_read_info_file.assert_called_once_with(
+            mock.sentinel.fake_info_path, empty_if_missing=True)
 
     @mock.patch.object(remotefs.RemoteFSDriver,
                        'secure_file_operations_enabled',
@@ -352,6 +489,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             exp_acceptable_states.append('downloading')
             self._fake_snapshot.volume.status = 'downloading'
 
+        mock_vol_save = self.mock_object(snapshot.volume, 'save')
+        snapshot.volume.admin_metadata = {'format': 'raw'}
         if volume_in_use:
             snapshot.volume.status = 'backing-up'
             snapshot.volume.attach_status = 'attached'
@@ -363,7 +502,6 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                 self.context, connection_info=conn_info)
             snapshot.volume.volume_attachment.objects.append(attachment)
             mock_save = self.mock_object(attachment, 'save')
-            mock_vol_save = self.mock_object(snapshot.volume, 'save')
 
             # After the snapshot the connection info should change the name of
             # the file
@@ -389,9 +527,9 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         if volume_in_use:
             mock_save.assert_called_once()
             # We should have updated the volume format after the snapshot
-            mock_vol_save.assert_called_once()
             changed_fields = attachment.cinder_obj_get_changes()
             self.assertEqual(expected, changed_fields['connection_info'])
+        mock_vol_save.assert_called_once()
 
     @ddt.data({'encryption': True}, {'encryption': False})
     def test_create_snapshot_volume_available(self, encryption):
