@@ -733,10 +733,12 @@ class QuobyteDriverTestCase(test.TestCase):
 
         drv._create_sparsed_file = mock.Mock()
         drv._set_rw_permissions_for_all = mock.Mock()
+        mock_volume_save = self.mock_object(volume, 'save')
 
         drv._do_create_volume(volume)
         drv._create_sparsed_file.assert_called_once_with(mock.ANY, mock.ANY)
         drv._set_rw_permissions_for_all.assert_called_once_with(mock.ANY)
+        mock_volume_save.assert_called_once()
 
     def test_create_nonsparsed_volume(self):
         drv = self._driver
@@ -747,10 +749,12 @@ class QuobyteDriverTestCase(test.TestCase):
 
         drv._create_regular_file = mock.Mock()
         drv._set_rw_permissions_for_all = mock.Mock()
+        mock_volume_save = self.mock_object(volume, 'save')
 
         drv._do_create_volume(volume)
         drv._create_regular_file.assert_called_once_with(mock.ANY, mock.ANY)
         drv._set_rw_permissions_for_all.assert_called_once_with(mock.ANY)
+        mock_volume_save.assert_called_once()
 
         self._configuration.quobyte_sparsed_volumes = old_value
 
@@ -761,6 +765,7 @@ class QuobyteDriverTestCase(test.TestCase):
         old_value = self._configuration.quobyte_qcow2_volumes
         self._configuration.quobyte_qcow2_volumes = True
 
+        mock_volume_save = self.mock_object(volume, 'save')
         drv._execute = mock.Mock()
 
         hashed = drv._get_hash_str(volume['provider_location'])
@@ -777,6 +782,7 @@ class QuobyteDriverTestCase(test.TestCase):
                         mock.call('chmod', 'ugo+rw', path,
                                   run_as_root=self._driver._execute_as_root)]
         drv._execute.assert_has_calls(assert_calls)
+        mock_volume_save.assert_called_once()
 
         self._configuration.quobyte_qcow2_volumes = old_value
 

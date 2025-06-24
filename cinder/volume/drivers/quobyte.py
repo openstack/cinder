@@ -587,6 +587,13 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             else:
                 self._create_regular_file(volume_path, volume_size)
 
+        # It is required to store the volume format so the generic Snapshots
+        # implementation can revert to the volume's original format on snapshot
+        # deletion
+        volume.admin_metadata['format'] = self.format
+        with volume.obj_as_admin():
+            volume.save()
+
         self._set_rw_permissions_for_all(volume_path)
 
     def _load_shares_config(self, share_file=None):
