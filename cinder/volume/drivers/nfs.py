@@ -408,14 +408,13 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
                                  run_as_root=self._execute_as_root,
                                  file_format=file_format)
         if file_format == 'qcow2' and not self._is_file_size_equal(
-                active_file_path, new_size):
+                active_file_path, volume.name, new_size):
             raise exception.ExtendVolumeError(
                 reason='Resizing image file failed.')
 
-    def _is_file_size_equal(self, path, size):
+    def _is_file_size_equal(self, path, volume_name, size):
         """Checks if file size at path is equal to size."""
-        data = image_utils.qemu_img_info(path,
-                                         run_as_root=self._execute_as_root)
+        data = self._qemu_img_info(path, volume_name)
         virt_size = int(data.virtual_size / units.Gi)
         return virt_size == size
 

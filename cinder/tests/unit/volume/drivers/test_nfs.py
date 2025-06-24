@@ -1151,26 +1151,30 @@ class NfsDriverTestCase(test.TestCase):
         self._set_driver()
         drv = self._driver
         path = 'fake/path'
+        volume_name = 'volume1'
         size = 2
         data = mock.MagicMock()
         data.virtual_size = size * units.Gi
 
-        with mock.patch.object(image_utils, 'qemu_img_info',
-                               return_value=data):
-            self.assertTrue(drv._is_file_size_equal(path, size))
+        with mock.patch.object(drv, '_qemu_img_info',
+                               return_value=data) as mock_qemu_img_info:
+            self.assertTrue(drv._is_file_size_equal(path, volume_name, size))
+            mock_qemu_img_info.assert_called_once_with(path, volume_name)
 
     def test_is_file_size_equal_false(self):
         """File sizes are not equal."""
         self._set_driver()
         drv = self._driver
         path = 'fake/path'
+        volume_name = 'volume1'
         size = 2
         data = mock.MagicMock()
         data.virtual_size = (size + 1) * units.Gi
 
-        with mock.patch.object(image_utils, 'qemu_img_info',
-                               return_value=data):
-            self.assertFalse(drv._is_file_size_equal(path, size))
+        with mock.patch.object(drv, '_qemu_img_info',
+                               return_value=data) as mock_qemu_img_info:
+            self.assertFalse(drv._is_file_size_equal(path, volume_name, size))
+            mock_qemu_img_info.assert_called_once_with(path, volume_name)
 
     @mock.patch.object(nfs, 'LOG')
     def test_set_nas_security_options_when_true(self, LOG):
