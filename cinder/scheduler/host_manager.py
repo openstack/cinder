@@ -114,7 +114,7 @@ class BackendState(object):
 
         self.volume_backend_name = None
         self.vendor_name = None
-        self.driver_version = 0
+        self.driver_version: Optional[int] = 0
         self.storage_protocol = None
         self.QoS_support = False
         # Mutable available resources.
@@ -258,6 +258,8 @@ class BackendState(object):
             if pool_name is None:
                 # To get DEFAULT_POOL_NAME
                 pool_name = volume_utils.extract_host(self.host, 'pool', True)
+
+            pool_name = typing.cast(str, pool_name)
 
             if len(self.pools) == 0:
                 # No pool was there
