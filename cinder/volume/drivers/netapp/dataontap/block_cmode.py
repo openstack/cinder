@@ -23,6 +23,7 @@
 """
 Volume driver library for NetApp C-mode block storage systems.
 """
+import time
 
 from oslo_log import log as logging
 from oslo_service import loopingcall
@@ -33,6 +34,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume.drivers.netapp.dataontap import block_base
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
@@ -235,14 +237,30 @@ class NetAppBlockStorageCmodeLibrary(
         metadata = self._get_lun_attr(name, 'metadata')
         volume = metadata['Volume']
 
-        self.zapi_client.clone_lun(
-            volume, name, new_name, space_reserved,
-            qos_policy_group_name=qos_policy_group_name,
-            src_block=src_block, dest_block=dest_block,
-            block_count=block_count,
-            source_snapshot=source_snapshot,
-            is_snapshot=is_snapshot,
-            qos_policy_group_is_adaptive=qos_policy_group_is_adaptive)
+        try:
+            self.zapi_client.clone_lun(
+                volume, name, new_name, space_reserved,
+                qos_policy_group_name=qos_policy_group_name,
+                src_block=src_block, dest_block=dest_block,
+                block_count=block_count,
+                source_snapshot=source_snapshot,
+                is_snapshot=is_snapshot,
+                qos_policy_group_is_adaptive=qos_policy_group_is_adaptive,
+            )
+        except netapp_api.NaApiError as e:
+            with excutils.save_and_reraise_exception() as exc_context:
+                if 'Device busy' in e.message:
+                    self._retry_clone_lun(
+                        volume, name, new_name, space_reserved,
+                        qos_policy_group_name=qos_policy_group_name,
+                        src_block=src_block, dest_block=dest_block,
+                        block_count=block_count,
+                        source_snapshot=source_snapshot,
+                        is_snapshot=is_snapshot,
+                        qos_policy_group_is_adaptive=(
+                            qos_policy_group_is_adaptive),
+                    )
+                    exc_context.reraise = False
 
         LOG.debug("Cloned LUN with new name %s", new_name)
         lun = self.zapi_client.get_lun_by_args(vserver=self.vserver,
@@ -259,6 +277,49 @@ class NetAppBlockStorageCmodeLibrary(
                                  new_name,
                                  clone_lun['Size'],
                                  clone_lun))
+
+    def _retry_clone_lun(self, volume, name, new_name, space_reserved,
+                         qos_policy_group_name=None, src_block=0,
+                         dest_block=0, block_count=0,
+                         source_snapshot=None, is_snapshot=False,
+                         qos_policy_group_is_adaptive=False):
+        """Retry lun clone creation when ONTAP throws device busy error"""
+        # timeout and interval are configurable parameters that the user can
+        # specify under the backend stanza. If the user does not set these
+        # values, default values will be used. For example, if timeout is set
+        # to 60 seconds and interval is set to 5 seconds, then this code will
+        # retry the LUN clone every 5 seconds until the 60-second timeout is
+        # reached.
+        timeout = self.configuration.safe_get('netapp_lun_clone_busy_timeout')
+        interval = self.configuration.safe_get(
+            'netapp_lun_clone_busy_interval')
+        retries = int(timeout / interval)
+
+        for attempt in range(1, retries + 1):
+            try:
+                self.zapi_client.clone_lun(
+                    volume, name, new_name, space_reserved,
+                    qos_policy_group_name=qos_policy_group_name,
+                    src_block=src_block, dest_block=dest_block,
+                    block_count=block_count,
+                    source_snapshot=source_snapshot,
+                    is_snapshot=is_snapshot,
+                    qos_policy_group_is_adaptive=qos_policy_group_is_adaptive,
+                )
+                LOG.info("LUN clone succeeded on attempt %s.", attempt)
+                break
+            except netapp_api.NaApiError as e:
+                if 'Device busy' in e.message:
+                    LOG.debug("Attempt %s failed with device busy error."
+                              "Retrying after %s seconds...", attempt,
+                              interval)
+                    if attempt == retries:
+                        msg = _("Timed out after %s retry for LUN clone"
+                                " creation")
+                        raise na_utils.NetAppDriverException(msg % retries)
+                    time.sleep(interval)
+                else:
+                    raise netapp_api.NaApiError(e.code, e.message)
 
     def _get_fc_target_wwpns(self, include_partner=True):
         return self.zapi_client.get_fc_target_wwpns()

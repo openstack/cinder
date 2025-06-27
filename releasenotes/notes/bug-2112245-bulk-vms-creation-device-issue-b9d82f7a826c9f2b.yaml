@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp Driver `bug #2112245
+    <https://bugs.launchpad.net/cinder/+bug/2112245>`_: Fixed the issue where
+    a few cinder volume clone operations failed during bulk clone creation.
+    Added retry logic to ensure the NetApp driver retries any failed clone
+    operations.

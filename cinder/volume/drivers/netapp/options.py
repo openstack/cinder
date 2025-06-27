@@ -257,7 +257,19 @@ netapp_san_opts = [
                      'applied to the names of objects from the storage '
                      'backend which represent pools in Cinder. This option '
                      'is only utilized when the storage protocol is '
-                     'configured to use iSCSI or FC.')), ]
+                     'configured to use iSCSI or FC.')),
+    cfg.IntOpt('netapp_lun_clone_busy_timeout',
+               min=0,
+               default=30,
+               help='Specifies the maximum time (in seconds) to retry'
+                    ' the LUN clone operation when an ONTAP "device busy"'
+                    ' error occurs.'),
+    cfg.IntOpt('netapp_lun_clone_busy_interval',
+               min=0,
+               default=3,
+               help='Specifies the time interval (in seconds) to retry'
+                    ' the LUN clone operation when an ONTAP "device busy"'
+                    ' error occurs.')]
 
 netapp_replication_opts = [
     cfg.MultiOpt('netapp_replication_aggregate_map',
