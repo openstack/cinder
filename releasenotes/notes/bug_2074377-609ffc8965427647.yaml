@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Quobyte driver `bug #2074377
+    <https://bugs.launchpad.net/cinder/+bug/2074377>`_: Fixes
+    a bug that caused failures on some image_util operations due
+    to changed method signatures.
