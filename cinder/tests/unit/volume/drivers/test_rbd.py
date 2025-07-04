@@ -294,6 +294,18 @@ class RBDTestCase(test.TestCase):
         self.qos_policy_b = {"read_iops_sec": "500",
                              "write_iops_sec": "200"}
 
+    # For tests involving multiattach volume type
+    MULTIATTACH_FULL_FEATURES = (
+        driver.RBDDriver.RBD_FEATURE_LAYERING |
+        driver.RBDDriver.RBD_FEATURE_EXCLUSIVE_LOCK |
+        driver.RBDDriver.RBD_FEATURE_OBJECT_MAP |
+        driver.RBDDriver.RBD_FEATURE_FAST_DIFF |
+        driver.RBDDriver.RBD_FEATURE_JOURNALING)
+
+    MULTIATTACH_REDUCED_FEATURES = (
+        driver.RBDDriver.RBD_FEATURE_LAYERING |
+        driver.RBDDriver.RBD_FEATURE_EXCLUSIVE_LOCK)
+
     @ddt.data({'cluster_name': None, 'pool_name': 'rbd'},
               {'cluster_name': 'volumes', 'pool_name': None})
     @ddt.unpack
@@ -736,6 +748,87 @@ class RBDTestCase(test.TestCase):
         # Make sure the exception was raised
         self.assertEqual([self.mock_rbd.ImageNotFound],
                          RAISED_EXCEPTIONS)
+
+    @common_mocks
+    def test_manage_existing_replicated_type(self):
+        client = self.mock_client.return_value
+        client.__enter__.return_value = client
+
+        self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
+            self.context,
+            id=fake.VOLUME_TYPE_ID,
+            extra_specs={'replication_enabled': '<is> True'})
+
+        with mock.patch.object(self.driver.rbd.RBD(), 'rename') as \
+                mock_rbd_image_rename:
+            exist_volume = 'vol-exist'
+            existing_ref = {'source-name': exist_volume}
+            mock_rbd_image_rename.return_value = 0
+            res = self.driver.manage_existing(self.volume_a, existing_ref)
+            mock_rbd_image_rename.assert_called_with(
+                client.ioctx,
+                exist_volume,
+                self.volume_a.name)
+            self.assertEqual('enabled', res['replication_status'])
+
+    @common_mocks
+    def test_manage_existing_multiattach_type(self):
+        client = self.mock_client.return_value
+        client.__enter__.return_value = client
+        image = self.mock_proxy.return_value.__enter__.return_value
+        image_features = self.MULTIATTACH_FULL_FEATURES
+        image.features.return_value = image_features
+        expected_res = {
+            'provider_location': "{\"saved_features\":%s}" % image_features}
+
+        self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
+            self.context,
+            id=fake.VOLUME_TYPE_ID,
+            extra_specs={'multiattach': '<is> True'})
+
+        with mock.patch.object(self.driver.rbd.RBD(), 'rename') as \
+                mock_rbd_image_rename:
+            exist_volume = 'vol-exist'
+            existing_ref = {'source-name': exist_volume}
+            mock_rbd_image_rename.return_value = 0
+            res = self.driver.manage_existing(self.volume_a, existing_ref)
+            mock_rbd_image_rename.assert_called_with(
+                client.ioctx,
+                exist_volume,
+                self.volume_a.name)
+            self.assertEqual(expected_res, res)
+
+    @common_mocks
+    def test_manage_existing_invalid_type(self):
+        client = self.mock_client.return_value
+        client.__enter__.return_value = client
+        # Replication and multiattach are mutually exclusive
+        extra_specs = {
+            'replication_enabled': '<is> True',
+            'multiattach': '<is> True'
+        }
+
+        self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
+            self.context,
+            id=fake.VOLUME_TYPE_ID,
+            extra_specs=extra_specs)
+
+        with mock.patch.object(self.driver.rbd.RBD(), 'rename') as \
+                mock_rbd_image_rename:
+            exist_volume = 'vol-exist'
+            existing_ref = {'source-name': exist_volume}
+            mock_rbd_image_rename.return_value = 0
+            res = self.assertRaises(
+                exception.ManageExistingVolumeTypeMismatch,
+                self.driver.manage_existing, self.volume_a, existing_ref)
+            self.assertIn(
+                "Manage existing volume failed due to volume type mismatch",
+                str(res))
+            self.assertIn(
+                "Replication and Multiattach are mutually exclusive.",
+                str(res))
+            # Ensure rename is not called
+            mock_rbd_image_rename.assert_not_called()
 
     @common_mocks
     @mock.patch.object(driver.RBDDriver, '_get_image_status')
@@ -3438,17 +3531,6 @@ class RBDTestCase(test.TestCase):
             self.driver.RBD_FEATURE_OBJECT_MAP |
             self.driver.RBD_FEATURE_EXCLUSIVE_LOCK,
             self.driver.MULTIATTACH_EXCLUSIONS)
-
-    MULTIATTACH_FULL_FEATURES = (
-        driver.RBDDriver.RBD_FEATURE_LAYERING |
-        driver.RBDDriver.RBD_FEATURE_EXCLUSIVE_LOCK |
-        driver.RBDDriver.RBD_FEATURE_OBJECT_MAP |
-        driver.RBDDriver.RBD_FEATURE_FAST_DIFF |
-        driver.RBDDriver.RBD_FEATURE_JOURNALING)
-
-    MULTIATTACH_REDUCED_FEATURES = (
-        driver.RBDDriver.RBD_FEATURE_LAYERING |
-        driver.RBDDriver.RBD_FEATURE_EXCLUSIVE_LOCK)
 
     @ddt.data(MULTIATTACH_FULL_FEATURES, MULTIATTACH_REDUCED_FEATURES)
     @common_mocks
