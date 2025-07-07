@@ -19,6 +19,7 @@ import re
 import urllib.parse
 
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import units
 import requests
 from requests.exceptions import Timeout
@@ -40,6 +41,8 @@ TOO_MANY_SNAPS_ERROR = 182
 ILLEGAL_SYNTAX = 0
 
 MAX_SNAPS_IN_VTREE = 126
+TOKEN_REFRESH_SUCC_INTERVAL = 300
+TOKEN_REFRESH_FAIL_INTERVAL = 60
 
 
 class RestClient(object):
@@ -55,7 +58,6 @@ class RestClient(object):
         self.rest_port = None
         self.rest_username = None
         self.rest_password = None
-        self.rest_token = None
         self.rest_api_version = None
         self.verify_certificate = None
         self.certificate_path = None
@@ -135,6 +137,54 @@ class RestClient(object):
                      "rest_api_read_timeout": self.rest_api_read_timeout
                  })
         self.is_configured = True
+        # Set PowerFlex rest token
+        self._set_rest_token()
+
+    def _set_rest_token(self):
+        self.rest_token = None
+
+        # Initilaize PowerFlex rest token
+        LOG.info("Initialize PowerFlex rest token.")
+        self._refresh_token()
+
+        # Start token refresh thread
+        self._start_token_refresh_thread()
+
+    def _start_token_refresh_thread(self):
+        LOG.info("Start token refresh thread.")
+        timer = loopingcall.DynamicLoopingCall(
+            self._refresh_token_periodically)
+        timer.start(initial_delay=0)
+
+    def _refresh_token_periodically(self):
+        if self._refresh_token():
+            LOG.info("Token refresh succeeded. Sleeping for %d seconds.",
+                     TOKEN_REFRESH_SUCC_INTERVAL)
+            return TOKEN_REFRESH_SUCC_INTERVAL
+
+        # Token refresh failed. Continue using current token.
+        LOG.warning("Token refresh failed. Sleeping for %d seconds.",
+                    TOKEN_REFRESH_FAIL_INTERVAL)
+        return TOKEN_REFRESH_FAIL_INTERVAL
+
+    def _refresh_token(self):
+        login_url = "/login"
+        login_request = self.base_url + login_url
+        verify_cert = self._get_verify_cert()
+        timeout = (self.rest_api_connect_timeout,
+                   self.rest_api_read_timeout)
+
+        try:
+            r = requests.get(login_request,
+                             auth=(self.rest_username, self.rest_password),
+                             verify=verify_cert, timeout=timeout)
+            token = r.json()
+        except (requests.exceptions.RequestException, ValueError) as e:
+            LOG.warning("Failed to refresh token: %s", str(e))
+            return False
+
+        self.rest_token = token
+        return True
 
     def query_rest_api_version(self, fromcache=True):
         url = "/version"
@@ -487,7 +537,7 @@ class RestClient(object):
                               headers=self._get_headers(),
                               auth=(self.rest_username, self.rest_token),
                               verify=self._get_verify_cert(), timeout=timeout)
-            r = self._check_response(r, request, False, params)
+            r = self._check_response(r, request, params)
             try:
                 response = r.json()
             except ValueError:
@@ -504,44 +554,8 @@ class RestClient(object):
     def _check_response(self,
                         response,
                         request,
-                        is_get_request=True,
                         params=None):
-        login_url = "/login"
 
-        if (response.status_code == http_client.UNAUTHORIZED or
-                response.status_code == http_client.FORBIDDEN):
-            LOG.info("Token is invalid, going to re-login and get "
-                     "a new one.")
-            login_request = self.base_url + login_url
-            verify_cert = self._get_verify_cert()
-            timeout = (self.rest_api_connect_timeout,
-                       self.rest_api_read_timeout)
-            r = requests.get(login_request,
-                             auth=(self.rest_username, self.rest_password),
-                             verify=verify_cert, timeout=timeout)
-            token = r.json()
-            self.rest_token = token
-            # Repeat request with valid token.
-            LOG.info("Going to perform request again %s with valid token.",
-                     request)
-            if is_get_request:
-                response = requests.get(request,
-                                        auth=(
-                                            self.rest_username,
-                                            self.rest_token
-                                        ),
-                                        verify=verify_cert,
-                                        timeout=timeout)
-            else:
-                response = requests.post(request,
-                                         data=json.dumps(params),
-                                         headers=self._get_headers(),
-                                         auth=(
-                                             self.rest_username,
-                                             self.rest_token
-                                         ),
-                                         verify=verify_cert,
-                                         timeout=timeout)
         level = logging.DEBUG
         # for anything other than an OK from the REST API, log an error
         if response.status_code != http_client.OK:
