@@ -594,8 +594,8 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         expected = [{
             'pool_name': 'vola',
             'QoS_support': False,
-            'consistencygroup_support': False,
-            'consistent_group_snapshot_enabled': False,
+            'consistencygroup_support': True,
+            'consistent_group_snapshot_enabled': True,
             'reserved_percentage': 5,
             'max_over_subscription_ratio': 10,
             'multiattach': False,
@@ -964,3 +964,165 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         connector_list = [None, {'nqn': fake.HOST_NQN}]
         with ThreadPoolExecutor(max_workers=2) as executor:
             executor.map(execute_terminate_connection, connector_list)
+
+    def test_create_group(self):
+        model_update = self.library.create_group(
+            fake.VOLUME_GROUP)
+        self.assertEqual('available', model_update['status'])
+
+    def test_delete_group_volume_delete_failure(self):
+        self.mock_object(nvme_library, 'LOG')
+        self.mock_object(self.library, '_delete_namespace',
+                         side_effect=Exception)
+
+        model_update, volumes = self.library.delete_group(
+            fake.VOLUME_GROUP, [fake.VG_VOLUME])
+
+        self.assertEqual('deleted', model_update['status'])
+        self.assertEqual('error_deleting', volumes[0]['status'])
+        self.assertEqual(1, nvme_library.LOG.exception.call_count)
+
+    def test_update_group(self):
+        model_update, add_volumes_update, remove_volumes_update = (
+            self.library.update_group(fake.VOLUME_GROUP))
+
+        self.assertIsNone(model_update)
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
+
+    def test_delete_group_not_found(self):
+        self.mock_object(nvme_library, 'LOG')
+        self.mock_object(self.library, '_get_namespace_attr',
+                         return_value=None)
+
+        model_update, volumes = self.library.delete_group(
+            fake.VOLUME_GROUP, [fake.VG_VOLUME])
+
+        self.assertEqual(0, nvme_library.LOG.error.call_count)
+        self.assertEqual(0, nvme_library.LOG.info.call_count)
+
+        self.assertEqual('deleted', model_update['status'])
+        self.assertEqual('deleted', volumes[0]['status'])
+
+    def test_create_group_snapshot_raise_exception(self):
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+
+        mock_extract_host = self.mock_object(
+            volume_utils, 'extract_host', return_value=fake.POOL_NAME)
+
+        self.mock_object(self.client, 'create_cg_snapshot',
+                         side_effect=netapp_api.NaApiError)
+
+        self.assertRaises(na_utils.NetAppDriverException,
+                          self.library.create_group_snapshot,
+                          fake.VOLUME_GROUP,
+                          [fake.VG_SNAPSHOT])
+
+        mock_extract_host.assert_called_once_with(
+            fake.VG_SNAPSHOT['volume']['host'], level='pool')
+
+    def test_create_group_snapshot(self):
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=False)
+        self.mock_object(self.library,
+                         '_get_namespace_from_table',
+                         return_value=self.fake_namespace)
+        mock_clone_namespace = self.mock_object(self.library,
+                                                '_clone_namespace')
+
+        model_update, snapshots_model_update = (
+            self.library.create_group_snapshot(fake.VOLUME_GROUP,
+                                               [fake.SNAPSHOT]))
+
+        self.assertIsNone(model_update)
+        self.assertIsNone(snapshots_model_update)
+        mock_clone_namespace.assert_called_once_with(self.fake_namespace.name,
+                                                     fake.SNAPSHOT['name'])
+
+    def test_create_consistent_group_snapshot(self):
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+
+        self.mock_object(volume_utils, 'extract_host',
+                         return_value=fake.POOL_NAME)
+        mock_create_cg_snapshot = self.mock_object(
+            self.client, 'create_cg_snapshot')
+        mock_clone_namespace = self.mock_object(self.library,
+                                                '_clone_namespace')
+        mock_wait_for_busy_snapshot = self.mock_object(
+            self.client, 'wait_for_busy_snapshot')
+        mock_delete_snapshot = self.mock_object(
+            self.client, 'delete_snapshot')
+
+        model_update, snapshots_model_update = (
+            self.library.create_group_snapshot(fake.VOLUME_GROUP,
+                                               [fake.VG_SNAPSHOT]))
+
+        self.assertIsNone(model_update)
+        self.assertIsNone(snapshots_model_update)
+
+        mock_create_cg_snapshot.assert_called_once_with(
+            set([fake.POOL_NAME]), fake.VOLUME_GROUP['id'])
+        mock_clone_namespace.assert_called_once_with(
+            fake.VG_SNAPSHOT['volume']['name'],
+            fake.VG_SNAPSHOT['name'],
+        )
+        mock_wait_for_busy_snapshot.assert_called_once_with(
+            fake.POOL_NAME, fake.VOLUME_GROUP['id'])
+        mock_delete_snapshot.assert_called_once_with(
+            fake.POOL_NAME, fake.VOLUME_GROUP['id'])
+
+    def test_create_group_from_src_snapshot(self):
+        mock_clone_source_to_destination = self.mock_object(
+            self.library, '_clone_source_to_destination')
+
+        actual_return_value = self.library.create_group_from_src(
+            fake.VOLUME_GROUP, [fake.VOLUME], group_snapshot=fake.VG_SNAPSHOT,
+            snapshots=[fake.VG_VOLUME_SNAPSHOT])
+
+        clone_source_to_destination_args = {
+            'name': fake.VG_SNAPSHOT['name'],
+            'size': fake.VG_SNAPSHOT['volume_size'],
+        }
+        mock_clone_source_to_destination.assert_called_once_with(
+            clone_source_to_destination_args, fake.VOLUME)
+        expected_return_value = (None, [])
+        self.assertEqual(expected_return_value, actual_return_value)
+
+    def test_create_group_from_src_group(self):
+        namespace_name = fake.SOURCE_VG_VOLUME['name']
+        mock_namespace = nvme_library.NetAppNamespace(
+            namespace_name, namespace_name, '3', {'UUID': 'fake_uuid'})
+        self.mock_object(self.library, '_get_namespace_from_table',
+                         return_value=mock_namespace)
+        mock_clone_source_to_destination = self.mock_object(
+            self.library, '_clone_source_to_destination')
+
+        actual_return_value = self.library.create_group_from_src(
+            fake.VOLUME_GROUP, [fake.VOLUME],
+            source_group=fake.SOURCE_VOLUME_GROUP,
+            source_vols=[fake.SOURCE_VG_VOLUME])
+
+        clone_source_to_destination_args = {
+            'name': fake.SOURCE_VG_VOLUME['name'],
+            'size': fake.SOURCE_VG_VOLUME['size'],
+        }
+        expected_return_value = (None, [])
+
+        mock_clone_source_to_destination.assert_called_once_with(
+            clone_source_to_destination_args, fake.VOLUME)
+        self.assertEqual(expected_return_value, actual_return_value)
+
+    def test_delete_group_snapshot(self):
+        mock_delete_namespace = self.mock_object(self.library,
+                                                 '_delete_namespace')
+
+        model_update, snapshots_model_update = (
+            self.library.delete_group_snapshot(fake.VOLUME_GROUP,
+                                               [fake.VG_SNAPSHOT]))
+
+        self.assertIsNone(model_update)
+        self.assertIsNone(snapshots_model_update)
+
+        mock_delete_namespace.assert_called_once_with(fake.VG_SNAPSHOT['name'])
