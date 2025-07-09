@@ -26,11 +26,11 @@ from oslo_utils import timeutils
 import sqlalchemy as sa
 # imports needed for cinderlib
 from sqlalchemy import Column, String, Text  # noqa: F401
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import func
 from sqlalchemy import schema
 from sqlalchemy.sql import expression
-from sqlalchemy.orm import backref, column_property, relationship, validates
+from sqlalchemy.orm import backref, column_property, declarative_base, \
+    relationship, validates
 
 
 CONF = cfg.CONF
