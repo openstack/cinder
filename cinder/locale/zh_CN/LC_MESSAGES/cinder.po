@@ -20,7 +20,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2025-03-17 14:24+0000\n"
+"POT-Creation-Date: 2025-07-07 22:42+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -914,8 +914,8 @@ msgstr "协调程序未初始化。"
 
 #, python-format
 msgid ""
-"Copy volume task failed: convert_to_base_volume: id=%(id)s, status="
-"%(status)s."
+"Copy volume task failed: convert_to_base_volume: id=%(id)s, "
+"status=%(status)s."
 msgstr ""
 "“复制卷”任务失败：convert_to_base_volume：id=%(id)s，status=%(status)s。"
 
@@ -1078,14 +1078,14 @@ msgstr "创建卷失败。"
 
 #, python-format
 msgid ""
-"Creating and activating zone set failed: (Zone set=%(cfg_name)s error="
-"%(err)s)."
+"Creating and activating zone set failed: (Zone set=%(cfg_name)s "
+"error=%(err)s)."
 msgstr "创建并激活区域集失败（区域集为 %(cfg_name)s，发生的错误为 %(err)s）。"
 
 #, python-format
 msgid ""
-"Creating and activating zone set failed: (Zone set=%(zoneset)s error="
-"%(err)s)."
+"Creating and activating zone set failed: (Zone set=%(zoneset)s "
+"error=%(err)s)."
 msgstr "创建并激活区域集失败（区域集为 %(zoneset)s，发生的错误为 %(err)s）。"
 
 #, python-format
@@ -1101,8 +1101,8 @@ msgstr "找不到缺省组类型。"
 
 #, python-format
 msgid ""
-"Default quota for resource: %(res)s is set by the default quota flag: quota_"
-"%(res)s, it is now deprecated. Please use the default quota class for "
+"Default quota for resource: %(res)s is set by the default quota flag: "
+"quota_%(res)s, it is now deprecated. Please use the default quota class for "
 "default quota."
 msgstr ""
 "资源 %(res)s 的缺省配额由缺省配额标记 quota_%(res)s 设置，现在不推荐使用。请"
@@ -2948,8 +2948,8 @@ msgstr "以下显示 fcns 数据库字符串的格式不正确：%s"
 
 #, python-format
 msgid ""
-"Malformed zone configuration: (switch=%(switch)s zone_config="
-"%(zone_config)s)."
+"Malformed zone configuration: (switch=%(switch)s "
+"zone_config=%(zone_config)s)."
 msgstr ""
 "区域配置的格式不正确：(switch=%(switch)s zone_config=%(zone_config)s)。"
 
@@ -4104,8 +4104,8 @@ msgid ""
 "Tune volume task stopped before it was done: volume_name=%(volume_name)s, "
 "task-status=%(status)s."
 msgstr ""
-"调整卷任务未完成就已停止：volume_name=%(volume_name)s， task-status="
-"%(status)s。"
+"调整卷任务未完成就已停止：volume_name=%(volume_name)s， task-"
+"status=%(status)s。"
 
 #, python-format
 msgid ""
