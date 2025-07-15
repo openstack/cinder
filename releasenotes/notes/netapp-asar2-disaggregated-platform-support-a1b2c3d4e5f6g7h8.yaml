@@ -1,0 +1,46 @@
+---
+features:
+  - |
+    Added support for NetApp ASA r2 (All-Flash SAN Array r2) disaggregated
+    platform in the NetApp unified driver. This introduces a new configuration
+    option ``netapp_disaggregated_platform`` that enables ASA r2 specific
+    workflows and optimizations.
+
+    The implementation includes:
+
+    * New boolean configuration option ``netapp_disaggregated_platform``
+      (default: False) to enable ASA r2 workflows
+    * New ``RestClientASAr2`` class that inherits from the standard REST client
+    * Override capability for ASA r2 specific functionality when needed
+    * Full backward compatibility with existing NetApp ONTAP configurations
+
+    To enable ASA r2 support, set the following in your cinder configuration:
+
+    .. code-block:: ini
+
+       [backend_netapp_asar2]
+       volume_driver = cinder.volume.drivers.netapp.common.NetAppDriver
+       netapp_storage_family = ontap_cluster
+       netapp_storage_protocol = iscsi
+       netapp_use_legacy_client = False
+       netapp_disaggregated_platform = True
+       # ... other NetApp configuration options
+
+    When ``netapp_disaggregated_platform`` is set to ``True``, the driver will:
+
+    * Apply ASA r2 specific optimizations and workflows
+    * Maintain full compatibility with existing volume operations
+    * Automatically fall back to standard ONTAP behavior when ASA r2 specific
+      methods are not available
+
+    The ASA r2 client inherits all functionality from the standard REST client
+    by default, with the ability to override individual methods for ASA r2
+    specific behavior. This design ensures that:
+
+    * No existing functionality is lost
+    * New ASA r2 features will be added incrementally
+    * ASAr2 does not support ZAPIs. Hence all the APIs are accessed using REST.
+
+    This feature enables users to take advantage of NetApp's disaggregated
+    architecture and ASA r2 specific performance optimizations while
+    maintaining a familiar operational experience.

@@ -119,6 +119,50 @@ class CapabilitiesLibrary(object):
 
         self.ssc = ssc
 
+    def update_ssc_asa(self, cluster_map):
+        """Periodically runs to update Storage Service Catalog data.
+
+        The self.ssc attribute is updated with the following format.
+        {<cluster_name> : {'pool_name': <cluster_name>}}
+        """
+        ssc = {}
+
+        for cluster_name, cluster_info in cluster_map.items():
+
+            ssc_cluster = {}
+
+            # Add metadata passed from the driver, including pool name
+            ssc_cluster.update(cluster_info)
+            # Add ASA r2 default cluster attributes
+            ssc_cluster.update({
+                'netapp_thin_provisioned': True,
+                'thick_provisioning_support': False,
+                'thin_provisioning_support': True,
+                'netapp_aggregate': None,
+                'netapp_is_flexgroup': False,
+                'netapp_dedup': True,
+                'netapp_compression': True,
+                'netapp_mirrored': False,
+                'netapp_flexvol_encryption': False,
+            })
+
+            # ASA r2 is disaggregated aggregate info is not available
+            disk_types = self.zapi_client.get_aggregate_disk_types()
+            aggr_disk_info = {
+                'netapp_raid_type': None,
+                'netapp_hybrid_aggregate': None,
+                'netapp_disk_type': disk_types,
+                'netapp_node_name': None
+            }
+            ssc_cluster.update(aggr_disk_info)
+
+            # ASA r2 need min QoS support for all nodes
+            ssc_cluster['netapp_qos_min_support'] = str('true').lower()
+
+            ssc[cluster_name] = ssc_cluster
+            LOG.debug("Storage Service Catalog: %s", ssc)
+        self.ssc = ssc
+
     def _update_for_failover(self, zapi_client, flexvol_map):
 
         self.zapi_client = zapi_client

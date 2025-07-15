@@ -1855,6 +1855,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_add_looping_tasks(self):
         mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')
+        self.library.configuration.netapp_disaggregated_platform = False
         mock_call_snap_cleanup = self.mock_object(
             self.library, '_delete_snapshots_marked_for_deletion')
         mock_call_ems_logging = self.mock_object(
@@ -1897,3 +1898,38 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.lun_table = {fake_lun.name: fake_lun}
         self.library._delete_lun_from_table('another-fake-lun')
         self.assertEqual({fake_lun.name: fake_lun}, self.library.lun_table)
+
+    def test_add_looping_tasks_traditional_platform(self):
+        """Test _add_looping_tasks with AFF platform"""
+        mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')
+        self.library.configuration.netapp_disaggregated_platform = False
+        mock_call_snap_cleanup = self.mock_object(
+            self.library, '_delete_snapshots_marked_for_deletion')
+        mock_call_ems_logging = self.mock_object(
+            self.library, '_handle_ems_logging')
+
+        self.library._add_looping_tasks()
+
+        # Traditional platform should include snapshot cleanup task
+        mock_add_task.assert_has_calls([
+            mock.call(mock_call_snap_cleanup, loopingcalls.ONE_MINUTE,
+                      loopingcalls.ONE_MINUTE),
+            mock.call(mock_call_ems_logging, loopingcalls.ONE_HOUR)])
+
+    def test_add_looping_tasks_disaggregated_platform(self):
+        """Test _add_looping_tasks with disaggregated platform"""
+        mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')
+        self.library.configuration.netapp_disaggregated_platform = True
+        mock_call_snap_cleanup = self.mock_object(
+            self.library, '_delete_snapshots_marked_for_deletion')
+        mock_call_ems_logging = self.mock_object(
+            self.library, '_handle_ems_logging')
+
+        self.library._add_looping_tasks()
+
+        # Disaggregated platform should NOT include snapshot cleanup task
+        mock_add_task.assert_has_calls([
+            mock.call(mock_call_ems_logging, loopingcalls.ONE_HOUR)])
+
+        # Verify snapshot cleanup is not called
+        mock_call_snap_cleanup.assert_not_called()

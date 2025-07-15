@@ -145,6 +145,44 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             na_utils.NetAppDriverException,
             self.library.check_for_setup_error)
 
+    def test_check_for_setup_error_disaggregated(self):
+        self.library.configuration.netapp_disaggregated_platform = True
+        self.mock_object(self.library, '_get_cluster_to_pool_map',
+                         return_value=fake.POOL_NAME)
+        self.mock_object(self.library, '_add_looping_tasks')
+        self.library.namespace_ostype = 'linux'
+        self.library.host_type = 'linux'
+        self.mock_object(self.library.client, 'get_namespace_list',
+                         return_value='fake_namespace_list')
+        self.mock_object(self.library, '_extract_and_populate_namespaces')
+        self.mock_object(self.library.loopingcalls, 'start_tasks')
+
+        self.library.check_for_setup_error()
+
+        self.library._add_looping_tasks.assert_called_once_with()
+        self.library.client.get_namespace_list.assert_called_once_with()
+        self.library._extract_and_populate_namespaces.assert_called_once_with(
+            'fake_namespace_list')
+        self.library.loopingcalls.start_tasks.assert_called_once_with()
+
+    @ddt.data(
+        {'pool_map': None, 'namespace': 'linux', 'host': 'linux'},
+        {'pool_map': 'fake_map', 'namespace': 'fake', 'host': 'linux'},
+        {'pool_map': 'fake_map', 'namespace': 'linux', 'host': 'fake'})
+    @ddt.unpack
+    def test_check_for_setup_error_error_disaggregated(
+            self, pool_map, namespace, host):
+        self.library.configuration.netapp_disaggregated_platform = True
+        self.mock_object(self.library, '_get_cluster_to_pool_map',
+                         return_value=pool_map)
+        self.library.namespace_ostype = namespace
+        self.library.host_type = host
+        self.mock_object(self.library, '_add_looping_tasks')
+
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.library.check_for_setup_error)
+
     def test_create_volume(self):
         volume_size_in_bytes = int(fake.SIZE) * units.Gi
         self.mock_object(volume_utils, 'extract_host',
@@ -274,6 +312,19 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         mock_get_flexvol.assert_called_once_with()
         self.library.ssc_library.update_ssc.assert_called_once_with(
             'fake_pool_map')
+
+    def test__update_ssc_disaggregated_platform(self):
+        self.library.configuration.netapp_disaggregated_platform = True
+        mock_get_cluster_pool_map = self.mock_object(
+            self.library, '_get_cluster_to_pool_map',
+            return_value=fake.FAKE_CLUSTER_POOL_MAP)
+        self.library.ssc_library.update_ssc_asa = mock.Mock()
+
+        self.library._update_ssc()
+
+        mock_get_cluster_pool_map.assert_called_once_with()
+        self.library.ssc_library.update_ssc_asa.assert_called_once_with(
+            fake.FAKE_CLUSTER_POOL_MAP)
 
     def test__find_mapped_namespace_subsystem(self):
         self.mock_object(self.library.client, 'get_subsystem_by_host',
@@ -1126,3 +1177,36 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.assertIsNone(snapshots_model_update)
 
         mock_delete_namespace.assert_called_once_with(fake.VG_SNAPSHOT['name'])
+
+    def test_netapp_disaggregated_platform_config_true(self):
+        """Test behavior when netapp_disaggregated_platform is True."""
+        self.library.configuration.netapp_disaggregated_platform = True
+
+        # Mock the cluster pool map method
+        mock_cluster_pool_map = self.mock_object(
+            self.library, '_get_cluster_to_pool_map',
+            return_value=fake.FAKE_CLUSTER_POOL_MAP)
+
+        # Test _update_ssc uses cluster pool mapping
+        self.library.ssc_library.update_ssc_asa = mock.Mock()
+        self.library._update_ssc()
+
+        mock_cluster_pool_map.assert_called_once_with()
+        self.library.ssc_library.update_ssc_asa.assert_called_once_with(
+            fake.FAKE_CLUSTER_POOL_MAP)
+
+    def test_netapp_disaggregated_platform_config_false(self):
+        """Test behavior when netapp_disaggregated_platform is False."""
+        self.library.configuration.netapp_disaggregated_platform = False
+
+        mock_flexvol_pool_map = self.mock_object(
+            self.library, '_get_flexvol_to_pool_map',
+            return_value=fake.POOL_NAME)
+
+        # Test _update_ssc uses flexvol pool mapping
+        self.library.ssc_library.update_ssc = mock.Mock()
+        self.library._update_ssc()
+
+        mock_flexvol_pool_map.assert_called_once_with()
+        self.library.ssc_library.update_ssc.assert_called_once_with(
+            fake.POOL_NAME)

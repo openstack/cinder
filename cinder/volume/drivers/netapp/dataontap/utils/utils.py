@@ -20,6 +20,7 @@ import json
 import socket
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _
@@ -27,10 +28,13 @@ from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode_rest
+from cinder.volume.drivers.netapp.dataontap.client \
+    import client_cmode_rest_asar2
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume import volume_utils
 
 CONF = cfg.CONF
+LOG = logging.getLogger(__name__)
 
 
 def get_backend_configuration(backend_name):
@@ -67,6 +71,16 @@ def get_client_for_backend(backend_name, vserver_name=None, force_rest=False):
     """Get a cDOT API client for a specific backend."""
 
     config = get_backend_configuration(backend_name)
+
+    # Determine if disaggregated platform should be used
+    # Parameter takes precedence over config setting
+    is_disaggregated = config.netapp_disaggregated_platform
+
+    # ZAPI clients are not supported for ASAr2 platform.
+    # We are forcing the client to be REST client for ASAr2.
+    if is_disaggregated:
+        force_rest = True
+
     if config.netapp_use_legacy_client and not force_rest:
         client = client_cmode.Client(
             transport_type=config.netapp_transport_type,
@@ -83,22 +97,42 @@ def get_client_for_backend(backend_name, vserver_name=None, force_rest=False):
             trace=volume_utils.TRACE_API,
             api_trace_pattern=config.netapp_api_trace_pattern)
     else:
-        client = client_cmode_rest.RestClient(
-            transport_type=config.netapp_transport_type,
-            ssl_cert_path=config.netapp_ssl_cert_path,
-            username=config.netapp_login,
-            password=config.netapp_password,
-            hostname=config.netapp_server_hostname,
-            private_key_file=config.netapp_private_key_file,
-            certificate_file=config.netapp_certificate_file,
-            ca_certificate_file=config.netapp_ca_certificate_file,
-            certificate_host_validation=
-            config.netapp_certificate_host_validation,
-            port=config.netapp_server_port,
-            vserver=vserver_name or config.netapp_vserver,
-            trace=volume_utils.TRACE_API,
-            api_trace_pattern=config.netapp_api_trace_pattern,
-            async_rest_timeout=config.netapp_async_rest_timeout)
+        # Check if ASA r2 disaggregated platform is enabled
+        if is_disaggregated:
+            client = client_cmode_rest_asar2.RestClientASAr2(
+                transport_type=config.netapp_transport_type,
+                ssl_cert_path=config.netapp_ssl_cert_path,
+                username=config.netapp_login,
+                password=config.netapp_password,
+                hostname=config.netapp_server_hostname,
+                private_key_file=config.netapp_private_key_file,
+                certificate_file=config.netapp_certificate_file,
+                ca_certificate_file=config.netapp_ca_certificate_file,
+                certificate_host_validation=
+                config.netapp_certificate_host_validation,
+                port=config.netapp_server_port,
+                vserver=vserver_name or config.netapp_vserver,
+                trace=volume_utils.TRACE_API,
+                api_trace_pattern=config.netapp_api_trace_pattern,
+                async_rest_timeout=config.netapp_async_rest_timeout,
+                is_disaggregated=is_disaggregated)
+        else:
+            client = client_cmode_rest.RestClient(
+                transport_type=config.netapp_transport_type,
+                ssl_cert_path=config.netapp_ssl_cert_path,
+                username=config.netapp_login,
+                password=config.netapp_password,
+                hostname=config.netapp_server_hostname,
+                private_key_file=config.netapp_private_key_file,
+                certificate_file=config.netapp_certificate_file,
+                ca_certificate_file=config.netapp_ca_certificate_file,
+                certificate_host_validation=
+                config.netapp_certificate_host_validation,
+                port=config.netapp_server_port,
+                vserver=vserver_name or config.netapp_vserver,
+                trace=volume_utils.TRACE_API,
+                api_trace_pattern=config.netapp_api_trace_pattern,
+                async_rest_timeout=config.netapp_async_rest_timeout)
     return client
 
 
@@ -139,3 +173,39 @@ def build_ems_log_message_1(driver_name, app_version, vserver,
     ems_log['event-id'] = '1'
     ems_log['event-description'] = json.dumps(message)
     return ems_log
+
+
+def get_cluster_to_pool_map(client):
+    """Get the cluster name for ASA r2 systems.
+
+    For ASA r2 systems, instead of using flexvols, we use the cluster name
+    as the pool. The map is of the format suitable for seeding the storage
+    service catalog: {<cluster_name> : {'pool_name': <cluster_name>}}
+
+    :param client: NetApp client instance to retrieve cluster information
+    :returns: Dictionary mapping cluster names to pool information
+    :raises: InvalidConfigurationValue if cluster is not disaggregated
+    """
+    pools = {}
+
+    cluster_info = client.get_cluster_info()
+
+    # Check if cluster info is missing or cluster is not disaggregated (ASA r2)
+    if not cluster_info.get('disaggregated', False):
+        LOG.error("Cluster is not a disaggregated (ASA r2) platform. ")
+        raise exception.InvalidConfigurationValue(
+            option='disaggregated',
+            value=cluster_info.get('disaggregated', None)
+        )
+
+    cluster_name = cluster_info['name']
+    LOG.debug("Found ASA r2 cluster: %s", cluster_name)
+    pools[cluster_name] = {'pool_name': cluster_name}
+
+    msg_args = {
+        'cluster': cluster_name,
+    }
+    msg = "ASA r2 cluster '%(cluster)s' added as pool"
+    LOG.debug(msg, msg_args)
+
+    return pools

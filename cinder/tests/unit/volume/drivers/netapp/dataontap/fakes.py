@@ -440,6 +440,19 @@ FAKE_CMODE_POOL_MAP = {
     },
 }
 
+FAKE_CLUSTER_INFO = {
+    'name': 'jayaanancluster-1',
+    '_links': {
+        'self': {
+            'href': '/api/cluster'
+        }
+    }
+}
+
+FAKE_CLUSTER_POOL_MAP = {
+    'jayaanancluster-1': {'pool_name': 'jayaanancluster-1'}
+}
+
 FILE_LIST = ['file1', 'file2', 'file3']
 
 FAKE_LUN = netapp_api.NaElement.create_node_with_children(

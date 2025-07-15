@@ -150,7 +150,11 @@ class NetAppNVMeStorageLibrary(
     def _update_ssc(self):
         """Refresh the storage service catalog with the latest set of pools."""
 
-        self.ssc_library.update_ssc(self._get_flexvol_to_pool_map())
+        """Refresh the storage service catalog with the latest set of pools."""
+        if self.configuration.netapp_disaggregated_platform:
+            self.ssc_library.update_ssc_asa(self._get_cluster_to_pool_map())
+        else:
+            self.ssc_library.update_ssc(self._get_flexvol_to_pool_map())
 
     def _get_flexvol_to_pool_map(self):
         """Get the flexvols that match the pool name search pattern.
@@ -181,16 +185,25 @@ class NetAppNVMeStorageLibrary(
 
         return pools
 
+    def _get_cluster_to_pool_map(self):
+        return dot_utils.get_cluster_to_pool_map(self.client)
+
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate.
 
         Discovers the namespaces on the NetApp server.
         """
-        if not self._get_flexvol_to_pool_map():
+        if (not self.configuration.netapp_disaggregated_platform
+                and not self._get_flexvol_to_pool_map()):
             msg = _('No pools are available for provisioning volumes. '
                     'Ensure that the configuration option '
                     'netapp_pool_name_search_pattern is set correctly.')
             raise na_utils.NetAppDriverException(msg)
+        elif self.configuration.netapp_disaggregated_platform:
+            if not self._get_cluster_to_pool_map():
+                msg = _('No pools are available for provisioning volumes. '
+                        'Ensure ASA r2 configuration option is set correctly.')
+                raise na_utils.NetAppDriverException(msg)
         self._add_looping_tasks()
 
         if self.namespace_ostype not in self.ALLOWED_NAMESPACE_OS_TYPES:
@@ -505,7 +518,8 @@ class NetAppNVMeStorageLibrary(
 
         # Utilization and performance metrics require cluster-scoped
         # credentials
-        if self.using_cluster_credentials:
+        if (self.using_cluster_credentials
+                and not self.configuration.netapp_disaggregated_platform):
             # Get up-to-date node utilization metrics just once
             self.perf_library.update_performance_cache(ssc)
 
@@ -534,8 +548,11 @@ class NetAppNVMeStorageLibrary(
                 self.max_over_subscription_ratio)
 
             # Add up-to-date capacity info
-            capacity = self.client.get_flexvol_capacity(
-                flexvol_name=ssc_vol_name)
+            if self.configuration.netapp_disaggregated_platform:
+                capacity = self.client.get_cluster_capacity()
+            else:
+                capacity = self.client.get_flexvol_capacity(
+                    flexvol_name=ssc_vol_name)
 
             size_total_gb = capacity['size-total'] / units.Gi
             pool['total_capacity_gb'] = na_utils.round_down(size_total_gb)
@@ -557,7 +574,8 @@ class NetAppNVMeStorageLibrary(
                 pool['provisioned_capacity_gb'] = na_utils.round_down(
                     float(provisioned_cap) / units.Gi)
 
-            if self.using_cluster_credentials:
+            if (self.using_cluster_credentials and
+                    not self.configuration.netapp_disaggregated_platform):
                 dedupe_used = self.client.get_flexvol_dedupe_used_percent(
                     ssc_vol_name)
             else:
