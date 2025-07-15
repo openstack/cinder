@@ -22,8 +22,8 @@ Scheduler Service
 import collections
 from datetime import datetime
 import functools
+import time
 
-import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
@@ -117,7 +117,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         for __ in range(CONF.scheduler_driver_init_wait_time):
             if self.driver.is_first_receive():
                 break
-            eventlet.sleep(1)
+            time.sleep(1)
         self._startup_delay = False
 
     def reset(self):
@@ -176,7 +176,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         # or CONF.scheduler_driver_init_wait_time seconds from service startup
         # has passed.
         while self._startup_delay and not self.driver.is_ready():
-            eventlet.sleep(1)
+            time.sleep(1)
 
     @append_operation_type()
     def create_group(self, context, group, group_spec=None,
