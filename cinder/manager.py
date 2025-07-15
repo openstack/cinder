@@ -51,8 +51,11 @@ This module provides Manager, a base class for managers.
 
 """
 
+from typing import Optional
+
 from eventlet import greenpool
 from eventlet import tpool
+import futurist
 from oslo_config import cfg
 import oslo_config.types
 from oslo_log import log as logging
@@ -64,6 +67,7 @@ from cinder import context
 from cinder import db
 from cinder.db import base
 from cinder import exception
+from cinder import monkey_patch
 from cinder import objects
 from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
@@ -99,6 +103,9 @@ class Manager(base.Base, PeriodicTasks):
         super().__init__()
 
     def _set_tpool_size(self, nthreads: int) -> None:
+        if not monkey_patch.is_patched():
+            return
+
         # NOTE(geguileo): Until PR #472 is merged we have to be very careful
         # not to call "tpool.execute" before calling this method.
         tpool.set_num_threads(nthreads)
@@ -162,11 +169,21 @@ class Manager(base.Base, PeriodicTasks):
 
 class ThreadPoolManager(Manager):
     def __init__(self, *args, **kwargs):
-        self._tp = greenpool.GreenPool()
+        self._tp: Optional[greenpool.GreenPool] = None
+
         super(ThreadPoolManager, self).__init__(*args, **kwargs)
 
-    def _add_to_threadpool(self, func, *args, **kwargs):
+        if monkey_patch.is_patched():
+            self._tp = greenpool.GreenPool()
+
+    def _add_to_threadpool(self, func, *args, **kwargs) -> None:
+        if not monkey_patch.is_patched():
+            raise AssertionError(
+                "ThreadPoolManager is only for eventlet mode.")
+
+        assert self._tp is not None
         self._tp.spawn_n(func, *args, **kwargs)
+        return
 
 
 class SchedulerDependentManager(ThreadPoolManager):
@@ -224,6 +241,24 @@ class SchedulerDependentManager(ThreadPoolManager):
     def reset(self):
         super(SchedulerDependentManager, self).reset()
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
+
+
+class SizedThreadPoolManager(SchedulerDependentManager):
+    def __init__(self, *args, **kwargs):
+        self._tpe: Optional[futurist.GreenPoolExecutor |
+                            futurist.ThreadPoolExecutor] = None
+
+        super(SizedThreadPoolManager, self).__init__(*args, **kwargs)
+
+    def _init_pool(self, max_workers):
+        if monkey_patch.is_patched():
+            self._tpe = futurist.GreenThreadPoolExecutor(max_workers)
+        else:
+            self._tpe = futurist.ThreadPoolExecutor(max_workers)
+
+    def _add_to_threadpool(self, func, *args, **kwargs) -> None:
+        assert self._tpe is not None
+        self._tpe.submit(func, *args, **kwargs)
 
 
 class CleanableManager(object):

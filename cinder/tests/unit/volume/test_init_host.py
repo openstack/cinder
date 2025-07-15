@@ -293,7 +293,7 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
 
     @mock.patch('cinder.keymgr.migration.migrate_fixed_key')
     @mock.patch('cinder.volume.manager.VolumeManager._get_my_volumes')
-    @mock.patch('cinder.manager.ThreadPoolManager._add_to_threadpool')
+    @mock.patch('cinder.manager.SizedThreadPoolManager._add_to_threadpool')
     def test_init_host_key_migration(self,
                                      mock_add_threadpool,
                                      mock_get_my_volumes,

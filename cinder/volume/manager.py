@@ -228,7 +228,7 @@ def clean_snapshot_locks(func):
 
 
 class VolumeManager(manager.CleanableManager,
-                    manager.SchedulerDependentManager):
+                    manager.SizedThreadPoolManager):
     """Manages attachable block storage devices."""
 
     RPC_API_VERSION = volume_rpcapi.VolumeAPI.RPC_API_VERSION
@@ -259,14 +259,14 @@ class VolumeManager(manager.CleanableManager,
                  *args, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
         # update_service_capabilities needs service_name to be volume
-        super(VolumeManager, self).__init__(  # type: ignore
+        super(VolumeManager, self).__init__(
             service_name='volume',
             *args, **kwargs)
         # NOTE(dulek): service_name=None means we're running in unit tests.
         service_name = service_name or 'backend_defaults'
         self.configuration = config.Configuration(volume_backend_opts,
                                                   config_group=service_name)
-        self._set_tpool_size(
+        self._init_pool(
             self.configuration.backend_native_threads_pool_size)
         self.stats: dict = {}
         self.service_uuid = None
