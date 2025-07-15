@@ -698,7 +698,9 @@ class HPE3PARBaseDriver(test.TestCase):
         mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS)]
 
     get_id_login = [
+        mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS),
         mock.call.getWsApiVersion(),
+        mock.call.logout(),
         mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS),
         mock.call.getStorageSystemInfo()]
 
