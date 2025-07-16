@@ -134,6 +134,8 @@ class Detail(object):
         '029',
         _("The image disk format must be the same as the volume format for "
           "the volume type you are requesting."))
+    INCREMENTAL_BACKUP_FORCES_FULL_BACKUP = (
+        '030', _("Incremental backup not possible, forcing full backup."))
 
     ALL = (UNKNOWN_ERROR,
            DRIVER_NOT_INITIALIZED,
@@ -164,6 +166,7 @@ class Detail(object):
            VOLUME_INVALID_STATE,
            REIMAGE_VOLUME_FAILED,
            IMAGE_FORMAT_UNACCEPTABLE,
+           INCREMENTAL_BACKUP_FORCES_FULL_BACKUP,
            )
 
     # Exception and detail mappings
