@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp Driver `bug #2114993
+    <https://bugs.launchpad.net/cinder/+bug/2114993>`_: Fixed iSCSI and FC
+    detach operation failure issue when multiple initiators are connected.
