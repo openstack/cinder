@@ -190,6 +190,7 @@ class RBDTestCase(test.TestCase):
         cfg.volume_backend_name = None
         cfg.volume_dd_blocksize = '1M'
         cfg.rbd_store_chunk_size = 4
+        cfg.rados_connect_timeout = -1
         cfg.rados_connection_retries = 3
         cfg.rados_connection_interval = 5
         cfg.backup_use_temp_snapshot = False
