@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1906286 <https://bugs.launchpad.net/cinder/+bug/1906286>`_: Fixed
+    issue with Cinder-backed images in A/A environment not correctly using
+    the cluster name.
