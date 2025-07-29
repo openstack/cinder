@@ -21,11 +21,14 @@ workflows when needed.
 """
 
 from oslo_log import log as logging
+from oslo_utils import excutils
 
 from cinder.i18n import _
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode_rest
 from cinder.volume.drivers.netapp import utils as netapp_utils
 from cinder.volume import volume_utils
+
 
 LOG = logging.getLogger(__name__)
 
@@ -185,3 +188,134 @@ class RestClientASAr2(client_cmode_rest.RestClient,
             LOG.exception('Failed to get aggregate storage types: %s', e)
             msg = _('Failed to get aggregate storage types: %s')
             raise netapp_utils.NetAppDriverException(msg % e)
+
+    def create_lun(self, volume_name, lun_name, size, metadata,
+                   qos_policy_group_name=None,
+                   qos_policy_group_is_adaptive=False):
+        """Issues API request for creating LUN on volume."""
+        initial_size = size
+        lun_name = lun_name.replace("-", "_")
+        body = {
+            'name': lun_name,
+            'space.size': str(initial_size),
+            'os_type': metadata['OsType'],
+        }
+        if qos_policy_group_name:
+            body['qos_policy.name'] = qos_policy_group_name
+
+        try:
+            self.send_request('/storage/luns', 'post', body=body)
+        except netapp_api.NaApiError as ex:
+            with excutils.save_and_reraise_exception():
+                LOG.error('Error provisioning volume %(lun_name)s on cluster.'
+                          ' Details: %(ex)s',
+                          {
+                              'lun_name': lun_name,
+                              'ex': ex,
+                          })
+
+    def destroy_lun(self, path, force=True):
+        """Destroys the LUN at the path."""
+        query = {}
+        lun_name = self._get_backend_lun_or_namespace(path)
+        query['name'] = lun_name
+        if force:
+            query['allow_delete_while_mapped'] = 'true'
+        self.send_request('/storage/luns/', 'delete', query=query)
+
+    def create_namespace(self, volume_name, namespace_name, size, metadata):
+        """Issues API request for creating namespace"""
+
+        initial_size = size
+        namespace_name = namespace_name.replace("-", "_")
+        body = {
+            'name': namespace_name,
+            'space.size': str(initial_size),
+            'os_type': metadata['OsType'],
+        }
+
+        try:
+            self.send_request('/storage/namespaces', 'post', body=body)
+        except netapp_api.NaApiError as ex:
+            with excutils.save_and_reraise_exception():
+                LOG.error('Error provisioning namespace %(namespace_name)s'
+                          ' on cluster Details: %(ex)s',
+                          {
+                              'namespace_name': namespace_name,
+                              'ex': ex,
+                          })
+
+    def destroy_namespace(self, path, force=True):
+        """Destroys the namespace at the path."""
+        lun_name = self._get_backend_lun_or_namespace(path)
+        query = {
+            'name': lun_name,
+            'svm': self.vserver
+        }
+        if force:
+            query['allow_delete_while_mapped'] = 'true'
+        self.send_request('/storage/namespaces', 'delete', query=query)
+
+    def get_lun_map(self, path):
+        """Gets the LUN map by LUN path."""
+        lun_name = self._get_backend_lun_or_namespace(path)
+        return super().get_lun_map(lun_name)
+
+    def map_lun(self, path, igroup_name, lun_id=None):
+        """Maps LUN to the initiator and returns LUN id assigned."""
+        lun_name = self._get_backend_lun_or_namespace(path)
+        return super().map_lun(lun_name, igroup_name, lun_id)
+
+    def get_lun_by_args(self, path=None):
+        """Retrieves LUN with specified args."""
+        if path:
+            if 'path' in path:
+                lun_name = self._get_backend_lun_or_namespace(path)
+                path['path'] = lun_name
+        return super().get_lun_by_args(path=path)
+
+    def unmap_lun(self, path, igroup_name):
+        """Unmaps a LUN from given initiator."""
+        lun_name = self._get_backend_lun_or_namespace(path)
+        super().unmap_lun(lun_name, igroup_name)
+
+    def map_namespace(self, path, subsystem_name):
+        """Maps namespace to the host nqn and returns namespace uuid."""
+        namespace_name = self._get_backend_lun_or_namespace(path)
+        return super().map_namespace(namespace_name, subsystem_name)
+
+    def unmap_namespace(self, path, subsystem):
+        """Unmaps a namespace from given subsystem."""
+        namespace_name = self._get_backend_lun_or_namespace(path)
+        super().unmap_namespace(namespace_name, subsystem)
+
+    def get_namespace_map(self, path):
+        """Gets the namespace map using its path."""
+        namespace_name = self._get_backend_lun_or_namespace(path)
+        return super().get_namespace_map(namespace_name)
+
+    def do_direct_resize(self, path, new_size_bytes, force=True):
+        """Resize the LUN."""
+        lun_name = self._get_backend_lun_or_namespace(path)
+        if lun_name is not None:
+            LOG.info('Resizing LUN %s directly to new size.', lun_name)
+            body = {'name': lun_name, 'space.size': new_size_bytes}
+            self._lun_update_by_path(lun_name, body)
+
+    def namespace_resize(self, path, new_size_bytes):
+        """Resize the namespace."""
+        namespace_name = self._get_backend_lun_or_namespace(path)
+        if namespace_name is not None:
+            body = {'space.size': new_size_bytes}
+            query = {'name': namespace_name}
+            self.send_request('/storage/namespaces',
+                              'patch',
+                              body=body,
+                              query=query
+                              )
+
+    def _get_backend_lun_or_namespace(self, path):
+        """Get the backend LUN or namespace"""
+        paths = path.split("/")
+        lun_name = paths[3].replace("-", "_")
+        return lun_name

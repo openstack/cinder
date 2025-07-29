@@ -427,7 +427,11 @@ class NetAppNVMeStorageLibrary(
         """Extracts the namespace from API and populates the table."""
 
         path = namespace['Path']
-        (_rest, _splitter, name) = path.rpartition('/')
+        if self.configuration.netapp_disaggregated_platform:
+            name = path
+        else:
+            (_rest, _splitter, name) = path.rpartition('/')
+
         handle = self._create_namespace_handle(namespace)
         size = namespace['Size']
         return NetAppNamespace(handle, name, size, namespace)
