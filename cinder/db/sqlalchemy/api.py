@@ -6437,6 +6437,9 @@ def _process_backups_filters(query, filters):
                 col_attr = getattr(models.Backup, 'backup_metadata')
                 for k, v in value.items():
                     query = query.filter(col_attr.any(key=k, value=v))
+            elif isinstance(value, (list, tuple, set, frozenset)):
+                orm_field = getattr(models.Backup, key)
+                query = query.filter(or_(orm_field == v for v in value))
             else:
                 filters_dict[key] = value
 

@@ -197,8 +197,14 @@ class BackupManager(manager.SchedulerDependentManager):
         LOG.info("Cleaning up incomplete backup operations.")
 
         # TODO(smulcahy) implement full resume of backup and restore
-        # operations on restart (rather than simply resetting)
-        backups = objects.BackupList.get_all_by_host(ctxt, self.host)
+        # operations on restart (rather than simply resetting).
+        # We only need to deal with the backups that aren't complete.
+        # N.B. NULL status is possible and we consider it incomplete.
+        incomplete_status = list(fields.BackupStatus.ALL)
+        incomplete_status.remove(fields.BackupStatus.AVAILABLE)
+        incomplete_status.append(None)
+        backups = objects.BackupList.get_all(
+            ctxt, filters={'host': self.host, 'status': incomplete_status})
         for backup in backups:
             try:
                 self._cleanup_one_backup(ctxt, backup)

@@ -397,15 +397,57 @@ class BackupTestCase(BaseBackupTest):
         self.backup_mgr.is_initialized = initialized
         self.assertEqual(initialized, self.backup_mgr.is_working())
 
+    def test_cleanup_incomplete_backup_operations(self):
+        """Test cleanup resilience when some are incomplete."""
+        # For correct operation, this test relies on the DB being
+        # pre-populated by a properly complete backup.
+
+        fake_incomplete_backup_list = [
+            self._create_backup_db_entry(status=s)
+            for s in (None,
+                      fields.BackupStatus.CREATING,
+                      fields.BackupStatus.DELETING,
+                      fields.BackupStatus.RESTORING,
+                      fields.BackupStatus.ERROR,
+                      fields.BackupStatus.ERROR_DELETING,
+                      fields.BackupStatus.DELETED)
+        ]
+
+        self._create_backup_db_entry(status=fields.BackupStatus.AVAILABLE)
+
+        mock_backup_cleanup = self.mock_object(
+            self.backup_mgr, '_cleanup_one_backup')
+        mock_temp_cleanup = self.mock_object(
+            self.backup_mgr, '_cleanup_temp_volumes_snapshots_for_one_backup')
+
+        result = self.backup_mgr._cleanup_incomplete_backup_operations(
+            self.ctxt)
+        self.assertIsNone(result)
+
+        self.assertEqual(len(fake_incomplete_backup_list),
+                         mock_backup_cleanup.call_count)
+        for b in fake_incomplete_backup_list:
+            mock_backup_cleanup.assert_any_call(self.ctxt, b)
+
+        self.assertEqual(len(fake_incomplete_backup_list),
+                         mock_temp_cleanup.call_count)
+        for b in fake_incomplete_backup_list:
+            mock_temp_cleanup.assert_any_call(self.ctxt, b)
+
     def test_cleanup_incomplete_backup_operations_with_exceptions(self):
         """Test cleanup resilience in the face of exceptions."""
 
-        fake_backup_list = [{'id': fake.BACKUP_ID},
-                            {'id': fake.BACKUP2_ID},
-                            {'id': fake.BACKUP3_ID}]
-        mock_backup_get_by_host = self.mock_object(
-            objects.BackupList, 'get_all_by_host')
-        mock_backup_get_by_host.return_value = fake_backup_list
+        fake_backup_list = [
+            self._create_backup_db_entry(status=s)
+            for s in (fields.BackupStatus.CREATING,
+                      fields.BackupStatus.DELETING,
+                      fields.BackupStatus.RESTORING,
+                      fields.BackupStatus.ERROR,
+                      fields.BackupStatus.ERROR_DELETING,
+                      fields.BackupStatus.DELETED)
+        ]
+
+        self._create_backup_db_entry(status=fields.BackupStatus.AVAILABLE)
 
         mock_backup_cleanup = self.mock_object(
             self.backup_mgr, '_cleanup_one_backup')
@@ -663,7 +705,8 @@ class BackupTestCase(BaseBackupTest):
 
     def test_create_backup_with_bad_volume_status(self):
         """Test creating a backup from a volume with a bad status."""
-        vol_id = self._create_volume_db_entry(status='restoring', size=1)
+        vol_id = self._create_volume_db_entry(
+            status='restoring-backup', size=1)
         backup = self._create_backup_db_entry(volume_id=vol_id)
         self.assertRaises(exception.InvalidVolume,
                           self.backup_mgr.create_backup,
