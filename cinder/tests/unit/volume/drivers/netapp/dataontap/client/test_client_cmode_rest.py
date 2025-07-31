@@ -2899,7 +2899,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                         sm_destination_cg,
                         'consistency_group_volumes': [
                             {'name': fake_client.SM_DEST_VOLUME}]
-                }
+                },
+                'state': 'in_sync'
             }
         else:
             body = {
