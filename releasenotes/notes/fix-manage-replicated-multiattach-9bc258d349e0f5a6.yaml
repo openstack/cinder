@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    RBD `bug #2115985
+    <https://bugs.launchpad.net/cinder/+bug/2115985>`_: Fixed
+    issue when managing a volume with ``multiattach`` or
+    ``replication_enabled`` properties in volume type.

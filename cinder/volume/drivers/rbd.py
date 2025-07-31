@@ -2141,8 +2141,17 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         LOG.debug("Extend volume from %(old_size)s GB to %(new_size)s GB.",
                   {'old_size': old_size, 'new_size': new_size})
 
+    def _is_valid_type(self, volume_type):
+        want_replication = self._is_replicated_type(volume_type)
+        want_multiattach = self._is_multiattach_type(volume_type)
+
+        if want_replication and want_multiattach:
+            return False
+        return True
+
     def manage_existing(self,
-                        volume: Volume, existing_ref: dict[str, str]) -> None:
+                        volume: Volume,
+                        existing_ref: dict[str, str]) -> dict[str, Any]:
         """Manages an existing image.
 
         Renames the image name to match the expected name for the volume.
@@ -2154,12 +2163,17 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             existing_ref is a dictionary of the form:
             {'source-name': <name of RBD image>}
         """
+        # check if the volume type is valid and fail fast if not
+        if not self._is_valid_type(volume.volume_type):
+            msg = _('Replication and Multiattach are mutually exclusive.')
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
         # Raise an exception if we didn't find a suitable rbd image.
         with RADOSClient(self) as client:
             rbd_name = existing_ref['source-name']
             self.RBDProxy().rename(client.ioctx,
                                    utils.convert_str(rbd_name),
                                    volume.name)
+        return self._setup_volume(volume)
 
     def manage_existing_get_size(self,
                                  volume: Volume,
