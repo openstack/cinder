@@ -691,6 +691,11 @@ class HPE3PARBaseDriver(test.TestCase):
                           'minor': 10,
                           'revision': 0}
 
+    wsapi_version_2025 = {'major': 1,
+                          'build': 100500031,
+                          'minor': 15,
+                          'revision': 0}
+
     # Use this to point to latest version of wsapi
     wsapi_version_latest = wsapi_version_for_compression
 
@@ -1519,12 +1524,18 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected)
             self.assertEqual(return_model['replication_status'], 'enabled')
 
+    # (i) wsapi version is old/default
+    # (ii) wsapi version is 2025, then all licenses are enabled
+    @ddt.data({'wsapi_version': None},
+              {'wsapi_version': HPE3PARBaseDriver.wsapi_version_2025})
+    @ddt.unpack
     @mock.patch.object(volume_types, 'get_volume_type')
-    def test_create_volume_dedup_compression(self, _mock_volume_types):
+    def test_create_volume_dedup_compression(self, _mock_volume_types,
+                                             wsapi_version):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
 
-        mock_client = self.setup_driver()
+        mock_client = self.setup_driver(wsapi_version=wsapi_version)
 
         _mock_volume_types.return_value = {
             'name': 'dedup_compression',
@@ -1536,21 +1547,41 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 'hpe3par:provisioning': 'dedup',
                 'hpe3par:compression': 'True',
                 'volume_type': self.volume_type_dedup_compression}}
-        mock_client.getStorageSystemInfo.return_value = {
-            'id': self.CLIENT_ID,
-            'serialNumber': '1234',
-            'licenseInfo': {
-                'licenses': [{'name': 'Compression'},
-                             {'name': 'Thin Provisioning (102400G)'},
-                             {'name': 'System Reporter'}]
+        if not wsapi_version:
+            mock_client.getStorageSystemInfo.return_value = {
+                'id': self.CLIENT_ID,
+                'serialNumber': '1234',
+                'licenseInfo': {
+                    'licenses': [{'name': 'Compression'},
+                                 {'name': 'Thin Provisioning (102400G)'},
+                                 {'name': 'System Reporter'}]
+                }
             }
-        }
+        else:
+            mock_client.getStorageSystemInfo.return_value = {
+                'id': self.CLIENT_ID,
+                'serialNumber': '1234',
+                'licenseInfo': {
+                    # all licenses are enabled
+                    'licenses': [{'name': 'FIPS Encryption'},
+                                 {'name': 'Owned'},
+                                 {'name': 'Software and Support SaaS'}]
+                }
+            }
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
-            return_model = self.driver.create_volume(
-                self.volume_dedup_compression)
+            if not wsapi_version:
+                # (i) old/default
+                return_model = self.driver.create_volume(
+                    self.volume_dedup_compression)
+            else:
+                # (ii) wsapi version 2025
+                common = self.driver._login()
+                return_model = common.create_volume(
+                    self.volume_dedup_compression)
+
             comment = Comment({
                 "volume_type_name": "dedup_compression",
                 "display_name": "Foo Volume",
@@ -1559,18 +1590,24 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 "volume_id": "d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
                 "qos": {},
                 "type": "OpenStack"})
+            optional = {'comment': comment,
+                        'tpvv': False,
+                        'tdvv': True,
+                        'compression': True}
+            if not wsapi_version:
+                optional['snapCPG'] = HPE3PAR_CPG_SNAP
             expected = [
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getStorageSystemInfo(),
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
                     HPE3PAR_CPG,
-                    16384, {
-                        'comment': comment,
-                        'tpvv': False,
-                        'tdvv': True,
-                        'compression': True,
-                        'snapCPG': HPE3PAR_CPG_SNAP})]
+                    16384, optional)]
+            if wsapi_version == HPE3PARBaseDriver.wsapi_version_2025:
+                extras = (self.get_id_login +
+                          self.standard_logout +
+                          self.standard_login)
+                expected = extras + expected
             mock_client.assert_has_calls(expected)
             self.assertIsNone(return_model)
 
@@ -8133,25 +8170,43 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 iqns=None)
             self.assertIsNotNone(hostname)
 
-    def test_get_volume_stats1(self):
+    # (i) wsapi version is old/default
+    # (ii) wsapi version is 2025, then all licenses are enabled
+    @ddt.data({'wsapi_version': None},
+              {'wsapi_version': HPE3PARBaseDriver.wsapi_version_2025})
+    @ddt.unpack
+    def test_get_volume_stats1(self, wsapi_version):
         # setup_mock_client drive with the configuration
         # and return the mock HTTP 3PAR client
         config = self.setup_configuration()
         config.filter_function = FILTER_FUNCTION
         config.goodness_function = GOODNESS_FUNCTION
-        mock_client = self.setup_driver(config=config)
+        mock_client = self.setup_driver(config=config,
+                                        wsapi_version=wsapi_version)
         mock_client.getCPG.return_value = self.cpgs[0]
-        # Purposely left out the Priority Optimization license in
-        # getStorageSystemInfo to test that QoS_support returns False.
-        mock_client.getStorageSystemInfo.return_value = {
-            'id': self.CLIENT_ID,
-            'serialNumber': '1234',
-            'licenseInfo': {
-                'licenses': [{'name': 'Remote Copy'},
-                             {'name': 'Thin Provisioning (102400G)'},
-                             {'name': 'System Reporter'}]
+        if not wsapi_version:
+            # Purposely left out the Priority Optimization license in
+            # getStorageSystemInfo to test that QoS_support returns False.
+            mock_client.getStorageSystemInfo.return_value = {
+                'id': self.CLIENT_ID,
+                'serialNumber': '1234',
+                'licenseInfo': {
+                    'licenses': [{'name': 'Remote Copy'},
+                                 {'name': 'Thin Provisioning (102400G)'},
+                                 {'name': 'System Reporter'}]
+                }
             }
-        }
+        else:
+            mock_client.getStorageSystemInfo.return_value = {
+                'id': self.CLIENT_ID,
+                'serialNumber': '1234',
+                'licenseInfo': {
+                    # all licenses are enabled
+                    'licenses': [{'name': 'FIPS Encryption'},
+                                 {'name': 'Owned'},
+                                 {'name': 'Software and Support SaaS'}]
+                }
+            }
 
         # cpg has no limit
         mock_client.getCPGAvailableSpace.return_value = {
@@ -8181,7 +8236,12 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.assertEqual('12345', stats['array_id'])
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
-            self.assertFalse(stats['pools'][0]['QoS_support'])
+            if not wsapi_version:
+                # (i) old/default
+                self.assertFalse(stats['pools'][0]['QoS_support'])
+            else:
+                # (ii) wsapi version 2025
+                self.assertTrue(stats['pools'][0]['QoS_support'])
             self.assertEqual(86.0,
                              stats['pools'][0]['provisioned_capacity_gb'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
@@ -8221,7 +8281,12 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.assertEqual('12345', stats['array_id'])
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
-            self.assertFalse(stats['pools'][0]['QoS_support'])
+            if not wsapi_version:
+                # (i) old/default
+                self.assertFalse(stats['pools'][0]['QoS_support'])
+            else:
+                # (ii) wsapi version 2025
+                self.assertTrue(stats['pools'][0]['QoS_support'])
             self.assertEqual(86.0,
                              stats['pools'][0]['provisioned_capacity_gb'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
@@ -8254,7 +8319,12 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.assertEqual('12345', stats['array_id'])
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
-            self.assertFalse(stats['pools'][0]['QoS_support'])
+            if not wsapi_version:
+                # (i) old/default
+                self.assertFalse(stats['pools'][0]['QoS_support'])
+            else:
+                # (ii) wsapi version 2025
+                self.assertTrue(stats['pools'][0]['QoS_support'])
             total_capacity_gb = 8192 * const
             self.assertEqual(total_capacity_gb,
                              stats['pools'][0]['total_capacity_gb'])
