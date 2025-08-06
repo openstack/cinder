@@ -55,6 +55,7 @@ Amazon EC2 Elastic Block Storage (EBS) offering.
    default-volume-types
    api-configuration
    upgrades
+   replication-in-openstack
 
 .. _`Storage Decisions`: https://docs.openstack.org/arch-design/design-storage/design-storage-arch.html
 .. _`OpenStack Operations Guide`: https://wiki.openstack.org/wiki/OpsGuide
