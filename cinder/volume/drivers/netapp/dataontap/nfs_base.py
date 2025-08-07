@@ -319,11 +319,15 @@ class NetAppNfsDriver(driver.ManageableVD,
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
 
-        For a FlexGroup pool, the operation relies on the NFS generic driver
-        because the ONTAP clone file is not supported by FlexGroup yet.
+        For a FlexGroup pool, the ZAPI operation uses the NFS generic
+        driver. When it comes to REST, if the ONTAP version is below
+        9.14, the operation depends on the NFS generic driver. However,
+        for ONTAP versions 9.14 and above, it relies on the ONTAP file
+        clone API.
         """
         if (self._is_flexgroup(vol_id=snapshot['volume_id']) and
-                not self._is_flexgroup_clone_file_supported()):
+                (self.configuration.safe_get('netapp_use_legacy_client') or
+                 not self._is_flexgroup_clone_file_supported())):
             self._create_snapshot_for_flexgroup(snapshot)
         else:
             self._clone_backing_file_for_volume(snapshot['volume_name'],
