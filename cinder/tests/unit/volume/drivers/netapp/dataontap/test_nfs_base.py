@@ -367,12 +367,17 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           fake.NFS_VOLUME,
                           fake.EXTRA_SPECS)
 
-    @ddt.data(True, False)
-    def test_create_snapshot(self, is_flexgroup):
+    @ddt.data((True, False),
+              (False, True),
+              (True, True),
+              (False, False))
+    @ddt.unpack
+    def test_create_snapshot(self, is_flexgroup,
+                             is_flexgroup_clone_file_supported):
         self.mock_object(self.driver, '_is_flexgroup',
                          return_value=is_flexgroup)
         self.mock_object(self.driver, '_is_flexgroup_clone_file_supported',
-                         return_value=not is_flexgroup)
+                         return_value=is_flexgroup_clone_file_supported)
         mock_clone_backing_file_for_volume = self.mock_object(
             self.driver, '_clone_backing_file_for_volume')
         mock_snap_flexgroup = self.mock_object(
@@ -380,7 +385,9 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
         self.driver.create_snapshot(fake.SNAPSHOT)
 
-        if is_flexgroup:
+        if (is_flexgroup and (self.driver.configuration.safe_get
+                              ('netapp_use_legacy_client') or
+                              not is_flexgroup_clone_file_supported)):
             mock_snap_flexgroup.assert_called_once_with(fake.SNAPSHOT)
             mock_clone_backing_file_for_volume.assert_not_called()
         else:
