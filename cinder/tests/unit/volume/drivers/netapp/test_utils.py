@@ -30,6 +30,7 @@ from cinder import exception
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fakes as zapi_fakes)
+from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes
 import cinder.tests.unit.volume.drivers.netapp.fakes as fake
 from cinder import version
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
@@ -40,7 +41,6 @@ from cinder.volume import volume_types
 
 @ddt.ddt
 class NetAppDriverUtilsTestCase(test.TestCase):
-
     @mock.patch.object(na_utils, 'LOG', mock.Mock())
     def test_validate_instantiation_proxy(self):
         kwargs = {'netapp_mode': 'proxy'}
@@ -839,6 +839,56 @@ class NetAppDriverUtilsTestCase(test.TestCase):
                          na_utils.qos_min_feature_name(True, None))
         self.assertEqual('QOS_MIN_BLOCK_',
                          na_utils.qos_min_feature_name(False, None))
+
+    def test__is_multiattach_to_host_no_attachments(self):
+        volume = copy.deepcopy(fakes.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = []
+        result = na_utils.is_multiattach_to_host(volume,
+                                                 {'host': fakes.HOST_NAME})
+        self.assertFalse(result)
+
+    def test__is_multiattach_to_host_multiattach_disabled(self):
+        volume = copy.deepcopy(fakes.test_volume)
+        result = na_utils.is_multiattach_to_host(volume,
+                                                 {'host': fakes.HOST_NAME})
+        self.assertFalse(result)
+
+    def test__is_multiattach_to_host_single_attachment(self):
+        volume = copy.deepcopy(fakes.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [
+            {'attach_status': fakes.ATTACHED,
+             'attached_host': fakes.HOST_NAME}
+        ]
+        result = na_utils.is_multiattach_to_host(volume, fakes.FC_CONNECTOR)
+        self.assertFalse(result)
+
+    def test__is_multiattach_to_host_on_same_host(self):
+        volume = copy.deepcopy(fakes.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [
+            {'attach_status': fakes.ATTACHED,
+             'attached_host': fakes.HOST_NAME
+             },
+            {'attach_status': fakes.ATTACHED,
+             'attached_host': fakes.HOST_NAME
+             }
+        ]
+        result = na_utils.is_multiattach_to_host(volume,
+                                                 {'host': fakes.HOST_NAME})
+        self.assertTrue(result)
+
+    def test__is_multiattach_to_host_on_different_host(self):
+        volume = copy.deepcopy(fakes.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [
+            {'attach_status': fakes.ATTACHED, 'attached_host': "fake_host1"},
+            {'attach_status': fakes.ATTACHED, 'attached_host': "fake_host2"},
+        ]
+        result = na_utils.is_multiattach_to_host(volume,
+                                                 {'host': "fake_host1"})
+        self.assertFalse(result)
 
 
 class OpenStackInfoTestCase(test.TestCase):

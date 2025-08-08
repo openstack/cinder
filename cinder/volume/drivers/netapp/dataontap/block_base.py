@@ -34,6 +34,7 @@ from oslo_log import versionutils
 from oslo_utils import excutils
 from oslo_utils import units
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
@@ -1089,6 +1090,7 @@ class NetAppBlockStorageLibrary(
 
         return target_info
 
+    @coordination.synchronized('netapp-terminate-fc-connection-{volume.id}')
     def terminate_connection_fc(self, volume, connector, **kwargs):
         """Disallow connection from connector.
 
@@ -1102,6 +1104,11 @@ class NetAppBlockStorageLibrary(
                          an empty dict for the 'data' key
         """
 
+        if connector and na_utils.is_multiattach_to_host(
+                volume,
+                connector
+        ):
+            return
         name = volume['name']
         if connector is None:
             initiators = []
@@ -1122,16 +1129,17 @@ class NetAppBlockStorageLibrary(
         info = {'driver_volume_type': 'fibre_channel',
                 'data': {}}
 
-        if connector and not self._has_luns_mapped_to_initiators(initiators):
+        if (connector and
+                not self._has_luns_mapped_to_initiators(initiators)):
             # No more exports for this host, so tear down zone.
-            LOG.info("Need to remove FC Zone, building initiator target map")
+            LOG.info("Need to remove FC Zone, "
+                     "building initiator target map")
 
             target_wwpns, initiator_target_map, num_paths = (
                 self._build_initiator_target_map(connector))
 
             info['data'] = {'target_wwn': target_wwpns,
                             'initiator_target_map': initiator_target_map}
-
         return info
 
     def _build_initiator_target_map(self, connector):
