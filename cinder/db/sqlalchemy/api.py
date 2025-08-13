@@ -8704,9 +8704,8 @@ def use_quota_online_data_migration(
     calculate_use_quota,
 ):
     updated = 0
-    query = model_query(context, getattr(models, resource_name)).filter_by(
-        use_quota=None
-    )
+    query = model_query(context, getattr(models, resource_name),
+                        read_deleted='yes').filter_by(use_quota=None)
     if resource_name == 'Volume':
         query = query.options(joinedload(models.Volume.volume_admin_metadata))
     total = query.count()
