@@ -592,7 +592,7 @@ class OpenStackInfo(object):
     NetApp uses these fields as content for EMS log entry.
     """
 
-    PACKAGE_NAME = 'python-cinder'
+    PACKAGE_NAME = 'python3-cinder'
 
     def __init__(self):
         self._version = 'unknown version'
