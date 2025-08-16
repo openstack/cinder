@@ -374,21 +374,64 @@ class GlanceImageService(object):
         the backend storage location, or (None, None) if these attributes are
         not shown by Glance.
         """
-        try:
-            # direct_url is returned by v2 api
-            client = GlanceClientWrapper()
-            image_meta = client.call(context, 'get', image_id)
-        except Exception:
-            _reraise_translated_image_exception(image_id)
+        # direct_url is returned by v2 api
+        client = GlanceClientWrapper()
+        # The ``get_image_locations`` API was added to address
+        # OSSN-0065, however to keep backward compatibility,
+        # we need to try with the old ``get`` call if we are using
+        # an older version of glance.
+        # TODO: Remove the ``get`` API call when 2024.1 trasitions
+        # to unmaintained. (``get_image_locations`` was added in 2024.2).
+        image_meta = {}
+        try_methods = ('get_image_locations', 'get')
+        for method in try_methods:
+            try:
+                # NOTE(gmaan): Glance get_image_locations API policy rule is
+                # default to 'service' role so cinder needs to load the auth
+                # plugin from the keystoneauth which has the 'service' role.
+                privileged_user = False
+                if method == 'get_image_locations':
+                    privileged_user = True
+                image_meta = client.call(context, method, image_id,
+                                         privileged_user=privileged_user)
+                if image_meta:
+                    break
+            except glanceclient.exc.HTTPNotImplemented:
+                LOG.debug('Glance method %s not available', method)
+            except glanceclient.exc.HTTPForbidden:
+                # In an upgrade scenario, if the operator hasn't configured
+                # the [glance] section in the cinder configuration file, we
+                # will fail on the new location GET API policy check.
+                LOG.warning('Glance method %s is available but a dedicated '
+                            '[glance] section is required in the cinder '
+                            'configuration file to allow service-to-service '
+                            'communication.', method)
+            except Exception:
+                _reraise_translated_image_exception(image_id)
 
         if not self._is_image_available(context, image_meta):
             raise exception.ImageNotFound(image_id=image_id)
 
+        locations: list[Any] = []
+        # Since both (old and new) APIs return RequestIdProxy object,
+        # to differentiate, we check the 'direct_url' property and if
+        # it exists then it's the old API (otherwise new)
+        direct_url = getattr(image_meta, 'direct_url', None)
+        if direct_url:
+            # Old format
+            locations = getattr(image_meta, 'locations', [])
+        else:
+            # New format (iterator)
+            # Verify that all location entries are in dict format
+            # Example: {'url': <url>, 'metadata': {'store': <store>}}
+            locations = [meta for meta in image_meta
+                         if isinstance(meta, dict)]
+
         # some glance stores like nfs only meta data
         # is stored and returned as locations.
         # so composite of two needs to be returned.
-        return (getattr(image_meta, 'direct_url', None),
-                getattr(image_meta, 'locations', None))
+        # direct_url will be None when using new location APIs
+        return (direct_url, locations)
 
     def add_location(self,
                      context: context.RequestContext,
