@@ -1484,6 +1484,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         actual = klass._extract_cinder_ids(url_list)
         self.assertEqual(id_list, actual)
 
+    @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
                 '_cleanup_cg_in_volume')
@@ -1494,7 +1495,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     def test_create_from_image_volume(self, mock_qemu_info, handle_bootable,
                                       mock_fetch_img, mock_cleanup_cg,
-                                      format='raw', owner=None,
+                                      mock_get, format='raw', owner=None,
                                       location=True):
         self.flags(allowed_direct_url_schemes=['cinder'])
         mock_fetch_img.return_value = mock.MagicMock(
@@ -1530,6 +1531,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         fake_driver.clone_image.return_value = (None, False)
         fake_db.volume_get_all.return_value = []
         fake_db.volume_get_all_by_host.return_value = [image_volume]
+        mock_get.return_value = image_volume
 
         fake_manager._create_from_image(self.ctxt,
                                         volume,
@@ -1543,10 +1545,12 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
             handle_bootable.assert_called_once_with(self.ctxt, volume,
                                                     image_id=image_id,
                                                     image_meta=image_meta)
+            mock_get.assert_called_once_with(self.ctxt, image_volume.id)
         else:
             self.assertFalse(fake_driver.create_cloned_volume.called)
         mock_cleanup_cg.assert_called_once_with(volume)
 
+    @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
                 '_cleanup_cg_in_volume')
@@ -1557,7 +1561,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     def test_create_from_image_across(self, mock_qemu_info, handle_bootable,
                                       mock_fetch_img, mock_cleanup_cg,
-                                      format='raw', owner=None,
+                                      mock_get, format='raw', owner=None,
                                       location=True):
         self.flags(allowed_direct_url_schemes=['cinder'])
         mock_fetch_img.return_value = mock.MagicMock(
@@ -1593,6 +1597,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         fake_driver.clone_image.return_value = (None, False)
         fake_db.volume_get_all.return_value = [image_volume]
         fake_db.volume_get_all_by_host.return_value = []
+        mock_get.return_value = image_volume
 
         fake_manager._create_from_image(self.ctxt,
                                         volume,
@@ -1606,6 +1611,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
             handle_bootable.assert_called_once_with(self.ctxt, volume,
                                                     image_id=image_id,
                                                     image_meta=image_meta)
+            mock_get.assert_called_once_with(self.ctxt, image_volume.id)
         else:
             self.assertFalse(fake_driver.create_cloned_volume.called)
         mock_cleanup_cg.assert_called_once_with(volume)
@@ -1614,6 +1620,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
     MULTISTORE_URI = 'cinder://fake-store/%s' % fakes.VOLUME_ID
 
     @ddt.data(LEGACY_URI, MULTISTORE_URI)
+    @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
                 '_cleanup_cg_in_volume')
@@ -1627,6 +1634,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
                                                   handle_bootable,
                                                   mock_fetch_img,
                                                   mock_cleanup_cg,
+                                                  mock_get,
                                                   format='raw',
                                                   owner=None,
                                                   location=True):
@@ -1665,6 +1673,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
 
         fake_driver.clone_image.return_value = (None, False)
         fake_db.volume_get_all_by_host.return_value = [image_volume]
+        mock_get.return_value = image_volume
         fake_manager._create_from_image(self.ctxt,
                                         volume,
                                         image_location,
@@ -1677,6 +1686,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
             handle_bootable.assert_called_once_with(self.ctxt, volume,
                                                     image_id=image_id,
                                                     image_meta=image_meta)
+            mock_get.assert_called_once_with(self.ctxt, image_volume.id)
         else:
             self.assertFalse(fake_driver.create_cloned_volume.called)
         mock_cleanup_cg.assert_called_once_with(volume)

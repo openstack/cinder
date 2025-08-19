@@ -778,6 +778,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             return None, False
 
         try:
+            # Drivers like NFS expect OVO and not SQLAlchemy object
+            image_volume = objects.Volume.get_by_id(context, image_volume.id)
             ret = self.driver.create_cloned_volume(volume, image_volume)
             self._cleanup_cg_in_volume(volume)
             return ret, True
