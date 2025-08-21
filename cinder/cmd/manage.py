@@ -510,7 +510,7 @@ class QuotaCommands(object):
         print('Action successfully completed')
         return discrepancy
 
-    @db_api.main_context_manager.reader
+    @db_api.main_context_manager.writer
     def _check_project_sync(self,
                             ctxt: context.RequestContext,
                             project: str,
