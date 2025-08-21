@@ -239,7 +239,7 @@ class ImageVolumeCacheTestCase(test.TestCase):
 
     def test_ensure_space_need_gb(self):
         cache = self._build_cache(max_gb=30, max_count=0)
-        mock_delete = mock.patch.object(cache, '_delete_image_volume').start()
+        mock_delete = mock.patch.object(cache, 'delete_cached_volume').start()
 
         entries = []
         entry1 = self._build_entry(size=12)
@@ -254,14 +254,14 @@ class ImageVolumeCacheTestCase(test.TestCase):
         has_space = cache.ensure_space(self.context, self.volume_ovo)
         self.assertTrue(has_space)
         self.assertEqual(2, mock_delete.call_count)
-        mock_delete.assert_any_call(self.context, entry2)
-        mock_delete.assert_any_call(self.context, entry3)
+        mock_delete.assert_any_call(self.context, entry2, mock.ANY)
+        mock_delete.assert_any_call(self.context, entry3, mock.ANY)
         self.mock_db.image_volume_cache_get_all.assert_called_with(
             self.context, cluster_name=self.volume_ovo.cluster_name)
 
     def test_ensure_space_need_count(self):
         cache = self._build_cache(max_gb=0, max_count=2)
-        mock_delete = mock.patch.object(cache, '_delete_image_volume').start()
+        mock_delete = mock.patch.object(cache, 'delete_cached_volume').start()
 
         entries = []
         entry1 = self._build_entry(size=10)
@@ -274,11 +274,11 @@ class ImageVolumeCacheTestCase(test.TestCase):
         has_space = cache.ensure_space(self.context, self.volume_ovo)
         self.assertTrue(has_space)
         self.assertEqual(1, mock_delete.call_count)
-        mock_delete.assert_any_call(self.context, entry2)
+        mock_delete.assert_any_call(self.context, entry2, mock.ANY)
 
     def test_ensure_space_need_gb_and_count(self):
         cache = self._build_cache(max_gb=30, max_count=3)
-        mock_delete = mock.patch.object(cache, '_delete_image_volume').start()
+        mock_delete = mock.patch.object(cache, 'delete_cached_volume').start()
 
         entries = []
         entry1 = self._build_entry(size=10)
@@ -293,12 +293,12 @@ class ImageVolumeCacheTestCase(test.TestCase):
         has_space = cache.ensure_space(self.context, self.volume_ovo)
         self.assertTrue(has_space)
         self.assertEqual(2, mock_delete.call_count)
-        mock_delete.assert_any_call(self.context, entry2)
-        mock_delete.assert_any_call(self.context, entry3)
+        mock_delete.assert_any_call(self.context, entry2, mock.ANY)
+        mock_delete.assert_any_call(self.context, entry3, mock.ANY)
 
     def test_ensure_space_cant_free_enough_gb(self):
         cache = self._build_cache(max_gb=30, max_count=10)
-        mock_delete = mock.patch.object(cache, '_delete_image_volume').start()
+        mock_delete = mock.patch.object(cache, 'delete_cached_volume').start()
 
         entries = list(self._build_entry(size=25))
         self.mock_db.image_volume_cache_get_all.return_value = entries
