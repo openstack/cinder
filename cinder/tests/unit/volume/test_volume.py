@@ -3425,6 +3425,56 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           volume,
                           cascade=True)
 
+    @mock.patch('cinder.utils.api_clean_volume_file_locks')
+    def test_non_admin_cascade_delete_with_deleted_other_project_snapshots(
+            self, mock_api_clean):
+        """Test non-admin cascade delete.
+
+        Deleted snapshots may exist in another project.
+        """
+
+        def fake_delete_volume(ctxt, vol, unmanage_only=False, cascade=False):
+            self.volume.delete_volume(ctxt, vol, unmanage_only, cascade)
+
+        volume = tests_utils.create_volume(self.user_context,
+                                           **self.volume_params)
+        self.volume.create_volume(self.context, volume)
+
+        snapshot_other_prj = create_snapshot(volume['id'], size=volume['size'],
+                                             project_id=fake.PROJECT2_ID)
+        self.volume.create_snapshot(self.context, snapshot_other_prj)
+        snapshot_other_prj.destroy()
+
+        snapshot = create_snapshot(volume['id'], size=volume['size'],
+                                   project_id=fake.PROJECT_ID)
+        self.volume.create_snapshot(self.context, snapshot)
+
+        self.assertEqual(
+            snapshot.id, objects.Snapshot.get_by_id(self.context,
+                                                    snapshot.id).id)
+
+        volume['status'] = 'available'
+        volume['host'] = 'fakehost'
+
+        volume_api = cinder.volume.api.API()
+
+        with mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume') as \
+                mock_delete_volume:
+            mock_delete_volume.side_effect = fake_delete_volume
+            volume_api.delete(self.user_context,
+                              volume,
+                              cascade=True)
+
+        mock_api_clean.assert_called_once_with(volume.id)
+        self.assertRaises(exception.VolumeNotFound,
+                          objects.Volume.get_by_id,
+                          self.context,
+                          volume['id'])
+        self.assertRaises(exception.SnapshotNotFound,
+                          objects.Snapshot.get_by_id,
+                          self.context,
+                          snapshot.id)
+
     @mock.patch.object(driver.BaseVD, 'get_backup_device')
     @mock.patch.object(driver.BaseVD, 'secure_file_operations_enabled')
     def test_get_backup_device(self, mock_secure, mock_get_backup):

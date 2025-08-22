@@ -3440,6 +3440,7 @@ def volume_qos_allows_retype(new_vol_type):
 def volume_has_other_project_snp_filter():
     return sql.exists().where(
         and_(
+            ~models.Snapshot.deleted,
             models.Volume.id == models.Snapshot.volume_id,
             models.Volume.project_id != models.Snapshot.project_id,
         )

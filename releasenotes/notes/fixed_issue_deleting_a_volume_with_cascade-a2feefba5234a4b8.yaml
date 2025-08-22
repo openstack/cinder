@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    `Bug #2125312 <https://bugs.launchpad.net/cinder/+bug/2125312>`_: Fixed
+    an issue where cascade volume deletion failed for non-admin users after
+    the following sequence: create a snapshot, revert to it, transfer the
+    volume to another project, create a new snapshot, then attempt cascade
+    delete. Admin users were unaffected. Cascade delete now works correctly
+    for non-admin users in this scenario.
