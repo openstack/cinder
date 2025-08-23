@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp Driver `bug #2116261
+    <https://bugs.launchpad.net/cinder/+bug/2116261>`_: NetApp already
+    support the consistency group for NFS/iSCSI/FCP protocol. Extend
+    the same support for NVMe/TCP protocol.
