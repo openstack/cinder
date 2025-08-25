@@ -1493,16 +1493,20 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
                 'CreateVolumeFromSpecTask.'
                 '_handle_bootable_volume_glance_meta')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
-    def test_create_from_image_volume(self, mock_qemu_info, handle_bootable,
-                                      mock_fetch_img, mock_cleanup_cg,
-                                      mock_get, format='raw', owner=None,
-                                      location=True):
+    def _test_create_from_image_volume(self, mock_qemu_info, handle_bootable,
+                                       mock_fetch_img, mock_cleanup_cg,
+                                       mock_get, format='raw', owner=None,
+                                       location=True,
+                                       clone_across_pools=False):
         self.flags(allowed_direct_url_schemes=['cinder'])
         mock_fetch_img.return_value = mock.MagicMock(
             spec=utils.get_file_spec())
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
         fake_driver.capabilities = {}
+        if clone_across_pools:
+            fake_driver.capabilities['clone_across_pools'] = (
+                clone_across_pools)
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
             mock.MagicMock(), fake_db, fake_driver)
         fake_image_service = fake_image.FakeImageService()
@@ -1529,8 +1533,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
                       'cinder_encryption_key_id': None}
 
         fake_driver.clone_image.return_value = (None, False)
-        fake_db.volume_get_all.return_value = []
-        fake_db.volume_get_all_by_host.return_value = [image_volume]
+        fake_db.volume_get_all.return_value = [image_volume]
         mock_get.return_value = image_volume
 
         fake_manager._create_from_image(self.ctxt,
@@ -1546,6 +1549,11 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
                                                     image_id=image_id,
                                                     image_meta=image_meta)
             mock_get.assert_called_once_with(self.ctxt, image_volume.id)
+            image_vols_filter = {'id': [image_volume.id]}
+            if not clone_across_pools:
+                image_vols_filter['host'] = 'host@backend#pool'
+            fake_db.volume_get_all.assert_called_once_with(
+                self.ctxt, filters=image_vols_filter)
         else:
             self.assertFalse(fake_driver.create_cloned_volume.called)
         mock_cleanup_cg.assert_called_once_with(volume)
@@ -1672,7 +1680,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
                       'cinder_encryption_key_id': None}
 
         fake_driver.clone_image.return_value = (None, False)
-        fake_db.volume_get_all_by_host.return_value = [image_volume]
+        fake_db.volume_get_all.return_value = [image_volume]
         mock_get.return_value = image_volume
         fake_manager._create_from_image(self.ctxt,
                                         volume,
@@ -1691,14 +1699,20 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
             self.assertFalse(fake_driver.create_cloned_volume.called)
         mock_cleanup_cg.assert_called_once_with(volume)
 
+    @ddt.data(True, False)
+    def test_create_from_image_volume_clone_across_pools(self,
+                                                         clone_across_pools):
+        self._test_create_from_image_volume(clone_across_pools=
+                                            clone_across_pools)
+
     def test_create_from_image_volume_in_qcow2_format(self):
-        self.test_create_from_image_volume(format='qcow2')
+        self._test_create_from_image_volume(format='qcow2')
 
     def test_create_from_image_volume_of_other_owner(self):
-        self.test_create_from_image_volume(owner='fake-owner')
+        self._test_create_from_image_volume(owner='fake-owner')
 
     def test_create_from_image_volume_without_location(self):
-        self.test_create_from_image_volume(location=False)
+        self._test_create_from_image_volume(location=False)
 
 
 @ddt.ddt
