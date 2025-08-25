@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #2121361 <https://bugs.launchpad.net/cinder/+bug/2121361>`_: Fixed
+    issue when performing optimized image-volume clone using a backend
+    with ``clone_across_pools`` capability enabled.
