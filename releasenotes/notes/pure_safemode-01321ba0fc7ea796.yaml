@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Pure Storage driver: Added support for FlashArray SafeMode ransomware
+    protection on OpenStack managed volumes.
+issues:
+  - |
+    [Pure Storage] In rare edge-case scenarios, with FlashArray SafeMode
+    enabled, there may be unexpected side-effects. Please report these to
+    Pure Storage Support for investigation.
