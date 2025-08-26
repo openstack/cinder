@@ -3632,7 +3632,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
         for array in target_arrays:
             connection = self._connect(array, pure_vol_name, connector,
                                        chap_username, chap_password)
-            if not connection[0].lun:
+            if not connection[0]['lun']:
                 # Swallow any exception, just warn and continue
                 LOG.warning("self._connect failed.")
                 continue
