@@ -26,6 +26,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 
 from cinder.backup.drivers import posix
+from cinder import coordination
 from cinder import exception
 from cinder import interface
 from cinder import utils
@@ -89,6 +90,7 @@ class NFSBackupDriver(posix.PosixBackupDriver):
             nfs_mount_point_base=self.backup_mount_point_base,
             nfs_mount_options=self.mount_options)
 
+        @coordination.synchronized('mount-nfs-share')
         @utils.retry(
             (brick_exception.BrickException, putils.ProcessExecutionError),
             retries=CONF.backup_mount_attempts)
