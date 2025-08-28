@@ -75,6 +75,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         certificate_file = kwargs['certificate_file']
         ca_certificate_file = kwargs['ca_certificate_file']
         certificate_host_validation = kwargs['certificate_host_validation']
+        is_disaggregated = kwargs.get('is_disaggregated', False)
         if private_key_file and certificate_file and ca_certificate_file:
             self.connection = netapp_api.RestNaServer(
                 host=host,
@@ -119,7 +120,8 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         # NOTE(nahimsouza): ZAPI Client is needed to implement the fallback
         # when a REST method is not supported.
-        self.zapi_client = client_cmode.Client(**kwargs)
+        if not is_disaggregated:
+            self.zapi_client = client_cmode.Client(**kwargs)
 
         self._init_features()
 

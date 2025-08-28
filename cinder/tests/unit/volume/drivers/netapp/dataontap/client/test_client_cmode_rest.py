@@ -45,7 +45,8 @@ CONNECTION_INFO = {'hostname': 'hostname',
                    'private_key_file': 'fake_private_key.pem',
                    'certificate_file': 'fake_cert.pem',
                    'ca_certificate_file': 'fake_ca_cert.crt',
-                   'certificate_host_validation': 'False'
+                   'certificate_host_validation': 'False',
+                   'is_disaggregated': 'False',
                    }
 
 

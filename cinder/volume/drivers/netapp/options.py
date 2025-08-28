@@ -193,7 +193,14 @@ netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',
                help=('This option specifies the virtual storage server '
                      '(Vserver) name on the storage cluster on which '
-                     'provisioning of block storage volumes should occur.')), ]
+                     'provisioning of block storage volumes should occur.')),
+    cfg.BoolOpt('netapp_disaggregated_platform',
+                default=False,
+                help=('This option specifies whether to enable ASA r2 '
+                      'workflows for NetApp disaggregated platform. '
+                      'When set to True, the driver will use ASA r2 '
+                      'specific client and workflows for interacting '
+                      'with NetApp ONTAP.')), ]
 
 netapp_img_cache_opts = [
     cfg.IntOpt('netapp_nfs_image_cache_cleanup_interval',

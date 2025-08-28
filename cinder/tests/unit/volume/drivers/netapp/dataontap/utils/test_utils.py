@@ -216,3 +216,49 @@ class NetAppDataOntapUtilsTestCase(test.TestCase):
             'event-description': '',
         }
         self.assertEqual(expected, result)
+
+    def test_get_cluster_to_pool_map_success(self):
+        """Test successful cluster-to-pool mapping."""
+        mock_client = mock.Mock()
+        self.mock_object(
+            mock_client, 'get_cluster_info',
+            return_value={
+                'name': 'cluster1',
+                'disaggregated': True
+            })
+        expected_pool_map = {
+            'cluster1': {'pool_name': 'cluster1'}
+        }
+
+        result = utils.get_cluster_to_pool_map(mock_client)
+
+        self.assertEqual(expected_pool_map, result)
+        mock_client.get_cluster_info.assert_called_once()
+
+    def test_get_cluster_to_pool_map_disaggregated_true_raises_exception(self):
+        """Test that disaggregated=False raises InvalidConfigurationValue."""
+        mock_client = mock.Mock()
+        self.mock_object(
+            mock_client, 'get_cluster_info',
+            return_value={
+                'name': 'cluster1',
+                'disaggregated': False
+            })
+
+        self.assertRaises(
+            exception.InvalidConfigurationValue,
+            utils.get_cluster_to_pool_map,
+            mock_client)
+
+    def test_get_cluster_to_pool_map_disaggregated_missing_exception(self):
+        mock_client = mock.Mock()
+        self.mock_object(
+            mock_client, 'get_cluster_info',
+            return_value={
+                'name': 'cluster1',
+            })
+
+        self.assertRaises(
+            exception.InvalidConfigurationValue,
+            utils.get_cluster_to_pool_map,
+            mock_client)

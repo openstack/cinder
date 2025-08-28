@@ -397,7 +397,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=None)
                          )
         self.library._clone_lun('fakeLUN', 'newFakeLUN', is_snapshot=True)
-
         self.library.zapi_client.clone_lun.assert_called_once_with(
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'true', block_count=0,
             dest_block=0, src_block=0, qos_policy_group_name=None,
@@ -645,8 +644,22 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertEqual({}, result)
         mock_list_flexvols.assert_called_once_with()
 
-    def test_update_ssc(self):
+    def test_update_ssc_disaggregated_platform(self):
+        """Test _update_ssc with disaggregated platform (ASA r2)."""
+        self.library.configuration.netapp_disaggregated_platform = True
+        mock_get_cluster_pool_map = self.mock_object(
+            self.library, '_get_cluster_to_pool_map',
+            return_value=fake.FAKE_CLUSTER_INFO)
 
+        result = self.library._update_ssc()
+
+        self.assertIsNone(result)
+        mock_get_cluster_pool_map.assert_called_once_with()
+        self.library.ssc_library.update_ssc_asa.assert_called_once_with(
+            fake.FAKE_CLUSTER_INFO)
+
+    def test_update_ssc(self):
+        """Test _update_ssc with traditional platform (flexvol)."""
         mock_get_pool_map = self.mock_object(
             self.library, '_get_flexvol_to_pool_map',
             return_value=fake.FAKE_CMODE_VOLUMES)

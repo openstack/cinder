@@ -3012,6 +3012,48 @@ GET_CLUSTER_NAME_RESPONSE_REST = {
     "uuid": "fake-cluster-uuid"
 }
 
+# ASA r2 specific cluster info response
+GET_CLUSTER_INFO_RESPONSE_REST = {
+    "name": "jayaanancluster-1",
+    "_links": {
+        "self": {
+            "href": "/api/cluster"
+        }
+    }
+}
+
+# ASA r2 specific cluster capacity response
+GET_CLUSTER_CAPACITY_RESPONSE_REST = {
+    "efficiency_without_snapshots": {
+        "ratio": 1,
+        "logical_used": 692224
+    },
+    "block_storage": {
+        "size": 234712203264,
+        "available": 117230436352,
+        "physical_used": 117481766912,
+        "physical_used_percent": 50,
+        "total_metadata_used": 117481066496,
+        "log_and_recovery_metadata": 117356101632,
+        "delayed_frees": 87412736,
+        "full_threshold_percent": 98,
+        "nearly_full_threshold_percent": 95
+    },
+    "metric": {
+        "timestamp": "2025-08-05T08:56:45Z",
+        "status": "inconsistent_old_data",
+        "duration": "PT15S",
+        "available_size": 117230436352,
+        "used_size": 117481766912,
+        "total_size": 234712203264
+    },
+    "_links": {
+        "self": {
+            "href": "/api/storage/cluster?fields=**"
+        }
+    }
+}
+
 GET_VSERVER_PEERS_RECORDS_REST = [
     {
         "_links": {
@@ -3157,4 +3199,55 @@ GET_INTERFACES_NVME_REST = {
         }
     ],
     'num_records': 1
+}
+
+GET_AGGREGATE_STORAGE_TYPES_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "3e5e2865-af43-4d82-a808-8a7222cf0369",
+            "name": "dataFA_2_p0_i1",
+            "block_storage": {
+                "storage_type": "ssd",
+                "primary": {
+                    "disk_class": "solid_state",
+                    "raid_size": 29,
+                    "disk_type": "ssd"
+                }
+            }
+        }
+    ],
+    "num_records": 1
+}
+
+GET_AGGREGATE_STORAGE_TYPES_MULTIPLE_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "3e5e2865-af43-4d82-a808-8a7222cf0369",
+            "name": "dataFA_2_p0_i1",
+            "block_storage": {
+                "storage_type": "ssd",
+                "primary": {
+                    "disk_class": "solid_state",
+                    "disk_type": "ssd"
+                }
+            }
+        },
+        {
+            "uuid": "4f6f3976-bg54-5e93-b919-9b8333dg1480",
+            "name": "dataFA_2_p0_i2",
+            "block_storage": {
+                "storage_type": "ssd",
+                "primary": {
+                    "disk_class": "solid_state",
+                    "disk_type": "ssd"
+                }
+            }
+        }
+    ],
+    "num_records": 2
+}
+
+GET_AGGREGATE_STORAGE_TYPES_EMPTY_RESPONSE_REST = {
+    "records": [],
+    "num_records": 0
 }

@@ -189,10 +189,13 @@ class NetAppBlockStorageLibrary(
         """
 
         # Add the task that deletes snapshots marked for deletion.
-        self.loopingcalls.add_task(
-            self._delete_snapshots_marked_for_deletion,
-            loopingcalls.ONE_MINUTE,
-            loopingcalls.ONE_MINUTE)
+        # ADD snapshot cleanup task to ASA r2 once snapshot feature is
+        # implemented in the driver.
+        if not self.configuration.netapp_disaggregated_platform:
+            self.loopingcalls.add_task(
+                self._delete_snapshots_marked_for_deletion,
+                loopingcalls.ONE_MINUTE,
+                loopingcalls.ONE_MINUTE)
 
         # Add the task that logs EMS messages
         self.loopingcalls.add_task(
