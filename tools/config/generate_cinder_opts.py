@@ -228,6 +228,9 @@ if __name__ == "__main__":
                     if (group_name == 'NOVA_GROUP'):
                         group_name = nova.NOVA_GROUP
 
+                    if (group_name == 'GLANCE_GROUP'):
+                        group_name = 'glance'
+
                     if group_name in registered_opts_dict:
                         line = key + "." + formatted_opt
                         registered_opts_dict[group_name].append(line)

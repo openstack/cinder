@@ -1,0 +1,22 @@
+---
+upgrade:
+  - |
+    With the adoption of New Location APIs, we need a mechanism
+    to perform service-to-service communication to access the
+    ``add_image_location`` and ``get_image_locations`` APIs.
+    To achieve the desired functionality, we will need to perform
+    two additional changes during the deployment:
+
+    1. Assign the ``admin`` and ``service`` role to the ``glance`` user
+    2. Configure a ``[glance]`` section in cinder configuration file
+       with the credentials of ``glance`` user and ``service`` project.
+       Refer to the ``[nova]`` or ``[service_user]`` section for reference.
+features:
+  - |
+    Added support for service-to-service communication between Cinder and
+    Glance.
+    Currently the service-to-service communication is leveraged by the new
+    location APIs for which we will need to configure a dedicated ``[glance]``
+    section in cinder configuration file with the credentials of ``glance``
+    user and ``service`` project.
+    Refer to the ``[nova]`` or ``[service_user]`` section for reference.

@@ -29,6 +29,7 @@ import urllib.parse
 
 import glanceclient
 import glanceclient.exc
+from keystoneauth1 import loading as ks_loading
 from keystoneauth1.loading import session as ks_session
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -87,6 +88,14 @@ CONF = cfg.CONF
 CONF.register_opts(image_opts)
 CONF.register_opts(glance_core_properties_opts)
 
+# Register keystoneauth options to create service user
+# to talk to glance.
+GLANCE_GROUP = 'glance'
+glance_session_opts = ks_loading.get_session_conf_options()
+glance_auth_opts = ks_loading.get_auth_common_conf_options()
+CONF.register_opts(glance_session_opts, group=GLANCE_GROUP)
+CONF.register_opts(glance_auth_opts, group=GLANCE_GROUP)
+
 _SESSION = None
 
 LOG = logging.getLogger(__name__)
@@ -107,12 +116,17 @@ def _parse_image_ref(image_href: str) -> tuple[str, str, bool]:
     return (image_id, netloc, use_ssl)
 
 
-def _create_glance_client(context: context.RequestContext,
-                          netloc: str,
-                          use_ssl: bool) -> glanceclient.Client:
+def _create_glance_client(
+        context: context.RequestContext,
+        netloc: str,
+        use_ssl: bool,
+        privileged_user: bool = False) -> glanceclient.Client:
     """Instantiate a new glanceclient.Client object."""
     params = {'global_request_id': context.global_id}
-
+    g_auth = None
+    if privileged_user and CONF[GLANCE_GROUP].auth_type:
+        LOG.debug('Creating Keystone auth plugin from conf')
+        g_auth = ks_loading.load_auth_from_conf_options(CONF, GLANCE_GROUP)
     if use_ssl and CONF.auth_strategy == 'noauth':
         params = {'insecure': CONF.glance_api_insecure,
                   'cacert': CONF.glance_ca_certificates_file,
@@ -131,7 +145,7 @@ def _create_glance_client(context: context.RequestContext,
                               }
             _SESSION = ks_session.Session().load_from_options(**config_options)
 
-        auth = service_auth.get_auth_plugin(context)
+        auth = service_auth.get_auth_plugin(context, auth=g_auth)
         params['auth'] = auth
         params['session'] = _SESSION
 
@@ -186,44 +200,51 @@ class GlanceClientWrapper(object):
     def __init__(self,
                  context: Optional[context.RequestContext] = None,
                  netloc: Optional[str] = None,
-                 use_ssl: bool = False):
+                 use_ssl: bool = False,
+                 privileged_user: bool = False):
         self.client: Optional[glanceclient.Client]
         if netloc is not None:
             assert context is not None
             self.client = self._create_static_client(context,
                                                      netloc,
-                                                     use_ssl)
+                                                     use_ssl,
+                                                     privileged_user)
         else:
             self.client = None
         self.api_servers: Optional[Iterable] = None
 
-    def _create_static_client(self,
-                              context: context.RequestContext,
-                              netloc: str,
-                              use_ssl: bool) -> glanceclient.Client:
+    def _create_static_client(
+            self,
+            context: context.RequestContext,
+            netloc: str,
+            use_ssl: bool,
+            privileged_user: bool = False) -> glanceclient.Client:
         """Create a client that we'll use for every call."""
         self.netloc = netloc
         self.use_ssl = use_ssl
         return _create_glance_client(context,
                                      self.netloc,
-                                     self.use_ssl)
+                                     self.use_ssl,
+                                     privileged_user)
 
     def _create_onetime_client(
             self,
-            context: context.RequestContext) -> glanceclient.Client:
+            context: context.RequestContext,
+            privileged_user: bool = False) -> glanceclient.Client:
         """Create a client that will be used for one call."""
         if self.api_servers is None:
             self.api_servers = get_api_servers(context)
         self.netloc, self.use_ssl = next(self.api_servers)  # type: ignore
         return _create_glance_client(context,
                                      self.netloc,
-                                     self.use_ssl)
+                                     self.use_ssl,
+                                     privileged_user)
 
     def call(self,
              context: context.RequestContext,
              method: str,
              *args: Any,
-             **kwargs: str) -> Any:
+             **kwargs: Any) -> Any:
         """Call a glance client method.
 
         If we get a connection error,
@@ -237,9 +258,11 @@ class GlanceClientWrapper(object):
         glance_controller = kwargs.pop('controller', 'images')
         store_id = kwargs.pop('store_id', None)
         base_image_ref = kwargs.pop('base_image_ref', None)
+        privileged_user = kwargs.pop('privileged_user', False)
 
         for attempt in range(1, num_attempts + 1):
-            client = self.client or self._create_onetime_client(context)
+            client = self.client or self._create_onetime_client(
+                context, privileged_user)
 
             keys = ('x-image-meta-store', 'x-openstack-base-image-ref',)
             values = (store_id, base_image_ref,)
@@ -387,8 +410,16 @@ class GlanceImageService(object):
         try_methods = ('add_image_location', 'add_location')
         for method in try_methods:
             try:
+                # NOTE(gmaan): Glance add_image_location API policy rule is
+                # default to 'service' role so cinder needs to load the auth
+                # plugin from the keystoneauth which has the 'service' role.
+                if method == 'add_image_location':
+                    privileged_user = True
+                else:
+                    privileged_user = False
                 return client.call(context, method,
-                                   image_id, url, metadata)
+                                   image_id, url, metadata,
+                                   privileged_user=privileged_user)
             except glanceclient.exc.HTTPNotImplemented:
                 LOG.debug('Glance method %s not available', method)
             except Exception:

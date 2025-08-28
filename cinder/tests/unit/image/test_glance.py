@@ -21,6 +21,7 @@ from unittest import mock
 
 import ddt
 import glanceclient.exc
+from keystoneauth1 import loading as ksloading
 from keystoneauth1.loading import session as ks_session
 from keystoneauth1 import session
 from oslo_config import cfg
@@ -112,7 +113,8 @@ class TestGlanceImageService(test.TestCase):
         self.mock_object(glance.time, 'sleep', return_value=None)
 
     def _create_image_service(self, client):
-        def _fake_create_glance_client(context, netloc, use_ssl):
+        def _fake_create_glance_client(
+                context, netloc, use_ssl, privileged_user=False):
             return client
 
         self.mock_object(glance, '_create_glance_client',
@@ -782,7 +784,8 @@ class TestGlanceImageService(test.TestCase):
 
         service.add_location(self.context, image_id, url, metadata)
         mock_call.assert_called_once_with(
-            self.context, 'add_image_location', image_id, url, metadata)
+            self.context, 'add_image_location',
+            image_id, url, metadata, privileged_user=True)
 
     @mock.patch.object(glance.GlanceClientWrapper, 'call')
     def test_add_location_old(self, mock_call):
@@ -795,9 +798,11 @@ class TestGlanceImageService(test.TestCase):
         service.add_location(self.context, image_id, url, metadata)
         calls = [
             mock.call.call(
-                self.context, 'add_image_location', image_id, url, metadata),
+                self.context, 'add_image_location',
+                image_id, url, metadata, privileged_user=True),
             mock.call.call(
-                self.context, 'add_location', image_id, url, metadata)]
+                self.context, 'add_location',
+                image_id, url, metadata, privileged_user=False)]
         mock_call.assert_has_calls(calls)
 
     def test_download_with_retries(self):
@@ -1278,7 +1283,7 @@ class TestGlanceImageServiceClient(test.TestCase):
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
         self.assertIsInstance(client, MyGlanceStubClient)
-        mock_get_auth_plugin.assert_called_once_with(self.context)
+        mock_get_auth_plugin.assert_called_once_with(self.context, auth=None)
         mock_load.assert_called_once_with(**config_options)
 
     @mock.patch('cinder.service_auth.get_auth_plugin')
@@ -1314,7 +1319,7 @@ class TestGlanceImageServiceClient(test.TestCase):
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               True)
         self.assertIsInstance(client, MyGlanceStubClient)
-        mock_get_auth_plugin.assert_called_once_with(self.context)
+        mock_get_auth_plugin.assert_called_once_with(self.context, auth=None)
         mock_load.assert_called_once_with(**config_options)
 
     def test_create_glance_client_auth_strategy_noauth_with_protocol_https(
@@ -1358,3 +1363,15 @@ class TestGlanceImageServiceClient(test.TestCase):
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
         self.assertIsInstance(client, MyGlanceStubClient)
+
+    @mock.patch('cinder.service_auth.get_auth_plugin')
+    @mock.patch.object(ksloading, 'load_auth_from_conf_options')
+    def test_create_glance_client_with_privileged_user(
+            self, mock_load, mock_get_auth_plugin):
+        self.flags(auth_strategy='keystone')
+        self.flags(auth_type='password', group='glance')
+        mock_load.return_value = 'fake_auth_plugin'
+        glance.GlanceClientWrapper(self.context, 'fake_host:9292', True, True)
+        mock_load.assert_called_once()
+        mock_get_auth_plugin.assert_called_once_with(
+            self.context, auth='fake_auth_plugin')
