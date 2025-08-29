@@ -14,6 +14,7 @@
 
 import copy
 from unittest import mock
+from unittest.mock import patch
 import uuid
 
 import ddt
@@ -580,3 +581,378 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
         self.assertRaises(netapp_utils.NetAppDriverException,
                           self.client.get_performance_counters,
                           'system', ['uuid1'], ['cpu_busy'])
+
+    def test_create_lun(self):
+        metadata = copy.deepcopy(fake_client.LUN_GET_ITER_RESULT[0])
+        name = fake.LUN_NAME
+        size = 2048
+        initial_size = size
+        qos_policy_group_is_adaptive = False
+
+        self.mock_object(self.client, '_validate_qos_policy_group')
+        self.mock_object(self.client, 'send_request')
+
+        body = {
+            'name': name,
+            'space.size': str(initial_size),
+            'os_type': metadata['OsType'],
+            'qos_policy.name': fake.QOS_POLICY_GROUP_NAME
+        }
+
+        self.client.create_lun(
+            fake.VOLUME_NAME, fake.LUN_NAME, size, metadata,
+            qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME,
+            qos_policy_group_is_adaptive=qos_policy_group_is_adaptive)
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/luns', 'post', body=body)
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_create_lun_handles_qos_policy(self, mock_send_request):
+        mock_send_request.return_value = None
+
+        self.client.create_lun(fake_client.VOLUME_NAME,
+                               fake_client.LUN_NAME,
+                               1024,
+                               {"OsType": "linux"},
+                               qos_policy_group_name=(
+                                   fake.QOS_POLICY_GROUP_NAME),
+                               )
+
+        mock_send_request.assert_called_once_with(
+            '/storage/luns', 'post', body={
+                'name': fake_client.LUN_NAME.replace("-", "_"),
+                'space.size': '1024',
+                'os_type': 'linux',
+                'qos_policy.name': fake.QOS_POLICY_GROUP_NAME
+            }
+        )
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_create_lun_raises_error_on_failure(self, mock_send_request):
+        mock_send_request.side_effect = netapp_api.NaApiError
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.create_lun,
+            fake.VOLUME_NAME, fake.LUN_NAME, 1024, {"OsType": "linux"}
+        )
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_destroy_lun(self, mock_send_request):
+        mock_send_request.return_value = None
+
+        self.client.destroy_lun(fake.LUN_PATH, force=True)
+        lun_name = self.client._get_backend_lun_or_namespace(
+            fake.LUN_PATH
+        )
+
+        mock_send_request.assert_called_once_with(
+            '/storage/luns/', 'delete', query={
+                'name': lun_name,
+                'allow_delete_while_mapped': 'true',
+            }
+        )
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_destroy_lun_handles_non_forced_deletion(self, mock_send_request):
+        mock_send_request.return_value = None
+
+        self.client.destroy_lun(fake.LUN_PATH, force=False)
+        lun_name = self.client._get_backend_lun_or_namespace(
+            fake.LUN_PATH
+        )
+
+        mock_send_request.assert_called_once_with(
+            '/storage/luns/', 'delete', query={
+                'name': lun_name,
+            }
+        )
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_destroy_lun_raises_error_on_failure(self, mock_send_request):
+        mock_send_request.side_effect = netapp_api.NaApiError
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.destroy_lun,
+            fake.LUN_PATH, force=True,
+        )
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_create_namespace(self, mock_send_request):
+        self.client.create_namespace(fake_client.VOLUME_NAME,
+                                     fake_client.NAMESPACE_NAME,
+                                     2048, {'OsType': 'linux'}
+                                     )
+
+        mock_send_request.assert_called_once_with(
+            '/storage/namespaces', 'post', body={
+                'name': fake_client.NAMESPACE_NAME,
+                'space.size': '2048',
+                'os_type': 'linux'
+            }
+        )
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_destroy_namespace(self, mock_send_request):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=fake.NAMESPACE_NAME)
+        self.client.destroy_namespace(fake.PATH_NAMESPACE, force=True)
+        mock_send_request.assert_called_once_with(
+            '/storage/namespaces', 'delete', query={
+                'name': fake.NAMESPACE_NAME,
+                'svm': self.client.vserver,
+                'allow_delete_while_mapped': 'true'
+            }
+        )
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest.RestClient.map_lun')
+    def test_map_lun(self, mock_super_map_lun):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=fake.LUN_NAME
+        )
+        mock_super_map_lun.return_value = 'result'
+
+        result = self.client.map_lun(fake.LUN_PATH, 'igroup1', 42)
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            fake.LUN_PATH
+        )
+        mock_super_map_lun.assert_called_once_with(fake.LUN_NAME,
+                                                   'igroup1',
+                                                   42)
+        self.assertEqual(result, 'result')
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.'
+                'client.client_cmode_rest.RestClient.get_lun_map')
+    def test_get_lun_map(self, mock_super_get_lun_map):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=fake.LUN_NAME)
+        mock_super_get_lun_map.return_value = [
+            {'initiator-group': 'igroup1', 'lun-id': 1, 'vserver': 'svm1'}
+        ]
+
+        result = self.client.get_lun_map(fake.LUN_NAME)
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            fake.LUN_NAME
+        )
+        mock_super_get_lun_map.assert_called_once_with(fake.LUN_NAME)
+        self.assertEqual(result, [
+            {'initiator-group': 'igroup1', 'lun-id': 1, 'vserver': 'svm1'}
+        ])
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.'
+                'client.client_cmode_rest.RestClient.unmap_lun')
+    def test_unmap_lun(self, mock_super_unmap_lun):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=fake.LUN_NAME
+        )
+        self.client.unmap_lun(fake.LUN_NAME, fake.IGROUP1, )
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            fake.LUN_NAME
+        )
+        mock_super_unmap_lun.assert_called_once_with(
+            fake.LUN_NAME, fake.IGROUP1
+        )
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest.RestClient.get_lun_by_args')
+    def test_get_lun_by_args_with_path(self, mock_super_get_lun_by_args):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=fake.LUN_NAME
+        )
+        mock_super_get_lun_by_args.return_value = 'result'
+
+        path_arg = {'path': fake.LUN_PATH}
+        result = self.client.get_lun_by_args(path=path_arg)
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            path_arg
+        )
+        self.assertEqual(path_arg['path'], fake.LUN_NAME)
+        mock_super_get_lun_by_args.assert_called_once_with(path=path_arg)
+        self.assertEqual(result, 'result')
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest.RestClient.get_lun_by_args')
+    def test_get_lun_by_args_without_path(self, mock_super_get_lun_by_args):
+        mock_super_get_lun_by_args.return_value = 'result'
+        result = self.client.get_lun_by_args(path=None)
+        mock_super_get_lun_by_args.assert_called_once_with(path=None)
+        self.assertEqual(result, 'result')
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest.RestClient.map_namespace')
+    def test_maps_namespace(self, mock_super_map_namespace):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=fake.NAMESPACE_NAME
+        )
+        mock_super_map_namespace.return_value = 'namespace-uuid'
+
+        result = self.client.map_namespace(fake.PATH_NAMESPACE, fake.SUBSYSTEM)
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            fake.PATH_NAMESPACE
+        )
+        mock_super_map_namespace.assert_called_once_with(
+            fake.NAMESPACE_NAME, fake.SUBSYSTEM
+        )
+        self.assertEqual(result, 'namespace-uuid')
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest.RestClient.map_namespace')
+    def test_maps_namespace_with_path_containing_hyphens(
+            self, mock_super_map_namespace):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value='name_space_2')
+        mock_super_map_namespace.return_value = 'uuid-2'
+
+        result = self.client.map_namespace('/vol/vol1/name-space-2',
+                                           'subsystem2')
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            '/vol/vol1/name-space-2')
+        mock_super_map_namespace.assert_called_once_with(
+            'name_space_2', 'subsystem2')
+        self.assertEqual(result, 'uuid-2')
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest.RestClient.unmap_namespace')
+    def test_unmaps_namespace_with_valid_path_and_subsystem(
+            self, mock_super_unmap_namespace):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=fake.NAMESPACE_NAME)
+
+        self.client.unmap_namespace(fake.PATH_NAMESPACE, fake.SUBSYSTEM)
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            fake.PATH_NAMESPACE
+        )
+        mock_super_unmap_namespace.assert_called_once_with(
+            fake.NAMESPACE_NAME, fake.SUBSYSTEM
+        )
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest.RestClient.unmap_namespace')
+    def test_unmaps_namespace_with_path_containing_special_characters(
+            self, mock_super_unmap_namespace):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value='namespace_special')
+
+        self.client.unmap_namespace('/vol/vol1/namespace-special',
+                                    'subsystem2')
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            '/vol/vol1/namespace-special')
+        mock_super_unmap_namespace.assert_called_once_with(
+            'namespace_special',
+            'subsystem2'
+        )
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest.RestClient.get_namespace_map')
+    def test_get_namespace_map(self, mock_super_get_namespace_map):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=fake.NAMESPACE_NAME
+        )
+        mock_super_get_namespace_map.return_value = {
+            'namespace_map': 'details'}
+
+        result = self.client.get_namespace_map(fake.PATH_NAMESPACE)
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            fake.PATH_NAMESPACE
+        )
+        mock_super_get_namespace_map.assert_called_once_with(
+            fake.NAMESPACE_NAME)
+        self.assertEqual(result, {'namespace_map': 'details'})
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest.RestClient.get_namespace_map')
+    def test_get_namespace_map_with_path_containing_special_characters(
+            self, mock_super_get_namespace_map):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value='namespace_special')
+        mock_super_get_namespace_map.return_value = {
+            'namespace_map': 'special_details'}
+
+        result = self.client.get_namespace_map('/vol/vol1/namespace-special')
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            '/vol/vol1/namespace-special')
+        mock_super_get_namespace_map.assert_called_once_with(
+            'namespace_special')
+        self.assertEqual(result, {
+            'namespace_map': 'special_details'
+        })
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest.RestClient.get_namespace_map')
+    def test_returns_none_when_namespace_map_not_found(
+            self, mock_super_get_namespace_map):
+        mock_super_get_namespace_map.return_value = None
+        result = self.client.get_namespace_map('/vol/vol1/namespace3')
+
+        mock_super_get_namespace_map.assert_called_once_with('namespace3')
+        self.assertIsNone(result)
+
+    @mock.patch(
+        'cinder.volume.drivers.netapp.dataontap.client.'
+        'client_cmode_rest_asar2.RestClientASAr2._lun_update_by_path')
+    def test_resizes_lun(self, mock_lun_update_by_path):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=fake.LUN_NAME)
+
+        self.client.do_direct_resize(fake.LUN_PATH, 10)
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            fake.LUN_PATH)
+        mock_lun_update_by_path.assert_called_once_with(
+            fake.LUN_NAME, {'name': fake.LUN_NAME, 'space.size': 10})
+
+    @mock.patch(
+        'cinder.volume.drivers.netapp.dataontap.client.'
+        'client_cmode_rest_asar2.RestClientASAr2._lun_update_by_path'
+    )
+    def test_resize_lun_with_invalid_path(self, mock_lun_update_by_path):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=None)
+        self.client.do_direct_resize('/vol/vol1/invalid_lun', 53)
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            '/vol/vol1/invalid_lun')
+        mock_lun_update_by_path.assert_not_called()
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.'
+                'client.client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_resizes_namespace(self, mock_send_request):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=fake.NAMESPACE_NAME)
+
+        self.client.namespace_resize(fake.PATH_NAMESPACE, fake.SIZE)
+
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            fake.PATH_NAMESPACE)
+        mock_send_request.assert_called_once_with(
+            '/storage/namespaces',
+            'patch',
+            body={'space.size': fake.SIZE},
+            query={'name': fake.NAMESPACE_NAME}
+        )
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.'
+                'client.client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_resize_namespace_with_invalid_path(self, mock_send_request):
+        self.client._get_backend_lun_or_namespace = mock.Mock(
+            return_value=None)
+        self.client.namespace_resize('/vol/vol1/invalid_namespace', 5368)
+        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+            '/vol/vol1/invalid_namespace')
+        mock_send_request.assert_not_called()

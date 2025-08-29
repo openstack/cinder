@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    NetApp - The new ASAr2 driver class inherits from the existing ONTAP
+    REST library, enabling reuse of the mature ONTAP codebase. This design
+    extends the Cinder driver capabilities to support key volume operations
+    on ASAr2 platform, including.
+    * Volume Creation
+    * Volume Deletion
+    * Volume Attachment
+    * Volume Detachment
+    * Volume Extend
