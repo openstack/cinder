@@ -61,6 +61,7 @@ class NetAppDriver(driver.ProxyVD):
                 reason=_('Required configuration not found'))
 
         config.append_config_values(options.netapp_proxy_opts)
+        config.append_config_values(options.netapp_transport_opts)
         na_utils.check_flags(NetAppDriver.REQUIRED_FLAGS, config)
 
         app_version = na_utils.OpenStackInfo().info()
