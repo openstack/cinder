@@ -543,7 +543,7 @@ class NetAppNVMeStorageLibrary(
 
             # Add driver capabilities and config info
             pool['QoS_support'] = False
-            pool['multiattach'] = False
+            pool['multiattach'] = True
             pool['online_extend_support'] = False
             pool['consistencygroup_support'] = True
             pool['consistent_group_snapshot_enabled'] = True
@@ -633,67 +633,46 @@ class NetAppNVMeStorageLibrary(
 
         self.namespace_table[name].size = new_size_bytes
 
-    def _get_or_create_subsystem(self, host_nqn, host_os_type):
-        """Checks for an subsystem for a host.
-
-        Creates subsystem if not already present with given host os type and
-        adds the host.
-        """
-        # Backend supports different subsystems with the same hosts, so
-        # instead of reusing non OpenStack subsystem, we make sure we only use
-        # our own, thus being compatible with custom subsystem.
-        subsystems = self.client.get_subsystem_by_host(
-            host_nqn)
-        if subsystems:
-            subsystem_name = subsystems[0]['name']
-            host_os_type = subsystems[0]['os_type']
-        else:
-            subsystem_name = na_utils.OPENSTACK_PREFIX + str(uuid.uuid4())
-            self.client.create_subsystem(subsystem_name, host_os_type,
-                                         host_nqn)
-
-        return subsystem_name, host_os_type
-
     def _find_mapped_namespace_subsystem(self, path, host_nqn):
         """Find an subsystem for a namespace mapped to the given host."""
         subsystems = [subsystem['name'] for subsystem in
                       self.client.get_subsystem_by_host(host_nqn)]
 
         # Map subsystem name to namespace-id for the requested host.
-        namespace_map = {v['subsystem']: v['uuid']
+        namespace_map = {v['uuid']: (v['subsystem_uuid'], v['subsystem'])
                          for v in self.client.get_namespace_map(path)
                          if v['subsystem'] in subsystems}
 
-        subsystem_name = n_uuid = None
+        subsystem_uuid = subsystem_name = n_uuid = None
         # Give preference to OpenStack subsystems, just use the last one if not
         # present to allow unmapping old mappings that used a custom subsystem.
-        for subsystem_name, n_uuid in namespace_map.items():
+        for n_uuid, (subsystem_uuid, subsystem_name) in namespace_map.items():
             if subsystem_name.startswith(na_utils.OPENSTACK_PREFIX):
                 break
 
-        return subsystem_name, n_uuid
+        return subsystem_uuid, subsystem_name, n_uuid
 
     def _map_namespace(self, name, host_nqn):
         """Maps namespace to the host nqn and returns its ID assigned."""
-
-        subsystem_name, subsystem_host_os = self._get_or_create_subsystem(
-            host_nqn, self.host_type)
-        if subsystem_host_os != self.host_type:
-            LOG.warning("Namespace misalignment may occur for current"
-                        " subsystem %(sub_name)s with host OS type"
-                        " %(sub_os)s. Please configure subsystem manually"
-                        " according to the type of the host OS.",
-                        {'sub_name': subsystem_name,
-                         'sub_os': subsystem_host_os})
-
         metadata = self._get_namespace_attr(name, 'metadata')
         path = metadata['Path']
         try:
-            ns_uuid = self.client.map_namespace(
-                path, subsystem_name,)
+            subsystems = self.client.get_namespace_map(path)
+            ns_uuid = subsystem_uuid = None
+            if subsystems:
+                subsystem_name = subsystems[0]['subsystem']
+                subsystem_uuid = subsystems[0]['subsystem_uuid']
+                ns_uuid = subsystems[0]['uuid']
+                self.client.map_host_with_subsystem(host_nqn, subsystem_uuid)
+            else:
+                subsystem_name = na_utils.OPENSTACK_PREFIX + str(uuid.uuid4())
+                self.client.create_subsystem(subsystem_name, self.host_type,
+                                             host_nqn)
+                ns_uuid = self.client.map_namespace(path, subsystem_name, )
             return subsystem_name, ns_uuid
         except netapp_api.NaApiError as e:
-            (subsystem_name, ns_uuid) = self._find_mapped_namespace_subsystem(
+            (_, subsystem_name, ns_uuid) =\
+                self._find_mapped_namespace_subsystem(
                 path, host_nqn)
             if ns_uuid is not None and subsystem_name:
                 return subsystem_name, ns_uuid
@@ -760,18 +739,18 @@ class NetAppNVMeStorageLibrary(
     def _unmap_namespace(self, path, host_nqn):
         """Unmaps a namespace from given host."""
 
-        namespace_unmap_list = []
-        if host_nqn:
-            (subsystem, _) = self._find_mapped_namespace_subsystem(
-                path, host_nqn)
-            namespace_unmap_list.append((path, subsystem))
-        else:
-            namespace_maps = self.client.get_namespace_map(path)
-            namespace_unmap_list = [
-                (path, m['subsystem']) for m in namespace_maps]
+        if not host_nqn:
+            LOG.warning("Nothing to unmap - host_nqn is missing: %s", path)
+            return
 
-        for _path, _subsystem in namespace_unmap_list:
-            self.client.unmap_namespace(_path, _subsystem)
+        (subsystem_uuid, _, _) = self._find_mapped_namespace_subsystem(
+            path, host_nqn)
+
+        if subsystem_uuid:
+            self.client.unmap_host_with_subsystem(host_nqn, subsystem_uuid)
+        else:
+            LOG.debug("No mapping exists between namespace: %s"
+                      " and host_nqn: %s", path, host_nqn)
 
     @coordination.synchronized('netapp-terminate-nvme-connection-{volume.id}')
     def terminate_connection(self, volume, connector, **kwargs):

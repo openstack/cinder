@@ -3160,7 +3160,9 @@ GET_NAMESPACE_RESPONSE_REST = {
 }
 
 SUBSYSTEM = 'openstack-fake_subsystem'
+SUBSYSTEM_UUID = 'fake_subsystem_uuid1'
 TARGET_NQN = 'nqn.1992-01.example.com:target'
+HOST_NQN = 'nqn.1992-01.example.com:host'
 GET_SUBSYSTEM_RESPONSE_REST = {
     "records": [
         {
@@ -3180,7 +3182,8 @@ GET_SUBSYSTEM_MAP_RESPONSE_REST = {
                 "uuid": FAKE_UUID,
             },
             "subsystem": {
-                "name": SUBSYSTEM
+                "name": SUBSYSTEM,
+                "uuid": FAKE_UUID,
             },
             "svm": {
                 "name": VSERVER_NAME

@@ -1,0 +1,50 @@
+---
+upgrade:
+  - |
+    Breaking Change: NetApp NVMe Subsystem Architecture Redesign
+
+    Implemented a significant architectural change to NVMe volume attachment
+    handling to address critical limitations with multi-attach workflows and
+    QoS management. The previous implementation used a one-to-one mapping
+    between hosts and subsystems, where each host would have its own
+    dedicated subsystem, and multiple subsystems would map to a single
+    namespace. This approach created two major issues:
+
+    * QoS Limitations: Since QoS policies are applied at the subsystem
+      level rather than the namespace level, having multiple subsystems
+      per namespace made it impossible to enforce consistent QoS across
+      all host connections to the same volume.
+
+    * Multi-Attach Incompatibility: Different subsystems cannot enable
+      true multi-attach functionality, which is essential for live migration
+      and other advanced features where the same volume needs to be
+      simultaneously accessible from multiple hosts.
+
+    New Architecture: The implementation now uses a many-to-one mapping
+    where multiple hosts share a single subsystem, ensuring a single
+    subsystem-to-namespace relationship. This resolves both QoS consistency
+    and multi-attach limitations.
+
+    Compatibility Impact: This change is not backward compatible due to
+    fundamental differences in how NVMe subsystem-to-namespace mappings are
+    handled. Live migration of existing mappings is not technically feasible.
+
+    Required Upgrade Path:
+
+    * Take backup of all volumes using the old NVMe architecture
+    * Upgrade OpenStack to the version with the new architecture
+    * Restore volumes using the new many-to-one subsystem mapping model
+    * For assistance with migration planning and any questions about this
+      process, contact NetApp support who can provide guidance specific to
+      your environment and help minimize disruption during the transition.
+
+    This approach ensures data integrity while enabling the improved
+    multi-attach and QoS capabilities of the new architecture.
+
+fixes:
+  - |
+    NetApp Driver `Bug #2078968
+    <https://bugs.launchpad.net/cinder/+bug/2078968>`_: Fixed NVMe namespace
+    mapping fails during VM migration with "Namespace is already mapped
+    to subsystem". Implemented architecture changes to support multiple
+    hosts attaching to single namespace through shared subsystem model.

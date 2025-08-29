@@ -2805,6 +2805,22 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         return [{'name': subsystem['name'], 'os_type': subsystem['os_type']}
                 for subsystem in records]
 
+    def get_subsystem_by_path(self, path):
+        """Get subsystem by its namespace path."""
+        query = {
+            'svm.name': self.vserver,
+            'subsystem_maps.namespace.name': path,
+            'fields': 'name,os_type',
+            'name': f'{na_utils.OPENSTACK_PREFIX}*',
+        }
+        response = self.send_request('/protocols/nvme/subsystems', 'get',
+                                     query=query)
+
+        records = response.get('records', [])
+
+        return [{'name': subsystem['name'], 'os_type': subsystem['os_type']}
+                for subsystem in records]
+
     def create_subsystem(self, subsystem_name, os_type, host_nqn):
         """Creates subsystem with specified args."""
         body = {
@@ -2819,7 +2835,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         """Gets the namespace map using its path."""
         query = {
             'namespace.name': path,
-            'fields': 'subsystem.name,namespace.uuid,svm.name',
+            'fields': 'subsystem.name,namespace.uuid,svm.name,subsystem.uuid',
         }
         response = self.send_request('/protocols/nvme/subsystem-maps',
                                      'get',
@@ -2830,6 +2846,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         for map in records:
             map_subsystem = {}
             map_subsystem['subsystem'] = map['subsystem']['name']
+            map_subsystem['subsystem_uuid'] = map['subsystem']['uuid']
             map_subsystem['uuid'] = map['namespace']['uuid']
             map_subsystem['vserver'] = map['svm']['name']
 
@@ -2901,3 +2918,54 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         }
         self.send_request('/protocols/nvme/subsystem-maps', 'delete',
                           query=query)
+
+    def unmap_host_with_subsystem(self, host_nqn, subsystem_uuid):
+        """Unmaps a host from given subsystem.
+
+        In multiattach and live migration scenarios,it is possible that the
+        host is attached to single namespace from different subsystems and
+        repeated unmapping to subsystem to host is possible. Errors are
+        logged but not propagated. Calling code will proceed even if
+        unmapping fails.
+        """
+        url = f'/protocols/nvme/subsystems/{subsystem_uuid}/hosts/{host_nqn}'
+        try:
+            self.send_request(url, 'delete')
+        except netapp_api.NaApiError as e:
+            LOG.warning(
+                "Failed to unmap host from subsystem. "
+                "Host NQN: %(host_nqn)s, Subsystem UUID: %(subsystem_uuid)s, "
+                "Error Code: %(code)s, Error Message: %(message)s",
+                {'host_nqn': host_nqn, 'subsystem_uuid': subsystem_uuid,
+                 'code': e.code, 'message': e.message}
+            )
+
+    def map_host_with_subsystem(self, host_nqn, subsystem_uuid):
+        """Add host nqn to the subsystem"""
+
+        body_post = {
+            'nqn': host_nqn,
+        }
+        try:
+            self.send_request(
+                f'/protocols/nvme/subsystems/{subsystem_uuid}/hosts',
+                'post',
+                body=body_post
+            )
+        except netapp_api.NaApiError as e:
+            code = e.code
+            message = e.message
+            if e.code == netapp_api.REST_HOST_ALREADY_MAPPED_TO_SUBSYSTEM:
+                LOG.info(
+                    'Host %(host_nqn)s is already mapped to subsystem '
+                    '%(subsystem_uuid)s ', {'host_nqn': host_nqn,
+                                            'subsystem_uuid': subsystem_uuid
+                                            }
+                )
+            else:
+                LOG.error(
+                    'Error mapping host to subsystem. Code :'
+                    '%(code)s, Message: %(message)s',
+                    {'code': code, 'message': message}
+                )
+                raise
