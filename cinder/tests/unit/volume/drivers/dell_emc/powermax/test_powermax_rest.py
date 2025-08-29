@@ -2608,3 +2608,26 @@ class PowerMaxRestTest(test.TestCase):
         self.assertEqual(
             'true', self.rest._check_force(
                 extra_specs, force_flag=True))
+
+    def test_get_nvme_tcp_ip_address(self):
+        array = self.data.array
+        port_id = 'OR-1C:001'
+        with mock.patch.object(self.rest, 'get_port',
+                               return_value=
+                               {'symmetrixPort':
+                                {'ip_addresses': ['10.10.10.1']}}):
+            ip_addresses = self.rest.get_nvme_tcp_ip_address(
+                array, port_id)
+            self.assertIsNotNone(ip_addresses)
+            self.assertEqual(ip_addresses[0], '10.10.10.1')
+
+    def test_get_device_nguid(self):
+        with mock.patch.object(self.rest, 'get_resource',
+                               return_value={'nguid':
+                                             '1602533030324644'
+                                             '0000976000012000'}):
+            nguid = self.rest.get_device_nguid(self.data.array,
+                                               'fake_device_id')
+            self.assertIsNotNone(nguid)
+            self.assertEqual(
+                nguid, '16025330303246440000976000012000')

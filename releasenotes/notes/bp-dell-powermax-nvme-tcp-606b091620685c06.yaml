@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Dell PowerMax driver: Added NVMe-TCP support.

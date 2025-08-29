@@ -16,6 +16,7 @@
 import ast
 from collections import namedtuple
 from copy import deepcopy
+import json
 import math
 import random
 import sys
@@ -25,6 +26,7 @@ from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log as logging
 
+from cinder.common import constants as cinder_constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -40,6 +42,7 @@ from cinder.volume.drivers.dell_emc.powermax import rest
 from cinder.volume.drivers.dell_emc.powermax import utils
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
+
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
@@ -1024,6 +1027,12 @@ class PowerMaxCommon(object):
                     self._find_ip_and_iqns(
                         rep_extra_specs[utils.ARRAY], remote_port_group))
             device_info_dict['is_multipath'] = is_multipath
+
+        if self.protocol.lower() == cinder_constants.NVMEOF_TCP.lower():
+            ips = self._find_nvme_target_ips(
+                extra_specs[utils.ARRAY],
+                port_group_name)
+            device_info_dict['ips'] = ips
 
         array_tag_list = self.get_tags_of_storage_array(
             extra_specs[utils.ARRAY])
@@ -2898,6 +2907,22 @@ class PowerMaxCommon(object):
             ip_and_iqn = self._get_iscsi_ip_iqn_port(array, port)
             ips_and_iqns.extend(ip_and_iqn)
         return ips_and_iqns
+
+    def _find_nvme_target_ips(self, array, port_group_name):
+        """Find the list of ips and iqns for the ports in a port group.
+
+        :param array: the array serial number -- str
+        :param port_group_name: the port group name -- str
+        :returns: ip_and_iqn -- list of dicts
+        """
+        ips = []
+        LOG.debug("The port-group name for nvme cli is %(pg)s",
+                  {'pg': port_group_name})
+        ports = self.rest.get_port_ids(array, port_group_name)
+        for port in ports:
+            ip = self.rest.get_nvme_tcp_ip_address(array, port)
+            ips.extend(ip)
+        return ips
 
     def _create_replica(
             self, array, clone_volume, source_device_id,
@@ -7844,3 +7869,26 @@ class PowerMaxCommon(object):
             _("Prevent protected snap being created on SRDF device."),
             "boolean")
         return properties, "powermax"
+
+    def get_target_nqn(self, ips, nvme_connector):
+        """Discover the NVMe Qualified Name (NQN) of NVMe targets.
+
+        :param self: The object instance.
+        :param ips: A list of tuples where each tuple contains the IP address
+          and other connection details of the NVMe targets.
+        :param nvme_connector: The object of nvme connector
+        :return: The NVMe Qualified Name (NQN) of the first discovered target,
+          or None if no matching target is found.
+        """
+        for ip in ips:
+            command = ['discover', '-t', ip[2], '-a',
+                       ip[0], '-s',
+                       utils.POWERMAX_NVME_TCP_PORT,
+                       '-o', 'json']
+            out, err = nvme_connector.run_nvme_cli(command)
+            if out is not None and len(out) > 0:
+                nvme_discover_result = json.loads(out)
+                if "records" in nvme_discover_result:
+                    for record in nvme_discover_result["records"]:
+                        if record["traddr"] == ip[0]:
+                            return record["subnqn"]

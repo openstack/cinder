@@ -21,6 +21,7 @@ import time
 
 from oslo_log import log as logging
 
+from cinder.common import constants as cinder_constants
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
@@ -1053,7 +1054,9 @@ class PowerMaxMasking(object):
             storagegroup_name, serial_number)
 
     def find_initiator_names(self, connector):
-        """Check the connector object for initiators(ISCSI) or wwpns(FC).
+        """Check the connector object and return the initiator names.
+
+        The initiator name can be for (iSCSI), wwpns (FC), or nqn (NVMe/TCP)
 
         :param connector: the connector object
         :returns: list -- list of found initiator names
@@ -1070,6 +1073,19 @@ class PowerMaxMasking(object):
                 name = 'world wide port names'
             else:
                 msg = (_("FC is the protocol but wwpns are "
+                         "not supplied by OpenStack."))
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(message=msg)
+        elif self.protocol.lower() == cinder_constants.NVMEOF_TCP.lower():
+            if 'nqn' in connector and connector['nqn']:
+                foundinitiatornames.append(connector['nqn']
+                                           + ":"
+                                           + str(connector.
+                                                 get('nvme_hostid'))
+                                           .replace("-", ""))
+                name = 'nvme qualified name'
+            else:
+                msg = (_("NVMe/TCP is the protocol but nqn is "
                          "not supplied by OpenStack."))
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(message=msg)
@@ -1097,7 +1113,10 @@ class PowerMaxMasking(object):
         """
         ig_name = None
         for initiator in initiator_names:
-            params = {'initiator_hba': initiator.lower()}
+            if self.protocol.lower() == cinder_constants.NVMEOF_TCP.lower():
+                params = {'initiator_hba': initiator.rsplit(":", 1)}
+            else:
+                params = {'initiator_hba': initiator.lower()}
             found_init = self.rest.get_initiator_list(serial_number, params)
             if found_init:
                 ig_name = self.rest.get_initiator_group_from_initiator(
@@ -2114,7 +2133,7 @@ class PowerMaxMasking(object):
         :param masking_view_name: the masking view name
         :returns: object dict
         """
-        regex_str = (r'^(?P<prefix>OS)-(?P<host>.+?)(?P<protocol>I|F)-'
+        regex_str = (r'^(?P<prefix>OS)-(?P<host>.+?)(?P<protocol>I|F|NT)-'
                      r'(?P<portgroup>(?!CD|RE|CD-RE).+)-(?P<postfix>MV)$')
 
         object_dict = self.utils.get_object_components_and_correct_host(

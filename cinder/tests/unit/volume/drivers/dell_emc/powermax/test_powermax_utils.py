@@ -158,6 +158,9 @@ class PowerMaxUtilsTest(test.TestCase):
         # fc
         short_f_protocol = self.utils.get_short_protocol_type('FC')
         self.assertEqual('F', short_f_protocol)
+        # nvme-tcp
+        short_n_protocol = self.utils.get_short_protocol_type('nvme-tcp')
+        self.assertEqual('NT', short_n_protocol)
         # else
         other_protocol = self.utils.get_short_protocol_type('OTHER')
         self.assertEqual('OTHER', other_protocol)

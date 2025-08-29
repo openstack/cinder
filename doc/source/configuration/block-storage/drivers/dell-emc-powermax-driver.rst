@@ -1,9 +1,10 @@
-======================================
-Dell PowerMax iSCSI and FC drivers
-======================================
+============================================
+Dell PowerMax iSCSI, FC and NVMe-TCP drivers
+============================================
 
-The Dell PowerMax drivers, ``PowerMaxISCSIDriver`` and
-``PowerMaxFCDriver``, support the use of Dell PowerMax and VMAX storage
+The Dell PowerMax drivers, ``PowerMaxISCSIDriver``,
+``PowerMaxFCDriver`` and ``PowerMaxNVMETCPDriver``,
+support the use of Dell PowerMax and VMAX storage
 arrays with the Cinder Block Storage project. They both provide equivalent
 functions and differ only in support for their respective host attachment
 methods.
@@ -145,6 +146,12 @@ Guide` at the `Dell Support`_ site.
    if upgrading to Unisphere for PowerMax 9.2, the older ``91`` endpoints will
    be used.
 
+.. note::
+
+    - PowerMax NVMe-TCP support was introduced starting with
+      PowerMax v4 (models like 2500 and 8500) and
+      requires Unisphere 10.x or later.
+    - Additionally, the installation of the nvme-cli utility is required.
 
 
 Required PowerMax software suites for OpenStack
@@ -333,7 +340,8 @@ Masking view names
 
 Masking views are dynamically created by the PowerMax FC and iSCSI drivers
 using the following naming conventions. ``[protocol]`` is either ``I`` for
-volumes attached over iSCSI or ``F`` for volumes attached over Fibre Channel.
+volumes attached over iSCSI or ``F`` for volumes attached over Fibre Channel
+or ``NT`` for volumes attached over NVMe-TCP.
 
 .. code-block:: text
 
@@ -349,7 +357,7 @@ each new attach volume operation, the PowerMax driver retrieves the initiators
 (either WWNNs or IQNs) from OpenStack and adds or updates the contents of the
 Initiator Group as required. Names are of the following format. ``[protocol]``
 is either ``I`` for volumes attached over iSCSI or ``F`` for volumes attached
-over Fibre Channel.
+over Fibre Channel or ``NT`` for volumes attached over NVMe-TCP.
 
 .. code-block:: console
 
@@ -375,7 +383,8 @@ storage group (if it exists) or a new storage group is created and the volume
 is then added. Storage groups contain volumes created from a pool, attached
 to a single host, over a single connection type (iSCSI or FC). ``[protocol]``
 is either ``I`` for volumes attached over iSCSI or ``F`` for volumes attached
-over Fibre Channel. PowerMax Cinder driver utilizes cascaded storage groups -
+over Fibre Channel or ``NT`` for volumes attached over NVMe-TCP.
+PowerMax Cinder driver utilizes cascaded storage groups -
 a ``parent`` storage group which is associated with the masking view, which
 contains ``child`` storage groups for each configured
 SRP/slo/workload/compression-enabled or disabled/replication-enabled or
@@ -530,7 +539,7 @@ To configure PowerMax block storage, add the following entries to
 
 .. code-block:: ini
 
-   enabled_backends = CONF_GROUP_ISCSI, CONF_GROUP_FC
+   enabled_backends = CONF_GROUP_ISCSI, CONF_GROUP_FC, CONF_GROUP_NVME_TCP
 
    [CONF_GROUP_ISCSI]
    volume_driver = cinder.volume.drivers.dell_emc.powermax.iscsi.PowerMaxISCSIDriver
@@ -553,8 +562,18 @@ To configure PowerMax block storage, add the following entries to
    powermax_array = 000123456789
    powermax_srp = SRP_1
 
-In this example, two back-end configuration groups are enabled:
-``CONF_GROUP_ISCSI`` and ``CONF_GROUP_FC``. Each configuration group has a
+   [CONF_GROUP_NVME_TCP]
+   volume_driver = cinder.volume.drivers.dell_emc.powermax.nvme_tcp.PowerMaxNVMETCPDriver
+   volume_backend_name = POWERMAX_NVME_TCP
+   powermax_port_groups = [OS-NVME-TCP-PG]
+   san_ip = 10.10.10.10
+   san_login = my_username
+   san_password = my_password
+   powermax_array = 000123456789
+   powermax_srp = SRP_1
+
+In this example, three back-end configuration groups are enabled:
+``CONF_GROUP_ISCSI``, ``CONF_GROUP_FC`` and ``CONF_GROUP_NVME_TCP``. Each configuration group has a
 section describing unique parameters for connections, drivers and the
 ``volume_backend_name``.
 
@@ -655,7 +674,12 @@ setting the ``storagetype:portgroupname`` extra specification.
    $ openstack volume type set --property volume_backend_name=FC_backend \
                                --property pool_name=Gold+SRP_1+000123456789 \
                                --property storagetype:portgroupname=OS-PG1 \
-                               POWERMAX_FC_GOLD
+                               POWERMAX_FC_DIAMOND
+   $ openstack volume type create POWERMAX_NVME_TCP_DIAMOND
+   $ openstack volume type set --property volume_backend_name=NVME_backend \
+                               --property pool_name=Gold+SRP_1+000123456789 \
+                               --property storagetype:portgroupname=OS-PG3 \
+                               POWERMAX_NVME_TCP_DIAMOND
 
 
 By issuing these commands, the Block Storage volume type
@@ -664,6 +688,9 @@ Service Level.
 
 The type ``POWERMAX_FC_DIAMOND`` is associated with the ``FC_backend``, a
 Diamond Service Level.
+
+The type ``POWERMAX_NVME_TCP_DIAMOND`` is associated with the
+``NVME_TCP_backend``, a Diamond Service Level.
 
 The ``ServiceLevel`` manages the underlying storage to provide expected
 performance. Setting the ``ServiceLevel`` to ``None`` means that non-FAST
@@ -2155,8 +2182,8 @@ Configure a single replication target
    * ``remote_port_group`` The name of a PowerMax port group that has been
      pre-configured to expose volumes managed by this backend in the event
      of a failover. Make sure that this port group contains either all FC or
-     all iSCSI port groups (for a given back end), as appropriate for the
-     configured driver (iSCSI or FC).
+     all iSCSI or all NVMe-TCP port groups (for a given back end),
+     as appropriate for the configured driver (iSCSI or FC or NVME-TCP).
 
    * ``remote_pool`` The unique pool name for the given target array.
 

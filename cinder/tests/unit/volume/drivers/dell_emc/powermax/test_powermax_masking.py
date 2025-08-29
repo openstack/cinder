@@ -51,8 +51,11 @@ class PowerMaxMaskingTest(test.TestCase):
             'iSCSI', self.data.version, configuration=configuration)
         driver_fc = common.PowerMaxCommon(
             'FC', self.data.version, configuration=configuration)
+        driver_nvme_tcp = common.PowerMaxCommon(
+            'NVMe-TCP', self.data.version, configuration=configuration)
         self.driver = driver
         self.driver_fc = driver_fc
+        self.driver_nvme_tcp = driver_nvme_tcp
         self.mask = self.driver.masking
         self.extra_specs = deepcopy(self.data.extra_specs)
         self.extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_i
@@ -564,6 +567,14 @@ class PowerMaxMaskingTest(test.TestCase):
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.driver_fc.masking.find_initiator_names, connector)
+
+    def test_find_nvme_tcp_initiator_names(self):
+        foundinitiatornames = (self.driver_nvme_tcp.masking.
+                               find_initiator_names(self.data.connector))
+        self.assertEqual('nqn.2014-08.org.nvmexpress:uuid:'
+                         'ac353d72-eabe-43c7-926c-f08987a8a553:'
+                         '0eaf7037479c432ba3d862e2889d768e',
+                         foundinitiatornames[0])
 
     def test_find_initiator_group_found(self):
         with mock.patch.object(
@@ -1497,3 +1508,20 @@ class PowerMaxMaskingTest(test.TestCase):
         self.assertFalse(self.mask._validate_attach(
             self.data.array, self.data.device_id,
             self.data.storagegroup_name_f, self.data.masking_view_name_f))
+
+    def test_find_nvme_tcp_initiator_group_found(self):
+        with mock.patch.object(
+                rest.PowerMaxRest, 'get_initiator_list',
+                return_value=self.data.nvme_tcp_initiator_list):
+            with mock.patch.object(
+                    rest.PowerMaxRest, 'get_initiator_group_from_initiator',
+                    return_value='OS-host001010-NT-IG'):
+                found_init_group_name = (
+                    self.driver_nvme_tcp.masking._find_initiator_group(
+                        self.data.array, ['nqn.2014-08.org.'
+                                          'nvmexpress:uuid:'
+                                          'ac353d72-eabe-43c7'
+                                          '-926c-f08987a8a553:'
+                                          '0eaf7037479c432ba3d862e2889d768e']))
+                self.assertEqual('OS-host001010-NT-IG',
+                                 found_init_group_name)

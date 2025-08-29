@@ -23,6 +23,7 @@ from oslo_utils import strutils
 from oslo_utils import units
 import packaging.version
 
+from cinder.common import constants as cinder_constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
@@ -107,6 +108,8 @@ RDF_SYNCED_STATES = [RDF_SYNC_STATE, RDF_CONSISTENT_STATE,
                      RDF_ACTIVEACTIVE, RDF_ACTIVEBIAS]
 FORCE_VOL_EDIT = 'force_vol_edit'
 PMAX_FAILOVER_START_ARRAY_PROMOTION = 'pmax_failover_start_array_promotion'
+POWERMAX_NVME_TRANSPORT_PROTOCOL_TCP = 'tcp'
+POWERMAX_NVME_TCP_PORT = 4420
 
 # Multiattach constants
 IS_MULTIATTACH = 'multiattach'
@@ -293,15 +296,17 @@ class PowerMaxUtils(object):
 
     @staticmethod
     def get_short_protocol_type(protocol):
-        """Given the protocol type, return I for iscsi and F for fc.
+        """Get short protocol type.
 
-        :param protocol: iscsi or fc
-        :returns: string -- 'I' for iscsi or 'F' for fc
+        :param protocol: iscsi or fc or nvme
+        :returns: string -- 'I' for iscsi or 'F' for fc 'NT' for nvme/tcp
         """
         if protocol.lower() == ISCSI.lower():
             return 'I'
         elif protocol.lower() == FC.lower():
             return 'F'
+        elif protocol.lower() == cinder_constants.NVMEOF_TCP.lower():
+            return 'NT'
         else:
             return protocol
 
