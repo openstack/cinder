@@ -119,6 +119,13 @@ class PowerMaxData(object):
                  'nvme_hostid': nvme_tcp_hostid,
                  'nqn': nqn}
 
+    connector_without_host_id = {'ip': ip,
+                                 'initiator': initiator,
+                                 'wwpns': [wwpn1, wwpn2],
+                                 'wwnns': [wwnn1],
+                                 'host': 'HostX',
+                                 'nqn': nqn}
+
     fabric_name_prefix = 'fakeFabric'
     end_point_map = {connector['wwpns'][0]: [wwpn1],
                      connector['wwpns'][1]: [wwpn1]}

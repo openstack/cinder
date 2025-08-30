@@ -1078,12 +1078,19 @@ class PowerMaxMasking(object):
                 raise exception.VolumeBackendAPIException(message=msg)
         elif self.protocol.lower() == cinder_constants.NVMEOF_TCP.lower():
             if 'nqn' in connector and connector['nqn']:
-                foundinitiatornames.append(connector['nqn']
-                                           + ":"
-                                           + str(connector.
-                                                 get('nvme_hostid'))
-                                           .replace("-", ""))
-                name = 'nvme qualified name'
+                host_id = connector.get('nvme_hostid')
+                if host_id:
+                    host_id = str(host_id).replace("-", "")
+                    initiator_name = connector['nqn'] + ":" + host_id
+                    foundinitiatornames.append(initiator_name)
+                else:
+                    msg = (_("Failed to determine NVMe HostId "
+                             "for connector NQN '%s'. "
+                             "Ensure the host is properly "
+                             "registered and HostId is available.")
+                           % connector.get('nqn'))
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(message=msg)
             else:
                 msg = (_("NVMe/TCP is the protocol but nqn is "
                          "not supplied by OpenStack."))

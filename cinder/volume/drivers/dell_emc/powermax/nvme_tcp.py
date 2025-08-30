@@ -87,8 +87,10 @@ class PowerMaxNVMETCPDriver(nvme.PowerMaxNVMEBaseDriver):
         LOG.info("PowerMax version %(version)s",
                  {'version': powermax_version})
         if not running_version or not major_version or not powermax_version:
-            LOG.warning("Unable to validate Unisphere instance "
-                        "or PowerMax version.")
+            msg = ("Unable to validate Unisphere instance "
+                   "or PowerMax version.")
+            LOG.error(msg)
+            raise exception.InvalidConfigurationValue(message=msg)
         else:
             if (int(major_version) < int(U4P_100_VERSION) or
                 (powermax_version.lower() != "powermax_2500" and
@@ -195,14 +197,13 @@ class PowerMaxNVMETCPDriver(nvme.PowerMaxNVMEBaseDriver):
                 (target_portals.
                  append((ip, utils.POWERMAX_NVME_TCP_PORT,
                          utils.POWERMAX_NVME_TRANSPORT_PROTOCOL_TCP)))
-        device_info['target_nqn'] = (
-            self.common.get_target_nqn(target_portals,
-                                       self.nvme_connector))
+        target_nqn = (self.common.get_target_nqn(target_portals,
+                                                 self.nvme_connector))
         return {
             "driver_volume_type": "nvmeof",
             "data": {
                 "portals": target_portals,
-                "target_nqn": device_info['target_nqn'],
+                "target_nqn": target_nqn,
                 "volume_nguid": device_nguid,
                 "discard": True
             },

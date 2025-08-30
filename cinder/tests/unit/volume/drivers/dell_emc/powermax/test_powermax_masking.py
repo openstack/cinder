@@ -576,6 +576,13 @@ class PowerMaxMaskingTest(test.TestCase):
                          '0eaf7037479c432ba3d862e2889d768e',
                          foundinitiatornames[0])
 
+    def test_find_nvme_tcp_initiator_names_negative(self):
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver_nvme_tcp.masking.find_initiator_names,
+            self.data.connector_without_host_id
+        )
+
     def test_find_initiator_group_found(self):
         with mock.patch.object(
                 rest.PowerMaxRest, 'get_initiator_list',

@@ -157,6 +157,32 @@ class PowerMaxNVMeTCPTest(test.TestCase):
                     exception.InvalidConfigurationValue,
                     self.driver.check_for_setup_error)
 
+    def test_check_for_setup_error_exception_without_unisphere_version(self):
+        with mock.patch.object(
+                self.common.rest, 'get_uni_version',
+                return_value=(None, None)) as mock_rest:
+            with mock.patch.object(
+                    self.common.rest, 'get_vmax_model',
+                    return_value=('Powermax_8500')) as mock_pmax_version:
+                mock_rest.assert_not_called()
+                mock_pmax_version.assert_not_called()
+                self.assertRaises(
+                    exception.InvalidConfigurationValue,
+                    self.driver.check_for_setup_error)
+
+    def test_check_for_setup_error_exception_without_powermax_version(self):
+        with mock.patch.object(
+                self.common.rest, 'get_uni_version',
+                return_value=('10.1.0.6', '101')) as mock_rest:
+            with mock.patch.object(
+                    self.common.rest, 'get_vmax_model',
+                    return_value=None) as mock_pmax_version:
+                mock_rest.assert_not_called()
+                mock_pmax_version.assert_not_called()
+                self.assertRaises(
+                    exception.InvalidConfigurationValue,
+                    self.driver.check_for_setup_error)
+
     def test_ensure_export(self):
         self.driver.ensure_export('context', 'volume')
 
