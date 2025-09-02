@@ -533,6 +533,11 @@ class PowerMaxData(object):
     rep_extra_specs_metro[utils.METROBIAS] = True
     rep_extra_specs_metro['replication_enabled'] = '<is> True'
 
+    rep_extra_specs_async = deepcopy(rep_extra_specs)
+    rep_extra_specs_async[utils.REP_MODE] = utils.REP_ASYNC
+    rep_extra_specs_async[utils.METROBIAS] = True
+    rep_extra_specs_async['replication_enabled'] = '<is> True'
+
     rep_config = {
         'array': remote_array, 'srp': srp, 'portgroup': port_group_name_i,
         'rdf_group_no': rdf_group_no_1, 'sync_retries': 200,

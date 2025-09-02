@@ -3019,8 +3019,7 @@ class PowerMaxRest(object):
                 array_id, storage_group, rdf_group_no,
                 rep_extra_specs['rep_mode'])
             payload = {"suspend": {"force": "true"}, "action": "Suspend"}
-            payload["suspend"]["consExempt"] = (
-                "true" if cons_exempt else "false")
+            payload["suspend"]["consExempt"] = cons_exempt
             self.srdf_modify_group(
                 array_id, rdf_group_no, storage_group,
                 payload, rep_extra_specs,
@@ -3037,13 +3036,12 @@ class PowerMaxRest(object):
         :returns: A boolean indicating if consistency is exempt
         """
         if not rep_mode:
-            return False
+            return "false"
 
         resource = ('storagegroup/%(sg)s/rdf_group/%(rdfg)s' % {
             'sg': storage_group, 'rdfg': rdf_group_no})
         rdf_group = self.get_resource(array_id, REPLICATION, resource)
-        modes = list(rep_mode)
-
+        modes = [rep_mode]
         if rdf_group and rdf_group.get('modes'):
             modes.append(rdf_group.get('modes'))
         # Ensure we don't see the error message:
@@ -3052,7 +3050,7 @@ class PowerMaxRest(object):
         # asynchronous mode"
         cons_exempt = utils.REP_ASYNC in modes
         LOG.debug("Consistency exempt: %s", cons_exempt)
-        return cons_exempt
+        return self._bool_to_str(cons_exempt)
 
     def srdf_resume_replication(self, array_id, storage_group, rdf_group_no,
                                 rep_extra_specs, async_call=True):
@@ -3632,6 +3630,9 @@ class PowerMaxRest(object):
         return (self.ucode_major_level >= utils.UCODE_5978 and
                 self.ucode_minor_level >= utils.UCODE_5978_HICKORY) or (
                     self.ucode_major_level >= utils.UCODE_6079)
+
+    def _bool_to_str(self, param):
+        return "true" if param else "false"
 
     @staticmethod
     def _check_force(extra_specs, force_flag=False):
