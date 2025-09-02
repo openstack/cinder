@@ -85,10 +85,8 @@ class ImageVolumeCache(object):
                       {'entry': self._entry_to_str(cache_entry)})
 
             if self._should_update_entry(cache_entry, image_meta):
-                LOG.debug('Image-volume cache entry is out-dated, evicting: '
-                          '%(entry)s.',
-                          {'entry': self._entry_to_str(cache_entry)})
-                self._delete_image_volume(context, cache_entry)
+                msg = 'Deleting image-volume cache entry that is out-dated'
+                self.delete_cached_volume(context, cache_entry, msg)
                 cache_entry = None
 
         if cache_entry:
@@ -137,6 +135,18 @@ class ImageVolumeCache(object):
         LOG.debug('New image-volume cache entry created: %(entry)s.',
                   {'entry': self._entry_to_str(cache_entry)})
         return cache_entry
+
+    def delete_cached_volume(self,
+                             context: context.RequestContext,
+                             cache_entry: dict,
+                             msg: str) -> None:
+        """Delete a volume and remove cache entry."""
+        LOG.debug('%(msg)s: entry %(entry)s.',
+                  {'msg': msg, 'entry': self._entry_to_str(cache_entry)})
+        volume = objects.Volume.get_by_id(context, cache_entry['volume_id'])
+
+        # Delete will evict the cache entry.
+        self.volume_api.delete(context, volume)
 
     def ensure_space(self,
                      context: context.RequestContext,
@@ -187,9 +197,8 @@ class ImageVolumeCache(object):
                     self.max_cache_size_count > 0))
                and len(entries)):
             entry = entries.pop()
-            LOG.debug('Reclaiming image-volume cache space; removing cache '
-                      'entry %(entry)s.', {'entry': self._entry_to_str(entry)})
-            self._delete_image_volume(context, entry)
+            msg = 'Deleting image-volume cache entry to reclaim space'
+            self.delete_cached_volume(context, entry, msg)
             current_size -= entry['size']
             current_count -= 1
             LOG.debug('Image-volume cache for %(service)s new size (GB) = '
@@ -245,15 +254,6 @@ class ImageVolumeCache(object):
         LOG.debug('ImageVolumeCache notification: action=%(action)s'
                   ' data=%(data)s.', {'action': action, 'data': data})
         self.notifier.info(context, 'image_volume_cache.%s' % action, data)
-
-    def _delete_image_volume(self,
-                             context: context.RequestContext,
-                             cache_entry: dict) -> None:
-        """Delete a volume and remove cache entry."""
-        volume = objects.Volume.get_by_id(context, cache_entry['volume_id'])
-
-        # Delete will evict the cache entry.
-        self.volume_api.delete(context, volume)
 
     def _should_update_entry(self,
                              cache_entry: dict,

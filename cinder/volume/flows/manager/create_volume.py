@@ -859,11 +859,13 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         except exception.SnapshotLimitReached:
             # If this exception occurred when cloning the image-volume,
             # it is because the image-volume reached its snapshot limit.
-            # Delete current cache entry and create a "fresh" entry
-            # NOTE: This will not delete the existing image-volume and
-            # only delete the cache entry
+            # Delete current cache entry and create a "fresh" entry.
             with excutils.save_and_reraise_exception():
-                self.image_volume_cache.evict(context, cache_entry)
+                msg = ('Deleting image-volume cache entry that reached its'
+                       ' cloning snapshot limit')
+                self.image_volume_cache.delete_cached_volume(context,
+                                                             cache_entry,
+                                                             msg)
         except NotImplementedError:
             LOG.warning('Backend does not support creating image-volume '
                         'clone. Image will be downloaded from Glance.')

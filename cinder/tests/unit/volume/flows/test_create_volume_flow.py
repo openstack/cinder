@@ -1872,6 +1872,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                 image_meta,
                 self.mock_image_service)
             mock_handle_bootable.assert_not_called()
+            self.mock_cache.delete_cached_volume.assert_called_once_with(
+                self.ctxt, self.mock_cache.get_entry.return_value, mock.ANY)
         else:
             mock_create_from_src.side_effect = NotImplementedError(
                 'Driver does not support clone')

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `bug #2112403 <https://bugs.launchpad.net/cinder/+bug/2112403>`_: Fixed
+    the image cache so that volumes are deleted if they can no longer be cloned
+    after reaching a driver-specific snapshot limit.
