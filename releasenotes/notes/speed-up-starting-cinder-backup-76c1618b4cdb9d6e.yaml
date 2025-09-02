@@ -7,4 +7,4 @@ other:
     We now use one database request in order to compile a list
     of incomplete backups.
     See Change-Id `I5c6065d99116ae5f223799e8558d25777aedd055
-    <https://review.opendev.org/#/q/I5c6065d99116ae5f223799e8558d25777aedd055>`.
+    <https://review.opendev.org/#/q/I5c6065d99116ae5f223799e8558d25777aedd055>`_.
