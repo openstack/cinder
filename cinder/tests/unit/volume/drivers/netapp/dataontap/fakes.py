@@ -620,6 +620,11 @@ HYBRID_SYSTEM_NODE_GET_ITER_RESPONSE = etree.XML("""
         <is-all-flash-select-optimized>false</is-all-flash-select-optimized>
         <node-model>AFF-C190</node-model>
       </node-details-info>
+      <node-details-info>
+        <node>no-model-node</node>
+        <is-all-flash-optimized>true</is-all-flash-optimized>
+        <is-all-flash-select-optimized>false</is-all-flash-select-optimized>
+      </node-details-info>
     </attributes-list>
     <num-records>2</num-records>
   </results>
@@ -657,10 +662,16 @@ C190_NODE = {
     'is_all_flash_select': False,
     'name': 'c190-node',
 }
+NO_MODEL_NODE = {
+    'model': '',
+    'is_all_flash': True,
+    'is_all_flash_select': False,
+    'name': 'no-model-node',
+}
 
 AFF_SYSTEM_NODES_INFO = [AFF_NODE_1, AFF_NODE_2]
 FAS_SYSTEM_NODES_INFO = [FAS_NODE_1, FAS_NODE_2]
-HYBRID_SYSTEM_NODES_INFO = [SELECT_NODE, C190_NODE]
+HYBRID_SYSTEM_NODES_INFO = [SELECT_NODE, C190_NODE, NO_MODEL_NODE]
 
 SYSTEM_GET_VERSION_RESPONSE = etree.XML("""
   <results status="passed">

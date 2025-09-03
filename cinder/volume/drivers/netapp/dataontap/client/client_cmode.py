@@ -247,9 +247,19 @@ class Client(client_base.Client, metaclass=volume_utils.TraceWrapperMetaclass):
             system_node_list = result.get_child_by_name(
                 'attributes-list') or netapp_api.NaElement('none')
             for system_node in system_node_list.get_children():
+                node_model = system_node.get_child_content('node-model')
+                node_name = system_node.get_child_content('node')
+
+                if node_model is None:
+                    LOG.warning(
+                        'No model information available for node %s', node_name
+                    )
+                    # Default model to empty string
+                    node_model = ""
+
                 node = {
-                    'model': system_node.get_child_content('node-model'),
-                    'name': system_node.get_child_content('node'),
+                    'model': node_model,
+                    'name': node_name,
                     'is_all_flash': system_node.get_child_content(
                         'is-all-flash-optimized') == 'true',
                     'is_all_flash_select': system_node.get_child_content(
