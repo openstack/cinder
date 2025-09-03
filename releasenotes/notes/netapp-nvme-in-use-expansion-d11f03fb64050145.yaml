@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    **NetApp NVMe namespace support for in-use expansion**
+
+    Added support for in-use expansion of NetApp NVMe namespaces, allowing
+    volumes to be resized while attached to running instances without
+    requiring detachment. This feature enables seamless volume expansion
+    for NVMe-backed volumes in NetApp ONTAP environments.
+
+    Key capabilities:
+
+    * **In-use expansion**: Volumes can be expanded while attached to running instances
+    * **NVMe namespace compatibility**: Full support for NetApp NVMe namespace expansion

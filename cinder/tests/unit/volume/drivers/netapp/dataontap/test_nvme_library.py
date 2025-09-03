@@ -668,7 +668,7 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             'netapp_aggregate': 'aggr1',
             'netapp_raid_type': 'raid_dp',
             'netapp_disk_type': 'SSD',
-            'online_extend_support': False,
+            'online_extend_support': True,
             'netapp_is_flexgroup': 'false',
         }]
         if report_provisioned_capacity:
