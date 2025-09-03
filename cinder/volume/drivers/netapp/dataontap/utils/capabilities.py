@@ -115,6 +115,9 @@ class CapabilitiesLibrary(object):
 
             ssc_volume.update(self._get_ssc_qos_min_info(node_name))
 
+            if self.protocol.casefold() != 'nfs':
+                ssc_volume.update
+                (self._get_ssc_volume_count_info(flexvol_name))
             ssc[flexvol_name] = ssc_volume
 
         self.ssc = ssc
@@ -254,6 +257,21 @@ class CapabilitiesLibrary(object):
             'netapp_hybrid_aggregate': hybrid,
             'netapp_disk_type': disk_types,
             'netapp_node_name': node_name,
+        }
+
+    def _get_ssc_volume_count_info(self, flexvol_name):
+        """Gather volume count info and recast into SSC-style volume stats."""
+
+        if self.protocol.casefold() == 'nvme':
+            namespaces = self.zapi_client.get_namespace_sizes_by_volume(
+                flexvol_name)
+            volume_count = len(namespaces)
+        else:
+            luns = self.zapi_client.get_lun_sizes_by_volume(flexvol_name)
+            volume_count = len(luns)
+
+        return {
+            'total_volumes': volume_count,
         }
 
     def get_matching_flexvols_for_extra_specs(self, extra_specs):

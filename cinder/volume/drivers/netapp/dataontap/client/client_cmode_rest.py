@@ -768,6 +768,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         query = {
             'location.volume.name': volume_name,
+            'svm.name': self.vserver,
             'fields': 'space.size,name'
         }
 
@@ -2770,6 +2771,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         query = {
             'location.volume.name': volume_name,
+            'svm.name': self.vserver,
             'fields': 'space.size,name'
         }
         response = self.send_request('/storage/namespaces', 'get', query=query)

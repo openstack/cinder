@@ -441,7 +441,8 @@ class Client(client_base.Client, metaclass=volume_utils.TraceWrapperMetaclass):
         api_args = {
             'query': {
                 'lun-info': {
-                    'volume': volume_name
+                    'volume': volume_name,
+                    'vserver': self.vserver
                 }
             },
             'desired-attributes': {
