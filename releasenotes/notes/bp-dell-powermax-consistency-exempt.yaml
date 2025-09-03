@@ -13,5 +13,3 @@ features:
     volumes are added to SRDF groups, but not when volumes are
     removed. This incurs an unnecessary performance penalty that is
     resolved by this change.
-
-    Blueprint: dell-powermax-srdf-exempt

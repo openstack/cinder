@@ -2087,7 +2087,7 @@ class PowerMaxRestTest(test.TestCase):
         rep_extra_specs = self.data.rep_extra_specs
         self.rest.srdf_suspend_replication(
             array_id, sg_name, rdf_group_no, rep_extra_specs)
-        # Replication mode in this test is synchronous, so the expecation
+        # Replication mode in this test is synchronous, so the expectation
         # is that the consistency exempt flag is false.
         mck_modify.assert_called_once_with(
             array_id, rdf_group_no, sg_name,
@@ -2106,11 +2106,32 @@ class PowerMaxRestTest(test.TestCase):
         rep_extra_specs = self.data.rep_extra_specs
         self.rest.srdf_suspend_replication(
             array_id, sg_name, rdf_group_no, rep_extra_specs)
-        # Replication mode in this test is synchronous, so the expecation
+        # Replication mode in this test is synchronous, so the expectation
         # is that the consistency exempt flag is false.
         mck_modify.assert_called_once_with(
             array_id, rdf_group_no, sg_name,
             {'suspend': {'force': 'true', 'consExempt': 'false'},
+             'action': 'Suspend'},
+            rep_extra_specs, 'Suspend SRDF Group Replication')
+
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_modify_group')
+    @mock.patch.object(rest.PowerMaxRest,
+                       'get_storage_group_rdf_group_state',
+                       return_value=[utils.RDF_SUSPENDED_STATE,
+                                     utils.RDF_CONSISTENT_STATE])
+    def test_srdf_suspend_metro_replication_dual_states(self, mck_get,
+                                                        mck_modify):
+        array_id = self.data.array
+        rdf_group_no = self.data.rdf_group_no_1
+        sg_name = self.data.default_sg_re_enabled
+        rep_extra_specs = self.data.rep_extra_specs_async
+        self.rest.srdf_suspend_replication(
+            array_id, sg_name, rdf_group_no, rep_extra_specs)
+        # Replication mode in this test is asynchronous, so the expectation
+        # is that the consistency exempt flag is true.
+        mck_modify.assert_called_once_with(
+            array_id, rdf_group_no, sg_name,
+            {'suspend': {'force': 'true', 'consExempt': 'true'},
              'action': 'Suspend'},
             rep_extra_specs, 'Suspend SRDF Group Replication')
 
