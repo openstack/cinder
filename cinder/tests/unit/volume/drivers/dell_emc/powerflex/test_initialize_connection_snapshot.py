@@ -20,6 +20,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import powerflex
+from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
 
 
 class TestInitializeConnectionSnapshot(powerflex.TestPowerFlexDriver):
@@ -31,7 +32,20 @@ class TestInitializeConnectionSnapshot(powerflex.TestPowerFlexDriver):
         self.fake_path = '/fake/path/vol-xx'
         self.volume = fake_volume.fake_volume_obj(
             self.ctx, **{'provider_id': fake.PROVIDER_ID})
-        self.connector = {}
+        self.connector = {'sdc_guid': 'fake_guid'}
+
+        self.sdc = {
+            "id": "sdc1",
+        }
+        self.HTTPS_MOCK_RESPONSES = {
+            self.RESPONSE_MODE.Valid: {
+                'types/Sdc/instances':
+                [{'id': "sdc1", 'sdcGuid': 'fake_guid'}],
+                'instances/Volume::{}/action/setMappedSdcLimits'.format(
+                    self.snapshot_id
+                ): mocks.MockHTTPSResponse({}, 200),
+            },
+        }
 
     def test_backup_can_use_snapshots(self):
         """Make sure the driver can use snapshots for backup."""
@@ -42,11 +56,17 @@ class TestInitializeConnectionSnapshot(powerflex.TestPowerFlexDriver):
         """Test initializing when we do not know the snapshot size.
 
         ScaleIO can determine QOS specs based upon volume/snapshot size
-        The QOS keys should always be returned
+        The QOS keys should not be returned
         """
         snapshot = fake_snapshot.fake_snapshot_obj(
             self.ctx, **{'volume': self.volume,
                          'provider_id': self.snapshot_id})
+        self.driver._attach_volume_to_host = mock.MagicMock(
+            return_value=None
+        )
+        self.driver._check_volume_mapped = mock.MagicMock(
+            return_value=None
+        )
         props = self.driver.initialize_connection_snapshot(
             snapshot,
             self.connector)
@@ -56,19 +76,25 @@ class TestInitializeConnectionSnapshot(powerflex.TestPowerFlexDriver):
         self.assertIsNotNone(props['data']['scaleIO_volname'])
         self.assertEqual(self.snapshot_id,
                          props['data']['scaleIO_volume_id'])
-        # make sure QOS properties are set
-        self.assertIn('iopsLimit', props['data'])
+        # make sure QOS properties are not set
+        self.assertNotIn('iopsLimit', props['data'])
 
     def test_initialize_connection_with_size(self):
         """Test initializing when we know the snapshot size.
 
         PowerFlex can determine QOS specs based upon volume/snapshot size
-        The QOS keys should always be returned
+        The QOS keys should not be returned
         """
         snapshot = fake_snapshot.fake_snapshot_obj(
             self.ctx, **{'volume': self.volume,
                          'provider_id': self.snapshot_id,
                          'volume_size': 8})
+        self.driver._attach_volume_to_host = mock.MagicMock(
+            return_value=None
+        )
+        self.driver._check_volume_mapped = mock.MagicMock(
+            return_value=None
+        )
         props = self.driver.initialize_connection_snapshot(
             snapshot,
             self.connector)
@@ -78,8 +104,8 @@ class TestInitializeConnectionSnapshot(powerflex.TestPowerFlexDriver):
         self.assertIsNotNone(props['data']['scaleIO_volname'])
         self.assertEqual(self.snapshot_id,
                          props['data']['scaleIO_volume_id'])
-        # make sure QOS properties are set
-        self.assertIn('iopsLimit', props['data'])
+        # make sure QOS properties are not set
+        self.assertNotIn('iopsLimit', props['data'])
 
     def test_qos_specs(self):
         """Ensure QOS specs are honored if present."""
@@ -93,10 +119,16 @@ class TestInitializeConnectionSnapshot(powerflex.TestPowerFlexDriver):
         self.driver._get_volumetype_qos.return_value = qos
         self.driver._get_volumetype_extraspecs = mock.MagicMock()
         self.driver._get_volumetype_extraspecs.return_value = extraspecs
-
-        props = self.driver.initialize_connection_snapshot(
+        self.driver._attach_volume_to_host = mock.MagicMock(
+            return_value=None
+        )
+        self.driver._check_volume_mapped = mock.MagicMock(
+            return_value=None
+        )
+        self.driver.primary_client.set_sdc_limits = mock.MagicMock()
+        self.driver.initialize_connection_snapshot(
             snapshot,
             self.connector)
 
-        self.assertEqual(1000, int(props['data']['iopsLimit']))
-        self.assertEqual(2048, int(props['data']['bandwidthLimit']))
+        self.driver.primary_client.set_sdc_limits.assert_called_once_with(
+            self.snapshot_id, self.sdc["id"], '2048', '1000')

@@ -20,7 +20,6 @@ import http.client as http_client
 import math
 from operator import xor
 
-from os_brick import initiator
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_log import versionutils
@@ -32,10 +31,10 @@ from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
-from cinder.image import image_utils
 from cinder import interface
 from cinder import objects
 from cinder.objects import fields
+from cinder.objects.volume import Volume
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
@@ -65,10 +64,6 @@ QOS_IOPS_PER_GB = "maxIOPSperGB"
 QOS_BANDWIDTH_PER_GB = "maxBWSperGB"
 
 BLOCK_SIZE = 8
-VOLUME_NOT_FOUND_ERROR = 79
-# This code belongs to older versions of PowerFlex
-VOLUME_NOT_MAPPED_ERROR = 84
-VOLUME_ALREADY_MAPPED_ERROR = 81
 MIN_BWS_SCALING_SIZE = 128
 POWERFLEX_MAX_OVERSUBSCRIPTION_RATIO = 10.0
 
@@ -96,9 +91,10 @@ class PowerFlexDriver(driver.VolumeDriver):
                   conversion of its type.
           3.5.7 - Report trim/discard support.
           3.5.8 - Added Cinder active/active support.
+          3.6.0 - Improved secret handling.
     """
 
-    VERSION = "3.5.8"
+    VERSION = "3.6.0"
     SUPPORTS_ACTIVE_ACTIVE = True
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerFlex_CI"
@@ -117,7 +113,6 @@ class PowerFlexDriver(driver.VolumeDriver):
         self.statisticProperties = None
         self.storage_pools = None
         self.provisioning_type = None
-        self.connector = None
         self.replication_enabled = None
         self.replication_device = None
         self.failover_choices = None
@@ -194,11 +189,6 @@ class PowerFlexDriver(driver.VolumeDriver):
         LOG.info("Default provisioning type: %s.", self.provisioning_type)
         self.configuration.max_over_subscription_ratio = (
             self.configuration.powerflex_max_over_subscription_ratio
-        )
-        self.connector = initiator.connector.InitiatorConnector.factory(
-            initiator.SCALEIO,
-            utils.get_root_helper(),
-            self.configuration.num_volume_device_scan_tries
         )
         self.primary_client = rest_client.RestClient(self.configuration)
         self.secondary_client = rest_client.RestClient(self.configuration,
@@ -891,23 +881,24 @@ class PowerFlexDriver(driver.VolumeDriver):
         """
 
         try:
-            ip = connector["ip"]
+            sdc_guid = connector["sdc_guid"]
         except Exception:
-            ip = "unknown"
-        LOG.info("Initialize connection for %(vol_id)s to SDC at %(sdc)s.",
-                 {"vol_id": vol_or_snap.id, "sdc": ip})
-        connection_properties = self._get_client().connection_properties
+            msg = "SDC guid is not configured."
+            raise exception.InvalidHost(reason=msg)
+
+        LOG.info("Initialize connection for %(vol_id)s to SDC %(sdc)s.",
+                 {"vol_id": vol_or_snap.id, "sdc": sdc_guid})
+        connection_properties = {}
         volume_name = flex_utils.id_to_base64(vol_or_snap.id)
         connection_properties["scaleIO_volname"] = volume_name
         connection_properties["scaleIO_volume_id"] = vol_or_snap.provider_id
-        connection_properties["config_group"] = self.configuration.config_group
-        connection_properties["failed_over"] = self._is_failed_over
-        connection_properties["verify_certificate"] = (
-            self._get_client().verify_certificate
-        )
-        connection_properties["certificate_path"] = (
-            self._get_client().certificate_path
-        )
+
+        # map volume
+        sdc_id = self._get_client().query_sdc_id_by_guid(sdc_guid)
+        self._attach_volume_to_host(vol_or_snap, sdc_id)
+
+        # verify volume is mapped
+        self._check_volume_mapped(sdc_id, vol_or_snap.provider_id)
 
         if vol_size is not None:
             extra_specs = self._get_volumetype_extraspecs(vol_or_snap)
@@ -920,13 +911,75 @@ class PowerFlexDriver(driver.VolumeDriver):
                                                         storage_type)
             LOG.info("IOPS limit: %s.", iops_limit)
             LOG.info("Bandwidth limit: %s.", bandwidth_limit)
-            connection_properties["iopsLimit"] = iops_limit
-            connection_properties["bandwidthLimit"] = bandwidth_limit
 
+        # Set QoS settings after map was performed
+        if iops_limit is not None or bandwidth_limit is not None:
+            self._get_client().set_sdc_limits(vol_or_snap.provider_id, sdc_id,
+                                              bandwidth_limit, iops_limit)
         return {
             "driver_volume_type": "scaleio",
             "data": connection_properties,
         }
+
+    def _attach_volume_to_host(self, volume, sdc_id):
+        """Attach PowerFlex volume to host.
+
+        :param volume: OpenStack volume object
+        :param sdc_id: PowerFlex SDC id
+        """
+
+        host = self._get_client().query_sdc_by_id(sdc_id)
+        provider_id = volume.provider_id
+
+        # check if volume is already attached to the host
+        vol = self._get_client().query_volume(provider_id)
+        if vol["mappedSdcInfo"]:
+            ids = [sdc["sdcId"] for sdc in vol["mappedSdcInfo"]]
+            if sdc_id in ids:
+                LOG.debug("PowerFlex volume %(volume_name)s "
+                          "with id %(volume_id)s is already attached to "
+                          "host %(host_name)s. "
+                          "PowerFlex volume id: %(volume_provider_id)s, "
+                          "host id: %(host_provider_id)s. ",
+                          {
+                              "volume_name": volume.name,
+                              "volume_id": volume.id,
+                              "host_name": host["name"],
+                              "volume_provider_id": provider_id,
+                              "host_provider_id": sdc_id,
+                          })
+                return
+
+        LOG.debug("Attach PowerFlex volume %(volume_name)s with id "
+                  "%(volume_id)s to host %(host_name)s. PowerFlex volume id: "
+                  "%(volume_provider_id)s, host id: %(host_provider_id)s.",
+                  {
+                      "volume_name": volume.name,
+                      "volume_id": volume.id,
+                      "host_name": host["name"],
+                      "volume_provider_id": provider_id,
+                      "host_provider_id": sdc_id,
+                  })
+        self._get_client().map_volume(provider_id, sdc_id)
+        LOG.debug("Successfully attached PowerFlex volume %(volume_name)s "
+                  "with id %(volume_id)s to host %(host_name)s. "
+                  "PowerFlex volume id: %(volume_provider_id)s, "
+                  "host id: %(host_provider_id)s. ",
+                  {
+                      "volume_name": volume.name,
+                      "volume_id": volume.id,
+                      "host_name": host["name"],
+                      "volume_provider_id": provider_id,
+                      "host_provider_id": sdc_id,
+                  })
+
+    @utils.retry(exception.VolumeBackendAPIException, retries=3)
+    def _check_volume_mapped(self, sdc_id, volume_id):
+        mappedVols = self._get_client().query_sdc_volumes(sdc_id)
+        if volume_id not in mappedVols:
+            msg = f'Volume {volume_id} is not mapped to SDC {sdc_id}.'
+            raise exception.VolumeBackendAPIException(msg)
+        LOG.info("Volume %s is mapped to SDC %s.", volume_id, sdc_id)
 
     @staticmethod
     def _get_bandwidth_limit(size, storage_type):
@@ -982,19 +1035,161 @@ class PowerFlexDriver(driver.VolumeDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         self._terminate_connection(volume, connector)
 
-    @staticmethod
-    def _terminate_connection(volume_or_snap, connector):
+    def _terminate_connection(self, volume_or_snap, connector):
         """Terminate connection to volume or snapshot.
 
         With PowerFlex, snaps and volumes are terminated identically.
         """
 
+        if connector is None:
+            self._detach_volume_from_host(volume_or_snap)
+            return
+
         try:
-            ip = connector["ip"]
+            sdc_guid = connector["sdc_guid"]
         except Exception:
-            ip = "unknown"
-        LOG.info("Terminate connection for %(vol_id)s to SDC at %(sdc)s.",
-                 {"vol_id": volume_or_snap.id, "sdc": ip})
+            msg = "Host IP is not configured."
+            raise exception.InvalidHost(reason=msg)
+
+        LOG.info("Terminate connection for %(vol_id)s to SDC %(sdc)s.",
+                 {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
+        if isinstance(volume_or_snap, Volume):
+            is_multiattached = self._is_multiattached_to_host(
+                volume_or_snap.volume_attachment,
+                connector["host"]
+            )
+            if is_multiattached:
+                # Do not detach volume if it is attached to more than one
+                # instance on the same host.
+                LOG.info("Will not terminate connection for "
+                         "%(vol_id)s to initiator at %(sdc)s "
+                         "because it's multiattach.",
+                         {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
+                return
+
+        # unmap volume
+        host_id = self._get_client().query_sdc_id_by_guid(sdc_guid)
+        self._detach_volume_from_host(volume_or_snap, host_id)
+
+        self._check_volume_unmapped(host_id, volume_or_snap.provider_id)
+
+        LOG.info("Terminated connection for %(vol_id)s to SDC %(sdc)s.",
+                 {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
+
+    @staticmethod
+    def _is_multiattached_to_host(volume_attachment, host_name):
+        """Check if volume is attached to multiple instances on one host.
+
+        When multiattach is enabled, a volume could be attached to two or more
+        instances which are hosted on one nova host.
+        We should keep the volume attached to the nova host until
+        the volume is detached from the last instance.
+
+        :param volume_attachment: list of VolumeAttachment objects
+        :param host_name: OpenStack host name
+        :return: multiattach flag
+        """
+
+        if not volume_attachment:
+            return False
+
+        attachments = [
+            attachment for attachment in volume_attachment
+            if (attachment.attach_status == fields.VolumeAttachStatus.ATTACHED
+                and attachment.attached_host == host_name)
+        ]
+        return len(attachments) > 1
+
+    def _detach_volume_from_host(self, volume, sdc_id=None):
+        """Detach PowerFlex volume from nvme host.
+
+        :param volume: OpenStack volume object
+        :param sdc_id: PowerFlex SDC id
+        """
+
+        provider_id = volume.provider_id
+        vol = self._get_client().query_volume(provider_id)
+        # check if volume is already detached
+        if not vol["mappedSdcInfo"]:
+            LOG.debug("PowerFlex volume %(volume_name)s "
+                      "with id %(volume_id)s is already detached from "
+                      "all hosts. "
+                      "PowerFlex volume id: %(volume_provider_id)s. ",
+                      {
+                          "volume_name": volume.name,
+                          "volume_id": volume.id,
+                          "volume_provider_id": provider_id,
+                      })
+            return
+
+        if sdc_id:
+            host = self._get_client().query_sdc_by_id(sdc_id)
+            # check if volume is already detached from the host
+            ids = [sdc["sdcId"] for sdc in vol["mappedSdcInfo"]]
+            if sdc_id not in ids:
+                LOG.debug("PowerFlex volume %(volume_name)s "
+                          "with id %(volume_id)s is already detached from "
+                          "host %(host_name)s. "
+                          "PowerFlex volume id: %(volume_provider_id)s, "
+                          "host id: %(host_provider_id)s. ",
+                          {
+                              "volume_name": volume.name,
+                              "volume_id": volume.id,
+                              "host_name": host["name"],
+                              "volume_provider_id": provider_id,
+                              "host_provider_id": sdc_id,
+                          })
+                return
+
+            LOG.debug("Detach PowerFlex volume %(volume_name)s with id "
+                      "%(volume_id)s from host %(host_name)s. "
+                      "PowerFlex volume id: %(volume_provider_id)s, "
+                      "host id: %(host_provider_id)s.",
+                      {
+                          "volume_name": volume.name,
+                          "volume_id": volume.id,
+                          "host_name": host["name"],
+                          "volume_provider_id": provider_id,
+                          "host_provider_id": sdc_id,
+                      })
+            self._get_client().unmap_volume(provider_id, sdc_id)
+            LOG.debug("Successfully detached PowerFlex volume %(volume_name)s "
+                      "with id %(volume_id)s from host %(host_name)s. "
+                      "PowerFlex volume id: %(volume_provider_id)s, "
+                      "host id: %(host_provider_id)s. ",
+                      {
+                          "volume_name": volume.name,
+                          "volume_id": volume.id,
+                          "host_name": host["name"],
+                          "volume_provider_id": provider_id,
+                          "host_provider_id": sdc_id,
+                      })
+        else:
+            LOG.debug("Detach PowerFlex volume %(volume_name)s with id "
+                      "%(volume_id)s from all mapped hosts. "
+                      "PowerFlex volume id: %(volume_provider_id)s.",
+                      {
+                          "volume_name": volume.name,
+                          "volume_id": volume.id,
+                          "volume_provider_id": provider_id,
+                      })
+            self._get_client().unmap_volume(provider_id)
+            LOG.debug("Successfully detached PowerFlex volume %(volume_name)s "
+                      "with id %(volume_id)s from all mapped hosts. "
+                      "PowerFlex volume id: %(volume_provider_id)s.",
+                      {
+                          "volume_name": volume.name,
+                          "volume_id": volume.id,
+                          "volume_provider_id": provider_id,
+                      })
+
+    @utils.retry(exception.VolumeBackendAPIException, retries=3)
+    def _check_volume_unmapped(self, sdc_id, volume_id):
+        mappedVols = self._get_client().query_sdc_volumes(sdc_id)
+        if volume_id in mappedVols:
+            msg = f'Volume {volume_id} is still mapped to SDC {sdc_id}.'
+            raise exception.VolumeBackendAPIException(msg)
+        LOG.info("Volume %s is unmapped from SDC %s.", volume_id, sdc_id)
 
     def _update_volume_stats(self):
         """Update storage backend driver statistics."""
@@ -1235,87 +1430,6 @@ class PowerFlexDriver(driver.VolumeDriver):
                 if key in self.powerflex_qos_keys:
                     qos[key] = value
         return qos
-
-    def _sio_attach_volume(self, volume):
-        """Call connector.connect_volume() and return the path."""
-
-        LOG.info("Call os-brick to attach PowerFlex volume.")
-        connection_properties = self._get_client().connection_properties
-        connection_properties["scaleIO_volname"] = flex_utils.id_to_base64(
-            volume.id
-        )
-        connection_properties["scaleIO_volume_id"] = volume.provider_id
-        connection_properties["config_group"] = self.configuration.config_group
-        connection_properties["failed_over"] = self._is_failed_over
-        connection_properties["verify_certificate"] = (
-            self._get_client().verify_certificate
-        )
-        connection_properties["certificate_path"] = (
-            self._get_client().certificate_path
-        )
-        device_info = self.connector.connect_volume(connection_properties)
-        return device_info["path"]
-
-    def _sio_detach_volume(self, volume):
-        """Call the connector.disconnect()."""
-
-        LOG.info("Call os-brick to detach PowerFlex volume.")
-        connection_properties = self._get_client().connection_properties
-        connection_properties["scaleIO_volname"] = flex_utils.id_to_base64(
-            volume.id
-        )
-        connection_properties["scaleIO_volume_id"] = volume.provider_id
-        connection_properties["config_group"] = self.configuration.config_group
-        connection_properties["failed_over"] = self._is_failed_over
-        connection_properties["verify_certificate"] = (
-            self._get_client().verify_certificate
-        )
-        connection_properties["certificate_path"] = (
-            self._get_client().certificate_path
-        )
-
-        self.connector.disconnect_volume(connection_properties, volume)
-
-    def copy_image_to_volume(self, context, volume, image_service, image_id,
-                             disable_sparse=False):
-        """Fetch image from image service and write it to volume."""
-
-        LOG.info("Copy image %(image_id)s from image service %(service)s "
-                 "to volume %(vol_id)s.",
-                 {
-                     "image_id": image_id,
-                     "service": image_service,
-                     "vol_id": volume.id,
-                 })
-        try:
-            image_utils.fetch_to_raw(context,
-                                     image_service,
-                                     image_id,
-                                     self._sio_attach_volume(volume),
-                                     BLOCK_SIZE,
-                                     size=volume.size,
-                                     disable_sparse=disable_sparse)
-        finally:
-            self._sio_detach_volume(volume)
-
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy volume to image on image service."""
-
-        LOG.info("Copy volume %(vol_id)s to image on "
-                 "image service %(service)s. Image meta: %(meta)s.",
-                 {
-                     "vol_id": volume.id,
-                     "service": image_service,
-                     "meta": image_meta,
-                 })
-        try:
-            volume_utils.upload_volume(context,
-                                       image_service,
-                                       image_meta,
-                                       self._sio_attach_volume(volume),
-                                       volume)
-        finally:
-            self._sio_detach_volume(volume)
 
     def migrate_volume(self, ctxt, volume, host):
         """Migrate PowerFlex volume within the same backend."""

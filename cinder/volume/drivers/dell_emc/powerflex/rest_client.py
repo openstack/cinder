@@ -68,18 +68,6 @@ class RestClient(object):
     def _get_headers():
         return {"content-type": "application/json"}
 
-    @property
-    def connection_properties(self):
-        return {
-            "scaleIO_volname": None,
-            "hostIP": None,
-            "serverIP": self.rest_ip,
-            "serverPort": self.rest_port,
-            "serverUsername": self.rest_username,
-            "iopsLimit": None,
-            "bandwidthLimit": None,
-        }
-
     def do_setup(self):
         if self.is_primary:
             get_config_value = self.configuration.safe_get
@@ -590,7 +578,7 @@ class RestClient(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def _unmap_volume_before_delete(self, vol_id):
+    def _unmap_volume_from_all_sdcs(self, vol_id):
         url = "/instances/Volume::%(vol_id)s/action/removeMappedSdc"
 
         volume_is_mapped = False
@@ -603,16 +591,22 @@ class RestClient(object):
                      vol_id)
         if volume_is_mapped:
             params = {"allSdcs": ""}
-            LOG.info("Unmap volume from all sdcs before deletion.")
-            r, unused = self.execute_powerflex_post_request(url,
-                                                            params,
-                                                            vol_id=vol_id)
+            LOG.info("Unmap volume from all sdcs.")
+            r, response = self.execute_powerflex_post_request(url,
+                                                              params,
+                                                              vol_id=vol_id)
+            if r.status_code != http_client.OK:
+                msg = (_("Failed to unmap volume %(vol_id)s from all SDCs: "
+                         "%(err)s.") % {"vol_id": vol_id,
+                                        "err": response["message"]})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
     @retry(exception.VolumeBackendAPIException)
     def remove_volume(self, vol_id):
         url = "/instances/Volume::%(vol_id)s/action/removeVolume"
 
-        self._unmap_volume_before_delete(vol_id)
+        self._unmap_volume_from_all_sdcs(vol_id)
         params = {"removeMode": "ONLY_ME"}
         r, response = self.execute_powerflex_post_request(url,
                                                           params,
@@ -748,3 +742,95 @@ class RestClient(object):
                                                  "err": response["message"]})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(msg)
+
+    def query_sdc_id_by_guid(self, sdc_guid):
+        url = "/types/Sdc/instances"
+        r, response = self.execute_powerflex_get_request(url)
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query SDC: %(err)s.") %
+                   {"err": response["message"]})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        for sdc in response:
+            if (sdc["sdcGuid"] and
+                    sdc["sdcGuid"].lower() == sdc_guid.lower()):
+                return sdc["id"]
+        msg = (_("Failed to query SDC by guid %(sdc)s: Not Found.") %
+               {"sdc": sdc_guid})
+        LOG.error(msg)
+        raise exception.VolumeBackendAPIException(data=msg)
+
+    def query_sdc_by_id(self, sdc_id):
+        url = "/instances/Sdc::%(sdc_id)s"
+
+        r, response = self.execute_powerflex_get_request(
+            url,
+            sdc_id = sdc_id)
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query SDC id %(sdc_id)s: %(err)s.") % {
+                "sdc_id": sdc_id, "err": response["message"]})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response
+
+    def map_volume(self, volume_id, sdc_id):
+        params = {'sdcId': sdc_id, 'allowMultipleMappings': 'True'}
+        url = "/instances/Volume::%(vol_id)s/action/addMappedSdc" % {
+            'vol_id': volume_id
+        }
+        r, response = self.execute_powerflex_post_request(url, params)
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to map volume %(vol_id)s to SDC "
+                     "%(host_id)s: %(err)s.") % {"vol_id": volume_id,
+                                                 "host_id": sdc_id,
+                                                 "err": response["message"]})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def unmap_volume(self, volume_id, sdc_id=None):
+        if sdc_id:
+            params = {'sdcId': sdc_id}
+            url = "/instances/Volume::%(vol_id)s/action/removeMappedSdc" % {
+                'vol_id': volume_id
+            }
+            r, response = self.execute_powerflex_post_request(url, params)
+            if r.status_code != http_client.OK:
+                msg = (_("Failed to unmap volume %(vol_id)s from SDC "
+                         "%(sdc_id)s: %(err)s.") % {
+                             "vol_id": volume_id,
+                             "sdc_id": sdc_id,
+                             "err": response["message"]})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            self._unmap_volume_from_all_sdcs(volume_id)
+
+    def query_sdc_volumes(self, sdc_id):
+        url = ("/instances/Sdc::%(sdc_id)s/relationships/Volume" %
+               {'sdc_id': sdc_id})
+
+        r, response = self.execute_powerflex_get_request(url)
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query SDC volumes: %s.") % response["message"])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return [volume["id"] for volume in response]
+
+    def set_sdc_limits(self, volume_id, sdc_id,
+                       bandwidth_limit=None, iops_limit=None):
+        params = {'sdcId': sdc_id}
+        if bandwidth_limit is not None:
+            params['bandwidthLimitInKbps'] = bandwidth_limit
+        if iops_limit is not None:
+            params['iopsLimit'] = iops_limit
+
+        url = (
+            "/instances/Volume::%(volume_id)s/action/setMappedSdcLimits" %
+            {'volume_id': volume_id}
+        )
+
+        r, response = self.execute_powerflex_post_request(url, params)
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to set SDC limits: %s.") % response["message"])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
