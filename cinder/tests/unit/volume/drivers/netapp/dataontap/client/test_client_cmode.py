@@ -3480,6 +3480,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'query': {
                 'lun-info': {
                     'volume': fake.NETAPP_VOLUME,
+                    'vserver': fake_client.VSERVER_NAME
                 }
             },
             'desired-attributes': {

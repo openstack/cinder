@@ -801,6 +801,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         volume_name = fake_client.VOLUME_NAME
         query = {
             'location.volume.name': volume_name,
+            'svm.name': fake_client.VSERVER_NAME,
             'fields': 'space.size,name'
         }
         response = fake_client.LUN_GET_ITER_REST
@@ -824,8 +825,10 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
     def test_get_lun_sizes_by_volume_no_records(self):
         volume_name = fake_client.VOLUME_NAME
+        vserver = fake_client.VSERVER_NAME
         query = {
             'location.volume.name': volume_name,
+            'svm.name': vserver,
             'fields': 'space.size,name'
         }
         response = fake_client.NO_RECORDS_RESPONSE_REST
@@ -4023,6 +4026,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         fake_query = {
             'location.volume.name': 'fake_volume',
+            'svm.name': fake_client.VSERVER_NAME,
             'fields': 'space.size,name'
         }
 
@@ -4050,6 +4054,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         fake_query = {
             'location.volume.name': 'fake_volume',
+            'svm.name': fake_client.VSERVER_NAME,
             'fields': 'space.size,name'
         }
 

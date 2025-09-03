@@ -670,6 +670,7 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             'netapp_disk_type': 'SSD',
             'online_extend_support': False,
             'netapp_is_flexgroup': 'false',
+            'total_volumes': 2,
         }]
         if report_provisioned_capacity:
             expected[0].update({'provisioned_capacity_gb': 5.0})

@@ -412,9 +412,10 @@ class NetAppBlockStorageCmodeLibrary(
             size_available_gb = capacity['size-available'] / units.Gi
             pool['free_capacity_gb'] = na_utils.round_down(size_available_gb)
 
+            luns = self.zapi_client.get_lun_sizes_by_volume(
+                ssc_vol_name)
+            pool['total_volumes'] = len(luns)
             if self.configuration.netapp_driver_reports_provisioned_capacity:
-                luns = self.zapi_client.get_lun_sizes_by_volume(
-                    ssc_vol_name)
                 provisioned_cap = 0
                 for lun in luns:
                     lun_name = lun['path'].split('/')[-1]
