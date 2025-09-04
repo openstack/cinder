@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Pure Storage driver: Fixed issue with FlashArray secure tenant volumes and
+    snapshots as theese are not eligible to be managed.

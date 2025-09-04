@@ -1676,6 +1676,10 @@ class PureBaseVolumeDriver(san.SanDriver):
                          " key to identify an existing volume."))
 
         if is_snap:
+            if existing_ref['source-name'].count("::") > 1:
+                # Don't allow for managing snaphot in a realm
+                raise exception.ManageExistingInvalidReference(
+                    _("Unable to manage snapshot in a Realm"))
             # Purity snapshot names are prefixed with the source volume name.
             ref_vol_name, ref_snap_suffix = existing_ref['source-name'].split(
                 '.')
@@ -1683,6 +1687,10 @@ class PureBaseVolumeDriver(san.SanDriver):
             ref_vol_name = existing_ref['source-name']
 
         current_array = self._get_current_array()
+        if not is_snap and self._realm_check(current_array, ref_vol_name):
+            # Don't allow for managing volumes in a realm
+            raise exception.ManageExistingInvalidReference(
+                _("Unable to manage volume in a Realm"))
         if not is_snap and self._pod_check(current_array, ref_vol_name):
             # Don't allow for managing volumes in a replicated pod
             raise exception.ManageExistingInvalidReference(
@@ -1992,6 +2000,9 @@ class PureBaseVolumeDriver(san.SanDriver):
     def _pod_check(self, array, volume):
         """Check if volume is in a replicated pod."""
         if "::" in volume:
+            if volume.count("::") != 1:
+                # This is a special for a volume in a realm pod
+                return False
             pod = volume.split("::")[0]
             pod_info = list(array.get_pods(names=[pod]).items)[0]
             if (pod_info.link_source_count == 0
@@ -2000,6 +2011,16 @@ class PureBaseVolumeDriver(san.SanDriver):
                 return False
             else:
                 return True
+        else:
+            return False
+
+    def _realm_check(self, array, volume):
+        """Check if volume is in a realm."""
+        if "::" in volume:
+            if volume.count("::") > 1:
+                return True
+            else:
+                return False
         else:
             return False
 
@@ -2184,6 +2205,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             cinder_id = existing_vols.get(vol_name)
             not_safe_msgs = []
             host = connected_vols.get(vol_name)
+            in_realm = self._realm_check(array, vol_name)
             in_pod = self._pod_check(array, vol_name)
             is_deleted = pure_vols[pure_vol].destroyed
 
@@ -2192,6 +2214,9 @@ class PureBaseVolumeDriver(san.SanDriver):
 
             if cinder_id:
                 not_safe_msgs.append(_('Volume already managed'))
+
+            if in_realm:
+                not_safe_msgs.append(_('Volume is in a Realm'))
 
             if in_pod:
                 not_safe_msgs.append(_('Volume is in a Replicated Pod'))
@@ -2247,6 +2272,10 @@ class PureBaseVolumeDriver(san.SanDriver):
             if pure_snapshots[pure_snap].destroyed:
                 is_safe = False
                 reason_not_safe = _("Snapshot is deleted.")
+
+            if snap_name.count("::") > 1:
+                is_safe = False
+                reason_not_safe = _("Snapshot is in a realm.")
 
             manageable_snaps.append({
                 'reference': {'name': snap_name},
