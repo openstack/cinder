@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    [Pure Storage] Resolved issue where LACP bonds are being
+    defined as part of a VLAN, resulting in target ports
+    not being correctly identified.
