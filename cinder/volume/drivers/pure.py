@@ -42,6 +42,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder import objects
 from cinder.objects import fields
 from cinder.objects import volume_type
 from cinder import utils
@@ -54,6 +55,9 @@ from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
+_INSTANCE_SENTINEL = object()
+_VOLTYPE_SENTINEL = object()
+_PROJECT_SENTINEL = object()
 
 PURE_OPTS = [
     cfg.StrOpt("pure_api_token",
@@ -181,6 +185,8 @@ MIN_IOPS = 100
 MAX_IOPS = 100000000  # 100M
 MIN_BWS = 1048576  # 1 MB/s
 MAX_BWS = 549755813888  # 512 GB/s
+
+TAG_NAMESPACE = "openstack-integration.purestorage.com"
 
 
 class PureDriverException(exception.VolumeDriverException):
@@ -868,6 +874,10 @@ class PureBaseVolumeDriver(san.SanDriver):
         if (self._is_vol_in_pod(purity_vol_name) or
                 (async_enabled or trisync_enabled)):
             repl_status = fields.ReplicationStatus.ENABLED
+        result = self._tag_volume(volume_name=purity_vol_name,
+                                  vol_type="Data",
+                                  project=volume.project_id)
+        LOG.debug("Volume tags added. %s", result)
 
         if not volume.metadata:
             model_update = {
@@ -1102,6 +1112,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         Returns True if it was the hosts last connection.
         """
         vol_name = self._get_vol_name(volume)
+        self._tag_volume(volume_name=vol_name)
+        LOG.debug("Volume instance tags deleted")
         if connector is None:
             # If no connector was provided it is a force-detach, remove all
             # host connections for the volume
@@ -1956,6 +1968,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         repl_status = fields.ReplicationStatus.DISABLED
         if async_enabled:
             repl_status = fields.ReplicationStatus.ENABLED
+        result = self._tag_volume(volume_name=new_vol_name,
+                                  project=volume.project_id)
+        LOG.debug("Volume tags added: %s", result)
         return {
             'provider_id': new_vol_name,
             'replication_status': repl_status,
@@ -2077,6 +2092,8 @@ class PureBaseVolumeDriver(san.SanDriver):
             unmanaged_vol_name = vol_name + UNMANAGED_SUFFIX
         LOG.info("Renaming existing volume %(ref_name)s to %(new_name)s",
                  {"ref_name": vol_name, "new_name": unmanaged_vol_name})
+        self._untag_volume(vol_name)
+        LOG.debug("Volume tags removed")
         self._rename_volume_object(vol_name, unmanaged_vol_name)
 
     def manage_existing_snapshot(self, snapshot, existing_ref):
@@ -3573,6 +3590,77 @@ class PureBaseVolumeDriver(san.SanDriver):
                     )
         return ports
 
+    @pure_driver_debug_trace
+    def _untag_volume(self, volume_name):
+        array = self._get_current_array()
+        array.delete_volumes_tags(namespace=[TAG_NAMESPACE],
+                                  resource_names=[volume_name])
+
+    @pure_driver_debug_trace
+    def _tag_volume(
+        self,
+        volume_name: str,
+        instance=_INSTANCE_SENTINEL,
+        vol_type=_VOLTYPE_SENTINEL,
+        project=_PROJECT_SENTINEL,
+        namespace: str = TAG_NAMESPACE,
+        data_store: str = "Direct Access",
+    ):
+        """Attach a batch of tags to a volume.
+
+        :param array: flasharray client/connection
+        :param volume_name: name of volume to tag
+        :param instance: VM ID value
+        :param vol_type: Volume type value
+        :param namespace: Tag namespace (default from constant)
+        :param data_store: Value for "DataStoreType" tag
+        :return: Response from put_volumes_tags_batch()
+
+        Only include VolType if vol_type is explicitly provided.
+        Passing vol_type=None will set the tag's value to None;
+        omitting vol_type entirely leaves VolType unchanged.
+        """
+        array = self._get_current_array()
+        pairs = []
+
+        # Handle instance taif instance is not _instance_sentinel:
+        if instance is not _INSTANCE_SENTINEL:
+            pairs.append(("VmId", instance))
+
+        # Handle project tag
+        if project is not _PROJECT_SENTINEL:
+            pairs.append(("ProjectId", project))
+
+        # Handle vol_type tag
+        if vol_type is not _VOLTYPE_SENTINEL:
+            pairs.append(("VolType", vol_type))
+
+        # Always include DataStoreType
+        pairs.append(("DataStoreType", data_store))
+
+        tags = [
+            flasharray.TagBatch(key=k,
+                                value=v,
+                                namespace=namespace,
+                                copyable=False)
+            for k, v in pairs
+        ]
+        LOG.debug("tags: %s", tags)
+        return array.put_volumes_tags_batch(tag=tags,
+                                            resource_names=[volume_name])
+
+    def _get_attachments(self, volume):
+        context = volume._context
+        volume_obj = objects.Volume.get_by_id(context, volume.id)
+        vol_type = "Boot" if volume_obj["bootable"] else "Data"
+        attachments = volume_obj.volume_attachment
+        instance_id = None
+        for attachment in attachments:
+            if attachment.get("instance_uuid"):
+                instance_id = attachment["instance_uuid"]
+                break
+        return vol_type, instance_id
+
 
 @interface.volumedriver
 class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
@@ -3626,6 +3714,17 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                 self._is_active_cluster_enabled and
                 not self._failed_over_primary_array):
             target_arrays += self._uniform_active_cluster_target_arrays
+        vol_type, instance_id = self._get_attachments(volume)
+        if instance_id:
+            tags = self._tag_volume(volume_name=pure_vol_name,
+                                    vol_type=vol_type,
+                                    instance=instance_id,
+                                    project=volume.project_id)
+        else:
+            tags = self._tag_volume(volume_name=pure_vol_name,
+                                    vol_type=vol_type,
+                                    project=volume.project_id)
+        LOG.debug("Volume tags added: %s", tags)
 
         chap_username = None
         chap_password = None
@@ -3893,6 +3992,17 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                 self._is_active_cluster_enabled and
                 not self._failed_over_primary_array):
             target_arrays += self._uniform_active_cluster_target_arrays
+        vol_type, instance_id = self._get_attachments(volume)
+        if instance_id:
+            tags = self._tag_volume(volume_name=pure_vol_name,
+                                    vol_type=vol_type,
+                                    instance=instance_id,
+                                    project=volume.project_id)
+        else:
+            tags = self._tag_volume(volume_name=pure_vol_name,
+                                    vol_type=vol_type,
+                                    project=volume.project_id)
+        LOG.debug("Volume tags added: %s", tags)
 
         target_luns = []
         target_wwns = []
@@ -4110,6 +4220,17 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
             not self._failed_over_primary_array
         ):
             target_arrays += self._uniform_active_cluster_target_arrays
+        vol_type, instance_id = self._get_attachments(volume)
+        if instance_id:
+            tags = self._tag_volume(volume_name=pure_vol_name,
+                                    vol_type=vol_type,
+                                    instance=instance_id,
+                                    project=volume.project_id)
+        else:
+            tags = self._tag_volume(volume_name=pure_vol_name,
+                                    vol_type=vol_type,
+                                    project=volume.project_id)
+        LOG.debug("Volume tags added: %s", tags)
 
         targets = []
         for array in target_arrays:

@@ -4653,9 +4653,12 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
-    def test_initialize_connection(self, mock_get_iscsi_ports,
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
+    def test_initialize_connection(self, mock_attachments,
+                                   mock_get_iscsi_ports,
                                    mock_connection, mock_get_wwn):
         vol, vol_name = self.new_fake_vol()
+        mock_attachments.return_value = "Data", None
         mock_get_iscsi_ports.return_value = VALID_ISCSI_PORTS.items
         mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         mock_connection.return_value = CONN.items
@@ -4674,9 +4677,12 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
-    def test_initialize_connection_ipv6(self, mock_get_iscsi_ports,
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
+    def test_initialize_connection_ipv6(self, mock_attachments,
+                                        mock_get_iscsi_ports,
                                         mock_connection, mock_get_wwn):
         vol, vol_name = self.new_fake_vol()
+        mock_attachments.return_value = "Data", None
         mock_get_iscsi_ports.return_value = VALID_ISCSI_PORTS_IPV6.items
         mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         mock_connection.return_value = CONN.items
@@ -4697,13 +4703,16 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
-    def test_initialize_connection_uniform_ac(self, mock_get_iscsi_ports,
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
+    def test_initialize_connection_uniform_ac(self, mock_attachments,
+                                              mock_get_iscsi_ports,
                                               mock_connection, mock_get_wwn):
         repl_extra_specs = {
             'replication_type': '<in> sync',
             'replication_enabled': '<is> true',
         }
         vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        mock_attachments.return_value = "Data", None
         mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         result = deepcopy(ISCSI_CONNECTION_INFO_AC)
 
@@ -4731,7 +4740,9 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
     def test_initialize_connection_uniform_ac_cidr(self,
+                                                   mock_attachments,
                                                    mock_get_iscsi_ports,
                                                    mock_connection,
                                                    mock_get_wwn):
@@ -4740,6 +4751,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
             'replication_enabled': '<is> true',
         }
         vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        mock_attachments.return_value = "Data", None
         mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         result = deepcopy(ISCSI_CONNECTION_INFO_AC_FILTERED)
 
@@ -4771,7 +4783,9 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
     def test_initialize_connection_uniform_ac_cidrs(self,
+                                                    mock_attachments,
                                                     mock_get_iscsi_ports,
                                                     mock_connection,
                                                     mock_get_wwn):
@@ -4780,6 +4794,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
             'replication_enabled': '<is> true',
         }
         vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        mock_attachments.return_value = "Data", None
         mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         result = deepcopy(ISCSI_CONNECTION_INFO_AC_FILTERED_LIST)
 
@@ -4812,7 +4827,9 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_chap_credentials")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
-    def test_initialize_connection_with_auth(self, mock_get_iscsi_ports,
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
+    def test_initialize_connection_with_auth(self, mock_attachments,
+                                             mock_get_iscsi_ports,
                                              mock_connection,
                                              mock_get_chap_creds,
                                              mock_get_wwn):
@@ -4821,6 +4838,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         auth_type = "CHAP"
         chap_username = ISCSI_CONNECTOR["host"]
         chap_password = "password"
+        mock_attachments.return_value = "Data", None
         mock_get_iscsi_ports.return_value = VALID_ISCSI_PORTS.items
 
         mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
@@ -4850,11 +4868,14 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
     def test_initialize_connection_multipath(self,
+                                             mock_attachments,
                                              mock_get_iscsi_ports,
                                              mock_connection, mock_get_wwn):
         vol, vol_name = self.new_fake_vol()
         mock_get_iscsi_ports.return_value = VALID_ISCSI_PORTS.items
+        mock_attachments.return_value = "Data", None
         mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
         mock_connection.return_value = CONN.items
         multipath_connector = deepcopy(ISCSI_CONNECTOR)
@@ -5172,9 +5193,12 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(FC_DRIVER_OBJ + "._get_valid_ports")
     @mock.patch(FC_DRIVER_OBJ + "._get_wwn")
     @mock.patch(FC_DRIVER_OBJ + "._connect")
-    def test_initialize_connection(self, mock_connection,
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
+    def test_initialize_connection(self, mock_attachments,
+                                   mock_connection,
                                    mock_get_wwn, mock_ports):
         vol, vol_name = self.new_fake_vol()
+        mock_attachments.return_value = "Data", None
         lookup_service = self.driver._lookup_service
         (lookup_service.get_device_mapping_from_network.
          return_value) = DEVICE_MAPPING
@@ -5188,13 +5212,16 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(FC_DRIVER_OBJ + "._get_valid_ports")
     @mock.patch(FC_DRIVER_OBJ + "._get_wwn")
     @mock.patch(FC_DRIVER_OBJ + "._connect")
-    def test_initialize_connection_uniform_ac(self, mock_connection,
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
+    def test_initialize_connection_uniform_ac(self, mock_attachments,
+                                              mock_connection,
                                               mock_get_wwn, mock_ports):
         repl_extra_specs = {
             'replication_type': '<in> sync',
             'replication_enabled': '<is> true',
         }
         vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
+        mock_attachments.return_value = "Data", None
         lookup_service = self.driver._lookup_service
         (lookup_service.get_device_mapping_from_network.
          return_value) = AC_DEVICE_MAPPING
@@ -5815,14 +5842,16 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
     @mock.patch(NVME_DRIVER_OBJ + "._connect")
     @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
     def test_initialize_connection(
-        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
-        mock_get_nguid
+        self, mock_attachments, mock_get_nvme_ports, mock_connection,
+        mock_get_wwn, mock_get_nguid
     ):
         vol, vol_name = self.new_fake_vol()
         nvme_ports = ValidResponse(200, None, 4, [DotNotation(NVME_PORTS[x])
                                                   for x in range(8)], {})
         mock_get_nvme_ports.return_value = nvme_ports.items
+        mock_attachments.return_value = "Data", None
         mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
         mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
         mock_connection.return_value = CONN.items
@@ -5845,15 +5874,17 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
     @mock.patch(NVME_DRIVER_OBJ + "._connect")
     @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
     def test_initialize_connection_ipv6(
-        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
-        mock_get_nguid
+        self, mock_attachments, mock_get_nvme_ports, mock_connection,
+        mock_get_wwn, mock_get_nguid
     ):
         vol, vol_name = self.new_fake_vol()
         nvme_ports = ValidResponse(200, None, 4,
                                    [DotNotation(NVME_PORTS[x])
                                     for x in range(8)], {})
         mock_get_nvme_ports.return_value = nvme_ports.items
+        mock_attachments.return_value = "Data", None
         mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
         mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
         mock_connection.return_value = CONN.items
@@ -5877,8 +5908,10 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
     @mock.patch(NVME_DRIVER_OBJ + "._connect")
     @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
     def test_initialize_connection_uniform_ac(
-        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
+        self, mock_attachments, mock_get_nvme_ports,
+        mock_connection, mock_get_wwn,
         mock_get_nguid
     ):
         repl_extra_specs = {
@@ -5893,6 +5926,7 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
                                   [DotNotation(AC_NVME_PORTS[x])
                                    for x in range(8)], {})
         mock_get_nvme_ports.side_effect = [nvme_p.items, ac_nvme_p.items]
+        mock_attachments.return_value = "Data", None
         mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
         mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
         mock_connection.side_effect = lambda *args, **kwargs: \
@@ -5921,8 +5955,10 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
     @mock.patch(NVME_DRIVER_OBJ + "._connect")
     @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
     def test_initialize_connection_uniform_ac_cidr(
-        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
+        self, mock_attachments, mock_get_nvme_ports,
+        mock_connection, mock_get_wwn,
         mock_get_nguid
     ):
         repl_extra_specs = {
@@ -5935,6 +5971,7 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
                                                  for x in range(8)], {})
         vol, vol_name = self.new_fake_vol(type_extra_specs=repl_extra_specs)
         mock_get_nvme_ports.side_effect = [nvme_p.items, ac_nvme_p.items]
+        mock_attachments.return_value = "Data", None
         mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
         mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
         mock_connection.side_effect = lambda *args, **kwargs: \
@@ -5966,8 +6003,10 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
     @mock.patch(NVME_DRIVER_OBJ + "._connect")
     @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
     def test_initialize_connection_uniform_ac_cidrs(
-        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
+        self, mock_attachments, mock_get_nvme_ports,
+        mock_connection, mock_get_wwn,
         mock_get_nguid
     ):
         repl_extra_specs = {
@@ -5982,6 +6021,7 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
                                   [DotNotation(AC_NVME_PORTS[x])
                                    for x in range(8)], {})
         mock_get_nvme_ports.side_effect = [nvme_p.items, ac_nvme_p.items]
+        mock_attachments.return_value = "Data", None
         mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
         mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
         mock_connection.side_effect = lambda *args, **kwargs: \
@@ -6015,8 +6055,10 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
     @mock.patch(NVME_DRIVER_OBJ + "._connect")
     @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
     def test_initialize_connection_multipath(
-        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
+        self, mock_attachments, mock_get_nvme_ports,
+        mock_connection, mock_get_wwn,
         mock_get_nguid
     ):
         self.driver.configuration.pure_nvme_transport = "roce"
@@ -6024,6 +6066,7 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
         nvme_ports = ValidResponse(200, None, 4, [DotNotation(NVME_PORTS[x])
                                                   for x in range(8)], {})
         mock_get_nvme_ports.return_value = nvme_ports.items
+        mock_attachments.return_value = "Data", None
         mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
         mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
         mock_connection.return_value = CONN.items

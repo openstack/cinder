@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    [Pure Storage]: Added FlashArray volumes tags for future use with Pure
+    Storage Data Intelligence tooling.
