@@ -55,6 +55,11 @@ backup_opts = [
                         ('bzip2', "Same as 'bz2'"),
                         ('zstd', 'Use the Zstandard compression algorithm')],
                help="Compression algorithm for backups ('none' to disable)"),
+    cfg.BoolOpt('backup_create_containers',
+                default=True,
+                help="Attempt to create new container for supported drivers, "
+                     "when it does not exist. When set to False, operator "
+                     "must ensure presence of configured container."),
 ]
 
 CONF = cfg.CONF
@@ -141,6 +146,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         self.data_block_num = CONF.backup_object_number_per_notification
         self.az = CONF.storage_availability_zone
         self.backup_compression_algorithm = CONF.backup_compression_algorithm
+        self.backup_create_containers = CONF.backup_create_containers
         self.compressor = \
             self._get_compressor(CONF.backup_compression_algorithm)
         self.support_force_delete = True
@@ -160,7 +166,11 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def put_container(self, container):
-        """Create the container if needed. No failure if it pre-exists."""
+        """Create the container if needed
+
+        Fails if CONF.backup_create_containers is False and container
+        is missing. No failure if it pre-exists.
+        """
         return
 
     @abc.abstractmethod

@@ -379,7 +379,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         try:
             self.conn.head_container(container, headers=self._headers())
         except swift_exc.ClientException as e:
-            if e.http_status == 404:
+            if e.http_status == 404 and self.backup_create_containers:
                 try:
                     storage_policy = CONF.backup_swift_create_storage_policy
                     headers = ({'X-Storage-Policy': storage_policy}
@@ -389,6 +389,11 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                 except socket.error as err:
                     raise exception.SwiftConnectionFailed(reason=err)
                 return
+            if e.http_status == 404 and not self.backup_create_containers:
+                LOG.debug('Creation of new backup containers is disabled. '
+                          'Returning 404 as bucket %s does not exist',
+                          container)
+                raise exception.SwiftConnectionFailed(reason=e)
             LOG.warning("Failed to HEAD container to determine if it "
                         "exists and should be created.")
             raise exception.SwiftConnectionFailed(reason=e)

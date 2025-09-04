@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Added ``[DEFAULT]/backup_create_containers`` configuration option, which
+    is set to ``True`` by default. When disabled, Backup drivers will not
+    attempt to create new "containers", which can be additionally supplied by
+    user during backup creation.
+    Default container will not be created either - it is operator
+    responsibility to pre-create required containers when deploying
+    cinder-backup service.

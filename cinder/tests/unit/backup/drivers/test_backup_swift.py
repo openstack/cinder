@@ -398,6 +398,14 @@ class BackupSwiftTestCase(test.TestCase):
         mock_put.assert_called_once_with('missing_container', headers=None)
 
     @mock.patch.object(fake_swift_client.FakeSwiftConnection, 'put_container')
+    def test_default_backup_swift_create_disabled(self, mock_put):
+        self.override_config('backup_create_containers', False)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertRaisesRegex(exception.SwiftConnectionFailed,
+                               '.*(404|NOT_FOUND)$',
+                               service.put_container, 'missing_container')
+
+    @mock.patch.object(fake_swift_client.FakeSwiftConnection, 'put_container')
     def test_backup_swift_create_storage_policy(self, mock_put):
         self.override_config('backup_swift_create_storage_policy',
                              'mypolicy')

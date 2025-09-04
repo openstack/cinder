@@ -301,6 +301,32 @@ class GoogleBackupDriverTestCase(test.TestCase):
         service.backup(backup, self.volume_file)
         self.assertEqual(container_name, backup.container)
 
+    @gcs_client
+    def test_backup_custom_container_disabled(self):
+        volume_id = '1da9859e-77e5-4731-bd58-000000ca119e'
+        container_name = 'fake99'
+        google_dr.CONF.set_override("backup_create_containers", False)
+        backup = self._create_backup_db_entry(volume_id=volume_id,
+                                              container=container_name)
+        service = google_dr.GoogleBackupDriver(self.ctxt)
+        self.mock_object(service.conn.buckets(), 'insert')
+
+        mock_buckets_service = mock.Mock()
+        self.mock_object(service.conn, 'buckets',
+                         return_value=mock_buckets_service)
+        mock_get = (
+            mock_buckets_service.list.return_value.execute.return_value.get
+        )
+        mock_get.return_value = []
+
+        self.volume_file.seek(0)
+        self.assertRaisesRegex(google_dr.GCSApiFailure, '.*404.*',
+                               service.backup,
+                               backup, self.volume_file)
+
+        mock_buckets_service.list.assert_called_once()
+        mock_buckets_service.insert.assert_not_called()
+
     @gcs_client2
     def test_backup_shafile(self):
         volume_id = '6465dad4-22af-48f7-8a1a-000000218907'

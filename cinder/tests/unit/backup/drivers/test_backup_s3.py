@@ -213,6 +213,18 @@ class BackupS3TestCase(test.TestCase):
         self.assertEqual(container_name, backup.container)
 
     @mock_aws
+    def test_backup_custom_container_disabled(self):
+        volume_id = '1da9859e-77e5-4731-bd58-000000ca119e'
+        container_name = 'fake99'
+        s3_dr.CONF.set_override('backup_create_containers', False)
+        backup = self._create_backup_db_entry(volume_id=volume_id,
+                                              container=container_name)
+        service = s3_dr.S3BackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        self.assertRaisesRegex(s3_dr.S3ClientError, '.*(404).*',
+                               service.backup, backup, self.volume_file)
+
+    @mock_aws
     def test_backup_shafile(self):
         volume_id = '6465dad4-22af-48f7-8a1a-000000218907'
 

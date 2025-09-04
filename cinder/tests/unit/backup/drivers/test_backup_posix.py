@@ -104,6 +104,12 @@ class PosixBackupDriverTestCase(test.TestCase):
         os.makedirs.assert_called_once_with(path)
         os.chmod.assert_called_once_with(path, 0o770)
 
+    def test_put_container_disabled(self):
+        container = f"{FAKE_CONTAINER}_new"
+        self.override_config('backup_create_containers', False)
+
+        self.assertRaises(OSError, self.driver.put_container, container)
+
     def test_put_container_already_exists(self):
         self.mock_object(os.path, 'exists', return_value=True)
         self.mock_object(os, 'makedirs')
