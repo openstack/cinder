@@ -47,6 +47,7 @@ from cinder import interface
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm.storwize_svc import (
     storwize_svc_common as storwize_common)
+from cinder.volume.drivers.ibm.storwize_svc import storwize_const
 
 LOG = logging.getLogger(__name__)
 
@@ -191,7 +192,7 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
                                            site=host_site,
                                            portset=opts['storwize_portset']))
         except exception.VolumeBackendAPIException as excp:
-            if "CMMVC6578E" in excp.msg:
+            if storwize_const.ERR_NAME_ASSIGNED_OR_INVALID in excp.msg:
                 msg = (_('Host already exists for connector '
                          '%(conn)s'), {'conn': connector})
                 LOG.info(msg)
@@ -285,7 +286,7 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         # Get preferred node and other nodes in I/O group
         preferred_node_entry = None
         io_group_nodes = []
-        if node_state['code_level'] >= (8, 4, 2, 0):
+        if node_state['code_level'] >= storwize_const.SVC_CODE_LEVEL_8420:
             backend_helper.add_iscsi_ip_addrs(node_state['storage_nodes'],
                                               node_state['code_level'],
                                               portset=portset)
@@ -318,7 +319,7 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
             'target_lun': lun_id,
             'volume_id': volume.id}
 
-        if node_state['code_level'] >= (8, 4, 2, 0):
+        if node_state['code_level'] >= storwize_const.SVC_CODE_LEVEL_8420:
             if preferred_node_entry['IP_address']:
                 ipaddr = preferred_node_entry['IP_address'][0]
         else:
@@ -351,7 +352,7 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
                    'lun_id': lun_id})
 
         try:
-            if node_state['code_level'] >= (8, 4, 2, 0):
+            if node_state['code_level'] >= storwize_const.SVC_CODE_LEVEL_8420:
                 portset_name = portset if portset else 'portset0'
                 resp = backend_helper.ssh.lsip(portset=portset_name)
             else:
@@ -372,7 +373,8 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
                     continue
                 link_state = ip_data.get('link_state', None)
                 valid_port = ''
-                if node_state['code_level'] >= (8, 4, 2, 0):
+                if (node_state['code_level'] >=
+                        storwize_const.SVC_CODE_LEVEL_8420):
                     valid_port = ip_data['IP_address']
                 else:
                     if ((ip_data['state'] == 'configured' and

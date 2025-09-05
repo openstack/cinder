@@ -56,7 +56,6 @@ from cinder.volume import volume_utils
 
 INTERVAL_1_SEC = 1
 DEFAULT_TIMEOUT = 15
-CMMVC5753E = "CMMVC5753E"
 LOG = logging.getLogger(__name__)
 
 storwize_svc_opts = [
@@ -193,6 +192,7 @@ CONF.register_opts(storwize_svc_opts, group=configuration.SHARED_CONF_GROUP)
 
 class StorwizeSSH(object):
     """SSH interface to IBM Storwize family and SVC storage systems."""
+
     def __init__(self, run_ssh):
         self._ssh = run_ssh
 
@@ -562,9 +562,12 @@ class StorwizeSSH(object):
         try:
             return self.run_ssh_check_created(ssh_cmd)
         except Exception as ex:
-            if hasattr(ex, 'msg') and 'CMMVC6035E' in ex.msg:
-                msg = (_('CMMVC6372W Action failed because volume group '
-                         'with the name provided already exists.'))
+            if (hasattr(ex, 'msg') and
+                    storwize_const.ERR_OBJECT_ALREADY_EXISTS in ex.msg):
+                msg = (_('%(errcode)s (ERR_OBJECT_ALREADY_EXISTS) Action '
+                         'failed because volume group '
+                         'with the name provided already exists.') %
+                       {'errcode': storwize_const.ERR_OBJECT_ALREADY_EXISTS})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
             with excutils.save_and_reraise_exception():
@@ -590,7 +593,8 @@ class StorwizeSSH(object):
         try:
             self.run_ssh_assert_no_output(ssh_cmd)
         except Exception as ex:
-            if hasattr(ex, 'msg') and 'CMMVC8749E' in ex.msg:
+            if (hasattr(ex, 'msg') and
+                    storwize_const.ERR_NONEMPTY_VOLUME_GROUP in ex.msg):
                 msg = _('rmvolumegroup: specified volume group is not empty.')
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
@@ -617,7 +621,7 @@ class StorwizeSSH(object):
                 return None
 
             return CLIResponse((out, err), ssh_cmd=ssh_cmd, delim='!',
-                                with_header=True)
+                               with_header=True)
         except exception.VolumeBackendAPIException as ex:
             msg = (_('Unable to fetch the volumegroupsnapshot.\n'
                      'Exception: %(ex)s') %
@@ -679,13 +683,17 @@ class StorwizeSSH(object):
             return self.run_ssh_check_created(ssh_cmd)
         except Exception as ex:
             # pylint: disable=E1101
-            if hasattr(ex, 'msg') and 'CMMVC6372W' in ex.msg:
+            if (hasattr(ex, 'msg') and
+                storwize_const.WARN_APPROACHING_LICENSED_STORAGE_CAPACITY
+                    in ex.msg):
                 vdisk = self.lsvdisk(name)
                 if vdisk:
-                    LOG.warning('CMMVC6372W The virtualized storage '
+                    LOG.warning('%(err_code)s The virtualized storage '
                                 'capacity that the cluster is using is '
                                 'approaching the virtualized storage '
-                                'capacity that is licensed.')
+                                'capacity that is licensed.',
+                                {'err_code': storwize_const.
+                                 WARN_APPROACHING_LICENSED_STORAGE_CAPACITY})
                     return vdisk['id']
             with excutils.save_and_reraise_exception():
                 LOG.exception('Failed to create vdisk %(vol)s.',
@@ -708,7 +716,7 @@ class StorwizeSSH(object):
         if not err:
             return CLIResponse((out, err), ssh_cmd=ssh_cmd, delim='!',
                                with_header=False)[0]
-        if 'CMMVC5754E' in err:
+        if storwize_const.ERR_INVALID_OBJECT_AND_NAME in err:
             return None
         msg = (_('CLI Exception output:\n command: %(cmd)s\n '
                  'stdout: %(out)s\n stderr: %(err)s.') %
@@ -1244,7 +1252,7 @@ class StorwizeHelpers(object):
 
     def add_iscsi_ip_addrs(self, storage_nodes, code_level, portset=None):
         """Add iSCSI IP addresses to system node information."""
-        if code_level >= (8, 4, 2, 0):
+        if code_level >= storwize_const.SVC_CODE_LEVEL_8420:
             portset_name = portset if portset else 'portset0'
             lsip_resp = self.ssh.lsip(portset=portset_name)
             # For every node_id there is one IP address in a particular
@@ -1282,7 +1290,7 @@ class StorwizeHelpers(object):
             wwpns = set(node['WWPN'])
             # The Storwize/svc release 7.7.0.0 introduced NPIV feature.
             # The virtual wwpns will be included in cli lstargetportfc
-            if code_level < (7, 7, 0, 0):
+            if code_level < storwize_const.SVC_CODE_LEVEL_7700:
                 resp = self.ssh.lsportfc(node_id=node['id'])
                 for port_info in resp:
                     if (port_info['type'] == 'fc' and
@@ -1303,7 +1311,7 @@ class StorwizeHelpers(object):
         # indicates whether the port can be used for host I/O
         targetportfc_resp = self.ssh.lstargetportfc(current_node_id=node_id,
                                                     host_io_permitted=host_io)
-        if code_level >= (8, 5, 0, 0):
+        if code_level >= storwize_const.SVC_CODE_LEVEL_8500:
             portset_name = portset if portset else 'portset64'
             port_ids = set()
             fcportsetmember_resp = self.ssh.lsfcportsetmember()
@@ -1453,8 +1461,10 @@ class StorwizeHelpers(object):
                 resp = self.ssh.lshost(host=name)
             except exception.VolumeBackendAPIException as ex:
                 LOG.debug("Exception message: %s", ex.msg)
-                if 'CMMVC5754E' in ex.msg:
-                    LOG.debug("CMMVC5754E found in CLI exception.")
+                if (ex.msg and
+                        storwize_const.ERR_INVALID_OBJECT_AND_NAME in ex.msg):
+                    LOG.debug("%s found in CLI exception.",
+                              storwize_const.ERR_INVALID_OBJECT_AND_NAME)
                     # CMMVC5754E: The specified object does not exist
                     # The host has been deleted while walking the list.
                     # This is a result of a host change on the SVC that
@@ -1624,14 +1634,16 @@ class StorwizeHelpers(object):
             except Exception as ex:
                 # pylint: disable=E1101
                 if (not multihostmap and hasattr(ex, 'msg') and
-                        'CMMVC6071E' in ex.msg):
-                    LOG.warning('storwize_svc_multihostmap_enabled is set '
-                                'to False, not allowing multi host mapping.')
+                        storwize_const.ERR_HOST_ALREADY_MAPPED in ex.msg):
+                    LOG.error('storwize_svc_multihostmap_enabled is set '
+                              'to False, not allowing multi host mapping.')
                     raise exception.VolumeDriverException(
-                        message=_('CMMVC6071E The VDisk-to-host mapping was '
+                        message=_('%(err_code)s The VDisk-to-host mapping was '
                                   'not created because the VDisk is already '
-                                  'mapped to a host.'))
-                if hasattr(ex, 'msg') and 'CMMVC5879E' in ex.msg:
+                                  'mapped to a host.') %
+                        {'err_code': storwize_const.ERR_HOST_ALREADY_MAPPED})
+                if hasattr(ex, 'msg') and \
+                        storwize_const.ERR_HOST_ALREADY_MAPPED_SCSI in ex.msg:
                     raise _RetryableVolumeDriverException(ex)
                 with excutils.save_and_reraise_exception():
                     LOG.error('Error mapping VDisk-to-host.')
@@ -1694,7 +1706,7 @@ class StorwizeHelpers(object):
             registerplugin_metadata = ''
             ispbhaenabled = bool(getattr(self, 'is_pbha_partition', None))
             isreplication = bool(
-                    configuration.safe_get('replication_device'))
+                configuration.safe_get('replication_device'))
             volume_driver = configuration.safe_get('volume_driver')
             if "powervc" in (volume_driver, ''):
                 deployment = storwize_const.POWERVC
@@ -1710,7 +1722,6 @@ class StorwizeHelpers(object):
                 raise loopingcall.LoopingCallDone()
         else:
             LOG.warning("Callhome service is disabled on the backend.")
-
 
     @staticmethod
     def build_default_opts(config):
@@ -2344,7 +2355,9 @@ class StorwizeHelpers(object):
         try:
             self.delete_fc_consistgrp(fc_consistgrp)
         except exception.VolumeBackendAPIException as err:
-            if CMMVC5753E in err.msg:
+            if (err.msg and
+                storwize_const.ERR_INVALID_OBJECT_OR_UNSUITABLE_CANDIDATE
+                    in err.msg):
                 LOG.warning('Failed to delete as flash copy consistency '
                             'group %s does not exist,ignoring err: %s',
                             fc_consistgrp, err)
@@ -2472,12 +2485,13 @@ class StorwizeHelpers(object):
             raise exception.InvalidInput(
                 reason=_('The configured flashcopy rate should be '
                          'between 1 and 150.'))
-        elif self.code_level < (7, 8, 1, 0) and flashcopy_rate > 100:
+        elif (self.code_level < storwize_const.SVC_CODE_LEVEL_7810 and
+              flashcopy_rate > 100):
             msg = (_('The configured flashcopy rate is %(fc_rate)s, The '
                      'storage code level is %(code_level)s, the flashcopy_rate'
                      ' range is 1-100 if the storwize code level '
-                     'below 7.8.1.') % {'fc_rate': flashcopy_rate,
-                                        'code_level': self.code_level})
+                     'below 7.8.1.0') % {'fc_rate': flashcopy_rate,
+                                         'code_level': self.code_level})
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -2760,7 +2774,8 @@ class StorwizeHelpers(object):
             # there is a relationship that already has this name on the
             # master cluster.
             # pylint: disable=E1101
-            if hasattr(ex, 'msg') and 'CMMVC5959E' not in ex.msg:
+            if (hasattr(ex, 'msg') and
+                    storwize_const.ERR_RELATIONSHIP_EXISTS not in ex.msg):
                 # If there is no relation between the primary and the
                 # secondary back-end storage, the exception is raised.
                 raise
@@ -2967,7 +2982,7 @@ class StorwizeHelpers(object):
         self.ssh.chvdisk(vol_name, ['-novolumegroup'])
 
     def check_codelevel_for_volumegroup(self, code_level):
-        min_level = (8, 5, 1, 0)
+        min_level = storwize_const.SVC_CODE_LEVEL_8510
         if not self.check_code_level_within_limit(min_level, None, code_level):
             msg = (_('The configured group type spec is '
                      '"volume_group_enabled". '
@@ -2980,7 +2995,7 @@ class StorwizeHelpers(object):
             raise exception.VolumeDriverException(message=msg)
 
     def check_codelevel_for_temp_volumegroup(self, code_level):
-        min_level = (8, 6, 2, 0)
+        min_level = storwize_const.SVC_CODE_LEVEL_8620
         if not self.check_code_level_within_limit(min_level, None, code_level):
             msg = (_('The configured group type spec is '
                      '"temporary_volume_group_enabled". '
@@ -3620,7 +3635,6 @@ class StorwizeHelpers(object):
         except Exception as e:
             LOG.debug("Failed to register plugin due to %s", e)
         return ret
-
 
     @staticmethod
     def check_code_level_within_limit(min_level, max_level, code_level):
@@ -4304,7 +4318,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     def delete_volume(self, volume):
         LOG.debug('enter: delete_volume: volume %s', volume['name'])
         ctxt = context.get_admin_context()
-        if self._state['code_level'] < (7, 7, 0, 0):
+        if self._state['code_level'] < storwize_const.SVC_CODE_LEVEL_7700:
             force_unmap = False
         else:
             force_unmap = True
@@ -4385,7 +4399,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                   opts, False, self._state, pool=pool)
 
     def delete_snapshot(self, snapshot):
-        if self._state['code_level'] < (7, 7, 0, 0):
+        if self._state['code_level'] < storwize_const.SVC_CODE_LEVEL_7700:
             force_unmap = False
         else:
             force_unmap = True
@@ -4523,7 +4537,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
     def _extend_volume_op(self, volume, new_size, old_size=None):
         LOG.debug('enter: _extend_volume_op: volume %s', volume['id'])
-        if self._state['code_level'] < (7, 7, 0, 0):
+        if self._state['code_level'] < storwize_const.SVC_CODE_LEVEL_7700:
             force_unmap = False
         else:
             force_unmap = True
@@ -6204,7 +6218,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                             new_opts['clean_rate'])
 
         # Delete replica if needed
-        if self._state['code_level'] < (7, 7, 0, 0):
+        if self._state['code_level'] < storwize_const.SVC_CODE_LEVEL_7700:
             force_unmap = False
         else:
             force_unmap = True
@@ -7361,7 +7375,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         return vdisk
 
     def _delete_replication_grp(self, group, volumes):
-        if self._state['code_level'] < (7, 7, 0, 0):
+        if self._state['code_level'] < storwize_const.SVC_CODE_LEVEL_7700:
             force_unmap = False
         else:
             force_unmap = True
@@ -7533,7 +7547,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         volumegroup_name = self._helpers.get_volumegroup_name(group.id)
         volumes_model_update = []
         force_unmap = True
-        if self._state['code_level'] < (7, 7, 0, 0):
+        if self._state['code_level'] < storwize_const.SVC_CODE_LEVEL_7700:
             force_unmap = False
         for volume in volumes:
             volume = self._helpers.get_volume_name_from_metadata(volume)

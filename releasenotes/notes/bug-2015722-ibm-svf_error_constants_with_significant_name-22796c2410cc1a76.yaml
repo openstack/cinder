@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM Storage Virtualize Family driver: `Bug #2015722
+    <https://bugs.launchpad.net/cinder/+bug/2015722>`_:
+    The internal driver use of opaque error codes resulted in some log messages that
+    did not identify an error correctly. The driver code now uses symbolic constants
+    with meaningful names to correct this issue.
