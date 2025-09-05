@@ -1198,10 +1198,14 @@ MPS_REFS = ValidResponse(200, None, 3,
                           DotNotation(MANAGEABLE_PURE_SNAP_REFS[2])], {})
 
 # unit for maxBWS is MB
-QOS_IOPS_BWS = {"maxIOPS": "100", "maxBWS": "1"}
-QOS_IOPS_BWS_2 = {"maxIOPS": "1000", "maxBWS": "10"}
-QOS_INVALID = {"maxIOPS": "100", "maxBWS": str(512 * 1024 + 1)}
-QOS_ZEROS = {"maxIOPS": "0", "maxBWS": "0"}
+QOS_IOPS_BWS = {"maxIOPS": "100", "maxBWS": "1",
+                "maxIOPS_per_GB": "0", "maxBWS_per_GB": "0"}
+QOS_IOPS_BWS_2 = {"maxIOPS": "1000", "maxBWS": "10",
+                  "maxIOPS_per_GB": "0", "maxBWS_per_GB": "0"}
+QOS_INVALID = {"maxIOPS": "100", "maxBWS": str(512 * 1024 + 1),
+               "maxIOPS_per_GB": "0", "maxBWS_per_GB": "0"}
+QOS_ZEROS = {"maxIOPS": "0", "maxBWS": "0",
+             "maxIOPS_per_GB": "0", "maxBWS_per_GB": "0"}
 QOS_IOPS = {"maxIOPS": "100"}
 QOS_BWS = {"maxBWS": "1"}
 MAX_IOPS = 100000000
@@ -2132,11 +2136,14 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
     @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")
-    def test_create_cloned_volume(self, mock_get_replication_type,
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_cloned_volume(self, mock_get_volume_type,
+                                  mock_get_replication_type,
                                   mock_add_to_group,
                                   mock_fa):
         vol, vol_name = self.new_fake_vol(set_provider_id=False)
         src_vol, src_name = self.new_fake_vol()
+        mock_get_volume_type.return_value = vol.volume_type
         mock_data = self.array.flasharray.VolumePost(names=[vol_name],
                                                      source=
                                                      pure.flasharray.
@@ -2178,7 +2185,9 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(BASE_DRIVER_OBJ + "._get_qos_settings")
     @mock.patch(BASE_DRIVER_OBJ + ".set_qos")
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
+    @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_cloned_volume_qos(self, qos_info,
+                                      mock_get_volume_type,
                                       mock_fa,
                                       mock_qos,
                                       mock_qos_specs):
@@ -2190,6 +2199,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         vol, vol_name = self.new_fake_vol(set_provider_id=False)
         src_vol, src_name = self.new_fake_vol(spec={"size": 1},
                                               type_qos_specs_id=qos.id)
+        mock_get_volume_type.return_value = vol.volume_type
         mock_data = self.array.flasharray.VolumePost(names=[vol_name],
                                                      source=
                                                      pure.flasharray.
@@ -2200,10 +2210,16 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.mock_object(self.driver, '_get_volume_type_extra_spec',
                          return_value={})
         self.driver.create_cloned_volume(vol, src_vol)
-        self.driver.set_qos.assert_called_with(self.array, vol_name, qos)
+        self.driver.set_qos.assert_called_with(self.array,
+                                               vol_name,
+                                               vol["size"],
+                                               qos)
 
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
-    def test_create_cloned_volume_sync_rep(self, mock_fa):
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_cloned_volume_sync_rep(self,
+                                           mock_get_volume_type,
+                                           mock_fa):
         repl_extra_specs = {
             'replication_type': '<in> sync',
             'replication_enabled': '<is> true',
@@ -2212,6 +2228,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             type_extra_specs=repl_extra_specs)
         vol, vol_name = self.new_fake_vol(set_provider_id=False,
                                           type_extra_specs=repl_extra_specs)
+        mock_get_volume_type.return_value = vol.volume_type
         mock_data = self.array.flasharray.VolumePost(names=[vol_name],
                                                      source=pure.flasharray.
                                                      reference(name=src_name))
@@ -2228,11 +2245,14 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
     @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")
-    def test_create_cloned_volume_and_extend(self, mock_get_replication_type,
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_cloned_volume_and_extend(self, mock_get_volume_type,
+                                             mock_get_replication_type,
                                              mock_add_to_group,
                                              mock_fa, mock_extend):
         vol, vol_name = self.new_fake_vol(set_provider_id=False,
                                           spec={"size": 2})
+        mock_get_volume_type.return_value = vol.volume_type
         src_vol, src_name = self.new_fake_vol()
         mock_get_replication_type.return_value = None
         mock_data = self.array.flasharray.VolumePost(names=[vol_name],
@@ -2252,9 +2272,12 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     # Tests cloning a volume that is part of a consistency group
     @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")
-    def test_create_cloned_volume_with_cgroup(self, mock_get_replication_type,
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_cloned_volume_with_cgroup(self, mock_get_volume_type,
+                                              mock_get_replication_type,
                                               mock_add_to_group):
         vol, vol_name = self.new_fake_vol(set_provider_id=False)
+        mock_get_volume_type.return_value = vol.volume_type
         group = fake_group.fake_group_obj(mock.MagicMock())
         self.driver._get_volume_type_extra_spec = mock.Mock(
             return_value={})
@@ -2625,8 +2648,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.delete_connections.assert_not_called()
 
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePatch")
-    def test_extend_volume(self, mock_fa):
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_extend_volume(self, mock_get_volume_type, mock_fa):
         vol, vol_name = self.new_fake_vol(spec={"size": 1})
+        mock_get_volume_type.return_value = vol.volume_type
         mock_data = self.flasharray.VolumePatch(provisioned=3 * units.Gi)
         self.driver.extend_volume(vol, 3)
         self.array.patch_volumes.\
@@ -4511,7 +4536,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                      Reference(name=vol_name),
                                                      name=vol_name,
                                                      qos={'maxIOPS': 100,
-                                                     'maxBWS': 1048576})
+                                                          'maxBWS': 1048576,
+                                                          'maxBWS': 1048576,
+                                                          'maxIOPS_per_GB': 0,
+                                                          'maxBWS_per_GB': 0})
         mock_fa.return_value = mock_data
 
         mock_get_volume_type.return_value = vol.volume_type
@@ -4523,9 +4551,11 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                    with_default_protection=
                                                    False,
                                                    volume=mock_data)
-        self.driver.set_qos.assert_called_with(self.array, vol_name,
+        self.driver.set_qos.assert_called_with(self.array, vol_name, 1,
                                                {'maxIOPS': 100,
-                                                'maxBWS': 1048576})
+                                                'maxBWS': 1048576,
+                                                'maxIOPS_per_GB': 0,
+                                                'maxBWS_per_GB': 0})
         self.assertFalse(self.array.extend_volume.called)
         mock_add_to_group.assert_called_once_with(vol, vol_name)
         self.assert_error_propagates(
@@ -4552,9 +4582,11 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.get_volumes.return_value = MPV
 
         self.driver.manage_existing(vol, volume_ref)
-        mock_qos.assert_called_with(self.array, vol_name,
+        mock_qos.assert_called_with(self.array, vol_name, 3,
                                     {'maxIOPS': 100,
-                                     'maxBWS': 1048576})
+                                     'maxBWS': 1048576,
+                                     'maxIOPS_per_GB': 0,
+                                     'maxBWS_per_GB': 0})
 
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePatch")
     def test_retype_qos(self, mock_fa):

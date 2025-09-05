@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    [Pure Storage] Added new QoS spec parameters to support QoS per GB.
+    New spec options are ``maxIOPS_per_GB`` and ``maxBWS_per_GB``. If
+    either of these are provided with the equivalent ``max`` value, the
+    ``max`` value will take precedence.
