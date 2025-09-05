@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Pure Storage driver `Bug #21119059 <https://bugs.launchpad.net/cinder/+bug/2119059>`_: Fixed
+    volume deletion issue when attempting to manage a new volume that exceeds the tenants
+    storage quota.

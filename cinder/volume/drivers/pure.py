@@ -1000,8 +1000,10 @@ class PureBaseVolumeDriver(san.SanDriver):
         current_array = self._get_current_array()
         # Do a pass over remaining connections on the current array, if
         # we can try and remove any remote connections too.
-        hosts = list(current_array.get_connections(
-            volume_names=[vol_name]).items)
+        hosts = []
+        res = current_array.get_connections(volume_names=[vol_name])
+        if res.status_code == 200:
+            hosts = list(res.items)
         for host_info in range(0, len(hosts)):
             host_name = hosts[host_info].host.name
             self._disconnect_host(current_array, host_name, vol_name)
@@ -1010,8 +1012,6 @@ class PureBaseVolumeDriver(san.SanDriver):
         res = current_array.patch_volumes(names=[vol_name],
                                           volume=flasharray.VolumePatch(
                                               destroyed=True))
-        if self.configuration.pure_eradicate_on_delete:
-            current_array.delete_volumes(names=[vol_name])
         if res.status_code == 400:
             with excutils.save_and_reraise_exception() as ctxt:
                 if ERR_MSG_NOT_EXIST in res.errors[0].message:
@@ -1019,6 +1019,8 @@ class PureBaseVolumeDriver(san.SanDriver):
                     ctxt.reraise = False
                     LOG.warning("Volume deletion failed with message: %s",
                                 res.errors[0].message)
+        if self.configuration.pure_eradicate_on_delete:
+            current_array.delete_volumes(names=[vol_name])
         # Now check to see if deleting this volume left an empty volume
         # group. If so, we delete / eradicate the volume group
         if "/" in vol_name:
