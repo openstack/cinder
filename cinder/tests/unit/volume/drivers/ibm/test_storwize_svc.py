@@ -5044,6 +5044,11 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
 @ddt.ddt
 class StorwizeSVCCommonDriverTestCase(test.TestCase):
+    # Volumegroup and temporary volumegroup functionality
+    # minimum code level constants
+    VOLUMEGROUP_CODE_LEVEL = (8, 5, 1, 0)
+    TEMP_VOLUMEGROUP_CODE_LEVEL = (8, 6, 2, 0)
+
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
         super(StorwizeSVCCommonDriverTestCase, self).setUp()
@@ -7213,11 +7218,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def test_storwize_create_and_delete_volumegroup(self, delete_volumegroup,
                                                     create_volumegroup):
         """Test volume group creation and deletion"""
-        # Seting the storwize_volume_group to True
-        self._set_flag('storwize_volume_group', True)
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_system_info') as get_system_info:
-            fake_system_info = {'code_level': (8, 5, 1, 0),
+            fake_system_info = {'code_level': self.VOLUMEGROUP_CODE_LEVEL,
                                 'system_name': 'storwize-svc-sim',
                                 'system_id': '0123456789ABCDEF'}
             get_system_info.return_value = fake_system_info
@@ -7250,20 +7253,18 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                        'create_volumegroup')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'delete_volumegroup')
-    def test_storwize_volume_group_flag_false(self, delete_volumegroup,
-                                              create_volumegroup):
-        """Test volume group creation with storwize_volume_group as False"""
-        # Setting the storwize_volume_group to False
-        self._set_flag('storwize_volume_group', False)
+    def test_storwize_create_and_delete_temp_volumegroup(
+            self, delete_volumegroup, create_volumegroup):
+        """Test temporary volume group creation"""
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_system_info') as get_system_info:
-            fake_system_info = {'code_level': (8, 5, 1, 0),
+            fake_system_info = {'code_level': self.TEMP_VOLUMEGROUP_CODE_LEVEL,
                                 'system_name': 'storwize-svc-sim',
                                 'system_id': '0123456789ABCDEF'}
             get_system_info.return_value = fake_system_info
             self.driver.do_setup(None)
 
-        volumegroup_spec = {'volume_group_enabled': '<is> True'}
+        volumegroup_spec = {'temporary_volume_group_enabled': '<is> True'}
         volumegroup_type_ref = group_types.create(self.ctxt,
                                                   'volumegroup_type',
                                                   volumegroup_spec)
@@ -7277,13 +7278,34 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Create Volume Group
         model_update = self.driver.create_group(self.ctxt, volumegroup)
-        self.assertEqual(fields.GroupStatus.ERROR,
+        self.assertFalse(create_volumegroup.called)
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'])
         # Delete Volume Group
         model_update = self.driver.delete_group(self.ctxt, volumegroup, [])
-        self.assertTrue(delete_volumegroup.called)
+        self.assertFalse(delete_volumegroup.called)
         self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
+
+    def test_check_codelevel_for_temp_volumegroup_fail(self):
+        code_level = (8, 5, 2, 0)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver._helpers
+                          .check_codelevel_for_temp_volumegroup,
+                          code_level)
+
+    def test_check_code_level_within_limit(self):
+        test_cases = [
+            ((8, 5, 2, 0), True),  # test case for True result
+            ((8, 5, 4, 0), False)  # test case for False result
+        ]
+        for code_level, expected in test_cases:
+            result = self.driver._helpers.check_code_level_within_limit(
+                (8, 5, 1, 0), (8, 5, 3, 0), code_level)
+            if expected:
+                self.assertTrue(result)
+            else:
+                self.assertFalse(result)
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'create_volumegroup')
@@ -7292,11 +7314,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def test_storwize_update_volumegroup(self, delete_volumegroup,
                                          create_volumegroup):
         """Test volume group updation"""
-        # Seting the storwize_volume_group to True
-        self._set_flag('storwize_volume_group', True)
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_system_info') as get_system_info:
-            fake_system_info = {'code_level': (8, 5, 1, 0),
+            fake_system_info = {'code_level': self.VOLUMEGROUP_CODE_LEVEL,
                                 'system_name': 'storwize-svc-sim',
                                 'system_id': '0123456789ABCDEF'}
             get_system_info.return_value = fake_system_info
@@ -7363,14 +7383,75 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.assertEqual(fields.GroupStatus.DELETED,
                              model_update[0]['status'])
 
+    def test_storwize_update_temp_volumegroup(self):
+        """Test temporary volume group updation"""
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': self.TEMP_VOLUMEGROUP_CODE_LEVEL,
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+            # Create temporary volumegroup type
+            volumegroup_spec = {'temporary_volume_group_enabled': '<is> True'}
+            volumegroup_type_ref = group_types.create(self.ctxt,
+                                                      'volumegroup_type',
+                                                      volumegroup_spec)
+            volumegroup_type = objects.GroupType.get_by_id(
+                self.ctxt, volumegroup_type_ref['id'])
+
+            # Create volume
+            vol_type_ref = volume_types.create(self.ctxt, 'non_rep_type', {})
+            vol_type = objects.VolumeType.get_by_id(self.ctxt,
+                                                    vol_type_ref['id'])
+            volume = self._generate_vol_info(vol_type)
+            self.driver.create_volume(volume)
+
+            # Create volumegroup
+            volumegroup = testutils.create_group(
+                self.ctxt, group_type_id=volumegroup_type.id,
+                volume_type_ids=[vol_type_ref['id']])
+
+            model_update = self.driver.create_group(self.ctxt, volumegroup)
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
+
+            add_vols = [volume]
+            remove_vols = [volume]
+            with mock.patch.object(
+                    storwize_svc_common.StorwizeSVCCommonDriver,
+                    '_update_temporary_volumegroup') as _update_temp_vg:
+                model_update = {'status': 'available'}
+                fake_update_volumegroup_info = [model_update, add_vols, None]
+                _update_temp_vg.return_value = fake_update_volumegroup_info
+                (model_update, add_volumes_update,
+                    remove_volumes_update) = self.driver.update_group(
+                        self.ctxt, volumegroup, add_vols, [])
+
+                self.assertTrue(_update_temp_vg.called)
+                self.assertEqual(fields.GroupStatus.AVAILABLE,
+                                 model_update['status'])
+
+                model_update = {'status': 'available'}
+                fake_update_volumegroup_info = [model_update, None,
+                                                remove_vols]
+                _update_temp_vg.return_value = (
+                    fake_update_volumegroup_info)
+                (model_update, add_volumes_update,
+                    remove_volumes_update) = self.driver.update_group(
+                        self.ctxt, volumegroup, [], remove_vols)
+
+                self.assertTrue(_update_temp_vg.called)
+                self.assertEqual(fields.GroupStatus.AVAILABLE,
+                                 model_update['status'])
+
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'get_system_info')
     def test_storwize_create_and_delete_volumegroup_snapshot(
             self, get_system_info):
         """Test creation and deletion of volumegroup snapshot"""
-        # Seting the storwize_volume_group to True
-        self._set_flag('storwize_volume_group', True)
-        fake_system_info = {'code_level': (8, 5, 1, 0),
+        fake_system_info = {'code_level': self.VOLUMEGROUP_CODE_LEVEL,
                             'system_name': 'storwize-svc-sim',
                             'system_id': '0123456789ABCDEF'}
         get_system_info.return_value = fake_system_info
@@ -7451,14 +7532,11 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                              get_system_info):
         """Test volume group creation and deletion"""
 
-        fake_system_info = {'code_level': (8, 5, 1, 0),
+        fake_system_info = {'code_level': self.VOLUMEGROUP_CODE_LEVEL,
                             'system_name': 'storwize-svc-sim',
                             'system_id': '0123456789ABCDEF'}
         get_system_info.return_value = fake_system_info
         self.driver.do_setup(None)
-
-        # Seting the storwize_volume_group to True
-        self._set_flag('storwize_volume_group', True)
 
         # Create volumegroup type
         volumegroup_spec = {'volume_group_enabled': '<is> True'}
@@ -7519,7 +7597,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             create_volumegroup_snapshot, is_grp_a_cg_snapshot_type,
             vg_type, get_system_info):
         """Test creation and deletion of volumegroup snapshot"""
-        fake_system_info = {'code_level': (8, 5, 1, 0),
+        fake_system_info = {'code_level': self.VOLUMEGROUP_CODE_LEVEL,
                             'system_name': 'storwize-svc-sim',
                             'system_id': '0123456789ABCDEF'}
         get_system_info.return_value = fake_system_info
@@ -7528,7 +7606,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         # Mocking volume-group-enabled spec as true
         is_grp_a_cg_snapshot_type.side_effect = [False, False, False]
         vg_type.side_effect = [False, False, True, False, True,
-                               False, False, True, False, False, True]
+                               False, False, True, True, False, False, True]
 
         # Create volume group
         type_ref = volume_types.create(self.ctxt, 'testtype', None)
@@ -7598,7 +7676,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                    is_grp_a_cg_snapshot_type):
         is_grp_a_cg_snapshot_type.side_effect = [True, True, False, True]
         is_grp_a_cg_rep_type.side_effect = [False, False, False, False,
-                                            False, False]
+                                            False, False, False, False]
         type_ref = volume_types.create(self.ctxt, 'testtype', None)
         group = testutils.create_group(self.ctxt,
                                        group_type_id=fake.GROUP_TYPE_ID,
@@ -7628,7 +7706,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         """Test group update."""
         is_grp_a_cg_snapshot_type.side_effect = [False, True, True, False]
         is_grp_a_cg_rep_type.side_effect = [False, False, False, False,
-                                            False, True, True]
+                                            False, False, True, True]
         group = mock.MagicMock()
         self.assertRaises(NotImplementedError, self.driver.update_group,
                           self.ctxt, group, None, None)

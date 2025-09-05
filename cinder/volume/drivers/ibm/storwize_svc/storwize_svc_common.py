@@ -176,10 +176,11 @@ storwize_svc_opts = [
                      'or moving the primary volume from mirror to non-mirror '
                      'with replication enabled. This option is valid for '
                      'Storage Virtualize Family.'),
-    cfg.BoolOpt('storwize_volume_group',
-                default=False,
-                help='Parameter to enable or disable Volume Group'
-                     '(True/False)'),
+    cfg.BoolOpt('migrate_from_flashcopy',
+                default=True,
+                help='Parameter to allow or prevent volumes with legacy '
+                     'FlashCopy mappings to be part of volume_group_enabled '
+                     'and temporary_volume_group_enabled groups.'),
 ]
 
 CONF = cfg.CONF
@@ -2911,13 +2912,28 @@ class StorwizeHelpers(object):
         self.ssh.chvdisk(vol_name, ['-novolumegroup'])
 
     def check_codelevel_for_volumegroup(self, code_level):
-        if not (code_level >= (8, 5, 1, 0)):
+        min_level = (8, 5, 1, 0)
+        if not self.check_code_level_within_limit(min_level, None, code_level):
             msg = (_('The configured group type spec is '
                      '"volume_group_enabled". '
                      'The supported code level for this group type spec '
-                     'is 8.5.1.0 '
+                     'is %(min_level)s '
                      'The current storage code level is %(code_level)s.')
-                   % {'code_level': code_level})
+                   % {'min_level': min_level,
+                      'code_level': code_level})
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+    def check_codelevel_for_temp_volumegroup(self, code_level):
+        min_level = (8, 6, 2, 0)
+        if not self.check_code_level_within_limit(min_level, None, code_level):
+            msg = (_('The configured group type spec is '
+                     '"temporary_volume_group_enabled". '
+                     'The supported code level for this group type spec '
+                     'is %(min_level)s '
+                     'The current storage code level is %(code_level)s.')
+                   % {'min_level': min_level,
+                      'code_level': code_level})
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -3307,6 +3323,12 @@ class StorwizeHelpers(object):
                               {'map_id': map_id})
                     self.ssh.stopfcmap(map_id)
 
+    @staticmethod
+    def check_code_level_within_limit(min_level, max_level, code_level):
+        if max_level is None:
+            max_level = code_level
+        return min_level <= code_level <= max_level
+
 
 class CLIResponse(object):
     """Parse SVC CLI output and generate iterable."""
@@ -3609,6 +3631,15 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             pool_vols = self._helpers.get_pool_volumes(pool)
             for volume in pool_vols:
                 self._volumes_list.append(volume['name'])
+
+    def _get_config_param_value(self, config_param, config_param_value):
+        if not config_param_value:
+            config_param_value = self.configuration.safe_get(config_param)
+        LOG.info('CONFIG:value of %(param)s'
+                 ' is %(value)s',
+                 {'param': config_param,
+                  'value': config_param_value})
+        return config_param_value
 
     def check_for_setup_error(self):
         """Ensure that the flags are set properly."""
@@ -6236,7 +6267,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         return vg_snapshot + group_snapshot_id
 
     # Add CG capability to generic volume groups
-    def create_group(self, context, group):
+    def create_group(self, context, group):  # noqa: C901
         """Creates a group.
 
         :param context: the context of the caller.
@@ -6246,26 +6277,42 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         LOG.debug("Creating group.")
 
         model_update = {'status': fields.GroupStatus.AVAILABLE}
-        group_type = objects.GroupType.get_by_id(context, group.group_type_id)
-        if len(group_type.group_specs) > 1:
-            LOG.error('Unable to create group: create group with mixed specs '
-                      '%s is not supported.', group_type.group_specs)
-            model_update = {'status': fields.GroupStatus.ERROR}
-            return model_update
 
         support_grps = ['group_snapshot_enabled',
                         'consistent_group_snapshot_enabled',
                         'consistent_group_replication_enabled',
                         'hyperswap_group_enabled',
-                        'volume_group_enabled']
-        supported_grp = False
-        for grp_spec in support_grps:
-            if volume_utils.is_group_a_type(group, grp_spec):
-                supported_grp = True
-                break
-        if not supported_grp:
-            LOG.error('Unable to create group: %s is not a supported group '
-                      'type.', group.group_type_id)
+                        'volume_group_enabled',
+                        'temporary_volume_group_enabled']
+
+        support_grp_clone_specs = ['clone_type']
+
+        group_type = objects.GroupType.get_by_id(context, group.group_type_id)
+        all_group_specs = group_type.group_specs
+
+        # Check if group_specs are supported
+        for group_spec in all_group_specs:
+            if (group_spec not in support_grps and
+                    group_spec not in support_grp_clone_specs):
+                LOG.error('Unable to create group: %s is not a supported '
+                          'group type.', group.group_type_id)
+                model_update = {'status': fields.GroupStatus.ERROR}
+                return model_update
+
+        # Check if a non-clone group_spec is passed among supported group types
+        # and only one non-clone group_spec is passed
+        count_group_type_specs = 0
+        for group_spec in all_group_specs:
+            if group_spec in support_grps:
+                count_group_type_specs += 1
+        if count_group_type_specs == 0:
+            LOG.error('Unable to create group: '
+                      'No supported group type provided')
+            model_update = {'status': fields.GroupStatus.ERROR}
+            return model_update
+        if count_group_type_specs > 1:
+            LOG.error('Unable to create group: create group with mixed specs '
+                      'is not supported.')
             model_update = {'status': fields.GroupStatus.ERROR}
             return model_update
 
@@ -6348,49 +6395,53 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     model_update = {'status': fields.GroupStatus.ERROR}
                     return model_update
 
-        storwize_volume_group = self.configuration.safe_get(
-            'storwize_volume_group')
-        LOG.info('CONFIG:value of storwize_volume_group'
-                 ' is %s', storwize_volume_group)
-
-        if volume_utils.is_group_a_type(group, "volume_group_enabled"):
-            if storwize_volume_group:
-                try:
+        if (
+            volume_utils.is_group_a_type(group, "volume_group_enabled") or
+            volume_utils.is_group_a_type(
+                group, "temporary_volume_group_enabled")):
+            try:
+                if volume_utils.is_group_a_type(
+                        group, "temporary_volume_group_enabled"):
+                    self._helpers.check_codelevel_for_temp_volumegroup(
+                        self._state['code_level'])
+                else:
                     self._helpers.check_codelevel_for_volumegroup(
                         self._state['code_level'])
-                    for vol_type_id in group.volume_type_ids:
-                        replication_type = self._get_volume_replicated_type(
-                            context, None, vol_type_id)
-                        if replication_type:
-                            # An unsupported configuration
-                            LOG.error('Unable to create group: '
-                                      'volume_group_enabled group with '
-                                      'replication volume type is '
-                                      'not supported.')
-                            model_update = {'status': fields.GroupStatus.ERROR}
-                            return model_update
-                        opts = self._get_vdisk_params(vol_type_id)
-                        if opts['volume_topology']:
-                            # An unsupported configuration
-                            LOG.error('Unable to create group: '
-                                      'volume_group_enabled group with a '
-                                      'hyperswap volume type is '
-                                      'not supported.')
-                            model_update = {'status': fields.GroupStatus.ERROR}
-                            return model_update
-                    volumegroup_name = self._get_volumegroup_name(group)
-                    self._helpers.create_volumegroup(volumegroup_name)
-                except exception.VolumeBackendAPIException as err:
-                    LOG.error("Failed to create volume group %(volumegroup)s. "
-                              "Exception: %(exception)s.",
-                              {'volumegroup': volumegroup_name,
-                                  'exception': err})
-                    model_update = {'status': fields.GroupStatus.ERROR}
+                for vol_type_id in group.volume_type_ids:
+                    replication_type = self._get_volume_replicated_type(
+                        context, None, vol_type_id)
+                    if replication_type:
+                        # An unsupported configuration
+                        LOG.error('Unable to create group: '
+                                  'volume_group_enabled or '
+                                  'temporary_volume_group_enabled '
+                                  'group with '
+                                  'replication volume type is '
+                                  'not supported.')
+                        model_update = {'status': fields.GroupStatus.ERROR}
+                        return model_update
+                    opts = self._get_vdisk_params(vol_type_id)
+                    if opts['volume_topology']:
+                        # An unsupported configuration
+                        LOG.error('Unable to create group: '
+                                  'volume_group_enabled or '
+                                  'temporary_volume_group_enabled '
+                                  'group with a '
+                                  'hyperswap volume type is '
+                                  'not supported.')
+                        model_update = {'status': fields.GroupStatus.ERROR}
+                        return model_update
+                if volume_utils.is_group_a_type(
+                        group,
+                        "temporary_volume_group_enabled"):
                     return model_update
-            else:
-                LOG.error('Unable to create group: Error creating volume group'
-                          ' with storwize_volume_group value set to False'
-                          ' in the configuration.')
+                volumegroup_name = self._get_volumegroup_name(group)
+                self._helpers.create_volumegroup(volumegroup_name)
+            except exception.VolumeBackendAPIException as err:
+                LOG.error("Failed to create volume group %(volumegroup)s. "
+                          "Exception: %(exception)s.",
+                          {'volumegroup': volumegroup_name,
+                              'exception': err})
                 model_update = {'status': fields.GroupStatus.ERROR}
                 return model_update
 
@@ -6418,7 +6469,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     "hyperswap_group_enabled")
                 and not volume_utils.is_group_a_type(
                     group,
-                    "volume_group_enabled")):
+                    "volume_group_enabled")
+                and not volume_utils.is_group_a_type(
+                    group,
+                    "temporary_volume_group_enabled")):
             raise NotImplementedError()
 
         model_update = {'status': fields.GroupStatus.DELETED}
@@ -6434,6 +6488,13 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         elif volume_utils.is_group_a_type(group, "volume_group_enabled"):
             self._helpers.check_codelevel_for_volumegroup(
+                self._state['code_level'])
+            model_update, volumes_model_update = self._delete_volumegroup(
+                group, volumes)
+
+        elif volume_utils.is_group_a_type(
+                group, "temporary_volume_group_enabled"):
+            self._helpers.check_codelevel_for_temp_volumegroup(
                 self._state['code_level'])
             model_update, volumes_model_update = self._delete_volumegroup(
                 group, volumes)
@@ -6477,14 +6538,17 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         # and not a hyperswap group request.
         if (not volume_utils.is_group_a_cg_snapshot_type(group) and not
                 volume_utils.is_group_a_type(
-                    group,
-                    "consistent_group_replication_enabled")
-                and not volume_utils.is_group_a_type(
-                    group,
-                    "hyperswap_group_enabled")
-                and not volume_utils.is_group_a_type(
-                    group,
-                    "volume_group_enabled")):
+                group,
+                "consistent_group_replication_enabled") and not
+                volume_utils.is_group_a_type(
+                group,
+                "hyperswap_group_enabled") and not
+                volume_utils.is_group_a_type(
+                group,
+                "volume_group_enabled") and not
+                volume_utils.is_group_a_type(
+                group,
+                "temporary_volume_group_enabled")):
             raise NotImplementedError()
 
         if volume_utils.is_group_a_type(
@@ -6499,11 +6563,24 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         if volume_utils.is_group_a_cg_snapshot_type(group):
             return None, None, None
 
+        migrate_from_flashcopy = self._get_config_param_value(
+            'migrate_from_flashcopy', None)
+
         if volume_utils.is_group_a_type(group, "volume_group_enabled"):
             self._helpers.check_codelevel_for_volumegroup(
                 self._state['code_level'])
             return self._update_volumegroup(context, group, add_volumes,
-                                            remove_volumes)
+                                            remove_volumes,
+                                            migrate_from_flashcopy)
+
+        if volume_utils.is_group_a_type(
+                group, "temporary_volume_group_enabled"):
+            self._helpers.check_codelevel_for_temp_volumegroup(
+                self._state['code_level'])
+            return self._update_temporary_volumegroup(context, group,
+                                                      add_volumes,
+                                                      remove_volumes,
+                                                      migrate_from_flashcopy)
 
     def create_group_from_src(self, context, group, volumes,
                               group_snapshot=None, snapshots=None,
@@ -7163,7 +7240,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
     def _delete_volumegroup(self, group, volumes):
         model_update = {'status': fields.GroupStatus.DELETED}
-        volumegroup_name = self._get_volumegroup_name(group)
         volumes_model_update = []
         force_unmap = True
         if self._state['code_level'] < (7, 7, 0, 0):
@@ -7196,18 +7272,22 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                          'status': fields.GroupStatus.ERROR_DELETING})
             volume.name_id = None
 
-        try:
-            self._helpers.delete_volumegroup(volumegroup_name)
-        except exception.VolumeBackendAPIException as err:
-            LOG.error("Failed to delete volume group %(volumegroup)s. "
-                      "Exception: %(exception)s.",
-                      {'volumegroup': volumegroup_name, 'exception': err})
-            model_update = {'status': fields.GroupStatus.ERROR_DELETING}
-
-        return model_update, volumes_model_update
+        if volume_utils.is_group_a_type(
+                group, "temporary_volume_group_enabled"):
+            return model_update, volumes_model_update
+        else:
+            volumegroup_name = self._get_volumegroup_name(group)
+            try:
+                self._helpers.delete_volumegroup(volumegroup_name)
+            except exception.VolumeBackendAPIException as err:
+                LOG.error("Failed to delete volume group %(volumegroup)s. "
+                          "Exception: %(exception)s.",
+                          {'volumegroup': volumegroup_name, 'exception': err})
+                model_update = {'status': fields.GroupStatus.ERROR_DELETING}
+            return model_update, volumes_model_update
 
     def _update_volumegroup(self, context, group, add_volumes,
-                            remove_volumes):
+                            remove_volumes, migrate_from_flashcopy):
         model_update = {'status': fields.GroupStatus.AVAILABLE}
         LOG.info("Update volume group: %(volumegroup_id)s. ",
                  {'volumegroup_id': group.id})
@@ -7231,19 +7311,40 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         # Add volume(s) to the volume group
         added_vols = []
-        for volume in add_volumes:
-            vol_name = volume.name
-            try:
-                self._helpers.add_vdisk_to_volumegroup(vol_name,
-                                                       volumegroup_id)
-                added_vols.append({'id': volume.id,
-                                   'group_id': group.id})
-                self._update_volumegroup_properties(context, volume, group)
-            except exception.VolumeBackendAPIException as err:
-                model_update['status'] = fields.GroupStatus.ERROR
-                LOG.error("Failed to add the volume %(vol)s to "
-                          "group. Exception: %(exception)s.",
-                          {'vol': volume.name, 'exception': err})
+        if not migrate_from_flashcopy:
+            for volume in add_volumes:
+                vol_name = volume.name
+                try:
+                    if self._helpers._get_vdisk_fc_mappings(volume.name):
+                        reason = (_("Adding volume %(vol)s failed because "
+                                    "it has legacy FlashCopy mappings and "
+                                    "migrate_from_flashcopy flag is set to "
+                                    "False. ") % {'vol': volume.name})
+                        model_update['status'] = fields.GroupStatus.ERROR
+                        raise exception.InvalidInput(reason=reason)
+                    self._helpers.add_vdisk_to_volumegroup(vol_name,
+                                                           volumegroup_id)
+                    added_vols.append({'id': volume.id,
+                                       'group_id': group.id})
+                    self._update_volumegroup_properties(context, volume, group)
+                except exception.InvalidInput as err:
+                    LOG.error("Failed to add the volumes to "
+                              "the group. Exception: %(exception)s.",
+                              {'exception': err})
+        else:
+            for volume in add_volumes:
+                vol_name = volume.name
+                try:
+                    self._helpers.add_vdisk_to_volumegroup(vol_name,
+                                                           volumegroup_id)
+                    added_vols.append({'id': volume.id,
+                                       'group_id': group.id})
+                    self._update_volumegroup_properties(context, volume, group)
+                except exception.VolumeBackendAPIException as err:
+                    model_update['status'] = fields.GroupStatus.ERROR
+                    LOG.error("Failed to add the volume %(vol)s to "
+                              "group. Exception: %(exception)s.",
+                              {'vol': volume.name, 'exception': err})
 
         # Remove volume(s) from the volume group
         removed_vols = []
@@ -7259,6 +7360,39 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 LOG.error("Failed to remove the volume %(vol)s from "
                           "group. Exception: %(exception)s.",
                           {'vol': volume.name, 'exception': err})
+
+        return model_update, added_vols, removed_vols
+
+    def _update_temporary_volumegroup(self, context, group, add_volumes,
+                                      remove_volumes, migrate_from_flashcopy):
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+        # Check if volume is allowed to be added
+        added_vols = []
+        if not migrate_from_flashcopy:
+            for volume in add_volumes:
+                try:
+                    if self._helpers._get_vdisk_fc_mappings(volume.name):
+                        reason = (_("Adding volume %(vol)s failed because "
+                                    "it has legacy FlashCopy mappings and "
+                                    "migrate_from_flashcopy flag is set to "
+                                    "False. ") % {'vol': volume.name})
+                        model_update['status'] = fields.GroupStatus.ERROR
+                        raise exception.InvalidInput(reason=reason)
+                    added_vols.append({'id': volume.id,
+                                       'group_id': group.id})
+                except exception.InvalidInput as err:
+                    LOG.error("Failed to add the volume %(vol)s to "
+                              "group. Exception: %(exception)s.",
+                              {'vol': volume.name, 'exception': err})
+        else:
+            for volume in add_volumes:
+                added_vols.append({'id': volume.id,
+                                   'group_id': group.id})
+
+        removed_vols = []
+        for volume in remove_volumes:
+            removed_vols.append({'id': volume.id,
+                                 'group_id': None})
 
         return model_update, added_vols, removed_vols
 
