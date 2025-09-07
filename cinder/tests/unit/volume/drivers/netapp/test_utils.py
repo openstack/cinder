@@ -175,7 +175,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
     def test_get_volume_extra_specs(self):
         fake_extra_specs = {'fake_key': 'fake_value'}
         fake_volume_type = {'extra_specs': fake_extra_specs}
-        fake_volume = {'volume_type_id': 'fake_volume_type_id'}
+        fake_volume = {'volume_type_id': fake.VOLUME_TYPE_ID}
         self.mock_object(context, 'get_admin_context')
         self.mock_object(volume_types, 'get_volume_type',
                          return_value=fake_volume_type)
@@ -212,7 +212,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertEqual({}, result)
 
     def test_get_volume_extra_specs_no_volume_type(self):
-        fake_volume = {'volume_type_id': 'fake_volume_type_id'}
+        fake_volume = {'volume_type_id': fake.VOLUME_TYPE_ID}
         self.mock_object(context, 'get_admin_context')
         self.mock_object(volume_types, 'get_volume_type', return_value=None)
         self.mock_object(na_utils, 'log_extra_spec_warnings')
@@ -565,7 +565,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertIsNone(result)
 
     def test_get_qos_policy_group_name_migrated_volume(self):
-        fake.VOLUME._name_id = 'asdf'
+        fake.VOLUME._name_id = fake.VOLUME_ID
         try:
             expected = 'openstack-' + fake.VOLUME.name_id
             result = na_utils.get_qos_policy_group_name(fake.VOLUME)

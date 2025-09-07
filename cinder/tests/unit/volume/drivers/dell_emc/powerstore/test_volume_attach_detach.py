@@ -18,6 +18,7 @@ from unittest import mock
 from cinder import exception
 from cinder.objects import fields
 from cinder.objects import volume_attachment
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import powerstore
 from cinder.volume.drivers.dell_emc.powerstore import utils
@@ -63,7 +64,7 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
             host="host@backend",
             provider_id="fake_id",
             size=8,
-            volume_type_id="fake_volume_type_id"
+            volume_type_id=fake_constants.VOLUME_TYPE_ID
         )
         self.volume.volume_attachment = (
             volume_attachment.VolumeAttachmentList()

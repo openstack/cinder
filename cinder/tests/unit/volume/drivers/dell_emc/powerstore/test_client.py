@@ -20,6 +20,7 @@ import ddt
 import requests.exceptions
 
 from cinder import exception
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.dell_emc.powerstore import MockResponse
 from cinder.volume.drivers.dell_emc.powerstore import (
@@ -253,7 +254,7 @@ class TestClient(test.TestCase):
     def test_update_volume_with_qos_policy(self, mock_request):
         mock_request.return_value = MockResponse(rc=200)
         self.client.update_volume_with_qos_policy(
-            "fake_volume_id",
+            fake_constants.VOLUME_ID,
             "qos-policy-6b6e5489-4b5b-4468-a1f7-32cec2ffa3bf")
         mock_request.assert_called_once()
 
@@ -262,7 +263,7 @@ class TestClient(test.TestCase):
         mock_request.return_value = MockResponse(rc=400)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.client.update_volume_with_qos_policy,
-                          "fake_volume_id",
+                          fake_constants.VOLUME_ID,
                           "qos-policy-6b6e5489-4b5b-4468-a1f7-32cec2ffa3bf")
 
     @mock.patch("requests.request")
