@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Pure Storage driver `Bug #2119222
+    <https://bugs.launchpad.net/cinder/+bug/2119222>`_: Fixed
+    issue with EG1 subscription-based FlashArrays not reporting
+    data reduction rates.

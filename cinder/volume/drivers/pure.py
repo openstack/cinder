@@ -1291,7 +1291,13 @@ class PureBaseVolumeDriver(san.SanDriver):
         except AttributeError:
             provisioned_space = float(space_info.space.
                                       used_provisioned) / units.Gi
-        total_reduction = float(space_info.space.total_reduction)
+        # If array uses Evergreen/One model then data reduction values
+        # are not reported so we must force the driver to use the old
+        # cinder non-dynamic oversubscription calculations
+        try:
+            total_reduction = float(space_info.space.total_reduction)
+        except AttributeError:
+            total_reduction = 999
         total_vols = len(volumes)
         total_hosts = len(hosts)
         total_snaps = len(snaps)
