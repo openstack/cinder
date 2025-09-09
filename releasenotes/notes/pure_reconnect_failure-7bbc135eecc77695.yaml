@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Pure Storage `bug #2121464
+    <https://bugs.launchpad.net/cinder/+bug/2121464>`_: Fixed
+    ``AttributeError`` when trying to connect a volume to a host when
+    the volume is already connected to the host.
