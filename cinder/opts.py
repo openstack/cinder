@@ -453,6 +453,11 @@ def list_opts():
                 cinder_volume_manager.volume_backend_opts,
                 cinder_volume_targets_spdknvmf.spdk_opts,
             )),
+        ('glance',
+            itertools.chain(
+                cinder_image_glance.glance_session_opts,
+                cinder_image_glance.glance_auth_opts,
+            )),
         ('nova',
             itertools.chain(
                 cinder_compute_nova.nova_opts,
