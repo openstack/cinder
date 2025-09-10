@@ -97,8 +97,6 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
-        - tempest-integrated-storage-ubuntu-jammy:
-            irrelevant-files: *gate-irrelevant-files
         - grenade:
             irrelevant-files: *gate-irrelevant-files
         - grenade-skip-level:
@@ -114,8 +112,6 @@
         - cinder-plugin-ceph-tempest:
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
-            irrelevant-files: *gate-irrelevant-files
-        - tempest-integrated-storage-ubuntu-jammy:
             irrelevant-files: *gate-irrelevant-files
         - grenade:
             irrelevant-files: *gate-irrelevant-files
@@ -135,15 +131,6 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-pg-full:
             irrelevant-files: *gate-irrelevant-files
-
-# TODO(gmann): As per the 2025.1 testing runtime, we need to run at least
-# one job on jammy. This job can be removed as per the future testing
-# runtime (whenever we start testing Ubuntu 26.04 as default version).
-- job:
-    name: tempest-integrated-storage-ubuntu-jammy
-    description: This is integrated storage job testing on Ubuntu jammy(22.04)
-    parent: tempest-integrated-storage
-    nodeset: openstack-single-node-jammy
 
 - job:
     # Security testing for known issues
