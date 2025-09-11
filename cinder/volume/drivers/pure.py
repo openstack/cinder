@@ -2632,13 +2632,18 @@ class PureBaseVolumeDriver(san.SanDriver):
         return pg_vol_snap_name
 
     @staticmethod
-    def _generate_purity_host_name(name):
+    def _generate_purity_host_name(connector):
         """Return a valid Purity host name based on the name passed in."""
+        name = connector["host"]
+        if "system uuid" in connector:
+            system_id = str(connector["system uuid"]).replace("-", "")
+        else:
+            system_id = uuid.uuid4().hex
         if len(name) > 23:
             name = name[0:23]
         name = INVALID_CHARACTERS.sub("-", name)
         name = name.lstrip("-")
-        return "{name}-{uuid}-cinder".format(name=name, uuid=uuid.uuid4().hex)
+        return "{name}-{uuid}-cinder".format(name=name, uuid=system_id)
 
     @staticmethod
     def _connect_host_to_vol(array, host_name, vol_name):
@@ -3961,7 +3966,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                                  "credentials configured."))
         else:
             personality = self.configuration.safe_get('pure_host_personality')
-            host_name = self._generate_purity_host_name(connector["host"])
+            host_name = self._generate_purity_host_name(connector)
             LOG.info("Creating host object %(host_name)r with IQN:"
                      " %(iqn)s.", {"host_name": host_name, "iqn": iqn})
             res = array.post_hosts(names=[host_name],
@@ -4132,7 +4137,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                      {"host_name": host_name})
         else:
             personality = self.configuration.safe_get('pure_host_personality')
-            host_name = self._generate_purity_host_name(connector["host"])
+            host_name = self._generate_purity_host_name(connector)
             LOG.info("Creating host object %(host_name)r with WWN:"
                      " %(wwn)s.", {"host_name": host_name, "wwn": wwns})
             res = array.post_hosts(names=[host_name],
@@ -4446,7 +4451,7 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
             )
         else:
             personality = self.configuration.safe_get('pure_host_personality')
-            host_name = self._generate_purity_host_name(connector["host"])
+            host_name = self._generate_purity_host_name(connector)
             LOG.info(
                 "Creating host object %(host_name)r with NQN:" " %(nqn)s.",
                 {"host_name": host_name, "nqn": connector["nqn"]},
