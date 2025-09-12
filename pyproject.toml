@@ -163,13 +163,85 @@ packages = [
 python_version = "3.11"
 show_column_numbers = true
 show_error_context = true
-ignore_missing_imports = true
-follow_imports = "skip"
-incremental = true
-check_untyped_defs = true
-warn_unused_ignores = true
 show_error_codes = true
 pretty = true
 html_report = "mypy-report"
-no_implicit_optional = true
+ignore_missing_imports = true
+# TODO(stephenfin): Change this to normal/remove
+follow_imports = "skip"
+incremental = true
+check_untyped_defs = true
+# TODO(stephenfin): All of these should eventually be uncommented
+# disallow_any_generics = true
+# disallow_incomplete_defs = true
+# disallow_subclassing_any = true
+# disallow_untyped_calls = true
+# disallow_untyped_decorators = true
+# disallow_untyped_defs = true
+extra_checks = true
+no_implicit_reexport = true
+strict_bytes = true
 strict_equality = true
+# warn_redundant_casts = true
+# warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+# TODO(stephenfin): Migrate to modules instead of files
+files = [
+    "cinder/api/api_utils.py",
+    "cinder/api/common.py",
+    "cinder/api/v3/types.py",
+    "cinder/backup/api.py",
+    "cinder/backup/manager.py",
+    "cinder/backup/drivers/ceph.py",
+    "cinder/backup/rpcapi.py",
+    "cinder/common/constants.py",
+    "cinder/context.py",
+    "cinder/coordination.py",
+    "cinder/cmd/api.py",
+    "cinder/cmd/backup.py",
+    "cinder/cmd/manage.py",
+    "cinder/cmd/scheduler.py",
+    "cinder/cmd/status.py",
+    "cinder/cmd/volume.py",
+    "cinder/i18n.py",
+    "cinder/image/cache.py",
+    "cinder/image/glance.py",
+    "cinder/image/image_utils.py",
+    "cinder/keymgr/transfer.py",
+    "cinder/exception.py",
+    "cinder/flow_utils.py",
+    "cinder/manager.py",
+    "cinder/monkey_patch.py",
+    "cinder/objects/backup.py",
+    "cinder/policy.py",
+    "cinder/scheduler/base_handler.py",
+    "cinder/scheduler/base_weight.py",
+    "cinder/scheduler/evaluator/evaluator.py",
+    "cinder/scheduler/filter_scheduler.py",
+    "cinder/scheduler/flows/create_volume.py",
+    "cinder/scheduler/host_manager.py",
+    "cinder/scheduler/manager.py",
+    "cinder/scheduler/rpcapi.py",
+    "cinder/scheduler/scheduler_options.py",
+    "cinder/scheduler/sched_utils.py",
+    "cinder/scheduler/weights/__init__.py",
+    "cinder/scheduler/weights/capacity.py",
+    "cinder/scheduler/weights/chance.py",
+    "cinder/scheduler/weights/goodness.py",
+    "cinder/scheduler/weights/stochastic.py",
+    "cinder/scheduler/weights/volume_number.py",
+    "cinder/service.py",
+    "cinder/utils.py",
+    "cinder/volume/__init__.py",
+    "cinder/volume/api.py",
+    "cinder/volume/drivers/nfs.py",
+    "cinder/volume/drivers/rbd.py",
+    "cinder/volume/drivers/remotefs.py",
+    "cinder/volume/flows/api/create_volume.py",
+    "cinder/volume/flows/manager/create_volume.py",
+    "cinder/volume/manager.py",
+    "cinder/volume/rpcapi.py",
+    "cinder/volume/volume_types.py",
+    "cinder/volume/volume_utils.py",
+]
