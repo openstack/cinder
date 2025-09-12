@@ -73,7 +73,8 @@ class NetAppNVMeStorageLibrary(
     ALLOWED_SUBSYSTEM_HOST_TYPES = ['aix', 'linux', 'vmware', 'windows']
     DEFAULT_NAMESPACE_OS = 'linux'
     DEFAULT_HOST_TYPE = 'linux'
-    DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
+    DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70 and ' \
+                              'capabilities.total_volumes < 1024'
     DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
     REQUIRED_CMODE_FLAGS = ['netapp_vserver']
     NVME_PORT = 4420
@@ -564,9 +565,10 @@ class NetAppNVMeStorageLibrary(
             size_available_gb = capacity['size-available'] / units.Gi
             pool['free_capacity_gb'] = na_utils.round_down(size_available_gb)
 
+            namespaces = self.client.get_namespace_sizes_by_volume(
+                ssc_vol_name)
+            pool['total_volumes'] = len(namespaces)
             if self.configuration.netapp_driver_reports_provisioned_capacity:
-                namespaces = self.client.get_namespace_sizes_by_volume(
-                    ssc_vol_name)
                 provisioned_cap = 0
                 for namespace in namespaces:
                     namespace_name = namespace['path'].split('/')[-1]
