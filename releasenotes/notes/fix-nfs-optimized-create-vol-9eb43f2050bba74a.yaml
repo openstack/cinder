@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NFS driver `bug #2120933
+    <https://bugs.launchpad.net/cinder/+bug/2120933>`_: Fixed issue
+    when creating a bootable volume from image in optimized path.
