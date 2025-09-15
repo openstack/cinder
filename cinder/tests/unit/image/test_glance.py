@@ -805,6 +805,69 @@ class TestGlanceImageService(test.TestCase):
                 image_id, url, metadata, privileged_user=False)]
         mock_call.assert_has_calls(calls)
 
+    @mock.patch.object(glance.GlanceClientWrapper, 'call')
+    def test_get_location(self, mock_call):
+        url = 'cinder://fake-store/c984be2b-8789-4b9e-bf71-19164f537e63'
+        meta = {'store': 'fake-store'}
+        locations = [{'url': url, 'metadata': meta}]
+        mock_call.return_value = iter(locations)
+        image_id = mock.sentinel.image_id
+        service = glance.GlanceImageService(client=mock_call)
+
+        direct_url, locations = service.get_location(self.context, image_id)
+        mock_call.assert_called_once_with(self.context, 'get_image_locations',
+                                          image_id, privileged_user=True)
+        self.assertIsNone(direct_url)
+        self.assertEqual(1, len(locations))
+        self.assertEqual(url, locations[0]['url'])
+        self.assertEqual(meta, locations[0]['metadata'])
+
+    @mock.patch.object(glance.GlanceClientWrapper, 'call')
+    def test_get_location_old_not_implemented(self, mock_call):
+        class ImageMeta:
+            def __init__(self, image_meta):
+                self.__dict__.update(image_meta)
+        url = 'cinder://fake-store/c984be2b-8789-4b9e-bf71-19164f537e63'
+        meta = {'store': 'fake-store'}
+        loc = {'url': url, 'metadata': meta}
+        get_loc = ImageMeta({'direct_url': url, 'locations': loc})
+        mock_call.side_effect = [glanceclient.exc.HTTPNotImplemented, get_loc]
+        image_id = mock.sentinel.image_id
+        service = glance.GlanceImageService(client=mock_call)
+
+        direct_url, locations = service.get_location(self.context, image_id)
+        calls = [
+            mock.call.call(self.context, 'get_image_locations',
+                           image_id, privileged_user=True),
+            mock.call.call(self.context, 'get', image_id,
+                           privileged_user=False)]
+        mock_call.assert_has_calls(calls)
+        self.assertEqual(url, direct_url)
+        self.assertEqual(loc, locations)
+
+    @mock.patch.object(glance.GlanceClientWrapper, 'call')
+    def test_get_location_old_forbidden(self, mock_call):
+        class ImageMeta:
+            def __init__(self, image_meta):
+                self.__dict__.update(image_meta)
+        url = 'cinder://fake-store/c984be2b-8789-4b9e-bf71-19164f537e63'
+        meta = {'store': 'fake-store'}
+        loc = {'url': url, 'metadata': meta}
+        get_loc = ImageMeta({'direct_url': url, 'locations': loc})
+        mock_call.side_effect = [glanceclient.exc.HTTPForbidden, get_loc]
+        image_id = mock.sentinel.image_id
+        service = glance.GlanceImageService(client=mock_call)
+
+        direct_url, locations = service.get_location(self.context, image_id)
+        calls = [
+            mock.call.call(self.context, 'get_image_locations',
+                           image_id, privileged_user=True),
+            mock.call.call(self.context, 'get', image_id,
+                           privileged_user=False)]
+        mock_call.assert_has_calls(calls)
+        self.assertEqual(url, direct_url)
+        self.assertEqual(loc, locations)
+
     def test_download_with_retries(self):
         tries = [0]
 

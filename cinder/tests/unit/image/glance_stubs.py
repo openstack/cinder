@@ -36,7 +36,7 @@ class StubGlanceClient(object):
         # NOTE(bcwaldon): HACK to get client.images.* to work
         self.images = lambda: None
         for fn in ('list', 'get', 'data', 'create', 'update', 'upload',
-                   'delete'):
+                   'delete', 'get_image_locations'):
             setattr(self.images, fn, getattr(self, fn))
 
         self.schemas = lambda: None
@@ -60,6 +60,20 @@ class StubGlanceClient(object):
         for image in self._images:
             if image.id == str(image_id):
                 return image
+        raise glanceclient.exc.NotFound(image_id)
+
+    def get_image_locations(self, image_id):
+        direct_url = None
+        locations = []
+        for image in self._images:
+            if image.id == str(image_id):
+                if getattr(image, 'direct_url', None):
+                    direct_url = image.direct_url
+                if getattr(image, 'locations', []):
+                    locations = image.locations
+                if direct_url and direct_url not in locations:
+                    locations.append({'url': direct_url})
+                return locations
         raise glanceclient.exc.NotFound(image_id)
 
     def data(self, image_id):
