@@ -192,7 +192,7 @@ class RestClientASAr2(client_cmode_rest.RestClient,
     def create_lun(self, volume_name, lun_name, size, metadata,
                    qos_policy_group_name=None,
                    qos_policy_group_is_adaptive=False):
-        """Issues API request for creating LUN on volume."""
+        """Issues API request for creating LUN."""
         initial_size = size
         lun_name = lun_name.replace("-", "_")
         body = {
@@ -314,8 +314,46 @@ class RestClientASAr2(client_cmode_rest.RestClient,
                               query=query
                               )
 
+    def get_lun_sizes_by_volume(self, volume_name):
+        """"Gets the list of LUNs and their sizes"""
+
+        query = {
+            'svm.name': self.vserver,
+            'fields': 'space.size,name'
+        }
+
+        response = self.send_request('/storage/luns/', 'get', query=query)
+        records = response.get('records', [])
+        if len(records) == 0:
+            return []
+
+        luns = []
+        for lun_info in response['records']:
+            luns.append({
+                'path': lun_info.get('name', ''),
+                'size': float(lun_info.get('space', {}).get('size', 0))
+            })
+        return luns
+
+    def get_namespace_sizes_by_volume(self, volume_name):
+        """"Gets the list of namespace and their sizes"""
+
+        query = {
+            'svm.name': self.vserver,
+            'fields': 'space.size,name'
+        }
+        response = self.send_request('/storage/namespaces', 'get', query=query)
+
+        namespaces = []
+        for namespace_info in response.get('records', []):
+            namespaces.append({
+                'path': namespace_info.get('name', ''),
+                'size': float(namespace_info.get('space', {}).get('size', 0))
+            })
+
+        return namespaces
+
     def _get_backend_lun_or_namespace(self, path):
         """Get the backend LUN or namespace"""
         paths = path.split("/")
-        lun_name = paths[3].replace("-", "_")
-        return lun_name
+        return paths[- 1].replace("-", "_")

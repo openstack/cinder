@@ -947,6 +947,93 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
             query={'name': fake.NAMESPACE_NAME}
         )
 
+    def test_get_lun_sizes_by_volume(self):
+        volume_name = fake_client.VOLUME_NAME
+        query = {
+            'svm.name': fake_client.VSERVER_NAME,
+            'fields': 'space.size,name'
+        }
+        response = fake_client.LUN_GET_ITER_REST
+        expected_result = []
+        for lun in fake_client.LUN_GET_ITER_RESULT:
+            expected_result.append({
+                'size': lun['Size'],
+                'path': lun['Path'],
+            })
+
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=response)
+
+        luns = self.client.get_lun_sizes_by_volume(volume_name)
+
+        self.assertEqual(expected_result, luns)
+        self.assertEqual(2, len(luns))
+        self.client.send_request.assert_called_once_with(
+            '/storage/luns/', 'get', query=query)
+
+    def test_get_lun_sizes_by_volume_no_records(self):
+        volume_name = fake_client.VOLUME_NAME
+        vserver = fake_client.VSERVER_NAME
+        query = {
+            'svm.name': vserver,
+            'fields': 'space.size,name'
+        }
+        response = fake_client.NO_RECORDS_RESPONSE_REST
+
+        self.mock_object(self.client,
+                         'send_request',
+                         return_value=response)
+
+        luns = self.client.get_lun_sizes_by_volume(volume_name)
+
+        self.assertEqual([], luns)
+        self.client.send_request.assert_called_once_with(
+            '/storage/luns/', 'get', query=query)
+
+    def test_get_namespace_sizes_by_volume(self):
+        response = fake_client.GET_NAMESPACE_RESPONSE_REST
+
+        fake_query = {
+            'svm.name': fake_client.VSERVER_NAME,
+            'fields': 'space.size,name'
+        }
+
+        expected_result = [
+            {
+                'path': '/vol/fake_vol_001/test',
+                'size': 999999,
+            },
+            {
+                'path': '/vol/fake_vol_002/test',
+                'size': 8888888,
+            },
+        ]
+
+        self.mock_object(self.client, 'send_request', return_value=response)
+
+        result = self.client.get_namespace_sizes_by_volume('fake_volume')
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'get', query=fake_query)
+        self.assertEqual(expected_result, result)
+
+    def test_get_namespace_sizes_by_volume_no_response(self):
+        response = fake_client.NO_RECORDS_RESPONSE_REST
+
+        fake_query = {
+            'svm.name': fake_client.VSERVER_NAME,
+            'fields': 'space.size,name'
+        }
+
+        self.mock_object(self.client, 'send_request', return_value=response)
+
+        result = self.client.get_namespace_sizes_by_volume('fake_volume')
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/namespaces', 'get', query=fake_query)
+        self.assertEqual([], result)
+
     @mock.patch('cinder.volume.drivers.netapp.dataontap.'
                 'client.client_cmode_rest_asar2.RestClientASAr2.send_request')
     def test_resize_namespace_with_invalid_path(self, mock_send_request):

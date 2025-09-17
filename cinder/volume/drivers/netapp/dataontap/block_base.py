@@ -962,7 +962,12 @@ class NetAppBlockStorageLibrary(
         properties = na_utils.get_iscsi_connection_properties(lun_id, volume,
                                                               iqn, addresses,
                                                               ports)
-        properties['discard'] = self._is_space_alloc_enabled(lun_path)
+        # Space allocation is always enabled for ASAr2 LUNs
+        if self.configuration.netapp_disaggregated_platform:
+            properties['discard'] = True
+        else:
+            properties['discard'] = self._is_space_alloc_enabled(lun_path)
+
         if self.configuration.use_chap_auth:
             chap_username, chap_password = self._configure_chap(initiator_name)
             self._add_chap_properties(properties, chap_username, chap_password)

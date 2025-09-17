@@ -927,6 +927,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_initialize_connection_iscsi(self):
         target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
+        self.library.configuration.netapp_disaggregated_platform = False
         volume = fake.ISCSI_VOLUME
         connector = fake.ISCSI_CONNECTOR
         self.mock_object(block_base.NetAppBlockStorageLibrary, '_map_lun',
