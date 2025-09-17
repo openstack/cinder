@@ -33,13 +33,23 @@ class CapabilitiesLibraryTestCase(test.TestCase):
     def setUp(self):
         super(CapabilitiesLibraryTestCase, self).setUp()
 
+        self.SSC_VSERVER = 'fake_vserver'
+        self.SSC_VOLUMES = ('volume1', 'volume2')
+        self.SSC_VOLUME_MAP = {
+            self.SSC_VOLUMES[0]: {
+                'pool_name': self.SSC_VOLUMES[0],
+            },
+            self.SSC_VOLUMES[1]: {
+                'pool_name': self.SSC_VOLUMES[1],
+            },
+        }
         self.zapi_client = mock.Mock()
         self.configuration = self.get_config_cmode()
         self.ssc_library = capabilities.CapabilitiesLibrary(
-            'iSCSI', fake.SSC_VSERVER, self.zapi_client, self.configuration)
+            'iSCSI', self.SSC_VSERVER, self.zapi_client, self.configuration)
         self.ssc_library.ssc = fake.SSC
         self.ssc_library_nvme = capabilities.CapabilitiesLibrary(
-            'NVMe', fake.SSC_VSERVER, self.zapi_client, self.configuration)
+            'NVMe', self.SSC_VSERVER, self.zapi_client, self.configuration)
 
     def get_config_cmode(self):
         config = na_fakes.create_configuration_cmode()
@@ -57,14 +67,14 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         result = self.ssc_library.get_ssc_flexvol_names()
 
-        self.assertCountEqual(fake.SSC_VOLUMES, result)
+        self.assertCountEqual(self.SSC_VOLUMES, result)
 
     def test_get_ssc_for_flexvol(self):
 
-        result = self.ssc_library.get_ssc_for_flexvol(fake.SSC_VOLUMES[0])
+        result = self.ssc_library.get_ssc_for_flexvol(self.SSC_VOLUMES[0])
 
-        self.assertEqual(fake.SSC.get(fake.SSC_VOLUMES[0]), result)
-        self.assertIsNot(fake.SSC.get(fake.SSC_VOLUMES[0]), result)
+        self.assertEqual(fake.SSC.get(self.SSC_VOLUMES[0]), result)
+        self.assertIsNot(fake.SSC.get(self.SSC_VOLUMES[0]), result)
 
     def test_get_ssc_for_flexvol_not_found(self):
 
@@ -76,10 +86,10 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         result = self.ssc_library.get_ssc_aggregates()
 
-        self.assertCountEqual(list(fake.SSC_AGGREGATES), result)
+        self.assertCountEqual(['aggr1', 'aggr2'], result)
 
     def test_is_qos_min_supported(self):
-        ssc_pool = fake.SSC.get(fake.SSC_VOLUMES[0])
+        ssc_pool = fake.SSC.get(self.SSC_VOLUMES[0])
         is_qos_min = ssc_pool['netapp_qos_min_support'] == 'true'
         result = self.ssc_library.is_qos_min_supported(ssc_pool['pool_name'])
 
@@ -92,44 +102,109 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
     @ddt.data('nfs', 'iscsi')
     def test_update_ssc(self, protocol):
+        SSC_FLEXVOL_INFO = {
+            'volume1': {
+                'thick_provisioning_support': True,
+                'thin_provisioning_support': False,
+                'netapp_thin_provisioned': 'false',
+                'netapp_aggregate': 'aggr1',
+                'netapp_is_flexgroup': 'false',
+            },
+            'volume2': {
+                'thick_provisioning_support': False,
+                'thin_provisioning_support': True,
+                'netapp_thin_provisioned': 'true',
+                'netapp_aggregate': 'aggr2',
+                'netapp_is_flexgroup': 'false',
+            },
+        }
+
+        SSC_DEDUPE_INFO = {
+            'volume1': {
+                'netapp_dedup': 'true',
+                'netapp_compression': 'false',
+            },
+            'volume2': {
+                'netapp_dedup': 'true',
+                'netapp_compression': 'true',
+            },
+        }
+        SSC_MIRROR_INFO = {
+            'volume1': {
+                'netapp_mirrored': 'false',
+            },
+            'volume2': {
+                'netapp_mirrored': 'true',
+            },
+        }
+        SSC_AGGREGATE_INFO = {
+            'volume1': {
+                'netapp_disk_type': ['SSD'],
+                'netapp_raid_type': 'raid_dp',
+                'netapp_hybrid_aggregate': 'false',
+                'netapp_node_name': 'node1',
+            },
+            'volume2': {
+                'netapp_disk_type': ['FCAL', 'SSD'],
+                'netapp_raid_type': 'raid_dp',
+                'netapp_hybrid_aggregate': 'true',
+                'netapp_node_name': 'node2',
+            },
+        }
+        SSC_ENCRYPTION_INFO = {
+            'volume1': {
+                'netapp_flexvol_encryption': 'true',
+            },
+            'volume2': {
+                'netapp_flexvol_encryption': 'false',
+            },
+        }
+        SSC_QOS_MIN_INFO = {
+            'volume1': {
+                'netapp_qos_min_support': 'true',
+            },
+            'volume2': {
+                'netapp_qos_min_support': 'false',
+            },
+        }
 
         mock_get_ssc_flexvol_info = self.mock_object(
             self.ssc_library, '_get_ssc_flexvol_info',
-            side_effect=[fake.SSC_FLEXVOL_INFO['volume1'],
-                         fake.SSC_FLEXVOL_INFO['volume2']])
+            side_effect=[SSC_FLEXVOL_INFO['volume1'],
+                         SSC_FLEXVOL_INFO['volume2']])
         mock_get_ssc_dedupe_info = self.mock_object(
             self.ssc_library, '_get_ssc_dedupe_info',
-            side_effect=[fake.SSC_DEDUPE_INFO['volume1'],
-                         fake.SSC_DEDUPE_INFO['volume2']])
+            side_effect=[SSC_DEDUPE_INFO['volume1'],
+                         SSC_DEDUPE_INFO['volume2']])
         mock_get_ssc_mirror_info = self.mock_object(
             self.ssc_library, '_get_ssc_mirror_info',
-            side_effect=[fake.SSC_MIRROR_INFO['volume1'],
-                         fake.SSC_MIRROR_INFO['volume2']])
+            side_effect=[SSC_MIRROR_INFO['volume1'],
+                         SSC_MIRROR_INFO['volume2']])
         mock_get_ssc_aggregate_info = self.mock_object(
             self.ssc_library, '_get_ssc_aggregate_info',
-            side_effect=[fake.SSC_AGGREGATE_INFO['volume1'],
-                         fake.SSC_AGGREGATE_INFO['volume2']])
+            side_effect=[SSC_AGGREGATE_INFO['volume1'],
+                         SSC_AGGREGATE_INFO['volume2']])
         mock_get_ssc_encryption_info = self.mock_object(
             self.ssc_library, '_get_ssc_encryption_info',
-            side_effect=[fake.SSC_ENCRYPTION_INFO['volume1'],
-                         fake.SSC_ENCRYPTION_INFO['volume2']])
+            side_effect=[SSC_ENCRYPTION_INFO['volume1'],
+                         SSC_ENCRYPTION_INFO['volume2']])
         mock_get_ssc_qos_min_info = self.mock_object(
             self.ssc_library, '_get_ssc_qos_min_info',
-            side_effect=[fake.SSC_QOS_MIN_INFO['volume1'],
-                         fake.SSC_QOS_MIN_INFO['volume2']])
+            side_effect=[SSC_QOS_MIN_INFO['volume1'],
+                         SSC_QOS_MIN_INFO['volume2']])
         if protocol != 'nfs':
             mock_get_ssc_volume_count_info = self.mock_object(
                 self.ssc_library, '_get_ssc_volume_count_info',
-                side_effect=[fake.SSC_QOS_MIN_INFO['volume1'],
-                             fake.SSC_QOS_MIN_INFO['volume2']])
+                side_effect=[SSC_QOS_MIN_INFO['volume1'],
+                             SSC_QOS_MIN_INFO['volume2']])
         else:
             mock_get_ssc_volume_count_info = self.mock_object(
                 self.ssc_library, '_get_ssc_volume_count_info',
                 side_effect=None)
 
         ordered_ssc = collections.OrderedDict()
-        ordered_ssc['volume1'] = fake.SSC_VOLUME_MAP['volume1']
-        ordered_ssc['volume2'] = fake.SSC_VOLUME_MAP['volume2']
+        ordered_ssc['volume1'] = self.SSC_VOLUME_MAP['volume1']
+        ordered_ssc['volume2'] = self.SSC_VOLUME_MAP['volume2']
 
         result = self.ssc_library.update_ssc(ordered_ssc)
 
@@ -137,7 +212,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             mock_get_ssc_volume_count_info.assert_has_calls([
                 mock.call('volume1'), mock.call('volume2')])
         else:
-            self.ssc_library._get_ssc_volume_count_info(fake.SSC_VOLUMES[0]).\
+            self.ssc_library._get_ssc_volume_count_info(self.SSC_VOLUMES[0]).\
                 assert_not_called()
 
         self.assertIsNone(result)
@@ -158,7 +233,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
     def test__update_for_failover(self):
         self.mock_object(self.ssc_library, 'update_ssc')
-        flexvol_map = {'volume1': fake.SSC_VOLUME_MAP['volume1']}
+        flexvol_map = {'volume1': self.SSC_VOLUME_MAP['volume1']}
         mock_client = mock.Mock(name='FAKE_ZAPI_CLIENT')
 
         self.ssc_library._update_for_failover(mock_client, flexvol_map)
@@ -328,7 +403,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         expected = {'netapp_mirrored': 'true' if mirrored else 'false'}
         self.assertEqual(expected, result)
         self.zapi_client.is_flexvol_mirrored.assert_called_once_with(
-            fake_client.VOLUME_NAMES[0], fake.SSC_VSERVER)
+            fake_client.VOLUME_NAMES[0], self.SSC_VSERVER)
 
     @ddt.data({'invalid_extra_specs': [], 'is_fg': False},
               {'invalid_extra_specs': ['netapp_raid_type'],
@@ -431,14 +506,20 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             }
         },
         {
-            'flexvol_info': fake.SSC['volume1'],
+            'flexvol_info': {
+                'netapp_disk_type': ['SSD'],
+                'pool_name': 'volume1',
+            },
             'extra_specs': {
                 'netapp_disk_type': 'SSD',
                 'pool_name': 'volume1',
             }
         },
         {
-            'flexvol_info': fake.SSC['volume2'],
+            'flexvol_info': {
+                'netapp_disk_type': ['FCAL', 'SSD'],
+                'netapp_hybrid_aggregate': 'true',
+            },
             'extra_specs': {
                 'netapp_disk_type': 'SSD',
                 'netapp_hybrid_aggregate': 'true',
@@ -464,14 +545,19 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             }
         },
         {
-            'flexvol_info': fake.SSC['volume2'],
+            'flexvol_info': {
+                'netapp_disk_type': ['SSD'],
+                'pool_name': 'volume2',
+            },
             'extra_specs': {
                 'netapp_disk_type': 'SSD',
                 'pool_name': 'volume1',
             }
         },
         {
-            'flexvol_info': fake.SSC['volume2'],
+            'flexvol_info': {
+                'netapp_disk_type': ['SSD'],
+            },
             'extra_specs': {
                 'netapp_disk_type': 'SATA',
             }
@@ -568,13 +654,33 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         self.ssc_library = self.ssc_library_nvme if protocol == 'nvme' else \
             self.ssc_library
 
+        SSC_NAMESPACES_BY_SIZES = [
+            {
+                'path': '/vol/namespace-ae947c9b-2392-4956-b373-aaac4521f37e',
+                'size': 5379821234.0
+            },
+            {
+                'path': '/vol/namespace-527eedad-a431-483d-b0ca-18995dd65b66',
+                'size': 4673741874.0
+            }
+        ]
         self.mock_object(self.ssc_library.zapi_client,
                          'get_namespace_sizes_by_volume',
-                         return_value=fake.SSC_NAMESPACES_BY_SIZES)
+                         return_value=SSC_NAMESPACES_BY_SIZES)
 
+        SSC_LUNS_BY_SIZES = [
+            {
+                'path': '/vol/volume-ae947c9b-2392-4956-b373-aaac4521f37e',
+                'size': 5368709120.0
+            },
+            {
+                'path': '/vol/snapshot-527eedad-a431-483d-b0ca-18995dd65b66',
+                'size': 1073741824.0
+            }
+        ]
         self.mock_object(self.ssc_library.zapi_client,
                          'get_lun_sizes_by_volume',
-                         return_value=fake.SSC_LUNS_BY_SIZES)
+                         return_value=SSC_LUNS_BY_SIZES)
 
         result = self.ssc_library._get_ssc_volume_count_info(
             fake_client.VOLUME_NAMES[0])
