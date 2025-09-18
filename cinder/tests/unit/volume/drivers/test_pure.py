@@ -1732,8 +1732,9 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             vols.append(v[0])
             vol_names.append(v[1])
 
-        self.driver._get_volume_type_extra_spec = mock.Mock(
-            return_value={})
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
+
         model_updates, _ = self.driver.update_provider_info(vols, None)
         self.assertEqual(len(test_vols), len(model_updates))
         for update, vol_name in zip(model_updates, vol_names):
@@ -1755,8 +1756,9 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             vols.append(v[0])
             vol_names.append(v[1])
 
-        self.driver._get_volume_type_extra_spec = mock.Mock(
-            return_value={})
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
+
         model_updates, _ = self.driver.update_provider_info(vols, None)
         self.assertEqual(1, len(model_updates))
         self.assertEqual(vol_names[2], model_updates[0]['provider_id'])
@@ -1930,8 +1932,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         vol, vol_name = self.new_fake_vol()
         vgname = VGROUP + "/" + vol_name
         mock_specs.return_value = {'vg_name': vgname}
-        self.driver.\
-            _get_volume_type_extra_spec = mock.Mock(return_value={})
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
 
     @mock.patch(DRIVER_PATH + ".LOG")
     @mock.patch(DRIVER_PATH + ".flasharray.VolumeGroupPost")
@@ -2202,8 +2204,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                      source=
                                                      pure.flasharray.
                                                      reference(name=src_name))
-        self.driver._get_volume_type_extra_spec = mock.Mock(
-            return_value={})
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
         mock_fa.return_value = mock_data
         mock_get_replication_type.return_value = None
         # Branch where extend unneeded
@@ -2288,8 +2290,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                      reference(name=src_name))
         mock_fa.return_value = mock_data
         # Branch where extend unneeded
-        self.driver._get_volume_type_extra_spec = mock.Mock(
-            return_value={})
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
         self.driver.create_cloned_volume(vol, src_vol)
         self.array.post_volumes.assert_called_with(names=[vol_name],
                                                    volume=mock_data)
@@ -2315,8 +2317,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                      Reference(name=src_name),
                                                      name=vol_name)
         mock_fa.return_value = mock_data
-        self.driver._get_volume_type_extra_spec = mock.Mock(
-            return_value={})
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
         self.driver.create_cloned_volume(vol, src_vol)
         mock_extend.assert_called_with(self.array, vol_name,
                                        src_vol["size"], vol["size"])
@@ -2333,8 +2335,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         vol, vol_name = self.new_fake_vol(set_provider_id=False)
         mock_get_volume_type.return_value = vol.volume_type
         group = fake_group.fake_group_obj(mock.MagicMock())
-        self.driver._get_volume_type_extra_spec = mock.Mock(
-            return_value={})
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
         src_vol, _ = self.new_fake_vol(spec={"group_id": group.id})
         mock_get_replication_type.return_value = None
 
@@ -3159,8 +3161,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.get_volumes.return_value = MPV
         self.array.get_connections.return_value = []
         vol, vol_name = self.new_fake_vol(set_provider_id=False)
-        self.driver._get_volume_type_extra_spec = mock.Mock(
-            return_value={})
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
         mock_rsp = ValidResponse(200, None, 1,
                                  [{"group": {"name": "tstpg"}}], {})
         self.array.get_protection_groups_volumes.return_value = mock_rsp
@@ -3178,8 +3180,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.get_volumes.return_value = MPV
         self.array.get_connections.return_value = []
         vol, _ = self.new_fake_vol(set_provider_id=False)
-        self.driver._get_volume_type_extra_spec = mock.Mock(
-            return_value={})
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
         mock_rsp = ValidResponse(200, None, 1,
                                  [{"group": {"name": "tstpg"}}], {})
         self.array.get_protection_groups_volumes.return_value = mock_rsp
@@ -3866,8 +3868,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         get_voltype = "cinder.objects.volume_type.VolumeType.get_by_name_or_id"
         with mock.patch(get_voltype) as mock_get_vol_type:
             mock_get_vol_type.return_value = new_type
-            self.driver._get_volume_type_extra_spec = mock.Mock(
-                return_value={})
+            self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                             return_value={})
             pg_rsp = ValidResponse(
                 200, None, 1, [{"group": {"name": "cinder-group"}}], {})
             self.array.get_protection_groups_volumes.return_value = pg_rsp
@@ -4912,8 +4914,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         get_voltype = "cinder.objects.volume_type.VolumeType.get_by_name_or_id"
         with mock.patch(get_voltype) as mock_get_vol_type:
             mock_get_vol_type.return_value = new_type
-            self.driver._get_volume_type_extra_spec = mock.Mock(
-                return_value={})
+            self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                             return_value={})
             did_retype, model_update = self.driver.retype(
                 ctxt,
                 vol,
@@ -4940,8 +4942,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         get_voltype = "cinder.objects.volume_type.VolumeType.get_by_name_or_id"
         with mock.patch(get_voltype) as mock_get_vol_type:
             mock_get_vol_type.return_value = new_type
-            self.driver._get_volume_type_extra_spec = mock.Mock(
-                return_value={})
+            self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                             return_value={})
             did_retype, model_update = self.driver.retype(
                 ctxt,
                 vol,
