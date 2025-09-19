@@ -87,8 +87,7 @@ class NetAppBlockStorageLibrary(
                                  'xen', 'hyper_v']
     DEFAULT_LUN_OS = 'linux'
     DEFAULT_HOST_TYPE = 'linux'
-    DEFAULT_FILTER_FUNCTION = ('capabilities.utilization < 70 and '
-                               'capabilities.total_volumes < 1024')
+    DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
     DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
 
     def __init__(self, driver_name, driver_protocol, **kwargs):
