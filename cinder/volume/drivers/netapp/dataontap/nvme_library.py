@@ -73,8 +73,7 @@ class NetAppNVMeStorageLibrary(
     ALLOWED_SUBSYSTEM_HOST_TYPES = ['aix', 'linux', 'vmware', 'windows']
     DEFAULT_NAMESPACE_OS = 'linux'
     DEFAULT_HOST_TYPE = 'linux'
-    DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70 and ' \
-                              'capabilities.total_volumes < 1024'
+    DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
     DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
     REQUIRED_CMODE_FLAGS = ['netapp_vserver']
     NVME_PORT = 4420
