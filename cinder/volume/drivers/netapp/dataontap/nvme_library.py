@@ -725,11 +725,12 @@ class NetAppNVMeStorageLibrary(
             raise exception.VolumeBackendAPIException(
                 data=msg % name)
 
-        portal = (target_portals[0], self.NVME_PORT, self.NVME_TRANSPORT)
+        portals = [(ip, self.NVME_PORT,
+                    self.NVME_TRANSPORT) for ip in target_portals]
         data = {
             "target_nqn": str(target_nqn),
             "host_nqn": host_nqn,
-            "portals": [portal],
+            "portals": portals,
             "vol_uuid": namespace_uuid
         }
         conn_info = {"driver_volume_type": "nvmeof", "data": data}

@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2121791
+    <https://bugs.launchpad.net/cinder/+bug/2121791>`_: Fixed
+    NetApp NVMe/TCP: Fixed multipath support for volume attachments
+    Previously, the NVMe over TCP driver only returned a single target
+    portal when initializing volume connections, even when multiple
+    paths were available on the NetApp array.This caused volumes
+    to attach using only one path, preventing proper multipath functionality.
+    The initialize_connection method now returns all available target
+    portals, enabling native NVMe multipath to utilize all
+    configured paths for improved redundancy and performance.

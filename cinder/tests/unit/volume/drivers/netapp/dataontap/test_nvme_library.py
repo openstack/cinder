@@ -897,6 +897,38 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             fake.SUBSYSTEM)
         self.library.client.get_nvme_target_portals.assert_called_once_with()
 
+    def test_initialize_connection_multiple_portals(self):
+        self.mock_object(self.library, '_map_namespace',
+                         return_value=(fake.SUBSYSTEM, fake.UUID1))
+        self.mock_object(self.library.client, 'get_nvme_subsystem_nqn',
+                         return_value=fake.TARGET_NQN)
+        self.mock_object(self.library.client, 'get_nvme_target_portals',
+                         return_value=['10.10.10.10', '10.10.10.11',
+                                       '10.10.10.12'])
+
+        res = self.library.initialize_connection(
+            fake.NAMESPACE_VOLUME, {'nqn': fake.HOST_NQN})
+
+        expected_conn_info = {
+            "driver_volume_type": "nvmeof",
+            "data": {
+                "target_nqn": fake.TARGET_NQN,
+                "host_nqn": fake.HOST_NQN,
+                "portals": [
+                    ('10.10.10.10', 4420, 'tcp'),
+                    ('10.10.10.11', 4420, 'tcp'),
+                    ('10.10.10.12', 4420, 'tcp')
+                ],
+                "vol_uuid": fake.UUID1
+            }
+        }
+        self.assertEqual(expected_conn_info, res)
+        self.library._map_namespace.assert_called_once_with(
+            fake.NAMESPACE_NAME, fake.HOST_NQN)
+        self.library.client.get_nvme_subsystem_nqn.assert_called_once_with(
+            fake.SUBSYSTEM)
+        self.library.client.get_nvme_target_portals.assert_called_once_with()
+
     def test_initialize_connection_error_no_host(self):
         self.mock_object(self.library, '_map_namespace',
                          return_value=(fake.SUBSYSTEM, fake.UUID1))
