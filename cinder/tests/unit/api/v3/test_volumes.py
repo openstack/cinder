@@ -1086,6 +1086,8 @@ class VolumeApiTest(test.TestCase):
                           {'revert': {'snapshot_id': fake_snapshot['id']}})
 
     def test_view_get_attachments(self):
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        context = req.environ['cinder.context']
         fake_volume = self._fake_create_volume()
         fake_volume['attach_status'] = fields.VolumeAttachStatus.ATTACHING
         att_time = datetime.datetime(2017, 8, 31, 21, 55, 7,
@@ -1117,7 +1119,8 @@ class VolumeApiTest(test.TestCase):
 
         # get_attachments should only return attachments with the
         # attached status = ATTACHED
-        attachments = ViewBuilder()._get_attachments(fake_volume, True)
+        context.is_admin = True
+        attachments = ViewBuilder()._get_attachments(fake_volume, context)
 
         self.assertEqual(1, len(attachments))
         self.assertEqual(fake.UUID3, attachments[0]['attachment_id'])
@@ -1128,8 +1131,15 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(att_time, attachments[0]['attached_at'])
 
         # When admin context is false (non-admin), host_name will be None
-        attachments = ViewBuilder()._get_attachments(fake_volume, False)
+        context.is_admin = False
+        attachments = ViewBuilder()._get_attachments(fake_volume, context)
         self.assertIsNone(attachments[0]['host_name'])
+
+        # When the request is coming from another service (glance),
+        # We should be able to see 'host_name'
+        context.roles.append('service')
+        attachments = ViewBuilder()._get_attachments(fake_volume, context)
+        self.assertEqual('host1', attachments[0]['host_name'])
 
     @ddt.data(('created_at=gt:', 0), ('created_at=lt:', 2))
     @ddt.unpack

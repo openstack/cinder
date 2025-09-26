@@ -90,7 +90,7 @@ class ViewBuilder(common.ViewBuilder):
         }
         ctxt = request.environ['cinder.context']
 
-        attachments = self._get_attachments(volume, ctxt.is_admin)
+        attachments = self._get_attachments(volume, ctxt)
         volume_ref['volume']['attachments'] = attachments
 
         if ctxt.is_admin:
@@ -113,7 +113,7 @@ class ViewBuilder(common.ViewBuilder):
         """Determine if volume is encrypted."""
         return volume.get('encryption_key_id') is not None
 
-    def _get_attachments(self, volume, is_admin):
+    def _get_attachments(self, volume, ctxt):
         """Retrieve the attachments of the volume object."""
         attachments = []
 
@@ -124,12 +124,17 @@ class ViewBuilder(common.ViewBuilder):
                      'attachment_id': attachment.get('id'),
                      'volume_id': attachment.get('volume_id'),
                      'server_id': attachment.get('instance_uuid'),
-                     'host_name': attachment.get('attached_host'),
+                     'host_name': None,
                      'device': attachment.get('mountpoint'),
                      'attached_at': attachment.get('attach_time'),
                      }
-                if not is_admin:
-                    a['host_name'] = None
+                # When glance is cinder backed, we require the
+                # host_name to determine when to detach a multiattach
+                # volume. Glance always uses service credentials to
+                # request Cinder so we are not exposing the host value
+                # to end users (non-admin).
+                if ctxt.is_admin or 'service' in ctxt.roles:
+                    a['host_name'] = attachment.get('attached_host')
                 attachments.append(a)
 
         return attachments
