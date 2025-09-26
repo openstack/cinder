@@ -65,3 +65,9 @@ REP_STATUS_ON_LINE = 'online'
 MBPS = 'mbps'
 IOPS = 'iops'
 IOPS_PER_GB = 'iops_per_gb'
+
+# Register plugin constants
+CINDER = 'CINDER'
+COMMUNITY = 'Community'
+POWERVC = 'PowerVC'
+DEFAULT_RP_TIMEOUT = 3600 * 24

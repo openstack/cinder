@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family driver:
+    Added support for automatic Cinder plugin registration.
+    If callhome is already enabled on the backend, the plugin
+    is registered on SVC during driver initialization.

@@ -68,6 +68,14 @@ def _get_test_pool(get_all=False):
         return SVC_POOLS[0]
 
 
+def _callhome_loop_cleanup(driver):
+    if not driver:
+        return
+    loop = getattr(driver, '_check_callhome_loop', None)
+    if loop:
+        loop.stop()
+
+
 class StorwizeSVCManagementSimulator(object):
     def __init__(self, pool_name):
         self._flags = {'storwize_svc_volpool_name': pool_name}
@@ -420,7 +428,10 @@ class StorwizeSVCManagementSimulator(object):
             'site',
             'buffersize',
             'volumegroup',
-            'snapshot'
+            'snapshot',
+            'version',
+            'uniquekey',
+            'metadata'
         ]
         no_or_one_param_args = [
             'autoexpand',
@@ -877,6 +888,16 @@ port_speed!N/A
                 row.pop(1)
             self._next_cmd_error['lsip'] = ''
         return self._print_info_cmd(rows=rows, **kwargs)
+
+    def _cmd_lscloudcallhome(self, **kwargs):
+        rows = [None] * 3
+        rows[0] = ['status', 'enabled']
+        rows[1] = ['last_success', '250923061216']
+        rows[2] = ['si_tenant_id', '']
+        return self._print_info_cmd(rows=rows, **kwargs)
+
+    def _cmd_registerplugin(self, **kwargs):
+        return ('', '')
 
     # Print mostly made-up stuff in the correct syntax
     def _cmd_lsportip(self, **kwargs):
@@ -3520,6 +3541,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.do_setup(None)
         self.iscsi_driver.check_for_setup_error()
         self.iscsi_driver._helpers.check_fcmapping_interval = 0
+        _callhome_loop_cleanup(self.iscsi_driver)
 
     def _set_flag(self, flag, value):
         group = self.iscsi_driver.configuration.config_group
@@ -4244,6 +4266,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         self.fc_driver.do_setup(None)
         self.fc_driver.check_for_setup_error()
         self.fc_driver._helpers.check_fcmapping_interval = 0
+        _callhome_loop_cleanup(self.fc_driver)
 
     def _set_flag(self, flag, value):
         group = self.fc_driver.configuration.config_group
@@ -5150,6 +5173,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.mock_object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                          'DEFAULT_GR_SLEEP', 0)
         self._create_test_volume_types()
+        _callhome_loop_cleanup(self.driver)
 
     def _set_flag(self, flag, value, configuration=None):
         if not configuration:
@@ -5172,6 +5196,33 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         spec = {'mirror_pool': 'openstack1'}
         self.mirror_vol_type = self._create_volume_type(spec, 'mirror_type')
         self.default_vol_type = self._create_volume_type(None, 'default_type')
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'registerplugin')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'get_os_name')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'execute_cinder_cli')
+    def test_register_plugin(self, mock_cli,
+                             mock_os_name,
+                             mock_registerplugin):
+        # Setup mocks
+        mock_os_name.return_value = "ubuntu"
+        mock_cli.return_value = "Cinder 24.0.0"
+        mock_registerplugin.return_value = "success"
+        driver_version = self.driver.VERSION
+        try:
+            self.driver._helpers.check_for_callhome_enabled(
+                self.driver.configuration,
+                driver_version)
+        except loopingcall.LoopingCallDone:
+            pass
+        # Assertions
+        mock_registerplugin.assert_called_once()
+        args, kwargs = mock_registerplugin.call_args
+        self.assertEqual(args[0], driver_version)
+        self.assertIn("osname - ubuntu", args[1])
+        self.assertIn("deployment - Community", args[1])
+        self.assertIn("ispbhaenabled - False", args[1])
+        self.assertIn("isreplication - False", args[1])
 
     def test_storwize_svc_connectivity(self):
         # Make sure we detect if the pool doesn't exist
@@ -11677,6 +11728,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.check_for_setup_error()
         self._create_test_volume_types()
         self.rccg_type = self._create_consistent_rep_grp_type()
+        _callhome_loop_cleanup(self.driver)
 
     def _create_group_snapshot_in_db(self, group_id, **kwargs):
         group_snapshot = testutils.create_group_snapshot(self.ctxt,
@@ -11832,6 +11884,35 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
     def _get_pool_volumes(self, pool):
         vdisks = self.sim._cmd_lsvdisks_from_filter('mdisk_grp_name', pool)
         return vdisks
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'registerplugin')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'get_os_name')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'execute_cinder_cli')
+    def test_register_plugin_isreplication_True(self, mock_cli,
+                                                mock_os_name,
+                                                mock_registerplugin):
+        # Setup mocks
+        mock_os_name.return_value = "ubuntu"
+        mock_cli.return_value = "Cinder 24.0.0"
+        mock_registerplugin.return_value = "success"
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        driver_version = self.driver.VERSION
+        try:
+            self.driver._helpers.check_for_callhome_enabled(
+                self.driver.configuration,
+                driver_version)
+        except loopingcall.LoopingCallDone:
+            pass
+        # Assertions
+        mock_registerplugin.assert_called_once()
+        args, kwargs = mock_registerplugin.call_args
+        self.assertEqual(args[0], driver_version)
+        self.assertIn("osname - ubuntu", args[1])
+        self.assertIn("deployment - Community", args[1])
+        self.assertIn("ispbhaenabled - False", args[1])
+        self.assertIn("isreplication - True", args[1])
 
     @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
                        '_build_pool_stats')
