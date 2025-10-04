@@ -1079,8 +1079,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                            image_meta: dict[str, Any],
                            image_service,
                            **kwargs: Any) -> Optional[dict]:
-        LOG.debug("Cloning %(volume_id)s from image %(image_id)s "
-                  " at location %(image_location)s.",
+        LOG.debug("Trying to clone %(volume_id)s from image %(image_id)s "
+                  "at location %(image_location)s.",
                   {'volume_id': volume.id,
                    'image_location': image_location, 'image_id': image_id})
 
@@ -1111,6 +1111,10 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
         # Try and clone the image if we have it set as a glance location.
         if not cloned and 'cinder' in CONF.allowed_direct_url_schemes:
+            LOG.debug("Using glance cinder optimization to clone the "
+                      "requested volume %(volume_id)s from image "
+                      "%(image_id)s",
+                      {'volume_id': volume.id, 'image_id': image_id})
             model_update, cloned = self._clone_image_volume(context,
                                                             volume,
                                                             image_location,
