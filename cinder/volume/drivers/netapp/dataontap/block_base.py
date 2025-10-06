@@ -249,7 +249,6 @@ class NetAppBlockStorageLibrary(
                     'SpaceReserved': self.lun_space_reservation,
                     'SpaceAllocated': str(space_allocation).lower(),
                     'Path': '/vol/%s/%s' % (pool_name, lun_name)}
-
         qos_policy_group_info = self._setup_qos_for_volume(volume, extra_specs)
         qos_policy_group_name = (
             na_utils.get_qos_policy_group_name_from_info(
@@ -258,7 +257,8 @@ class NetAppBlockStorageLibrary(
             extra_specs.get('netapp:qos_policy_group_is_adaptive'))
             or na_utils.is_qos_policy_group_spec_adaptive
             (qos_policy_group_info))
-
+        LOG.debug("Creating LUN %(lun_name)s with size %(size)s",
+                  {'lun_name': lun_name, 'size': size})
         try:
             self._create_lun(pool_name, lun_name, size, metadata,
                              qos_policy_group_name,

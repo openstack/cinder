@@ -446,6 +446,8 @@ def get_pool_name_filter_regex(configuration):
 
 def get_valid_qos_policy_group_info(volume, extra_specs=None):
     """Given a volume, return information for QOS provisioning."""
+    LOG.debug("Getting valid QOS policy group info for volume id: %s.",
+              volume['id'])
     info = dict(legacy=None, spec=None)
     try:
         volume_type = get_volume_type_from_volume(volume)

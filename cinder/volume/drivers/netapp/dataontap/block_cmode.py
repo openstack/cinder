@@ -207,10 +207,13 @@ class NetAppBlockStorageCmodeLibrary(
                     metadata, qos_policy_group_name=None,
                     qos_policy_group_is_adaptive=False):
         """Creates a LUN, handling Data ONTAP differences as needed."""
-
+        LOG.debug("Creating LUN with volume name %(vol)s and lun name %(lun)s",
+                  {'vol': volume_name, 'lun': lun_name})
         self.zapi_client.create_lun(
             volume_name, lun_name, size, metadata, qos_policy_group_name,
             qos_policy_group_is_adaptive)
+        LOG.debug("Successfully created LUN with volume name %(vol)s and lun "
+                  "name %(lun)s", {'vol': volume_name, 'lun': lun_name})
 
     def _create_lun_handle(self, metadata, vserver=None):
         """Returns LUN handle based on filer type."""
@@ -373,12 +376,17 @@ class NetAppBlockStorageCmodeLibrary(
         if (self.using_cluster_credentials
                 and not self.configuration.netapp_disaggregated_platform):
             # Get up-to-date node utilization metrics just once
+            LOG.debug("Updating perf cache for cluster.")
             self.perf_library.update_performance_cache(ssc)
-
+            LOG.debug("Successfully updated perf cache for cluster.")
             # Get up-to-date aggregate capacities just once
             aggregates = self.ssc_library.get_ssc_aggregates()
+
+            LOG.debug("Getting aggregate capacities.")
             aggr_capacities = self.zapi_client.get_aggregate_capacities(
                 aggregates)
+            LOG.debug("Aggregate capacities successfully fetched: %s",
+                      aggr_capacities)
         else:
             aggr_capacities = {}
 
@@ -403,8 +411,11 @@ class NetAppBlockStorageCmodeLibrary(
             if self.configuration.netapp_disaggregated_platform:
                 capacity = self.zapi_client.get_cluster_capacity()
             else:
+                LOG.debug("Getting flexvol %s capacity.", ssc_vol_name)
                 capacity = self.zapi_client.get_flexvol_capacity(
                     flexvol_name=ssc_vol_name)
+                LOG.debug("Successfully fetched flexvol capacity: %s",
+                          capacity)
 
             size_total_gb = capacity['size-total'] / units.Gi
             pool['total_capacity_gb'] = na_utils.round_down(size_total_gb)
@@ -412,8 +423,12 @@ class NetAppBlockStorageCmodeLibrary(
             size_available_gb = capacity['size-available'] / units.Gi
             pool['free_capacity_gb'] = na_utils.round_down(size_available_gb)
 
+            LOG.debug("Getting LUN size for volume")
             luns = self.zapi_client.get_lun_sizes_by_volume(
                 ssc_vol_name)
+            LOG.debug("Successfully fetched LUN size for volume: %s",
+                      ssc_vol_name)
+
             pool['total_volumes'] = len(luns)
             if self.configuration.netapp_driver_reports_provisioned_capacity:
                 provisioned_cap = 0
@@ -428,10 +443,13 @@ class NetAppBlockStorageCmodeLibrary(
 
             if (self.using_cluster_credentials and
                     not self.configuration.netapp_disaggregated_platform):
+                LOG.debug("Getting flexvol %s dedupe info.", ssc_vol_name)
                 dedupe_used = (
                     self.zapi_client
                     .get_flexvol_dedupe_used_percent(ssc_vol_name)
                 )
+                LOG.debug("Successfully fetched flexvol dedup info: %s",
+                          dedupe_used)
             else:
                 dedupe_used = 0.0
             pool['netapp_dedupe_used_percent'] = na_utils.round_down(
@@ -521,8 +539,12 @@ class NetAppBlockStorageCmodeLibrary(
             raise exception.VolumeBackendAPIException(data=msg)
         pool = volume_utils.extract_host(volume['host'], level='pool')
         qos_min_support = self.ssc_library.is_qos_min_supported(pool)
+        LOG.debug("Provisioning QoS policy group with info: %s",
+                  qos_policy_group_info)
         self.zapi_client.provision_qos_policy_group(qos_policy_group_info,
                                                     qos_min_support)
+        LOG.debug("Successfully provisioned QoS policy group with info: %s",
+                  qos_policy_group_info)
         return qos_policy_group_info
 
     def _get_volume_model_update(self, volume):
