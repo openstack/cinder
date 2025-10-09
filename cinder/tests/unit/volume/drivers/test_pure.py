@@ -4841,7 +4841,6 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                      name=vol_name,
                                                      qos={'maxIOPS': 100,
                                                           'maxBWS': 1048576,
-                                                          'maxBWS': 1048576,
                                                           'maxIOPS_per_GB': 0,
                                                           'maxBWS_per_GB': 0})
         mock_fa.return_value = mock_data
