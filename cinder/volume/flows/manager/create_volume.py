@@ -781,8 +781,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             self._cleanup_cg_in_volume(volume)
             return ret, True
         except (NotImplementedError, exception.CinderException):
-            LOG.exception('Failed to clone image volume %(id)s.',
-                          {'id': image_volume['id']})
+            LOG.debug('Failed to clone image volume %(id)s.',
+                      {'id': image_volume['id']})
             return None, False
 
     def _create_from_image_download(self,
@@ -842,10 +842,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             return None, False
 
         try:
-            cache_entry = self.image_volume_cache.get_entry(internal_context,
-                                                            volume,
-                                                            image_id,
-                                                            image_meta)
+            clone_across_pools = self.driver.capabilities.get(
+                'clone_across_pools', False)
+            cache_entry = self.image_volume_cache.get_entry(
+                internal_context, volume, image_id, image_meta,
+                clone_across_pools=clone_across_pools)
             if cache_entry:
                 LOG.debug('Creating from source image-volume %(volume_id)s',
                           {'volume_id': cache_entry['volume_id']})
@@ -884,10 +885,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         if not internal_context:
             return None, False
 
-        cache_entry = self.image_volume_cache.get_entry(internal_context,
-                                                        volume,
-                                                        image_id,
-                                                        image_meta)
+        clone_across_pools = self.driver.capabilities.get(
+            'clone_across_pools', False)
+        cache_entry = self.image_volume_cache.get_entry(
+            internal_context, volume, image_id, image_meta,
+            clone_across_pools=clone_across_pools)
 
         # If the entry is in the cache then return ASAP in order to minimize
         # the scope of the lock. If it isn't in the cache then do the work
