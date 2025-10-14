@@ -1149,7 +1149,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                     get_disk_type,
                                                     get_profile_id,
                                                     select_ds_for_volume,
-                                                    download_error=False):
+                                                    download_error=False,
+                                                    duplicate_name=False):
         host = mock.sentinel.host
         rp = mock.sentinel.rp
         folder = mock.sentinel.folder
@@ -1176,6 +1177,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         if download_error:
             download_image.side_effect = exceptions.VimException
             vops.get_backing.return_value = backing
+        elif duplicate_name:
+            download_image.side_effect = [exceptions.DuplicateName,
+                                          backing]
+            vops.get_backing.return_value = backing
         else:
             download_image.return_value = backing
 
@@ -1197,10 +1202,19 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                 context, volume, image_service, image_id, image_size,
                 adapter_type)
 
-        select_ds_for_volume.assert_called_once_with(volume)
-        vops.get_create_spec.assert_called_once_with(
-            volume['name'], 0, disk_type, summary.name, profile_id=profile_id,
-            adapter_type=adapter_type, extra_config=extra_config)
+        if duplicate_name:
+            select_ds_for_volume.assert_called_with(volume)
+            vops.get_create_spec.assert_called_with(
+                volume['name'], 0, disk_type, summary.name,
+                profile_id=profile_id, adapter_type=adapter_type,
+                extra_config=extra_config)
+        else:
+            select_ds_for_volume.assert_called_once_with(volume)
+            vops.get_create_spec.assert_called_once_with(
+                volume['name'], 0, disk_type, summary.name,
+                profile_id=profile_id, adapter_type=adapter_type,
+                extra_config=extra_config)
+
         self.assertEqual(vm_create_spec, import_spec.configSpec)
         download_image.assert_called_with(
             context,
@@ -1218,6 +1232,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         if download_error:
             self.assertFalse(vops.update_backing_disk_uuid.called)
             vops.delete_backing.assert_called_once_with(backing)
+        elif duplicate_name:
+            vops.delete_backing.assert_called_once_with(backing)
+            vops.update_backing_disk_uuid.assert_called_once_with(
+                backing, volume['id'])
         else:
             vops.update_backing_disk_uuid.assert_called_once_with(
                 backing, volume['id'])
@@ -1227,6 +1245,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     def test_copy_image_to_volume_stream_optimized_with_download_error(self):
         self._test_copy_image_to_volume_stream_optimized(download_error=True)
+
+    def test_copy_image_to_volume_stream_optimized_with_duplicate_name(self):
+        self._test_copy_image_to_volume_stream_optimized(duplicate_name=True)
 
     @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=True)
     def test_copy_volume_to_image_when_attached(self, in_use):

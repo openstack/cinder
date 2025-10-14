@@ -42,6 +42,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
+from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import datastore as hub
@@ -1345,6 +1346,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     self._delete_temp_disk(
                         vmdk_path.get_descriptor_ds_file_path(), dc_ref)
 
+    # Retry is needed for VolumeManager.reimage, which triggers the exception
+    # and a subsequent deletion of the backing. The retry reimages the volume.
+    @utils.retry(retry_param=exceptions.DuplicateName)
     def _fetch_stream_optimized_image(self, context, volume, image_service,
                                       image_id, image_size, adapter_type):
         """Creates volume from image using HttpNfc VM import.
