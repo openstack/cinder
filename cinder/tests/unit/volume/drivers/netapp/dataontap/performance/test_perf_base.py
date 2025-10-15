@@ -16,6 +16,7 @@
 from unittest import mock
 
 import ddt
+from oslo_utils import timeutils
 
 from cinder import exception
 from cinder.tests.unit import test
@@ -346,6 +347,33 @@ class PerformanceLibraryTestCase(test.TestCase):
         }
         self.assertEqual(modified_counter, counter)
 
+    def test_expand_performance_array_with_caching(self):
+        counter_info = {
+            'labels': ['idle', 'kahuna', 'storage', 'exempt'],
+            'name': 'domain_busy',
+        }
+        # Simulate counter info not cached initially
+        self.zapi_client.get_performance_counter_info = mock.Mock(
+            return_value=counter_info)
+        counter = {
+            'node-name': 'cluster1-01',
+            'instance-uuid': 'cluster1-01:kernel:processor0',
+            'domain_busy': '969142314286,2567571412,2131582146,5383861579',
+            'instance-name': 'processor0',
+            'timestamp': '1453512244',
+        }
+        self.perf_library._expand_performance_array('wafl',
+                                                    'domain_busy',
+                                                    counter)
+        # Should cache counter info after first call
+        self.assertIn(('wafl', 'domain_busy'),
+                      self.perf_library._counter_info_cache)
+        # Should expand values correctly
+        self.assertEqual(counter['domain_busy:idle'], '969142314286')
+        self.assertEqual(counter['domain_busy:kahuna'], '2567571412')
+        self.assertEqual(counter['domain_busy:storage'], '2131582146')
+        self.assertEqual(counter['domain_busy:exempt'], '5383861579')
+
     def test_get_base_counter_name(self):
 
         counter_info = {
@@ -360,3 +388,59 @@ class PerformanceLibraryTestCase(test.TestCase):
             'system:constituent', 'avg_processor_busy')
 
         self.assertEqual('cpu_elapsed_time', result)
+
+    def test__get_counter_info_from_cache_when_valid(self):
+        object_name = "test_object"
+        counter_name = "test_counter"
+        cache_key = (object_name, counter_name)
+        cached_info = {"labels": ["label1", "label2"]}
+        self.perf_library._counter_info_cache[cache_key] = cached_info
+        self.perf_library.last_counter_cache_update = (timeutils.
+                                                       utcnow().timestamp())
+
+        result = self.perf_library._get_counter_info(object_name,
+                                                     counter_name)
+
+        self.assertEqual(result, cached_info)
+        (self.perf_library.zapi_client.
+         get_performance_counter_info.assert_not_called())
+
+    def test__get_counter_info_when_cache_is_stale(self):
+        object_name = "test_object"
+        counter_name = "test_counter"
+        cache_key = (object_name, counter_name)
+        expired_time = timeutils.utcnow().timestamp() - (25 * 3600)
+        self.perf_library._counter_info_cache[cache_key] = {
+            "labels": ["old_label"]
+        }
+        self.perf_library.last_counter_cache_update = expired_time
+        new_counter_info = {"labels": ["new_label"]}
+        (self.perf_library.zapi_client.
+         get_performance_counter_info).return_value = new_counter_info
+
+        result = self.perf_library._get_counter_info(object_name,
+                                                     counter_name)
+
+        self.assertEqual(result, new_counter_info)
+        self.assertEqual(self.perf_library._counter_info_cache[cache_key],
+                         new_counter_info)
+        (self.perf_library.zapi_client.
+         get_performance_counter_info.assert_called_once_with(object_name,
+                                                              counter_name))
+
+    def test__get_counter_info_when_not_in_cache(self):
+        object_name = "test_object"
+        counter_name = "test_counter"
+        new_counter_info = {"labels": ["new_label"]}
+        (self.perf_library.zapi_client.
+         get_performance_counter_info).return_value = new_counter_info
+
+        result = self.perf_library._get_counter_info(object_name,
+                                                     counter_name)
+
+        self.assertEqual(result, new_counter_info)
+        self.assertIn((object_name, counter_name),
+                      self.perf_library._counter_info_cache)
+        (self.perf_library.zapi_client.
+         get_performance_counter_info.assert_called_once_with(object_name,
+                                                              counter_name))

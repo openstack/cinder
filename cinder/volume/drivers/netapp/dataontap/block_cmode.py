@@ -28,6 +28,7 @@ import time
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import excutils
+from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
@@ -84,6 +85,8 @@ class NetAppBlockStorageCmodeLibrary(
         self.replication_enabled = (
             True if self.get_replication_backend_names(
                 self.configuration) else False)
+        self.last_perf_update = 0
+        self.last_dedupe_update = 0
 
     def do_setup(self, context):
         super(NetAppBlockStorageCmodeLibrary, self).do_setup(context)
@@ -375,13 +378,24 @@ class NetAppBlockStorageCmodeLibrary(
         # TODO(jayaanan): Add support for performance metrics for ASA r2
         if (self.using_cluster_credentials
                 and not self.configuration.netapp_disaggregated_platform):
-            # Get up-to-date node utilization metrics just once
-            LOG.debug("Updating perf cache for cluster.")
-            self.perf_library.update_performance_cache(ssc)
-            LOG.debug("Successfully updated perf cache for cluster.")
+            # Update the saved cluster performance data only after the set
+            # time has passed.This prevents running slow real-time performance
+            # checks every time stats are collected. The time of the last
+            # update is stored in self.last_perf_update and checked against
+            # the netapp_performance_cache_expiry_duration setting.
+            now = timeutils.utcnow().timestamp()
+            perf_expiry = (
+                self.configuration.netapp_performance_cache_expiry_duration)
+            if (now - self.last_perf_update) > perf_expiry:
+                LOG.debug("Updating perf cache for cluster.")
+                self.perf_library.update_performance_cache(ssc)
+                self.last_perf_update = now
+                LOG.debug("Successfully updated perf cache for cluster.")
+            else:
+                LOG.debug("Using the previous perf stats from last update.")
+
             # Get up-to-date aggregate capacities just once
             aggregates = self.ssc_library.get_ssc_aggregates()
-
             LOG.debug("Getting aggregate capacities.")
             aggr_capacities = self.zapi_client.get_aggregate_capacities(
                 aggregates)
@@ -440,18 +454,30 @@ class NetAppBlockStorageCmodeLibrary(
                         provisioned_cap = provisioned_cap + lun['size']
                 pool['provisioned_capacity_gb'] = na_utils.round_down(
                     float(provisioned_cap) / units.Gi)
-
+            dedupe_used = 0.0
             if (self.using_cluster_credentials and
                     not self.configuration.netapp_disaggregated_platform):
-                LOG.debug("Getting flexvol %s dedupe info.", ssc_vol_name)
-                dedupe_used = (
-                    self.zapi_client
-                    .get_flexvol_dedupe_used_percent(ssc_vol_name)
-                )
-                LOG.debug("Successfully fetched flexvol dedup info: %s",
-                          dedupe_used)
-            else:
-                dedupe_used = 0.0
+                dedupe_expiry = (
+                    self.configuration.netapp_dedupe_cache_expiry_duration)
+                now = timeutils.utcnow().timestamp()
+                if (now - self.last_dedupe_update) > dedupe_expiry:
+                    LOG.debug("Getting flexvol %s dedupe info.", ssc_vol_name)
+                    dedupe_used = (
+                        self.zapi_client
+                        .get_flexvol_dedupe_used_percent(ssc_vol_name)
+                    )
+                    self.last_dedupe_update = now
+                    LOG.debug("Successfully fetched flexvol dedup info: %s",
+                              dedupe_used)
+                else:
+                    LOG.debug("Get the current dedupe stats from pool %s",
+                              ssc_vol_name)
+                    assert isinstance(self._stats, dict)
+                    for current_pool in self._stats.get('pools', []):
+                        if current_pool.get('pool_name') == ssc_vol_name:
+                            dedupe_used = current_pool.get(
+                                'netapp_dedupe_used_percent')
+                            break
             pool['netapp_dedupe_used_percent'] = na_utils.round_down(
                 dedupe_used)
 

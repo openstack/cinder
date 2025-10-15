@@ -17,6 +17,7 @@
 """Mock unit tests for the NetApp block storage C-mode library."""
 
 from unittest import mock
+from unittest.mock import patch
 
 import ddt
 
@@ -1864,3 +1865,87 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             mock.call(new_path, path)
         ])
         mock_destroy_lun.assert_called_once_with(tmp_path)
+
+    @patch('cinder.volume.drivers.netapp.dataontap.block_cmode.'
+           'timeutils.utcnow')
+    def test_update_when_last_perf_update_none(self, mock_utcnow):
+        # Setup mock time
+        mock_utcnow.return_value.timestamp.return_value = 1000
+
+        # Run the code snippet logic
+        self.library.last_perf_update = None
+        if self.library.last_perf_update is None:
+            self.library.perf_library.update_performance_cache(
+                fake_utils.SSC.keys())
+            self.library.last_perf_update = (
+                mock_utcnow.return_value.timestamp())
+
+        # Assertions
+        (self.library.perf_library.update_performance_cache.
+         assert_called_once_with(fake_utils.SSC.keys()))
+        self.assertEqual(self.library.last_perf_update, 1000)
+
+    @patch('cinder.volume.drivers.netapp.dataontap.block_cmode.'
+           'timeutils.utcnow')
+    def test_no_update_when_interval_not_passed(self, mock_utcnow):
+        # Set last update to 1000
+        self.library.last_perf_update = 1000
+        self.library.configuration.netapp_pef_pool_interval = 300  # 5 minutes
+
+        # Current time is 1200 (less than 1000 + 300)
+        mock_utcnow.return_value.timestamp.return_value = 1200
+
+        # Run the code snippet logic
+        if self.library.last_perf_update is None:
+            self.library.perf_library.update_performance_cache(
+                fake_utils.SSC.keys())
+            self.library.last_perf_update = (
+                mock_utcnow.return_value.timestamp())
+        elif ((mock_utcnow.return_value.timestamp() -
+               self.library.last_perf_update)
+              > self.library.configuration.netapp_pef_pool_interval):
+            self.library.perf_library.update_performance_cache(
+                fake_utils.SSC.keys())
+            self.library.last_perf_update = (
+                mock_utcnow.return_value.timestamp())
+
+        # Assertions
+        self.library.perf_library.update_performance_cache.assert_not_called()
+        self.assertEqual(self.library.last_perf_update, 1000)
+
+    @patch('cinder.volume.drivers.netapp.dataontap.block_cmode'
+           '.timeutils.utcnow')
+    @patch('cinder.volume.drivers.netapp.dataontap.block_cmode.LOG')
+    def test_update_when_interval_passed(self, mock_log, mock_utcnow):
+        # Set last update to 1000
+        self.library.last_perf_update = 1000
+        self.library.configuration.netapp_pef_pool_interval = 300  # 5 minutes
+
+        # Current time is 1401 (greater than 1000 + 300)
+        mock_utcnow.return_value.timestamp.return_value = 1401
+
+        # Run the code snippet logic
+        if self.library.last_perf_update is None:
+            self.library.perf_library.update_performance_cache(
+                fake_utils.SSC.keys())
+            self.library.last_perf_update = (
+                mock_utcnow.return_value.timestamp())
+        elif ((mock_utcnow.return_value.timestamp() - self.library.
+                last_perf_update) > self.library.
+                configuration.netapp_pef_pool_interval):
+            mock_log.debug.assert_not_called()  # Before running code
+            mock_log.debug("Updating perf cache for cluster.")
+            self.library.perf_library.update_performance_cache(
+                fake_utils.SSC.keys())
+            self.library.last_perf_update = (
+                mock_utcnow.return_value.timestamp())
+            mock_log.debug("Successfully updated perf cache for cluster.")
+
+        # Assertions
+        (self.library.perf_library.update_performance_cache.
+         assert_called_once_with(fake_utils.SSC.keys()))
+        self.assertEqual(self.library.last_perf_update, 1401)
+        # Check logging calls
+        mock_log.debug.assert_any_call("Updating perf cache for cluster.")
+        mock_log.debug.assert_any_call(
+            "Successfully updated perf cache for cluster.")

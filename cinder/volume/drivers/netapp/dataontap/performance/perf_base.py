@@ -17,6 +17,7 @@ Performance metrics functions and cache for NetApp systems.
 """
 
 from oslo_log import log as logging
+from oslo_utils import timeutils
 
 from cinder import exception
 from cinder.i18n import _
@@ -24,6 +25,7 @@ from cinder.i18n import _
 
 LOG = logging.getLogger(__name__)
 DEFAULT_UTILIZATION = 50
+COUNTER_CACHE_REFRESH_INTERVAL_HOURS = 24
 
 
 class PerformanceLibrary(object):
@@ -31,6 +33,8 @@ class PerformanceLibrary(object):
     def __init__(self, zapi_client):
 
         self.zapi_client = zapi_client
+        self._counter_info_cache = {}
+        self.last_counter_cache_update = 0
         self._init_counter_info()
 
     def _init_counter_info(self):
@@ -206,9 +210,7 @@ class PerformanceLibrary(object):
         """Get array labels and expand counter data array."""
 
         # Get array labels for counter value
-        counter_info = self.zapi_client.get_performance_counter_info(
-            object_name, counter_name)
-
+        counter_info = self._get_counter_info(object_name, counter_name)
         array_labels = [counter_name + ':' + label.lower()
                         for label in counter_info['labels']]
         array_values = counter[counter_name].split(',')
@@ -220,6 +222,27 @@ class PerformanceLibrary(object):
     def _get_base_counter_name(self, object_name, counter_name):
         """Get the name of the base counter for the specified counter."""
 
-        counter_info = self.zapi_client.get_performance_counter_info(
-            object_name, counter_name)
+        counter_info = self._get_counter_info(object_name, counter_name)
         return counter_info['base-counter']
+
+    def _get_counter_info(self, object_name, counter_name):
+        cache_key = (object_name, counter_name)
+        now = timeutils.utcnow().timestamp()
+        # In case of ONTAP upgrade, new counter information may be added,
+        # therefore, we need to refresh the cache every 24 hours.
+        counter_cache_refresh_interval = (
+            COUNTER_CACHE_REFRESH_INTERVAL_HOURS * 60 * 60)
+        is_cache_period_expired = ((now - self.last_counter_cache_update)
+                                   > counter_cache_refresh_interval)
+        counter_info = self._counter_info_cache.get(cache_key)
+        # Since the get_performance_counter_info ZAPI consistently returns
+        # the same value, it is more efficient to cache the counter
+        # information in a dictionary rather than making repeated ONTAP calls.
+        if counter_info is None or is_cache_period_expired:
+            LOG.debug("Cache period expired for object %s and counter %s.",
+                      object_name, counter_name)
+            counter_info = self.zapi_client.get_performance_counter_info(
+                object_name, counter_name)
+            self._counter_info_cache[cache_key] = counter_info
+            self.last_counter_cache_update = now
+        return counter_info
