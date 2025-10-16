@@ -2234,10 +2234,10 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         with RADOSClient(self) as client:
             for image_name in self.RBDProxy().list(client.ioctx):
                 image_id = volume_utils.extract_id_from_volume_name(image_name)
-                with RBDVolumeProxy(self, image_name, read_only=True,
-                                    client=client.cluster,
-                                    ioctx=client.ioctx) as image:
-                    try:
+                try:
+                    with RBDVolumeProxy(self, image_name, read_only=True,
+                                        client=client.cluster,
+                                        ioctx=client.ioctx) as image:
                         image_info = {
                             'reference': {'source-name': image_name},
                             'size': int(math.ceil(
@@ -2265,8 +2265,11 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                             image_info['safe_to_manage'] = True
                             image_info['reason_not_safe'] = None
                         manageable_volumes.append(image_info)
-                    except self.rbd.ImageNotFound:
-                        LOG.debug("Image %s is not found.", image_name)
+                except self.rbd.ImageNotFound:
+                    LOG.debug("Image %s is not found.", image_name)
+                except self.rbd.Error as error:
+                    LOG.debug("Cannot open image %(image)s. (%(error)s)",
+                              ({'image': image_name, 'error': error}))
 
         return volume_utils.paginate_entries_list(
             manageable_volumes, marker, limit, offset, sort_keys, sort_dirs)
