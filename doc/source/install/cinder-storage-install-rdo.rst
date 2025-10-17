@@ -258,12 +258,12 @@ Install and configure components
 Finalize installation
 ---------------------
 
-* Start the Block Storage volume service including its dependencies
-  and configure them to start when the system boots:
+* Start the Block Storage volume service with iscsid including
+  its dependencies and configure them to start when the system boots:
 
   .. code-block:: console
 
-     # systemctl enable openstack-cinder-volume.service target.service
-     # systemctl start openstack-cinder-volume.service target.service
+     # systemctl enable openstack-cinder-volume.service target.service iscsid.service
+     # systemctl start openstack-cinder-volume.service target.service iscsid.service
 
   .. end
