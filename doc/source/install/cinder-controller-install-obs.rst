@@ -55,18 +55,18 @@ must create a database, service credentials, and API endpoints.
 
          $ openstack user create --domain default --password-prompt cinder
 
-        User Password:
-        Repeat User Password:
-        +---------------------+----------------------------------+
-        | Field               | Value                            |
-        +---------------------+----------------------------------+
-        | domain_id           | default                          |
-        | enabled             | True                             |
-        | id                  | 9d7e33de3e1a498390353819bc7d245d |
-        | name                | cinder                           |
-        | options             | {}                               |
-        | password_expires_at | None                             |
-        +---------------------+----------------------------------+
+         User Password:
+         Repeat User Password:
+         +---------------------+----------------------------------+
+         | Field               | Value                            |
+         +---------------------+----------------------------------+
+         | domain_id           | default                          |
+         | enabled             | True                             |
+         | id                  | 9d7e33de3e1a498390353819bc7d245d |
+         | name                | cinder                           |
+         | options             | {}                               |
+         | password_expires_at | None                             |
+         +---------------------+----------------------------------+
 
    #. Add the ``admin`` role to the ``cinder`` user:
 
@@ -85,15 +85,15 @@ must create a database, service credentials, and API endpoints.
          $ openstack service create --name cinder \
           --description "OpenStack Block Storage" block-storage
 
-        +-------------+----------------------------------+
-        | Field       | Value                            |
-        +-------------+----------------------------------+
-        | description | OpenStack Block Storage          |
-        | enabled     | True                             |
-        | id          | ab3bbbef780845a1a283490d281e7fda |
-        | name        | cinder                           |
-        | type        | block-storage                    |
-        +-------------+----------------------------------+
+         +-------------+----------------------------------+
+         | Field       | Value                            |
+         +-------------+----------------------------------+
+         | description | OpenStack Block Storage          |
+         | enabled     | True                             |
+         | id          | ab3bbbef780845a1a283490d281e7fda |
+         | name        | cinder                           |
+         | type        | block-storage                    |
+         +-------------+----------------------------------+
 
       .. note::
 
