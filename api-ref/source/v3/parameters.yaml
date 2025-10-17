@@ -343,6 +343,12 @@ image-id:
   in: query
   required: false
   type: string
+instance_uuid_query_optional:
+  description: |
+    The UUID of the attaching instance.
+  in: query
+  required: false
+  type: string
 is_public_volume_type_query:
   description: |
     Filter the volume type by public visibility.
@@ -571,6 +577,13 @@ vol_type_id_query:
     A volume type ID.
   in: query
   required: true
+  type: string
+volume_id_attachment_query_optional:
+  description: |
+    The UUID of the volume which the attachment belongs
+    to.
+  in: query
+  required: false
   type: string
 with_count:
   description: |
