@@ -155,15 +155,11 @@ Install and configure components
      Replace ``RABBIT_PASS`` with the password you chose for
      the ``openstack`` account in ``RabbitMQ``.
 
-   * In the ``[DEFAULT]`` and ``[keystone_authtoken]`` sections,
+   * In the ``[keystone_authtoken]`` section,
      configure Identity service access:
 
      .. path /etc/cinder/cinder.conf
      .. code-block:: ini
-
-        [DEFAULT]
-        # ...
-        auth_strategy = keystone
 
         [keystone_authtoken]
         # ...
