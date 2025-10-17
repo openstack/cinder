@@ -691,20 +691,14 @@ attach operations for each volume type.
      ``hitachi_mirror_compute_target_ports``).
 
 .. Document Hyperlinks
-.. _Global-Active Device User Guide: https://knowledge.hitachivantara.com/
-  Documents/Management_Software/SVOS/9.8.7/Global-Active_Device
+.. _Global-Active Device User Guide: https://docs.hitachivantara.com/r/en-us/svos/9.8.7/mk-98rd9024
 .. _Hitachi Command Suite Configuration Manager REST API Reference Guide:
-  https://knowledge.hitachivantara.com/Documents/Management_Software/
-  Ops_Center/API_Configuration_Manager/10.5.x/REST_API_Reference_Guide
+  https://download.hitachivantara.com/download/epcra/hc2292.pdf
 .. _Hitachi Ops Center API Configuration Manager REST API Reference Guide:
-  https://knowledge.hitachivantara.com/Documents/Management_Software/
-  Ops_Center/10.9.x/API_Configuration_Manager
-.. _Hitachi Thin Image User Guide: https://knowledge.hitachivantara.com/
-  Documents/Management_Software/SVOS/7.3.1/Administration_Guides/
-  Thin_Image_User_Guide
+  https://docs.hitachivantara.com/r/en-us/ops-center-api-configuration-manager/11.0.x/mk-99cfm000
+.. _Hitachi Thin Image User Guide: https://docs.hitachivantara.com/r/en-us/svos/9.8.7/mk-98rd9020
 .. _Workflow for creating a GAD environment:
-  https://knowledge.hitachivantara.com/Documents/Management_Software/SVOS/
-  9.8.7/Global-Active_Device/04_Configuration_and_pair_management_using_CCI
+  https://docs.hitachivantara.com/r/en-us/svos/9.8.7/mk-98rd9024/configuration-and-pair-management-using-cci/workflow-for-creating-a-gad-environment
 .. _Provisioning Guide:
   https://docs.hitachivantara.com/r/en-us/svos/9.8.7/mk-97hm85026/
   introduction-to-provisioning
