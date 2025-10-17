@@ -108,7 +108,7 @@ following configuration options to the ``[DEFAULT]`` section of the
 
 .. code-block:: ini
 
-   backup_driver = cinder.backup.drivers.nfs
+   backup_driver = cinder.backup.drivers.nfs.NFSBackupDriver
    backup_share = HOST:EXPORT_PATH
 
 For the ``backup_share`` option, replace ``HOST`` with the DNS resolvable
