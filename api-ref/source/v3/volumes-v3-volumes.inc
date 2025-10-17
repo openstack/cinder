@@ -97,6 +97,7 @@ Request
    - limit: limit
    - offset: offset
    - marker: marker
+   - metadata: metadata_query
    - with_count: with_count
    - created_at: filter_created_at
    - updated_at: filter_updated_at
@@ -315,6 +316,7 @@ Request
    - limit: limit
    - offset: offset
    - marker: marker
+   - metadata: metadata_query
    - with_count: with_count
    - created_at: filter_created_at
    - consumes_quota: filter_consumes_quota

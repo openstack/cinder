@@ -419,10 +419,10 @@ marker_transfer:
   min_version: 3.59
 metadata_query:
   description: |
-    Filters results by a metadata key and value pair.
-    Default=None.
+    One or more metadata key and value pairs as a
+    url encoded dictionary of strings.
   in: query
-  required: true
+  required: false
   type: object
 migration_status_query:
   description: |
