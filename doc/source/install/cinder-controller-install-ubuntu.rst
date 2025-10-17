@@ -107,7 +107,7 @@ must create a database, service credentials, and API endpoints.
    .. code-block:: console
 
       $ openstack endpoint create --region RegionOne \
-        block-storage public http://controller:8776/v3/%\(project_id\)s
+        block-storage public http://controller:8776/v3
 
       +--------------+------------------------------------------+
       | Field        | Value                                    |
@@ -120,11 +120,11 @@ must create a database, service credentials, and API endpoints.
       | service_id   | ab3bbbef780845a1a283490d281e7fda         |
       | service_name | cinder                                   |
       | service_type | block-storage                            |
-      | url          | http://controller:8776/v3/%(project_id)s |
+      | url          | http://controller:8776/v3                |
       +--------------+------------------------------------------+
 
       $ openstack endpoint create --region RegionOne \
-        block-storage internal http://controller:8776/v3/%\(project_id\)s
+        block-storage internal http://controller:8776/v3
 
       +--------------+------------------------------------------+
       | Field        | Value                                    |
@@ -137,11 +137,11 @@ must create a database, service credentials, and API endpoints.
       | service_id   | ab3bbbef780845a1a283490d281e7fda         |
       | service_name | cinder                                   |
       | service_type | block-storage                            |
-      | url          | http://controller:8776/v3/%(project_id)s |
+      | url          | http://controller:8776/v3                |
       +--------------+------------------------------------------+
 
       $ openstack endpoint create --region RegionOne \
-        block-storage admin http://controller:8776/v3/%\(project_id\)s
+        block-storage admin http://controller:8776/v3
 
       +--------------+------------------------------------------+
       | Field        | Value                                    |
@@ -154,7 +154,7 @@ must create a database, service credentials, and API endpoints.
       | service_id   | ab3bbbef780845a1a283490d281e7fda         |
       | service_name | cinder                                   |
       | service_type | block-storage                            |
-      | url          | http://controller:8776/v3/%(project_id)s |
+      | url          | http://controller:8776/v3                |
       +--------------+------------------------------------------+
 
 
