@@ -4110,7 +4110,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                 for check_cidr in check_iscsi_cidrs:
                     if check_ip in check_cidr:
                         target_luns.append(
-                            targets[target]["connection"][0].lun)
+                            targets[target]["connection"][0]['lun'])
                         target_iqns.append(port.iqn)
                         target_portals.append(target_portal)
 
@@ -4321,14 +4321,14 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         target_wwns = []
         for array in target_arrays:
             connection = self._connect(array, pure_vol_name, connector)
-            if not connection[0].lun:
+            if not connection[0]['lun']:
                 # Swallow any exception, just warn and continue
                 LOG.warning("self._connect failed.")
                 continue
             array_wwns = self._get_array_wwns(array)
             for wwn in array_wwns:
                 target_wwns.append(wwn)
-                target_luns.append(connection[0].lun)
+                target_luns.append(connection[0]['lun'])
 
         # Build the zoning map based on *all* wwns, this could be multiple
         # arrays connecting to the same host with a stretched volume.
@@ -4554,12 +4554,12 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
             if version.parse(array_info.version) < version.parse(
                 '6.6.0'
             ):
-                if not connection[0].lun:
+                if not connection[0]['lun']:
                     # Swallow any exception, just warn and continue
                     LOG.warning("self._connect failed.")
                     continue
             else:
-                if not connection[0].nsid:
+                if not connection[0]['nsid']:
                     # Swallow any exception, just warn and continue
                     LOG.warning("self._connect failed.")
                     continue
@@ -4624,10 +4624,10 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
                                 array_info.version
                             ) < version.parse("6.6.0"):
                                 target_luns.append(
-                                    targets[target]["connection"][0].lun)
+                                    targets[target]["connection"][0]['lun'])
                             else:
                                 target_luns.append(
-                                    targets[target]["connection"][0].nsid)
+                                    targets[target]["connection"][0]['nsid'])
                             target_nqns.append(port.nqn)
                             target_portals.append(
                                 (portal, NVME_PORT, self.transport_type)
