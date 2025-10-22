@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Pure Storage driver `bug #2096801
+    <https://bugs.launchpad.net/cinder/+bug/2096801>`_: Fixed
+    issue using Manage Volumes from the GUI.
