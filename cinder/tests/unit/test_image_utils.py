@@ -1037,9 +1037,9 @@ class TestUploadVolume(test.TestCase):
         self.assertFalse(mock_info.called)
         mock_chown.assert_not_called()
         mock_open.assert_not_called()
-        mock_proxy.assert_not_called()
+        mock_proxy.assert_called_once_with(mock.sentinel.volume_fd)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock.sentinel.volume_fd,
+            ctxt, image_meta['id'], {}, mock_proxy.return_value,
             store_id=None, base_image_ref=None)
 
     @mock.patch('cinder.image.accelerator.ImageAccel._get_engine')
