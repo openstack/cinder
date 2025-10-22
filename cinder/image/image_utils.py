@@ -51,6 +51,7 @@ from cinder.i18n import _
 from cinder.image import accelerator
 from cinder.image import glance
 import cinder.privsep.format_inspector
+import cinder.privsep.path
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import volume_utils
@@ -376,6 +377,16 @@ def check_qemu_img_version(minimum_version: str) -> None:
         raise exception.VolumeBackendAPIException(data=_msg)
 
 
+def _ensure_exists(dest_path: str) -> None:
+    # Ensure that "dest" exists if it is in /dev/
+    # This prevents qemu-img from creating a file in /dev/
+    # if the block device has disappeared.
+    if dest_path.startswith('/dev/'):
+        if not cinder.privsep.path.exists(dest_path):
+            raise exception.CinderException(
+                "qemu-img convert destination %s does not exist" % dest_path)
+
+
 def _convert_image(
         prefix: tuple,
         source: str,
@@ -442,6 +453,8 @@ def _convert_image(
                                 compress=compress,
                                 src_passphrase_file=src_passphrase_file,
                                 disable_sparse=disable_sparse)
+
+    _ensure_exists(dest)
 
     start_time = timeutils.utcnow()
 
