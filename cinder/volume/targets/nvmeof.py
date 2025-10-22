@@ -219,11 +219,12 @@ class NVMeOF(driver.Target):
         return self.delete_nvmeof_target(volume)
 
     def validate_connector(self, connector):
-        if 'initiator' not in connector:
-            LOG.error('The volume driver requires the NVMe initiator '
-                      'name in the connector.')
+        required = 'nqn'
+        if required not in connector:
+            LOG.error('Required information %(required)s not found in '
+                      'connector data.', {"required": required})
             raise exception.InvalidConnectorException(
-                missing='initiator')
+                missing=required)
         return True
 
     def create_nvmeof_target(self,
