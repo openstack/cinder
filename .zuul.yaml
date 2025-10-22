@@ -357,6 +357,10 @@
         GLANCE_SHOW_DIRECT_URL: True
         GLANCE_SHOW_MULTIPLE_LOCATIONS: True
         CINDER_ALLOWED_DIRECT_URL_SCHEMES: cinder
+        CINDER_UPLOAD_OPTIMIZED: True
+        CINDER_UPLOAD_INTERNAL_TENANT: True
+        CINDER_USE_SERVICE_TOKEN: True
+      tempest_test_regex: '(cinder_tempest_plugin|tempest.api.volume.test_volumes_actions)'
 
 - job:
     name: cinder-multibackend-matrix-migration
