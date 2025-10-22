@@ -264,6 +264,8 @@ class TestQemuImgInfo(test.TestCase):
 
 @ddt.ddt
 class TestConvertImage(test.TestCase):
+    @mock.patch('cinder.image.image_utils._ensure_exists',
+                new=mock.MagicMock())
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.utils.is_blk_device', return_value=True)
@@ -296,6 +298,8 @@ class TestConvertImage(test.TestCase):
                                               '-O', out_format, source, dest,
                                               run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils._ensure_exists',
+                new=mock.MagicMock())
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.utils.is_blk_device', return_value=True)
@@ -333,6 +337,8 @@ class TestConvertImage(test.TestCase):
                                               '-O', out_format, source, dest,
                                               run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils._ensure_exists',
+                new=mock.MagicMock())
     @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -358,6 +364,8 @@ class TestConvertImage(test.TestCase):
                                           source, dest,
                                           run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils._ensure_exists',
+                new=mock.MagicMock())
     @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -383,6 +391,8 @@ class TestConvertImage(test.TestCase):
                                           source, dest,
                                           run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils._ensure_exists',
+                new=mock.MagicMock())
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.utils.is_blk_device', return_value=True)
@@ -403,6 +413,8 @@ class TestConvertImage(test.TestCase):
                                               '-O', out_format, '-t', 'none',
                                               source, dest, run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils._ensure_exists',
+                new=mock.MagicMock())
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.utils.is_blk_device', return_value=False)
@@ -422,6 +434,8 @@ class TestConvertImage(test.TestCase):
                                           source, dest, run_as_root=True)
 
     @ddt.data(True, False)
+    @mock.patch('cinder.image.image_utils._ensure_exists',
+                new=mock.MagicMock())
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.utils.is_blk_device', return_value=False)
@@ -446,6 +460,8 @@ class TestConvertImage(test.TestCase):
         mock_exec.assert_called_once_with(*exec_args,
                                           run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils._ensure_exists',
+                new=mock.MagicMock())
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.utils.is_blk_device', return_value=False)
@@ -464,6 +480,8 @@ class TestConvertImage(test.TestCase):
                                           '-O', out_format, '-S', '0', source,
                                           dest, run_as_root=True)
 
+    @mock.patch('cinder.image.image_utils._ensure_exists',
+                new=mock.MagicMock())
     @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.image.image_utils.qemu_img_info')

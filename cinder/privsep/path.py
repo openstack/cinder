@@ -37,3 +37,8 @@ def symlink(src, dest):
     if not os.path.exists(src):
         raise exception.FileNotFound(file_path=src)
     os.symlink(src, dest)
+
+
+@cinder.privsep.sys_admin_pctxt.entrypoint
+def exists(path: str | os.PathLike) -> bool:
+    return os.path.exists(path)
