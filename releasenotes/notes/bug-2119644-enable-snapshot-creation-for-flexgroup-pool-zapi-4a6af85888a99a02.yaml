@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2119644
+    <https://bugs.launchpad.net/cinder/+bug/2119644>`_: Fixed
+    unable to create snapshots for Cinder volume that belongs
+    to FlexGroup pool.
+features:
+  - |
+    The NetApp driver now supports creating snapshots for flexgroup pools
+    through ZAPI client and it utilizes the NFS generic driver. When it
+    comes to REST, if the ONTAP version is below 9.14, the operation
+    depends on the NFS generic driver. However, for ONTAP versions 9.14
+    and above, it relies on the ONTAP file clone API.
