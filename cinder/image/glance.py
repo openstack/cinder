@@ -377,11 +377,26 @@ class GlanceImageService(object):
         Returns a dict containing image metadata on success.
         """
         client = GlanceClientWrapper()
-        try:
-            return client.call(context, 'add_location',
-                               image_id, url, metadata)
-        except Exception:
-            _reraise_translated_image_exception(image_id)
+        # The ``add_image_location`` API was added to address
+        # OSSN-0065, however to keep backward compatibility,
+        # we need to try with the old ``add_location`` call
+        # if we are using an older version of glance.
+        # TODO: Remove the ``add_location`` API call when 2024.1
+        # trasitions to unmaintained. (``add_image_location``
+        # was added in 2024.2).
+        try_methods = ('add_image_location', 'add_location')
+        for method in try_methods:
+            try:
+                return client.call(context, method,
+                                   image_id, url, metadata)
+            except glanceclient.exc.HTTPNotImplemented:
+                LOG.debug('Glance method %s not available', method)
+            except Exception:
+                _reraise_translated_image_exception(image_id)
+        # If both method return HTTPNotImplemented exception
+        raise exception.ProgrammingError(
+            reason='unwarranted assumption about available glanceclient '
+            'methods.')
 
     def download(self,
                  context: context.RequestContext,
