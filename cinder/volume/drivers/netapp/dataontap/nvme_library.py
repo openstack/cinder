@@ -24,6 +24,7 @@ from oslo_utils import units
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
@@ -526,8 +527,8 @@ class NetAppNVMeStorageLibrary(
             pool['QoS_support'] = False
             pool['multiattach'] = False
             pool['online_extend_support'] = False
-            pool['consistencygroup_support'] = False
-            pool['consistent_group_snapshot_enabled'] = False
+            pool['consistencygroup_support'] = True
+            pool['consistent_group_snapshot_enabled'] = True
             pool['reserved_percentage'] = self.reserved_percentage
             pool['max_over_subscription_ratio'] = (
                 self.max_over_subscription_ratio)
@@ -776,3 +777,151 @@ class NetAppNVMeStorageLibrary(
         metadata = self._get_namespace_attr(name, 'metadata')
         path = metadata['Path']
         self._unmap_namespace(path, host_nqn)
+
+    def create_group(self, group):
+        """Driver entry point for creating a generic volume group.
+
+        ONTAP does not maintain an actual Group construct. As a result, no
+        communication to the backend is necessary for generic volume group
+        creation.
+
+        :returns: Hard-coded model update for generic volume group model.
+        """
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+        return model_update
+
+    def delete_group(self, group, volumes):
+        """Driver entry point for deleting a group.
+
+        :returns: Updated group model and list of volume models
+                 for the volumes that were deleted.
+        """
+        model_update = {'status': fields.GroupStatus.DELETED}
+        volumes_model_update = []
+        for volume in volumes:
+            try:
+                self.delete_volume(volume)
+                volumes_model_update.append(
+                    {'id': volume['id'], 'status': 'deleted'})
+            except Exception:
+                volumes_model_update.append(
+                    {'id': volume['id'],
+                     'status': 'error_deleting'})
+                LOG.exception("Volume %(vol)s in the group could not be "
+                              "deleted.", {'vol': volume})
+        return model_update, volumes_model_update
+
+    def update_group(self, group, add_volumes=None, remove_volumes=None):
+        """Driver entry point for updating a generic volume group.
+
+        Since no actual group construct is ever created in ONTAP, it is not
+        necessary to update any metadata on the backend. Since this is a NO-OP,
+        there is guaranteed to be no change in any of the volumes' statuses.
+        """
+        return None, None, None
+
+    def create_group_snapshot(self, group_snapshot, snapshots):
+        """Creates a Cinder group snapshot object.
+
+        The Cinder group snapshot object is created by making use of an
+        ephemeral ONTAP consistency group snapshot in order to provide
+        write-order consistency for a set of flexvol snapshots. First, a list
+        of the flexvols backing the given Cinder group must be gathered. An
+        ONTAP group-snapshot of these flexvols will create a snapshot copy of
+        all the Cinder volumes in the generic volume group. For each Cinder
+        volume in the group, it is then necessary to clone its backing
+        namespace from the ONTAP cg-snapshot. The naming convention used for
+        the clones is what indicates the clone's role as a Cinder snapshot
+        and its inclusion in a Cinder group. The ONTAP cg-snapshot of the
+        flexvols is no longer required after having cloned the namespaces
+        backing the Cinder volumes in the Cinder group.
+
+        :returns: An implicit update for group snapshot and snapshots models
+                 that is interpreted by the manager to set their models to
+                 available.
+        """
+        try:
+            if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+                self._create_consistent_group_snapshot(group_snapshot,
+                                                       snapshots)
+            else:
+                for snapshot in snapshots:
+                    self._create_snapshot(snapshot)
+        except Exception as ex:
+            err_msg = (_("Create group snapshot failed (%s).") % ex)
+            LOG.exception(err_msg, resource=group_snapshot)
+            raise na_utils.NetAppDriverException(err_msg)
+
+        return None, None
+
+    def _create_consistent_group_snapshot(self, group_snapshot, snapshots):
+        flexvols = set()
+        for snapshot in snapshots:
+            flexvols.add(volume_utils.extract_host(
+                snapshot['volume']['host'], level='pool'))
+
+        self.client.create_cg_snapshot(flexvols, group_snapshot['id'])
+
+        for snapshot in snapshots:
+            self._clone_namespace(snapshot['volume']['name'], snapshot['name'])
+
+        for flexvol in flexvols:
+            try:
+                self.client.wait_for_busy_snapshot(
+                    flexvol, group_snapshot['id'])
+                self.client.delete_snapshot(
+                    flexvol, group_snapshot['id'])
+            except exception.SnapshotIsBusy:
+                self.client.mark_snapshot_for_deletion(
+                    flexvol, group_snapshot['id'])
+
+    def delete_group_snapshot(self, group_snapshot, snapshots):
+        """Delete namespaces backing each snapshot in the group snapshot.
+
+        :returns: An implicit update for snapshots models that is interpreted
+                 by the manager to set their models to delete.
+        """
+        for snapshot in snapshots:
+            self._delete_namespace(snapshot['name'])
+            LOG.debug("Snapshot %s deletion successful", snapshot['name'])
+
+        return None, None
+
+    def create_group_from_src(self, group, volumes, group_snapshot=None,
+                              snapshots=None, source_group=None,
+                              source_vols=None):
+        """Creates a group from a group snapshot or a group of cinder vols.
+
+        :returns: An implicit update for the volumes model that is
+                 interpreted by the manager as a successful operation.
+        """
+        LOG.debug("VOLUMES %s ", ', '.join([vol['id'] for vol in volumes]))
+        volume_model_updates = []
+
+        if group_snapshot:
+            vols = zip(volumes, snapshots)
+
+            for volume, snapshot in vols:
+                source = {
+                    'name': snapshot['name'],
+                    'size': snapshot['volume_size'],
+                }
+                self._clone_source_to_destination(source, volume)
+                '''if volume_model_update is not None:
+                    volume_model_update['id'] = volume['id']
+                    volume_model_updates.append(volume_model_update)'''
+
+        else:
+            vols = zip(volumes, source_vols)
+
+            for volume, old_src_vref in vols:
+                src_namespace = self._get_namespace_from_table(
+                    old_src_vref['name'])
+                source = {'name': src_namespace.name,
+                          'size': old_src_vref['size']}
+                self._clone_source_to_destination(source, volume)
+                '''if volume_model_update is not None:
+                    volume_model_update['id'] = volume['id']
+                    volume_model_updates.append(volume_model_update)'''
+
+        return None, volume_model_updates
