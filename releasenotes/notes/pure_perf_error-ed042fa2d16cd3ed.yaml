@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    [Pure Storage] `bug #2123855 <https://bugs.launchpad.net/cinder/+bug/2123855>`_: Fixed

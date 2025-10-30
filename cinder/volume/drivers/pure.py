@@ -187,6 +187,8 @@ MIN_IOPS = 100
 MAX_IOPS = 100000000  # 100M
 MIN_BWS = 1048576  # 1 MB/s
 MAX_BWS = 549755813888  # 512 GB/s
+ONE_HOUR = 3600000
+THIRTY_SEC = 30000
 
 TAG_NAMESPACE = "openstack-integration.purestorage.com"
 
@@ -1417,11 +1419,29 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Set self._stats with relevant information."""
         current_array = self._get_current_array()
         space_info = list(current_array.get_arrays_space().items)[0]
-        perf_info = list(current_array.get_arrays_performance(
+        perf_data = current_array.get_arrays_performance(
             end_time=int(time.time()) * 1000,
-            start_time=(int(time.time()) * 1000) - 30000,
-            resolution=30000
-        ).items)[0]
+            start_time=(int(time.time()) * 1000) - ONE_HOUR,
+            resolution=THIRTY_SEC,
+            total_item_count=True
+        )
+        if perf_data.total_item_count != 0:
+            perf_info = list(perf_data.items)[0]
+        else:
+            class _ZeroPerf:
+                writes_per_sec = 0
+                reads_per_sec = 0
+                write_bytes_per_sec = 0
+                read_bytes_per_sec = 0
+                usec_per_read_op = 0
+                usec_per_write_op = 0
+                queue_depth = 0
+                queue_usec_per_mirrored_write_op = 0
+                queue_usec_per_read_op = 0
+                queue_usec_per_write_op = 0
+            perf_info = _ZeroPerf()
+            LOG.warning("No performance samples returned from array for the "
+                        "requested interval; reporting zeroed metrics.")
         hosts = list(current_array.get_hosts().items)
         volumes = list(current_array.get_volumes().items)
         snaps = list(current_array.get_volume_snapshots().items)
@@ -3906,7 +3926,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     @pure_driver_debug_trace
     def _untag_volume(self, volume_name):
         array = self._get_current_array()
-        array.delete_volumes_tags(namespace=[TAG_NAMESPACE],
+        array.delete_volumes_tags(namespaces=[TAG_NAMESPACE],
                                   resource_names=[volume_name])
 
     @pure_driver_debug_trace
