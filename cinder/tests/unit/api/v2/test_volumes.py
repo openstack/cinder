@@ -1496,14 +1496,13 @@ class VolumeApiTest(test.TestCase):
         self._create_volume_bad_request(body=body)
 
     def _test_get_volumes_by_name(self, get_all, display_name):
-        req = mock.MagicMock()
-        context = mock.Mock()
-        req.environ = {'cinder.context': context}
-        req.params = {'display_name': display_name}
+        qs = urllib.parse.urlencode({'name': display_name})
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, CONF.osapi_max_limit,
+            ctxt, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
             filters={'display_name': display_name},
             viewable_admin_meta=True, offset=0)
@@ -1537,68 +1536,67 @@ class VolumeApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_true(self, get_all):
-        req = mock.MagicMock()
-        context = mock.Mock()
-        req.environ = {'cinder.context': context}
-        req.params = {'display_name': 'Volume-573108026', 'bootable': 1}
+        qs = urllib.parse.urlencode(
+            {'name': 'Volume-573108026', 'bootable': 'true'}
+        )
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, CONF.osapi_max_limit,
+            ctxt, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
             filters={'display_name': 'Volume-573108026', 'bootable': True},
             viewable_admin_meta=True, offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_false(self, get_all):
-        req = mock.MagicMock()
-        context = mock.Mock()
-        req.environ = {'cinder.context': context}
-        req.params = {'display_name': 'Volume-573108026', 'bootable': 0}
+        qs = urllib.parse.urlencode(
+            {'name': 'Volume-573108026', 'bootable': 'false'}
+        )
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, CONF.osapi_max_limit,
+            ctxt, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
             filters={'display_name': 'Volume-573108026', 'bootable': False},
             viewable_admin_meta=True, offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_list(self, get_all):
-        req = mock.MagicMock()
-        context = mock.Mock()
-        req.environ = {'cinder.context': context}
-        req.params = {'id': "['%s', '%s', '%s']" % (
-            fake.VOLUME_ID, fake.VOLUME2_ID, fake.VOLUME3_ID)}
+        qs = urllib.parse.urlencode({
+            'availability_zone': "['az0', 'az1', 'az2']",
+        })
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, CONF.osapi_max_limit,
+            ctxt, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
-            filters={'id': [fake.VOLUME_ID, fake.VOLUME2_ID, fake.VOLUME3_ID]},
+            filters={'availability_zone': ['az0', 'az1', 'az2']},
             viewable_admin_meta=True,
             offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_expression(self, get_all):
-        req = mock.MagicMock()
-        context = mock.Mock()
-        req.environ = {'cinder.context': context}
-        req.params = {'name': "d-"}
+        qs = urllib.parse.urlencode({'name': "d-"})
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, CONF.osapi_max_limit,
+            ctxt, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
             filters={'display_name': 'd-'}, viewable_admin_meta=True, offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_status(self, get_all):
-        req = mock.MagicMock()
-        ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
-        req.environ = {'cinder.context': ctxt}
-        req.params = {'status': 'available'}
+        qs = urllib.parse.urlencode({'status': 'available'})
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
@@ -1609,11 +1607,9 @@ class VolumeApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_metadata(self, get_all):
-        req = mock.MagicMock()
-        ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
-        req.environ = {'cinder.context': ctxt}
-        req.params = {'metadata': "{'fake_key': 'fake_value'}"}
+        qs = urllib.parse.urlencode({'metadata': "{'fake_key': 'fake_value'}"})
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
@@ -1624,11 +1620,9 @@ class VolumeApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_availability_zone(self, get_all):
-        req = mock.MagicMock()
-        ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
-        req.environ = {'cinder.context': ctxt}
-        req.params = {'availability_zone': 'nova'}
+        qs = urllib.parse.urlencode({'availability_zone': 'nova'})
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
@@ -1639,11 +1633,9 @@ class VolumeApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_bootable(self, get_all):
-        req = mock.MagicMock()
-        ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
-        req.environ = {'cinder.context': ctxt}
-        req.params = {'bootable': 1}
+        qs = urllib.parse.urlencode({'bootable': 'true'})
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
@@ -1654,12 +1646,10 @@ class VolumeApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_invalid_filter(self, get_all):
-        req = mock.MagicMock()
-        ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
-        req.environ = {'cinder.context': ctxt}
-        req.params = {'invalid_filter': 'invalid',
-                      'availability_zone': 'nova'}
+        qs = urllib.parse.urlencode(
+            {'availability_zone': 'nova', 'invalid_filter': 'invalid'})
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
@@ -1671,12 +1661,9 @@ class VolumeApiTest(test.TestCase):
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_sort_by_name(self, get_all):
         """Name in client means display_name in database."""
-
-        req = mock.MagicMock()
-        ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
-        req.environ = {'cinder.context': ctxt}
-        req.params = {'sort': 'name'}
+        qs = urllib.parse.urlencode({'sort': 'name'})
+        req = fakes.HTTPRequest.blank('/v3/volumes' + '?' + qs)
+        ctxt = req.environ['cinder.context']
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
