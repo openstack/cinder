@@ -2,6 +2,6 @@
 fixes:
   - |
     NFS driver `bug #2103742
-    <https://bugs.launchpad.net/cinder/+bug/2103742>`_: Fixed issue 
-    preventing the volume resize operation from properly updating the NFS 
+    <https://bugs.launchpad.net/cinder/+bug/2103742>`_: Fixed issue
+    preventing the volume resize operation from properly updating the NFS
     image virtual size with the new size when volume has snapshots.
