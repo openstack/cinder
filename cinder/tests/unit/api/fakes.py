@@ -24,10 +24,10 @@ import webob.request
 
 from cinder.api.middleware import auth
 from cinder.api.middleware import fault
+from cinder.api.middleware import rate_limit
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.openstack import wsgi as os_wsgi
 from cinder.api import urlmap
-from cinder.api.v3 import limits
 from cinder.api.v3 import router as router_v3
 from cinder.api import versions
 from cinder import context
@@ -76,10 +76,10 @@ def wsgi_app(inner_app_v2=None, fake_auth=True, fake_auth_context=None,
                                                        inner_app_v3))
     elif use_no_auth:
         api_v3 = fault.FaultWrapper(auth.NoAuthMiddleware(
-            limits.RateLimitingMiddleware(inner_app_v3)))
+            rate_limit.RateLimitingMiddleware(inner_app_v3)))
     else:
         api_v3 = fault.FaultWrapper(auth.AuthMiddleware(
-            limits.RateLimitingMiddleware(inner_app_v3)))
+            rate_limit.RateLimitingMiddleware(inner_app_v3)))
 
     mapper = urlmap.URLMap()
     mapper['/v3'] = api_v3
