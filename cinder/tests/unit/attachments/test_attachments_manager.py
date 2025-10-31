@@ -20,7 +20,7 @@ from cinder import context
 from cinder import db
 from cinder.objects import fields
 from cinder.objects import volume_attachment
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
@@ -50,7 +50,7 @@ class AttachmentManagerTestCase(test.TestCase):
 
     @ddt.data(False, True)
     @mock.patch.object(db.sqlalchemy.api, '_volume_type_get',
-                       v2_fakes.fake_volume_type_get)
+                       v3_fakes.fake_volume_type_get)
     @mock.patch('cinder.db.sqlalchemy.api.volume_type_qos_specs_get')
     @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
     def test_attachment_update(self, enforce_mpath, get_extra_specs,

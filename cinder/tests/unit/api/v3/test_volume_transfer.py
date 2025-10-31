@@ -31,7 +31,7 @@ from cinder import exception
 from cinder.objects import fields
 from cinder import quota
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
@@ -330,7 +330,7 @@ class VolumeTransferAPITestCase(test.TestCase):
                          volume_id)['status'], 'available')
 
     @mock.patch.object(quota.QUOTAS, 'reserve')
-    @mock.patch.object(db, 'volume_type_get', v2_fakes.fake_volume_type_get)
+    @mock.patch.object(db, 'volume_type_get', v3_fakes.fake_volume_type_get)
     def test_accept_transfer_volume_id_specified(self, type_get):
         volume_id = self._create_volume()
         transfer = self.volume_transfer_api.create(context.get_admin_context(),

@@ -30,7 +30,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import quota
 from cinder.tests import fake_driver
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import utils as tests_utils
@@ -84,7 +84,7 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
             'volume_type_id': fake.VOLUME_TYPE_ID
         }
         self.mock_object(db.sqlalchemy.api, 'volume_type_get',
-                         v2_fakes.fake_volume_type_get)
+                         v3_fakes.fake_volume_type_get)
 
     def test_copy_volume_to_image_status_available(self):
         # creating volume testdata
@@ -491,7 +491,7 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
     def setUp(self):
         super(ImageVolumeTestCases, self).setUp()
         db.volume_type_create(self.context,
-                              v2_fakes.fake_default_type_get(
+                              v3_fakes.fake_default_type_get(
                                   fake.VOLUME_TYPE2_ID))
         self.vol_type = db.volume_type_get_by_name(self.context,
                                                    'vol_type_name')
