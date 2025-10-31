@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Dell PowerFlex driver: Added support for limiting the number of clones
+    from image cache volumes. A new configuration option
+    ``powerflex_max_image_cache_vtree_size`` controls the maximum number of
+    clones that can be created from a single image cache volume. This helps
+    prevent reaching PowerFlex vTree snapshot limits when multiple instances
+    are booted from the same cached image. When set to 0 (default is 0),
+    the maximum number of clones is limited only by the PowerFlex vTree
+    snapshot limit. When the vTree size limit is reached, the existing cache
+    entry is deleted and a fresh cache entry is created.
