@@ -18,7 +18,7 @@ from oslo_log import log as logging
 import webob
 from webob import exc
 
-from cinder.api.contrib import consistencygroups as cg_v2
+from cinder.api.contrib import consistencygroups
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.i18n import _
@@ -27,7 +27,9 @@ from cinder.policies import groups as group_policy
 LOG = logging.getLogger(__name__)
 
 
-class ConsistencyGroupsController(cg_v2.ConsistencyGroupsController):
+class ConsistencyGroupsController(
+    consistencygroups.ConsistencyGroupsController,
+):
     """The ConsistencyGroups API controller for the OpenStack API V3."""
 
     def _check_update_parameters_v3(self, req, name, description, add_volumes,

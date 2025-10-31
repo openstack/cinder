@@ -18,17 +18,17 @@ from oslo_utils import strutils
 from webob import exc
 
 from cinder.api import common
-from cinder.api.contrib import volume_transfer as volume_transfer_v2
+from cinder.api.contrib import volume_transfer
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import volume_transfer
+from cinder.api.schemas import volume_transfer as schema
 from cinder.api import validation
 from cinder import exception
 
 LOG = logging.getLogger(__name__)
 
 
-class VolumeTransferController(volume_transfer_v2.VolumeTransferController):
+class VolumeTransferController(volume_transfer.VolumeTransferController):
     """The transfer API controller for the OpenStack API V3."""
 
     def _get_transfers(self, req, is_detail):
@@ -77,9 +77,9 @@ class VolumeTransferController(volume_transfer_v2.VolumeTransferController):
         return self._get_transfers(req, is_detail=True)
 
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(volume_transfer.create, mv.BASE_VERSION,
+    @validation.schema(schema.create, mv.BASE_VERSION,
                        mv.get_prior_version(mv.TRANSFER_WITH_SNAPSHOTS))
-    @validation.schema(volume_transfer.create_v355, mv.TRANSFER_WITH_SNAPSHOTS)
+    @validation.schema(schema.create_v355, mv.TRANSFER_WITH_SNAPSHOTS)
     def create(self, req, body):
         """Create a new volume transfer."""
         LOG.debug('Creating new volume transfer %s', body)

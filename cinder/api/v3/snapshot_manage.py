@@ -14,14 +14,15 @@
 
 from http import HTTPStatus
 
-from cinder.api.contrib import snapshot_manage as snapshot_manage_v2
+from cinder.api.contrib import snapshot_manage
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.v3 import resource_common_manage as common
 
 
-class SnapshotManageController(common.ManageResource,
-                               snapshot_manage_v2.SnapshotManageController):
+class SnapshotManageController(
+    common.ManageResource, snapshot_manage.SnapshotManageController
+):
     def __init__(self, *args, **kwargs):
         super(SnapshotManageController, self).__init__(*args, **kwargs)
         self._set_resource_type('snapshot')
