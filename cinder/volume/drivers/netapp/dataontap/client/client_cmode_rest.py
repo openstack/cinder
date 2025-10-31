@@ -2104,7 +2104,8 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
                     'path': destination_vserver + ':/cg/' + destination_cg,
                     'consistency_group_volumes':
                         [{'name': destination_volume}]
-                }
+                },
+                'state': 'in_sync'
             }
         else:
             body = {

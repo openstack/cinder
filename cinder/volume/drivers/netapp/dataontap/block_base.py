@@ -33,6 +33,7 @@ from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import excutils
 from oslo_utils import units
+from packaging import version
 
 from cinder import coordination
 from cinder import exception
@@ -90,6 +91,7 @@ class NetAppBlockStorageLibrary(
     DEFAULT_FILTER_FUNCTION = ('capabilities.utilization < 70 and '
                                'capabilities.total_volumes < 1024')
     DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
+    MINIMUM_SMAS_VERSION_SUPPORTED = '9.15.1'
 
     def __init__(self, driver_name, driver_protocol, **kwargs):
 
@@ -494,6 +496,19 @@ class NetAppBlockStorageLibrary(
         return self.zapi_client.has_luns_mapped_to_initiators(initiator_list)
 
     def _is_active_sync_configured(self, config):
+        def is_smas_version_supported(ver,
+                                      threshold=
+                                      self.MINIMUM_SMAS_VERSION_SUPPORTED):
+
+            if not isinstance(ver, str) or not ver:
+                return False
+            return version.parse(ver) >= version.parse(threshold)
+        ontap_version = self.zapi_client.get_ontap_version(cached=True)
+        if (not ontap_version or
+                not is_smas_version_supported(
+                    ontap_version, self.MINIMUM_SMAS_VERSION_SUPPORTED)):
+            return False
+
         backend_names = []
         replication_devices = config.safe_get('replication_device')
         if replication_devices:

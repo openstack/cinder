@@ -1899,6 +1899,60 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library._delete_lun_from_table('another-fake-lun')
         self.assertEqual({fake_lun.name: fake_lun}, self.library.lun_table)
 
+    def test_active_sync_config_true_for_supported_version_and_policy(self):
+        mock_zapi_client = mock.Mock()
+        mock_zapi_client.get_ontap_version.return_value = "9.16.0"
+        self.library.zapi_client = mock_zapi_client
+        config = mock.Mock()
+        config.safe_get.side_effect = lambda key: {
+            'replication_device': [{'backend_id': 'backend1'}],
+            'netapp_replication_policy': 'AutomatedFailOver'
+        }.get(key)
+        result = self.library._is_active_sync_configured(config)
+        self.assertTrue(result)
+
+    def test_active_sync_config_false_for_unsupported_version(self):
+        mock_zapi_client = mock.Mock()
+        mock_zapi_client.get_ontap_version.return_value = "9.14.0"
+        self.library.zapi_client = mock_zapi_client
+        config = mock.Mock()
+        config.safe_get.return_value = None
+        result = self.library._is_active_sync_configured(config)
+        self.assertFalse(result)
+
+    def test_active_sync_config_false_when_no_replication_device(self):
+        mock_zapi_client = mock.Mock()
+        mock_zapi_client.get_ontap_version.return_value = "9.16.0"
+        config = mock.Mock()
+        self.library.zapi_client = mock_zapi_client
+        config.safe_get.side_effect = lambda key: {
+            'replication_device': None,
+            'netapp_replication_policy': 'AutomatedFailOver'
+        }.get(key)
+        result = self.library._is_active_sync_configured(config)
+        self.assertFalse(result)
+
+    def test_active_sync_config_false_when_policy_not_auto_failover(self):
+        mock_zapi_client = mock.Mock()
+        mock_zapi_client.get_ontap_version.return_value = "9.16.0"
+        config = mock.Mock()
+        self.library.zapi_client = mock_zapi_client
+        config.safe_get.side_effect = lambda key: {
+            'replication_device': [{'backend_id': 'backend1'}],
+            'netapp_replication_policy': 'ManualFailOver'
+        }.get(key)
+        result = self.library._is_active_sync_configured(config)
+        self.assertFalse(result)
+
+    def test_active_sync_configured_false_for_none_version(self):
+        mock_zapi_client = mock.Mock()
+        mock_zapi_client.get_ontap_version.return_value = None
+        config = mock.Mock()
+        self.library.zapi_client = mock_zapi_client
+        config.safe_get.return_value = None
+        result = self.library._is_active_sync_configured(config)
+        self.assertFalse(result)
+
     def test_add_looping_tasks_traditional_platform(self):
         """Test _add_looping_tasks with AFF platform"""
         mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')
