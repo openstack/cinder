@@ -24,7 +24,7 @@ from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.schemas import volume_manage
-from cinder.api.v2.views import volumes as volume_views
+from cinder.api.v3.views import volumes as volume_views
 from cinder.api import validation
 from cinder.api.views import manageable_volumes as list_manageable_view
 from cinder import exception
@@ -152,7 +152,10 @@ class VolumeManageController(wsgi.Controller):
 
         api_utils.add_visible_admin_metadata(new_volume)
 
-        return self._view_builder.detail(req, new_volume)
+        # FIXME: This should be respecting microversions but it doesn't, which
+        # means we're missing many fields added in recent microversions. We
+        # should address this with a new microversion
+        return self._view_builder.legacy_detail(req, new_volume)
 
     @wsgi.extends
     def index(self, req):
