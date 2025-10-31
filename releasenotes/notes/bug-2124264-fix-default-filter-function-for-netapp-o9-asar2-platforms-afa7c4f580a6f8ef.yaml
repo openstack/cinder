@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2125054
+    <https://bugs.launchpad.net/cinder/+bug/2125054>`_: Fixed
+    default_filter_fucntion for NetApp driver to maintain the
+    consistency across different platforms like ONTAP9 and ASAr2.
+
+    Admin can add a custom filter to impose the total_volumes limit
+    for ONTAP backends like below.
+    filter_function=capabilities.total_volumes < <max_volumes_admin_wants>
+
+    Note: The admin needs to configure the scheduler_default_filters to include
+    the DriverFilter as well under [DEFAULT] stanza as part of cinder.conf,
+    please refer [1] for the default filter list.
+
+    [1] https://docs.openstack.org/cinder/latest/configuration/block-storage/samples/cinder.conf.html
