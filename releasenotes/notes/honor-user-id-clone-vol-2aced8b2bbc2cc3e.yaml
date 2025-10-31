@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #2056081 <https://bugs.launchpad.net/cinder/+bug/2056081>`_:
+    When cloning a volume from a source volume, we used the user ID
+    of source volume user and not of the current user. Now we use the
+    user ID as provided in the user context that initiated the operation.
