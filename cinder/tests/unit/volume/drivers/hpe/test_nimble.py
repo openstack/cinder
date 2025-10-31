@@ -1226,6 +1226,34 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*', False))
+    def test_get_volume_stats_no_thin_provisioning(self):
+        self.mock_client_service.get_group_info.return_value = (
+            FAKE_POSITIVE_GROUP_INFO_RESPONSE)
+        exp_res = {'driver_version': DRIVER_VERSION,
+                   'vendor_name': 'Nimble',
+                   'volume_backend_name': 'NIMBLE',
+                   'storage_protocol': 'iSCSI',
+                   'pools': [{'pool_name': 'NIMBLE',
+                              'total_capacity_gb': 7466.30419921875,
+                              'free_capacity_gb': 94.16706105787307,
+                              'reserved_percentage': 0,
+                              'QoS_support': False,
+                              'multiattach': True,
+                              'max_over_subscription_ratio': 20.0,
+                              'thin_provisioning_support': False,
+                              'consistent_group_snapshot_enabled': True,
+                              'consistent_group_replication_enabled': False,
+                              'replication_enabled': False}]}
+        self.assertEqual(
+            exp_res,
+            self.driver.get_volume_stats(refresh=True))
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_is_volume_backup_clone(self):
         self.mock_client_service.get_vol_info.return_value = (

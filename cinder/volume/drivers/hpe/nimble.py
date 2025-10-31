@@ -428,7 +428,10 @@ class NimbleBaseVolumeDriver(san.SanDriver):
             # Just use a single pool for now, FIXME to support multiple
             # pools
             mor = self.configuration.max_over_subscription_ratio
-            LOG.debug("mor: %(mor)s", {'mor': mor})
+            thin_provisioning = self.configuration.san_thin_provision
+            LOG.debug("mor: %(mor)s, thin_provisioning: $(thin_provisioning)s",
+                      {'mor': mor, 'thin_provisioning': thin_provisioning})
+
             single_pool = dict(
                 pool_name=backend_name,
                 total_capacity_gb=total_capacity,
@@ -437,7 +440,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                 QoS_support=False,
                 multiattach=True,
                 max_over_subscription_ratio=mor,
-                thin_provisioning_support=True,
+                thin_provisioning_support=thin_provisioning,
                 consistent_group_snapshot_enabled=True,
                 consistent_group_replication_enabled=self._replicated_type,
                 replication_enabled=self._replicated_type)
