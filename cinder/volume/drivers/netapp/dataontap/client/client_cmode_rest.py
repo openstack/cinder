@@ -391,9 +391,19 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
                                        enable_tunneling=False)
 
             for record in result['records']:
+                node_model = record.get('model')
+                node_name = record.get('name')
+
+                if node_model is None:
+                    LOG.warning(
+                        'No model information available for node %s', node_name
+                    )
+                    # Default model to empty string
+                    node_model = ""
+
                 node = {
-                    'model': record['model'],
-                    'name': record['name'],
+                    'model': node_model,
+                    'name': node_name,
                     'is_all_flash':
                         record['is_all_flash_optimized'],
                     'is_all_flash_select':

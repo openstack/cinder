@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #2121812 <https://bugs.launchpad.net/cinder/+bug/2121812>`_: Default
+    node model to empty string in netapp driver.
