@@ -14,8 +14,11 @@
 
 """iSCSI Driver for DataCore SANsymphony storage array."""
 
+import time
+
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import excutils
 
 from cinder.common import constants
@@ -70,6 +73,8 @@ class ISCSIVolumeDriver(driver.DataCoreVolumeDriver):
     VERSION = '2.0.0'
     STORAGE_PROTOCOL = constants.ISCSI
     CI_WIKI_NAME = 'DataCore_CI'
+
+    AWAIT_PORT_STATE_CHANGE_DELAY = 5
 
     def __init__(self, *args, **kwargs):
         super(ISCSIVolumeDriver, self).__init__(*args, **kwargs)
@@ -149,7 +154,7 @@ class ISCSIVolumeDriver(driver.DataCoreVolumeDriver):
                 raise cinder_exception.VolumeDriverException(message=msg)
 
             auth_params = self._setup_iscsi_chap_authentication(
-                iscsi_targets, iscsi_initiator)
+                iscsi_targets, iscsi_initiator, virtual_disk)
 
             virtual_logical_units = self._map_virtual_disk(
                 virtual_disk, iscsi_targets, iscsi_initiator)
@@ -303,7 +308,8 @@ class ISCSIVolumeDriver(driver.DataCoreVolumeDriver):
                 LOG.error(msg)
                 raise cinder_exception.VolumeDriverException(message=msg)
 
-    def _setup_iscsi_chap_authentication(self, targets, initiator):
+    def _setup_iscsi_chap_authentication(self, targets, initiator,
+                                         virtual_disk):
         iscsi_chap_enabled = self.configuration.use_chap_auth
 
         self._check_iscsi_chap_configuration(iscsi_chap_enabled, targets)
@@ -361,6 +367,8 @@ class ISCSIVolumeDriver(driver.DataCoreVolumeDriver):
                     properties.Authentication = authentication
                     self._api.set_server_port_properties(
                         target.Id, properties)
+                    self._await_iscsi_port_state_change(
+                        virtual_disk.FirstHostId)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception("Configuring of iSCSI CHAP authentication for "
@@ -446,3 +454,27 @@ class ISCSIVolumeDriver(driver.DataCoreVolumeDriver):
         return [port for port in ports if
                 port.PortType == 'iSCSI' and port.PortMode == 'Initiator' and
                 port.HostId == host.Id]
+
+    def _await_iscsi_port_state_change(self, hostId):
+        def inner(start_time):
+            wait_time_out = self.configuration.datacore_api_timeout
+            if self._get_targets_state(hostId):
+                raise loopingcall.LoopingCallDone()
+            elif (time.time() - start_time >= wait_time_out):
+                msg = (_("Unable to find Node detail in Server "
+                       "iSCSI port for %(host)s. ") % {'HostId': hostId})
+                LOG.error(msg)
+                raise cinder_exception.VolumeDriverException(message=msg)
+
+        inner_loop = loopingcall.FixedIntervalLoopingCall(inner, time.time())
+        return inner_loop.start(self.AWAIT_PORT_STATE_CHANGE_DELAY).wait()
+
+    def _get_targets_state(self, hostId):
+        available_ports = self._api.get_ports()
+        iscsi_target_ports = self._get_frontend_iscsi_target_ports(
+            available_ports)
+        if iscsi_target_ports:
+            for target_port in iscsi_target_ports:
+                if target_port.HostId == hostId:
+                    return True
+        return False
