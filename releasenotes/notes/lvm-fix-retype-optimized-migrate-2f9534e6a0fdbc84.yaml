@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #2104334 <https://bugs.launchpad.net/cinder/+bug/2104334>`_:
+    Fixed optimized migration path for LVM volumes during retype.

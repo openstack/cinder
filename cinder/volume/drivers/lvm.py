@@ -756,7 +756,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """
 
         false_ret = (False, None)
-        if volume['status'] != 'available':
+        if volume['status'] not in ['available', 'retyping']:
             return false_ret
         if 'location_info' not in host['capabilities']:
             return false_ret
