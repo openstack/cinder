@@ -15,6 +15,8 @@
 
 """The hosts admin extension."""
 
+import functools
+
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_log import versionutils
@@ -74,13 +76,14 @@ def _list_hosts(req, service=None):
     return hosts
 
 
-def check_host(fn):
+def check_host(f):
     """Makes sure that the host exists."""
+    @functools.wraps(f)
     def wrapped(self, req, id, service=None, *args, **kwargs):
         listed_hosts = _list_hosts(req, service)
         hosts = [h["host_name"] for h in listed_hosts]
         if id in hosts:
-            return fn(self, req, id, *args, **kwargs)
+            return f(self, req, id, *args, **kwargs)
         raise exception.HostNotFound(host=id)
     return wrapped
 
