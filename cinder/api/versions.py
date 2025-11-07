@@ -19,24 +19,19 @@ import copy
 from http import HTTPStatus
 
 from oslo_config import cfg
+from oslo_service import wsgi as base_wsgi
 
-from cinder.api import extensions
-from cinder.api import openstack
 from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
 from cinder.api.views import versions as views_versions
 
-
 CONF = cfg.CONF
-
 
 _LINKS = [{
     "rel": "describedby",
     "type": "text/html",
     "href": "https://docs.openstack.org/",
 }]
-
-
 _KNOWN_VERSIONS = {
     "v3.0": {
         "id": "v3.0",
@@ -53,27 +48,23 @@ _KNOWN_VERSIONS = {
 }
 
 
-class Versions(openstack.APIRouter):
+class Versions(base_wsgi.Router):
     """Route versions requests."""
 
-    ExtensionManager = extensions.ExtensionManager
-
-    def _setup_routes(self, mapper, ext_mgr):
-        self.resources['versions'] = create_resource()
-        mapper.connect('versions', '/',
-                       controller=self.resources['versions'],
-                       action='all')
+    def __init__(self):
+        mapper = wsgi.APIMapper()
+        controller = create_resource()
+        mapper.connect('versions', '/', controller=controller, action='all')
         mapper.redirect('', '/')
+        super().__init__(mapper)
 
-    def _setup_ext_routes(self, mapper, ext_mgr):
-        # NOTE(mriedem): The version router doesn't care about extensions.
-        pass
+    @classmethod
+    def factory(cls, global_config, **local_config):
+        """Simple paste factory.
 
-    # NOTE (jose-castro-leon): Avoid to register extensions
-    # on the versions router, the versions router does not offer
-    # resources to be extended.
-    def _setup_extensions(self, ext_mgr):
-        pass
+        :class:`oslo_service.wsgi.Router` doesn't have this.
+        """
+        return cls()
 
 
 class VersionsController(wsgi.Controller):

@@ -24,6 +24,8 @@ import webob
 
 from cinder.api.contrib import admin_actions
 from cinder.api import microversions as mv
+from cinder.api import urlmap
+from cinder.api.v3 import router
 from cinder.backup import api as backup_api
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
@@ -34,7 +36,6 @@ from cinder import objects
 from cinder.objects import base as obj_base
 from cinder.objects import fields
 from cinder.scheduler import rpcapi as scheduler_rpcapi
-from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import cast_as_call
 from cinder.tests.unit import fake_constants as fake
@@ -49,8 +50,8 @@ from cinder.volume import volume_types
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = fakes.router_v3.APIRouter()
-    mapper = fakes.urlmap.URLMap()
+    api = router.APIRouter()
+    mapper = urlmap.URLMap()
     mapper['/v3'] = api
     return mapper
 

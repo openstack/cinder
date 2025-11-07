@@ -18,14 +18,14 @@ from unittest import mock
 from oslo_serialization import jsonutils
 import webob
 
+from cinder.api import urlmap
+from cinder.api.v3 import router
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import test
-
 
 # This list of fake snapshot is used by our tests.
 snapshot_id = fake.SNAPSHOT_ID
@@ -34,8 +34,8 @@ bad_snp_id = fake.WILL_NOT_BE_FOUND_ID
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = fakes.router_v3.APIRouter()
-    mapper = fakes.urlmap.URLMap()
+    api = router.APIRouter()
+    mapper = urlmap.URLMap()
     mapper['/v3'] = api
     return mapper
 
