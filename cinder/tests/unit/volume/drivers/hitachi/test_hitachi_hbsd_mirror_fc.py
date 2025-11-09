@@ -36,8 +36,10 @@ from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hbsd_common
 from cinder.volume.drivers.hitachi import hbsd_fc
+from cinder.volume.drivers.hitachi import hbsd_replication
 from cinder.volume.drivers.hitachi import hbsd_rest
 from cinder.volume.drivers.hitachi import hbsd_rest_api
+from cinder.volume.drivers.hitachi import hbsd_rest_fc
 from cinder.volume.drivers.hitachi import hbsd_utils
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
@@ -619,154 +621,254 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         _set_required(rest_required_opts, True)
         _set_required(common_required_opts, True)
 
-        self.configuration = conf.Configuration(None)
+        self.configuration = conf.Configuration(
+            hbsd_rest.REST_VOLUME_OPTS + hbsd_rest.REST_PAIR_OPTS +
+            hbsd_common.COMMON_VOLUME_OPTS + hbsd_common.COMMON_PORT_OPTS +
+            hbsd_common.COMMON_PAIR_OPTS + hbsd_common.COMMON_NAME_OPTS +
+            hbsd_common.COMMON_EXTEND_OPTS + hbsd_replication._REP_OPTS +
+            hbsd_replication.COMMON_REPLICATION_OPTS +
+            hbsd_replication.COMMON_MIRROR_OPTS +
+            hbsd_replication.ISCSI_MIRROR_OPTS +
+            hbsd_replication.REST_MIRROR_OPTS +
+            hbsd_replication.REST_MIRROR_API_OPTS +
+            hbsd_replication.REST_MIRROR_SSL_OPTS +
+            hbsd_rest_fc.FC_VOLUME_OPTS,
+            conf.SHARED_CONF_GROUP)
+
         self.ctxt = cinder_context.get_admin_context()
         self._setup_config()
         self._setup_driver()
 
     def _setup_config(self):
         """Set configuration parameter values."""
-        self.configuration.config_group = "REST"
+        self.override_config('volume_backend_name', "RESTFC",
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config(
+            'volume_driver',
+            "cinder.volume.drivers.hitachi.hbsd_fc.HBSDFCDriver",
+            group=conf.SHARED_CONF_GROUP)
+        self.override_config('reserved_percentage', "0",
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('use_multipath_for_image_xfer', False,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('enforce_multipath_for_image_xfer', False,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('max_over_subscription_ratio', 500.0,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('driver_ssl_cert_verify', False,
+                             group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.volume_backend_name = "RESTFC"
-        self.configuration.volume_driver = (
-            "cinder.volume.drivers.hitachi.hbsd_fc.HBSDFCDriver")
-        self.configuration.reserved_percentage = "0"
-        self.configuration.use_multipath_for_image_xfer = False
-        self.configuration.enforce_multipath_for_image_xfer = False
-        self.configuration.max_over_subscription_ratio = 500.0
-        self.configuration.driver_ssl_cert_verify = False
+        self.override_config('hitachi_storage_id', CONFIG_MAP['serial'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_pools', ["30"],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_snap_pool', None,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_ldev_range', "0-1",
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_target_ports', [CONFIG_MAP['port_id']],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_compute_target_ports',
+                             [CONFIG_MAP['port_id']],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_group_create', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_group_delete', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_copy_speed', 3,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_copy_check_interval', 3,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_async_copy_check_interval', 10,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_manage_drs_volumes', False,
+                             group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.hitachi_storage_id = CONFIG_MAP['serial']
-        self.configuration.hitachi_pools = ["30"]
-        self.configuration.hitachi_snap_pool = None
-        self.configuration.hitachi_ldev_range = "0-1"
-        self.configuration.hitachi_target_ports = [CONFIG_MAP['port_id']]
-        self.configuration.hitachi_compute_target_ports\
-            = [CONFIG_MAP['port_id']]
-        self.configuration.hitachi_group_create = True
-        self.configuration.hitachi_group_delete = True
-        self.configuration.hitachi_copy_speed = 3
-        self.configuration.hitachi_copy_check_interval = 3
-        self.configuration.hitachi_async_copy_check_interval = 10
-        self.configuration.hitachi_manage_drs_volumes = False
+        self.override_config('san_login', CONFIG_MAP['user_id'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('san_password', CONFIG_MAP['user_pass'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('san_ip', CONFIG_MAP['rest_server_ip_addr'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('san_api_port', CONFIG_MAP['rest_server_ip_port'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_disable_io_wait', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_tcp_keepalive', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_discard_zero_page', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_lun_timeout', hbsd_rest._LUN_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_lun_retry_interval',
+                             hbsd_rest._LUN_RETRY_INTERVAL,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_restore_timeout',
+                             hbsd_rest._RESTORE_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_state_transition_timeout',
+                             hbsd_rest._STATE_TRANSITION_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_lock_timeout',
+                             hbsd_rest_api._LOCK_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_timeout',
+                             hbsd_rest_api._REST_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_extend_timeout',
+                             hbsd_rest_api._EXTEND_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_exec_retry_interval',
+                             hbsd_rest_api._EXEC_RETRY_INTERVAL,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_connect_timeout',
+                             hbsd_rest_api._DEFAULT_CONNECT_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_job_api_response_timeout',
+                             hbsd_rest_api._JOB_API_RESPONSE_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_get_api_response_timeout',
+                             hbsd_rest_api._GET_API_RESPONSE_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_server_busy_timeout',
+                             hbsd_rest_api._REST_SERVER_BUSY_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_keep_session_loop_interval',
+                             hbsd_rest_api._KEEP_SESSION_LOOP_INTERVAL,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_another_ldev_mapped_retry_timeout',
+                             hbsd_rest_api._ANOTHER_LDEV_MAPPED_RETRY_TIMEOUT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_tcp_keepidle',
+                             hbsd_rest_api._TCP_KEEPIDLE,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_tcp_keepintvl',
+                             hbsd_rest_api._TCP_KEEPINTVL,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_tcp_keepcnt',
+                             hbsd_rest_api._TCP_KEEPCNT,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_host_mode_options', [],
+                             group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.san_login = CONFIG_MAP['user_id']
-        self.configuration.san_password = CONFIG_MAP['user_pass']
-        self.configuration.san_ip = CONFIG_MAP[
-            'rest_server_ip_addr']
-        self.configuration.san_api_port = CONFIG_MAP[
-            'rest_server_ip_port']
-        self.configuration.hitachi_rest_disable_io_wait = True
-        self.configuration.hitachi_rest_tcp_keepalive = True
-        self.configuration.hitachi_discard_zero_page = True
-        self.configuration.hitachi_lun_timeout = hbsd_rest._LUN_TIMEOUT
-        self.configuration.hitachi_lun_retry_interval = (
-            hbsd_rest._LUN_RETRY_INTERVAL)
-        self.configuration.hitachi_restore_timeout = hbsd_rest._RESTORE_TIMEOUT
-        self.configuration.hitachi_state_transition_timeout = (
-            hbsd_rest._STATE_TRANSITION_TIMEOUT)
-        self.configuration.hitachi_lock_timeout = hbsd_rest_api._LOCK_TIMEOUT
-        self.configuration.hitachi_rest_timeout = hbsd_rest_api._REST_TIMEOUT
-        self.configuration.hitachi_extend_timeout = (
-            hbsd_rest_api._EXTEND_TIMEOUT)
-        self.configuration.hitachi_exec_retry_interval = (
-            hbsd_rest_api._EXEC_RETRY_INTERVAL)
-        self.configuration.hitachi_rest_connect_timeout = (
-            hbsd_rest_api._DEFAULT_CONNECT_TIMEOUT)
-        self.configuration.hitachi_rest_job_api_response_timeout = (
-            hbsd_rest_api._JOB_API_RESPONSE_TIMEOUT)
-        self.configuration.hitachi_rest_get_api_response_timeout = (
-            hbsd_rest_api._GET_API_RESPONSE_TIMEOUT)
-        self.configuration.hitachi_rest_server_busy_timeout = (
-            hbsd_rest_api._REST_SERVER_BUSY_TIMEOUT)
-        self.configuration.hitachi_rest_keep_session_loop_interval = (
-            hbsd_rest_api._KEEP_SESSION_LOOP_INTERVAL)
-        self.configuration.hitachi_rest_another_ldev_mapped_retry_timeout = (
-            hbsd_rest_api._ANOTHER_LDEV_MAPPED_RETRY_TIMEOUT)
-        self.configuration.hitachi_rest_tcp_keepidle = (
-            hbsd_rest_api._TCP_KEEPIDLE)
-        self.configuration.hitachi_rest_tcp_keepintvl = (
-            hbsd_rest_api._TCP_KEEPINTVL)
-        self.configuration.hitachi_rest_tcp_keepcnt = (
-            hbsd_rest_api._TCP_KEEPCNT)
-        self.configuration.hitachi_host_mode_options = []
+        self.override_config('hitachi_zoning_request', False,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_extend_snapshot_volumes', False,
+                             group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.hitachi_zoning_request = False
-        self.configuration.hitachi_extend_snapshot_volumes = (
-            False)
+        self.override_config('use_chap_auth', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('chap_username', CONFIG_MAP['auth_user'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('chap_password', CONFIG_MAP['auth_password'],
+                             group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.use_chap_auth = True
-        self.configuration.chap_username = CONFIG_MAP['auth_user']
-        self.configuration.chap_password = CONFIG_MAP['auth_password']
+        self.override_config('san_thin_provision', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('san_private_key', '',
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('san_clustername', '',
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('san_ssh_port', '22',
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('san_is_local', False,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('ssh_conn_timeout', '30',
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('ssh_min_pool_conn', '1',
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('ssh_max_pool_conn', '5',
+                             group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.san_thin_provision = True
-        self.configuration.san_private_key = ''
-        self.configuration.san_clustername = ''
-        self.configuration.san_ssh_port = '22'
-        self.configuration.san_is_local = False
-        self.configuration.ssh_conn_timeout = '30'
-        self.configuration.ssh_min_pool_conn = '1'
-        self.configuration.ssh_max_pool_conn = '5'
+        self.override_config('hitachi_replication_status_check_short_interval',
+                             5, group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_replication_status_check_long_interval',
+                             10 * 60,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_replication_status_check_timeout',
+                             24 * 60 * 60,
+                             group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.hitachi_replication_status_check_short_interval = 5
-        self.configuration.hitachi_replication_status_check_long_interval\
-            = 10 * 60
-        self.configuration.hitachi_replication_status_check_timeout\
-            = 24 * 60 * 60
+        self.override_config('hitachi_replication_number', 0,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_pair_target_number', 0,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_port_scheduler', False,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_pair_target_ports',
+                             [CONFIG_MAP['port_id']],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_quorum_disk_id', 13,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_replication_copy_speed', 3,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_storage_id',
+                             REMOTE_CONFIG_MAP['serial'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_pool', '40',
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_snap_pool', None,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_ldev_range', '2-3',
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_target_ports',
+                             [REMOTE_CONFIG_MAP['port_id']],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_compute_target_ports',
+                             [REMOTE_CONFIG_MAP['port_id']],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_pair_target_number', 0,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_rest_pair_target_ports',
+                             [REMOTE_CONFIG_MAP['port_id']],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_rest_user',
+                             REMOTE_CONFIG_MAP['user_id'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_rest_password',
+                             REMOTE_CONFIG_MAP['user_pass'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_rest_api_ip',
+                             REMOTE_CONFIG_MAP['rest_server_ip_addr'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_rest_api_port',
+                             REMOTE_CONFIG_MAP['rest_server_ip_port'],
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_set_mirror_reserve_attribute', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_path_group_id', 0,
+                             group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.hitachi_replication_number = 0
-        self.configuration.hitachi_pair_target_number = 0
-        self.configuration.hitachi_port_scheduler = False
-        self.configuration.hitachi_rest_pair_target_ports\
-            = [CONFIG_MAP['port_id']]
-        self.configuration.hitachi_quorum_disk_id = 13
-        self.configuration.hitachi_replication_copy_speed = 3
-        self.configuration.hitachi_mirror_storage_id\
-            = REMOTE_CONFIG_MAP['serial']
-        self.configuration.hitachi_mirror_pool = '40'
-        self.configuration.hitachi_mirror_snap_pool = None
-        self.configuration.hitachi_mirror_ldev_range = '2-3'
-        self.configuration.hitachi_mirror_target_ports\
-            = [REMOTE_CONFIG_MAP['port_id']]
-        self.configuration.hitachi_mirror_compute_target_ports\
-            = [REMOTE_CONFIG_MAP['port_id']]
-        self.configuration.hitachi_mirror_pair_target_number = 0
-        self.configuration.hitachi_mirror_rest_pair_target_ports\
-            = [REMOTE_CONFIG_MAP['port_id']]
-        self.configuration.hitachi_mirror_rest_user\
-            = REMOTE_CONFIG_MAP['user_id']
-        self.configuration.hitachi_mirror_rest_password\
-            = REMOTE_CONFIG_MAP['user_pass']
-        self.configuration.hitachi_mirror_rest_api_ip\
-            = REMOTE_CONFIG_MAP['rest_server_ip_addr']
-        self.configuration.hitachi_mirror_rest_api_port\
-            = REMOTE_CONFIG_MAP['rest_server_ip_port']
-        self.configuration.hitachi_set_mirror_reserve_attribute = True
-        self.configuration.hitachi_path_group_id = 0
+        self.override_config('hitachi_mirror_use_chap_auth', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_auth_password', None,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_auth_user', None,
+                             group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.hitachi_mirror_use_chap_auth = True
-        self.configuration.hitachi_mirror_chap_user = CONFIG_MAP['auth_user']
-        self.configuration.hitachi_mirror_chap_password\
-            = CONFIG_MAP['auth_password']
-        self.configuration.hitachi_mirror_auth_password = None
-        self.configuration.hitachi_mirror_auth_user = None
+        self.override_config('hitachi_mirror_ssl_cert_verify', False,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_ssl_cert_path', '/root/path',
+                             group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.hitachi_mirror_ssl_cert_verify = False
-        self.configuration.hitachi_mirror_ssl_cert_path = '/root/path'
+        self.override_config('hitachi_replication_mun', '',
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_replication_journal_size', '',
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_replication_journal_overflow_tolerance',
+                             '', group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_replication_journal_use_cache', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_replication_journal_transfer_speed', 256,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_replication_journal_creation_speed', 'L',
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config(
+            'hitachi_replication_journal_path_failure_tolerance',
+            '', group=conf.SHARED_CONF_GROUP)
 
-        self.configuration.hitachi_replication_mun = ''
-        self.configuration.hitachi_replication_journal_size = ''
-        self.configuration.hitachi_replication_journal_overflow_tolerance = ''
-        self.configuration.hitachi_replication_journal_use_cache = ''
-        self.configuration.hitachi_replication_journal_transfer_speed = ''
-        self.configuration.hitachi_replication_journal_creation_speed = ''
-        self.configuration.hitachi_replication_journal_path_failure_tolerance\
-            = ''
-
-        self.configuration.replication_device = ''
-
-        self.configuration.safe_get = self._fake_safe_get
+        self.override_config('replication_device', '',
+                             group=conf.SHARED_CONF_GROUP)
 
         CONF = cfg.CONF
         CONF.my_ip = CONFIG_MAP['my_ip']
@@ -838,8 +940,10 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         drv = hbsd_fc.HBSDFCDriver(
             configuration=self.configuration)
         self._setup_config()
-        self.configuration.hitachi_pair_target_number = 10
-        self.configuration.hitachi_mirror_pair_target_number = 20
+        self.override_config('hitachi_pair_target_number', 10,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_mirror_pair_target_number', 20,
+                             group=conf.SHARED_CONF_GROUP)
 
         def _request_side_effect(
                 method, url, params, json, headers, auth, timeout, verify):
@@ -1188,8 +1292,6 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         self.override_config('hitachi_extend_snapshot_volumes',
                              True, group=conf.SHARED_CONF_GROUP)
-        self.configuration.hitachi_extend_snapshot_volumes = (
-            True)
         extra_specs = {"test1": "aaa",
                        "hbsd:topology": "active_active_mirror_volume"}
         get_volume_type_extra_specs.return_value = extra_specs
@@ -1237,8 +1339,6 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         body = request.call_args_list[17][1]['json']
         self.assertTrue(body['parameters']['enhancedExpansion'])
         self.assertEqual(0, delete_pair.call_count)
-        self.configuration.hitachi_extend_snapshot_volumes = (
-            False)
 
     @mock.patch.object(driver.FibreChannelDriver, "get_goodness_function")
     @mock.patch.object(driver.FibreChannelDriver, "get_filter_function")
@@ -1508,7 +1608,8 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     def test_initialize_connection(
             self, get_volume_type_extra_specs, request, add_fc_zone):
-        self.driver.common.conf.hitachi_zoning_request = True
+        self.override_config('hitachi_zoning_request', True,
+                             group=conf.SHARED_CONF_GROUP)
         self.driver.common.rep_primary.lookup_service = FakeLookupService()
         self.driver.common.rep_secondary.lookup_service = FakeLookupService()
         extra_specs = {"test1": "aaa"}
@@ -1541,7 +1642,8 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
     @mock.patch.object(fczm_utils, "remove_fc_zone")
     @mock.patch.object(requests.Session, "request")
     def test_terminate_connection(self, request, remove_fc_zone):
-        self.driver.common.conf.hitachi_zoning_request = True
+        self.override_config('hitachi_zoning_request', True,
+                             group=conf.SHARED_CONF_GROUP)
         self.driver.common.rep_primary.lookup_service = FakeLookupService()
         self.driver.common.rep_secondary.lookup_service = FakeLookupService()
         def _request_side_effect(
