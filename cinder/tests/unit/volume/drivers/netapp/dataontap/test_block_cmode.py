@@ -499,6 +499,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'replication_enabled': False,
             'online_extend_support': True,
             'netapp_is_flexgroup': 'false',
+            'total_volumes': 2,
         }]
         if report_provisioned_capacity:
             expected[0].update({'provisioned_capacity_gb': 5.0})

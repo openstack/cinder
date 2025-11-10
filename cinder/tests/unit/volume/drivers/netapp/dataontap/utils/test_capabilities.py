@@ -38,6 +38,8 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         self.ssc_library = capabilities.CapabilitiesLibrary(
             'iSCSI', fake.SSC_VSERVER, self.zapi_client, self.configuration)
         self.ssc_library.ssc = fake.SSC
+        self.ssc_library_nvme = capabilities.CapabilitiesLibrary(
+            'NVMe', fake.SSC_VSERVER, self.zapi_client, self.configuration)
 
     def get_config_cmode(self):
         config = na_fakes.create_configuration_cmode()
@@ -88,7 +90,8 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         self.assertFalse(result)
 
-    def test_update_ssc(self):
+    @ddt.data('nfs', 'iscsi')
+    def test_update_ssc(self, protocol):
 
         mock_get_ssc_flexvol_info = self.mock_object(
             self.ssc_library, '_get_ssc_flexvol_info',
@@ -114,12 +117,28 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             self.ssc_library, '_get_ssc_qos_min_info',
             side_effect=[fake.SSC_QOS_MIN_INFO['volume1'],
                          fake.SSC_QOS_MIN_INFO['volume2']])
+        if protocol != 'nfs':
+            mock_get_ssc_volume_count_info = self.mock_object(
+                self.ssc_library, '_get_ssc_volume_count_info',
+                side_effect=[fake.SSC_QOS_MIN_INFO['volume1'],
+                             fake.SSC_QOS_MIN_INFO['volume2']])
+        else:
+            mock_get_ssc_volume_count_info = self.mock_object(
+                self.ssc_library, '_get_ssc_volume_count_info',
+                side_effect=None)
 
         ordered_ssc = collections.OrderedDict()
         ordered_ssc['volume1'] = fake.SSC_VOLUME_MAP['volume1']
         ordered_ssc['volume2'] = fake.SSC_VOLUME_MAP['volume2']
 
         result = self.ssc_library.update_ssc(ordered_ssc)
+
+        if protocol != 'nfs':
+            mock_get_ssc_volume_count_info.assert_has_calls([
+                mock.call('volume1'), mock.call('volume2')])
+        else:
+            self.ssc_library._get_ssc_volume_count_info(fake.SSC_VOLUMES[0]).\
+                assert_not_called()
 
         self.assertIsNone(result)
         self.assertEqual(fake.SSC, self.ssc_library.ssc)
@@ -542,6 +561,35 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         self.assertEqual(expected, result)
         self.zapi_client.is_qos_min_supported.assert_called_once_with(False,
                                                                       'node')
+
+    @ddt.data('iscsi', 'fc', 'nvme')
+    def test_get_ssc_volume_count_info(self, protocol):
+
+        self.ssc_library = self.ssc_library_nvme if protocol == 'nvme' else \
+            self.ssc_library
+
+        self.mock_object(self.ssc_library.zapi_client,
+                         'get_namespace_sizes_by_volume',
+                         return_value=fake.SSC_NAMESPACES_BY_SIZES)
+
+        self.mock_object(self.ssc_library.zapi_client,
+                         'get_lun_sizes_by_volume',
+                         return_value=fake.SSC_LUNS_BY_SIZES)
+
+        result = self.ssc_library._get_ssc_volume_count_info(
+            fake_client.VOLUME_NAMES[0])
+
+        expected = {'total_volumes': 2}
+        self.assertEqual(expected, result)
+
+        if protocol != 'nvme':
+            self.zapi_client.get_lun_sizes_by_volume.\
+                assert_called_once_with(fake_client.VOLUME_NAMES[0])
+            self.zapi_client.get_namespace_sizes_by_volume.assert_not_called()
+        else:
+            self.zapi_client.get_namespace_sizes_by_volume.\
+                assert_called_once_with(fake_client.VOLUME_NAMES[0])
+            self.zapi_client.get_lun_sizes_by_volume.assert_not_called()
 
     @ddt.data(True, False)
     def test_is_flexgroup(self, is_fg):

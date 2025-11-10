@@ -1,0 +1,24 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2117263
+    <https://bugs.launchpad.net/cinder/+bug/2117263>`_: Fixed
+    the issue where the driver does not account for storage limits when
+    provisioning volumes.
+features:
+  - |
+    The NetApp driver now supports the capability "total_volumes" and the
+    default filter function is updated to filter the backends once the pool
+    reaches maximum number of volumes which is 1024 and is due to the
+    limitations from ONTAP FlexVolume.
+
+    The "total_volumes" can be used in netapp driver backend stanza to restrict
+    the number of volumes per pool, like in below example we are restricting
+    maximum number of volumes per a pool to 10.
+    Example: filter_function="capabilities.total_volumes < 10"
+
+    Note: The admin needs to configure the scheduler_default_filters to include
+    the DriverFilter as well under [DEFAULT] stanza as part of cinder.conf,
+    please refer [1] for the default filter list.
+
+    [1] https://docs.openstack.org/cinder/latest/configuration/block-storage/samples/cinder.conf.html

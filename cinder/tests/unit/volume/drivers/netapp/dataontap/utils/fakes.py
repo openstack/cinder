@@ -110,6 +110,37 @@ SSC_QOS_MIN_INFO = {
     },
 }
 
+SSC_VOLUME_COUNT_INFO = {
+    'volume1': {
+        'total_volumes': 3,
+    },
+    'volume2': {
+        'total_volumes': 2,
+    },
+}
+
+SSC_LUNS_BY_SIZES = [
+    {
+        'path': '/vol/volume-ae947c9b-2392-4956-b373-aaac4521f37e',
+        'size': 5368709120.0
+    },
+    {
+        'path': '/vol/snapshot-527eedad-a431-483d-b0ca-18995dd65b66',
+        'size': 1073741824.0
+    }
+]
+
+SSC_NAMESPACES_BY_SIZES = [
+    {
+        'path': '/vol/namespace-ae947c9b-2392-4956-b373-aaac4521f37e',
+        'size': 5379821234.0
+    },
+    {
+        'path': '/vol/namespace-527eedad-a431-483d-b0ca-18995dd65b66',
+        'size': 4673741874.0
+    }
+]
+
 SSC_MIRROR_INFO = {
     'volume1': {
         'netapp_mirrored': 'false',
