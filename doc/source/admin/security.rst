@@ -48,10 +48,10 @@ Some users and admins worry about data leakage between OpenStack projects or
 users caused by a new volume containing partial or full data from a previously
 deleted volume.
 
-These concerns are sometimes instigated by the ``volume_clear`` and
-``volume_clear_size`` configuration options, but these options are only
-relevant to the LVM driver, and only when using thick volumes (which are not
-the default, thin volumes are).
+These concerns are sometimes instigated by the ``volume_clear``,
+``volume_clear_size``, and ``volume_clear_ionice`` configuration options,
+but these options are only relevant to the LVM driver, and only when using
+thick volumes (which are not the default, thin volumes are).
 
 Writing data on a Cinder volume as a generic mechanism to prevent data leakage
 is not implemented for other drivers because it does not ensure that the data
