@@ -18,6 +18,7 @@ import ddt
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import importutils
+from oslo_utils import units
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import db
@@ -139,27 +140,45 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                           lvm_driver._delete_volume, volume)
 
     @mock.patch.object(volume_utils, 'clear_volume')
-    @mock.patch.object(volume_utils, 'copy_volume')
+    @mock.patch.object(volume_utils.os.path, 'exists', return_value=True)
     @mock.patch.object(fake_driver.FakeLoggingVolumeDriver, 'create_export')
     def test_delete_volume_thinlvm_snap(self, _mock_create_export,
-                                        mock_copy, mock_clear):
+                                        mock_os_path, mock_clear):
         vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',
                                        False,
                                        None,
                                        'default')
         self.configuration.volume_clear = 'zero'
         self.configuration.volume_clear_size = 0
-        self.configuration.lvm_type = 'thin'
+        self.configuration.volume_clear_ionice = '-c2'
         self.configuration.target_helper = 'tgtadm'
         lvm_driver = lvm.LVMVolumeDriver(
             configuration=self.configuration, vg_obj=vg_obj)
 
         uuid = '00000000-0000-0000-0000-c3aa7ee01536'
 
+        fake_vol_size = 11
         fake_snapshot = {'name': 'volume-' + uuid,
                          'id': uuid,
-                         'size': 123}
+                         'size': 123,
+                         'volume_size': fake_vol_size}
+
+        # should not clear a thin volume
+        self.configuration.lvm_type = 'thin'
         lvm_driver._delete_volume(fake_snapshot, is_snapshot=True)
+        mock_clear.assert_not_called()
+
+        # make it thick
+        self.configuration.lvm_type = 'thick'
+        lvm_driver._delete_volume(fake_snapshot, is_snapshot=True)
+
+        fake_size_in_meg = fake_vol_size * units.Ki
+        fake_snap_path = self.volume.driver.local_path(fake_snapshot) + '-cow'
+        mock_clear.assert_called_with(fake_size_in_meg,
+                                      fake_snap_path,
+                                      volume_clear='zero',
+                                      volume_clear_size=0,
+                                      volume_clear_ionice='-c2')
 
     @mock.patch.object(volume_utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])

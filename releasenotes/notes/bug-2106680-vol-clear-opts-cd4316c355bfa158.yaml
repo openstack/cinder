@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    `Bug #2106680 <https://bugs.launchpad.net/cinder/+bug/2106680>`_:
+    Configuration of the ``volume_clear_ionice`` option now behaves
+    consistently with the other ``volume_clear_*`` options.  Keep in
+    mind that the ``volume_clear_*`` options apply *only to the LVM
+    driver* and only when thick volumes are being used.  See the
+    `data leakage
+    <https://docs.openstack.org/cinder/latest/admin/security.html#data-leakage>`_
+    section of the `Security
+    <https://docs.openstack.org/cinder/latest/admin/security.html>`_
+    page of the `Cinder Administration Guide
+    <https://docs.openstack.org/cinder/latest/admin/index.html>`_
+    for more information.

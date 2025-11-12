@@ -132,7 +132,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         additional_opts = cls._get_oslo_driver_opts(
             'target_ip_address', 'target_helper', 'target_protocol',
-            'volume_clear', 'volume_clear_size', 'reserved_percentage',
+            'volume_clear', 'volume_clear_size', 'volume_clear_ionice',
+            'reserved_percentage',
             'max_over_subscription_ratio', 'volume_dd_blocksize',
             'target_prefix', 'volumes_dir', 'target_secondary_ip_addresses',
             'target_port',
@@ -198,7 +199,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         volume_utils.clear_volume(
             vol_sz_in_meg, dev_path,
             volume_clear=self.configuration.volume_clear,
-            volume_clear_size=self.configuration.volume_clear_size)
+            volume_clear_size=self.configuration.volume_clear_size,
+            volume_clear_ionice=self.configuration.volume_clear_ionice)
 
     def _escape_snapshot(self, snapshot_name):
         # Linux LVM reserves name that starts with snapshot, so that
