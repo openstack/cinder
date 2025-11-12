@@ -204,12 +204,7 @@ class Hosts(extensions.ExtensionDescriptor):
     updated = "2011-06-29T00:00:00+00:00"
 
     def get_resources(self):
-        resources = [extensions.ResourceExtension('os-hosts',
-                                                  HostController(),
-                                                  collection_actions={
-                                                      'update': 'PUT'},
-                                                  member_actions={
-                                                      'startup': 'GET',
-                                                      'shutdown': 'GET',
-                                                      'reboot': 'GET'})]
+        resources = [extensions.ResourceExtension(
+            'os-hosts', HostController(),
+            collection_actions={'update': 'PUT'})]
         return resources
