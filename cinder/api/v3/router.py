@@ -160,7 +160,6 @@ class APIRouter(base_wsgi.Router):
             )
 
             resource = self.resources[collection]
-            resource.register_actions(controller)
             resource.register_extensions(controller)
 
     def _setup_routes(self, mapper, ext_mgr):
