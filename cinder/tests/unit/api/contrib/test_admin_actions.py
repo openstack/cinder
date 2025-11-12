@@ -148,46 +148,6 @@ class AdminActionsTest(BaseAdminTest):
                                           backup['id'],
                                           updated_status)
 
-    @ddt.data({'os-reset_status': {'status': 'creating'}},
-              {'os-reset_status': {'status': 'available'}},
-              {'os-reset_status': {'status': 'deleting'}},
-              {'os-reset_status': {'status': 'error'}},
-              {'os-reset_status': {'status': 'error_deleting'}},
-              {'os-reset_status': {'attach_status':
-                                   fields.VolumeAttachStatus.DETACHED}},
-              {'os-reset_status': {'attach_status':
-                                   fields.VolumeAttachStatus.ATTACHED}},
-              {'os-reset_status': {'migration_status': 'migrating'}},
-              {'os-reset_status': {'migration_status': 'completing'}},
-              {'os-reset_status': {'migration_status': 'error'}},
-              {'os-reset_status': {'migration_status': 'none'}},
-              {'os-reset_status': {'migration_status': 'starting'}})
-    def test_valid_updates(self, body):
-        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
-            fake.PROJECT_ID, id))
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        req.environ['cinder.context'] = self.ctx
-        req.api_version_request = mv.get_api_version(mv.BASE_VERSION)
-        vac = self.controller
-        vac.validate_update(req, body=body)
-
-    @ddt.data({'os-reset_status': {'status': None}},
-              {'os-reset_status': {'attach_status': None}},
-              {'os-reset_status': {'migration_status': None}},
-              {'os-reset_status': {'status': "", 'attach_status': "",
-                                   "migration_status": ""}})
-    def test_invalid_updates(self, body):
-        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
-            fake.PROJECT_ID, id))
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        req.environ['cinder.context'] = self.ctx
-        req.api_version_request = mv.get_api_version(mv.BASE_VERSION)
-        vac = self.controller
-        self.assertRaises(exception.InvalidParameterValue, vac.validate_update,
-                          req, body=body)
-
     def test_reset_attach_status(self):
         volume = db.volume_create(self.ctx,
                                   {'attach_status':
@@ -424,7 +384,12 @@ class AdminActionsTest(BaseAdminTest):
         # Should raise 404 if backup doesn't exist.
         self.assertEqual(HTTPStatus.NOT_FOUND, resp.status_int)
 
-    @ddt.data({'os-reset_status': {}})
+    @ddt.data({'os-reset_status': {}},
+              {'os-reset_status': {'status': None}},
+              {'os-reset_status': {'attach_status': None}},
+              {'os-reset_status': {'migration_status': None}},
+              {'os-reset_status': {'status': '', 'attach_status': '',
+                                   'migration_status': ''}})
     def test_backup_reset_status_with_invalid_body(self, body):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
