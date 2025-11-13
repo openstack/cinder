@@ -1099,7 +1099,9 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.assertEqual(6, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    def test_extend_volume(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume(self, get_volume_type_qos_specs, request):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
@@ -1108,11 +1110,18 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.extend_volume(TEST_VOLUME[0], 256)
         self.assertEqual(6, request.call_count)
+        args, kwargs = request.call_args_list[5]
+        self.assertNotIn(
+            'Job-Mode-Wait-Configuration-Change', kwargs['headers'])
+        body = request.call_args_list[5][1]['json']
+        self.assertNotIn('enhancedExpansion', body['parameters'])
 
-    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(requests.Session, "request")
-    def test_extend_volume_replication(self, request,
-                                       get_volume_type_extra_specs):
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_extend_volume_replication(self, get_volume_type_extra_specs,
+                                       get_volume_type_qos_specs, request):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         self.ldev_count = 0
         self.copypair_count = 0
         extra_specs = {"test1": "aaa",
@@ -1155,12 +1164,30 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         request.side_effect = _request_side_effect
         self.driver.extend_volume(TEST_VOLUME[4], 256)
         self.assertEqual(28, request.call_count)
+        body = request.call_args_list[15][1]['json']
+        self.assertNotIn('enhancedExpansion', body['parameters'])
+        body = request.call_args_list[20][1]['json']
+        self.assertNotIn('enhancedExpansion', body['parameters'])
+        for args, kwargs in request.call_args_list:
+            if (args[0] == 'PUT' or args[0] == 'POST') and\
+                    'remote-mirror-copypairs' in args[1]:
+                self.assertEqual(
+                    kwargs['headers']['Job-Mode-Wait-Configuration-Change'],
+                    "NoWait")
+                break
+        else:
+            self.fail('no copy_pair api')
 
     @mock.patch.object(hbsd_common.HBSDCommon, "delete_pair")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     @mock.patch.object(requests.Session, "request")
     def test_extend_volume_enable_having_snapshots(
-            self, request, get_volume_type_extra_specs, delete_pair):
+            self, request, get_volume_type_qos_specs,
+            get_volume_type_extra_specs, delete_pair):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.override_config('hitachi_extend_snapshot_volumes',
+                             True, group=conf.SHARED_CONF_GROUP)
         self.configuration.hitachi_extend_snapshot_volumes = (
             True)
         extra_specs = {"test1": "aaa",
@@ -1317,6 +1344,9 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         actual = {'provider_location': '1'}
         self.assertEqual(actual, ret)
         self.assertEqual(7, request.call_count)
+        args, kwargs = request.call_args_list[6]
+        self.assertNotIn(
+            'Job-Mode-Wait-Configuration-Change', kwargs['headers'])
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -1370,6 +1400,9 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                  'remote-copy': hbsd_utils.MIRROR_ATTR})}
         self.assertEqual(actual, ret)
         self.assertEqual(25, request.call_count)
+        args, kwargs = request.call_args_list[21]
+        self.assertEqual(
+            kwargs['headers']['Job-Mode-Wait-Configuration-Change'], "NoWait")
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -1398,6 +1431,9 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         actual = {'provider_location': '1'}
         self.assertEqual(actual, ret)
         self.assertEqual(7, request.call_count)
+        args, kwargs = request.call_args_list[6]
+        self.assertNotIn(
+            'Job-Mode-Wait-Configuration-Change', kwargs['headers'])
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type')

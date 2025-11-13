@@ -1176,6 +1176,171 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(7, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume_qos_dynamic(self, get_volume_type_qos_specs,
+                                       get_volume_type_extra_specs, request):
+        specs = {}
+        get_volume_type_extra_specs.return_value = {}
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIopsPerGB': '1000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_volume(TEST_VOLUME[0])
+        for i in range(1, 2):
+            args, kwargs = request.call_args_list[i]
+            body = kwargs['json']
+            for key, value in body['parameters'].items():
+                specs[key] = value
+
+        self.assertEqual(specs['upperIops'], TEST_VOLUME[0]['size'] * 1000)
+        self.assertEqual('1', ret['provider_location'])
+        get_volume_type_extra_specs.assert_called_once_with(TEST_VOLUME[0].id)
+        get_volume_type_qos_specs.assert_called_once_with(
+            TEST_VOLUME[0].volume_type.id)
+        self.assertEqual(3, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume_qos_dynamic_lower_bound(self,
+                                                   get_volume_type_qos_specs,
+                                                   get_volume_type_extra_specs,
+                                                   request):
+        specs = {}
+        get_volume_type_extra_specs.return_value = {}
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIopsPerGB': '1000', 'lowerIops': '200000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_volume(TEST_VOLUME[0])
+        for i in range(1, 3):
+            args, kwargs = request.call_args_list[i]
+            body = kwargs['json']
+            for key, value in body['parameters'].items():
+                specs[key] = value
+
+        self.assertEqual(specs['upperIops'], 200001)
+        self.assertEqual(specs['lowerIops'], 200000)
+        self.assertEqual('1', ret['provider_location'])
+        get_volume_type_extra_specs.assert_called_once_with(TEST_VOLUME[0].id)
+        get_volume_type_qos_specs.assert_called_once_with(
+            TEST_VOLUME[0].volume_type.id)
+        self.assertEqual(4, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume_qos_dynamic_upper_bound(self,
+                                                   get_volume_type_qos_specs,
+                                                   get_volume_type_extra_specs,
+                                                   request):
+        specs = {}
+        get_volume_type_extra_specs.return_value = {}
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIopsPerGB': '1000', 'upperIops': '100000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_volume(TEST_VOLUME[0])
+        for i in range(1, 2):
+            args, kwargs = request.call_args_list[i]
+            body = kwargs['json']
+            for key, value in body['parameters'].items():
+                specs[key] = value
+
+        self.assertEqual(specs['upperIops'], 100000)
+        self.assertEqual('1', ret['provider_location'])
+        get_volume_type_extra_specs.assert_called_once_with(TEST_VOLUME[0].id)
+        get_volume_type_qos_specs.assert_called_once_with(
+            TEST_VOLUME[0].volume_type.id)
+        self.assertEqual(3, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume_qos_dynamic_both_bounds_low(
+            self,
+            get_volume_type_qos_specs,
+            get_volume_type_extra_specs,
+            request):
+        specs = {}
+        get_volume_type_extra_specs.return_value = {}
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIopsPerGB': '1000', 'lowerIops': '200000',
+                          'upperIops': '300000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_volume(TEST_VOLUME[0])
+        for i in range(1, 3):
+            args, kwargs = request.call_args_list[i]
+            body = kwargs['json']
+            for key, value in body['parameters'].items():
+                specs[key] = value
+
+        self.assertEqual(specs['upperIops'], 200001)
+        self.assertEqual(specs['lowerIops'], 200000)
+        self.assertEqual('1', ret['provider_location'])
+        get_volume_type_extra_specs.assert_called_once_with(TEST_VOLUME[0].id)
+        get_volume_type_qos_specs.assert_called_once_with(
+            TEST_VOLUME[0].volume_type.id)
+        self.assertEqual(4, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_volume_qos_dynamic_both_bounds_high(
+            self,
+            get_volume_type_qos_specs,
+            get_volume_type_extra_specs,
+            request):
+        specs = {}
+        get_volume_type_extra_specs.return_value = {}
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIopsPerGB': '1000', 'lowerIops': '50000',
+                          'upperIops': '100000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        request.return_value = FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_volume(TEST_VOLUME[0])
+        for i in range(1, 3):
+            args, kwargs = request.call_args_list[i]
+            body = kwargs['json']
+            for key, value in body['parameters'].items():
+                specs[key] = value
+
+        self.assertEqual(specs['upperIops'], 100000)
+        self.assertEqual(specs['lowerIops'], 50000)
+        self.assertEqual('1', ret['provider_location'])
+        get_volume_type_extra_specs.assert_called_once_with(TEST_VOLUME[0].id)
+        get_volume_type_qos_specs.assert_called_once_with(
+            TEST_VOLUME[0].volume_type.id)
+        self.assertEqual(4, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
     def test_delete_volume(self, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
@@ -1271,7 +1436,10 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(5, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    def test_extend_volume(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume(self, get_volume_type_qos_specs,
+                           request):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
@@ -1284,7 +1452,13 @@ class HBSDRESTFCDriverTest(test.TestCase):
 
     @mock.patch.object(hbsd_common.HBSDCommon, "delete_pair")
     @mock.patch.object(requests.Session, "request")
-    def test_extend_volume_enable_having_snapshots(self, request, delete_pair):
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume_enable_having_snapshots(self,
+                                                   get_volume_type_qos_specs,
+                                                   request, delete_pair):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.override_config('hitachi_extend_snapshot_volumes',
+                             True, group=conf.SHARED_CONF_GROUP)
         self.configuration.hitachi_extend_snapshot_volumes = (
             True)
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
@@ -1297,6 +1471,128 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertTrue(body['parameters']['enhancedExpansion'])
         self.configuration.hitachi_extend_snapshot_volumes = (
             False)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_dynamic_qos_volume(self, get_volume_type_qos_specs,
+                                       request):
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIopsPerGB': '1000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.extend_volume(TEST_VOLUME[0], 256)
+        self.assertEqual(7, request.call_count)
+        body = request.call_args_list[6][1]['json']
+        self.assertIn('upperIops', body['parameters'])
+        self.assertEqual(int(body['parameters']['upperIops']), 256000)
+        self.assertEqual(2, get_volume_type_qos_specs.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_dynamic_qos_volume_lower_bound(self,
+                                                   get_volume_type_qos_specs,
+                                                   request):
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIopsPerGB': '1000', 'lowerIops': '300000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.extend_volume(TEST_VOLUME[0], 256)
+        # Lower bound will match between original size and new size.
+        self.assertEqual(5, request.call_count)
+        self.assertEqual(2, get_volume_type_qos_specs.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_dynamic_qos_volume_upper_bound(self,
+                                                   get_volume_type_qos_specs,
+                                                   request):
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIopsPerGB': '1000', 'upperIops': '150000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.extend_volume(TEST_VOLUME[0], 256)
+        self.assertEqual(7, request.call_count)
+        body = request.call_args_list[6][1]['json']
+        self.assertIn('upperIops', body['parameters'])
+        self.assertEqual(int(body['parameters']['upperIops']), 150000)
+        self.assertEqual(2, get_volume_type_qos_specs.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_dynamic_qos_volume_both_bounds_low(
+            self,
+            get_volume_type_qos_specs,
+            request):
+
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIopsPerGB': '1000',
+                          'lowerIops': '300000', 'upperIops': '500000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.extend_volume(TEST_VOLUME[0], 256)
+        # Lower bound will match between original size and new size.
+        self.assertEqual(5, request.call_count)
+        self.assertEqual(2, get_volume_type_qos_specs.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_dynamic_qos_volume_both_bounds_high(
+            self,
+            get_volume_type_qos_specs,
+            request):
+
+        input_qos_specs = {
+            'qos_specs': {
+                'consumer': 'back-end',
+                'specs': {'upperIopsPerGB': '1000',
+                          'lowerIops': '100000', 'upperIops': '150000'}}}
+        get_volume_type_qos_specs.return_value = input_qos_specs
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.extend_volume(TEST_VOLUME[0], 256)
+        self.assertEqual(9, request.call_count)
+        bodyLower = request.call_args_list[7][1]['json']
+        bodyUpper = request.call_args_list[8][1]['json']
+        self.assertIn('upperIops', bodyUpper['parameters'])
+        self.assertIn('lowerIops', bodyLower['parameters'])
+        self.assertEqual(int(bodyUpper['parameters']['upperIops']), 150000)
+        self.assertEqual(int(bodyLower['parameters']['lowerIops']), 100000)
+        self.assertEqual(2, get_volume_type_qos_specs.call_count)
 
     @mock.patch.object(driver.FibreChannelDriver, "get_goodness_function")
     @mock.patch.object(driver.FibreChannelDriver, "get_filter_function")

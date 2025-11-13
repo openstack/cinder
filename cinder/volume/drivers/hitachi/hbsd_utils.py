@@ -27,7 +27,7 @@ from cinder import exception
 from cinder import utils as cinder_utils
 from cinder.volume import volume_types
 
-VERSION = '2.6.1'
+VERSION = '2.7.0'
 CI_WIKI_NAME = 'Hitachi_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
@@ -64,8 +64,24 @@ PORT_ID_LENGTH = 5
 
 BUSY_MESSAGE = "Device or resource is busy."
 
-QOS_KEYS = ['upperIops', 'upperTransferRate',
-            'lowerIops', 'lowerTransferRate', 'responsePriority']
+_QOS_MIN_UPPER_IOPS = 100
+_QOS_MAX_UPPER_IOPS = 2147483647
+
+_QOS_KEY_UPPER_IOPS = 'upperIops'
+_QOS_KEY_LOWER_IOPS = 'lowerIops'
+_QOS_KEY_UPPER_XFER_RATE = 'upperTransferRate'
+_QOS_KEY_LOWER_XFER_RATE = 'lowerTransferRate'
+_QOS_KEY_RESPONSE_PRIORITY = 'responsePriority'
+_QOS_DYNAMIC_KEY_UPPER_IOPS_PER_GB = 'upperIopsPerGB'
+
+QOS_KEYS = [_QOS_KEY_UPPER_IOPS, _QOS_KEY_UPPER_XFER_RATE,
+            _QOS_KEY_LOWER_IOPS, _QOS_KEY_LOWER_XFER_RATE,
+            _QOS_KEY_RESPONSE_PRIORITY]
+QOS_DYNAMIC_KEYS = [_QOS_DYNAMIC_KEY_UPPER_IOPS_PER_GB]
+
+# This map maps a dynamic value to the expected normal QoS value to use after
+# the dynamic conversion.
+QOS_DYNAMIC_KEY_MAP = {_QOS_DYNAMIC_KEY_UPPER_IOPS_PER_GB: _QOS_KEY_UPPER_IOPS}
 
 
 @enum.unique
@@ -939,27 +955,65 @@ def synchronized_on_copy_group():
     return wrap
 
 
-def get_qos_specs_from_volume(target):
+def get_qos_specs_from_volume(target, check_volume_size=None):
     """Return a dictionary of the QoS specs of the target.
 
     :param target: Volume or Snapshot whose QoS specs are queried.
     :type target: Volume or Snapshot
+    :param check_volume_size: A volume size to query for the given
+    target (use to check resize values)
+    :type check_volume_size: NoneType to use target, long to check
+    alternate value
     :return: QoS specs.
     :rtype: dict
     """
+
     # If the target is a Volume, volume_type is volume.volume_type.
     # If the target is a Snapshot, volume_type is snapshot.volume.volume_type.
     # We combine these into "getattr(target, 'volume', target).volume_type)".
-    return get_qos_specs_from_volume_type(
-        getattr(target, 'volume', target).volume_type)
+    # We do the same for the size element.
+
+    use_size = check_volume_size
+    if use_size is None:
+        use_size = getattr(target, 'volume', target).size
+
+    return get_qos_specs_from_volume_type_and_size(
+        getattr(target, 'volume', target).volume_type,
+        use_size)
 
 
-def get_qos_specs_from_volume_type(volume_type):
+def _get_qos_dynamic_value(key, value, volume_size, qos_specs):
+
+    if key == _QOS_DYNAMIC_KEY_UPPER_IOPS_PER_GB:
+
+        min_upper_iops = _QOS_MIN_UPPER_IOPS
+        max_upper_iops = _QOS_MAX_UPPER_IOPS
+        if _QOS_KEY_LOWER_IOPS in qos_specs:
+            min_upper_iops = int(qos_specs[_QOS_KEY_LOWER_IOPS]) + 1
+        if _QOS_KEY_UPPER_IOPS in qos_specs:
+            max_upper_iops = int(qos_specs[_QOS_KEY_UPPER_IOPS])
+
+        upperIops = int(volume_size) * int(value)
+        if upperIops < min_upper_iops:
+            upperIops = min_upper_iops
+        if upperIops > max_upper_iops:
+            upperIops = max_upper_iops
+
+        return upperIops
+
+    # We should not get here normally.
+    return None
+
+
+def get_qos_specs_from_volume_type_and_size(volume_type, size):
     """Return a dictionary of the QoS specs of the volume_type.
 
     :param volume_type: VolumeType whose QoS specs are queried. This must not
     be None.
     :type volume_type: VolumeType
+    :param size: The size of the volume whose QoS specs are queried for
+    adaptive QoS.
+    :type size: long
     :return: QoS specs.
     :rtype: dict
     The following is an example of the returned value:
@@ -981,12 +1035,22 @@ def get_qos_specs_from_volume_type(volume_type):
         return qos
     if 'consumer' in specs and specs['consumer'] not in ('back-end', 'both'):
         return qos
+
+    # First pass is for normal keys.
     for key in specs['specs'].keys():
         if key in QOS_KEYS:
             if specs['specs'][key].isdigit():
                 qos[key] = int(specs['specs'][key])
             else:
                 qos[key] = specs['specs'][key]
+
+    # We do a second pass for dynamic keys as they may have to overwrite
+    # values from the standard QoS keys.
+    for key in specs['specs'].keys():
+        if key in QOS_DYNAMIC_KEYS:
+            qos[QOS_DYNAMIC_KEY_MAP[key]] = _get_qos_dynamic_value(
+                key, specs['specs'][key], size, specs['specs'])
+
     return qos
 
 

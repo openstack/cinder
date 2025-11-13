@@ -629,7 +629,10 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.assertRaises(exception.VolumeDriverException, drv.do_setup, None)
 
     @mock.patch.object(requests.Session, "request")
-    def test_extend_volume(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume(self, get_volume_type_qos_specs,
+                           request):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
@@ -642,7 +645,13 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
 
     @mock.patch.object(hbsd_common.HBSDCommon, "delete_pair")
     @mock.patch.object(requests.Session, "request")
-    def test_extend_volume_enable_having_snapshots(self, request, delete_pair):
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume_enable_having_snapshots(self,
+                                                   get_volume_type_qos_specs,
+                                                   request, delete_pair):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.override_config('hitachi_extend_snapshot_volumes',
+                             True, group=conf.SHARED_CONF_GROUP)
         self.configuration.hitachi_extend_snapshot_volumes = (
             True)
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),

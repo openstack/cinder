@@ -1,4 +1,5 @@
-# Copyright (C) 2025, Hitachi, Ltd.
+# Copyright (C) 2020, 2024, Hitachi, Ltd.
+# Copyright (C) 2025, Hitachi Vantara
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -82,8 +83,10 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         2.3.4 - Support data deduplication and compression.
         2.3.5 - Fix key error when backend is down.
         2.4.0 - Add QoS support.
-        2.4.1 - Add UR volume support.
-        2.4.2 - Support extending volume with snapshot.
+        2.5.0 - Add B20 support.
+        2.6.0 - Add UR volume support.
+        2.6.1 - Support extending volume with snapshot.
+        2.6.2 - Support adaptive QoS upperIops setting.
 
     """
 
