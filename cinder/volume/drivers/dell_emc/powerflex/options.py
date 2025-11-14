@@ -19,6 +19,7 @@ named Dell EMC VxFlex OS).
 
 from oslo_config import cfg
 
+from cinder.volume.drivers.dell_emc.powerflex import rest_client
 from cinder.volume.drivers.dell_emc.powerflex import utils as flex_utils
 
 # deprecated options
@@ -43,6 +44,7 @@ POWERFLEX_MAX_OVER_SUBSCRIPTION_RATIO = "powerflex_max_over_subscription_ratio"
 POWERFLEX_ALLOW_NON_PADDED_VOLUMES = "powerflex_allow_non_padded_volumes"
 POWERFLEX_ALLOW_MIGRATION_DURING_REBUILD = (
     "powerflex_allow_migration_during_rebuild")
+POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE = "powerflex_max_image_cache_vtree_size"
 
 deprecated_opts = [
     cfg.PortOpt(VXFLEXOS_REST_SERVER_PORT,
@@ -156,5 +158,12 @@ actual_opts = [
     cfg.IntOpt(flex_utils.POWERFLEX_REST_READ_TIMEOUT,
                default=30, min=1,
                help='Use this value to specify read '
-                    'timeout value (in seconds) for rest call.')
+                    'timeout value (in seconds) for rest call.'),
+    cfg.IntOpt(POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE,
+               default=0, min=0, max=rest_client.MAX_SNAPS_IN_VTREE,
+               help='Maximum size of the vTree associated with an entry in '
+                    'the image volume cache. When the size is exceeded, '
+                    'the cache entry will be replaced with one created from '
+                    'a new vTree. A value of 0 means the size is limited by '
+                    'the PowerFlex vTree snapshot limit.')
 ]

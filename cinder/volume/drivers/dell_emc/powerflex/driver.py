@@ -838,6 +838,24 @@ class PowerFlexDriver(driver.VolumeDriver):
 
         LOG.info("Clone volume %(vol_id)s to %(target_vol_id)s.",
                  {"vol_id": src_vref.id, "target_vol_id": volume.id})
+
+        # Check if source volume is an image cache entry and under the max
+        # vTree size limit
+        max_size = self.configuration.powerflex_max_image_cache_vtree_size
+        if max_size > 0 and volume_utils.is_image_cache_entry(src_vref):
+            client = self._get_client()
+            try:
+                volume_info = client.query_volume(src_vref.provider_id)
+                vtree_id = volume_info["vtreeId"]
+                vtree_stats = client.query_vtree_statistics(vtree_id)
+                num_volumes = int(vtree_stats.get("numOfVolumes", "0"))
+                if num_volumes >= max_size:
+                    raise exception.SnapshotLimitReached(set_limit=max_size)
+            except exception.VolumeBackendAPIException:
+                LOG.warning("Failed to query volume statistics for image "
+                            "cache volume %(vol_id)s. Proceeding with clone.",
+                            {"vol_id": src_vref.id})
+
         return self._create_volume_from_source(volume, src_vref)
 
     def delete_volume(self, volume):

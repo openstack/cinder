@@ -707,6 +707,18 @@ class RestClient(object):
             raise exception.VolumeBackendAPIException(msg)
         return response
 
+    def query_vtree_statistics(self, vtree_id):
+        url = "/instances/VTree::%(vtree_id)s/relationships/Statistics"
+
+        r, response = self.execute_powerflex_get_request(url,
+                                                         vtree_id=vtree_id)
+        if r.status_code != http_client.OK and "errorCode" in response:
+            msg = (_("Failed to query vtree statistics: %s.") %
+                   response["message"])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response
+
     def migrate_vtree(self, volume, params):
         url = "/instances/Volume::%(vol_id)s/action/migrateVTree"
 

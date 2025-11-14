@@ -1643,3 +1643,29 @@ def log_unsupported_driver_warning(driver):
 def is_all_zero(chunk: bytes) -> bool:
     """Return true if the chunk of bytes is all zeroes."""
     return chunk == bytes(len(chunk))
+
+
+def is_image_cache_entry(vol_or_snap) -> bool:
+    """Check if this volume or snapshot is an image cache entry.
+
+    Returns True if the volume is used for image caching, False otherwise.
+    Image cache volumes are tracked in the image_volume_cache_entries
+    table.
+
+    :param vol_or_snap: volume or snapshot object to check
+    :return: True if it's an image cache entry, False otherwise
+    """
+    # Only volumes can be image cache entries
+    if not isinstance(vol_or_snap, objects.Volume):
+        return False
+
+    # Need a context to query the database
+    if not hasattr(vol_or_snap, '_context') or not vol_or_snap._context:
+        return False
+
+    try:
+        cache_entry = db.image_volume_cache_get_by_volume_id(
+            vol_or_snap._context, vol_or_snap.id)
+        return cache_entry is not None
+    except Exception:
+        return False
