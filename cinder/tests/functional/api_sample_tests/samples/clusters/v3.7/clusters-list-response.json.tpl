@@ -1,14 +1,14 @@
 {
     "clusters": [
         {
-            "name": "cluster_name",
             "binary": "cinder-volume",
+            "name": "cluster_name",
             "state": "down",
             "status": "enabled"
         },
         {
-            "name": "cluster2",
             "binary": "cinder-volume",
+            "name": "cluster2",
             "state": "down",
             "status": "disabled"
         }

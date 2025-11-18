@@ -1,9 +1,9 @@
 {
     "cluster": {
         "binary": "cinder-volume",
-        "disabled_reason": "for testing",
+        "disabled_reason": null,
         "name": "cluster_name",
         "state": "down",
-        "status": "disabled"
+        "status": "enabled"
     }
 }

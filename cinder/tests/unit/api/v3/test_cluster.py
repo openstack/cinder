@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import datetime
 from unittest import mock
 
@@ -30,7 +31,7 @@ from cinder.tests.unit import fake_cluster
 from cinder.tests.unit import test
 
 
-CLUSTERS = [
+_FAKE_CLUSTERS = [
     fake_cluster.fake_db_cluster(
         id=1,
         replication_status='error',
@@ -41,14 +42,13 @@ CLUSTERS = [
         created_at=datetime.datetime(2016, 6, 1, 2, 46, 28)),
     fake_cluster.fake_db_cluster(
         id=2, name='cluster2', num_hosts=2, num_down_hosts=1, disabled=True,
+        disabled_reason='for testing',
         replication_status='error',
         frozen=True,
         active_backend_id='replication2',
         updated_at=datetime.datetime(2016, 6, 1, 1, 46, 28),
         created_at=datetime.datetime(2016, 6, 1, 1, 46, 28))
 ]
-
-CLUSTERS_ORM = [fake_cluster.fake_cluster_orm(**kwargs) for kwargs in CLUSTERS]
 
 EXPECTED = [{'created_at': datetime.datetime(2016, 6, 1, 2, 46, 28),
              'disabled_reason': None,
@@ -64,7 +64,7 @@ EXPECTED = [{'created_at': datetime.datetime(2016, 6, 1, 2, 46, 28),
              'active_backend_id': 'replication1',
              'updated_at': datetime.datetime(2016, 6, 1, 2, 46, 28)},
             {'created_at': datetime.datetime(2016, 6, 1, 1, 46, 28),
-             'disabled_reason': None,
+             'disabled_reason': 'for testing',
              'last_heartbeat': '',
              'name': 'cluster2',
              'binary': 'cinder-volume',
@@ -76,6 +76,68 @@ EXPECTED = [{'created_at': datetime.datetime(2016, 6, 1, 2, 46, 28),
              'frozen': True,
              'active_backend_id': 'replication2',
              'updated_at': datetime.datetime(2016, 6, 1, 1, 46, 28)}]
+
+
+def fake_db_api_cluster_get_all(
+    context,
+    is_up=None,
+    get_services=False,
+    services_summary=False,
+    read_deleted='no',
+    name_match_level=None,
+    **filters
+):
+    # we need to implement these if we want to support them
+    # assert is_up is None
+    assert get_services is False
+    # assert services_summary is False
+    assert read_deleted == 'no'
+    assert name_match_level is None
+    # assert filters == {}
+
+    return [
+        fake_cluster.fake_cluster_orm(**kwargs) for kwargs in _FAKE_CLUSTERS
+    ]
+
+
+def fake_db_api_cluster_get(
+    context,
+    id=None,
+    is_up=None,
+    get_services=False,
+    services_summary=False,
+    read_deleted='no',
+    name_match_level=None,
+    **filters,
+):
+    # we need to implement these if we want to support them
+    assert is_up is None
+    assert get_services is False
+    # assert services_summary is False
+    assert read_deleted == 'no'
+    assert name_match_level is None
+
+    for cluster in _FAKE_CLUSTERS:
+        if (
+            id and id == cluster['id']
+        ) or (
+            filters.get('binary', 'nonexist') == cluster['binary'] and
+            filters.get('name', 'nonexist') == cluster['name']
+        ):
+            return fake_cluster.fake_cluster_orm(**cluster)
+
+    raise exception.ClusterNotFound(id=id)
+
+
+def fake_db_api_cluster_update(context, cluster_id, values):
+    for cluster in _FAKE_CLUSTERS:
+        if cluster['id'] == cluster_id:
+            _cluster = copy.deepcopy(cluster)
+            # we skip updating timestamps since it's not needed
+            _cluster.update(values)
+            return fake_cluster.fake_cluster_orm(**cluster)
+
+    raise exception.ClusterNotFound(id=cluster_id)
 
 
 class FakeRequest(object):
@@ -131,7 +193,8 @@ class ClustersTestCase(test.TestCase):
         self.ext_mgr.extensions = {}
         self.controller = clusters.ClusterController(self.ext_mgr)
 
-    @mock.patch('cinder.db.cluster_get_all', return_value=CLUSTERS_ORM)
+    @mock.patch('cinder.db.cluster_get_all',
+                side_effect=fake_db_api_cluster_get_all)
     def _test_list(self, get_all_mock, detailed, filters=None, expected=None,
                    version=mv.get_prior_version(mv.REPLICATION_CLUSTER)):
         filters = filters or {}
@@ -214,7 +277,7 @@ class ClustersTestCase(test.TestCase):
                         version=mv.REPLICATION_CLUSTER)
 
     @mock.patch('cinder.db.sqlalchemy.api.cluster_get',
-                return_value=CLUSTERS_ORM[0])
+                side_effect=fake_db_api_cluster_get)
     def test_show(self, get_mock):
         req = FakeRequest()
         expected = {'cluster': self._get_expected()[0]}
@@ -238,14 +301,15 @@ class ClustersTestCase(test.TestCase):
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self.controller.show, req, 'name')
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_update')
+    @mock.patch('cinder.db.sqlalchemy.api.cluster_update',
+                side_effect=fake_db_api_cluster_update)
     @mock.patch('cinder.db.sqlalchemy.api.cluster_get',
-                return_value=CLUSTERS_ORM[1])
+                side_effect=fake_db_api_cluster_get)
     def test_update_enable(self, get_mock, update_mock):
         req = FakeRequest()
-        expected = {'cluster': {'name': 'cluster2',
+        expected = {'cluster': {'name': 'cluster_name',
                                 'binary': 'cinder-volume',
-                                'state': 'down',
+                                'state': 'up',
                                 'status': 'enabled',
                                 'disabled_reason': None}}
         res = self.controller.update(req, 'enable',
@@ -256,13 +320,14 @@ class ClustersTestCase(test.TestCase):
         get_mock.assert_called_once_with(ctxt,
                                          None, binary='cinder-volume',
                                          name='cluster_name')
-        update_mock.assert_called_once_with(ctxt, get_mock.return_value.id,
+        update_mock.assert_called_once_with(ctxt, 1,
                                             {'disabled': False,
                                              'disabled_reason': None})
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_update')
+    @mock.patch('cinder.db.sqlalchemy.api.cluster_update',
+                side_effect=fake_db_api_cluster_update)
     @mock.patch('cinder.db.sqlalchemy.api.cluster_get',
-                return_value=CLUSTERS_ORM[0])
+                side_effect=fake_db_api_cluster_get)
     def test_update_disable(self, get_mock, update_mock):
         req = FakeRequest()
         disabled_reason = 'For testing'
@@ -281,7 +346,7 @@ class ClustersTestCase(test.TestCase):
                                          None, binary='cinder-volume',
                                          name='cluster_name')
         update_mock.assert_called_once_with(
-            ctxt, get_mock.return_value.id,
+            ctxt, 1,
             {'disabled': True, 'disabled_reason': disabled_reason})
 
     def test_update_wrong_action(self):
