@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Quobyte driver: is now a supported driver, again.
+    ``enable_unsupported_driver`` is no longer required when using it.
