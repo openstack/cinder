@@ -161,11 +161,19 @@ COMMON_NAME_OPTS = [
         help='Format of host groups, iSCSI targets, and server objects.'),
 ]
 
+COMMON_EXTEND_OPTS = [
+    cfg.BoolOpt(
+        'hitachi_extend_snapshot_volumes',
+        default=False,
+        help='Enables or disables to extend volume having snapshots.'),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(COMMON_VOLUME_OPTS, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(COMMON_PORT_OPTS, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(COMMON_PAIR_OPTS, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(COMMON_NAME_OPTS, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(COMMON_EXTEND_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 LOG = logging.getLogger(__name__)
 MSG = utils.HBSDMsg
@@ -709,7 +717,14 @@ class HBSDCommon():
             msg = self.output_log(MSG.INVALID_VOLUME_TYPE_FOR_EXTEND,
                                   volume_id=volume['id'])
             self.raise_error(msg)
-        self.delete_pair(ldev)
+
+        if not (
+            hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] +
+                '_extend_snapshot_volumes')
+                and self.conf.hitachi_extend_snapshot_volumes):
+            self.delete_pair(ldev)
 
         # Extend a Managed parent if we have one and it's necessary.
         ldev_info = self.get_ldev_info(['parentLdevId'], ldev)
@@ -852,6 +867,11 @@ class HBSDCommon():
                 self.conf,
                 self.driver_info['param_prefix'] + '_group_name_format'):
             self.check_opts(self.conf, COMMON_NAME_OPTS)
+        if hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] +
+                '_extend_snapshot_volumes'):
+            self.check_opts(self.conf, COMMON_EXTEND_OPTS)
         if self.conf.hitachi_ldev_range:
             self.storage_info['ldev_range'] = self._range2list(
                 self.driver_info['param_prefix'] + '_ldev_range')

@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Hitachi driver: Add support for extending volumes that have snapshots associated with them.

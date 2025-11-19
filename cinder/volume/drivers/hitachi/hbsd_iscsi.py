@@ -83,6 +83,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         2.3.5 - Fix key error when backend is down.
         2.4.0 - Add QoS support.
         2.4.1 - Add UR volume support.
+        2.4.2 - Support extending volume with snapshot.
 
     """
 
@@ -103,6 +104,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         self.configuration.append_config_values(common.COMMON_VOLUME_OPTS)
         self.configuration.append_config_values(common.COMMON_PAIR_OPTS)
         self.configuration.append_config_values(common.COMMON_NAME_OPTS)
+        self.configuration.append_config_values(common.COMMON_EXTEND_OPTS)
         self.configuration.append_config_values(
             replication.COMMON_MIRROR_OPTS)
         os.environ['LANG'] = 'C'
@@ -131,6 +133,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         return (common.COMMON_VOLUME_OPTS +
                 common.COMMON_PAIR_OPTS +
                 common.COMMON_NAME_OPTS +
+                common.COMMON_EXTEND_OPTS +
                 rest.REST_VOLUME_OPTS +
                 rest.REST_PAIR_OPTS +
                 replication._REP_OPTS +

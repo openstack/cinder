@@ -693,6 +693,8 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.configuration.hitachi_host_mode_options = []
 
         self.configuration.hitachi_zoning_request = False
+        self.configuration.hitachi_extend_snapshot_volumes = (
+            False)
 
         self.configuration.use_chap_auth = True
         self.configuration.chap_username = CONFIG_MAP['auth_user']
@@ -1152,7 +1154,64 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                 500, ERROR_RESULT, headers={'Content-Type': 'json'})
         request.side_effect = _request_side_effect
         self.driver.extend_volume(TEST_VOLUME[4], 256)
-        self.assertEqual(27, request.call_count)
+        self.assertEqual(28, request.call_count)
+
+    @mock.patch.object(hbsd_common.HBSDCommon, "delete_pair")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(requests.Session, "request")
+    def test_extend_volume_enable_having_snapshots(
+            self, request, get_volume_type_extra_specs, delete_pair):
+        self.configuration.hitachi_extend_snapshot_volumes = (
+            True)
+        extra_specs = {"test1": "aaa",
+                       "hbsd:topology": "active_active_mirror_volume"}
+        get_volume_type_extra_specs.return_value = extra_specs
+        self.ldev_count = 0
+        self.copypair_count = 0
+
+        def _request_side_effect(
+                method, url, params, json, headers, auth, timeout, verify):
+            if self.configuration.hitachi_storage_id in url:
+                if method in ('POST', 'PUT', 'DELETE'):
+                    return FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)
+                elif method == 'GET':
+                    if '/remote-mirror-copygroups/' in url:
+                        return FakeResponse(
+                            200, GET_REMOTE_MIRROR_COPYGROUP_RESULT)
+                    elif '/remote-mirror-copygroups' in url:
+                        return FakeResponse(200, NOTFOUND_RESULT)
+                    elif '/remote-mirror-copypairs/' in url:
+                        if self.copypair_count == 0:
+                            self.copypair_count = self.copypair_count + 1
+                            return FakeResponse(
+                                200, GET_REMOTE_MIRROR_COPYPAIR_RESULT_SPLIT)
+                        else:
+                            return FakeResponse(
+                                200, GET_REMOTE_MIRROR_COPYPAIR_RESULT)
+                    elif '/ldevs/' in url:
+                        if self.ldev_count < 2:
+                            self.ldev_count = self.ldev_count + 1
+                            return FakeResponse(200, GET_LDEV_RESULT_REP_PAIR)
+                        else:
+                            return FakeResponse(200, GET_LDEV_RESULT)
+            else:
+                if method in ('POST', 'PUT', 'DELETE'):
+                    return FakeResponse(202, REMOTE_COMPLETED_SUCCEEDED_RESULT)
+                elif method == 'GET':
+                    if '/ldevs/' in url:
+                        return FakeResponse(200, GET_LDEV_RESULT)
+            return FakeResponse(
+                500, ERROR_RESULT, headers={'Content-Type': 'json'})
+        request.side_effect = _request_side_effect
+        self.driver.extend_volume(TEST_VOLUME[4], 256)
+        self.assertEqual(25, request.call_count)
+        body = request.call_args_list[13][1]['json']
+        self.assertTrue(body['parameters']['enhancedExpansion'])
+        body = request.call_args_list[17][1]['json']
+        self.assertTrue(body['parameters']['enhancedExpansion'])
+        self.assertEqual(0, delete_pair.call_count)
+        self.configuration.hitachi_extend_snapshot_volumes = (
+            False)
 
     @mock.patch.object(driver.FibreChannelDriver, "get_goodness_function")
     @mock.patch.object(driver.FibreChannelDriver, "get_filter_function")

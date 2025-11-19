@@ -1013,7 +1013,12 @@ class HBSDREST(common.HBSDCommon):
                                '%sG' % (new_size - old_size)}}
         if self.is_ldev_drs(ldev):
             body['parameters']['enhancedExpansion'] = True
-
+        if (hasattr(
+                self.conf,
+                self.driver_info['param_prefix'] +
+                '_extend_snapshot_volumes')
+                and self.conf.hitachi_extend_snapshot_volumes):
+            body['parameters']['enhancedExpansion'] = True
         self.client.extend_ldev(ldev, body)
 
     def get_pool_info(self, pool_id, result=None):
