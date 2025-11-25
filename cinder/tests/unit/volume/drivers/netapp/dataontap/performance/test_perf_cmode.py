@@ -39,6 +39,11 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
             self.perf_library.system_object_name = 'system'
             self.perf_library.avg_processor_busy_base_counter_name = (
                 'cpu_elapsed_time1')
+            self.perf_library._aggr_node_cache = {
+                'aggr_names': set(),
+                'node_names': set(),
+                'aggr_node_map': {}
+            }
 
         self._set_up_fake_pools()
 
@@ -354,7 +359,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
     def test_get_nodes_for_aggregates(self):
 
-        aggregate_names = ['aggr1', 'aggr2', 'aggr3']
+        aggregate_names = {'aggr1', 'aggr2', 'aggr3'}
         aggregate_nodes = ['node1', 'node2', 'node2']
 
         mock_get_node_for_aggregate = self.mock_object(
@@ -371,7 +376,8 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         self.assertEqual(expected_node_names, result_node_names)
         self.assertEqual(expected_aggr_node_map, result_aggr_node_map)
         mock_get_node_for_aggregate.assert_has_calls([
-            mock.call('aggr1'), mock.call('aggr2'), mock.call('aggr3')])
+            mock.call('aggr1'), mock.call('aggr2'), mock.call('aggr3')],
+            any_order=True)
 
     def test_get_node_utilization_counters(self):
 
@@ -474,3 +480,36 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         mock_get_performance_counters.assert_called_once_with(
             'processor', fake.PROCESSOR_INSTANCE_UUIDS,
             ['domain_busy', 'processor_elapsed_time'])
+
+    def test_get_nodes_for_aggregates_cache_miss(self):
+        aggr_names = {'aggr1', 'aggr2'}
+        self.zapi_client.get_node_for_aggregate.side_effect = (
+            lambda aggr: f'node_{aggr}')
+        nodes, aggr_node_map = self.perf_library._get_nodes_for_aggregates(
+            aggr_names
+        )
+
+        self.assertEqual(nodes, {'node_aggr1', 'node_aggr2'})
+        self.assertEqual(aggr_node_map,
+                         {'aggr1': 'node_aggr1', 'aggr2': 'node_aggr2'})
+
+        # Check that the cache has been updated correctly
+        self.assertIn('node_names', self.perf_library._aggr_node_cache)
+        self.assertIn('aggr_node_map', self.perf_library._aggr_node_cache)
+
+        self.assertEqual(self.perf_library._aggr_node_cache['node_names'],
+                         nodes)
+        self.assertEqual(self.perf_library._aggr_node_cache['aggr_node_map'],
+                         aggr_node_map)
+
+    def test_get_nodes_for_aggregates_cache_hit(self):
+        aggr_names = {'aggr1'}
+        self.perf_library._aggr_node_cache['aggr_names'] = set(aggr_names)
+        self.perf_library._aggr_node_cache['node_names'] = {'node_aggr1'}
+        self.perf_library._aggr_node_cache['aggr_node_map'] = {
+            'aggr1': 'node_aggr1'
+        }
+        nodes, aggr_node_map = self.perf_library._get_nodes_for_aggregates(
+            aggr_names)
+        self.assertEqual(nodes, {'node_aggr1'})
+        self.assertEqual(aggr_node_map, {'aggr1': 'node_aggr1'})

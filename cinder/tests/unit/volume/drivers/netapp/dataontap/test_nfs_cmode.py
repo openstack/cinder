@@ -20,6 +20,7 @@ import uuid
 
 import ddt
 from os_brick.remotefs import remotefs as remotefs_brick
+from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
@@ -45,6 +46,9 @@ from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
 from cinder.volume import volume_utils
+
+# Arbitrary fixed timestamp used when the clock is mocked.
+FAKE_NOW = 1000000
 
 
 @ddt.ddt
@@ -2631,3 +2635,149 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                          side_effect=side_effect)
 
         self.driver._swap_files(fake.FLEXVOL, fake.VOLUME_NAME, new_file)
+
+    def _mock_pool_stats_dependencies(self):
+        """Mock everything _get_pool_stats needs besides the perf cache."""
+        self.driver.using_cluster_credentials = True
+        self.driver.ssc_library.get_ssc.return_value = fake_ssc.SSC
+        self.driver.ssc_library.get_ssc_aggregates.return_value = ['aggr1']
+        self.driver.zapi_client.get_aggregate_capacities.return_value = {}
+        self.driver.zapi_client.get_file_sizes_by_dir.return_value = []
+        self.driver.zapi_client.get_flexvol_dedupe_used_percent.return_value \
+            = 55.0
+        self.mock_object(self.driver, '_get_share_capacity_info',
+                         return_value={})
+        self.driver.perf_library.get_node_utilization_for_pool.return_value = (
+            30.0)
+
+    @ddt.data(
+        # The cache was never updated, so it is refreshed on the first call.
+        (0, True),
+        # Only 100s elapsed since the last update, less than the 300s expiry.
+        (FAKE_NOW - 100, False),
+        # 301s elapsed since the last update, so the cache has expired.
+        (FAKE_NOW - 301, True),
+    )
+    @ddt.unpack
+    def test_get_pool_stats_perf_cache_expiry(self, last_perf_update,
+                                              expect_refresh):
+        self._mock_pool_stats_dependencies()
+        self.override_config('netapp_performance_cache_expiry_duration', 300)
+        self.driver.last_perf_update = last_perf_update
+        update_cache = self.driver.perf_library.update_performance_cache
+
+        with mock.patch.object(timeutils, 'utcnow') as mock_utcnow:
+            mock_utcnow.return_value.timestamp.return_value = FAKE_NOW
+            pools = self.driver._get_pool_stats()
+
+        self.assertEqual(len(fake_ssc.SSC), len(pools))
+        if expect_refresh:
+            # The cache is refreshed once for the cluster, not once per pool.
+            update_cache.assert_called_once_with(fake_ssc.SSC)
+            self.assertEqual(FAKE_NOW, self.driver.last_perf_update)
+        else:
+            update_cache.assert_not_called()
+            self.assertEqual(last_perf_update, self.driver.last_perf_update)
+
+    def test_get_pool_stats_no_perf_update_without_cluster_credentials(self):
+        # Performance metrics require cluster-scoped credentials.
+        self._mock_pool_stats_dependencies()
+        self.driver.using_cluster_credentials = False
+        self.driver.last_perf_update = 0
+
+        self.driver._get_pool_stats()
+
+        self.driver.perf_library.update_performance_cache.assert_not_called()
+        self.assertEqual(0, self.driver.last_perf_update)
+
+    @ddt.data(
+        {
+            'now': 100,
+            'last_dedupe_update': 0,
+            'using_cluster_credentials': True,
+            'is_flexgroup': False,
+            'expected_dedupe': 30.7,
+            'expected_call_count': 1,
+            'expected_last_update': 100,
+        },
+        {
+            'now': 50,
+            'last_dedupe_update': 0,
+            'using_cluster_credentials': True,
+            'is_flexgroup': False,
+            'expected_dedupe': 40.7,
+            'expected_call_count': 0,
+            'expected_last_update': 0,
+        },
+        {
+            'now': 100,
+            'last_dedupe_update': 0,
+            'using_cluster_credentials': False,
+            'is_flexgroup': False,
+            'expected_dedupe': 0.0,
+            'expected_call_count': 0,
+            'expected_last_update': 0,
+        },
+        {
+            'now': 100,
+            'last_dedupe_update': 0,
+            'using_cluster_credentials': True,
+            'is_flexgroup': True,
+            'expected_dedupe': 0.0,
+            'expected_call_count': 0,
+            'expected_last_update': 0,
+        },
+    )
+    @ddt.unpack
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_dedupe_calculation(
+            self, mock_utcnow, now, last_dedupe_update,
+            using_cluster_credentials, is_flexgroup,
+            expected_dedupe, expected_call_count, expected_last_update):
+        mock_utcnow.return_value.timestamp.return_value = now
+        self._setup_for_dedup()
+
+        self.library.last_dedupe_update = last_dedupe_update
+        self.library.using_cluster_credentials = using_cluster_credentials
+
+        ssc_vol_name = 'pool1'
+        dedupe_used = 0.0
+        if self.library.using_cluster_credentials and not is_flexgroup:
+            dedupe_expiry = (
+                self.library.configuration.netapp_dedupe_cache_expiry_duration)
+            current = timeutils.utcnow().timestamp()
+            if (current - self.library.last_dedupe_update) > dedupe_expiry:
+                dedupe_used = (
+                    self.library.zapi_client.get_flexvol_dedupe_used_percent(
+                        ssc_vol_name)
+                )
+                self.library.last_dedupe_update = current
+            else:
+                for current_pool in self.library._stats.get('pools', []):
+                    if current_pool.get('pool_name') == ssc_vol_name:
+                        dedupe_used = current_pool.get(
+                            'netapp_dedupe_used_percent')
+                        break
+
+        self.assertEqual(expected_dedupe, na_utils.round_down(dedupe_used))
+        self.assertEqual(expected_last_update,
+                         self.library.last_dedupe_update)
+        self.assertEqual(
+            expected_call_count,
+            (self.library.zapi_client
+             .get_flexvol_dedupe_used_percent.call_count))
+
+    def _setup_for_dedup(self):
+        self.library = self.driver
+        self.library.using_cluster_credentials = True
+        self.library.last_dedupe_update = 0
+        self.library.configuration = mock.Mock()
+        self.library.configuration.netapp_dedupe_cache_expiry_duration = 60
+        self.library._stats = {
+            'pools': [
+                {'pool_name': 'pool1', 'netapp_dedupe_used_percent': 40.7}
+            ]
+        }
+        self.library.zapi_client = mock.Mock()
+        self.library.zapi_client.get_flexvol_dedupe_used_percent = mock.Mock(
+            return_value=30.7)

@@ -1,0 +1,21 @@
+---
+fixes:
+  - |
+    NetApp Driver `bug #2132785
+    <https://bugs.launchpad.net/cinder/+bug/2132785>`_: Implemented logic to
+    update the performance and deduplication statistics
+    of backend pools at configurable intervals for NFS and NVMe/TCP driver.
+    User can use below options to control the frequency of performance
+    and deduplication data retrieval from ONTAP
+    ``netapp_performance_cache_expiry_duration`` and
+    ``netapp_dedupe_cache_expiry_duration``.
+
+    These options are needed to fine-tune the frequency of querying
+    performance and deduplication metrics, as these queries occur both
+    during the delete volume workflow and in the update_volume_stats
+    method, which is triggered by the periodic interval task. Users can
+    configure these parameters to prevent the queries from running
+    simultaneously when both workflows regularly coincide.
+
+    Performance statistics updates are further optimized by caching the
+    node details to avoid the ONTAP call.

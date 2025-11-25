@@ -32,6 +32,10 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
 
         self.performance_counters = {}
         self.pool_utilization = {}
+        self._aggr_node_cache = {
+            'node_names': set(),
+            'aggr_node_map': {},
+        }
 
     def _init_counter_info(self):
         """Set a few counter names based on Data ONTAP version."""
@@ -135,16 +139,23 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
     def _get_nodes_for_aggregates(self, aggr_names):
         """Get the cluster nodes that own the specified aggregates."""
 
-        node_names = set()
-        aggr_node_map = {}
+        # Only make API call if aggr_names changed
+        aggr_node_map = self._aggr_node_cache.get('aggr_node_map')
+        aggr_list_cache = set(aggr_node_map.keys()) if aggr_node_map else set()
+        if not aggr_names.issubset(aggr_list_cache):
+            node_names = set()
+            aggr_node_map = {}
+            for aggr_name in aggr_names:
+                node_name = self.zapi_client.get_node_for_aggregate(aggr_name)
+                if node_name:
+                    node_names.add(node_name)
+                    aggr_node_map[aggr_name] = node_name
+            # Update the cache
+            self._aggr_node_cache['node_names'] = node_names
+            self._aggr_node_cache['aggr_node_map'] = aggr_node_map
 
-        for aggr_name in aggr_names:
-            node_name = self.zapi_client.get_node_for_aggregate(aggr_name)
-            if node_name:
-                node_names.add(node_name)
-                aggr_node_map[aggr_name] = node_name
-
-        return node_names, aggr_node_map
+        return (self._aggr_node_cache['node_names'],
+                self._aggr_node_cache['aggr_node_map'])
 
     def _get_node_utilization_counters(self, node_name):
         """Get all performance counters for calculating node utilization."""
