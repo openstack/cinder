@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix NetApp driver failing to unmap a volume that is not mapped.
+    (bug 1880862).

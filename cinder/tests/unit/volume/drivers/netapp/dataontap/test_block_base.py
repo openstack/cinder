@@ -391,6 +391,19 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.zapi_client.unmap_lun.assert_called_once_with(
             fake.LUN_PATH, fake_ini_group)
 
+    @mock.patch.object(block_base, 'LOG')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_find_mapped_lun_igroup', return_value=(None, None))
+    def test_unmap_lun_not_mapped(self, mock_find_mapped_lun_igroup, mock_log):
+
+        self.library._unmap_lun(fake.LUN_PATH, fake.ISCSI_ONE_MAP_LIST)
+
+        mock_find_mapped_lun_igroup.assert_called_once_with(
+            fake.LUN_PATH, fake.ISCSI_ONE_MAP_LIST)
+        mock_log.warning.assert_called()
+        self.zapi_client.get_lun_map.assert_not_called()
+        self.zapi_client.unmap_lun.assert_not_called()
+
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_find_mapped_lun_igroup')
     def test_unmap_lun_empty_detach_all(self, mock_find_mapped_lun_igroup):

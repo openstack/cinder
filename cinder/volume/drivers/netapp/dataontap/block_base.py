@@ -475,6 +475,12 @@ class NetAppBlockStorageLibrary(
             lun_unmap_list = []
             (igroup_name, _) = self._find_mapped_lun_igroup(
                 path, initiator_list)
+            if not igroup_name:
+                LOG.warning('Could not find igroup for path %(path)s and '
+                            'initiators %(initiators)s, assuming volume is '
+                            'already unmapped.',
+                            {'path': path, 'initiators': initiator_list})
+                return
             lun_unmap_list.append((path, igroup_name))
         else:
             lun_maps = self.zapi_client.get_lun_map(path)
