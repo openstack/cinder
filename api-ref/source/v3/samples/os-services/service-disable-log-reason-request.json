@@ -1,0 +1,5 @@
+{
+    "host": "host1",
+    "binary": "cinder-volume",
+    "disabled_reason": "test2"
+}

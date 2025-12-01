@@ -127,6 +127,8 @@ class ServiceController(wsgi.Controller):
         except exception.ServiceNotFound as ex:
             raise exception.InvalidInput(ex.msg)
 
+    # TODO: This currently returns HTTP 200 but it should return HTTP 204 since
+    # there's no content
     @validation.schema(os_services.freeze_and_thaw)
     def _freeze(self, req, context, body):
         cluster_name, host = common.get_cluster_host(
@@ -134,6 +136,8 @@ class ServiceController(wsgi.Controller):
         return self._volume_api_proxy(self.volume_api.freeze_host, context,
                                       host, cluster_name)
 
+    # TODO: This currently returns HTTP 200 but it should return HTTP 204 since
+    # there's no content
     @validation.schema(os_services.freeze_and_thaw)
     def _thaw(self, req, context, body):
         cluster_name, host = common.get_cluster_host(

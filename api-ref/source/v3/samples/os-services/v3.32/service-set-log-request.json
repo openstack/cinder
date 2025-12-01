@@ -1,0 +1,6 @@
+{
+    "binary": "cinder-volume",
+    "server": "devstack@lvmdriver-1",
+    "prefix": "cinder.volume",
+    "level": "ERROR"
+}
