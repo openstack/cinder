@@ -181,9 +181,16 @@ class APIRouter(base_wsgi.Router):
                         controller=self.resources['messages'])
 
         self.resources['clusters'] = clusters.create_resource()
-        mapper.resource('cluster', 'clusters',
-                        controller=self.resources['clusters'],
-                        collection={'detail': 'GET'})
+        mapper.create_route(
+            '/clusters', 'GET', self.resources['clusters'], 'index')
+        mapper.create_route(
+            '/clusters/detail', 'GET', self.resources['clusters'], 'detail')
+        mapper.create_route(
+            '/clusters/{id}', 'GET', self.resources['clusters'], 'show')
+        mapper.create_route(
+            '/clusters/enable', 'PUT', self.resources['clusters'], 'enable')
+        mapper.create_route(
+            '/clusters/disable', 'PUT', self.resources['clusters'], 'disable')
 
         self.resources['types'] = types.create_resource()
         mapper.resource("type", "types",

@@ -305,16 +305,15 @@ class ClustersTestCase(test.TestCase):
                 side_effect=fake_db_api_cluster_update)
     @mock.patch('cinder.db.sqlalchemy.api.cluster_get',
                 side_effect=fake_db_api_cluster_get)
-    def test_update_enable(self, get_mock, update_mock):
+    def test_enable(self, get_mock, update_mock):
         req = FakeRequest()
         expected = {'cluster': {'name': 'cluster_name',
                                 'binary': 'cinder-volume',
                                 'state': 'up',
                                 'status': 'enabled',
                                 'disabled_reason': None}}
-        res = self.controller.update(req, 'enable',
-                                     body={'name': 'cluster_name',
-                                           'binary': 'cinder-volume'})
+        res = self.controller.enable(
+            req, body={'name': 'cluster_name', 'binary': 'cinder-volume'})
         self.assertEqual(expected, res)
         ctxt = req.environ['cinder.context']
         get_mock.assert_called_once_with(ctxt,
@@ -328,7 +327,7 @@ class ClustersTestCase(test.TestCase):
                 side_effect=fake_db_api_cluster_update)
     @mock.patch('cinder.db.sqlalchemy.api.cluster_get',
                 side_effect=fake_db_api_cluster_get)
-    def test_update_disable(self, get_mock, update_mock):
+    def test_disable(self, get_mock, update_mock):
         req = FakeRequest()
         disabled_reason = 'For testing'
         expected = {'cluster': {'name': 'cluster_name',
@@ -336,10 +335,9 @@ class ClustersTestCase(test.TestCase):
                                 'binary': 'cinder-volume',
                                 'status': 'disabled',
                                 'disabled_reason': disabled_reason}}
-        res = self.controller.update(req, 'disable',
-                                     body={'name': 'cluster_name',
-                                           'binary': 'cinder-volume',
-                                           'disabled_reason': disabled_reason})
+        res = self.controller.disable(
+            req, body={'name': 'cluster_name', 'binary': 'cinder-volume',
+                       'disabled_reason': disabled_reason})
         self.assertEqual(expected, res)
         ctxt = req.environ['cinder.context']
         get_mock.assert_called_once_with(ctxt,
@@ -349,46 +347,66 @@ class ClustersTestCase(test.TestCase):
             ctxt, 1,
             {'disabled': True, 'disabled_reason': disabled_reason})
 
-    def test_update_wrong_action(self):
+    def test_enable_missing_name(self):
         req = FakeRequest()
-        self.assertRaises(exception.NotFound, self.controller.update,
-                          req, 'action', body={'name': 'cluster_name'})
+        self.assertRaises(exception.ValidationError, self.controller.enable,
+                          req, body={'binary': 'cinder-volume'})
 
-    @ddt.data('enable', 'disable')
-    def test_update_missing_name(self, action):
+    def test_disable_missing_name(self):
         req = FakeRequest()
-        self.assertRaises(exception.ValidationError, self.controller.update,
-                          req, action, body={'binary': 'cinder-volume'})
+        self.assertRaises(
+            exception.ValidationError,
+            self.controller.disable,
+            req,
+            body={'binary': 'cinder-volume'})
 
-    def test_update_with_binary_more_than_255_characters(self):
+    def test_enable_with_binary_more_than_255_characters(self):
         req = FakeRequest()
-        self.assertRaises(exception.ValidationError, self.controller.update,
-                          req, 'enable', body={'name': 'cluster_name',
-                                               'binary': 'a' * 256})
+        self.assertRaises(
+            exception.ValidationError,
+            self.controller.enable,
+            req,
+            body={'name': 'cluster_name', 'binary': 'a' * 256})
 
-    def test_update_with_name_more_than_255_characters(self):
+    def test_enable_with_name_more_than_255_characters(self):
         req = FakeRequest()
-        self.assertRaises(exception.ValidationError, self.controller.update,
-                          req, 'enable', body={'name': 'a' * 256,
-                                               'binary': 'cinder-volume'})
+        self.assertRaises(
+            exception.ValidationError,
+            self.controller.enable,
+            req,
+            body={'name': 'a' * 256, 'binary': 'cinder-volume'})
 
     @ddt.data('a' * 256, '   ')
-    def test_update_wrong_disabled_reason(self, disabled_reason):
+    def test_enable_wrong_disabled_reason(self, disabled_reason):
         req = FakeRequest()
-        self.assertRaises(exception.ValidationError, self.controller.update,
-                          req, 'disable',
-                          body={'name': 'cluster_name',
-                                'disabled_reason': disabled_reason})
+        self.assertRaises(
+            exception.ValidationError,
+            self.controller.enable,
+            req,
+            body={'name': 'cluster_name', 'disabled_reason': disabled_reason})
 
-    @ddt.data('enable', 'disable')
-    def test_update_unauthorized(self, action):
+    def test_enable_unauthorized(self):
         req = FakeRequest(is_admin=False)
-        self.assertRaises(exception.PolicyNotAuthorized,
-                          self.controller.update, req, action,
-                          body={'name': 'fake_name'})
+        self.assertRaises(
+            exception.PolicyNotAuthorized,
+            self.controller.enable,
+            req, body={'name': 'fake_name'})
 
-    @ddt.data('enable', 'disable')
-    def test_update_wrong_version(self, action):
+    def test_disable_unauthorized(self):
+        req = FakeRequest(is_admin=False)
+        self.assertRaises(
+            exception.PolicyNotAuthorized,
+            self.controller.disable,
+            req, body={'name': 'fake_name'})
+
+    def test_enable_wrong_version(self):
         req = FakeRequest(version=mv.get_prior_version(mv.CLUSTER_SUPPORT))
-        self.assertRaises(exception.VersionNotFoundForAPIMethod,
-                          self.controller.update, req, action, {})
+        self.assertRaises(
+            exception.VersionNotFoundForAPIMethod,
+            self.controller.enable, req, {})
+
+    def test_disable_wrong_version(self):
+        req = FakeRequest(version=mv.get_prior_version(mv.CLUSTER_SUPPORT))
+        self.assertRaises(
+            exception.VersionNotFoundForAPIMethod,
+            self.controller.disable, req, {})
