@@ -26,7 +26,6 @@ __all__ = [
 ]
 
 import functools
-import os
 from typing import Union
 
 from oslo_config import cfg
@@ -39,6 +38,7 @@ profiler = importutils.try_import('osprofiler.profiler')
 import cinder.context
 import cinder.exception
 from cinder.i18n import _
+from cinder import monkey_patch
 from cinder import objects
 from cinder.objects import base
 from cinder import utils
@@ -53,16 +53,6 @@ ALLOWED_EXMODS = [
     cinder.exception.__name__,
 ]
 EXTRA_EXMODS = []
-
-
-def is_threading_enabled() -> bool:
-    # TODO: deduplicate this function
-    env = os.environ.get('OS_CINDER_DISABLE_EVENTLET_PATCHING', '').lower()
-    match env:
-        case ('1' | 'true' | 'yes'):
-            return True
-        case _:
-            return False
 
 
 def init(conf) -> None:
@@ -169,7 +159,7 @@ def get_server(target,
         raise AssertionError('RPC transport is not initialized.')
     serializer = RequestContextSerializer(serializer)
     access_policy = dispatcher.DefaultRPCAccessPolicy
-    executor = 'threading' if is_threading_enabled() else 'eventlet'
+    executor = 'eventlet' if monkey_patch.is_patched() else 'threading'
     return messaging.get_rpc_server(TRANSPORT,
                                     target,
                                     endpoints,

@@ -17,18 +17,10 @@
 
 """Starter script for Cinder OS API."""
 
-import logging as python_logging
-import sys
+from cinder import monkey_patch; monkey_patch.patch()  # noqa
 
-import eventlet  # noqa
-eventlet.monkey_patch()
-# Monkey patch the original current_thread to use the up-to-date _active
-# global variable. See https://bugs.launchpad.net/bugs/1863021 and
-# https://github.com/eventlet/eventlet/issues/592
-import __original_module_threading as orig_threading  # pylint: disable=E0401
-import threading # noqa
-orig_threading.current_thread.__globals__['_active'] = \
-    threading._active  # type: ignore
+import logging as python_logging  # noqa: #I100
+import sys
 
 from oslo_config import cfg
 from oslo_log import log as logging

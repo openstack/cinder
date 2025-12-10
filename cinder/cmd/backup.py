@@ -17,23 +17,11 @@
 
 """Starter script for Cinder Volume Backup."""
 
-import logging as python_logging
+from cinder import monkey_patch; monkey_patch.patch()  # noqa
+
+import logging as python_logging  # noqa: I100
 import shlex
 import sys
-
-# NOTE: Monkey patching must go before OSLO.log import, otherwise OSLO.context
-# will not use greenthread thread local and all greenthreads will share the
-# same context.  It's also a good idea to monkey patch everything before
-# loading multiprocessing
-import eventlet
-eventlet.monkey_patch()
-# Monkey patch the original current_thread to use the up-to-date _active
-# global variable. See https://bugs.launchpad.net/bugs/1863021 and
-# https://github.com/eventlet/eventlet/issues/592
-import __original_module_threading as orig_threading  # pylint: disable=E0401
-import threading # noqa
-orig_threading.current_thread.__globals__['_active'] = \
-    threading._active  # type: ignore
 import typing
 from typing import Union
 
@@ -45,6 +33,10 @@ from oslo_privsep import priv_context
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
 
+if typing.TYPE_CHECKING:
+    import eventlet
+    import oslo_service
+
 # Need to register global_opts
 from cinder.common import config  # noqa
 from cinder.db import api as session
@@ -54,9 +46,6 @@ from cinder import objects
 from cinder import service
 from cinder import utils
 from cinder import version
-
-if typing.TYPE_CHECKING:
-    import oslo_service
 
 CONF = cfg.CONF
 
@@ -86,7 +75,7 @@ _EXTRA_DEFAULT_LOG_LEVELS = ['swiftclient=WARN', 'botocore=WARN']
 
 def _launch_backup_process(launcher: 'oslo_service.ProcessLauncher',
                            num_process: int,
-                           _semaphore: Union[eventlet.semaphore.Semaphore,
+                           _semaphore: Union['eventlet.semaphore.Semaphore',
                                              utils.Semaphore]) -> None:
     try:
         server = service.Service.create(binary='cinder-backup',
