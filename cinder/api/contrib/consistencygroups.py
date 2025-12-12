@@ -68,9 +68,9 @@ class ConsistencyGroupsController(wsgi.Controller):
         context = req.environ['cinder.context']
         force = False
         if body:
-            self.assert_valid_body(body, 'consistencygroup')
-
             cg_body = body['consistencygroup']
+            # We wrap this in a try-except "to be sure to be sure" but the
+            # schema will ensure we never get unexpected values here
             try:
                 force = strutils.bool_from_string(cg_body.get('force', False),
                                                   strict=True)
@@ -142,12 +142,12 @@ class ConsistencyGroupsController(wsgi.Controller):
         """Create a new consistency group."""
         versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
         LOG.debug('Creating new consistency group %s', body)
-        self.assert_valid_body(body, 'consistencygroup')
 
         context = req.environ['cinder.context']
         context.authorize(group_policy.CREATE_POLICY)
+
         consistencygroup = body['consistencygroup']
-        self.validate_name_and_description(consistencygroup)
+        self.clean_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
         description = consistencygroup.get('description', None)
         volume_types = consistencygroup.get('volume_types', None)
@@ -194,12 +194,12 @@ class ConsistencyGroupsController(wsgi.Controller):
         """
         versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
         LOG.debug('Creating new consistency group %s.', body)
-        self.assert_valid_body(body, 'consistencygroup-from-src')
 
         context = req.environ['cinder.context']
         context.authorize(group_policy.CREATE_POLICY)
+
         consistencygroup = body['consistencygroup-from-src']
-        self.validate_name_and_description(consistencygroup)
+        self.clean_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
         description = consistencygroup.get('description', None)
         cgsnapshot_id = consistencygroup.get('cgsnapshot_id', None)
@@ -288,12 +288,12 @@ class ConsistencyGroupsController(wsgi.Controller):
             msg = _("Missing request body.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        self.assert_valid_body(body, 'consistencygroup')
         context = req.environ['cinder.context']
         group = self._get(context, id)
         context.authorize(group_policy.UPDATE_POLICY, target_obj=group)
-        consistencygroup = body.get('consistencygroup', None)
-        self.validate_name_and_description(consistencygroup)
+
+        consistencygroup = body['consistencygroup']
+        self.clean_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
         description = consistencygroup.get('description', None)
         add_volumes = consistencygroup.get('add_volumes', None)

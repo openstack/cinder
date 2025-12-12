@@ -161,7 +161,7 @@ class BackupsController(wsgi.Controller):
         container = backup.get('container', None)
         volume_id = backup['volume_id']
 
-        self.validate_name_and_description(backup, check_length=False)
+        self.clean_name_and_description(backup)
         name = backup.get('name', None)
         description = backup.get('description', None)
         incremental = strutils.bool_from_string(backup.get(

@@ -459,9 +459,7 @@ class VolumeApiTest(BaseVolumeTest):
                        autospec=True)
     @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
     @mock.patch.object(volume_api.API, 'create', autospec=True)
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_create_with_snapshot_image(self, mock_validate, create,
+    def test_volume_create_with_snapshot_image(self, create,
                                                get_snapshot, volume_type_get):
         create.side_effect = v3_fakes.fake_volume_api_create
         get_snapshot.side_effect = v3_fakes.fake_snapshot_get
@@ -1275,9 +1273,7 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
                 'qos_specs_id': fake.QOS_SPEC_ID,
                 'deleted': False}
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_create(self, mock_validate):
+    def test_volume_create(self):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_get)
         self.mock_object(volume_api.API, "create",
                          v3_fakes.fake_volume_api_create)
@@ -1290,16 +1286,13 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
         res_dict = self.controller.create(req, body=body)
         ex = self._expected_vol_from_controller()
         self.assertEqual(ex, res_dict)
-        self.assertTrue(mock_validate.called)
 
     @mock.patch.object(db, 'volume_get_all', v3_fakes.fake_volume_get_all)
     @mock.patch.object(db, 'service_get_all',
                        return_value=v3_fakes.fake_service_get_all_by_topic(
                            None, None),
                        autospec=True)
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_create_with_type(self, mock_validate, mock_service_get):
+    def test_volume_create_with_type(self, mock_service_get):
         db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
                                                  '__DEFAULT__')
 
@@ -1338,7 +1331,6 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
                          v3_fakes.fake_volume_type_get)
         req = fakes.HTTPRequest.blank('/v3/volumes/detail')
         res_dict = self.controller.detail(req)
-        self.assertTrue(mock_validate.called)
 
     @classmethod
     def _vol_in_request_body(cls,
@@ -1592,9 +1584,7 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
                           self.controller.create,
                           req, body=body)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_create_with_image_ref(self, mock_validate):
+    def test_volume_create_with_image_ref(self):
         self.mock_object(volume_api.API, "create",
                          v3_fakes.fake_volume_api_create)
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
@@ -1608,7 +1598,6 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
         req = fakes.HTTPRequest.blank('/v3/volumes')
         res_dict = self.controller.create(req, body=body)
         self.assertEqual(ex, res_dict)
-        self.assertTrue(mock_validate.called)
 
     def test_volume_create_with_image_ref_is_integer(self):
         self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
@@ -1649,9 +1638,7 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
                           req,
                           body=body)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_create_with_image_id(self, mock_validate):
+    def test_volume_create_with_image_id(self):
         self.mock_object(volume_api.API, "create",
                          v3_fakes.fake_volume_api_create)
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
@@ -1665,7 +1652,6 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
         req = fakes.HTTPRequest.blank('/v3/volumes')
         res_dict = self.controller.create(req, body=body)
         self.assertEqual(ex, res_dict)
-        self.assertTrue(mock_validate.called)
 
     def test_volume_create_with_image_id_is_integer(self):
         self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
@@ -1706,9 +1692,7 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
                           req,
                           body=body)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_create_with_image_name(self, mock_validate):
+    def test_volume_create_with_image_name(self):
         self.mock_object(volume_api.API, "create",
                          v3_fakes.fake_volume_api_create)
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
@@ -1801,9 +1785,7 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_update_deprecation(self, mock_validate):
+    def test_volume_update_deprecation(self):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_api_get)
         self.mock_object(volume_api.API, "update", v3_fakes.fake_volume_update)
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
@@ -1823,11 +1805,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
             metadata={'attached_mode': 'rw', 'readonly': 'False'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
-        self.assertTrue(mock_validate.called)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_update_deprecation_key_priority(self, mock_validate):
+    def test_volume_update_deprecation_key_priority(self):
         """Test current update keys have priority over deprecated keys."""
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_api_get)
         self.mock_object(volume_api.API, "update", v3_fakes.fake_volume_update)
@@ -1850,11 +1829,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
             metadata={'attached_mode': 'rw', 'readonly': 'False'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
-        self.assertTrue(mock_validate.called)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_update_metadata(self, mock_validate):
+    def test_volume_update_metadata(self):
         self.mock_object(volume_api.API, 'get', v3_fakes.fake_volume_api_get)
         self.mock_object(volume_api.API, "update", v3_fakes.fake_volume_update)
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
@@ -1873,11 +1849,8 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
                       'qos_max_iops': '2000'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
-        self.assertTrue(mock_validate.called)
 
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_update_with_admin_metadata(self, mock_validate):
+    def test_volume_update_with_admin_metadata(self):
         self.mock_object(volume_api.API, "update", v3_fakes.fake_volume_update)
 
         volume = v3_fakes.create_volume(fake.VOLUME_ID)
@@ -1926,7 +1899,6 @@ class VolumeApiTestNoMicroversion(BaseVolumeTest):
             tzinfo=iso8601.UTC)
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
-        self.assertTrue(mock_validate.called)
 
     @ddt.data({'a' * 256: 'a'},
               {'a': 'a' * 256},

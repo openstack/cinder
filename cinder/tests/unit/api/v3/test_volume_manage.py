@@ -74,9 +74,7 @@ class VolumeManageTest(test.TestCase):
 
     @mock.patch('cinder.volume.api.API.manage_existing',
                 wraps=test_contrib.api_manage)
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_manage_volume_route(self, mock_validate, mock_api_manage):
+    def test_manage_volume_route(self, mock_api_manage):
         """Test call to manage volume.
 
         There is currently no change between the API in contrib and the API in

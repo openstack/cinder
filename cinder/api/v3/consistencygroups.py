@@ -76,12 +76,12 @@ class ConsistencyGroupsController(
             msg = _("Missing request body.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        self.assert_valid_body(body, 'consistencygroup')
         context = req.environ['cinder.context']
         group = self._get(context, id)
         context.authorize(group_policy.UPDATE_POLICY, target_obj=group)
-        consistencygroup = body.get('consistencygroup', None)
-        self.validate_name_and_description(consistencygroup)
+
+        consistencygroup = body['consistencygroup']
+        self.clean_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
         description = consistencygroup.get('description', None)
         add_volumes = consistencygroup.get('add_volumes', None)

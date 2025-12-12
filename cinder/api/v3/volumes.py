@@ -250,9 +250,8 @@ class VolumeController(wsgi.Controller):
     @validation.schema(schema.revert)
     def revert(self, req, id, body):
         """revert a volume to a snapshot"""
-
         context = req.environ['cinder.context']
-        self.assert_valid_body(body, 'revert')
+
         snapshot_id = body['revert'].get('snapshot_id')
         volume = self.volume_api.get_volume(context, id)
         try:
@@ -380,7 +379,7 @@ class VolumeController(wsgi.Controller):
 
         volume = body['volume']
         kwargs = {}
-        self.validate_name_and_description(volume, check_length=False)
+        self.clean_name_and_description(volume)
 
         # NOTE: it's 'name'/'description' in the REST API, but
         # 'display_name'/display_description' in the database layer,
@@ -484,8 +483,7 @@ class VolumeController(wsgi.Controller):
         """Update a volume."""
         context = req.environ['cinder.context']
         update_dict = body['volume']
-
-        self.validate_name_and_description(update_dict, check_length=False)
+        self.clean_name_and_description(update_dict)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in update_dict:
