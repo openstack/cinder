@@ -31,11 +31,11 @@ from cinder.i18n import _
 from cinder import volume
 
 
-class Controller(wsgi.Controller):
+class VolumeMetadataController(wsgi.Controller):
     """The volume metadata API controller for the OpenStack API."""
     def __init__(self):
         self.volume_api = volume.API()
-        super(Controller, self).__init__()
+        super().__init__()
 
     def _get_metadata(self, context, volume_id):
         # The metadata is at the second position of the tuple returned
@@ -174,4 +174,4 @@ class Controller(wsgi.Controller):
 
 
 def create_resource():
-    return wsgi.Resource(Controller())
+    return wsgi.Resource(VolumeMetadataController())

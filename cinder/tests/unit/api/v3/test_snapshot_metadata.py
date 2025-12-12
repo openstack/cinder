@@ -126,7 +126,7 @@ class SnapshotMetadataTest(test.TestCase):
         self.ext_mgr = extensions.ExtensionManager()
         self.ext_mgr.extensions = {}
         self.snapshot_controller = snapshots.SnapshotsController(self.ext_mgr)
-        self.controller = snapshot_metadata.Controller()
+        self.controller = snapshot_metadata.SnapshotMetadataController()
         self.req_id = str(uuid.uuid4())
         self.url = '/v3/%s/snapshots/%s/metadata' % (
             fake.PROJECT_ID, self.req_id)

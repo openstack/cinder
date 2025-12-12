@@ -23,12 +23,12 @@ from cinder.i18n import _
 from cinder import volume
 
 
-class Controller(wsgi.Controller):
+class SnapshotMetadataController(wsgi.Controller):
     """The snapshot metadata API controller for the OpenStack API."""
 
     def __init__(self):
         self.volume_api = volume.API()
-        super(Controller, self).__init__()
+        super().__init__()
 
     def _get_metadata(self, context, snapshot_id):
         return self._get_snapshot_and_metadata(context, snapshot_id)[1]
@@ -135,4 +135,4 @@ class Controller(wsgi.Controller):
 
 
 def create_resource():
-    return wsgi.Resource(Controller())
+    return wsgi.Resource(SnapshotMetadataController())
