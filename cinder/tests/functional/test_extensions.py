@@ -121,6 +121,9 @@ class StubExtensionManager(object):
         self.controller_ext = controller_ext
         self.extra_resource_ext = None
 
+    def is_loaded(self, alias):
+        return True
+
     def get_resources(self):
         resource_exts = []
         if self.resource_ext:

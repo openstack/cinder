@@ -14,7 +14,7 @@ from cinder.api import microversions as mv
 from cinder import context
 from cinder import objects
 from cinder.tests.functional import api_samples_test_base as test_base
-from cinder.tests.unit.api.contrib import test_services
+from cinder.tests.unit.api.v3 import test_services
 
 
 def fake_volume_api_freeze_host(*args, **kwargs):
