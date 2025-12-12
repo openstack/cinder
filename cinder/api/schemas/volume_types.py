@@ -15,7 +15,6 @@
 
 from cinder.api.validation import parameter_types
 
-
 create = {
     'type': 'object',
     'properties': {
@@ -35,7 +34,6 @@ create = {
     'required': ['volume_type'],
     'additionalProperties': False,
 }
-
 
 update = {
     'type': 'object',

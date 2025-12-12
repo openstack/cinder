@@ -298,7 +298,7 @@ class SnapshotMetadataTest(test.TestCase):
                              "key2": "value2",
                              "key3": "value3"}}
         req.body = jsonutils.dump_as_bytes(body)
-        res_dict = self.controller.create(req, self.req_id, body)
+        res_dict = self.controller.create(req, self.req_id, body=body)
         self.assertEqual(body, res_dict)
 
     @mock.patch('cinder.db.snapshot_update')
@@ -332,7 +332,7 @@ class SnapshotMetadataTest(test.TestCase):
                                  "key3": "value3",
                                  "KEY4": "value4"}}
         req.body = jsonutils.dump_as_bytes(body)
-        res_dict = self.controller.create(req, self.req_id, body)
+        res_dict = self.controller.create(req, self.req_id, body=body)
         self.assertEqual(expected, res_dict)
 
     def test_create_empty_body(self):
@@ -343,8 +343,8 @@ class SnapshotMetadataTest(test.TestCase):
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, None)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, self.req_id, body=None)
 
     def test_create_item_empty_key(self):
         self.mock_object(cinder.db, 'snapshot_metadata_update',
@@ -356,8 +356,8 @@ class SnapshotMetadataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.create, req, self.req_id, body=body)
 
     def test_create_item_key_too_long(self):
         self.mock_object(cinder.db, 'snapshot_metadata_update',
@@ -369,9 +369,9 @@ class SnapshotMetadataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.create,
-                          req, self.req_id, body)
+                          req, self.req_id, body=body)
 
     def test_create_nonexistent_snapshot(self):
         self.mock_object(cinder.db, 'snapshot_get',
@@ -386,7 +386,7 @@ class SnapshotMetadataTest(test.TestCase):
         body = {"metadata": {"key9": "value9"}}
         req.body = jsonutils.dump_as_bytes(body)
         self.assertRaises(exception.SnapshotNotFound,
-                          self.controller.create, req, self.req_id, body)
+                          self.controller.create, req, self.req_id, body=body)
 
     @mock.patch('cinder.db.snapshot_update')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -412,7 +412,7 @@ class SnapshotMetadataTest(test.TestCase):
             },
         }
         req.body = jsonutils.dump_as_bytes(expected)
-        res_dict = self.controller.update_all(req, self.req_id, expected)
+        res_dict = self.controller.update_all(req, self.req_id, body=expected)
 
         self.assertEqual(expected, res_dict)
 
@@ -452,7 +452,7 @@ class SnapshotMetadataTest(test.TestCase):
             },
         }
         req.body = jsonutils.dump_as_bytes(expected)
-        res_dict = self.controller.update_all(req, self.req_id, body)
+        res_dict = self.controller.update_all(req, self.req_id, body=body)
 
         self.assertEqual(expected, res_dict)
 
@@ -475,7 +475,7 @@ class SnapshotMetadataTest(test.TestCase):
         req.content_type = "application/json"
         expected = {'metadata': {}}
         req.body = jsonutils.dump_as_bytes(expected)
-        res_dict = self.controller.update_all(req, self.req_id, expected)
+        res_dict = self.controller.update_all(req, self.req_id, body=expected)
 
         self.assertEqual(expected, res_dict)
 
@@ -489,9 +489,9 @@ class SnapshotMetadataTest(test.TestCase):
         expected = {'meta': {}}
         req.body = jsonutils.dump_as_bytes(expected)
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update_all, req, self.req_id,
-                          expected)
+                          body=expected)
 
     def test_update_all_malformed_data(self):
         self.mock_object(cinder.db, 'snapshot_metadata_update',
@@ -503,9 +503,9 @@ class SnapshotMetadataTest(test.TestCase):
         expected = {'metadata': ['asdf']}
         req.body = jsonutils.dump_as_bytes(expected)
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update_all, req, self.req_id,
-                          expected)
+                          body=expected)
 
     def test_update_all_nonexistent_snapshot(self):
         self.mock_object(cinder.db, 'snapshot_get',
@@ -518,7 +518,7 @@ class SnapshotMetadataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
 
         self.assertRaises(exception.SnapshotNotFound,
-                          self.controller.update_all, req, '100', body)
+                          self.controller.update_all, req, '100', body=body)
 
     @mock.patch('cinder.db.snapshot_metadata_update', return_value=dict())
     @mock.patch('cinder.db.snapshot_update')
@@ -538,7 +538,7 @@ class SnapshotMetadataTest(test.TestCase):
         body = {"meta": {"key1": "value1"}}
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
-        res_dict = self.controller.update(req, self.req_id, 'key1', body)
+        res_dict = self.controller.update(req, self.req_id, 'key1', body=body)
         expected = {'meta': {'key1': 'value1'}}
         self.assertEqual(expected, res_dict)
 
@@ -555,7 +555,7 @@ class SnapshotMetadataTest(test.TestCase):
 
         self.assertRaises(exception.SnapshotNotFound,
                           self.controller.update, req, self.req_id, 'key1',
-                          body)
+                          body=body)
 
     def test_update_item_empty_body(self):
         self.mock_object(cinder.db, 'snapshot_metadata_update',
@@ -565,9 +565,9 @@ class SnapshotMetadataTest(test.TestCase):
         req.method = 'PUT'
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update, req, self.req_id, 'key1',
-                          None)
+                          body=None)
 
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get')
     @mock.patch('cinder.db.snapshot_metadata_update', autospec=True)
@@ -580,8 +580,9 @@ class SnapshotMetadataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, self.req_id, '', body)
+        self.assertRaises(exception.ValidationError,
+                          self.controller.update, req, self.req_id, '',
+                          body=body)
 
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_update_item_key_too_long(self, snapshot_get_by_id):
@@ -601,9 +602,9 @@ class SnapshotMetadataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
-                          req, self.req_id, ("a" * 260), body)
+                          req, self.req_id, ("a" * 260), body=body)
 
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_update_item_value_too_long(self, snapshot_get_by_id):
@@ -623,9 +624,9 @@ class SnapshotMetadataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update,
-                          req, self.req_id, "key1", body)
+                          req, self.req_id, "key1", body=body)
 
     @ddt.data({"meta": {"key1": "value1", "key2": "value2"}},
               {"meta": {"key1": None}})
@@ -645,9 +646,9 @@ class SnapshotMetadataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(exception.ValidationError,
                           self.controller.update, req, self.req_id, 'key1',
-                          body)
+                          body=body)
 
     def test_update_item_body_uri_mismatch(self):
         self.mock_object(cinder.db, 'snapshot_metadata_update',
@@ -661,7 +662,7 @@ class SnapshotMetadataTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update, req, self.req_id, 'bad',
-                          body)
+                          body=body)
 
     @ddt.data({"metadata": {"a" * 260: "value1"}},
               {"metadata": {"key": "v" * 260}},
@@ -683,11 +684,8 @@ class SnapshotMetadataTest(test.TestCase):
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
 
-        exc = webob.exc.HTTPBadRequest
-        if (len(list(data['metadata'].keys())[0]) > 255 or
-                (list(data['metadata'].values())[0] is not None and
-                    len(list(data['metadata'].values())[0]) > 255)):
-            exc = webob.exc.HTTPRequestEntityTooLarge
+        exc = exception.ValidationError
 
         req.body = jsonutils.dump_as_bytes(data)
-        self.assertRaises(exc, self.controller.create, req, self.req_id, data)
+        self.assertRaises(exc, self.controller.create, req, self.req_id,
+                          body=data)

@@ -18,6 +18,8 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import volume_unmanage as schema
+from cinder.api import validation
 from cinder.policies import manageable_volumes as policy
 from cinder import volume
 
@@ -31,6 +33,7 @@ class VolumeUnmanageController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-unmanage')
+    @validation.schema(schema.unmanage)
     def unmanage(self, req, id, body):
         """Stop managing a volume.
 

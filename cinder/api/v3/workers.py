@@ -19,7 +19,7 @@ from oslo_utils import timeutils
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import workers
+from cinder.api.schemas import workers as schema
 from cinder.api.v3.views import workers as workers_view
 from cinder.api import validation
 from cinder import db
@@ -39,7 +39,7 @@ class WorkerController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.WORKERS_CLEANUP)
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(workers.cleanup)
+    @validation.schema(schema.cleanup)
     def cleanup(self, req, body=None):
         """Do the cleanup on resources from a specific service/host/node."""
         # Let the wsgi middleware convert NotAuthorized exceptions

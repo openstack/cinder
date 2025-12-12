@@ -18,7 +18,7 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import volume_type_access
+from cinder.api.schemas import volume_type_access as schema
 from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
@@ -96,7 +96,7 @@ class VolumeTypeActionController(wsgi.Controller):
             self._extend_vol_type(resp_obj.obj['volume_type'], vol_type)
 
     @wsgi.action('addProjectAccess')
-    @validation.schema(volume_type_access.add_project_access)
+    @validation.schema(schema.add_project_access)
     def _addProjectAccess(self, req, id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.ADD_PROJECT_POLICY)
@@ -110,7 +110,7 @@ class VolumeTypeActionController(wsgi.Controller):
         return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.action('removeProjectAccess')
-    @validation.schema(volume_type_access.remove_project_access)
+    @validation.schema(schema.remove_project_access)
     def _removeProjectAccess(self, req, id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.REMOVE_PROJECT_POLICY)

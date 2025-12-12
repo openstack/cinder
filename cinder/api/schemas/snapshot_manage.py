@@ -40,3 +40,23 @@ create = {
     'required': ['snapshot'],
     'additionalProperties': False,
 }
+
+update = {
+    'type': 'object',
+    'properties': {
+        'meta': {
+            'type': 'object',
+            'patternProperties': {
+                '^[a-zA-Z0-9-_:. ]{1,255}$': {
+                    'type': 'string',
+                    'maxLength': 255,
+                    'description': 'The snapshot metadata value.',
+                },
+            },
+            'minProperties': 1,
+            'maxProperties': 1,
+        },
+    },
+    'required': ['meta'],
+    'additionalProperties': True,
+}

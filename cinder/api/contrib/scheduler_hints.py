@@ -13,7 +13,7 @@
 #    under the License.
 
 from cinder.api import extensions
-from cinder.api.schemas import scheduler_hints
+from cinder.api.schemas import scheduler_hints as schema
 from cinder.api import validation
 
 
@@ -22,7 +22,7 @@ def create(req, body):
     if body.get(attr) is not None:
         scheduler_hints_body = dict.fromkeys((attr,), body.get(attr))
 
-        @validation.schema(scheduler_hints.create)
+        @validation.schema(schema.create)
         def _validate_scheduler_hints(req=None, body=None):
             # TODO(pooja_jadhav): The scheduler hints schema validation
             # should be moved to v3 volume schema directly and this module

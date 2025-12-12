@@ -14,6 +14,7 @@
 #    under the License.
 
 """The QoS specs extension"""
+
 from http import HTTPStatus
 
 from oslo_log import log as logging
@@ -24,7 +25,7 @@ from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import qos_specs as qos_specs_schema
+from cinder.api.schemas import qos_specs as schema
 from cinder.api import validation
 from cinder.api.views import qos_specs as view_qos_specs
 from cinder import exception
@@ -75,7 +76,7 @@ class QoSSpecsController(wsgi.Controller):
                                         sort_dirs=sort_dirs)
         return self._view_builder.summary_list(req, specs)
 
-    @validation.schema(qos_specs_schema.create)
+    @validation.schema(schema.create)
     def create(self, req, body=None):
         context = req.environ['cinder.context']
         context.authorize(policy.CREATE_POLICY)
@@ -114,7 +115,7 @@ class QoSSpecsController(wsgi.Controller):
 
         return self._view_builder.detail(req, spec)
 
-    @validation.schema(qos_specs_schema.set)
+    @validation.schema(schema.set)
     def update(self, req, id, body=None):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)
@@ -197,7 +198,7 @@ class QoSSpecsController(wsgi.Controller):
 
         return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
-    @validation.schema(qos_specs_schema.unset)
+    @validation.schema(schema.unset)
     def delete_keys(self, req, id, body):
         """Deletes specified keys in qos specs."""
         context = req.environ['cinder.context']

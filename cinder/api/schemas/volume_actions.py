@@ -25,23 +25,6 @@ from cinder.api.validation import parameter_types
 
 container_format = parameter_types.description
 
-extend = {
-    'type': 'object',
-    'properties': {
-        'os-extend': {
-            'type': 'object',
-            'properties': {
-                'new_size': parameter_types.volume_size,
-            },
-            'required': ['new_size'],
-            'additionalProperties': False,
-        },
-    },
-    'required': ['os-extend'],
-    'additionalProperties': False,
-}
-
-
 attach = {
     'type': 'object',
     'properties': {
@@ -66,7 +49,6 @@ attach = {
     'additionalProperties': False,
 }
 
-
 detach = {
     'type': 'object',
     'properties': {
@@ -80,6 +62,62 @@ detach = {
         },
     },
     'required': ['os-detach'],
+    'additionalProperties': False,
+}
+
+# TODO: Restrict the value to 'null' in a future API version
+reserve = {
+    'type': 'object',
+    'properties': {
+        'os-reserve': {},
+    },
+    'required': ['os-reserve'],
+    'additionalProperties': False,
+}
+
+# TODO: Restrict the value to 'null' in a future API version
+unreserve = {
+    'type': 'object',
+    'properties': {
+        'os-unreserve': {},
+    },
+    'required': ['os-unreserve'],
+    'additionalProperties': False,
+}
+
+# TODO: Restrict the value to 'null' in a future API version
+begin_detaching = {
+    'type': 'object',
+    'properties': {
+        'os-begin_detaching': {},
+    },
+    'required': ['os-begin_detaching'],
+    'additionalProperties': False,
+}
+
+# TODO: Restrict the value to 'null' in a future API version
+roll_detaching = {
+    'type': 'object',
+    'properties': {
+        'os-roll_detaching': {},
+    },
+    'required': ['os-roll_detaching'],
+    'additionalProperties': False,
+}
+
+extend = {
+    'type': 'object',
+    'properties': {
+        'os-extend': {
+            'type': 'object',
+            'properties': {
+                'new_size': parameter_types.volume_size,
+            },
+            'required': ['new_size'],
+            'additionalProperties': False,
+        },
+    },
+    'required': ['os-extend'],
     'additionalProperties': False,
 }
 

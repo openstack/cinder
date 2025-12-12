@@ -15,14 +15,16 @@
 
 """
 Schema for V3 Quotas API.
-
 """
 
-update_quota = {
+update = {
     'type': 'object',
     'properties': {
-        'quota_set': {'type': 'object', 'minProperties': 1,
-                      'format': 'quota_set'}
+        'quota_set': {
+            'type': 'object',
+            'minProperties': 1,
+            'format': 'quota_set',
+        },
     },
     'required': ['quota_set'],
     'additionalProperties': False,

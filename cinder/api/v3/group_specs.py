@@ -19,7 +19,7 @@ import webob
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import group_specs
+from cinder.api.schemas import group_specs as schema
 from cinder.api import validation
 from cinder import db
 from cinder import exception
@@ -55,7 +55,7 @@ class GroupTypeSpecsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_TYPE)
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(group_specs.create)
+    @validation.schema(schema.create)
     def create(self, req, group_type_id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.SPEC_CREATE_POLICY)
@@ -72,7 +72,7 @@ class GroupTypeSpecsController(wsgi.Controller):
         return body
 
     @wsgi.Controller.api_version(mv.GROUP_TYPE)
-    @validation.schema(group_specs.update)
+    @validation.schema(schema.update)
     def update(self, req, group_type_id, id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.SPEC_UPDATE_POLICY)

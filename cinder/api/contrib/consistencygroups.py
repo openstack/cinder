@@ -25,6 +25,8 @@ from webob import exc
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import consistencygroups as schema
+from cinder.api import validation
 from cinder.api.views import consistencygroups as consistencygroup_views
 from cinder import exception
 from cinder import group as group_api
@@ -58,6 +60,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         return self._view_builder.detail(req, consistencygroup)
 
+    @validation.schema(schema.delete)
     def delete(self, req, id, body):
         """Delete a consistency group."""
         versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
@@ -134,6 +137,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         return groups
 
     @wsgi.response(HTTPStatus.ACCEPTED)
+    @validation.schema(schema.create)
     def create(self, req, body):
         """Create a new consistency group."""
         versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
@@ -180,6 +184,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         return retval
 
     @wsgi.response(HTTPStatus.ACCEPTED)
+    @validation.schema(schema.create_from_src)
     def create_from_src(self, req, body):
         """Create a new consistency group from a source.
 
@@ -258,6 +263,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         self.group_api.update(context, group, name, description,
                               add_volumes, remove_volumes)
 
+    @validation.schema(schema.update)
     def update(self, req, id, body):
         """Update the consistency group.
 

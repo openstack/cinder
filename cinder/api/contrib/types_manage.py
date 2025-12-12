@@ -21,7 +21,7 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import volume_types as volume_types_schema
+from cinder.api.schemas import volume_types as schema
 from cinder.api import validation
 from cinder.api.views import types as views_types
 from cinder import exception
@@ -50,7 +50,7 @@ class VolumeTypesManageController(wsgi.Controller):
         rpc.get_notifier('volumeType').info(context, method, payload)
 
     @wsgi.action("create")
-    @validation.schema(volume_types_schema.create)
+    @validation.schema(schema.create)
     def _create(self, req, body):
         """Creates a new volume type."""
         context = req.environ['cinder.context']
@@ -85,7 +85,7 @@ class VolumeTypesManageController(wsgi.Controller):
         return self._view_builder.show(req, vol_type)
 
     @wsgi.action("update")
-    @validation.schema(volume_types_schema.update)
+    @validation.schema(schema.update)
     def _update(self, req, id, body):
         # Update description for a given volume type.
         context = req.environ['cinder.context']
@@ -136,6 +136,16 @@ class VolumeTypesManageController(wsgi.Controller):
 
         return self._view_builder.show(req, vol_type)
 
+    # FIXME: Because we are registering this as an action, this actually
+    # results in *two* APIs being registered: 'DELETE /types/{id}' and 'POST
+    # /types/{id}/action (delete)'. However, only the first of these works as
+    # expected and attempts to use the latter result in a HTTP 500 and the
+    # following error in cinder-api logs:
+    #
+    #   TypeError: VolumeTypesManageController._delete() got an unexpected
+    #   keyword argument 'body'
+    #
+    # We should fix this so the incorrect route isn't registered.
     @wsgi.action("delete")
     def _delete(self, req, id):
         """Deletes an existing volume type."""

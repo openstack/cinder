@@ -21,7 +21,7 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import types_extra_specs
+from cinder.api.schemas import types_extra_specs as schema
 from cinder.api import validation
 from cinder import context as ctxt
 from cinder import db
@@ -82,7 +82,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=expl)
         return
 
-    @validation.schema(types_extra_specs.create)
+    @validation.schema(schema.create)
     def create(self, req, type_id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.CREATE_POLICY)
@@ -111,7 +111,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
                       notifier_info)
         return body
 
-    @validation.schema(types_extra_specs.update)
+    @validation.schema(schema.update)
     def update(self, req, type_id, id, body):
         context = req.environ['cinder.context']
         context.authorize(policy.UPDATE_POLICY)

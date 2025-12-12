@@ -17,7 +17,7 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import quotas
+from cinder.api.schemas import quotas as schema
 from cinder.api import validation
 from cinder import db
 from cinder import exception
@@ -86,7 +86,7 @@ class QuotaSetsController(wsgi.Controller):
         quotas = self._get_quotas(context, target_project_id, usage)
         return self._format_quota_set(target_project_id, quotas)
 
-    @validation.schema(quotas.update_quota)
+    @validation.schema(schema.update)
     def update(self, req, id, body):
         """Update Quota for a particular tenant
 

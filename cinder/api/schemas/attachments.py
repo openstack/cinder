@@ -61,3 +61,13 @@ update = {
 create_v354 = copy.deepcopy(create)
 create_v354['properties']['attachment']['properties']['mode'] = (
     {'type': 'string', 'enum': ['rw', 'ro']})
+
+# TODO: Restrict the value to 'null' in a future API version
+complete = {
+    'type': 'object',
+    'properties': {
+        'os-complete': {},
+    },
+    'required': ['os-complete'],
+    'additionalProperties': False,
+}

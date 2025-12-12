@@ -21,6 +21,8 @@ from webob import exc
 from cinder.api.contrib import consistencygroups
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import consistencygroups as schema
+from cinder.api import validation
 from cinder.i18n import _
 from cinder.policies import groups as group_policy
 
@@ -50,6 +52,7 @@ class ConsistencyGroupsController(
                 raise exc.HTTPBadRequest(explanation=msg)
         return allow_empty
 
+    @validation.schema(schema.update)
     def update(self, req, id, body):
         """Update the consistency group.
 

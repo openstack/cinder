@@ -22,7 +22,7 @@ import webob
 from cinder.api import extensions
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import volume_actions as volume_action
+from cinder.api.schemas import volume_actions as schema
 from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
@@ -51,7 +51,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-attach')
-    @validation.schema(volume_action.attach)
+    @validation.schema(schema.attach)
     def _attach(self, req, id, body):
         """Add attachment metadata."""
         context = req.environ['cinder.context']
@@ -87,7 +87,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-detach')
-    @validation.schema(volume_action.detach)
+    @validation.schema(schema.detach)
     def _detach(self, req, id, body):
         """Clear attachment metadata."""
         context = req.environ['cinder.context']
@@ -113,6 +113,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reserve')
+    @validation.schema(schema.reserve)
     def _reserve(self, req, id, body):
         """Mark volume as reserved."""
         context = req.environ['cinder.context']
@@ -123,6 +124,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-unreserve')
+    @validation.schema(schema.unreserve)
     def _unreserve(self, req, id, body):
         """Unmark volume as reserved."""
         context = req.environ['cinder.context']
@@ -133,6 +135,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-begin_detaching')
+    @validation.schema(schema.begin_detaching)
     def _begin_detaching(self, req, id, body):
         """Update volume status to 'detaching'."""
         context = req.environ['cinder.context']
@@ -143,6 +146,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-roll_detaching')
+    @validation.schema(schema.roll_detaching)
     def _roll_detaching(self, req, id, body):
         """Roll back volume status to 'in-use'."""
         context = req.environ['cinder.context']
@@ -152,7 +156,7 @@ class VolumeActionsController(wsgi.Controller):
         self.volume_api.roll_detaching(context, volume)
 
     @wsgi.action('os-initialize_connection')
-    @validation.schema(volume_action.initialize_connection)
+    @validation.schema(schema.initialize_connection)
     def _initialize_connection(self, req, id, body):
         """Initialize volume attachment."""
         context = req.environ['cinder.context']
@@ -179,7 +183,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-terminate_connection')
-    @validation.schema(volume_action.terminate_connection)
+    @validation.schema(schema.terminate_connection)
     def _terminate_connection(self, req, id, body):
         """Terminate volume attachment."""
         context = req.environ['cinder.context']
@@ -194,9 +198,9 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-volume_upload_image')
-    @validation.schema(volume_action.volume_upload_image, mv.BASE_VERSION,
+    @validation.schema(schema.volume_upload_image, mv.BASE_VERSION,
                        mv.get_prior_version(mv.UPLOAD_IMAGE_PARAMS))
-    @validation.schema(volume_action.volume_upload_image_v31,
+    @validation.schema(schema.volume_upload_image_v31,
                        mv.UPLOAD_IMAGE_PARAMS)
     def _volume_upload_image(self, req, id, body):
         """Uploads the specified volume to image service."""
@@ -266,7 +270,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-extend')
-    @validation.schema(volume_action.extend)
+    @validation.schema(schema.extend)
     def _extend(self, req, id, body):
         """Extend size of volume."""
         context = req.environ['cinder.context']
@@ -286,7 +290,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-update_readonly_flag')
-    @validation.schema(volume_action.volume_readonly_update)
+    @validation.schema(schema.volume_readonly_update)
     def _volume_readonly_update(self, req, id, body):
         """Update volume readonly flag."""
         context = req.environ['cinder.context']
@@ -302,7 +306,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-retype')
-    @validation.schema(volume_action.retype)
+    @validation.schema(schema.retype)
     def _retype(self, req, id, body):
         """Change type of existing volume."""
         context = req.environ['cinder.context']
@@ -314,7 +318,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.OK)
     @wsgi.action('os-set_bootable')
-    @validation.schema(volume_action.set_bootable)
+    @validation.schema(schema.set_bootable)
     def _set_bootable(self, req, id, body):
         """Update bootable status of a volume."""
         context = req.environ['cinder.context']
@@ -367,7 +371,7 @@ class VolumeActionsController(wsgi.Controller):
     @wsgi.Controller.api_version(mv.SUPPORT_REIMAGE_VOLUME)
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reimage')
-    @validation.schema(volume_action.reimage, mv.SUPPORT_REIMAGE_VOLUME)
+    @validation.schema(schema.reimage, mv.SUPPORT_REIMAGE_VOLUME)
     def _reimage(self, req, id, body):
         """Re-image a volume with specific image."""
         context = req.environ['cinder.context']

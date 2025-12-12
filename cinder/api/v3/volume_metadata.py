@@ -24,7 +24,7 @@ import webob
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import volume_metadata as metadata
+from cinder.api.schemas import volume_metadata as schema
 from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
@@ -72,7 +72,7 @@ class VolumeMetadataController(wsgi.Controller):
             return resp
         return metadata
 
-    @validation.schema(metadata.create)
+    @validation.schema(schema.create)
     def create(self, req, volume_id, body):
         context = req.environ['cinder.context']
         metadata = body['metadata']
@@ -104,7 +104,7 @@ class VolumeMetadataController(wsgi.Controller):
             raise webob.exc.HTTPRequestEntityTooLarge(explanation=error.msg)
 
     @wsgi.extends
-    @validation.schema(metadata.update)
+    @validation.schema(schema.update)
     def update(self, req, volume_id, id, body):
         if req.api_version_request.matches(mv.ETAGS):
             if not self._validate_etag(req, volume_id):
@@ -128,7 +128,7 @@ class VolumeMetadataController(wsgi.Controller):
         return {'meta': meta_item}
 
     @wsgi.extends
-    @validation.schema(metadata.create)
+    @validation.schema(schema.create)
     def update_all(self, req, volume_id, body):
         if req.api_version_request.matches(mv.ETAGS):
             if not self._validate_etag(req, volume_id):

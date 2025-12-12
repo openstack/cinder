@@ -472,8 +472,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
         self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        self.assertEqual("Missing required element 'consistencygroup' in "
-                         "request body.",
+        self.assertEqual("None is not of type 'object'",
                          res_dict['badRequest']['message'])
 
     def test_delete_consistencygroup_available(self):
@@ -488,7 +487,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int, res.body)
         self.assertEqual('deleting', consistencygroup.status)
 
         consistencygroup.destroy()

@@ -18,7 +18,7 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import snapshot_actions
+from cinder.api.schemas import snapshot_actions as schema
 from cinder.api import validation
 from cinder.i18n import _
 from cinder import objects
@@ -33,7 +33,7 @@ class SnapshotActionsController(wsgi.Controller):
         LOG.debug("SnapshotActionsController initialized")
 
     @wsgi.action('os-update_snapshot_status')
-    @validation.schema(snapshot_actions.update_snapshot_status)
+    @validation.schema(schema.update_snapshot_status)
     def _update_snapshot_status(self, req, id, body):
         """Update database fields related to status of a snapshot.
 

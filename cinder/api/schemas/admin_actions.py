@@ -15,16 +15,28 @@
 
 """
 Schema for V3 admin_actions API.
-
 """
 
 import copy
 
-
 from cinder.api.validation import parameter_types
 
 
-reset = {
+# TODO: Restrict the value to 'null' in a future API version
+_force_delete = {
+    'type': 'object',
+    'properties': {
+        'os-force_delete': {},
+    },
+    'required': ['os-force_delete'],
+    'additionalProperties': False,
+}
+
+force_delete_volume = copy.deepcopy(_force_delete)
+force_delete_snapshot = copy.deepcopy(_force_delete)
+force_delete_backup = copy.deepcopy(_force_delete)
+
+reset_status_volume = {
     'type': 'object',
     'properties': {
         'os-reset_status': {

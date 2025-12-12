@@ -18,6 +18,8 @@ import webob
 from webob import exc
 
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import snapshot_metadata as schema
+from cinder.api import validation
 from cinder import exception
 from cinder.i18n import _
 from cinder import volume
@@ -44,6 +46,7 @@ class SnapshotMetadataController(wsgi.Controller):
         context = req.environ['cinder.context']
         return {'metadata': self._get_metadata(context, snapshot_id)}
 
+    @validation.schema(schema.create)
     def create(self, req, snapshot_id, body):
         self.assert_valid_body(body, 'metadata')
         context = req.environ['cinder.context']
@@ -56,6 +59,7 @@ class SnapshotMetadataController(wsgi.Controller):
 
         return {'metadata': new_metadata}
 
+    @validation.schema(schema.update)
     def update(self, req, snapshot_id, id, body):
         self.assert_valid_body(body, 'meta')
         meta_item = body['meta']
@@ -76,6 +80,7 @@ class SnapshotMetadataController(wsgi.Controller):
 
         return {'meta': meta_item}
 
+    @validation.schema(schema.update_all)
     def update_all(self, req, snapshot_id, body):
         self.assert_valid_body(body, 'metadata')
         context = req.environ['cinder.context']

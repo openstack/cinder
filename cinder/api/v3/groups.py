@@ -24,7 +24,7 @@ from webob import exc
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import groups as group
+from cinder.api.schemas import groups as schema
 from cinder.api.v3.views import groups as views_groups
 from cinder.api import validation
 from cinder import exception
@@ -69,7 +69,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME_RESET_STATUS)
     @wsgi.action("reset_status")
-    @validation.schema(group.reset_status)
+    @validation.schema(schema.reset_status)
     def reset_status(self, req, id, body):
         return self._reset_status(req, id, body)
 
@@ -108,7 +108,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME)
     @wsgi.action("delete")
-    @validation.schema(group.delete)
+    @validation.schema(schema.delete)
     def delete_group(self, req, id, body):
         return self._delete(req, id, body)
 
@@ -184,7 +184,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME)
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(group.create)
+    @validation.schema(schema.create)
     def create(self, req, body):
         """Create a new group."""
         LOG.debug('Creating new group %s', body)
@@ -225,7 +225,7 @@ class GroupsController(wsgi.Controller):
     @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     @wsgi.action("create-from-src")
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(group.create_from_source)
+    @validation.schema(schema.create_from_source)
     def create_from_src(self, req, body):
         """Create a new group from a source.
 
@@ -280,7 +280,7 @@ class GroupsController(wsgi.Controller):
         return retval
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME)
-    @validation.schema(group.update)
+    @validation.schema(schema.update)
     def update(self, req, id, body):
         """Update the group.
 
@@ -338,7 +338,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("enable_replication")
-    @validation.schema(group.enable_replication)
+    @validation.schema(schema.enable_replication)
     def enable_replication(self, req, id, body):
         """Enables replications for a group."""
         context = req.environ['cinder.context']
@@ -358,7 +358,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("disable_replication")
-    @validation.schema(group.disable_replication)
+    @validation.schema(schema.disable_replication)
     def disable_replication(self, req, id, body):
         """Disables replications for a group."""
         context = req.environ['cinder.context']
@@ -378,7 +378,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("failover_replication")
-    @validation.schema(group.failover_replication)
+    @validation.schema(schema.failover_replication)
     def failover_replication(self, req, id, body):
         """Fails over replications for a group."""
         context = req.environ['cinder.context']
@@ -405,7 +405,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("list_replication_targets")
-    @validation.schema(group.list_replication)
+    @validation.schema(schema.list_replication)
     def list_replication_targets(self, req, id, body):
         """List replication targets for a group."""
         context = req.environ['cinder.context']

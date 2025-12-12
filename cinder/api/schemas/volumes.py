@@ -71,7 +71,6 @@ create = {
     'additionalProperties': False,
 }
 
-
 create_volume_v313 = copy.deepcopy(create)
 create_volume_v313['properties']['volume']['properties'][
     'group_id'] = {'type': ['string', 'null'], 'minLength': 0,
@@ -83,7 +82,6 @@ create_volume_v347['properties']['volume']['properties'][
 
 create_volume_v353 = copy.deepcopy(create_volume_v347)
 create_volume_v353['properties']['volume']['additionalProperties'] = False
-
 
 update = {
     'type': 'object',
@@ -116,11 +114,28 @@ update = {
     'additionalProperties': False,
 }
 
-
-update_volume_v353 = copy.deepcopy(update)
-update_volume_v353['properties']['volume']['anyOf'] = [
+update_v353 = copy.deepcopy(update)
+update_v353['properties']['volume']['anyOf'] = [
     {'required': ['name']},
     {'required': ['description']},
     {'required': ['display_name']},
     {'required': ['display_description']},
     {'required': ['metadata']}]
+
+# TODO: Restrict additional properties in a future API version
+revert = {
+    'type': 'object',
+    'properties': {
+        'revert': {
+            'type': 'object',
+            'properties': {
+                'snapshot_id': {
+                    'type': ['string', 'null']
+                },
+            },
+            'additionalProperties': True,
+        },
+    },
+    'required': ['revert'],
+    'additionalProperties': False,
+}
