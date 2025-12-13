@@ -198,8 +198,8 @@ class RequestContext(context.RequestContext):
                    is_admin=values.get('is_admin'),
                    roles=values.get('roles'),
                    auth_token=values.get('auth_token'),
-                   user_domain_id=values.get('user_domain_id'),
-                   project_domain_id=values.get('project_domain_id'),
+                   user_domain_id=values.get('user_domain'),
+                   project_domain_id=values.get('project_domain'),
                    message_resource_id = values.get('message_resource_id'),
                    message_resource_type = values.get('message_resource_type'),
                    message_action = values.get('message_action')
