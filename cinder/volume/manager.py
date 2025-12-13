@@ -2679,6 +2679,7 @@ class VolumeManager(manager.CleanableManager,
                         'migration_status': 'success',
                         'availability_zone': dst_service.availability_zone,
                         'previous_status': volume.status,
+                        'service_uuid': dst_service.uuid,
                     }
                     if status_update:
                         updates.update(status_update)
