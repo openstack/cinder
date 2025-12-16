@@ -147,7 +147,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(0, block_base.LOG.error.call_count)
 
     def test_create_volume_asar2(self):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         volume_size_in_bytes = int(fake.SIZE) * units.Gi
         self.mock_object(na_utils, 'get_volume_extra_specs',
                          return_value={})
@@ -1494,7 +1495,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_delete_lun_asar2(self):
         mock_get_lun_attr = self.mock_object(self.library, '_get_lun_attr')
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         mock_get_lun_attr.return_value = fake.LUN_METADATA_ASAR2
         self.library.zapi_client = mock.Mock()
 
@@ -1562,9 +1564,16 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def test_delete_snapshot(self):
         mock_delete_lun = self.mock_object(self.library, '_delete_lun')
 
-        self.library.delete_snapshot(fake.SNAPSHOT)
+        self.library.delete_snapshot(fake.SNAPSHOT_OBJ)
 
         mock_delete_lun.assert_called_once_with(fake.SNAPSHOT_NAME)
+
+    def test_delete_snapshot_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        self.library.delete_snapshot(fake.SNAPSHOT_OBJ)
+        self.library.zapi_client.delete_snapshot.assert_called_once_with(
+            fake.SNAPSHOT['volume_name'], fake.SNAPSHOT['name'])
 
     def test_clone_source_to_destination(self):
         self.mock_object(na_utils, 'get_volume_extra_specs',
@@ -1640,7 +1649,6 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                           fake.VOLUME_ID, 'new-' + fake.VOLUME_ID)
 
     def test_create_snapshot(self):
-
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_ID,
                                         fake.LUN_SIZE, fake.LUN_METADATA)
         mock_clone_lun = self.mock_object(self.library, '_clone_lun')
@@ -1654,18 +1662,66 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             fake_lun.name, fake.SNAPSHOT_NAME, space_reserved='false',
             is_snapshot=True)
 
+    def test__create_snapshot_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+
+        self.library._create_snapshot(fake.SNAPSHOT)
+        self.library.zapi_client.create_snapshot.assert_called_once_with(
+            fake.SNAPSHOT['volume_name'], fake.SNAPSHOT['name'])
+
     def test_create_volume_from_snapshot(self):
         mock_do_clone = self.mock_object(self.library,
                                          '_clone_source_to_destination')
         source = {
             'name': fake.SNAPSHOT['name'],
-            'size': fake.SNAPSHOT['volume_size']
+            'size': fake.SNAPSHOT['volume_size'],
+            'volume_name': fake.SNAPSHOT['volume_name'],
         }
 
-        self.library.create_volume_from_snapshot(fake.VOLUME, fake.SNAPSHOT)
+        self.library.create_volume_from_snapshot(fake.VOLUME,
+                                                 fake.SNAPSHOT_OBJ)
 
         mock_do_clone.assert_has_calls([
             mock.call(source, fake.VOLUME)])
+
+    def test_create_volume_from_snapshot_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        source = {
+            'name': fake.SNAPSHOT['name'],
+            'volume_name': fake.SNAPSHOT['volume_name'],
+            'size': fake.SNAPSHOT['volume_size'],
+        }
+
+        result = self.library.create_volume_from_snapshot(
+            fake.VOLUME_OBJ, fake.SNAPSHOT_OBJ)
+
+        self.library.zapi_client.create_volume_from_snapshot\
+            .assert_called_once_with(source, fake.VOLUME_OBJ)
+        self.library.zapi_client.do_direct_resize.assert_not_called()
+        self.assertIsNone(result)
+
+    def test_create_volume_from_snapshot_asar2_resize(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        volume = fake_volume.fake_volume_obj(
+            self.ctxt, size=fake.SNAPSHOT['volume_size'] + 1)
+        source = {
+            'name': fake.SNAPSHOT['name'],
+            'volume_name': fake.SNAPSHOT['volume_name'],
+            'size': fake.SNAPSHOT['volume_size'],
+        }
+        expected_size_bytes = str(int(volume['size']) * units.Gi)
+
+        result = self.library.create_volume_from_snapshot(
+            volume, fake.SNAPSHOT_OBJ)
+
+        self.library.zapi_client.create_volume_from_snapshot\
+            .assert_called_once_with(source, volume)
+        self.library.zapi_client.do_direct_resize.assert_called_once_with(
+            volume.name, expected_size_bytes)
+        self.assertIsNone(result)
 
     def test_create_cloned_volume(self):
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_ID,
@@ -1680,10 +1736,31 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             'size': fake.VOLUME_REF['size']
         }
 
-        self.library.create_cloned_volume(fake.VOLUME, fake.VOLUME_REF)
+        self.library.create_cloned_volume(fake.VOLUME, fake.VOLUME_REF_OBJ)
 
         mock_do_clone.assert_has_calls([
             mock.call(source, fake.VOLUME)])
+
+    def test_create_cloned_volume_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        self.mock_object(self.library,
+                         '_get_volume_model_update',
+                         return_value={'foo': 'bar'})
+        volume = fake.FakeObject(name='vol1', size=2)
+        src_vref = fake.FakeObject(name='srcvol', size=1)
+        self.mock_object(self.library.zapi_client, 'do_direct_resize')
+        result = self.library.create_cloned_volume(volume, src_vref)
+
+        self.library.zapi_client.create_snapshot.assert_not_called()
+        (self.library.
+         zapi_client.create_volume_from_snapshot.assert_called_once_with(
+             {'volume_name': 'srcvol'}, volume))
+        # Resize to the destination size, not the source size.
+        self.library.zapi_client.do_direct_resize.assert_called_once_with(
+            volume.name, str(2 * units.Gi))
+        self.library._get_volume_model_update.assert_called_once_with(volume)
+        self.assertEqual({'foo': 'bar'}, result)
 
     def test_extend_volume(self):
 
@@ -1708,7 +1785,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                                    fake.QOS_POLICY_GROUP_NAME)
 
     def test_extend_volume_asar2(self):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         new_size = 100
         volume_copy = copy.copy(fake.VOLUME)
         volume_copy['size'] = new_size
@@ -2256,7 +2334,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual({}, self.library.lun_table)
 
     def test_delete_lun_from_table_asar2(self):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_ID,
                                         fake.LUN_SIZE, fake.LUN_METADATA_ASAR2)
         backend_name = na_utils.get_backend_lun_or_ns_name(
@@ -2347,7 +2426,12 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def test_add_looping_tasks_disaggregated_platform(self):
         """Test _add_looping_tasks with disaggregated platform"""
         mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        self.library.configuration.set_override(
+            'netapp_deleted_resource_cleanup_interval', 1800)
+        mock_call_resource_cleanup = self.mock_object(
+            self.library, '_delete_resources_marked_for_deletion')
         mock_call_snap_cleanup = self.mock_object(
             self.library, '_delete_snapshots_marked_for_deletion')
         mock_call_ems_logging = self.mock_object(
@@ -2357,6 +2441,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         # Disaggregated platform should NOT include snapshot cleanup task
         mock_add_task.assert_has_calls([
+            mock.call(mock_call_resource_cleanup, 1800, 1800),
             mock.call(mock_call_ems_logging, loopingcalls.ONE_HOUR)])
 
         # Verify snapshot cleanup is not called

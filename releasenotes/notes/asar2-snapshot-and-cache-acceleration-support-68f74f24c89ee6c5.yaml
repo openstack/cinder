@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    NetApp – The new ASAr2 driver now supports the snapshot and cache
+    acceleration workflow. It leverages NetApp snapshot technology
+    to create, delete, and restore snapshots, as well as to create
+    clone and volumes from snapshots.
+
+    The following features are supported by the ASAr2 driver:
+
+    1. Snapshot Creation.
+    2. Snapshot Deletion.
+    3. Snapshot Revert.
+    4. Create Volume from Snapshot.
+    5. Creating Volume from Source Volume.
+    6. Create Volume from Image.
+

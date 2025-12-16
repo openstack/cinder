@@ -78,6 +78,8 @@ DEST_LUN_NAME = 'new-fake-lun-name'
 FILE_NAME = 'fake-file-name'
 DEST_FILE_NAME = 'new-fake-file-name'
 FAKE_UUID = 'b32bab78-82be-11ec-a8a3-0242ac120002'
+STORAGE_UNIT = "fake-storage-unit"
+ONTAP_STORAGE_UNIT = "fake_storage_unit"
 
 FAKE_QUERY = {'volume-attributes': None}
 

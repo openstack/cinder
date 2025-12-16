@@ -187,6 +187,9 @@ class NetAppBlockStorageLibrary(
         lun_list = self.zapi_client.get_lun_list()
         self._extract_and_populate_luns(lun_list)
         LOG.debug("Success getting list of LUNs from server.")
+        # Pass the config object to ONTAP lib
+        if self.configuration.netapp_disaggregated_platform:
+            self.zapi_client.set_config(self.configuration)
         self.loopingcalls.start_tasks()
 
     def _add_looping_tasks(self):
@@ -195,10 +198,17 @@ class NetAppBlockStorageLibrary(
         Inheriting class overrides and then explicitly calls this method.
         """
 
-        # Add the task that deletes snapshots marked for deletion.
-        # ADD snapshot cleanup task to ASA r2 once snapshot feature is
-        # implemented in the driver.
-        if not self.configuration.netapp_disaggregated_platform:
+        # Add the task that deletes snapshots marked for deletion. On ASA r2
+        # storage units are marked for deletion too, and cleaning them up
+        # can involve splitting clones.
+        if self.configuration.netapp_disaggregated_platform:
+            interval = (
+                self.configuration.netapp_deleted_resource_cleanup_interval)
+            self.loopingcalls.add_task(
+                self._delete_resources_marked_for_deletion,
+                interval,
+                interval)
+        else:
             self.loopingcalls.add_task(
                 self._delete_snapshots_marked_for_deletion,
                 loopingcalls.ONE_MINUTE,
@@ -214,6 +224,10 @@ class NetAppBlockStorageLibrary(
         for snapshot in snapshots:
             self.zapi_client.delete_snapshot(
                 snapshot['volume_name'], snapshot['name'])
+
+    def _delete_resources_marked_for_deletion(self):
+        """Clean up the ASA r2 snapshots and LUNs marked for deletion."""
+        self.zapi_client.delete_resources_marked_for_deletion()
 
     def _handle_ems_logging(self):
         """Log autosupport messages."""
@@ -372,23 +386,51 @@ class NetAppBlockStorageLibrary(
     def _create_snapshot(self, snapshot):
         vol_name = snapshot['volume_name']
         snapshot_name = snapshot['name']
-        lun = self._get_lun_from_table(vol_name)
-        self._clone_lun(lun.name, snapshot_name, space_reserved='false',
-                        is_snapshot=True)
+        if self.configuration.netapp_disaggregated_platform:
+            self.zapi_client.create_snapshot(vol_name, snapshot_name)
+        else:
+            lun = self._get_lun_from_table(vol_name)
+            self._clone_lun(lun.name, snapshot_name, space_reserved='false',
+                            is_snapshot=True)
 
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
-        self._delete_lun(snapshot['name'])
-        LOG.debug("Snapshot %s deletion successful", snapshot['name'])
+        if self.configuration.netapp_disaggregated_platform:
+            self.zapi_client.delete_snapshot(snapshot.volume_name,
+                                             snapshot.name)
+        else:
+            self._delete_lun(snapshot['name'])
+        LOG.debug("Snapshot %s deletion successful", snapshot.name)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        source = {'name': snapshot['name'], 'size': snapshot['volume_size']}
-        return self._clone_source_to_destination(source, volume)
+        source = {'name': snapshot.name,
+                  'volume_name': snapshot.volume_name,
+                  'size': snapshot.volume_size
+                  }
+        if self.configuration.netapp_disaggregated_platform:
+            self.zapi_client.create_volume_from_snapshot(source, volume)
+            # Change the volume size
+            if volume.size != snapshot.volume_size:
+                size_bytes = str(na_utils.get_volume_size_gb(volume))
+                self.zapi_client.do_direct_resize(volume.name, size_bytes)
+            return None
+        else:
+            return self._clone_source_to_destination(source, volume)
 
     def create_cloned_volume(self, volume, src_vref):
-        src_lun = self._get_lun_from_table(src_vref['name'])
-        source = {'name': src_lun.name, 'size': src_vref['size']}
-        return self._clone_source_to_destination(source, volume)
+        if self.configuration.netapp_disaggregated_platform:
+            # Omit snapshot name so ONTAP creates the temporary snapshot.
+            source = {'volume_name': src_vref.name}
+            self.zapi_client.create_volume_from_snapshot(source, volume)
+            if volume.size != src_vref.size:
+                size_bytes = str(na_utils.get_volume_size_gb(volume))
+                self.zapi_client.do_direct_resize(volume.name, size_bytes)
+            return self._get_volume_model_update(volume)
+        else:
+            src_lun = self._get_lun_from_table(src_vref.name)
+            source = {'name': src_lun.name, 'size': src_vref.size}
+
+            return self._clone_source_to_destination(source, volume)
 
     def _clone_source_to_destination(self, source, destination_volume):
         source_size = source['size']
@@ -1014,7 +1056,6 @@ class NetAppBlockStorageLibrary(
         """
 
         initiator_name = connector['initiator']
-        lun_path = volume['provider_location'].split(':')[1]
         name = volume['name']
         lun_id = self._map_lun(name, [initiator_name], 'iscsi', None)
 
@@ -1049,6 +1090,7 @@ class NetAppBlockStorageLibrary(
         if self.configuration.netapp_disaggregated_platform:
             properties['discard'] = True
         else:
+            lun_path = volume['provider_location'].split(':')[1]
             properties['discard'] = self._is_space_alloc_enabled(lun_path)
 
         if self.configuration.use_chap_auth:
