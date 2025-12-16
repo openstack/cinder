@@ -701,8 +701,8 @@ class HPE3PARBaseDriver(test.TestCase):
                            'minor': 10,
                            'revision': 0}
 
-    # Use this to point to latest version of wsapi
-    wsapi_version_latest = wsapi_version_for_compression
+    # Use this to point to default version of wsapi
+    wsapi_version_default = wsapi_version_for_compression
 
     standard_login = [
         mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS)]
@@ -780,7 +780,8 @@ class HPE3PARBaseDriver(test.TestCase):
     @mock.patch('hpe3parclient.client.HPE3ParClient')
     def setup_mock_client(self, _m_client, driver, conf=None, m_conf=None,
                           is_primera=False,
-                          wsapi_version=wsapi_version_latest):
+                          wsapi_version=wsapi_version_default,
+                          login=True):
 
         _m_client = _m_client.return_value
 
@@ -799,6 +800,8 @@ class HPE3PARBaseDriver(test.TestCase):
             conf = self.setup_configuration()
         self.driver = driver(configuration=conf)
         self.driver.do_setup(None)
+        if login and wsapi_version == self.wsapi_version_default:
+            self.driver._login()
         return _m_client
 
     @mock.patch.object(volume_types, 'get_volume_type')
@@ -863,19 +866,56 @@ class HPE3PARBaseDriver(test.TestCase):
 @ddt.ddt
 class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
-    def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
+    # if wsapi_version is None, preserve the None value.
+    # do not set it to wsapi_version_default.
+    # In setup_mock_client, login is not required,
+    # so set its value as False.
+    def setup_driver_other(self, config=None, mock_conf=None,
+                           wsapi_version=None):
         self.ctxt = context.get_admin_context()
         mock_client = self.setup_mock_client(
             conf=config,
             m_conf=mock_conf,
-            driver=hpedriverbase.HPE3PARDriverBase)
+            driver=hpedriverbase.HPE3PARDriverBase,
+            login=False)
 
         if wsapi_version:
             mock_client.getWsApiVersion.return_value = (
                 wsapi_version)
         else:
             mock_client.getWsApiVersion.return_value = (
-                self.wsapi_version_latest)
+                self.wsapi_version_default)
+
+        expected = [
+            mock.call.getCPG(HPE3PAR_CPG),
+            mock.call.getCPG(HPE3PAR_CPG2)]
+        mock_client.assert_has_calls(
+            self.standard_login +
+            expected +
+            self.standard_logout)
+        mock_client.reset_mock()
+        return mock_client
+
+    # if wsapi_version is None, update it to wsapi_version_default;
+    # and call setup_mock_client() accordingly.
+    # In setup_mock_client, login is required,
+    # so let its value be True (which is default).
+    def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
+        self.ctxt = context.get_admin_context()
+        if not wsapi_version:
+            wsapi_version = self.wsapi_version_default
+        mock_client = self.setup_mock_client(
+            conf=config,
+            m_conf=mock_conf,
+            driver=hpedriverbase.HPE3PARDriverBase,
+            wsapi_version=wsapi_version)
+
+        if wsapi_version:
+            mock_client.getWsApiVersion.return_value = (
+                wsapi_version)
+        else:
+            mock_client.getWsApiVersion.return_value = (
+                self.wsapi_version_default)
 
         expected = [
             mock.call.getCPG(HPE3PAR_CPG),
@@ -1765,7 +1805,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             expected = [mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                         mock.call.getVolume(self.VOLUME_3PAR_NAME)]
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -1790,7 +1829,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             expected = [mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                         mock.call.getVolume(self.VOLUME_3PAR_NAME)]
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -1889,7 +1927,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 mock.call.getStorageSystemInfo()]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -1924,7 +1961,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     self.RETYPE_VOLUME_TYPE_1['extra_specs']['cpg'])
             ]
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -1962,7 +1998,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     self.RETYPE_VOLUME_TYPE_1['extra_specs']['snap_cpg'])
             ]
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -1986,7 +2021,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             expected = [mock.call.getVolumeSnapshots(self.VOLUME_3PAR_NAME),
                         mock.call.getVolume(self.VOLUME_3PAR_NAME)]
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -2083,13 +2117,13 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'periodic'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
         mock_client.getRemoteCopyGroup.side_effect = (
             hpeexceptions.HTTPNotFound)
         mock_client.getCPG.return_value = {'domain': None}
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = {
             'id': self.REPLICATION_CLIENT_ID,
             'serialNumber': '1234567'
@@ -2164,13 +2198,13 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'periodic'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
         mock_client.getRemoteCopyGroup.side_effect = (
             hpeexceptions.HTTPNotFound)
         mock_client.getCPG.return_value = {'domain': None}
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = {
             'id': self.REPLICATION_CLIENT_ID,
             'serialNumber': '1234567'
@@ -2261,13 +2295,13 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'periodic'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
         mock_client.getRemoteCopyGroup.side_effect = (
             hpeexceptions.HTTPNotFound)
         mock_client.getCPG.return_value = {'domain': None}
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = {
             'id': self.REPLICATION_CLIENT_ID,
             'serialNumber': '1234567'
@@ -2654,7 +2688,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             expected = [mock.call.getVolume(vol_name)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected)
 
     def test_get_cpg_with_volume_return_snapcpg(self):
@@ -2680,7 +2713,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             expected = [mock.call.getVolume(vol_name)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected)
 
     def test_get_cpg_with_volume_return_no_cpg(self):
@@ -2705,7 +2737,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             expected = [mock.call.getVolume(vol_name)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected)
 
     @ddt.data({'volume_attr': 'volume', 'wsapi_version': None},
@@ -3697,7 +3728,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.driver._login()
             volume = self.volume_snapshot.copy()
             model_update = self.driver.create_volume_from_snapshot(
                 volume,
@@ -3754,7 +3784,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.driver._login()
             volume = self.volume_snapshot.copy()
             model_update = self.driver.create_volume_from_snapshot(
                 volume,
@@ -3913,6 +3942,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             volume = self.volume_snapshot.copy()
             volume['size'] = self.volume['size'] + 10
 
+            self.driver._login()
             self.assertRaises(exception.CinderException,
                               self.driver.create_volume_from_snapshot,
                               volume, self.snapshot)
@@ -4668,7 +4698,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
     def test_manage_existing_with_no_snap_cpg(self, _mock_volume_types,
                                               wsapi_version):
         _mock_volume_types.return_value = self.volume_type
-        mock_client = self.setup_driver(wsapi_version=wsapi_version)
+        mock_client = self.setup_driver_other(wsapi_version=wsapi_version)
 
         new_comment = Comment({
             "display_name": "Foo Volume",
@@ -5673,10 +5703,10 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'periodic'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_replicated_client.getStorageSystemInfo.return_value = (
             {'id': self.REPLICATION_CLIENT_ID})
 
@@ -5742,10 +5772,10 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'periodic'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_replicated_client.getStorageSystemInfo.return_value = (
             {'id': self.REPLICATION_CLIENT_ID})
 
@@ -6075,7 +6105,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
-            mock_create_client.return_value = mock_client
             group = self.fake_group_object()
             group.is_replicated = True
             group.replication_status = fields.ReplicationStatus.ENABLED
@@ -6161,10 +6190,10 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'periodic'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_replicated_client.getStorageSystemInfo.return_value = (
             {'id': self.REPLICATION_CLIENT_ID})
 
@@ -6232,10 +6261,10 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'periodic'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_replicated_client.getStorageSystemInfo.return_value = (
             {'id': self.REPLICATION_CLIENT_ID})
 
@@ -6890,10 +6919,10 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'periodic'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_replicated_client.getStorageSystemInfo.return_value = (
             {'id': self.REPLICATION_CLIENT_ID})
 
@@ -6952,6 +6981,8 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 self.get_id_login +
                 self.standard_logout +
                 self.standard_login +
+                self.standard_logout +
+                self.standard_logout +
                 expected +
                 self.standard_logout)
             self.assertEqual(expected_model, return_model)
@@ -6964,10 +6995,10 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'periodic'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_replicated_client.getStorageSystemInfo.return_value = (
             {'id': self.REPLICATION_CLIENT_ID})
 
@@ -7015,9 +7046,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         mock_client = self.setup_driver(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
-        mock_replicated_client = self.setup_driver(config=conf)
-        mock_replicated_client.getStorageSystemInfo.return_value = (
-            {'id': self.REPLICATION_CLIENT_ID})
 
         _mock_volume_types.return_value = {
             'name': 'replicated',
@@ -7029,15 +7057,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         with mock.patch.object(
                 hpecommon.HPE3PARCommon,
-                '_create_client') as mock_create_client, \
-            mock.patch.object(
-                hpecommon.HPE3PARCommon,
-                '_create_replication_client') as mock_replication_client:
+                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getRemoteCopyGroup.side_effect = (
                 exception.VolumeBackendAPIException(
                     "Error: Remote Copy Group not Ready."))
-            mock_replication_client.return_value = mock_replicated_client
 
             # Test an unsuccessful fail-back.
             volume = copy.deepcopy(self.volume_replicated)
@@ -7090,7 +7114,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 mock_client.assert_has_calls(expected)
 
     def test_driver_login_with_wrong_credential_and_replication_disabled(self):
-        mock_client = self.setup_driver()
+        mock_client = self.setup_driver_other()
         mock_client.login.side_effect = hpeexceptions.HTTPUnauthorized
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -7108,8 +7132,8 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'periodic'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_client.login.side_effect = hpeexceptions.HTTPUnauthorized
 
         with mock.patch.object(
@@ -7209,19 +7233,48 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                                      ['0987654321234', '123456789000987'],
                                      }}}
 
-    def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
+    def setup_driver_other(self, config=None, mock_conf=None,
+                           wsapi_version=None):
         self.ctxt = context.get_admin_context()
         mock_client = self.setup_mock_client(
             conf=config,
             m_conf=mock_conf,
-            driver=hpefcdriver.HPE3PARFCDriver)
+            driver=hpefcdriver.HPE3PARFCDriver,
+            login=False)
 
         if wsapi_version:
             mock_client.getWsApiVersion.return_value = (
                 wsapi_version)
         else:
             mock_client.getWsApiVersion.return_value = (
-                self.wsapi_version_latest)
+                self.wsapi_version_default)
+
+        expected = [
+            mock.call.getCPG(HPE3PAR_CPG),
+            mock.call.getCPG(HPE3PAR_CPG2)]
+        mock_client.assert_has_calls(
+            self.standard_login +
+            expected +
+            self.standard_logout)
+        mock_client.reset_mock()
+        return mock_client
+
+    def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
+        self.ctxt = context.get_admin_context()
+        if not wsapi_version:
+            wsapi_version = self.wsapi_version_default
+        mock_client = self.setup_mock_client(
+            conf=config,
+            m_conf=mock_conf,
+            driver=hpefcdriver.HPE3PARFCDriver,
+            wsapi_version=wsapi_version)
+
+        if wsapi_version:
+            mock_client.getWsApiVersion.return_value = (
+                wsapi_version)
+        else:
+            mock_client.getWsApiVersion.return_value = (
+                self.wsapi_version_default)
 
         expected = [
             mock.call.getCPG(HPE3PAR_CPG),
@@ -7319,7 +7372,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
             self.assertDictEqual(expected_properties, result)
@@ -7394,9 +7446,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.get_id_login +
-                self.standard_logout +
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -7492,9 +7541,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.get_id_login +
-                self.standard_logout +
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -7573,9 +7619,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.get_id_login +
-                self.standard_logout +
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -7660,7 +7703,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
             self.assertDictEqual(expected_properties, result)
@@ -7673,12 +7715,12 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         self.replication_targets[0]['replication_mode'] = 'sync'
         self.replication_targets[0]['quorum_witness_ip'] = '10.50.3.192'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
 
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
 
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_replicated_client.getStorageSystemInfo.return_value = (
             {'id': self.REPLICATION_CLIENT_ID})
 
@@ -7849,7 +7891,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             conn_info = self.driver.terminate_connection(volume,
                                                          self.connector)
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
             self.assertIn('data', conn_info)
@@ -7869,7 +7910,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             conn_info = self.driver.terminate_connection(volume,
                                                          self.connector)
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
             mock_client.reset_mock()
@@ -7878,7 +7918,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             conn_info = self.driver.terminate_connection(volume,
                                                          self.connector)
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -7917,7 +7956,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             self.driver.terminate_connection(self.volume, None)
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -7969,7 +8007,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             conn_info = self.driver.terminate_connection(self.volume,
                                                          self.connector)
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
             self.assertIn('data', conn_info)
@@ -7989,7 +8026,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             conn_info = self.driver.terminate_connection(self.volume,
                                                          self.connector)
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
             mock_client.reset_mock()
@@ -7998,7 +8034,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             conn_info = self.driver.terminate_connection(self.volume,
                                                          self.connector)
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -8055,9 +8090,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             conn_info = self.driver.terminate_connection(self.volume,
                                                          self.connector)
             mock_client.assert_has_calls(
-                self.get_id_login +
-                self.standard_logout +
-                self.standard_login +
                 expect_less +
                 self.standard_logout)
             self.assertEqual(expect_conn, conn_info)
@@ -8070,12 +8102,12 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         self.replication_targets[0]['replication_mode'] = 'sync'
         self.replication_targets[0]['quorum_witness_ip'] = '10.50.3.192'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
 
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
 
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_replicated_client.getStorageSystemInfo.return_value = (
             {'id': self.REPLICATION_CLIENT_ID})
 
@@ -8154,7 +8186,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             conn_info = self.driver.terminate_connection(
                 volume, self.connector_multipath_enabled)
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
             self.assertIn('data', conn_info)
@@ -8175,7 +8206,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             conn_info = self.driver.terminate_connection(
                 volume, self.connector_multipath_enabled)
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
             mock_client.reset_mock()
@@ -8186,7 +8216,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             conn_info = self.driver.terminate_connection(
                 volume, self.connector_multipath_enabled)
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -8967,21 +8996,58 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             'target_luns': [TARGET_LUN],
             'target_portals': ['[2001:db8:abcd:12:ffff:ffff:ffff:ff02]:3260']}}
 
-    def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
+    def setup_driver_other(self, config=None, mock_conf=None,
+                           wsapi_version=None):
 
         self.ctxt = context.get_admin_context()
 
         mock_client = self.setup_mock_client(
             conf=config,
             m_conf=mock_conf,
-            driver=hpedriver.HPE3PARISCSIDriver)
+            driver=hpedriver.HPE3PARISCSIDriver,
+            login=False)
 
         if wsapi_version:
             mock_client.getWsApiVersion.return_value = (
                 wsapi_version)
         else:
             mock_client.getWsApiVersion.return_value = (
-                self.wsapi_version_latest)
+                self.wsapi_version_default)
+
+        expected_get_cpgs = [
+            mock.call.getCPG(HPE3PAR_CPG),
+            mock.call.getCPG(HPE3PAR_CPG2)]
+        expected_get_ports = [mock.call.getPorts()]
+        expected_primera_check = [mock.call.is_primera_array()]
+        mock_client.assert_has_calls(
+            self.standard_login +
+            expected_get_cpgs +
+            self.standard_logout +
+            expected_primera_check +
+            self.standard_login +
+            expected_get_ports +
+            self.standard_logout)
+        mock_client.reset_mock()
+
+        return mock_client
+
+    def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
+
+        self.ctxt = context.get_admin_context()
+        if not wsapi_version:
+            wsapi_version = self.wsapi_version_default
+        mock_client = self.setup_mock_client(
+            conf=config,
+            m_conf=mock_conf,
+            driver=hpedriver.HPE3PARISCSIDriver,
+            wsapi_version=wsapi_version)
+
+        if wsapi_version:
+            mock_client.getWsApiVersion.return_value = (
+                wsapi_version)
+        else:
+            mock_client.getWsApiVersion.return_value = (
+                self.wsapi_version_default)
 
         expected_get_cpgs = [
             mock.call.getCPG(HPE3PAR_CPG),
@@ -9095,7 +9161,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -9162,7 +9227,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -9217,7 +9281,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -9270,7 +9333,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -9289,11 +9351,11 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
         self.replication_targets[0]['hpe3par_iscsi_ips'] = '1.1.1.2'
         conf.replication_device = self.replication_targets
 
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
 
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_replicated_client.getStorageSystemInfo.return_value = (
             {'id': self.REPLICATION_CLIENT_ID})
 
@@ -9454,7 +9516,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -9523,7 +9584,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -9577,9 +9637,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                     self.VOLUME_3PAR_NAME, CHAP_PASS_KEY)]
 
             mock_client.assert_has_calls(
-                self.get_id_login +
-                self.standard_logout +
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -9630,9 +9687,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                     self.VOLUME_3PAR_NAME, CHAP_USER_KEY)]
 
             mock_client.assert_has_calls(
-                self.get_id_login +
-                self.standard_logout +
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -9686,9 +9740,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                     self.VOLUME_3PAR_NAME, CHAP_PASS_KEY)]
 
             mock_client.assert_has_calls(
-                self.get_id_login +
-                self.standard_logout +
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -10547,14 +10598,12 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
     def test_get_least_used_nps_for_host_fc(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
+        conf = self.setup_configuration()
+        conf.hpe3par_iscsi_ips = ["10.10.220.252", "10.10.220.253"]
+        mock_client = self.setup_driver(config=conf)
 
         mock_client.getPorts.return_value = PORTS1_RET
         mock_client.getVLUNs.return_value = VLUNS5_RET
-
-        # Setup two ISCSI IPs
-        iscsi_ips = ["10.10.220.252", "10.10.220.253"]
-        self.driver.configuration.hpe3par_iscsi_ips = iscsi_ips
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -11083,7 +11132,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
     def test_ensure_export(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
+        mock_client = self.setup_driver_other()
 
         volume = {'host': 'test-host@3pariscsi',
                   'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
@@ -11165,7 +11214,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             expected_model = None
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
             self.assertEqual(expected_model, model)
@@ -11279,9 +11327,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 mock.call.removeVolumeMetaData(vol_name, CHAP_PASS_KEY)]
 
             mock_client.assert_has_calls(
-                self.get_id_login +
-                self.standard_logout +
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -11327,7 +11372,6 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 mock.call.removeVolumeMetaData(vol_name, CHAP_PASS_KEY)]
 
             mock_client.assert_has_calls(
-                self.standard_login +
                 expected +
                 self.standard_logout)
 
@@ -11339,12 +11383,12 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
         self.replication_targets[0]['replication_mode'] = 'sync'
         self.replication_targets[0]['quorum_witness_ip'] = '10.50.3.192'
         conf.replication_device = self.replication_targets
-        mock_client = self.setup_driver(config=conf)
+        mock_client = self.setup_driver_other(config=conf)
 
         mock_client.getStorageSystemInfo.return_value = (
             {'id': self.CLIENT_ID})
 
-        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver_other(config=conf)
         mock_replicated_client.getStorageSystemInfo.return_value = (
             {'id': self.REPLICATION_CLIENT_ID})
 
