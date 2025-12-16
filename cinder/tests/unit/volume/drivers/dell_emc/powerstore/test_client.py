@@ -109,6 +109,11 @@ HOST_RESP = [
     },
 ]
 
+PS_CLIENT = (
+    "cinder.volume.drivers.dell_emc.powerstore.client."
+    "PowerStoreClient"
+)
+
 
 @ddt.ddt
 class TestClient(test.TestCase):
@@ -394,8 +399,7 @@ class TestClient(test.TestCase):
                           'host1',
                           'port1')
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_post_request')
+    @mock.patch(PS_CLIENT + '._send_post_request')
     def test_configure_metro_with_remote_appliance_name(
             self, mock_send_post_request):
         r = MockResponse(
@@ -419,8 +423,7 @@ class TestClient(test.TestCase):
         )
         self.assertEqual(result, "1234")
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_post_request')
+    @mock.patch(PS_CLIENT + '._send_post_request')
     def test_configure_metro_without_remote_appliance_name(
             self, mock_send_post_request):
         r = MockResponse(
@@ -443,8 +446,7 @@ class TestClient(test.TestCase):
         )
         self.assertEqual(result, "5678")
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_post_request')
+    @mock.patch(PS_CLIENT + '._send_post_request')
     def test_configure_metro_with_failed_request(self, mock_send_post_request):
         r = MockResponse(rc=500)
         mock_send_post_request.return_value = (r, None)
@@ -463,8 +465,7 @@ class TestClient(test.TestCase):
             }
         )
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_post_request')
+    @mock.patch(PS_CLIENT + '._send_post_request')
     def test_end_metro_success(self, mock_send_post_request):
         mock_send_post_request.return_value = (
             MockResponse(rc=200),
@@ -478,8 +479,7 @@ class TestClient(test.TestCase):
             payload={"delete_remote_volume": True},
         )
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_post_request')
+    @mock.patch(PS_CLIENT + '._send_post_request')
     def test_end_metro_failure(self, mock_send_post_request):
         mock_send_post_request.return_value = (
             MockResponse(rc=500),
@@ -496,8 +496,7 @@ class TestClient(test.TestCase):
             payload={"delete_remote_volume": False},
         )
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_get_request')
+    @mock.patch(PS_CLIENT + '._send_get_request')
     def test_get_replication_session_state_success(
             self, mock_send_get_request):
         r = MockResponse(
@@ -508,8 +507,7 @@ class TestClient(test.TestCase):
         state = self.client.get_replication_session_state('rep_session_id')
         self.assertEqual(state, 'OK')
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_get_request')
+    @mock.patch(PS_CLIENT + '._send_get_request')
     def test_get_replication_session_state_failure(
             self, mock_send_get_request):
         mock_send_get_request.return_value = (
@@ -520,8 +518,7 @@ class TestClient(test.TestCase):
                           self.client.get_replication_session_state,
                           'rep_session_id')
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_get_request')
+    @mock.patch(PS_CLIENT + '._send_get_request')
     def test_get_cluster_name_success(self, mock_send_get_request):
         r = MockResponse(
             rc=200,
@@ -531,8 +528,7 @@ class TestClient(test.TestCase):
         result = self.client.get_cluster_name()
         self.assertEqual(result, 'cluster_name')
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_get_request')
+    @mock.patch(PS_CLIENT + '._send_get_request')
     def test_get_cluster_name_failure(self, mock_send_get_request):
         mock_send_get_request.return_value = (
             MockResponse(rc=404),
@@ -541,8 +537,7 @@ class TestClient(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.client.get_cluster_name)
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_patch_request')
+    @mock.patch(PS_CLIENT + '._send_patch_request')
     def test_modify_host_connectivity_success(
             self, _send_patch_request):
         _send_patch_request.return_value = (
@@ -555,8 +550,7 @@ class TestClient(test.TestCase):
             payload={"host_connectivity": "Local_Only"}
         )
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
-                'client.PowerStoreClient._send_patch_request')
+    @mock.patch(PS_CLIENT + '._send_patch_request')
     def test_modify_host_connectivity_failure(
             self, _send_patch_request):
         _send_patch_request.return_value = (
@@ -567,3 +561,120 @@ class TestClient(test.TestCase):
                           self.client.modify_host_connectivity,
                           'host_id',
                           'Local_Only')
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_get_volume_details_by_id_ok(self, mock_get):
+        mock_get.return_value = (
+            MockResponse(rc=200),
+            {"id": "vol-ps-1", "size": 1},
+        )
+        resp = self.client.get_volume_details_by_id(
+            "vol-ps-1", fields=["id", "size"])
+        self.assertEqual("vol-ps-1", resp["id"])
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_get_volume_details_by_id_escapes_special_chars(self, mock_get):
+        mock_get.return_value = (
+            MockResponse(rc=200),
+            {"id": "safe", "size": 1},
+        )
+        self.client.get_volume_details_by_id(
+            "../../host", fields=["id"])
+        mock_get.assert_called_once_with(
+            "/volume/..%2F..%2Fhost", params={"select": "id"})
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_get_volume_details_by_id_not_ok(self, mock_get):
+        mock_get.return_value = (MockResponse(rc=500), None)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.client.get_volume_details_by_id,
+            "bad-id", ["id"])
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_get_volume_details_by_id_empty(self, mock_get):
+        mock_get.return_value = (MockResponse(rc=200), None)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.client.get_volume_details_by_id,
+            "missing-id", ["id"])
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_get_volume_details_by_name_ok(self, mock_get):
+        mock_get.return_value = (
+            MockResponse(rc=200),
+            [{"id": "vol-ps-2", "name": "n"}],
+        )
+        resp = self.client.get_volume_details_by_name(
+            "n", fields=["id", "name"])
+        self.assertEqual("vol-ps-2", resp["id"])
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_get_volume_details_by_name_not_ok(self, mock_get):
+        mock_get.return_value = (MockResponse(rc=500), [])
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.client.get_volume_details_by_name,
+            "n", ["id"])
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_get_volume_details_by_name_empty(self, mock_get):
+        mock_get.return_value = (MockResponse(rc=200), [])
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.client.get_volume_details_by_name,
+            "missing", ["id"])
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_get_volume_details_by_name_multiple(self, mock_get):
+        mock_get.return_value = (
+            MockResponse(rc=200),
+            [{"id": "v1", "name": "dup"}, {"id": "v2", "name": "dup"}],
+        )
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.client.get_volume_details_by_name,
+            "dup", ["id", "name"])
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_volume_is_mapped_first_endpoint_positive(self, mock_get):
+        def side_effect(path, params=None):
+            if path == "/host_volume_mapping":
+                return (MockResponse(rc=200),
+                        [{"host_id": "h1", "host_group_id": None}])
+            return (MockResponse(rc=200), [])
+        mock_get.side_effect = side_effect
+        self.assertTrue(self.client.volume_is_mapped("vol-ps-3"))
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_volume_is_mapped_second_endpoint_positive(self, mock_get):
+        def side_effect(path, params=None):
+            if path == "/host_volume_mapping":
+                return (MockResponse(rc=200), [])
+            return (MockResponse(rc=200),
+                    [{"host_id": "h2", "host_group_id": "hg"}])
+        mock_get.side_effect = side_effect
+        self.assertTrue(self.client.volume_is_mapped("vol-ps-4"))
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_volume_is_mapped_both_empty(self, mock_get):
+        mock_get.return_value = (MockResponse(rc=200), [])
+        self.assertFalse(self.client.volume_is_mapped("vol-ps-5"))
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_volume_is_mapped_first_raises(self, mock_get):
+        mock_get.side_effect = Exception("transient")
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.client.volume_is_mapped,
+            "vol-ps-6",
+        )
+
+    @mock.patch(PS_CLIENT + "._send_get_request")
+    def test_volume_is_mapped_bad_status(self, mock_get):
+        mock_get.return_value = (MockResponse(rc=500), None)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.client.volume_is_mapped,
+            "vol-ps-7",
+        )

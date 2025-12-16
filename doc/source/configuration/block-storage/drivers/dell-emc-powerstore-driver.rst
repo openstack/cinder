@@ -26,6 +26,7 @@ Supported operations
 - Quality of Service (QoS)
 - Cinder volume active/active support.
 - Metro volume support.
+- Cinder Manage and Unmanage existing volumes.
 
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~
@@ -383,3 +384,29 @@ enabling the following capabilities:
         This method entails changing the existing QoS properties and creating a new instance or image
         volume to update the QoS policy in PowerStore. This will also update the QoS properties of existing attached volumes,
         created with the same volume type.
+
+Manage and Unmanage existing volumes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Prerequisites
+^^^^^^^^^^^^^
+* Volume type must be **Primary** or **Clone**.
+* Volume state must be **Ready**, **Healthy**, or **Available**.
+* Volume must **not** be a **replication destination**.
+* Volume must **not** be in an active **migration** or
+  **metro replication** session.
+* Volume must **not** be **mapped/attached** to any host or host group.
+
+CLI usage
+^^^^^^^^^
+
+.. code-block:: console
+
+  # Manage by source-id (PowerStore volume UUID)
+  $ cinder manage --name <volume-name> --id-type source-id <host> <powerstore-volume-uuid>
+
+  # Manage by source-name (PowerStore volume name)
+  $ cinder manage --name <volume-name> --id-type source-name <host> <powerstore-volume-name>
+
+  # Unmanage
+  $ cinder unmanage <cinder-volume-id>

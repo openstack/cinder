@@ -14,9 +14,21 @@
 # under the License.
 
 from unittest import mock
+import uuid
 
 from cinder import exception
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import powerstore
+from cinder.volume.drivers.dell_emc.powerstore import utils
+
+PS_CLIENT = (
+    "cinder.volume.drivers.dell_emc.powerstore.client."
+    "PowerStoreClient"
+)
+PS_ADAPTER = (
+    "cinder.volume.drivers.dell_emc.powerstore.adapter."
+    "CommonAdapter"
+)
 
 
 class TestBase(powerstore.TestPowerStoreDriver):
@@ -126,3 +138,444 @@ class TestBase(powerstore.TestPowerStoreDriver):
         self.driver.check_for_setup_error()
         self.driver.active_backend_id = "repl_1"
         self.assertFalse(self.driver.replication_enabled)
+
+
+class TestManageExisting(powerstore.TestPowerStoreDriver):
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    @mock.patch(PS_CLIENT + ".volume_is_mapped", return_value=False)
+    def test_manage_existing_iscsi_success(self, mock_mapped, mock_get):
+        self.driver.adapter.storage_protocol = utils.PROTOCOL_ISCSI
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(self.context, name="cinder-vol",
+                                          id=vid)
+        mock_get.return_value = {
+            "id": "ps-id-1",
+            "name": "ps-vol-1",
+            "size": 1024**3,
+            "state": "Ready",
+            "type": "Primary",
+            "is_replication_destination": False,
+            "migration_session_id": None,
+            "metro_replication_session_id": None,
+        }
+        res = self.driver.manage_existing(vol, {"source-id": "ps-id-1"})
+        self.assertEqual({"provider_id": "ps-id-1"}, res)
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    @mock.patch(PS_CLIENT + ".volume_is_mapped", return_value=False)
+    def test_manage_existing_fc_success(self, mock_mapped, mock_get):
+        self.driver.adapter.storage_protocol = utils.PROTOCOL_FC
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(self.context, name="cinder-vol",
+                                          id=vid)
+        mock_get.return_value = {
+            "id": "ps-id-fc",
+            "name": "ps-vol-fc",
+            "size": 1024**3,
+            "state": "Healthy",
+            "type": "Clone",
+            "is_replication_destination": False,
+            "migration_session_id": None,
+            "metro_replication_session_id": None,
+        }
+        res = self.driver.manage_existing(vol, {"source-id": "ps-id-fc"})
+        self.assertEqual({"provider_id": "ps-id-fc"}, res)
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    @mock.patch(PS_CLIENT + ".volume_is_mapped", return_value=False)
+    def test_manage_existing_nvme_success(self, mock_mapped, mock_get):
+        self.driver.adapter.storage_protocol = utils.PROTOCOL_NVME
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-nvme",
+            "name": "ps-vol-nvme",
+            "size": 2 * 1024 ** 3,
+            "state": "Available",
+            "type": "Primary",
+            "is_replication_destination": False,
+            "migration_session_id": None,
+            "metro_replication_session_id": None,
+        }
+        res = self.driver.manage_existing(vol, {"source-id": "ps-id-nvme"})
+        self.assertEqual({"provider_id": "ps-id-nvme"}, res)
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_name")
+    @mock.patch(PS_CLIENT + ".volume_is_mapped", return_value=False)
+    def test_manage_existing_by_name_success(self, mock_mapped, mock_get):
+        self.driver.adapter.storage_protocol = utils.PROTOCOL_ISCSI
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-2",
+            "name": "ps-vol-2",
+            "size": 2 * 1024 ** 3,
+            "state": "Healthy",
+            "type": "Clone",
+            "is_replication_destination": False,
+            "migration_session_id": None,
+            "metro_replication_session_id": None,
+        }
+        res = self.driver.manage_existing(
+            vol,
+            {"source-name": "ps-vol-2"},
+        )
+        self.assertEqual({"provider_id": "ps-id-2"}, res)
+
+    def test_manage_existing_invalid_ref(self):
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.manage_existing,
+            vol,
+            {},
+        )
+
+    def test_manage_existing_both_source_id_and_name(self):
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.manage_existing,
+            vol,
+            {"source-id": "ps-id-1", "source-name": "ps-name-1"},
+        )
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    def test_manage_existing_migration_session_blocked(self, mock_get):
+        self.driver.adapter.storage_protocol = utils.PROTOCOL_ISCSI
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-4",
+            "name": "ps-vol-4",
+            "size": 1024 ** 3,
+            "state": "Ready",
+            "type": "Primary",
+            "is_replication_destination": False,
+            "migration_session_id": "sess",
+            "metro_replication_session_id": None,
+        }
+        self.assertRaises(
+            exception.InvalidVolume,
+            self.driver.manage_existing,
+            vol,
+            {"source-id": "ps-id-4"},
+        )
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    def test_manage_existing_metro_session_blocked(self, mock_get):
+        self.driver.adapter.storage_protocol = utils.PROTOCOL_ISCSI
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-5",
+            "name": "ps-vol-5",
+            "size": 1024 ** 3,
+            "state": "Ready",
+            "type": "Primary",
+            "is_replication_destination": False,
+            "migration_session_id": None,
+            "metro_replication_session_id": "metro",
+        }
+        self.assertRaises(
+            exception.InvalidVolume,
+            self.driver.manage_existing,
+            vol,
+            {"source-id": "ps-id-5"},
+        )
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    def test_manage_existing_unsupported_type(self, mock_get):
+        self.driver.adapter.storage_protocol = utils.PROTOCOL_ISCSI
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-6",
+            "name": "ps-vol-6",
+            "size": 1024 ** 3,
+            "state": "Ready",
+            "type": "Snapshot",
+            "is_replication_destination": False,
+            "migration_session_id": None,
+            "metro_replication_session_id": None,
+        }
+        self.assertRaises(
+            exception.InvalidVolume,
+            self.driver.manage_existing,
+            vol,
+            {"source-id": "ps-id-6"},
+        )
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    def test_manage_existing_unsupported_state(self, mock_get):
+        self.driver.adapter.storage_protocol = utils.PROTOCOL_ISCSI
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-7",
+            "name": "ps-vol-7",
+            "size": 1024 ** 3,
+            "state": "Busy",
+            "type": "Primary",
+            "is_replication_destination": False,
+            "migration_session_id": None,
+            "metro_replication_session_id": None,
+        }
+        self.assertRaises(
+            exception.InvalidVolume,
+            self.driver.manage_existing,
+            vol,
+            {"source-id": "ps-id-7"},
+        )
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    def test_manage_existing_replication_destination_blocked(self, mock_get):
+        self.driver.adapter.storage_protocol = utils.PROTOCOL_ISCSI
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-8",
+            "name": "ps-vol-8",
+            "size": 1024 ** 3,
+            "state": "Ready",
+            "type": "Primary",
+            "is_replication_destination": True,
+            "migration_session_id": None,
+            "metro_replication_session_id": None,
+        }
+        self.assertRaises(
+            exception.InvalidVolume,
+            self.driver.manage_existing,
+            vol,
+            {"source-id": "ps-id-8"},
+        )
+
+    @mock.patch(PS_CLIENT + ".volume_is_mapped", return_value=True)
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    def test_manage_existing_mapped_blocked(self, mock_get, mock_mapped):
+        self.driver.adapter.storage_protocol = utils.PROTOCOL_ISCSI
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-9",
+            "name": "ps-vol-9",
+            "size": 1024 ** 3,
+            "state": "Ready",
+            "type": "Primary",
+            "is_replication_destination": False,
+            "migration_session_id": None,
+            "metro_replication_session_id": None,
+        }
+        self.assertRaises(
+            exception.InvalidVolume,
+            self.driver.manage_existing,
+            vol,
+            {"source-id": "ps-id-9"},
+        )
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    def test_manage_existing_get_size_by_id_rounding(self, mock_get):
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-12",
+            "size": 1024 ** 3,
+        }
+        self.assertEqual(
+            1,
+            self.driver.manage_existing_get_size(
+                vol,
+                {"source-id": "ps-id-12"},
+            ),
+        )
+        mock_get.return_value = {
+            "id": "ps-id-12",
+            "size": (1024 ** 3) + 1,
+        }
+        self.assertEqual(
+            2,
+            self.driver.manage_existing_get_size(
+                vol,
+                {"source-id": "ps-id-12"},
+            ),
+        )
+        mock_get.return_value = {
+            "id": "ps-id-12",
+            "size": 0,
+        }
+        self.assertEqual(
+            0,
+            self.driver.manage_existing_get_size(
+                vol,
+                {"source-id": "ps-id-12"},
+            ),
+        )
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_name")
+    def test_manage_existing_get_size_by_name(self, mock_get):
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-13",
+            "size": 3 * 1024 ** 3,
+        }
+        self.assertEqual(
+            3,
+            self.driver.manage_existing_get_size(
+                vol,
+                {"source-name": "ps-vol-13"},
+            ),
+        )
+
+    @mock.patch(PS_CLIENT + ".get_volume_details_by_id")
+    def test_manage_existing_get_size_missing(self, mock_get):
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        mock_get.return_value = {
+            "id": "ps-id-14",
+            "size": None,
+        }
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.manage_existing_get_size,
+            vol,
+            {"source-id": "ps-id-14"},
+        )
+
+    def test_manage_existing_get_size_invalid_ref(self):
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.manage_existing_get_size,
+            vol,
+            {},
+        )
+
+    def test_manage_existing_get_size_both_source_id_and_name(self):
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.manage_existing_get_size,
+            vol,
+            {"source-id": "ps-id-1", "source-name": "ps-name-1"},
+        )
+
+    def test_unmanage_no_array_calls(self):
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        with mock.patch.object(
+            self.driver.adapter.client,
+            "delete_volume_or_snapshot",
+        ) as del_mock, mock.patch.object(
+            self.driver.adapter.client,
+            "detach_volume_from_host",
+        ) as det_mock:
+            res = self.driver.unmanage(vol)
+            self.assertEqual({}, res)
+            del_mock.assert_not_called()
+            det_mock.assert_not_called()
+
+    def test_driver_passthroughs(self):
+        vid = str(uuid.uuid4())
+        vol = fake_volume.fake_volume_obj(
+            self.context,
+            name="cinder-vol",
+            id=vid,
+        )
+        with mock.patch.object(
+            self.driver.adapter,
+            "manage_existing",
+            return_value={"provider_id": "P"},
+        ) as m1, mock.patch.object(
+            self.driver.adapter.client,
+            "get_volume_details_by_id",
+            return_value={
+                "id": "P",
+                "size": 7 * (1024 ** 3),
+            },
+        ) as g1:
+            self.assertEqual(
+                {"provider_id": "P"},
+                self.driver.manage_existing(
+                    vol,
+                    {"source-id": "P"},
+                ),
+            )
+            self.assertEqual(
+                7,
+                self.driver.manage_existing_get_size(
+                    vol,
+                    {"source-id": "P"},
+                ),
+            )
+            self.assertEqual({}, self.driver.unmanage(vol))
+            m1.assert_called_once()
+            g1.assert_called_once()
