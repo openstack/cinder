@@ -793,6 +793,14 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
 
         self._nova = compute.API()
 
+        # Set the expected volume format based on driver configuration.
+        # This is used as a heuristic for base_format recovery during
+        # upgrade scenarios when metadata is missing.
+        self.format = 'raw'
+        if getattr(self.configuration, self.driver_prefix + '_qcow2_volumes',
+                   False):
+            self.format = 'qcow2'
+
     def snapshot_revert_use_temp_snapshot(self) -> bool:
         # Considering that RemoteFS based drivers use COW images
         # for storing snapshots, having chains of such images,
@@ -1324,29 +1332,33 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             # info file instead of blocking
             return self._delete_stale_snapshot(snapshot)
 
-        base_path = os.path.join(vol_path, base_file)
-        base_file_img_info = self._qemu_img_info(base_path,
-                                                 snapshot.volume.name)
+        base_id = None
+        snapshots = [(snap_id, snap_file) for snap_id, snap_file
+                     in snap_info.items()
+                     if snap_id != 'active']
+        for snap_id, snap_file in snapshots:
+            if utils.paths_normcase_equal(snap_file, base_file):
+                base_id = snap_id
+                break
+
+        is_last_snapshot = False
+        if base_id is None:
+            # This snapshot is backed directly by the base volume file,
+            # meaning it's the last remaining snapshot in the chain
+            is_last_snapshot = True
 
         # Find what file has this as its backing file
         active_file = self.get_active_image_from_info(snapshot.volume)
+
+        base_path = os.path.join(vol_path, base_file)
+        base_file_img_info = self._qemu_img_info(base_path,
+                                                 snapshot.volume.name)
 
         if self._is_volume_attached(snapshot.volume):
             # Online delete
             context = snapshot._context
 
             new_base_file = base_file_img_info.backing_file
-
-            base_id = None
-            for key, value in snap_info.items():
-                if utils.paths_normcase_equal(value,
-                                              base_file) and key != 'active':
-                    base_id = key
-                    break
-            if base_id is None:
-                # This means we are deleting the oldest snapshot
-                LOG.debug('No %(base_id)s found for %(file)s',
-                          {'base_id': 'base_id', 'file': snapshot_file})
 
             online_delete_info = {
                 'active_file': active_file,
@@ -1389,6 +1401,89 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                 self._img_commit(snapshot_path)
             # Active file has changed
             snap_info['active'] = base_file
+
+            # Restore original format when deleting last snapshot
+            if is_last_snapshot:
+                update_metadata = False
+                with snapshot.volume.obj_as_admin():
+                    admin_metadata = snapshot.volume.admin_metadata
+
+                    if 'base_format' in admin_metadata:
+                        # If base_format exists, update the volume's format
+                        # back to its original format
+                        base_format = admin_metadata['base_format']
+                        admin_metadata['format'] = base_format
+                        update_metadata = True
+                    else:
+                        # Volume has a snapshot but base_format doesn't exist,
+                        # this is likely because Cinder was upgraded from a
+                        # previous version that did not save the base_format.
+                        #
+                        # Even though the base file may still exist and
+                        # could be inspected to determine its format, the
+                        # result might be unreliable when the output differs
+                        # from 'raw' format. In case of a 'raw'
+                        # volume containing a 'qcow2' image, inspection will
+                        # report the inner format 'qcow2' instead of the
+                        # expected outer format 'raw'. This would lead to
+                        # the base format being set incorrectly in the
+                        # database.
+                        #
+                        # There are two possible ways to recover the original
+                        # volume format:
+                        #
+                        # 1. If the base file still exists, inspect it:
+                        #    a) If format is 'raw': No qcow2 header found,
+                        #       we can reliably assume 'raw' format.
+                        #    b) If format is NOT 'raw' (likely qcow2):
+                        #       Don't recover since we can't reliably
+                        #       determine the image format.
+                        # 2. If the base file no longer exists, this means
+                        #    the volume has been merged (originally raw or
+                        #    qcow2) into the active snapshot on a previous
+                        #    online snapshot deletion. We can assume 'qcow2'
+                        #    is the base format.
+                        if os.path.exists(base_path):
+                            # Base file exists, inspect it to determine format
+                            inspected_format = (
+                                image_utils.get_image_format(
+                                    path=base_path,
+                                    # Snapshot operations requires 'qcow2'
+                                    # backing file to be allowed
+                                    allow_qcow2_backing_file=True))
+
+                            if inspected_format == 'raw':
+                                # No qcow2 header found, assuming raw format
+                                admin_metadata['base_format'] = 'raw'
+                                admin_metadata['format'] = 'raw'
+                                msg = _("Recovered base_format as 'raw' for "
+                                        "volume %(volume_id)s from format "
+                                        "inspection.")
+                                LOG.info(
+                                    msg, {'volume_id': snapshot.volume.id})
+                                update_metadata = True
+                            else:
+                                # Format inspection failed or non-raw format
+                                # detected (e.g. qcow2)
+                                msg = _("Unable to recover base_format "
+                                        "for volume %(volume_id)s: can't "
+                                        "determine original format from "
+                                        "format inspection.")
+                                LOG.warning(
+                                    msg, {'volume_id': snapshot.volume.id})
+
+                        else:
+                            # Volume file no longer exists, this means the
+                            # volume has been merged into the active snapshot
+                            # during a previous online snapshot deletion and
+                            # qcow2 can be assumed as the new base format.
+                            admin_metadata['base_format'] = 'qcow2'
+                            admin_metadata['format'] = 'qcow2'
+                            update_metadata = True
+
+                    if update_metadata:
+                        snapshot.volume.save()
+
         else:
             #      T0        |      T1         |     T2         |      T3
             #     base       |  snapshot_file  |  higher_file   | highest_file
@@ -1587,6 +1682,30 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                        new_snap_path]
             self._execute(*command, run_as_root=self._execute_as_root)
 
+    def _get_snapshots_from_snap_info(self, snap_info: dict) -> List[str]:
+        """Get list of snapshot IDs from snap_info dictionary.
+
+        Returns snapshot IDs from the snap_info dictionary, excluding the
+        'active' key.
+
+        :param snap_info: Snapshot info dictionary
+        :returns: List of snapshot IDs
+        """
+        return [k for k in snap_info.keys() if k != 'active']
+
+    def _get_volume_snapshots(self, volume: objects.Volume) -> List[str]:
+        """Get list of existing snapshots for a volume.
+
+        Reads the volume's snapshot info file and returns the list of
+        snapshot IDs.
+
+        :param volume: Volume object
+        :returns: List of snapshot IDs
+        """
+        info_path = self._local_path_volume_info(volume)
+        snap_info = self._read_info_file(info_path, empty_if_missing=True)
+        return self._get_snapshots_from_snap_info(snap_info)
+
     def _create_snapshot(self, snapshot: objects.Snapshot) -> None:
         """Create a snapshot.
 
@@ -1715,23 +1834,19 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             snapshot.volume)
         new_snap_path = self._get_new_snap_path(snapshot)
         active = os.path.basename(new_snap_path)
+        active_format = 'qcow2'
 
         if self._is_volume_attached(snapshot.volume):
             self._create_snapshot_online(snapshot,
                                          backing_filename,
                                          new_snap_path)
-            # Update the format for the volume and the connection_info. The
-            # connection_info needs to reflect the current volume format in
+            # The connection_info needs to reflect the current volume format in
             # order for Nova to create the disk device correctly whenever the
-            # instance is stopped/started or rebooted.
-            new_format = 'qcow2'
-            snapshot.volume.admin_metadata['format'] = new_format
-            with snapshot.volume.obj_as_admin():
-                snapshot.volume.save()
-            # Update reference in the only attachment (no multi-attach support)
+            # instance is stopped/started or rebooted. Update reference in the
+            # only attachment (no multi-attach support)
             attachment = snapshot.volume.volume_attachment[0]
             attachment.connection_info['name'] = active
-            attachment.connection_info['format'] = new_format
+            attachment.connection_info['format'] = active_format
             # Let OVO know it has been updated
             attachment.connection_info = attachment.connection_info
             attachment.save()
@@ -1739,6 +1854,30 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             self._do_create_snapshot(snapshot,
                                      backing_filename,
                                      new_snap_path)
+
+        # Update volume format metadata to match active snapshot
+        with snapshot.volume.obj_as_admin():
+            admin_metadata = snapshot.volume.admin_metadata
+            update_metadata = False
+            volume_has_snapshots = (
+                len(self._get_snapshots_from_snap_info(snap_info)) > 0)
+
+            if 'base_format' not in admin_metadata:
+                if not volume_has_snapshots:
+                    # This is the first snapshot, we need to save the original
+                    # volume format so we can later restore it if all snapshots
+                    # are eventually deleted offline.
+                    admin_metadata['base_format'] = admin_metadata['format']
+                    update_metadata = True
+
+            # No need to update the format metadata if it already matches the
+            # active snapshot.
+            if admin_metadata['format'] != active_format:
+                admin_metadata['format'] = active_format
+                update_metadata = True
+
+            if update_metadata:
+                snapshot.volume.save()
 
         snap_info['active'] = active
         snap_info[snapshot.id] = active
@@ -1824,7 +1963,6 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         # active file never changes
         info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path)
-        update_format = False
 
         if utils.paths_normcase_equal(info['active_file'],
                                       info['snapshot_file']):
@@ -1846,7 +1984,19 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                            'volume_id': snapshot.volume.id}
 
             del snap_info[snapshot.id]
-            update_format = True
+
+            # If base_id is None, it means we are deleting the oldest snapshot
+            if info['base_id'] is None:
+                with snapshot.volume.obj_as_admin():
+                    admin_metadata = snapshot.volume.admin_metadata
+                    # When deleting the oldest snapshot, The previous base file
+                    # is merged into the active file, which then becomes the
+                    # new base. Consequently, the base_format must be updated
+                    # to match the active format.
+                    if 'format' in admin_metadata:
+                        admin_metadata['base_format'] = (
+                            admin_metadata['format'])
+                        snapshot.volume.save()
         else:
             # blockCommit snapshot into base
             # info['base'] <= snapshot_file
@@ -1861,11 +2011,6 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             del snap_info[snapshot.id]
 
         self._nova_assisted_vol_snap_delete(context, snapshot, delete_info)
-
-        if update_format:
-            snapshot.volume.admin_metadata['format'] = 'qcow2'
-            with snapshot.volume.obj_as_admin():
-                snapshot.volume.save()
 
         # Write info file updated above
         self._write_info_file(info_path, snap_info)

@@ -1561,6 +1561,7 @@ class NfsDriverTestCase(test.TestCase):
         self._set_driver()
         drv = self._driver
         volume = self._simple_volume()
+        volume.admin_metadata = {'format': 'raw'}
         self.override_config('nfs_snapshot_support', True)
         fake_snap = fake_snapshot.fake_snapshot_obj(self.context)
         fake_snap.volume = volume
@@ -1570,6 +1571,7 @@ class NfsDriverTestCase(test.TestCase):
         snap_path = os.path.join(vol_dir, snap_file)
         info_path = os.path.join(vol_dir, volume['name']) + '.info'
 
+        mock_vol_save = self.mock_object(fake_snap.volume, 'save')
         with mock.patch.object(drv, '_local_path_volume_info',
                                return_value=info_path), \
                 mock.patch.object(drv, '_read_info_file', return_value={}), \
@@ -1582,12 +1584,15 @@ class NfsDriverTestCase(test.TestCase):
                 mock.patch.object(drv, 'get_active_image_from_info',
                                   return_value=volume['name']), \
                 mock.patch.object(drv, '_get_new_snap_path',
-                                  return_value=snap_path):
+                                  return_value=snap_path), \
+                mock.patch.object(fake_snap.volume, 'save') \
+                as mock_vol_save:
             self._driver.create_snapshot(fake_snap)
 
         mock_check_support.assert_called_once()
         mock_do_create_snapshot.assert_called_with(fake_snap, volume['name'],
                                                    snap_path)
+        mock_vol_save.assert_called_once()
         mock_write_info_file.assert_called_with(
             info_path, {'active': snap_file, fake_snap.id: snap_file})
 
