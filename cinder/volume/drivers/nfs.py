@@ -16,6 +16,7 @@
 
 import binascii
 import errno
+import math
 import os
 import tempfile
 import time
@@ -170,13 +171,16 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         if info.file_format not in ['raw', 'qcow2']:
             msg = _('nfs volume must be a valid raw or qcow2 image.')
             raise exception.InvalidVolume(reason=msg)
-
-        # Test if the size is accurate or if something tried to modify it
-        if info.virtual_size != volume.size * units.Gi:
+        virtual_size_gb = int(math.ceil(float(info.virtual_size) / units.Gi))
+        # Checks if the virtual size has been modified by any source other
+        # than the Cinder service. This prevents users from attaching a volume
+        # which virtual size has been extended from inside a virtual machine,
+        # by writing a modified qcow2 image to its block device.
+        if virtual_size_gb > volume.size:
             LOG.error('The volume virtual_size does not match the size in '
                       'cinder, aborting as we suspect an exploit. '
                       'Virtual Size is %(vsize)s and real size is %(size)s',
-                      {'vsize': info.virtual_size, 'size': volume.size})
+                      {'vsize': virtual_size_gb, 'size': volume.size})
             msg = _('The volume virtual_size does not match the size in '
                     'cinder, aborting as we suspect an exploit.')
             raise exception.InvalidVolume(reason=msg)

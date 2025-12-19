@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NFS Driver `bug #2073146
+    <https://bugs.launchpad.net/cinder/+bug/2073146>`_: Fixed
+    volume create failing if source image is stored in
+    Glance using Cinder/NFS as store.
