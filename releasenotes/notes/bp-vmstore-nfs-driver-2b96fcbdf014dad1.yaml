@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    VMstore NFS driver: new Cinder driver integrating OpenStack with VMstore
+    storage. Volumes are using NFS for data and VMstore Rest API for
+    management operations.

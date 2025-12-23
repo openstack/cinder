@@ -191,6 +191,8 @@ from cinder.volume.drivers.vastdata import driver as \
     cinder_volume_drivers_vastdata_driver
 from cinder.volume.drivers.veritas_access import veritas_iscsi as \
     cinder_volume_drivers_veritas_access_veritasiscsi
+from cinder.volume.drivers.vmstore import options as \
+    cinder_volume_drivers_vmstore_options
 from cinder.volume.drivers.vmware import vmdk as \
     cinder_volume_drivers_vmware_vmdk
 from cinder.volume.drivers import vzstorage as cinder_volume_drivers_vzstorage
@@ -450,6 +452,7 @@ def list_opts():
                 cinder_volume_drivers_synology_synologycommon.cinder_opts,
                 cinder_volume_drivers_toyou_tyds_tyds.tyds_opts,
                 cinder_volume_drivers_vastdata_driver.VASTDATA_OPTS,
+                cinder_volume_drivers_vmstore_options.VMSTORE_NFS_OPTS,
                 cinder_volume_drivers_vmware_vmdk.vmdk_opts,
                 cinder_volume_drivers_vzstorage.vzstorage_opts,
                 cinder_volume_drivers_windows_iscsi.windows_opts,
