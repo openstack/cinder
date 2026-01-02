@@ -86,17 +86,13 @@ class DS8KHTTPSConnection(connection.VerifiedHTTPSConnection):
         # Add certificate verification
         conn = self._new_conn()
 
-        if getattr(self, '_tunnel_host', None):
-            # _tunnel_host was added in Python 2.6.3
-            # (See: http://hg.python.org/cpython/rev/0f57b30a152f)
-
-            self.sock = conn
-            # Calls self._set_hostport(), so self.host is
-            # self._tunnel_host below.
-            #
-            self._tunnel()
-            # Mark this connection as not reusable
-            self.auto_open = 0
+        self.sock = conn
+        # Calls self._set_hostport(), so self.host is
+        # self._tunnel_host below.
+        #
+        self._tunnel()
+        # Mark this connection as not reusable
+        self.auto_open = 0
 
         # The RECENT_DATE is originally taken from requests. The date is just
         # an arbitrary value that is used as a sanity test to identify hosts
