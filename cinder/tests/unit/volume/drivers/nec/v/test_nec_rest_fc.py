@@ -181,6 +181,7 @@ class VStorageRESTFCDriverTest(test.TestCase):
         self.configuration.nec_v_copy_speed = 3
         self.configuration.nec_v_copy_check_interval = 3
         self.configuration.nec_v_async_copy_check_interval = 10
+        self.configuration.nec_v_manage_drs_volumes = False
 
         self.configuration.san_login = CONFIG_MAP['user_id']
         self.configuration.san_password = CONFIG_MAP['user_pass']
@@ -300,6 +301,8 @@ class VStorageRESTFCDriverTest(test.TestCase):
                          drv.configuration.nec_v_copy_check_interval)
         self.assertEqual(drv.configuration.hitachi_async_copy_check_interval,
                          drv.configuration.nec_v_async_copy_check_interval)
+        self.assertEqual(drv.configuration.hitachi_manage_drs_volumes,
+                         drv.configuration.nec_v_manage_drs_volumes)
         self.assertEqual(drv.configuration.hitachi_rest_disable_io_wait,
                          drv.configuration.nec_v_rest_disable_io_wait)
         self.assertEqual(drv.configuration.hitachi_rest_tcp_keepalive,
