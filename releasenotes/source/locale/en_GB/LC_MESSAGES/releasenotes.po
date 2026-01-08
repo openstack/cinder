@@ -6,15 +6,16 @@
 # Andi Chandler <andi@gowling.com>, 2022. #zanata
 # Andi Chandler <andi@gowling.com>, 2023. #zanata
 # Andi Chandler <andi@gowling.com>, 2024. #zanata
+# Andi Chandler <andi@gowling.com>, 2026. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: Cinder Release Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-07-07 22:33+0000\n"
+"POT-Creation-Date: 2026-01-02 19:06+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2024-12-04 03:04+0000\n"
+"PO-Revision-Date: 2026-01-07 04:10+0000\n"
 "Last-Translator: Andi Chandler <andi@gowling.com>\n"
 "Language-Team: English (United Kingdom)\n"
 "Language: en_GB\n"
@@ -69,11 +70,28 @@ msgstr "**Anomalies with encrypted volumes**"
 msgid "**Cinder use of cgroups v1**"
 msgstr "**Cinder use of cgroups v1**"
 
+msgid ""
+"**In-use expansion**: Volumes can be expanded while attached to running "
+"instances"
+msgstr ""
+"**In-use expansion**: Volumes can be expanded while attached to running "
+"instances"
+
 msgid "**NFS-based backend drivers and qcow2 version 2 images**"
 msgstr "**NFS-based backend drivers and qcow2 version 2 images**"
 
+msgid ""
+"**NVMe namespace compatibility**: Full support for NetApp NVMe namespace "
+"expansion"
+msgstr ""
+"**NVMe namespace compatibility**: Full support for NetApp NVMe namespace "
+"expansion"
+
 msgid "**NVMe-oF issues**"
 msgstr "**NVMe-oF issues**"
+
+msgid "**NetApp NVMe namespace support for in-use expansion**"
+msgstr "**NetApp NVMe namespace support for in-use expansion**"
 
 msgid "**Policy configuration changes**"
 msgstr "**Policy configuration changes**"
@@ -386,11 +404,23 @@ msgstr "2023.1-eom"
 msgid "2023.2 Series Release Notes"
 msgstr "2023.2 Series Release Notes"
 
+msgid "2023.2-eol"
+msgstr "2023.2-eol"
+
 msgid "2024.1 Series Release Notes"
 msgstr "2024.1 Series Release Notes"
 
+msgid "2024.1-eom"
+msgstr "2024.1-eom"
+
 msgid "2024.2 Series Release Notes"
 msgstr "2024.2 Series Release Notes"
+
+msgid "2025.1 Series Release Notes"
+msgstr "2025.1 Series Release Notes"
+
+msgid "2025.2 Series Release Notes"
+msgstr "2025.2 Series Release Notes"
 
 msgid "21.0.0"
 msgstr "21.0.0"
@@ -434,6 +464,9 @@ msgstr "23.2.0"
 msgid "23.3.0"
 msgstr "23.3.0"
 
+msgid "23.4.0"
+msgstr "23.4.0"
+
 msgid "24.0.0"
 msgstr "24.0.0"
 
@@ -443,8 +476,47 @@ msgstr "24.1.0"
 msgid "24.2.0"
 msgstr "24.2.0"
 
+msgid "24.3.0"
+msgstr "24.3.0"
+
+msgid "24.4.0"
+msgstr "24.4.0"
+
 msgid "25.0.0"
 msgstr "25.0.0"
+
+msgid "25.1.0"
+msgstr "25.1.0"
+
+msgid "25.2.0"
+msgstr "25.2.0"
+
+msgid "25.3.0"
+msgstr "25.3.0"
+
+msgid "25.3.0-8"
+msgstr "25.3.0-8"
+
+msgid "26.0.0"
+msgstr "26.0.0"
+
+msgid "26.1.0"
+msgstr "26.1.0"
+
+msgid "26.2.0"
+msgstr "26.2.0"
+
+msgid "26.2.0-11"
+msgstr "26.2.0-11"
+
+msgid "27.0.0"
+msgstr "27.0.0"
+
+msgid "27.0.0-6"
+msgstr "27.0.0-6"
+
+msgid "27.0.0-78"
+msgstr "27.0.0-78"
 
 msgid ""
 "3. The ``utilization`` capability is not calculated to FlexGroup pools, it "
@@ -812,6 +884,11 @@ msgstr ""
 
 msgid "API request: ``POST /v3/{project_id}/types``"
 msgstr "API request: ``POST /v3/{project_id}/types``"
+
+msgid ""
+"ASAr2 does not support ZAPIs. Hence all the APIs are accessed using REST."
+msgstr ""
+"ASAr2 does not support ZAPIs. Hence, all the APIs are accessed using REST."
 
 msgid ""
 "Ability to add minimum and maximum volume size restrictions which can be set "
@@ -16659,8 +16736,23 @@ msgstr ""
 "``target_prefix`` and ``target_protocol`` accordingly. Old config options "
 "will be removed in S release."
 
+msgid "``iser_helper``"
+msgstr "``iser_helper``"
+
+msgid "``iser_ip_address``"
+msgstr "``iser_ip_address``"
+
+msgid "``iser_port``"
+msgstr "``iser_port``"
+
+msgid "``iser_target_prefix``"
+msgstr "``iser_target_prefix``"
+
 msgid "``maxBWS``"
 msgstr "``maxBWS``"
+
+msgid "``num_iser_scan_tries``"
+msgstr "``num_iser_scan_tries``"
 
 msgid ""
 "``os-reset_status`` notifications for volumes, snapshots and backups will "
@@ -16841,6 +16933,15 @@ msgstr ""
 "be extended, is attached to a Nova instance."
 
 msgid ""
+"`bug #2112403 <https://bugs.launchpad.net/cinder/+bug/2112403>`_: Fixed the "
+"image cache so that volumes are deleted if they can no longer be cloned "
+"after reaching a driver-specific snapshot limit."
+msgstr ""
+"`bug #2112403 <https://bugs.launchpad.net/cinder/+bug/2112403>`_: Fixed the "
+"image cache so that volumes are deleted if they can no longer be cloned "
+"after reaching a driver-specific snapshot limit."
+
+msgid ""
 "`iSCSI driver only.`  This is replaced with the IP address of the connecting "
 "node."
 msgstr ""
@@ -16853,6 +16954,9 @@ msgid ""
 msgstr ""
 "a [nova] section is added to configure the connection to the compute "
 "service, which is needed to the InstanceLocalityFilter, for example."
+
+msgid "backup restoration throwing TypeError on new volume."
+msgstr "backup restoration throwing TypeError on new volume."
 
 msgid ""
 "characters that are not permitted for this parameter, they are replaced with "
