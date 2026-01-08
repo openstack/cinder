@@ -87,8 +87,6 @@ all = [
     "infinisdk>=250.0.0", # BSD-3
     "py-pure-client>=1.89.0", # BSD
     "rsd-lib>=1.1.0", # Apache-2.0
-    "storpool>=7.1.0", # Apache-2.0
-    "storpool.spopenstack>=2.2.1", # Apache-2.0
     "dfs-sdk>=1.2.25", # Apache-2.0
     "rbd-iscsi-client>=0.1.8", # Apache-2.0
     "python-linstor>=1.7.0", # LGPLv3
@@ -132,10 +130,6 @@ pure = [
 ]
 rsd = [
     "rsd-lib>=1.1.0", # Apache-2.0
-]
-storpool = [
-    "storpool>=7.1.0", # Apache-2.0
-    "storpool.spopenstack>=2.2.1", # Apache-2.0
 ]
 datera = [
     "dfs-sdk>=1.2.25", # Apache-2.0
