@@ -170,11 +170,13 @@ class TestSDC(powerflex.TestPowerFlexDriver):
         self.driver._detach_volume_from_host.assert_called_once_with(
             self.volume, self.host_id)
 
-    def test__terminate_connection_no_connector(self):
-        self.assertRaises(exception.InvalidHost,
-                          self.driver._terminate_connection,
-                          self.volume,
-                          {})
+    def test__terminate_connection_with_no_sdc_guid(self):
+        connector = {
+            "host": "fake-host"
+        }
+        self.driver._detach_volume_from_host = mock.MagicMock()
+        self.driver.terminate_connection(self.volume, connector)
+        self.driver._detach_volume_from_host.assert_not_called()
 
     def test__terminate_connection_multiattached(self):
         self.driver._is_multiattached_to_host = mock.MagicMock(

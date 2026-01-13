@@ -1,0 +1,19 @@
+---
+upgrade:
+  - |
+    With the fix for `Bug #2138280
+    <https://bugs.launchpad.net/cinder/+bug/2138280>`_, starting from
+    os-brick version 6.15.0 or later, users must retain the
+    `/opt/emc/scaleio/openstack/connector.conf` file for volumes that were
+    attached using the legacy flow prior to the 6.13.0 release, until all
+    such legacy volumes are detached. For volumes attached using the new
+    attachment flow, the `/opt/emc/scaleio/openstack/connector.conf` file is
+    no longer required.
+fixes:
+  - |
+    PowerFlex Driver `Bug #2138280
+    <https://bugs.launchpad.net/cinder/+bug/2138280>`_: Fixed an issue where
+    detach operations failed for volumes attached before the 6.13.0
+    release that did not include an `sdc_guid` in the connector information.
+    From os-brick version 6.15.0 or later, detach operations for these legacy
+    volumes are handled by os-brick to ensure backward compatibility.
