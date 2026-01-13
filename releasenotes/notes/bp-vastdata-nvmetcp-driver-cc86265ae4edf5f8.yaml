@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    VAST Data driver: new Cinder driver integrating OpenStack with VAST Data's
+    Storage System. Volumes are backed by VAST's NVMe storage and accessed
+    using VAST's API.
