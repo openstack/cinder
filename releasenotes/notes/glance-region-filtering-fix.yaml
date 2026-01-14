@@ -1,0 +1,29 @@
+---
+features:
+  - |
+    Added two new configuration options to support region filtering in multi-region
+    OpenStack deployments: ``backup_swift_region_name`` in the ``[DEFAULT]`` section
+    for Swift backup driver region selection, and ``region_name`` in the ``[glance]``
+    section for Glance client region selection. These options allow Cinder to
+    correctly connect to services in the specified region when multiple regions are
+    configured in the Keystone service catalog.
+
+upgrade:
+  - |
+    Two new configuration options have been added for multi-region deployments:
+    ``backup_swift_region_name`` in the ``[DEFAULT]`` section and ``region_name`` in
+    the ``[glance]`` section. These options are optional and default to not filtering
+    by region (backward compatible behavior). Deployers in multi-region environments
+    should configure these options to ensure Cinder connects to the correct regional
+    endpoints for Glance and Swift services.
+
+fixes:
+  - |
+    Fixed the Glance client endpoint selection logic to properly filter endpoints
+    by region when ``region_name`` is configured in the ``[glance]`` section. The
+    previous implementation could incorrectly append endpoints when region_name
+    was not configured. Now, when ``region_name`` is set, Cinder will only use
+    endpoints that match the specified region. If no matching endpoint is found,
+    it falls back to the first available endpoint. When ``region_name`` is not
+    configured, Cinder uses the first endpoint (backward compatible behavior).
+    This ensures correct behavior in multi-region OpenStack deployments.

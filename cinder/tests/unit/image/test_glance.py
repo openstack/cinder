@@ -104,9 +104,9 @@ class TestGlanceImageService(test.TestCase):
         super(TestGlanceImageService, self).setUp()
 
         client = glance_stubs.StubGlanceClient()
-        service_catalog = [{u'type': u'image', u'name': u'glance',
-                            u'endpoints': [{
-                                u'publicURL': u'http://example.com:9292'}]}]
+        service_catalog = [{'type': 'image', 'name': 'glance',
+                            'endpoints': [{
+                                'publicURL': 'http://example.com:9292'}]}]
         self.service = self._create_image_service(client)
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
         self.context.service_catalog = service_catalog
@@ -175,17 +175,49 @@ class TestGlanceImageService(test.TestCase):
 
     def test_get_api_servers(self):
         result = glance.get_api_servers(self.context)
-        expected = (u'example.com:9292', False)
+        expected = ('example.com:9292', False)
+        self.assertEqual(expected, next(result))
+
+    def test_get_api_servers_with_region_filtering(self):
+        """Test that region_name filters endpoints correctly."""
+        service_catalog = [{'type': 'image', 'name': 'glance',
+                            'endpoints': [
+                                {'region': 'regionOne',
+                                 'publicURL': (
+                                     'http://region1.example.com:9292')},
+                                {'region': 'regionTwo',
+                                 'publicURL': (
+                                     'http://region2.example.com:9292')}]}]
+        self.context = context.RequestContext('fake', 'fake', auth_token=True)
+        self.context.service_catalog = service_catalog
+
+        # Test with region_name set to match second endpoint
+        self.override_config('region_name', 'regionTwo', group='glance')
+        result = glance.get_api_servers(self.context)
+        expected = ('region2.example.com:9292', False)
+        self.assertEqual(expected, next(result))
+
+        # Test with region_name set but no matching endpoint (fallback to
+        # first)
+        self.override_config('region_name', 'regionThree', group='glance')
+        result = glance.get_api_servers(self.context)
+        expected = ('region1.example.com:9292', False)
+        self.assertEqual(expected, next(result))
+
+        # Test with region_name not set (should get first endpoint)
+        self.override_config('region_name', None, group='glance')
+        result = glance.get_api_servers(self.context)
+        expected = ('region1.example.com:9292', False)
         self.assertEqual(expected, next(result))
 
     def test_get_api_servers_not_mounted_at_root_and_ssl(self):
-        service_catalog = [{u'type': u'image', u'name': u'glance',
-                            u'endpoints': [{
-                                u'publicURL': u'https://example.com/image'}]}]
+        service_catalog = [{'type': 'image', 'name': 'glance',
+                            'endpoints': [{
+                                'publicURL': 'https://example.com/image'}]}]
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
         self.context.service_catalog = service_catalog
         result = glance.get_api_servers(self.context)
-        expected = (u'example.com/image', True)
+        expected = ('example.com/image', True)
         self.assertEqual(expected, next(result))
 
     def test_create_with_instance_id(self):

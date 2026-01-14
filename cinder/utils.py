@@ -74,6 +74,23 @@ synchronized_remove = lockutils.remove_external_lock_file_with_prefix(
     'cinder-')
 
 
+def get_region_filtered_endpoint(endpoints, endpoint_type, region_name=None):
+    """Return an endpoint URL filtered by region with a fallback.
+
+    If region_name is provided, return the first endpoint URL that matches
+    the region. If no match is found (or region_name is not set), fall back
+    to the first endpoint in the list. Returns None if endpoints is empty.
+    """
+    endpoints = endpoints or []
+    if region_name:
+        for endpoint in endpoints:
+            if endpoint.get('region') == region_name:
+                return endpoint.get(endpoint_type)
+    if endpoints:
+        return endpoints[0].get(endpoint_type)
+    return None
+
+
 def clean_volume_file_locks(volume_id, driver):
     """Remove file locks used by Cinder.
 

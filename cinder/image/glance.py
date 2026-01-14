@@ -41,6 +41,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import service_auth
+from cinder import utils
 
 
 image_opts = [
@@ -91,8 +92,14 @@ CONF.register_opts(glance_core_properties_opts)
 # Register keystoneauth options to create service user
 # to talk to glance.
 GLANCE_GROUP = 'glance'
+glance_opts = [
+    cfg.StrOpt('region_name',
+               help='Name of glance region to use. Useful if keystone manages '
+                    'more than one region.'),
+]
 glance_session_opts = ks_loading.get_session_conf_options()
 glance_auth_opts = ks_loading.get_auth_common_conf_options()
+CONF.register_opts(glance_opts, group=GLANCE_GROUP)
 CONF.register_opts(glance_session_opts, group=GLANCE_GROUP)
 CONF.register_opts(glance_auth_opts, group=GLANCE_GROUP)
 
@@ -176,8 +183,14 @@ def get_api_servers(context: context.RequestContext) -> Iterable:
                 "<service_type>:<service_name>:<endpoint_type>"))
         for entry in context.service_catalog:
             if entry.get('type') == service_type:
-                api_servers.append(
-                    entry.get('endpoints')[0].get(endpoint_type))
+                region_name = CONF[GLANCE_GROUP].region_name
+                endpoints = entry.get('endpoints', [])
+
+                endpoint = utils.get_region_filtered_endpoint(
+                    endpoints, endpoint_type, region_name)
+                if endpoints:
+                    api_servers.append(endpoint)
+                break
     else:
         for api_server in CONF.glance_api_servers:
             api_servers.append(api_server)

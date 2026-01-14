@@ -461,6 +461,7 @@ def list_opts():
             )),
         ('glance',
             itertools.chain(
+                cinder_image_glance.glance_opts,
                 cinder_image_glance.glance_session_opts,
                 cinder_image_glance.glance_auth_opts,
             )),
