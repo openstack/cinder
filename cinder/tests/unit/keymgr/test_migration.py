@@ -190,6 +190,65 @@ class KeyMigrationTestCase(base.BaseVolumeTestCase):
     @mock.patch(
         'cinder.keymgr.migration.KeyMigrator._update_encryption_key_id')
     @mock.patch('barbicanclient.client.Client')
+    @mock.patch('keystoneauth1.loading.load_auth_from_conf_options')
+    @mock.patch('keystoneauth1.session.Session')
+    def test_migrate_keys_with_region_name(self,
+                                           mock_session,
+                                           mock_load_auth,
+                                           mock_barbican_client,
+                                           mock_update_encryption_key_id):
+        """Test that region_name is passed to barbicanclient.Client()."""
+        # Setup mock config with barbican_region_name
+        mock_conf = mock.MagicMock()
+        mock_conf.barbican = mock.MagicMock()
+        mock_conf.barbican.barbican_region_name = 'regionTwo'
+        mock_conf.key_manager = mock.MagicMock()
+        mock_conf.key_manager.backend = 'barbican'
+        mock_conf.key_manager.fixed_key = self.fixed_key
+
+        migrator = migration.KeyMigrator(mock_conf)
+        migrator._migrate_keys([], [])
+
+        # Verify barbicanclient.Client was called with region_name
+        mock_barbican_client.assert_called_once()
+        call_args = mock_barbican_client.call_args
+        self.assertIn('region_name', call_args.kwargs)
+        self.assertEqual('regionTwo', call_args.kwargs['region_name'])
+
+    @mock.patch(
+        'cinder.keymgr.migration.KeyMigrator._update_encryption_key_id')
+    @mock.patch('barbicanclient.client.Client')
+    @mock.patch('keystoneauth1.loading.load_auth_from_conf_options')
+    @mock.patch('keystoneauth1.session.Session')
+    def test_migrate_keys_without_region_name(
+            self,
+            mock_session,
+            mock_load_auth,
+            mock_barbican_client,
+            mock_update_encryption_key_id):
+        """Test that region_name is None when not configured."""
+        # Setup mock config without barbican_region_name
+        # Use spec_set to strictly control what attributes exist
+        mock_barbican = mock.MagicMock(spec=[])
+        mock_conf = mock.MagicMock()
+        mock_conf.barbican = mock_barbican
+        # barbican_region_name not set - spec_set ensures hasattr returns False
+        mock_conf.key_manager = mock.MagicMock()
+        mock_conf.key_manager.backend = 'barbican'
+        mock_conf.key_manager.fixed_key = self.fixed_key
+
+        migrator = migration.KeyMigrator(mock_conf)
+        migrator._migrate_keys([], [])
+
+        # Verify barbicanclient.Client was called with region_name=None
+        mock_barbican_client.assert_called_once()
+        call_args = mock_barbican_client.call_args
+        self.assertIn('region_name', call_args.kwargs)
+        self.assertIsNone(call_args.kwargs['region_name'])
+
+    @mock.patch(
+        'cinder.keymgr.migration.KeyMigrator._update_encryption_key_id')
+    @mock.patch('barbicanclient.client.Client')
     def test_fixed_key_migration(self,
                                  mock_barbican_client,
                                  mock_update_encryption_key_id):

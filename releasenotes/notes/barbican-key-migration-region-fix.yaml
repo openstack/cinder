@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed the Barbican key migration code to correctly pass the region name to the
+    Barbican client when migrating encryption keys from ConfKeyManager to Barbican.
+    The migration code now reads ``barbican_region_name`` from the ``[barbican]``
+    configuration section and passes it as ``region_name`` to the ``barbicanclient.Client()``.
+    This ensures that key migration operations connect to the correct Barbican endpoint
+    in multi-region OpenStack deployments.
