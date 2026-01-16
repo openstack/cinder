@@ -46,19 +46,19 @@ POOL_CAPS = {'total_capacity_gb': 0,
 
 
 class ExecuteTestCase(test.TestCase):
-    @mock.patch('cinder.utils.processutils.execute')
+    @mock.patch('cinder.utils.processutils.execute', autospec=True)
     def test_execute(self, mock_putils_exe):
-        output = utils.execute('a', 1, foo='bar')
+        output = utils.execute('a', 1, check_exit_code=11)
         self.assertEqual(mock_putils_exe.return_value, output)
-        mock_putils_exe.assert_called_once_with('a', 1, foo='bar')
+        mock_putils_exe.assert_called_once_with('a', 1, check_exit_code=11)
 
     @mock.patch('cinder.utils.get_root_helper')
-    @mock.patch('cinder.utils.processutils.execute')
+    @mock.patch('cinder.utils.processutils.execute', autospec=True)
     def test_execute_root(self, mock_putils_exe, mock_get_helper):
-        output = utils.execute('a', 1, foo='bar', run_as_root=True)
+        output = utils.execute('a', 1, check_exit_code=11, run_as_root=True)
         self.assertEqual(mock_putils_exe.return_value, output)
         mock_helper = mock_get_helper.return_value
-        mock_putils_exe.assert_called_once_with('a', 1, foo='bar',
+        mock_putils_exe.assert_called_once_with('a', 1, check_exit_code=11,
                                                 run_as_root=True,
                                                 root_helper=mock_helper)
 
@@ -66,11 +66,11 @@ class ExecuteTestCase(test.TestCase):
     @mock.patch('cinder.utils.processutils.execute', autospec=True)
     def test_execute_root_and_helper(self, mock_putils_exe, mock_get_helper):
         mock_helper = mock.sentinel
-        output = utils.execute('a', 1, foo='bar', run_as_root=True,
+        output = utils.execute('a', 1, check_exit_code=11, run_as_root=True,
                                root_helper=mock_helper)
         self.assertEqual(mock_putils_exe.return_value, output)
         mock_get_helper.assert_not_called()
-        mock_putils_exe.assert_called_once_with('a', 1, foo='bar',
+        mock_putils_exe.assert_called_once_with('a', 1, check_exit_code=11,
                                                 run_as_root=True,
                                                 root_helper=mock_helper)
 
