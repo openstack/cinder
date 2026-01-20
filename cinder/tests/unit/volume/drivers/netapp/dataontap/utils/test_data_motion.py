@@ -51,8 +51,8 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.mock_cmode_client = self.mock_object(client_cmode, 'Client')
         self.src_flexvol_name = 'volume_c02d497a_236c_4852_812a_0d39373e312a'
         self.dest_flexvol_name = self.src_flexvol_name
-        self.src_cg = ''
-        self.dest_cg = ''
+        self.src_cg = None
+        self.dest_cg = None
         self.active_sync_policy = False
         self.replication_policy = 'MirrorAllSnapshots'
         self.mock_src_client = mock.Mock()
