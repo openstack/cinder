@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp Driver `bug #2124264
+    <https://bugs.launchpad.net/cinder/+bug/2124264>`_: Pooling for the
+    ASAr2 cluster is failing because it is using the ONTAP-9 libraries to
+    retrieve the list of volumes and namespaces, and their sizes. The
+    corresponding ASAr2 cluster libraries have been added to ensure the
+    correct method is called, preventing pooling failures.
