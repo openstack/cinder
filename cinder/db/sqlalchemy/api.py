@@ -2437,7 +2437,8 @@ def _attachment_get(
 ):
     result = (
         model_query(
-            context, models.VolumeAttachment, read_deleted=read_deleted
+            context, models.VolumeAttachment, read_deleted=read_deleted,
+            project_only=project_only,
         )
         .filter_by(id=attachment_id)
         .options(joinedload(models.VolumeAttachment.volume))
