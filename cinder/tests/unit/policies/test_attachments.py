@@ -112,7 +112,7 @@ class AttachmentsPolicyTest(base.BasePolicyTest):
                                  rule_name, self.controller.create, req,
                                  body=body)
 
-    @ddt.data(*base.all_users)
+    @ddt.data(*authorized_users)
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update')
     def test_update_attachment_policy(self, user_id, mock_attachment_update):
         # Redirect the RPC call directly to the volume manager.
@@ -149,7 +149,7 @@ class AttachmentsPolicyTest(base.BasePolicyTest):
                                  rule_name, self.controller.update, req,
                                  id=attachment_id, body=body)
 
-    @ddt.data(*base.all_users)
+    @ddt.data(*authorized_users)
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_delete')
     def test_delete_attachment_policy(self, user_id, mock_attachment_delete):
         # Redirect the RPC call directly to the volume manager.
@@ -172,7 +172,7 @@ class AttachmentsPolicyTest(base.BasePolicyTest):
                                  rule_name, self.controller.delete, req,
                                  id=attachment_id)
 
-    @ddt.data(*base.all_users)
+    @ddt.data(*authorized_users)
     def test_complete_attachment_policy(self, user_id):
         rule_name = attachments_policies.COMPLETE_POLICY
         attachment_id = self._create_attachment()
