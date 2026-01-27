@@ -27,7 +27,7 @@ from cinder import exception
 from cinder import utils as cinder_utils
 from cinder.volume import volume_types
 
-VERSION = '2.7.0'
+VERSION = '2.7.1'
 CI_WIKI_NAME = 'Hitachi_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
@@ -664,15 +664,6 @@ class HBSDMsg(enum.Enum):
         'msg_id': 752,
         'loglevel': base_logging.ERROR,
         'msg': 'Failed to create the %(type)s for a %(rep_type)s pair. '
-               '(volume: %(volume_id)s, volume type: %(volume_type)s, '
-               'size: %(size)s)',
-        'suffix': ERROR_SUFFIX,
-    }
-    DEDUPLICATION_IS_ENABLED = {
-        'msg_id': 753,
-        'loglevel': base_logging.ERROR,
-        'msg': 'Failed to create a volume in a %(rep_type)s environment '
-               'because deduplication is enabled for the volume type. '
                '(volume: %(volume_id)s, volume type: %(volume_type)s, '
                'size: %(size)s)',
         'suffix': ERROR_SUFFIX,
