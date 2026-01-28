@@ -238,6 +238,36 @@ target volume.
    Only one ``replication_device`` can be configured for one back end
    storage since only one replication target is supported now.
 
+
+Cinder Plugin Registration
+--------------------------
+
+The IBM Spectrum Virtualize Family (SVf) Cinder driver supports registration of
+a Cinder plugin with the backend system. This registration allows the backend
+system to identify that it is being managed by OpenStack Cinder.
+
+The plugin is registered only when the Call Home service is enabled on the
+backend system. User can enable/disable Call Home service on the backend
+system using IBM Storwize UI/CLI.
+
+The registration includes the following information:
+
+- Plugin name (fixed value: ``CINDER``)
+- Cinder driver version
+- Metadata such as:
+  - Operating system version
+  - Cinder manager version
+  - Deployment type
+  - PBHA related configurations
+  - Replication features related configurations
+
+.. note::
+
+   No sensitive data is collected during the plugin registration.
+
+   The plugin is registered locally on the backend system.
+
+
 .. _config_flags:
 
 Storage Virtualize family driver options in cinder.conf
