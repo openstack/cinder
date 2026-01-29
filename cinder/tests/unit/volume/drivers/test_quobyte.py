@@ -1029,7 +1029,9 @@ class QuobyteDriverTestCase(test.TestCase):
         self.mock_object(image_utils, 'qemu_img_info', return_value=img_info)
         drv._set_rw_permissions = mock.Mock()
 
-        drv._copy_volume_from_snapshot(snapshot, dest_volume, size)
+        drv._copy_volume_from_snapshot(snapshot, dest_volume, size,
+                                       src_encryption_key_id=None,
+                                       new_encryption_key_id=None)
 
         drv._read_info_file.assert_called_once_with(info_path)
         image_utils.qemu_img_info.assert_called_once_with(
@@ -1083,14 +1085,17 @@ class QuobyteDriverTestCase(test.TestCase):
 
         # mocking and testing starts here
         mock_convert = self.mock_object(image_utils, 'convert_image')
-        drv._read_info_file = mock.Mock(return_value=
-                                        {'active': snap_file,
-                                         snapshot['id']: snap_file})
+        drv._read_info_file = mock.Mock(return_value={
+            'active': snap_file,
+            snapshot['id']: snap_file
+        })
         self.mock_object(image_utils, 'qemu_img_info', return_value=img_info)
         drv._set_rw_permissions = mock.Mock()
         shutil.copyfile = mock.Mock()
 
-        drv._copy_volume_from_snapshot(snapshot, dest_volume, size)
+        drv._copy_volume_from_snapshot(snapshot, dest_volume, size,
+                                       src_encryption_key_id=None,
+                                       new_encryption_key_id=None)
 
         drv._read_info_file.assert_called_once_with(info_path)
         image_utils.qemu_img_info.assert_called_once_with(
@@ -1148,14 +1153,17 @@ class QuobyteDriverTestCase(test.TestCase):
 
         # mocking and testing starts here
         mock_convert = self.mock_object(image_utils, 'convert_image')
-        drv._read_info_file = mock.Mock(return_value=
-                                        {'active': snap_file,
-                                         snapshot['id']: snap_file})
+        drv._read_info_file = mock.Mock(return_value={
+            'active': snap_file,
+            snapshot['id']: snap_file
+        })
         self.mock_object(image_utils, 'qemu_img_info', return_value=img_info)
         drv._set_rw_permissions = mock.Mock()
         drv._create_overlay_volume_from_snapshot = mock.Mock()
 
-        drv._copy_volume_from_snapshot(snapshot, dest_volume, size)
+        drv._copy_volume_from_snapshot(snapshot, dest_volume, size,
+                                       src_encryption_key_id=None,
+                                       new_encryption_key_id=None)
 
         drv._read_info_file.assert_called_once_with(info_path)
         os_ac_mock.assert_called_once_with(
@@ -1223,7 +1231,9 @@ class QuobyteDriverTestCase(test.TestCase):
         drv._set_rw_permissions = mock.Mock()
         self.mock_object(shutil, 'copyfile')
 
-        drv._copy_volume_from_snapshot(snapshot, dest_volume, size)
+        drv._copy_volume_from_snapshot(snapshot, dest_volume, size,
+                                       src_encryption_key_id=None,
+                                       new_encryption_key_id=None)
 
         drv._read_info_file.assert_called_once_with(info_path)
         image_utils.qemu_img_info.assert_called_once_with(
@@ -1240,6 +1250,25 @@ class QuobyteDriverTestCase(test.TestCase):
         qb_falloc_mock.assert_called_once_with(dest_vol_path, size)
         shutil.copyfile.assert_called_once_with(cache_path, dest_vol_path)
         drv._set_rw_permissions.assert_called_once_with(dest_vol_path)
+
+    def test_copy_volume_from_snapshot_with_encr(self):
+        # setup vars
+        drv = self._driver
+        src_volume = self._simple_volume()
+        snapshot = self._get_fake_snapshot(src_volume)
+        dest_volume = self._simple_volume(
+            id='c1073000-0000-0000-0000-0000000c1073')
+        size = dest_volume['size']
+
+        # run test
+        self.assertRaises(exception.NotSupportedOperation,
+                          drv._copy_volume_from_snapshot,
+                          snapshot,
+                          dest_volume,
+                          size,
+                          src_encryption_key_id=mock.sentinel.src_key,
+                          new_encryption_key_id=mock.sentinel.dest_key
+                          )
 
     @ddt.data(['available', True], ['backing-up', True],
               ['creating', False], ['deleting', False])
