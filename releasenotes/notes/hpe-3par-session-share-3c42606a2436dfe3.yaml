@@ -1,0 +1,5 @@
+fixes:
+  - |
+    HPE 3PAR driver `Bug #2125037 <https://bugs.launchpad.net/cinder/+bug/2125037>`_:
+    Fixed: session share issue which causes attachment operations to occasionally
+    fail with a Conflict error

@@ -60,10 +60,11 @@ class HPE3PARDriverBase(driver.ManageableVD,
         1.0.4 - Fixed Volume migration for "in-use" volume. bug #1744021
         1.0.5 - Set proper backend on subsequent operation, after group
                 failover. bug #1773069
+        1.0.6 - Fix session share issue. bug #2125037
 
     """
 
-    VERSION = "1.0.5"
+    VERSION = "1.0.6"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARDriverBase, self).__init__(*args, **kwargs)
@@ -78,11 +79,13 @@ class HPE3PARDriverBase(driver.ManageableVD,
         return hpecommon.HPE3PARCommon.get_driver_options()
 
     def _init_common(self):
-        self.common = hpecommon.HPE3PARCommon(self.configuration,
-                                              self._active_backend_id)
-        return self.common
+        return hpecommon.HPE3PARCommon(self.configuration,
+                                       self._active_backend_id)
 
     def _login(self, timeout=None, array_id=None):
+        if self.common:
+            return self.common
+
         self.common = self._init_common()
         # If replication is enabled and we cannot login, we do not want to
         # raise an exception so a failover can still be executed.
@@ -105,7 +108,14 @@ class HPE3PARDriverBase(driver.ManageableVD,
         # login, but can still failover. There is no need to logout.
         if common.client is None and common._replication_enabled:
             return
-        common.client_logout()
+        try:
+            common.client_logout()
+        except Exception as e:
+            if ("invalid session key" in str(e).lower() or
+                    "resource in use" in str(e).lower()):
+                LOG.warning("Session already killed or in use, ignoring.")
+            else:
+                raise
 
     def _check_flags(self, common):
         """Sanity check to ensure we have required options set."""
@@ -122,15 +132,17 @@ class HPE3PARDriverBase(driver.ManageableVD,
 
     @volume_utils.trace
     def get_volume_stats(self, refresh=False):
-        # NOTE(geguileo): We don't need to login to the backed if we are not
-        # going to refresh the stats, furthermore if we login, then we'll
-        # return an empty dict, because the _login method calls calls
-        # _init_common which returns a new HPE3PARCommon instance each time,
-        # so it won't have any cached values.
+        # NOTE(geguileo): We don't need to login to the backend if we are not
+        # going to refresh the stats.
+        # When we login for first time (during cinder service start),
+        # the _login() method calls _init_common() which returns a new
+        # HPE3PARCommon instance (stored in self.common).
+        # Thereafter, self.common would be re-used.
         if not refresh:
             return self._stats
 
-        self._stats = self.common.get_volume_stats(
+        common = self._login()
+        self._stats = common.get_volume_stats(
             refresh,
             self.get_filter_function(),
             self.get_goodness_function())
