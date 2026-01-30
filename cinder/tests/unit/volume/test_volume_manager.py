@@ -502,3 +502,66 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
                                                            image_meta_id,
                                                            url,
                                                            {'store': store_id})
+
+    @ddt.data(
+        ('512', '512', '512'),
+        ('512e', '4096', '512'),
+        ('4k', '4096', '4096'),
+    )
+    @ddt.unpack
+    def test_parse_connection_options_disk_geometry(
+            self, disk_geometry, expected_physical, expected_logical):
+        """Test that disk_geometry sets physical and logical block sizes."""
+        ctxt = mock.Mock()
+        manager = vol_manager.VolumeManager()
+        vol = fake_volume.fake_volume_obj(ctxt)
+
+        with mock.patch.object(
+            manager.driver.configuration, 'safe_get',
+            return_value=disk_geometry
+        ):
+            conn_info = {"data": {}}
+            conn_info = manager._parse_connection_options(ctxt, vol, conn_info)
+
+        self.assertEqual(expected_physical,
+                         conn_info['data']['physical_block_size'])
+        self.assertEqual(expected_logical,
+                         conn_info['data']['logical_block_size'])
+
+    def test_parse_connection_options_disk_geometry_driver_override(self):
+        """Test that driver-set block sizes override disk_geometry."""
+        ctxt = mock.Mock()
+        manager = vol_manager.VolumeManager()
+        vol = fake_volume.fake_volume_obj(ctxt)
+
+        with mock.patch.object(
+            manager.driver.configuration, 'safe_get',
+            return_value='512e'
+        ):
+            conn_info = {
+                "data": {
+                    "physical_block_size": 4096,
+                    "logical_block_size": 4096
+                }
+            }
+            conn_info = manager._parse_connection_options(ctxt, vol, conn_info)
+
+        self.assertEqual(4096, conn_info['data']['physical_block_size'])
+        self.assertEqual(4096, conn_info['data']['logical_block_size'])
+
+    def test_parse_connection_options_disk_geometry_not_set(self):
+        """Test that when disk_geometry is None, no block sizes are set."""
+        ctxt = mock.Mock()
+        manager = vol_manager.VolumeManager()
+        manager.driver.configuration.disk_geometry = None
+        vol = fake_volume.fake_volume_obj(ctxt)
+
+        with mock.patch.object(
+            manager.driver.configuration, 'safe_get',
+            return_value=None
+        ):
+            conn_info = {"data": {}}
+            conn_info = manager._parse_connection_options(ctxt, vol, conn_info)
+
+        self.assertNotIn('physical_block_size', conn_info['data'])
+        self.assertNotIn('logical_block_size', conn_info['data'])
