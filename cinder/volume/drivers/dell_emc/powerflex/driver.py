@@ -92,9 +92,10 @@ class PowerFlexDriver(driver.VolumeDriver):
           3.5.7 - Report trim/discard support.
           3.5.8 - Added Cinder active/active support.
           3.6.0 - Improved secret handling.
+          3.6.1 - Fix for Bug #2138280 volume detach issue.
     """
 
-    VERSION = "3.6.0"
+    VERSION = "3.6.1"
     SUPPORTS_ACTIVE_ACTIVE = True
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerFlex_CI"
@@ -910,6 +911,11 @@ class PowerFlexDriver(driver.VolumeDriver):
         volume_name = flex_utils.id_to_base64(vol_or_snap.id)
         connection_properties["scaleIO_volname"] = volume_name
         connection_properties["scaleIO_volume_id"] = vol_or_snap.provider_id
+        # This will be required when calling initialize connection on cinder
+        # side for operation like creating bootable volume from image.
+        # This indicates that handling for detach is done on the driver
+        # side and not on os-brick side.
+        connection_properties["sdc_guid"] = sdc_guid
 
         # map volume
         sdc_id = self._get_client().query_sdc_id_by_guid(sdc_guid)
@@ -1063,36 +1069,37 @@ class PowerFlexDriver(driver.VolumeDriver):
             self._detach_volume_from_host(volume_or_snap)
             return
 
-        try:
+        if "sdc_guid" in connector:
             sdc_guid = connector["sdc_guid"]
-        except Exception:
-            msg = "Host IP is not configured."
-            raise exception.InvalidHost(reason=msg)
+            LOG.info("Terminate connection for %(vol_id)s to SDC %(sdc)s.",
+                     {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
+            if isinstance(volume_or_snap, Volume):
+                is_multiattached = self._is_multiattached_to_host(
+                    volume_or_snap.volume_attachment,
+                    connector["host"]
+                )
+                if is_multiattached:
+                    # Do not detach volume if it is attached to more than one
+                    # instance on the same host.
+                    LOG.info("Will not terminate connection for "
+                             "%(vol_id)s to initiator at %(sdc)s "
+                             "because it's multiattach.",
+                             {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
+                    return
 
-        LOG.info("Terminate connection for %(vol_id)s to SDC %(sdc)s.",
-                 {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
-        if isinstance(volume_or_snap, Volume):
-            is_multiattached = self._is_multiattached_to_host(
-                volume_or_snap.volume_attachment,
-                connector["host"]
-            )
-            if is_multiattached:
-                # Do not detach volume if it is attached to more than one
-                # instance on the same host.
-                LOG.info("Will not terminate connection for "
-                         "%(vol_id)s to initiator at %(sdc)s "
-                         "because it's multiattach.",
-                         {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
-                return
+            # unmap volume
+            host_id = self._get_client().query_sdc_id_by_guid(sdc_guid)
+            self._detach_volume_from_host(volume_or_snap, host_id)
 
-        # unmap volume
-        host_id = self._get_client().query_sdc_id_by_guid(sdc_guid)
-        self._detach_volume_from_host(volume_or_snap, host_id)
+            self._check_volume_unmapped(host_id, volume_or_snap.provider_id)
 
-        self._check_volume_unmapped(host_id, volume_or_snap.provider_id)
+            LOG.info("Terminated connection for %(vol_id)s to SDC %(sdc)s.",
+                     {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
 
-        LOG.info("Terminated connection for %(vol_id)s to SDC %(sdc)s.",
-                 {"vol_id": volume_or_snap.id, "sdc": sdc_guid})
+        else:
+            LOG.info("Terminate legacy volume connection for "
+                     "%(vol_id)s done at os-brick side.",
+                     {"vol_id": volume_or_snap.id})
 
     @staticmethod
     def _is_multiattached_to_host(volume_attachment, host_name):
