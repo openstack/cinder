@@ -657,6 +657,12 @@ class UnexpectedOverQuota(QuotaError):
     message = _("Unexpected over quota on %(name)s.")
 
 
+class QuotaUsageOverflow(QuotaError):
+    message = _("Quota usage would overflow for resources: %(overs)s. "
+                "The requested operation would exceed the maximum allowed "
+                "value (%(max_int)d) for quota tracking.")
+
+
 class BackupLimitExceeded(QuotaError):
     message = _("Maximum number of backups allowed (%(allowed)d) exceeded")
 

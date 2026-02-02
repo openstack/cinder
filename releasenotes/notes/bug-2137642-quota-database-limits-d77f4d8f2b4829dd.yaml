@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #2137642 <https://bugs.launchpad.net/cinder/+bug/2137642>`_: Fixed
+    issue where excessively large volume sizes could overflow database fields,
+    causing subsequent volume operations to fail.
