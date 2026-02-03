@@ -70,6 +70,14 @@ LUN_METADATA = {
     'Qtree': None,
     'Volume': POOL_NAME,
 }
+LUN_METADATA_ASAR2 = {
+    'OsType': None,
+    'SpaceReserved': 'true',
+    'SpaceAllocated': 'false',
+    'Path': LUN_NAME,
+    'Qtree': None,
+    'Volume': LUN_NAME,
+}
 LUN_METADATA_WITH_SPACE_ALLOCATION = {
     'OsType': None,
     'SpaceReserved': 'true',

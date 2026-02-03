@@ -582,6 +582,14 @@ def is_multiattach_to_host(volume, connector):
     return len(attachment) > 1
 
 
+def get_backend_lun_or_ns_name(volume_name, config):
+    """Get backend LUN or NameSpace name"""
+    if config.netapp_disaggregated_platform:
+        return volume_name.replace("-", "_")
+    else:
+        return volume_name
+
+
 class hashabledict(dict):
     """A hashable dictionary that is comparable (i.e. in unit tests, etc.)"""
     def __hash__(self):

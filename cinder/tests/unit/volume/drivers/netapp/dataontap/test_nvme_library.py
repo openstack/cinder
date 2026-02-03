@@ -204,6 +204,30 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.library._create_namespace_handle.assert_called_once_with(
             fake_metadata)
 
+    def test_create_volume_asar2(self):
+        self.library.configuration.netapp_disaggregated_platform = True
+        volume_size_in_bytes = int(fake.SIZE) * units.Gi
+        self.mock_object(volume_utils, 'extract_host',
+                         return_value=fake.POOL_NAME)
+        self.mock_object(self.library.client, 'create_namespace')
+        self.mock_object(self.library, '_create_namespace_handle')
+        self.mock_object(self.library, '_add_namespace_to_table')
+
+        volume1 = copy.deepcopy(fake.test_volume)
+        self.library.create_volume(volume1)
+
+        fake_metadata = {
+            'OsType': self.library.namespace_ostype,
+            'Path': 'fakename',
+            'Volume': 'aggr1',
+            'Qtree': None
+        }
+        self.library.client.create_namespace.assert_called_once_with(
+            fake.POOL_NAME, 'fakename', volume_size_in_bytes, fake_metadata)
+        self.library._create_namespace_handle.assert_called_once_with(
+            fake_metadata)
+        self.library.configuration.netapp_disaggregated_platform = False
+
     def test_create_namespace_handle(self):
         self.library.vserver = fake.VSERVER_NAME
         res = self.library._create_namespace_handle(fake.NAMESPACE_METADATA)
@@ -269,6 +293,13 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         res = self.library._get_namespace_from_table(fake.NAMESPACE_NAME)
 
         self.assertEqual(self.fake_namespace, res)
+
+    def test__get_namespace_from_table_asar2(self):
+        self.library.configuration.netapp_disaggregated_platform = True
+        res = self.library._get_namespace_from_table(fake.NAMESPACE_NAME)
+
+        self.assertEqual(self.fake_namespace, res)
+        self.library.configuration.netapp_disaggregated_platform = False
 
     @ddt.data(exception.VolumeNotFound, netapp_api.NaApiError)
     def test__get_namespace_attr_error(self, error_obj):
@@ -370,6 +401,23 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             namespace['metadata']['Path'])
         has_namespace = fake.NAMESPACE_NAME in self.library.namespace_table
         self.assertFalse(has_namespace)
+
+    def test__delete_namespace_asar2(self):
+        self.library.configuration.netapp_disaggregated_platform = True
+        namespace = copy.deepcopy(fake.NAMESPACE_WITH_METADATA)
+        self.mock_object(self.library, '_get_namespace_attr',
+                         return_value=namespace['metadata'])
+        self.mock_object(self.library.client, 'destroy_namespace')
+
+        self.library._delete_namespace(fake.NAMESPACE_NAME)
+
+        self.library._get_namespace_attr.assert_called_once_with(
+            fake.NAMESPACE_NAME, 'metadata')
+        self.library.client.destroy_namespace.assert_called_once_with(
+            namespace['metadata']['Path'])
+        has_namespace = fake.NAMESPACE_NAME in self.library.namespace_table
+        self.assertFalse(has_namespace)
+        self.library.configuration.netapp_disaggregated_platform = False
 
     def test__delete_namespace_not_found(self):
         namespace = copy.deepcopy(fake.NAMESPACE_WITH_METADATA)
@@ -843,6 +891,22 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             fake.NAMESPACE_NAME)
         self.library.client.namespace_resize.assert_called_once_with(
             fake.PATH_NAMESPACE, new_bytes)
+
+    def test__extend_volume_asar2(self):
+        self.library.configuration.netapp_disaggregated_platform = True
+        self.mock_object(self.library, '_get_namespace_from_table',
+                         return_value=self.fake_namespace)
+        self.mock_object(self.library.client, 'namespace_resize')
+
+        self.library._extend_volume(fake.NAMESPACE_VOLUME, fake.SIZE)
+
+        new_bytes = str(int(fake.SIZE) * units.Gi)
+        self.assertEqual(new_bytes, self.fake_namespace.size)
+        self.library._get_namespace_from_table.assert_called_once_with(
+            fake.NAMESPACE_NAME)
+        self.library.client.namespace_resize.assert_called_once_with(
+            fake.PATH_NAMESPACE, new_bytes)
+        self.library.configuration.netapp_disaggregated_platform = False
 
     def test__map_namespace(self):
         self.library.host_type = 'win'

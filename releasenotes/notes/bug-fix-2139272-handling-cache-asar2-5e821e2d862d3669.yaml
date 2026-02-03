@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    NetApp Driver `bug #2139272
+    <https://bugs.launchpad.net/cinder/+bug/2139272>`_: After a service
+    restart, LUN and Namespace information is refreshed in
+    the Cinder volume cache. In the ASAr2 cluster, these names must use
+    underscores (_); however, the Cinder database contained volume names
+    with hyphens (-), which caused some Cinder volume operation failures.
+    This fix ensures that LUN and Namespace names are correctly set during
+    volume creation and properly passed when accessing cache data, preventing
+    failures after Cinder service restarts.

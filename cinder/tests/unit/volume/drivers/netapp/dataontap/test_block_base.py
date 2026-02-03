@@ -143,6 +143,35 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             0, self.library. _mark_qos_policy_group_for_deletion.call_count)
         self.assertEqual(0, block_base.LOG.error.call_count)
 
+    def test_create_volume_asar2(self):
+        self.library.configuration.netapp_disaggregated_platform = True
+        volume_size_in_bytes = int(fake.SIZE) * units.Gi
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value={})
+        self.mock_object(na_utils, 'log_extra_spec_warnings')
+        self.mock_object(block_base, 'LOG')
+        self.mock_object(volume_utils, 'extract_host',
+                         return_value=fake.POOL_NAME)
+        self.mock_object(self.library, '_setup_qos_for_volume',
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
+        self.mock_object(self.library, '_create_lun')
+        self.mock_object(self.library, '_create_lun_handle')
+        self.mock_object(self.library, '_add_lun_to_table')
+        self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.mock_object(self.library, '_get_volume_model_update')
+
+        self.library.create_volume(fake.VOLUME)
+
+        self.library._create_lun.assert_called_once_with(
+            fake.POOL_NAME, fake.LUN_NAME, volume_size_in_bytes,
+            fake.LUN_METADATA_ASAR2,
+            fake.QOS_POLICY_GROUP_NAME, False)
+        self.library._get_volume_model_update.assert_called_once_with(
+            fake.VOLUME)
+        self.assertEqual(
+            0, self.library. _mark_qos_policy_group_for_deletion.call_count)
+        self.assertEqual(0, block_base.LOG.error.call_count)
+
     def test_create_volume_space_allocation_extra_spec_false(self):
         volume_size_in_bytes = int(fake.SIZE) * units.Gi
         self.mock_object(na_utils, 'get_volume_extra_specs',
@@ -927,7 +956,6 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_initialize_connection_iscsi(self):
         target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
-        self.library.configuration.netapp_disaggregated_platform = False
         volume = fake.ISCSI_VOLUME
         connector = fake.ISCSI_CONNECTOR
         self.mock_object(block_base.NetAppBlockStorageLibrary, '_map_lun',
@@ -1182,6 +1210,24 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             fake.LUN_NAME, 'metadata')
         self.library.zapi_client.destroy_lun.assert_called_once_with(fake.PATH)
 
+    def test_delete_lun_asar2(self):
+        mock_get_lun_attr = self.mock_object(self.library, '_get_lun_attr')
+        self.library.configuration.netapp_disaggregated_platform = True
+        mock_get_lun_attr.return_value = fake.LUN_METADATA_ASAR2
+        self.library.zapi_client = mock.Mock()
+
+        lun_backend_name = na_utils.get_backend_lun_or_ns_name(
+            fake.LUN_NAME, self.library.configuration)
+        fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_ID,
+                                        fake.LUN_SIZE,
+                                        fake.LUN_METADATA_ASAR2)
+        self.library.lun_table = {lun_backend_name: fake_lun}
+        self.library._delete_lun(lun_backend_name)
+
+        mock_get_lun_attr.assert_called_once_with(fake.LUN_NAME, 'metadata')
+        self.library.zapi_client.destroy_lun.assert_called_once_with(
+            fake.LUN_NAME)
+
     def test_delete_lun_no_metadata(self):
         self.mock_object(self.library, '_get_lun_attr', return_value=None)
         self.library.zapi_client = mock.Mock()
@@ -1359,6 +1405,28 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_extend_volume(self):
 
+        new_size = 100
+        volume_copy = copy.copy(fake.VOLUME)
+        volume_copy['size'] = new_size
+
+        mock_get_volume_extra_specs = self.mock_object(
+            na_utils, 'get_volume_extra_specs', return_value=fake.EXTRA_SPECS)
+        mock_setup_qos_for_volume = self.mock_object(
+            self.library, '_setup_qos_for_volume',
+            return_value=fake.QOS_POLICY_GROUP_INFO)
+        mock_extend_volume = self.mock_object(self.library, '_extend_volume')
+
+        self.library.extend_volume(fake.VOLUME, new_size)
+
+        mock_get_volume_extra_specs.assert_called_once_with(fake.VOLUME)
+        mock_setup_qos_for_volume.assert_called_once_with(volume_copy,
+                                                          fake.EXTRA_SPECS)
+        mock_extend_volume.assert_called_once_with(fake.VOLUME,
+                                                   new_size,
+                                                   fake.QOS_POLICY_GROUP_NAME)
+
+    def test_extend_volume_asar2(self):
+        self.library.configuration.netapp_disaggregated_platform = True
         new_size = 100
         volume_copy = copy.copy(fake.VOLUME)
         volume_copy['size'] = new_size
@@ -1869,7 +1937,6 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_add_looping_tasks(self):
         mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')
-        self.library.configuration.netapp_disaggregated_platform = False
         mock_call_snap_cleanup = self.mock_object(
             self.library, '_delete_snapshots_marked_for_deletion')
         mock_call_ems_logging = self.mock_object(
@@ -1903,6 +1970,18 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_ID,
                                         fake.LUN_SIZE, fake.LUN_METADATA)
         self.library.lun_table = {fake_lun.name: fake_lun}
+        self.library._delete_lun_from_table(fake_lun.name)
+        self.assertEqual({}, self.library.lun_table)
+
+    def test_delete_lun_from_table_asar2(self):
+        self.library.configuration.netapp_disaggregated_platform = True
+        fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_ID,
+                                        fake.LUN_SIZE, fake.LUN_METADATA_ASAR2)
+        backend_name = na_utils.get_backend_lun_or_ns_name(
+            fake_lun.name,
+            self.library.configuration
+        )
+        self.library.lun_table = {backend_name: fake_lun}
         self.library._delete_lun_from_table(fake_lun.name)
         self.assertEqual({}, self.library.lun_table)
 
@@ -1970,7 +2049,6 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def test_add_looping_tasks_traditional_platform(self):
         """Test _add_looping_tasks with AFF platform"""
         mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')
-        self.library.configuration.netapp_disaggregated_platform = False
         mock_call_snap_cleanup = self.mock_object(
             self.library, '_delete_snapshots_marked_for_deletion')
         mock_call_ems_logging = self.mock_object(

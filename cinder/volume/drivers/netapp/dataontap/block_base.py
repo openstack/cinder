@@ -278,6 +278,14 @@ class NetAppBlockStorageLibrary(
         metadata['Volume'] = pool_name
         metadata['Qtree'] = None
 
+        if self.configuration.netapp_disaggregated_platform:
+            # For ASAr2 path name is same as namespace name
+            metadata['Path'] = na_utils.get_backend_lun_or_ns_name(
+                lun_name,
+                self.configuration,
+            )
+            metadata['Volume'] = metadata['Path']
+
         handle = self._create_lun_handle(metadata)
         self._add_lun_to_table(NetAppLun(handle, lun_name, size, metadata))
 
@@ -301,7 +309,8 @@ class NetAppBlockStorageLibrary(
 
     def _delete_lun(self, lun_name):
         """Helper method to delete LUN backing a volume or snapshot."""
-
+        lun_name = na_utils.get_backend_lun_or_ns_name(lun_name,
+                                                       self.configuration)
         metadata = self._get_lun_attr(lun_name, 'metadata')
         if metadata:
             try:
@@ -582,6 +591,7 @@ class NetAppBlockStorageLibrary(
 
     def _delete_lun_from_table(self, name):
         """Deletes LUN from cache table."""
+        name = na_utils.get_backend_lun_or_ns_name(name, self.configuration)
         if self.lun_table.get(name, None):
             self.lun_table.pop(name)
 
@@ -597,6 +607,7 @@ class NetAppBlockStorageLibrary(
 
         Refreshes cache if LUN not found in cache.
         """
+        name = na_utils.get_backend_lun_or_ns_name(name, self.configuration)
         lun = self.lun_table.get(name)
         if lun is None:
             lun_list = self.zapi_client.get_lun_list()
@@ -674,7 +685,8 @@ class NetAppBlockStorageLibrary(
 
     def _extend_volume(self, volume, new_size, qos_policy_group_name):
         """Extend an existing volume to the new size."""
-        name = volume['name']
+        name = na_utils.get_backend_lun_or_ns_name(volume['name'],
+                                                   self.configuration)
         lun = self._get_lun_from_table(name)
         path = lun.metadata['Path']
         curr_size_bytes = str(lun.size)
