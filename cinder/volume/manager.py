@@ -1834,7 +1834,9 @@ class VolumeManager(manager.CleanableManager,
         # NOTE(raineszm): Although the block sizes are
         # logically integers, it is important to supply them
         # as strings because that is what Nova expects.
-        if disk_geometry == "512":
+        if disk_geometry is None:
+            return
+        elif disk_geometry == "512":
             conn_info['data']['physical_block_size'] = "512"
             conn_info['data']['logical_block_size'] = "512"
         elif disk_geometry == "512e":

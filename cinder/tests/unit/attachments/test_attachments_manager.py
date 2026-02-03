@@ -84,8 +84,6 @@ class AttachmentManagerTestCase(test.TestCase):
                 "driver_volume_type": "iscsi",
                 "attachment_id": attachment_ref.id,
                 "enforce_multipath": enforce_mpath,
-                "physical_block_size": "512",
-                "logical_block_size": "512",
             }
 
             get_extra_specs.return_value = {}
@@ -103,8 +101,6 @@ class AttachmentManagerTestCase(test.TestCase):
                 "driver_volume_type": "iscsi",
                 "attachment_id": attachment_ref.id,
                 "enforce_multipath": enforce_mpath,
-                "physical_block_size": "512",
-                "logical_block_size": "512",
             }
 
             get_extra_specs.return_value = {'cacheable': '<is> True'}
