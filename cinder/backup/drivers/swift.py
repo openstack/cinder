@@ -57,6 +57,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder import service_auth
+from cinder import utils
 from cinder.utils import retry
 
 LOG = logging.getLogger(__name__)
@@ -147,6 +148,9 @@ swiftbackup_service_opts = [
                 help='Send a X-Service-Token header with service auth '
                      'credentials. If enabled you also must set the '
                      'service_user group and enable send_service_user_token.'),
+    cfg.StrOpt('backup_swift_region_name',
+               help='Name of swift region to use. Useful if keystone manages '
+                    'more than one region.'),
 ]
 
 CONF = cfg.CONF
@@ -222,8 +226,13 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                         # It is assumed that service_types are unique within
                         # the service catalog, so once the correct one is found
                         # it is safe to break out of the loop
-                        self.auth_url = entry.get(
-                            'endpoints')[0].get(endpoint_type)
+                        region_name = CONF.backup_swift_region_name
+                        endpoints = entry.get('endpoints', [])
+
+                        endpoint = utils.get_region_filtered_endpoint(
+                            endpoints, endpoint_type, region_name)
+                        if endpoints:
+                            self.auth_url = endpoint
                         break
             else:
                 self.auth_url = CONF.backup_swift_auth_url
@@ -272,8 +281,13 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                         # It is assumed that service_types are unique within
                         # the service catalog, so once the correct one is found
                         # it is safe to break out of the loop
-                        self.swift_url = entry.get(
-                            'endpoints')[0].get(endpoint_type)
+                        region_name = CONF.backup_swift_region_name
+                        endpoints = entry.get('endpoints', [])
+
+                        endpoint = utils.get_region_filtered_endpoint(
+                            endpoints, endpoint_type, region_name)
+                        if endpoints:
+                            self.swift_url = endpoint
                         break
             else:
                 self.swift_url = '%s%s' % (CONF.backup_swift_url,

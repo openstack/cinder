@@ -101,12 +101,12 @@ class BackupSwiftTestCase(test.TestCase):
 
     def setUp(self):
         super(BackupSwiftTestCase, self).setUp()
-        service_catalog = [{u'type': u'object-store', u'name': u'swift',
-                            u'endpoints': [{
-                                u'publicURL': u'http://example.com'}]},
-                           {u'type': u'identity', u'name': u'keystone',
-                            u'endpoints': [{
-                                u'publicURL': u'http://example.com'}]}]
+        service_catalog = [{'type': 'object-store', 'name': 'swift',
+                            'endpoints': [{
+                                'publicURL': 'http://example.com'}]},
+                           {'type': 'identity', 'name': 'keystone',
+                            'endpoints': [{
+                                'publicURL': 'http://example.com'}]}]
         self.ctxt = context.RequestContext(user_id=fake.USER_ID,
                                            is_admin=True,
                                            service_catalog=service_catalog)
@@ -131,31 +131,31 @@ class BackupSwiftTestCase(test.TestCase):
         self.addCleanup(notify_patcher.stop)
 
     def test_backup_swift_url(self):
-        self.ctxt.service_catalog = [{u'type': u'object-store',
-                                      u'name': u'swift',
-                                      u'endpoints': [{
-                                          u'adminURL':
-                                              u'http://example.com'}]},
-                                     {u'type': u'identity',
-                                      u'name': u'keystone',
-                                      u'endpoints': [{
-                                          u'publicURL':
-                                              u'http://example.com'}]}]
+        self.ctxt.service_catalog = [{'type': 'object-store',
+                                      'name': 'swift',
+                                      'endpoints': [{
+                                          'adminURL':
+                                              'http://example.com'}]},
+                                     {'type': 'identity',
+                                      'name': 'keystone',
+                                      'endpoints': [{
+                                          'publicURL':
+                                              'http://example.com'}]}]
         self.assertRaises(exception.BackupDriverException,
                           swift_dr.SwiftBackupDriver,
                           self.ctxt)
 
     def test_backup_swift_auth_url(self):
-        self.ctxt.service_catalog = [{u'type': u'object-store',
-                                      u'name': u'swift',
-                                      u'endpoints': [{
-                                          u'publicURL':
-                                              u'http://example.com'}]},
-                                     {u'type': u'identity',
-                                      u'name': u'keystone',
-                                      u'endpoints': [{
-                                          u'adminURL':
-                                              u'http://example.com'}]}]
+        self.ctxt.service_catalog = [{'type': 'object-store',
+                                      'name': 'swift',
+                                      'endpoints': [{
+                                          'publicURL':
+                                              'http://example.com'}]},
+                                     {'type': 'identity',
+                                      'name': 'keystone',
+                                      'endpoints': [{
+                                          'adminURL':
+                                              'http://example.com'}]}]
         self.override_config("backup_swift_auth",
                              "single_user")
         self.override_config("backup_swift_user",
@@ -165,16 +165,16 @@ class BackupSwiftTestCase(test.TestCase):
                           self.ctxt)
 
     def test_backup_swift_url_conf(self):
-        self.ctxt.service_catalog = [{u'type': u'object-store',
-                                      u'name': u'swift',
-                                      u'endpoints': [{
-                                          u'adminURL':
-                                              u'http://example.com'}]},
-                                     {u'type': u'identity',
-                                     u'name': u'keystone',
-                                      u'endpoints': [{
-                                          u'publicURL':
-                                              u'http://example.com'}]}]
+        self.ctxt.service_catalog = [{'type': 'object-store',
+                                      'name': 'swift',
+                                      'endpoints': [{
+                                          'adminURL':
+                                              'http://example.com'}]},
+                                     {'type': 'identity',
+                                     'name': 'keystone',
+                                      'endpoints': [{
+                                          'publicURL':
+                                              'http://example.com'}]}]
         self.ctxt.project_id = fake.PROJECT_ID
         self.override_config("backup_swift_url",
                              "http://public.example.com/")
@@ -193,17 +193,80 @@ class BackupSwiftTestCase(test.TestCase):
                                    self.ctxt.project_id),
                          backup.swift_url)
 
+    def test_backup_swift_region_filtering(self):
+        """Test that region_name filters Swift endpoints correctly."""
+        self.ctxt.service_catalog = [{'type': 'object-store',
+                                      'name': 'swift',
+                                      'endpoints': [
+                                          {'region': 'regionOne',
+                                           'publicURL': (
+                                               'http://region1.example.com')},
+                                          {'region': 'regionTwo',
+                                           'publicURL': (
+                                               'http://region2.example.com'
+                                           )}]},
+                                     {'type': 'identity',
+                                      'name': 'keystone',
+                                      'endpoints': [{
+                                          'publicURL': (
+                                              'http://example.com')}]}]
+        self.ctxt.project_id = fake.PROJECT_ID
+
+        # Test with backup_swift_region_name set
+        self.override_config('backup_swift_region_name', 'regionTwo')
+        backup = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertEqual('http://region2.example.com', backup.swift_url)
+
+        # Test with backup_swift_region_name not set
+        # (should get first endpoint)
+        self.override_config('backup_swift_region_name', None)
+        backup = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertEqual('http://region1.example.com', backup.swift_url)
+
+    def test_backup_swift_keystone_region_filtering(self):
+        """Test that region_name filters Keystone endpoints correctly."""
+        self.override_config("backup_swift_auth", "single_user")
+        self.override_config("backup_swift_user", "fake_user")
+        self.override_config("backup_swift_key", "fake_key")
+        self.ctxt.service_catalog = [{'type': 'object-store',
+                                      'name': 'swift',
+                                      'endpoints': [{
+                                          'publicURL': (
+                                              'http://example.com')}]},
+                                     {'type': 'identity',
+                                      'name': 'keystone',
+                                      'endpoints': [
+                                          {'region': 'regionOne',
+                                           'publicURL': (
+                                               'http://region1.keystone.com'
+                                           )},
+                                          {'region': 'regionTwo',
+                                           'publicURL': (
+                                               'http://region2.keystone.com'
+                                           )}]}]
+
+        # Test with backup_swift_region_name set
+        self.override_config('backup_swift_region_name', 'regionTwo')
+        backup = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertEqual('http://region2.keystone.com', backup.auth_url)
+
+        # Test with backup_swift_region_name not set
+        # (should get first endpoint)
+        self.override_config('backup_swift_region_name', None)
+        backup = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertEqual('http://region1.keystone.com', backup.auth_url)
+
     def test_backup_swift_auth_url_conf(self):
-        self.ctxt.service_catalog = [{u'type': u'object-store',
-                                      u'name': u'swift',
-                                      u'endpoints': [{
-                                          u'publicURL':
-                                              u'http://example.com'}]},
-                                     {u'type': u'identity',
-                                      u'name': u'keystone',
-                                      u'endpoints': [{
-                                          u'adminURL':
-                                              u'http://example.com'}]}]
+        self.ctxt.service_catalog = [{'type': 'object-store',
+                                      'name': 'swift',
+                                      'endpoints': [{
+                                          'publicURL':
+                                              'http://example.com'}]},
+                                     {'type': 'identity',
+                                      'name': 'keystone',
+                                      'endpoints': [{
+                                          'adminURL':
+                                              'http://example.com'}]}]
 
         self.ctxt.project_id = fake.PROJECT_ID
         self.override_config("backup_swift_auth_url",
