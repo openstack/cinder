@@ -92,7 +92,15 @@ class KeyMigrator(object):
             auth = ks_loading.load_auth_from_conf_options(self.conf,
                                                           'keystone_authtoken')
             sess = ks_session.Session(auth=auth)
-            self.barbican = barbican_client.Client(session=sess)
+            # Get region_name from barbican config section
+            # (barbican_region_name is used by Castellan, but we pass it as
+            # region_name to the client)
+            region_name = None
+            if hasattr(self.conf, 'barbican') and hasattr(
+                    self.conf.barbican, 'barbican_region_name'):
+                region_name = self.conf.barbican.barbican_region_name
+            self.barbican = barbican_client.Client(session=sess,
+                                                   region_name=region_name)
         except Exception as e:
             LOG.error("Aborting encryption key migration due to "
                       "error creating Barbican client: %s", e)
