@@ -81,6 +81,7 @@ COMPRESSION_API_VERSION = 30301215
 SRSTATLD_API_VERSION = 30201200
 REMOTE_COPY_API_VERSION = 30202290
 API_VERSION_2023 = 100000000
+API_VERSION_2025 = 100500000
 
 hpe3par_opts = [
     cfg.StrOpt('hpe3par_api_url',
@@ -307,11 +308,12 @@ class HPE3PARCommon(object):
         4.0.21 - Fix issue seen during retype/migrate. Bug #2026718
         4.0.22 - Fixed clone of replicated volume. Bug #2021941
         4.0.23 - Fixed login/logout while accessing wsapi. Bug #2068795
+        4.0.27 - Skip license check for new WSAPI (of 2025). Bug #2119709
 
 
     """
 
-    VERSION = "4.0.23"
+    VERSION = "4.0.27"
 
     stats = {}
 
@@ -1822,6 +1824,9 @@ class HPE3PARCommon(object):
                                license_to_check, capability):
         """Check a license against valid licenses on the array."""
         if valid_licenses:
+            if self.API_VERSION >= API_VERSION_2025:
+                # with new wsapi, all licenses are enabled
+                return True
             for license in valid_licenses:
                 if license_to_check in license.get('name'):
                     return True
