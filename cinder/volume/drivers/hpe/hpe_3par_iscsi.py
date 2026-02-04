@@ -29,6 +29,7 @@ volume_driver=cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver
 
 import re
 import sys
+import threading
 
 try:
     from hpe3parclient import exceptions as hpeexceptions
@@ -401,6 +402,9 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                   {'volume_id': volume['id']})
         array_id = self.get_volume_replication_driver_data(volume)
         common = self._login(array_id=array_id)
+        s_key = common.client.get_session_key()
+        LOG.debug("initialize_connection entry from ISCSI with session key %s and thread id: %s",
+                  s_key, threading.get_ident())
         try:
             # If the volume has been failed over, we need to reinitialize
             # iSCSI ports so they represent the new array.
