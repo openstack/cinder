@@ -3,29 +3,27 @@ features:
   - |
     Added a ``disk_geometry`` configuration option to volume drivers that
     advertises each volume's ``logical_block_size`` and ``physical_block_size``
-    to the guest. The default value of '512' is equivalent to the previous
-    behavior of (logical 512, physical 512). The recommended value of ``512e``
-    (logical 512, physical 4096) hints that 4k-aligned I/O is optimal while
-    remaining compatible with older operating systems. This has the most visible
-    impact for Windows guests that would otherwise submit 512-byte I/O, while
-    Linux typically aligns to 4k already. On back ends such as Ceph, aligned 4k
-    requests prevent extra read-modify-update cycles and can noticeably improve
-    HDD-backed pool performance. Note that guests need a VirtIO driver that
-    includes the fix from https://bugzilla.redhat.com/show_bug.cgi?id=1428641 to
-    use this feature (2019 or newer). The default value of the ``disk_geometry``
-    option will change to ``512e`` in the 2027.1 release.
-upgrade:
+    to the guest. By default the option is unset which means that the block
+    sizes are not set hinted to the guest. The recommended value for HDDs is
+    ``512e`` (logical 512, physical 4096) which hints that 4k-aligned I/O is
+    optimal while remaining compatible with older operating systems. This has
+    the most visible impact for Windows guests that would otherwise submit
+    512-byte I/O, while Linux typically aligns to 4k already. On back ends such
+    as Ceph, aligned 4k requests prevent extra read-modify-update cycles and can
+    noticeably improve HDD-backed pool performance. Note that guests need a
+    VirtIO driver that includes the fix from
+    https://bugzilla.redhat.com/show_bug.cgi?id=1428641 to use this feature
+    (2019 or newer). upgrade:
   - |
     A new volume driver configuration option ``disk_geometry`` has been
     introduced, which controls the ``logical_block_size`` and
-    ``physical_block_size`` advertised to the guest. The default value of '512'
-    is equivalent to the behavior of previous releases (logical 512, physical
-    512). However, the recommended value of ``512e`` (logical 512, physical
-    4096) hints that 4k-aligned I/O is optimal while remaining compatible with
-    older operating systems. Beginning with the 2027.1 release, the default
-    value will be changed to ``512e``. The current configuration value is used
-    immediately whenever a volume is attached, however existing libvirt VMs
-    won't be updated unless their configuration file is re-generated such as by
+    ``physical_block_size`` advertised to the guest. By default this option is
+    unset which is equivalent to the behavior of previous releases. However, the
+    recommended value for HDDs ``512e`` (logical 512, physical 4096) which hints
+    that 4k-aligned I/O is optimal while remaining compatible with older
+    operating systems. The current configuration value is used immediately
+    whenever a volume is attached, however existing libvirt VMs won't be updated
+    unless their configuration file is re-generated such as by
     detaching/attaching the volume, cold migrating the VM to another host or
     both live migrating (to update the configuration) and then later rebooting
     the guest (so that the guest re-reads the information from the hardware).

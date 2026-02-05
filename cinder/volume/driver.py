@@ -245,29 +245,30 @@ volume_opts = [
                help='Availability zone for this volume backend. If not set, '
                     'the storage_availability_zone option value is used as '
                     'the default for all backends.'),
-    cfg.StrOpt('disk_geometry', default='512',
-               choices=[('512',
+    cfg.StrOpt('disk_geometry', default=None,
+               choices=[(None,
+                         'Do not hint disk geometry'),
+                        ('512',
                          '512 native (512/512)'),
                         ('512e',
                          '512 emulated (4096/512)'),
                         ('4k',
-                         '4k native (4096/4086)')],
+                        '4k native (4096/4086)')],
                help='Configure the reported geometry (physical, logical) '
                     'block size as 512 native (512/512), '
                     '512e emulated (4096/512) or 4k native (4096/4096). '
                     'This hints to the operating system the desired size '
-                    'of I/O updates submitted to the disk. Windows systems '
-                    'send 512b-aligned I/O by default (unlike Linux which '
-                    'typically submits 4k-aligned I/O). Setting this option '
+                    'of I/O updates submitted to the disk. If unset, no hints '
+                    'will be provided. Windows systems send 512b-aligned I/O '
+                    'by default (unlike Linux which typically submits '
+                    '4k-aligned I/O). Setting this option '
                     'to 512e may allow the operating system to submit a 4k '
                     'operation instead which will prevent some drivers '
                     '(e.g. Ceph RBD) needing to do '
                     'an expensive read-modify-write of the smaller operation. '
                     '512e is the recommended setting as 4k native can cause '
                     'compatibility issues with some software and operating '
-                    'system versions.'
-                    "\n\nNOTE: The default value for this option will change "
-                    "to 512e beginning with the 2027.1 release.\n"),
+                    'system versions.')
 ]
 
 # for backward compatibility
