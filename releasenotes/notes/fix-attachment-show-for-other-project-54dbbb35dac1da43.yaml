@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #2138566 <https://bugs.launchpad.net/cinder/+bug/2138566>`_: Fixed
+    issue when a user in a non-admin project is able to access attachment
+    records of another project given they have access to the UUID of the
+    attachment.
