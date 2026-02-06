@@ -169,6 +169,7 @@ class CapabilitiesLibrary(object):
     def _update_for_failover(self, zapi_client, flexvol_map):
 
         self.zapi_client = zapi_client
+        self.vserver_name = zapi_client.vserver
         self.update_ssc(flexvol_map)
 
     def _get_ssc_flexvol_info(self, flexvol_name):

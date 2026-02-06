@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    Added support for crash-consistent replication using the
+    active sync policies - AutomatedFailOver and AutomatedFailOverDuplex
+    with NetApp storage backends.
+    By enabling the new netapp_consistent_replication flag,
+    all FlexVol volumes in a backend stanza are protected together
+    in a single Consistency Group (CG), streamlining disaster
+    recovery and ensuring data consistency. The feature automatically
+    manages destination CG and FlexVol creation.
+    Also with AutomatedFailOverDuplex policy, an option to set the host
+    proximity has been added using the netapp_proximal_nodes flag when the
+    OpenStack volumes are attached.
+    Migration from the previous per-FlexVol replication strategy
+    requires cleanup of legacy artifacts, with prechecks enforced.

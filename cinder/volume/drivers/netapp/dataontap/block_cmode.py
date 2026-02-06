@@ -92,23 +92,39 @@ class NetAppBlockStorageCmodeLibrary(
         super(NetAppBlockStorageCmodeLibrary, self).do_setup(context)
         na_utils.check_flags(self.REQUIRED_CMODE_FLAGS, self.configuration)
 
+        force_rest = False
+        # Active Sync Replication requires REST client
+        is_active_sync = False
+        if self.replication_enabled:
+            replication_policy = self.get_replication_policy(
+                self.configuration)
+            if replication_policy in (
+                na_utils.ReplicationPolicy.AUTOMATED_FAIL_OVER.value,
+                na_utils.ReplicationPolicy.AUTOMATED_FAIL_OVER_DUPLEX.value,
+            ):
+                is_active_sync = True
+                force_rest = True
+
         # cDOT API client
         self.zapi_client = dot_utils.get_client_for_backend(
-            self.failed_over_backend_name or self.backend_name)
+            self.failed_over_backend_name or self.backend_name,
+            force_rest=force_rest)
         self.vserver = self.zapi_client.vserver
 
         self.dest_zapi_client = None
-        if self.replication_enabled:
-            if self.get_replication_policy(self.configuration) == \
-                    "AutomatedFailOver":
-                backend_names = self.get_replication_backend_names(
-                    self.configuration)
-                for dest_backend_name in backend_names:
-                    dest_backend_config = dot_utils.get_backend_configuration(
-                        dest_backend_name)
-                    dest_vserver = dest_backend_config.netapp_vserver
-                    self.dest_zapi_client = dot_utils.get_client_for_backend(
-                        dest_backend_name, vserver_name=dest_vserver)
+        if is_active_sync:
+            backend_names = self.get_replication_backend_names(
+                self.configuration)
+            for dest_backend_name in backend_names:
+                dest_backend_config = (
+                    dot_utils.get_backend_configuration(
+                        dest_backend_name))
+                dest_vserver = dest_backend_config.netapp_vserver
+                self.dest_zapi_client = (
+                    dot_utils.get_client_for_backend(
+                        dest_backend_name,
+                        vserver_name=dest_vserver,
+                        force_rest=force_rest))
         # Storage service catalog
         self.ssc_library = capabilities.CapabilitiesLibrary(
             self.driver_protocol, self.vserver, self.zapi_client,
@@ -199,9 +215,23 @@ class NetAppBlockStorageCmodeLibrary(
 
         # Create pool mirrors if whole-backend replication configured
         if self.replication_enabled and not self.failed_over:
-            self.ensure_snapmirrors(
-                self.configuration, self.backend_name,
-                self.ssc_library.get_ssc_flexvol_names())
+            if self._is_consistent_replication_enabled(self.configuration):
+                LOG.debug("Ensuring consistent replication snapmirrors.")
+
+                # The storage object type is used seperate out volume and lun
+                # replication based on plaform type.
+                # volume for unified and lun for asar2(disagregated)
+                storage_object_type = na_utils.StorageObjectType.VOLUME
+                storage_object_names = self.ssc_library.get_ssc_flexvol_names()
+                self.ensure_consistent_replication_snapmirrors(
+                    self.configuration, self.backend_name, storage_object_type,
+                    storage_object_names)
+            else:
+                LOG.debug("Ensuring replication snapmirrors across each "
+                          " or one CG per FlexVol.")
+                self.ensure_snapmirrors(
+                    self.configuration, self.backend_name,
+                    self.ssc_library.get_ssc_flexvol_names())
 
     def _handle_ems_logging(self):
         """Log autosupport messages."""

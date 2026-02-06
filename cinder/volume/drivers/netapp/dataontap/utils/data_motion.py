@@ -74,11 +74,14 @@ class DataMotionMixin(object):
         backend_names = self.get_replication_backend_names(config)
 
         if len(backend_names) > 0:
+            replication_type = ('sync'
+                                if self.is_active_sync_configured(config)
+                                else 'async')
             stats = {
                 'replication_enabled': True,
                 'replication_count': len(backend_names),
                 'replication_targets': backend_names,
-                'replication_type': 'async',
+                'replication_type': replication_type,
             }
         else:
             stats = {'replication_enabled': False}
@@ -113,19 +116,13 @@ class DataMotionMixin(object):
         """Check if the policy is an active sync (asymmetric) policy."""
         return replication_policy in ACTIVE_SYNC_ASYMMETRIC_POLICIES
 
-    def is_automated_failover_policy(self, snapmirror_policy):
-        if (snapmirror_policy.get('type') in 'sync' and
-                snapmirror_policy.get('sync_type') in 'automated_failover'):
-            return True
-        return False
-
     def is_active_sync_configured(self, configuration):
-        replication_enabled = (
-            True if self.get_replication_backend_names(
-                configuration) else False)
+        replication_enabled = bool(
+            self.get_replication_backend_names(configuration))
         if replication_enabled:
-            return self.get_replication_policy(configuration) == \
-                "AutomatedFailOver"
+            return self.get_replication_policy(configuration) in \
+                (REPLICATION_POLICY_AUTOMATED_FAILOVER,
+                 REPLICATION_POLICY_AUTOMATED_FAILOVER_DUPLEX)
         return False
 
     def is_consistent_replication_enabled(self, config):
@@ -369,7 +366,9 @@ class DataMotionMixin(object):
             src_backend_name)
         src_vserver = source_backend_config.netapp_vserver
 
-        if replication_policy == "AutomatedFailOver":
+        if replication_policy in (
+                REPLICATION_POLICY_AUTOMATED_FAILOVER,
+                REPLICATION_POLICY_AUTOMATED_FAILOVER_DUPLEX):
             dest_client = config_utils.get_client_for_backend(
                 dest_backend_name, vserver_name=dest_vserver, force_rest=True)
             src_client = config_utils.get_client_for_backend(
@@ -507,29 +506,27 @@ class DataMotionMixin(object):
             storage_object_type,
             storage_object_names,
             replication_policy):
-        """Set up a SnapMirror relationship for a consistency group.
+        """Set up a SnapMirror relationship for a consistency group (CG).
 
         This method ensures that a SnapMirror relationship is created and
-        initialized for a given consistency group. If the relationship
-        already exists but is not in a healthy state, it attempts to
-        repair and re-sync the relationship.
+        initialized for a given consistency group. If the relationship already
+        exists but is not in a healthy state, it attempts to repair and re-sync
+        the relationship.
 
         Args:
             src_backend_name (str): The name of the source backend.
             dest_backend_name (str): The name of the destination backend.
             src_cg_name (str): The name of the source consistency group.
-            dest_cg_name (str): The name of the destination consistency
-                group.
-            storage_object_type (StorageObjectType): The type of storage
-                objects ('volume' or 'lun').
-            storage_object_names (list): List of storage object names
-                within the CG.
-            replication_policy (str): The replication policy to use for
-                the SnapMirror relationship.
+            dest_cg_name (str): The name of the destination consistency group.
+            storage_object_type (StorageObjectType):
+            The type of storage objects ('volume' or 'lun').
+            storage_object_names (list): List of storage object names within
+            the CG.
+            replication_policy (str): The replication policy to use for the
+            SnapMirror relationship.
 
         Raises:
-            netapp_api.NaApiError: If the SnapMirror creation or repair
-                fails.
+            netapp_api.NaApiError: If the SnapMirror creation or repair fails.
         """
 
         LOG.debug("Starting create_snapmirror_for_cg method")
@@ -556,10 +553,11 @@ class DataMotionMixin(object):
 
         # Create and initialize SnapMirror if it doesn't already exist
         if not existing_mirrors:
-            LOG.info("Creating snapmirror for cg from %s to %s on destination "
-                     "backend %s for %s with replication policy %s",
-                     src_cg_name, dest_cg_name, dest_backend_name,
-                     storage_object_names, replication_policy)
+            LOG.info(
+                "Creating snapmirror for cg from %s to %s on destination "
+                "backend %s for %s with replication policy %s",
+                src_cg_name, dest_cg_name, dest_backend_name,
+                storage_object_names, replication_policy)
             try:
                 create_snapmirror_for_cg_client = (
                     self._get_create_snapmirror_for_cg_client(
@@ -572,21 +570,23 @@ class DataMotionMixin(object):
                     dest_cg_name,
                     storage_object_names,
                     replication_policy)
-            except netapp_api.NaApiError:
+            except netapp_api.NaApiError as e:
                 LOG.exception("Failed to create SnapMirror for CG.")
-                raise
+                raise e
         # Try to repair SnapMirror if existing
         else:
-            LOG.debug("Updating snapmirror for cg from %s to %s on "
-                      "destination backend %s for %s with "
-                      "replication policy %s",
-                      src_cg_name, dest_cg_name, dest_backend_name,
-                      storage_object_names, replication_policy)
+            LOG.debug(
+                "Updating snapmirror for cg from %s to %s on "
+                "destination backend %s for %s with "
+                "replication policy %s",
+                src_cg_name, dest_cg_name,
+                dest_backend_name, storage_object_names,
+                replication_policy
+            )
             snapmirror = existing_mirrors[0]
             # If existing transfer is ongoing, do not interfere.
-            if snapmirror.get('mirror-state') != 'snapmirrored' and \
-                    snapmirror.get('mirror-state') != 'in_sync' and \
-                    snapmirror.get('mirror-state') != 'transferring':
+            if snapmirror.get('mirror-state') not in (
+                    'snapmirrored', 'in_sync', 'transferring'):
                 try:
                     msg = ("SnapMirror between %(src_vserver)s:%(src_cg)s "
                            "and %(dest_vserver)s:%(dest_cg)s is in "
@@ -992,15 +992,14 @@ class DataMotionMixin(object):
                          list(cg_names)[0])
                 src_cg_name = list(cg_names)[0]
             elif len(cg_names) > 1:
-                msg = _(
-                    "FlexVols are part of multiple Consistency Groups: %s. "
-                    "Please ensure all FlexVols are in a single CG "
-                    "before proceeding.") % ', '.join(cg_names)
+                msg = _("FlexVols are part of multiple "
+                        "Consistency Groups: %s. "
+                        "Please ensure all FlexVols are in a single CG "
+                        "before proceeding.") % ', '.join(cg_names)
                 raise na_utils.NetAppDriverException(msg)
             else:
-                LOG.info(
-                    "FlexVols are not part of any Consistency Group. "
-                    "Proceeding to create a new CG %s.", src_cg_name)
+                LOG.info("FlexVols are not part of any Consistency Group. "
+                         "Proceeding to create a new CG %s.", src_cg_name)
                 src_client.create_ontap_consistency_group(src_vserver,
                                                           storage_object_names,
                                                           src_cg_name)
@@ -1011,15 +1010,23 @@ class DataMotionMixin(object):
                                                 src_cg_name, cg_info)
 
         if replication_policy == "AutomatedFailOver":
-            precheck = (
-                self._consistent_replication_precheck_for_automated_failover_policy)  # noqa: E501
-            precheck(src_backend_name, destination_backend_names,
-                     storage_object_type, storage_object_names)
+            (self.
+                _consistent_replication_precheck_for_af_policy(
+                    src_backend_name,
+                    destination_backend_names,
+                    storage_object_type,
+                    storage_object_names))
+        elif replication_policy == "AutomatedFailOverDuplex":
+            (self.
+                _consistent_replication_precheck_for_afd_policy(
+                    src_backend_name,
+                    destination_backend_names,
+                    storage_object_type,
+                    storage_object_names))
 
         for dest_backend_name in destination_backend_names:
             dest_cg_name = src_cg_name
-            self.create_snapmirror_for_cg(src_backend_name,
-                                          dest_backend_name,
+            self.create_snapmirror_for_cg(src_backend_name, dest_backend_name,
                                           src_cg_name, dest_cg_name,
                                           storage_object_type,
                                           storage_object_names,
@@ -1364,19 +1371,32 @@ class DataMotionMixin(object):
                 backend_name=destination_backend_name,
                 force_rest=True)
         except Exception:
-            LOG.error("Failed to connect to "
-                      "destination backend client "
-                      "for failover.")
-            raise na_utils.NetAppDriverException("Failed to connect to "
-                                                 "destination backend client "
-                                                 "for failover.")
+            LOG.error(
+                "Failed to connect to "
+                "destination backend client "
+                "for failover.")
+            raise na_utils.NetAppDriverException(
+                "Failed to connect to destination backend client "
+                "for failover.")
 
         if not self.configuration.netapp_disaggregated_platform:
             flexvols = self.ssc_library.get_ssc_flexvol_names()
             if src_client:
                 cg_info = src_client.get_flexvols_cg_info(flexvols[0])
             else:
-                cg_info = dst_client.get_flexvols_cg_info(flexvols[0])
+                # During unplanned failover the source is unreachable, so
+                # query the destination. Destination flexvol names will have
+                # a '_dst' suffix appended (e.g. vol1_dst). If the flexvol
+                # name does not already have the '_dst' suffix, append it.
+                dst_flexvol_name = flexvols[0]
+                if not dst_flexvol_name.endswith(
+                        na_utils.REPLICATED_VOLUME_SUFFIX):
+                    dst_flexvol_name = (
+                        dst_flexvol_name +
+                        na_utils.REPLICATED_VOLUME_SUFFIX)
+                    LOG.debug("Using FlexVol '%s' to query destination "
+                              "backend.", dst_flexvol_name)
+                cg_info = dst_client.get_flexvols_cg_info(dst_flexvol_name)
             cg_name = cg_info[0].get('cg_name')
         else:
             LOG.error("ASAr2 platform is not supported for replication")
@@ -1437,19 +1457,19 @@ class DataMotionMixin(object):
                 'updates': {'replication_status': replication_status},
             }
             volume_updates.append(volume_update)
-        LOG.debug('data_motion::_complete_failback ended')
+        LOG.debug('data_motion::_complete_failback completed')
         return active_backend_name, volume_updates, []
 
     def _complete_failback_active_sync(self, primary_backend_name,
                                        secondary_backend_name, volumes):
         LOG.debug('data_motion::_complete_failback_active_sync started')
 
-        if primary_backend_name:
+        if primary_backend_name is None:
             msg = _("Primary backend to which the replication will be "
                     "failed back to is required.")
             raise na_utils.NetAppDriverException(msg)
 
-        if secondary_backend_name:
+        if secondary_backend_name is None:
             msg = _("Secondary backend to which the replication is "
                     "failed over is required.")
             raise na_utils.NetAppDriverException(msg)
@@ -1464,9 +1484,22 @@ class DataMotionMixin(object):
                 "failback.",
                 primary_backend_name)
 
+        try:
+            dst_client = config_utils.get_client_for_backend(
+                backend_name=secondary_backend_name, force_rest=True)
+        except Exception:
+            raise na_utils.NetAppDriverException(
+                "Failed to connect to "
+                "secondary backend client %s for "
+                "failback.",
+                secondary_backend_name)
+
         if not self.configuration.netapp_disaggregated_platform:
             flexvols = self.ssc_library.get_ssc_flexvol_names()
-            cg_info = src_client.get_flexvols_cg_info(flexvols[0])
+            # After failover, the SSC library contains destination flexvol
+            # names (e.g. with _dst suffix). Use the dst_client to look up
+            # CG info since those flexvols exist on the secondary backend.
+            cg_info = dst_client.get_flexvols_cg_info(flexvols[0])
             cg_name = cg_info[0].get('cg_name')
         else:
             raise na_utils.NetAppDriverException(
@@ -1500,7 +1533,7 @@ class DataMotionMixin(object):
                 'updates': {'replication_status': replication_status},
             }
             volume_updates.append(volume_update)
-        LOG.debug('data_motion::_complete_failback_active_sync ended')
+        LOG.debug('data_motion::_complete_failback_active_sync completed')
         return active_backend_name, volume_updates, []
 
     def _failover_host(self, volumes, secondary_id=None, groups=None):
@@ -1550,8 +1583,8 @@ class DataMotionMixin(object):
                         and self.is_consistent_replication_enabled(
                             self.configuration)):
                     # Active sync only supports single destination backend
-                    destination_backend_name = (secondary_id or
-                                                replication_targets[0])
+                    destination_backend_name = (
+                        secondary_id or replication_targets[0])
                     self._complete_failover_active_sync(
                         self.backend_name,
                         destination_backend_name,
@@ -1559,8 +1592,9 @@ class DataMotionMixin(object):
                 else:
                     active_backend_name, volume_updates = (
                         self._complete_failover(
-                            self.backend_name, replication_targets,
-                            flexvols, volumes,
+                            self.backend_name,
+                            replication_targets, flexvols,
+                            volumes,
                             failover_target=secondary_id))
             except na_utils.NetAppDriverException as e:
                 msg = _("Could not complete failover: %s") % e
@@ -1572,11 +1606,15 @@ class DataMotionMixin(object):
             self.failed_over = True
             self.failed_over_backend_name = active_backend_name
 
-            LOG.debug("data_motion::_failover_host ended")
+            LOG.debug("data_motion::_failover_host completed")
 
             return active_backend_name, volume_updates, []
 
     def _failover(self, context, volumes, secondary_id=None, groups=None):
+
+        LOG.debug("data_motion::_failover started")
+        LOG.debug("Secondary ID: %s", secondary_id)
+
         """Failover to replication target."""
 
         LOG.debug("data_motion::_failover started")
@@ -1589,9 +1627,10 @@ class DataMotionMixin(object):
         # Added logic to handle failback from the secondary to old primary
         # This condition is needed when the DR/replication conditions are
         # restored back to normal state
+        # A single replication target is supported for active sync
+        # and consistent replication.
         if secondary_id == "default":
-            if (self.is_active_sync_configured(
-                    self.configuration) and
+            if (self.is_active_sync_configured(self.configuration) and
                     self.is_consistent_replication_enabled(
                         self.configuration)):
                 replication_targets = (
@@ -1621,13 +1660,11 @@ class DataMotionMixin(object):
                 raise exception.InvalidReplicationTarget(reason=msg % payload)
 
             try:
-                if (self.is_active_sync_configured(
-                        self.configuration) and
+                if (self.is_active_sync_configured(self.configuration) and
                         self.is_consistent_replication_enabled(
                             self.configuration)):
-                    LOG.debug(
-                        "Failing over backend enabled with consistent "
-                        "replication and active sync")
+                    LOG.debug("Failing over backend enabled "
+                              "with consistent replication and active sync")
                     # Active sync only supports single destination backend
                     destination_backend_name = (secondary_id or
                                                 replication_targets[0])
@@ -1661,7 +1698,7 @@ class DataMotionMixin(object):
                 msg = _("Could not complete failover: %s") % e
                 raise exception.UnableToFailOver(reason=msg)
 
-            LOG.debug("data_motion::_failover ended")
+            LOG.debug("data_motion::_failover completed")
 
             return active_backend_name, volume_updates, []
 
@@ -1748,30 +1785,34 @@ class DataMotionMixin(object):
                  volume.id, host['host'])
         return True, updates
 
-    def _consistent_replication_precheck_for_automated_failover_policy(
+    def _consistent_replication_precheck_for_active_sync(
             self,
             src_backend_name,
             destination_backend_names,
             storage_object_type,
             storage_object_names):
+        """Common pre-checks for Active Sync policies (AF and AFD).
 
-        LOG.debug("Starting pre-checks for automated "
-                  "failover policy replication.")
+        This function contains all the common validation checks required
+        for AutomatedFailOver and AutomatedFailOverDuplex policies.
+        """
+        LOG.debug("Starting common pre-checks for active sync "
+                  "policy replication.")
         LOG.debug("Source backend: %s, Destination backends: %s",
                   src_backend_name, destination_backend_names)
 
         config = config_utils.get_backend_configuration(src_backend_name)
 
-        # Verify if nfs protocol is selected for the storage backend
+        # Fail if nfs protocol is selected for the storage backend
         if config.safe_get('netapp_storage_protocol') == 'nfs':
-            msg = _("AutomatedFailOver policy is not supported for "
+            msg = _("Active Sync policies are not supported for "
                     "NFS configured backends.")
             raise na_utils.NetAppDriverException(msg)
 
-        # Verify if there are more than one destination backend configured
+        # Fail if there are more than one destination backend configured
         if len(destination_backend_names) > 1:
             msg = _("There cannot be more than one destination backend "
-                    "configured for automated failover policy.")
+                    "configured for active sync policies.")
             raise na_utils.NetAppDriverException(msg)
 
         # Verify if Source FlexVol volumes are part of different CGs.
@@ -1796,8 +1837,7 @@ class DataMotionMixin(object):
 
         cg_info = []
         if storage_object_type == na_utils.StorageObjectType.VOLUME:
-            cg_info = src_client.get_flexvols_cg_info(
-                storage_object_names)
+            cg_info = src_client.get_flexvols_cg_info(storage_object_names)
             LOG.debug("Consistency group info for source FlexVols: %s",
                       cg_info)
 
@@ -1812,7 +1852,7 @@ class DataMotionMixin(object):
         if len(cg_names) > 1:
             msg = _("Remove the following consistency groups "
                     "before configuring consistent "
-                    "replication with automated failover "
+                    "replication with active sync "
                     "policy: %s") % ', '.join(cg_names)
             raise na_utils.NetAppDriverException(msg)
 
@@ -1844,28 +1884,84 @@ class DataMotionMixin(object):
                     dest_client, dest_vserver, storage_object_names,
                     destination_backend_names[0])
             self._check_cg_name_conflicts(
-                dest_client, dest_vserver, cg_name,
+                dest_client,
+                dest_vserver,
+                cg_name,
                 destination_backend_names[0])
+
+        LOG.debug("Completed common pre-checks for active sync "
+                  "policy replication.")
+
+    def _consistent_replication_precheck_for_af_policy(
+            self,
+            src_backend_name,
+            destination_backend_names,
+            storage_object_type,
+            storage_object_names):
+        """Pre-check for AutomatedFailOver policy replication."""
+        LOG.debug("Starting pre-checks for automated "
+                  "failover policy replication.")
+
+        # Perform common active sync prechecks
+        self._consistent_replication_precheck_for_active_sync(
+            src_backend_name,
+            destination_backend_names,
+            storage_object_type,
+            storage_object_names)
 
         LOG.debug("Completed pre-checks for automated "
                   "failover policy replication.")
+
+    def _consistent_replication_precheck_for_afd_policy(
+            self,
+            src_backend_name,
+            destination_backend_names,
+            storage_object_type,
+            storage_object_names):
+        """Pre-check for AutomatedFailOverDuplex policy replication.
+
+        This precheck performs all the common active sync checks and
+        additionally verifies that netapp_consistent_replication is enabled.
+        """
+        LOG.debug("Starting pre-checks for automated "
+                  "failover duplex policy replication.")
+
+        # First verify that netapp_consistent_replication is enabled
+        config = config_utils.get_backend_configuration(src_backend_name)
+        if not config.safe_get('netapp_consistent_replication'):
+            msg = _("AutomatedFailOverDuplex policy requires "
+                    "netapp_consistent_replication to be enabled "
+                    "in the backend configuration.")
+            raise na_utils.NetAppDriverException(msg)
+
+        # Perform common active sync prechecks
+        self._consistent_replication_precheck_for_active_sync(
+            src_backend_name,
+            destination_backend_names,
+            storage_object_type,
+            storage_object_names)
+
+        LOG.debug("Completed pre-checks for automated "
+                  "failover duplex policy replication.")
 
     def _check_flexvol_name_conflicts(self, dest_client,
                                       svm_name,
                                       flexvol_names,
                                       dest_backend_name):
-        # Verify if there are FlexVol volumes with the same name
-        # already present in destination
+        # Verify if there are FlexVol volumes with the destination name
+        # (source name + _dst suffix) already present in destination
         for flexvol_name in flexvol_names:
+            dest_flexvol_name = f"{flexvol_name}_dst"
             LOG.debug("Checking for FlexVol name conflict for "
-                      "volume %s in destination backend %s.",)
+                      "volume %s in destination backend %s.",
+                      dest_flexvol_name, dest_backend_name)
             flexvol_exists = dest_client.flexvol_exists_in_svm(
-                svm_name, flexvol_name)
+                svm_name, dest_flexvol_name)
             if flexvol_exists:
                 msg = (_("FlexVol volume with name %s already "
                          "exists in destination backend %s. "
                          "Please remove it before proceeding.")
-                       % (flexvol_name, dest_backend_name))
+                       % (dest_flexvol_name, dest_backend_name))
                 raise na_utils.NetAppDriverException(msg)
 
     def _check_cg_name_conflicts(self, dest_client,
@@ -1877,7 +1973,9 @@ class DataMotionMixin(object):
                   "conflict for CG %s in destination backend %s.",
                   cg_name, dest_backend_name)
         if cg_name:
-            cg_exists = dest_client.consistency_group_exists(svm_name, cg_name)
+            cg_exists = dest_client.consistency_group_exists(
+                svm_name,
+                cg_name)
             if cg_exists:
                 msg = (_("Consistency Group with name %s already "
                          "exists in destination backend %s. "

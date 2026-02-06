@@ -352,7 +352,17 @@ netapp_replication_opts = [
                      'If set to True, a single consistency group will be '
                      'created to map to all the FlexVol volumes in the pool '
                      'and protected with the replication policy defined.'
-                     'Valid values are True/False. Default is False.')]
+                     'Valid values are True/False. Default is False.'),
+    cfg.ListOpt('netapp_proximal_nodes',
+                default=[],
+                help='List of host initiator IQNs or WWPNs that are '
+                     'proximal (local) to the SVM configured in this '
+                     'backend. Used with AutomatedFailOverDuplex '
+                     'policy to configure host proximity on igroups for '
+                     'optimal I/O path selection in SnapMirror Active Sync '
+                     'configurations. Example: '
+                     'netapp_proximal_nodes=iqn.1994-05.com.'
+                     'redhat:host1,iqn.1994-05.com.redhat:host2')]
 
 netapp_support_opts = [
     cfg.StrOpt('netapp_api_trace_pattern',

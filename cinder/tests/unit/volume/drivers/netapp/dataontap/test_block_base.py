@@ -298,6 +298,69 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.zapi_client.map_lun.assert_called_once_with(
             fake.LUN_PATH, fake.IGROUP1_NAME, lun_id=None)
 
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_get_lun_attr')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_get_or_create_igroup')
+    def test_map_lun_active_sync(self, mock_get_or_create_igroup,
+                                 mock_get_lun_attr):
+        """Test _map_lun maps LUN on both source and dest with _dst path."""
+        os = 'linux'
+        protocol = 'fcp'
+        self.library.host_type = 'linux'
+        self.library.dest_zapi_client = mock.Mock()
+        mock_get_lun_attr.return_value = {'Path': fake.LUN_PATH, 'OsType': os}
+        mock_get_or_create_igroup.return_value = (fake.IGROUP1_NAME, os,
+                                                  'iscsi')
+        self.zapi_client.map_lun.return_value = '1'
+        self.mock_object(self.library, '_is_active_sync_configured',
+                         return_value=True)
+        self.mock_object(self.library, '_is_consistent_replication_enabled',
+                         return_value=True)
+
+        lun_id = self.library._map_lun('fake_volume',
+                                       fake.FC_FORMATTED_INITIATORS,
+                                       protocol, None)
+
+        self.assertEqual('1', lun_id)
+        self.zapi_client.map_lun.assert_called_once_with(
+            fake.LUN_PATH, fake.IGROUP1_NAME, lun_id=None)
+        # Destination path should have _dst suffix on the FlexVol name
+        # /vol/vol0/lun -> /vol/vol0_dst/lun
+        expected_dest_path = fake.LUN_PATH.replace('/vol/vol0/',
+                                                   '/vol/vol0_dst/')
+        self.library.dest_zapi_client.map_lun.assert_called_once_with(
+            expected_dest_path, fake.IGROUP1_NAME, lun_id=None)
+
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_get_lun_attr')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_get_or_create_igroup')
+    def test_map_lun_active_sync_no_consistent_replication(
+            self, mock_get_or_create_igroup, mock_get_lun_attr):
+        """Test _map_lun uses same path when consistent replication off."""
+        os = 'linux'
+        protocol = 'fcp'
+        self.library.host_type = 'linux'
+        self.library.dest_zapi_client = mock.Mock()
+        mock_get_lun_attr.return_value = {'Path': fake.LUN_PATH, 'OsType': os}
+        mock_get_or_create_igroup.return_value = (fake.IGROUP1_NAME, os,
+                                                  'iscsi')
+        self.zapi_client.map_lun.return_value = '1'
+        self.mock_object(self.library, '_is_active_sync_configured',
+                         return_value=True)
+        self.mock_object(self.library, '_is_consistent_replication_enabled',
+                         return_value=False)
+
+        lun_id = self.library._map_lun('fake_volume',
+                                       fake.FC_FORMATTED_INITIATORS,
+                                       protocol, None)
+
+        self.assertEqual('1', lun_id)
+        # Destination path should be same as source (no _dst suffix)
+        self.library.dest_zapi_client.map_lun.assert_called_once_with(
+            fake.LUN_PATH, fake.IGROUP1_NAME, lun_id=None)
+
     @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_get_lun_attr')
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_get_or_create_igroup')
@@ -398,6 +461,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def test_unmap_lun_empty(self, mock_find_mapped_lun_igroup):
         self.zapi_client.get_lun_map.return_value = fake.ISCSI_ONE_MAP_LIST
 
+        self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=(9, 16, 1))
+
         self.library._unmap_lun(fake.LUN_PATH, fake.ISCSI_EMPTY_MAP_LIST)
 
         mock_find_mapped_lun_igroup.assert_not_called()
@@ -411,6 +478,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         fake_ini_group = fake.ISCSI_ONE_MAP_LIST[0]['initiator-group']
         mock_find_mapped_lun_igroup.return_value = (fake_ini_group, 1)
         self.zapi_client.get_lun_map.return_value = fake.ISCSI_ONE_MAP_LIST
+        self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=(9, 16, 1))
 
         self.library._unmap_lun(fake.LUN_PATH, fake.ISCSI_ONE_MAP_LIST)
 
@@ -418,6 +488,55 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             fake.LUN_PATH, fake.ISCSI_ONE_MAP_LIST)
         self.zapi_client.get_lun_map.assert_not_called()
         self.zapi_client.unmap_lun.assert_called_once_with(
+            fake.LUN_PATH, fake_ini_group)
+
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_find_mapped_lun_igroup')
+    def test_unmap_lun_active_sync(self, mock_find_mapped_lun_igroup):
+        """Test _unmap_lun unmaps LUN on both source and dest with _dst."""
+        fake_ini_group = fake.ISCSI_ONE_MAP_LIST[0]['initiator-group']
+        mock_find_mapped_lun_igroup.return_value = (fake_ini_group, 1)
+        self.library.dest_zapi_client = mock.Mock()
+        self.mock_object(self.library, '_is_active_sync_configured',
+                         return_value=True)
+        self.mock_object(self.library, '_is_consistent_replication_enabled',
+                         return_value=True)
+        self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=(9, 16, 1))
+
+        self.library._unmap_lun(fake.LUN_PATH, fake.ISCSI_ONE_MAP_LIST)
+
+        self.zapi_client.unmap_lun.assert_called_once_with(
+            fake.LUN_PATH, fake_ini_group)
+        # Destination path should have _dst suffix on the FlexVol name
+        expected_dest_path = fake.LUN_PATH.replace('/vol/vol0/',
+                                                   '/vol/vol0_dst/')
+        self.library.dest_zapi_client.unmap_lun.assert_called_once_with(
+            expected_dest_path, fake_ini_group)
+
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_find_mapped_lun_igroup')
+    def test_unmap_lun_active_sync_no_consistent_replication(
+            self, mock_find_mapped_lun_igroup):
+        """Test _unmap_lun uses same path when consistent replication off."""
+        fake_ini_group = fake.ISCSI_ONE_MAP_LIST[0]['initiator-group']
+        mock_find_mapped_lun_igroup.return_value = (fake_ini_group, 1)
+        self.library.dest_zapi_client = mock.Mock()
+        self.mock_object(self.library, '_is_active_sync_configured',
+                         return_value=True)
+        self.mock_object(self.library, '_is_consistent_replication_enabled',
+                         return_value=False)
+        self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=(9, 16, 1))
+
+        self.library._unmap_lun(fake.LUN_PATH, fake.ISCSI_ONE_MAP_LIST)
+
+        self.zapi_client.unmap_lun.assert_called_once_with(
+            fake.LUN_PATH, fake_ini_group)
+        # Destination path should be same as source (no _dst suffix)
+        self.library.dest_zapi_client.unmap_lun.assert_called_once_with(
             fake.LUN_PATH, fake_ini_group)
 
     @mock.patch.object(block_base, 'LOG')
@@ -437,6 +556,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                        '_find_mapped_lun_igroup')
     def test_unmap_lun_empty_detach_all(self, mock_find_mapped_lun_igroup):
         self.zapi_client.get_lun_map.return_value = fake.ISCSI_MULTI_MAP_LIST
+
+        self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=(9, 16, 1))
 
         self.library._unmap_lun(fake.LUN_PATH, fake.ISCSI_EMPTY_MAP_LIST)
 
@@ -507,6 +630,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_get_or_create_igroup_preexisting(self):
         self.zapi_client.get_igroup_by_initiators.return_value = [fake.IGROUP1]
+        self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=(9, 16, 1))
         self.library._create_igroup_add_initiators = mock.Mock()
         igroup_name, host_os, ig_type = self.library._get_or_create_igroup(
             fake.FC_FORMATTED_INITIATORS, 'fcp', 'linux')
@@ -527,6 +653,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         # result if there are no igroups and if the igroup is a custom one.
         self.zapi_client.get_igroup_by_initiators.return_value = igroups
 
+        self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=(9, 16, 1))
+
         igroup_name, os, ig_type = self.library._get_or_create_igroup(
             fake.FC_FORMATTED_INITIATORS, 'fcp', 'linux')
 
@@ -537,6 +667,76 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                          self.zapi_client.add_igroup_initiator.call_count)
         self.assertEqual('linux', os)
         self.assertEqual('fcp', ig_type)
+
+    @ddt.data([])
+    @mock.patch.object(uuid, 'uuid4', mock.Mock(return_value=fake.UUID1))
+    def test_get_or_create_igroup_active_sync_creates_dest_igroup(
+            self, igroups):
+        """Test that active sync creates igroup on destination SVM."""
+        self.zapi_client.get_igroup_by_initiators.return_value = igroups
+        self.library.dest_zapi_client = mock.Mock()
+        self.library.dest_zapi_client.get_igroup_by_initiators.return_value \
+            = []
+
+        config = mock.Mock()
+        config.safe_get.side_effect = lambda key: {
+            'replication_device': [{'backend_id': 'backend1'}],
+            'netapp_replication_policy': 'AutomatedFailOver',
+        }.get(key)
+
+        self.library.configuration = config
+
+        self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=(9, 16, 1))
+
+        igroup_name, os, ig_type = self.library._get_or_create_igroup(
+            fake.FC_FORMATTED_INITIATORS,
+            'iscsi', 'linux')
+
+        self.assertEqual('openstack-' + fake.UUID1, igroup_name)
+        # Source igroup created
+        self.zapi_client.create_igroup.assert_called_once_with(
+            igroup_name, 'iscsi', 'linux')
+        # Dest igroup created with same name
+        self.library.dest_zapi_client.create_igroup.assert_called_once_with(
+            igroup_name, 'iscsi', 'linux')
+        # Initiators added to both
+        self.assertEqual(len(fake.FC_FORMATTED_INITIATORS),
+                         self.zapi_client.add_igroup_initiator.call_count)
+        self.assertEqual(
+            len(fake.FC_FORMATTED_INITIATORS),
+            self.library.dest_zapi_client.add_igroup_initiator.call_count)
+
+    def test_get_or_create_igroup_active_sync_existing_dest_igroup(self):
+        """Test that active sync reuses existing dest igroup."""
+        self.zapi_client.get_igroup_by_initiators.return_value = [
+            fake.IGROUP1]
+        self.library.dest_zapi_client = mock.Mock()
+        self.library.dest_zapi_client.get_igroup_by_initiators.return_value \
+            = [fake.IGROUP1]
+
+        config = mock.Mock()
+        config.safe_get.side_effect = lambda key: {
+            'replication_device': [{'backend_id': 'backend1'}],
+            'netapp_replication_policy': 'AutomatedFailOverDuplex',
+        }.get(key)
+        self.library.configuration = config
+
+        self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=(9, 16, 1))
+        self.mock_object(
+            self.library, '_ensure_igroup_host_proximity')
+
+        igroup_name, os, ig_type = self.library._get_or_create_igroup(
+            fake.FC_FORMATTED_INITIATORS, 'fcp', 'linux')
+
+        self.assertEqual(fake.IGROUP1_NAME, igroup_name)
+        # Should NOT create new igroup on dest since one exists
+        self.library.dest_zapi_client.create_igroup.assert_not_called()
+        # Proximity should still be checked
+        self.library._ensure_igroup_host_proximity.assert_called_once()
 
     def test_get_fc_target_wwpns(self):
         self.assertRaises(NotImplementedError,
@@ -2079,3 +2279,335 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         # Verify snapshot cleanup is not called
         mock_call_snap_cleanup.assert_not_called()
+
+    def test_is_consistent_replication_enabled_true(self):
+        config = mock.Mock()
+        config.safe_get.side_effect = lambda key: {
+            'netapp_consistent_replication': True
+        }.get(key)
+        result = self.library._is_consistent_replication_enabled(config)
+        self.assertTrue(result)
+
+    def test_is_consistent_replication_enabled_false(self):
+        config = mock.Mock()
+        config.safe_get.side_effect = lambda key: {
+            'netapp_consistent_replication': False
+        }.get(key)
+        result = self.library._is_consistent_replication_enabled(config)
+        self.assertFalse(result)
+
+    @mock.patch.object(uuid, 'uuid4', mock.Mock(return_value=fake.UUID1))
+    def test_create_igroup_add_initiators_on_dest(self):
+        """Test creating igroup on destination SVM."""
+        self.library.dest_zapi_client = mock.Mock()
+        igroup_name = 'openstack-' + fake.UUID1
+
+        result = self.library._create_igroup_add_initiators_on_dest(
+            igroup_name, 'iscsi', 'linux', fake.FC_FORMATTED_INITIATORS)
+
+        self.assertEqual(igroup_name, result)
+        self.library.dest_zapi_client.create_igroup.assert_called_once_with(
+            igroup_name, 'iscsi', 'linux')
+        self.assertEqual(
+            len(fake.FC_FORMATTED_INITIATORS),
+            self.library.dest_zapi_client.add_igroup_initiator.call_count)
+
+    def test_is_automated_failover_duplex_policy_true(self):
+        config = mock.Mock()
+        config.safe_get.return_value = 'AutomatedFailOverDuplex'
+        result = self.library._is_automated_failover_duplex_policy(config)
+        self.assertTrue(result)
+
+    def test_is_automated_failover_duplex_policy_false(self):
+        config = mock.Mock()
+        config.safe_get.return_value = 'AutomatedFailOver'
+        result = self.library._is_automated_failover_duplex_policy(config)
+        self.assertFalse(result)
+
+    @mock.patch.object(
+        block_base.NetAppBlockStorageLibrary,
+        '_configure_igroup_host_proximity')
+    def test_ensure_igroup_host_proximity_afd_not_configured(
+            self, mock_configure_proximity):
+        """Test ensuring proximity for AFD policy when not configured."""
+        igroup_name = "test-igroup"
+        igroup_uuid = "uuid1"
+        destination_svm = "dest-svm"
+
+        self.library.zapi_client.get_igroup_by_name.return_value = {
+            'initiator-group-uuid': igroup_uuid
+        }
+        self.library.zapi_client.is_igroup_proximity_configured.return_value \
+            = False
+
+        config = mock.Mock()
+        config.safe_get.return_value = 'AutomatedFailOverDuplex'
+        self.library.configuration = config
+
+        self.library._ensure_igroup_host_proximity(
+            igroup_name, destination_svm)
+
+        mock_configure_proximity.assert_called_once_with(
+            igroup_name, igroup_uuid, destination_svm)
+
+    @mock.patch.object(
+        block_base.NetAppBlockStorageLibrary,
+        '_configure_igroup_host_proximity')
+    def test_ensure_igroup_host_proximity_already_configured(
+            self, mock_configure_proximity):
+        """Test when proximity is already configured."""
+        igroup_name = "test-igroup"
+        igroup_uuid = "uuid1"
+        destination_svm = "dest-svm"
+
+        self.library.zapi_client.get_igroup_by_name.return_value = {
+            'initiator-group-uuid': igroup_uuid
+        }
+        self.library.zapi_client.is_igroup_proximity_configured.return_value \
+            = True
+
+        config = mock.Mock()
+        config.safe_get.return_value = 'AutomatedFailOverDuplex'
+        self.library.configuration = config
+
+        self.library._ensure_igroup_host_proximity(
+            igroup_name, destination_svm)
+
+        # Verify igroup lookup and proximity check were performed
+        self.library.zapi_client.get_igroup_by_name.assert_called_once_with(
+            igroup_name)
+        self.library.zapi_client.is_igroup_proximity_configured\
+            .assert_called_once_with(igroup_uuid)
+        # Should not configure proximity since it is already configured
+        mock_configure_proximity.assert_not_called()
+
+    def test_ensure_igroup_host_proximity_not_afd_policy(self):
+        """Test that proximity is skipped for non-AFD policy."""
+        igroup_name = "test-igroup"
+        destination_svm = "dest-svm"
+
+        config = mock.Mock()
+        config.safe_get.return_value = 'AutomatedFailOver'
+        self.library.configuration = config
+
+        self.library._ensure_igroup_host_proximity(
+            igroup_name, destination_svm)
+
+        # Should not check proximity for non-AFD policy
+        self.library.zapi_client.is_igroup_proximity_configured \
+            .assert_not_called()
+
+    def test_ensure_igroup_host_proximity_igroup_not_found(self):
+        """Test when igroup is not found on source."""
+        igroup_name = "test-igroup"
+        destination_svm = "dest-svm"
+
+        self.library.zapi_client.get_igroup_by_name.return_value = None
+
+        config = mock.Mock()
+        config.safe_get.return_value = 'AutomatedFailOverDuplex'
+        self.library.configuration = config
+
+        self.library._ensure_igroup_host_proximity(
+            igroup_name, destination_svm)
+
+        # Should not check proximity when igroup not found
+        self.library.zapi_client.is_igroup_proximity_configured \
+            .assert_not_called()
+
+    @mock.patch.object(block_base.cmode_utils, 'get_backend_configuration')
+    def test_configure_igroup_host_proximity_no_shared_initiators(
+            self, mock_get_backend_config):
+        """Test proximity with disjoint initiators (no overlap).
+
+        Source has iqn.source1, iqn.source2 proximal to source SVM.
+        Destination has iqn.dest1, iqn.dest2 proximal to dest SVM.
+        No initiator appears in both configs, so no peer_svms should be set.
+        """
+        igroup_name = "test-igroup"
+        igroup_uuid = "uuid1"
+        destination_svm = "dest-svm"
+        source_svm = "source-svm"
+        dest_igroup_uuid = "dest-uuid1"
+
+        # Setup library with dest_zapi_client
+        self.library.dest_zapi_client = mock.Mock()
+
+        # Setup source vserver
+        self.library.configuration.netapp_vserver = source_svm
+
+        # Setup source config using mock_object pattern
+        self.mock_object(
+            self.library.configuration, 'safe_get',
+            mock.Mock(side_effect=lambda key: {
+                'netapp_proximal_nodes': ['iqn.source1', 'iqn.source2'],
+                'replication_device': [{'backend_id': 'dest_backend'}]
+            }.get(key)))
+
+        # Setup destination config
+        dest_config = mock.Mock()
+        dest_config.netapp_vserver = destination_svm
+        dest_config.safe_get.return_value = ['iqn.dest1', 'iqn.dest2']
+        mock_get_backend_config.return_value = dest_config
+
+        # Setup destination igroup
+        self.library.dest_zapi_client.get_igroup_by_name.return_value = {
+            'initiator-group-uuid': dest_igroup_uuid
+        }
+
+        self.library._configure_igroup_host_proximity(
+            igroup_name, igroup_uuid, destination_svm)
+
+        # Verify source igroup proximity was set with local initiators
+        # and NO peer_svms (None) since no shared initiators
+        (self.library.zapi_client.set_igroup_host_proximity
+            .assert_called_once_with(
+                igroup_uuid, ['iqn.source1', 'iqn.source2'], None))
+
+        # Verify destination igroup proximity was set with peer initiators
+        # and NO peer_svms (None) since no shared initiators
+        (self.library.dest_zapi_client.set_igroup_host_proximity
+            .assert_called_once_with(
+                dest_igroup_uuid, ['iqn.dest1', 'iqn.dest2'], None))
+
+    @mock.patch.object(block_base.cmode_utils, 'get_backend_configuration')
+    def test_configure_igroup_host_proximity_shared_initiators(
+            self, mock_get_backend_config):
+        """Test proximity when some initiators appear in both configs.
+
+        iqn.shared1 appears in both source and dest netapp_proximal_nodes
+        (host connected to both sites). It should get peer_svms set.
+        iqn.source_only is only in source config - no peer_svms.
+        iqn.dest_only is only in dest config - no peer_svms.
+        """
+        igroup_name = "test-igroup"
+        igroup_uuid = "uuid1"
+        destination_svm = "dest-svm"
+        source_svm = "source-svm"
+        dest_igroup_uuid = "dest-uuid1"
+
+        self.library.dest_zapi_client = mock.Mock()
+        self.library.configuration.netapp_vserver = source_svm
+
+        # Source has iqn.source_only + iqn.shared1
+        self.mock_object(
+            self.library.configuration, 'safe_get',
+            mock.Mock(side_effect=lambda key: {
+                'netapp_vserver': source_svm,
+                'netapp_proximal_nodes': ['iqn.source_only', 'iqn.shared1'],
+                'replication_device': [{'backend_id': 'dest_backend'}]
+            }.get(key)))
+
+        # Destination has iqn.dest_only + iqn.shared1
+        dest_config = mock.Mock()
+        dest_config.netapp_vserver = destination_svm
+        dest_config.safe_get.return_value = ['iqn.dest_only', 'iqn.shared1']
+        mock_get_backend_config.return_value = dest_config
+
+        self.library.dest_zapi_client.get_igroup_by_name.return_value = {
+            'initiator-group-uuid': dest_igroup_uuid
+        }
+
+        self.library._configure_igroup_host_proximity(
+            igroup_name, igroup_uuid, destination_svm)
+
+        # Source igroup should get two calls:
+        # 1. iqn.source_only with no peer_svms (local only)
+        # 2. iqn.shared1 with peer_svms=[dest-svm] (shared)
+        src_calls = self.library.zapi_client \
+            .set_igroup_host_proximity.call_args_list
+        self.assertEqual(2, len(src_calls))
+        self.assertEqual(
+            mock.call(igroup_uuid, ['iqn.source_only'], None),
+            src_calls[0])
+        self.assertEqual(
+            mock.call(igroup_uuid, ['iqn.shared1'], destination_svm),
+            src_calls[1])
+
+        # Destination igroup should get two calls:
+        # 1. iqn.dest_only with no peer_svms (local only)
+        # 2. iqn.shared1 with peer_svms=[source-svm] (shared)
+        dest_calls = self.library.dest_zapi_client \
+            .set_igroup_host_proximity.call_args_list
+        self.assertEqual(2, len(dest_calls))
+        self.assertEqual(
+            mock.call(dest_igroup_uuid, ['iqn.dest_only'], None),
+            dest_calls[0])
+        self.assertEqual(
+            mock.call(dest_igroup_uuid, ['iqn.shared1'], source_svm),
+            dest_calls[1])
+
+    @mock.patch.object(block_base.cmode_utils, 'get_backend_configuration')
+    def test_configure_igroup_host_proximity_all_shared(
+            self, mock_get_backend_config):
+        """Test proximity when ALL initiators appear in both configs.
+
+        Both iqn.host1 and iqn.host2 appear in source and dest configs.
+        All should get peer_svms set, and no local-only call should be made.
+        """
+        igroup_name = "test-igroup"
+        igroup_uuid = "uuid1"
+        destination_svm = "dest-svm"
+        source_svm = "source-svm"
+        dest_igroup_uuid = "dest-uuid1"
+
+        self.library.dest_zapi_client = mock.Mock()
+        self.library.configuration.netapp_vserver = source_svm
+
+        self.mock_object(
+            self.library.configuration, 'safe_get',
+            mock.Mock(side_effect=lambda key: {
+                'netapp_vserver': source_svm,
+                'netapp_proximal_nodes': ['iqn.host1', 'iqn.host2'],
+                'replication_device': [{'backend_id': 'dest_backend'}]
+            }.get(key)))
+
+        dest_config = mock.Mock()
+        dest_config.netapp_vserver = destination_svm
+        dest_config.safe_get.return_value = ['iqn.host1', 'iqn.host2']
+        mock_get_backend_config.return_value = dest_config
+
+        self.library.dest_zapi_client.get_igroup_by_name.return_value = {
+            'initiator-group-uuid': dest_igroup_uuid
+        }
+
+        self.library._configure_igroup_host_proximity(
+            igroup_name, igroup_uuid, destination_svm)
+
+        # Source igroup: only shared call with peer_svms
+        (self.library.zapi_client.set_igroup_host_proximity
+            .assert_called_once_with(
+                igroup_uuid, ['iqn.host1', 'iqn.host2'], destination_svm))
+
+        # Destination igroup: only shared call with peer_svms
+        (self.library.dest_zapi_client.set_igroup_host_proximity
+            .assert_called_once_with(
+                dest_igroup_uuid, ['iqn.host1', 'iqn.host2'], source_svm))
+
+    def test_configure_igroup_host_proximity_no_initiators(self):
+        igroup_name = "test-igroup"
+        igroup_uuid = "uuid1"
+        destination_svm = "dest-svm"
+        source_svm = "source-svm"
+
+        # Setup library with dest_zapi_client
+        self.library.dest_zapi_client = mock.Mock()
+
+        # Setup source vserver
+        self.library.configuration.netapp_vserver = source_svm
+
+        # No proximity initiators configured
+        self.mock_object(
+            self.library.configuration, 'safe_get',
+            mock.Mock(side_effect=lambda key: {
+                'netapp_proximal_nodes': [],
+                'replication_device': []
+            }.get(key)))
+
+        self.library._configure_igroup_host_proximity(
+            igroup_name, igroup_uuid, destination_svm)
+
+        # Verify no proximity calls were made
+        self.library.zapi_client.set_igroup_host_proximity.assert_not_called()
+        (self.library.dest_zapi_client.set_igroup_host_proximity
+            .assert_not_called())
