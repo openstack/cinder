@@ -2085,8 +2085,6 @@ class HPE3PARCommon(object):
             
             if max_bw:
                 qosRule['bwMaxLimitKB'] = int(max_bw) * units.Ki
-
-
         else:
             # 3PAR/Primera/Alletra 9k: Use traditional QoS parameters
             if min_io:
