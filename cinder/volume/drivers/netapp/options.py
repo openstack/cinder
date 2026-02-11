@@ -334,12 +334,25 @@ netapp_replication_opts = [
                     'create to complete and go online.'),
     cfg.StrOpt('netapp_replication_policy',
                default='MirrorAllSnapshots',
+               choices=['AutomatedFailOver', 'AutomatedFailOverDuplex',
+                        'Asynchronous', 'MirrorAllSnapshots'],
                help='This option defines the replication policy to be used '
-                    'while creating snapmirror relationship. Default is '
-                    'MirrorAllSnapshots which is based on async-mirror.'
-                    'User can pass values like Sync, StrictSync for '
-                    'synchronous snapmirror relationship (SM-S) to achieve '
-                    'zero RPO')]
+                    'while creating snapmirror relationship. Allowed values: '
+                    'AutomatedFailOver (SnapMirror active sync for automatic '
+                    'failover), AutomatedFailOverDuplex (active sync with '
+                    'bidirectional synchronous replication), '
+                    'Asynchronous (async with hourly schedule), '
+                    'MirrorAllSnapshots '
+                    '(default, async mirroring all snapshots and latest '
+                    'active file system).'),
+    cfg.BoolOpt('netapp_consistent_replication',
+                default='False',
+                help='This option defines the way the replication of '
+                     'volume pools in the backend stanza will be done.'
+                     'If set to True, a single consistency group will be '
+                     'created to map to all the FlexVol volumes in the pool '
+                     'and protected with the replication policy defined.'
+                     'Valid values are True/False. Default is False.')]
 
 netapp_support_opts = [
     cfg.StrOpt('netapp_api_trace_pattern',

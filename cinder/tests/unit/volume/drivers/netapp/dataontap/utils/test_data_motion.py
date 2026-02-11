@@ -18,6 +18,7 @@ import ddt
 from oslo_config import cfg
 
 from cinder import exception
+from cinder.objects import fields
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
@@ -51,8 +52,8 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.mock_cmode_client = self.mock_object(client_cmode, 'Client')
         self.src_flexvol_name = 'volume_c02d497a_236c_4852_812a_0d39373e312a'
         self.dest_flexvol_name = self.src_flexvol_name
-        self.src_cg = ''
-        self.dest_cg = ''
+        self.src_cg = None
+        self.dest_cg = None
         self.active_sync_policy = False
         self.replication_policy = 'MirrorAllSnapshots'
         self.mock_src_client = mock.Mock()
@@ -64,6 +65,22 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.mock_object(utils, 'get_client_for_backend',
                          side_effect=[self.mock_dest_client,
                                       self.mock_src_client])
+
+        # Mock StorageObjectType since it's not defined in na_utils
+        storage_object_type_mock = mock.Mock()
+        storage_object_type_mock.VOLUME = 'volume'
+        self.storage_type_patcher = mock.patch.object(
+            na_utils, 'StorageObjectType', storage_object_type_mock,
+            create=True)
+        self.storage_type_patcher.start()
+        self.addCleanup(self.storage_type_patcher.stop)
+
+        # Mock create_cg_path function
+        self.cg_path_patcher = mock.patch.object(
+            na_utils, 'create_cg_path',
+            lambda cg_name: f'/cg/{cg_name}', create=True)
+        self.cg_path_patcher.start()
+        self.addCleanup(self.cg_path_patcher.stop)
 
     def _setup_mock_config(self):
         self.mock_src_config = configuration.Configuration(
@@ -147,6 +164,146 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         self.assertDictEqual(expected_stats, actual_stats)
 
+    @ddt.data(
+        {'configured_policy': 'AutomatedFailOver',
+         'expected': 'AutomatedFailOver'},
+        {'configured_policy': 'MirrorAllSnapshots',
+         'expected': 'MirrorAllSnapshots'},
+        {'configured_policy': None, 'expected': 'MirrorAllSnapshots'},
+    )
+    @ddt.unpack
+    def test_get_replication_policy(self, configured_policy, expected):
+        CONF.set_override('netapp_replication_policy', configured_policy,
+                          group=self.src_backend)
+        result = self.dm_mixin.get_replication_policy(self.config)
+        self.assertEqual(expected, result)
+
+    @ddt.data(
+        {'policy': 'AutomatedFailOver', 'expected': True},
+        {'policy': 'AutomatedFailOverDuplex', 'expected': True},
+        {'policy': 'Asynchronous', 'expected': False},
+        {'policy': 'MirrorAllSnapshots', 'expected': False},
+    )
+    @ddt.unpack
+    def test_is_active_sync_asymmetric_policy(self, policy, expected):
+        result = self.dm_mixin.is_active_sync_asymmetric_policy(policy)
+        self.assertEqual(expected, result)
+
+    def test_validate_no_conflicting_snapmirrors_no_replication(self):
+        """Test validation passes when no replication configured."""
+        self.mock_object(self.dm_mixin, 'get_replication_backend_names',
+                         return_value=[])
+
+        # Should return without error
+        self.dm_mixin.validate_no_conflicting_snapmirrors(
+            self.config, self.src_backend, ['vol1', 'vol2'])
+
+    def test_validate_no_conflicting_snapmirrors_no_existing_mirrors(self):
+        """Test validation passes when no SnapMirrors exist."""
+        self.mock_object(self.dm_mixin, 'get_replication_backend_names',
+                         return_value=[self.dest_backend])
+        self.mock_object(utils, 'get_backend_configuration',
+                         side_effect=[self.mock_src_config,
+                                      self.mock_dest_config])
+        self.mock_object(utils, 'get_client_for_backend',
+                         return_value=self.mock_src_client)
+        self.mock_src_client.get_snapmirrors.return_value = []
+
+        # Should return without error
+        self.dm_mixin.validate_no_conflicting_snapmirrors(
+            self.config, self.src_backend, ['vol1', 'vol2'])
+
+        self.assertEqual(2, self.mock_src_client.get_snapmirrors.call_count)
+
+    def test_validate_no_conflicting_snapmirrors_cinder_naming_match(self):
+        """Test validation passes when existing mirrors match Cinder naming."""
+        self.mock_object(self.dm_mixin, 'get_replication_backend_names',
+                         return_value=[self.dest_backend])
+        self.mock_object(utils, 'get_backend_configuration',
+                         side_effect=[self.mock_src_config,
+                                      self.mock_dest_config])
+        self.mock_object(utils, 'get_client_for_backend',
+                         return_value=self.mock_src_client)
+
+        # SnapMirror with matching volume names (Cinder convention)
+        existing_mirror = [{
+            'destination-vserver': self.dest_vserver,
+            'destination-volume': 'vol1',  # Same as source
+            'mirror-state': 'snapmirrored'
+        }]
+        self.mock_src_client.get_snapmirrors.return_value = existing_mirror
+
+        # Should return without error
+        self.dm_mixin.validate_no_conflicting_snapmirrors(
+            self.config, self.src_backend, ['vol1'])
+
+    def test_validate_no_conflicting_snapmirrors_manual_different_name(
+            self):
+        """Test validation when manual mirrors have different dest names.
+
+        Test validation fails when manual mirrors have different dest names.
+        """
+        self.mock_object(self.dm_mixin, 'get_replication_backend_names',
+                         return_value=[self.dest_backend])
+        self.mock_object(utils, 'get_backend_configuration',
+                         side_effect=[self.mock_src_config,
+                                      self.mock_dest_config])
+        self.mock_object(utils, 'get_client_for_backend',
+                         return_value=self.mock_src_client)
+
+        # SnapMirror with DIFFERENT destination name (manual/brownfield)
+        existing_mirror = [{
+            'destination-vserver': self.dest_vserver,
+            'destination-volume': 'manually_created_dest',  # Different!
+            'mirror-state': 'snapmirrored'
+        }]
+        self.mock_src_client.get_snapmirrors.return_value = existing_mirror
+
+        # Should raise NetAppDriverException
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.dm_mixin.validate_no_conflicting_snapmirrors,
+            self.config, self.src_backend, ['vol1'])
+
+    def test_validate_no_conflicting_snapmirrors_api_error_continues(self):
+        """Test validation continues when API error occurs querying mirrors."""
+        self.mock_object(self.dm_mixin, 'get_replication_backend_names',
+                         return_value=[self.dest_backend])
+        self.mock_object(utils, 'get_backend_configuration',
+                         side_effect=[self.mock_src_config,
+                                      self.mock_dest_config])
+        self.mock_object(utils, 'get_client_for_backend',
+                         return_value=self.mock_src_client)
+
+        # API error should not block validation
+        self.mock_src_client.get_snapmirrors.side_effect = (
+            netapp_api.NaApiError(code=13005, message='Permission denied'))
+
+        # Should return without error (logged as warning)
+        self.dm_mixin.validate_no_conflicting_snapmirrors(
+            self.config, self.src_backend, ['vol1'])
+
+    def test_validate_no_conflicting_snapmirrors_unconfigured_vserver(self):
+        """Test validation handles mirrors to unconfigured vservers."""
+        self.mock_object(self.dm_mixin, 'get_replication_backend_names',
+                         return_value=[self.dest_backend])
+        self.mock_object(utils, 'get_backend_configuration',
+                         side_effect=[self.mock_src_config,
+                                      self.mock_dest_config])
+        self.mock_object(utils, 'get_client_for_backend',
+                         return_value=self.mock_src_client)
+
+        # SnapMirror to unconfigured vserver but Cinder naming
+        existing_mirror = [{
+            'destination-vserver': 'unconfigured_vserver',
+            'destination-volume': 'vol1',  # Matches Cinder naming
+            'mirror-state': 'snapmirrored'
+        }]
+        self.mock_src_client.get_snapmirrors.return_value = existing_mirror
+
+        self.dm_mixin.validate_no_conflicting_snapmirrors(
+            self.config, self.src_backend, ['vol1'])
+
     @ddt.data(None, [],
               [{'backend_id': 'replication_backend_2', 'aggr2': 'aggr20'}])
     def test_get_replication_aggregate_map_none(self, replication_aggr_map):
@@ -214,17 +371,15 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                 self.dest_flexvol_name, pool_is_flexgroup=is_flexgroup)
         else:
             self.assertFalse(create_destination_flexvol.called)
-        sync_mirror = False
+        # With the fix for error 13001, relationship_type is always XDP now
         mock_dest_client.create_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
             self.dest_flexvol_name,
-            self.src_cg,
-            self.dest_cg,
+            None,
+            None,
             schedule='hourly',
             policy=self.replication_policy,
-            relationship_type=('extended_data_protection'
-                               if is_flexgroup or sync_mirror
-                               else 'data_protection'))
+            relationship_type='extended_data_protection')
         mock_dest_client.initialize_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
             self.dest_flexvol_name, self.active_sync_policy)
@@ -271,9 +426,9 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.assertFalse(create_destination_flexvol.called)
         mock_dest_client.create_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
-            self.dest_flexvol_name, self.src_cg, self.dest_cg,
+            self.dest_flexvol_name, None, None,
             schedule='hourly', policy=self.replication_policy,
-            relationship_type='data_protection')
+            relationship_type='extended_data_protection')
 
         mock_dest_client.initialize_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
@@ -306,18 +461,12 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.assertFalse(self.dm_mixin.create_destination_flexvol.called)
         if mirror_state == 'snapmirrored':
             self.assertFalse(mock_dest_client.resume_snapmirror.called)
-            self.assertFalse(mock_dest_client.resync_snapmirror.called)
         else:
             mock_dest_client.resume_snapmirror.assert_called_once_with(
                 self.src_vserver, self.src_flexvol_name,
                 self.dest_vserver, self.dest_flexvol_name)
-            mock_dest_client.resync_snapmirror.assert_called_once_with(
-                self.src_vserver, self.src_flexvol_name,
-                self.dest_vserver, self.dest_flexvol_name)
 
-    @ddt.data('resume_snapmirror', 'resync_snapmirror')
-    def test_create_snapmirror_snapmirror_exists_repair_exception(self,
-                                                                  failed_call):
+    def test_create_snapmirror_snapmirror_exists_repair_exception(self):
         mock_dest_client = mock.Mock()
         mock_exception_log = self.mock_object(data_motion.LOG, 'exception')
         existing_snapmirrors = [{'mirror-state': 'broken-off'}]
@@ -328,7 +477,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                          return_value=True)
         self.mock_object(mock_dest_client, 'get_snapmirrors',
                          return_value=existing_snapmirrors)
-        self.mock_object(mock_dest_client, failed_call,
+        self.mock_object(mock_dest_client, 'resume_snapmirror',
                          side_effect=netapp_api.NaApiError)
 
         self.dm_mixin.create_snapmirror(self.src_backend,
@@ -343,10 +492,6 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         mock_dest_client.resume_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name,
             self.dest_vserver, self.dest_flexvol_name)
-        if failed_call == 'resync_snapmirror':
-            mock_dest_client.resync_snapmirror.assert_called_once_with(
-                self.src_vserver, self.src_flexvol_name,
-                self.dest_vserver, self.dest_flexvol_name)
         self.assertEqual(1, mock_exception_log.call_count)
 
     def test_delete_snapmirror(self):
@@ -621,7 +766,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
     def test_break_snapmirror(self):
         self.mock_object(self.dm_mixin, 'quiesce_then_abort')
-
+        self.dm_mixin.configuration = self.config
         self.dm_mixin.break_snapmirror(self.src_backend,
                                        self.dest_backend,
                                        self.src_flexvol_name,
@@ -638,7 +783,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
     def test_break_snapmirror_wait_for_quiesced(self):
         self.mock_object(self.dm_mixin, 'quiesce_then_abort')
-
+        self.dm_mixin.configuration = self.config
         self.dm_mixin.break_snapmirror(self.src_backend,
                                        self.dest_backend,
                                        self.src_flexvol_name,
@@ -1065,6 +1210,8 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.get_replication_backend_names = mock.Mock(return_value=
                                                        ["backend1"])
 
+        self.dm_mixin.configuration = self.config
+
         # Call the method
         result = self.dm_mixin._failover_host(volumes, secondary_id)
 
@@ -1199,6 +1346,8 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         """Tests failover to default sets the old primary as a new primary"""
         # Mock the required attributes
         self.dm_mixin.backend_name = "backend1"
+        self.dm_mixin.configuration = self.config
+
         secondary_id = "default"
         volumes = [{'id': 'volume1', 'host': 'backend1#pool1'}]
 
@@ -1595,3 +1744,1015 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             dataontap_fakes.DEST_BACKEND_NAME)
         self.assertTrue(migrated)
         self.assertEqual({}, updates)
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       '_get_create_snapmirror_for_cg_client')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_create_snapmirror_for_cg_automated_failover(
+            self, mock_get_backend_configuration, mock_get_client_for_backend,
+            mock_get_create_snapmirror_for_cg_client
+    ):
+
+        src_backend = 'src_backend'
+        dst_backend = 'dst_backend'
+        src_vserver = 'source_vserver'
+        dst_vserver = 'dest_vserver'
+        src_cg = 'cg_src'
+        dst_cg = 'cg_dst'
+        policy = 'AutomatedFailOver'
+
+        mock_get_backend_configuration.side_effect = [
+            self.mock_dest_config,  # dest
+            self.mock_src_config,  # source
+        ]
+
+        dest_client = mock.Mock()
+        dest_client.get_snapmirrors.return_value = []
+        mock_get_client_for_backend.return_value = dest_client
+
+        create_client = mock.Mock()
+        mock_get_create_snapmirror_for_cg_client.return_value = create_client
+
+        self.dm_mixin.create_snapmirror_for_cg(
+            src_backend_name=src_backend,
+            dest_backend_name=dst_backend,
+            src_cg_name=src_cg,
+            dest_cg_name=dst_cg,
+            storage_object_type='volume',
+            storage_object_names=['vol1', 'vol2'],
+            replication_policy=policy,
+        )
+
+        mock_get_backend_configuration.assert_has_calls([
+            mock.call(dst_backend),
+            mock.call(src_backend),
+        ])
+        mock_get_client_for_backend.assert_called_once_with(
+            dst_backend, vserver_name=dst_vserver, force_rest=True
+        )
+        dest_client.get_snapmirrors.assert_called_once_with(
+            src_vserver, '/cg/' + src_cg, dst_vserver, '/cg/' + dst_cg
+        )
+        mock_get_create_snapmirror_for_cg_client.assert_called_once_with(
+            dest_client, 'volume'
+        )
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'create_snapmirror_for_cg')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        '_consistent_replication_precheck_for_automated_failover_policy')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_policy')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_backend_names')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_ensure_consistent_replication_snapmirrors_automated_failover_single_cg_used(  # noqa: E501
+            self, mock_get_backend_configuration,
+            mock_get_client_for_backend,
+            mock_get_replication_backend_names,
+            mock_get_replication_policy,
+            mock_precheck_automated_failover,
+            mock_create_snapmirror_for_cg):
+
+        src_backend = 'src_backend'
+        dst_backend = 'dst_backend'
+        src_vserver = 'source_vserver'
+        policy = 'AutomatedFailOver'
+        storage_object_type = na_utils.StorageObjectType.VOLUME
+        storage_object_names = ['vol1', 'vol2']
+        existing_cg = 'cg_existing'
+
+        mock_get_replication_backend_names.return_value = [dst_backend]
+        mock_get_replication_policy.return_value = policy
+
+        mock_get_backend_configuration.return_value = self.mock_src_config
+
+        src_client = mock.Mock()
+        src_client.get_flexvols_cg_info.return_value = [
+            {'flexvol_name': 'vol1', 'cg_name': existing_cg},
+            {'flexvol_name': 'vol2', 'cg_name': existing_cg},
+        ]
+        src_client.create_ontap_consistency_group = mock.Mock()
+        src_client.expand_ontap_consistency_group = mock.Mock()
+
+        mock_get_client_for_backend.return_value = src_client
+
+        config = mock.Mock()
+
+        self.dm_mixin.ensure_consistent_replication_snapmirrors(
+            config=config,
+            src_backend_name=src_backend,
+            storage_object_type=storage_object_type,
+            storage_object_names=storage_object_names,
+        )
+
+        mock_get_replication_backend_names.assert_called_once_with(config)
+        mock_get_replication_policy.assert_called_once_with(config)
+
+        mock_get_backend_configuration.assert_called_with(src_backend)
+
+        mock_get_client_for_backend.assert_called_once_with(
+            src_backend, vserver_name=src_vserver, force_rest=True
+        )
+
+        src_client.get_flexvols_cg_info.assert_called_once_with(
+            storage_object_names)
+        src_client.create_ontap_consistency_group.assert_not_called()
+
+        mock_precheck_automated_failover.assert_called_once_with(
+            src_backend, [
+                dst_backend], storage_object_type, storage_object_names
+        )
+
+        mock_create_snapmirror_for_cg.assert_called_once_with(
+            src_backend, dst_backend,
+            existing_cg, existing_cg,
+            storage_object_type, storage_object_names, policy
+        )
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'create_snapmirror_for_cg')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        '_consistent_replication_precheck_for_automated_failover_policy')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_policy')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_backend_names')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_ensure_consistent_replication_snapmirrors_af_new_cg_create(
+            self, mock_get_backend_configuration, mock_get_client_for_backend,
+            mock_get_replication_backend_names, mock_get_replication_policy,
+            mock_precheck_automated_failover, mock_create_snapmirror_for_cg):
+
+        src_backend = 'src_backend'
+        dst_backend = 'dst_backend'
+        src_vserver = 'source_vserver'
+        policy = 'AutomatedFailOver'
+        storage_object_type = na_utils.StorageObjectType.VOLUME
+        storage_object_names = ['vol1', 'vol2']
+
+        mock_get_replication_backend_names.return_value = [dst_backend]
+        mock_get_replication_policy.return_value = policy
+        mock_get_backend_configuration.return_value = self.mock_src_config
+
+        src_client = mock.Mock()
+        src_client.get_flexvols_cg_info.return_value = [
+            {'flexvol_name': 'vol1', 'cg_name': None},
+            {'flexvol_name': 'vol2', 'cg_name': None},
+        ]
+        src_client.create_ontap_consistency_group = mock.Mock()
+        src_client.expand_ontap_consistency_group = mock.Mock()
+        mock_get_client_for_backend.return_value = src_client
+
+        config = mock.Mock()
+
+        with (mock.patch.object(data_motion.timeutils, 'utcnow')
+              as mock_utcnow):
+            mock_now = mock.Mock()
+            mock_now.timestamp.return_value = 1234567890
+            mock_utcnow.return_value = mock_now
+
+            self.dm_mixin.ensure_consistent_replication_snapmirrors(
+                config=config,
+                src_backend_name=src_backend,
+                storage_object_type=storage_object_type,
+                storage_object_names=storage_object_names,
+            )
+
+        expected_cg = 'cg_cinder_pool_1234567890'
+
+        src_client.create_ontap_consistency_group.assert_called_once_with(
+            src_vserver, storage_object_names, expected_cg
+        )
+
+        mock_precheck_automated_failover.assert_called_once_with(
+            src_backend, [
+                dst_backend], storage_object_type, storage_object_names
+        )
+
+        mock_create_snapmirror_for_cg.assert_called_once_with(
+            src_backend, dst_backend,
+            expected_cg, expected_cg,
+            storage_object_type, storage_object_names, policy
+        )
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'create_snapmirror_for_cg')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_policy')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_backend_names')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_ensure_consistent_replication_async_single_cg_multiple_destination(  # noqa: E501
+            self, mock_get_backend_configuration, mock_get_client_for_backend,
+            mock_get_replication_backend_names, mock_get_replication_policy,
+            mock_create_snapmirror_for_cg):
+
+        src_backend = 'src_backend'
+        dst_backend_1 = 'dst_backend_1'
+        dst_backend_2 = 'dst_backend_2'
+        policy = 'MirrorAllSnapshots'
+        storage_object_type = na_utils.StorageObjectType.VOLUME
+        storage_object_names = ['vol1', 'vol2']
+        existing_cg = 'cg_existing'
+
+        mock_get_replication_backend_names.return_value = [
+            dst_backend_1, dst_backend_2]
+        mock_get_replication_policy.return_value = policy
+        mock_get_backend_configuration.return_value = self.mock_src_config
+
+        src_client = mock.Mock()
+        src_client.get_flexvols_cg_info.return_value = [
+            {'flexvol_name': 'vol1', 'cg_name': existing_cg},
+            {'flexvol_name': 'vol2', 'cg_name': existing_cg},
+        ]
+        src_client.create_ontap_consistency_group = mock.Mock()
+        src_client.expand_ontap_consistency_group = mock.Mock()
+        mock_get_client_for_backend.return_value = src_client
+
+        config = mock.Mock()
+
+        self.dm_mixin.ensure_consistent_replication_snapmirrors(
+            config=config,
+            src_backend_name=src_backend,
+            storage_object_type=storage_object_type,
+            storage_object_names=storage_object_names,
+        )
+
+        src_client.create_ontap_consistency_group.assert_not_called()
+
+        mock_create_snapmirror_for_cg.assert_has_calls([
+            mock.call(src_backend, dst_backend_1,
+                      existing_cg, existing_cg,
+                      storage_object_type, storage_object_names, policy),
+            mock.call(src_backend, dst_backend_2,
+                      existing_cg, existing_cg,
+                      storage_object_type, storage_object_names, policy),
+        ])
+        self.assertEqual(2, mock_create_snapmirror_for_cg.call_count)
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'create_snapmirror_for_cg')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_policy')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_backend_names')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_ensure_consistent_replication_async_create_cg_with_mult_dest(
+            self, mock_get_backend_configuration, mock_get_client_for_backend,
+            mock_get_replication_backend_names, mock_get_replication_policy,
+            mock_create_snapmirror_for_cg):
+
+        src_backend = 'src_backend'
+        dst_backend_1 = 'dst_backend_1'
+        dst_backend_2 = 'dst_backend_2'
+        src_vserver = 'source_vserver'
+        policy = 'MirrorAllSnapshots'
+        storage_object_type = na_utils.StorageObjectType.VOLUME
+        storage_object_names = ['vol1', 'vol2']
+
+        mock_get_replication_backend_names.return_value = [
+            dst_backend_1, dst_backend_2]
+        mock_get_replication_policy.return_value = policy
+        mock_get_backend_configuration.return_value = self.mock_src_config
+
+        src_client = mock.Mock()
+        src_client.get_flexvols_cg_info.return_value = [
+            {'flexvol_name': 'vol1', 'cg_name': None},
+            {'flexvol_name': 'vol2', 'cg_name': None},
+        ]
+        src_client.create_ontap_consistency_group = mock.Mock()
+        src_client.expand_ontap_consistency_group = mock.Mock()
+        mock_get_client_for_backend.return_value = src_client
+
+        config = mock.Mock()
+
+        with (mock.patch.object(data_motion.timeutils, 'utcnow')
+              as mock_utcnow):
+            mock_now = mock.Mock()
+            mock_now.timestamp.return_value = 42
+            mock_utcnow.return_value = mock_now
+
+            self.dm_mixin.ensure_consistent_replication_snapmirrors(
+                config=config,
+                src_backend_name=src_backend,
+                storage_object_type=storage_object_type,
+                storage_object_names=storage_object_names,
+            )
+
+        expected_cg = 'cg_cinder_pool_42'
+
+        src_client.create_ontap_consistency_group.assert_called_once_with(
+            src_vserver, storage_object_names, expected_cg
+        )
+
+        mock_create_snapmirror_for_cg.assert_has_calls([
+            mock.call(src_backend, dst_backend_1,
+                      expected_cg, expected_cg,
+                      storage_object_type, storage_object_names, policy),
+            mock.call(src_backend, dst_backend_2,
+                      expected_cg, expected_cg,
+                      storage_object_type, storage_object_names, policy),
+        ])
+        self.assertEqual(2, mock_create_snapmirror_for_cg.call_count)
+
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        '_consistent_replication_precheck_for_automated_failover_policy'
+    )
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_policy')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_backend_names')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'create_snapmirror_for_cg')
+    def test_ensure_consistent_replication_snapmirrors_af_precheck_error(
+            self, mock_create_snapmirror_for_cg,
+            mock_get_backend_configuration,
+            mock_get_client_for_backend,
+            mock_get_replication_backend_names,
+            mock_get_replication_policy, mock_precheck):
+        src_backend = 'src_backend'
+        dst_backend = 'dst_backend'
+        src_vserver = 'source_vserver'
+        policy = 'AutomatedFailOver'
+        storage_object_type = na_utils.StorageObjectType.VOLUME
+        storage_object_names = ['vol1', 'vol2']
+
+        mock_get_replication_backend_names.return_value = [dst_backend]
+        mock_get_replication_policy.return_value = policy
+
+        src_backend_conf = mock.Mock()
+        src_backend_conf.netapp_vserver = src_vserver
+        mock_get_backend_configuration.return_value = src_backend_conf
+
+        src_client = mock.Mock()
+        src_client.get_flexvols_cg_info.return_value = [
+            {'flexvol_name': 'vol1', 'cg_name': 'cg_1'},
+            {'flexvol_name': 'vol2', 'cg_name': 'cg_1'},
+        ]
+        mock_get_client_for_backend.return_value = src_client
+
+        mock_precheck.side_effect = na_utils.NetAppDriverException(
+            message='precheck failed'
+        )
+
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.dm_mixin.ensure_consistent_replication_snapmirrors,
+            mock.Mock(), src_backend, storage_object_type, storage_object_names
+        )
+
+        mock_precheck.assert_called_once_with(
+            src_backend, [
+                dst_backend], storage_object_type, storage_object_names
+        )
+        mock_create_snapmirror_for_cg.assert_not_called()
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_policy')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_backend_names')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'create_snapmirror_for_cg')
+    def test_ensure_consistent_replication_snapmirrors_async_multiple_cgs_error(  # noqa: E501
+            self, mock_create_snapmirror_for_cg,
+            mock_get_backend_configuration,
+            mock_get_client_for_backend, mock_get_replication_backend_names,
+            mock_get_replication_policy
+    ):
+        src_backend = 'src_backend'
+        dst_backend_1 = 'dst_backend_1'
+        dst_backend_2 = 'dst_backend_2'
+        src_vserver = 'source_vserver'
+        policy = 'MirrorAllSnapshots'
+        storage_object_type = na_utils.StorageObjectType.VOLUME
+        storage_object_names = ['vol1', 'vol2']
+
+        mock_get_replication_backend_names.return_value = [
+            dst_backend_1, dst_backend_2]
+        mock_get_replication_policy.return_value = policy
+
+        src_backend_conf = mock.Mock()
+        src_backend_conf.netapp_vserver = src_vserver
+        mock_get_backend_configuration.return_value = src_backend_conf
+
+        src_client = mock.Mock()
+        src_client.get_flexvols_cg_info.return_value = [
+            {'flexvol_name': 'vol1', 'cg_name': 'cg_A'},
+            {'flexvol_name': 'vol2', 'cg_name': 'cg_B'},
+        ]
+        mock_get_client_for_backend.return_value = src_client
+
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.dm_mixin.ensure_consistent_replication_snapmirrors,
+            mock.Mock(), src_backend, storage_object_type, storage_object_names
+        )
+
+        src_client.create_ontap_consistency_group.assert_not_called()
+        src_client.expand_ontap_consistency_group.assert_not_called()
+        mock_create_snapmirror_for_cg.assert_not_called()
+
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'ssc_library', create=True)
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'configuration', create=True)
+    def test_complete_failover_active_sync_planned_success(
+            self,
+            mock_configuration,
+            mock_ssc_library,
+            mock_get_client_for_backend,
+            mock_get_backend_configuration,
+    ):
+        dm = data_motion.DataMotionMixin()
+
+        mock_configuration.netapp_disaggregated_platform = False
+        mock_ssc_library.get_ssc_flexvol_names.return_value = ['flexA']
+
+        src_client = mock.Mock()
+        dst_client = mock.Mock()
+        src_client.get_flexvols_cg_info.return_value = [{'cg_name': 'cgA'}]
+        mock_get_client_for_backend.side_effect = [src_client, dst_client]
+
+        src_cfg = mock.Mock()
+        src_cfg.netapp_vserver = 'svm_src'
+        dst_cfg = mock.Mock()
+        dst_cfg.netapp_vserver = 'svm_dst'
+        mock_get_backend_configuration.side_effect = [src_cfg, dst_cfg]
+
+        volumes = [{'id': 'v1'}, {'id': 'v2'}]
+        active, updates = dm._complete_failover_active_sync(
+            'src_backend',
+            'dst_backend', volumes)
+
+        self.assertEqual('dst_backend', active)
+        self.assertEqual(2, len(updates))
+        for u in updates:
+            self.assertEqual(
+                fields.ReplicationStatus.FAILED_OVER,
+                u['updates']['replication_status']
+            )
+
+        mock_ssc_library.get_ssc_flexvol_names.assert_called_once()
+        src_client.get_flexvols_cg_info.assert_called_once_with('flexA')
+        dst_client.get_flexvols_cg_info.assert_not_called()
+        dst_client.failover_snapmirror_active_sync.assert_called_once_with(
+            'svm_src', 'cgA', 'svm_dst', 'cgA'
+        )
+        mock_get_backend_configuration.assert_has_calls([
+            mock.call('src_backend'),
+            mock.call('dst_backend'),
+        ])
+
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'ssc_library', create=True)
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'configuration', create=True)
+    def test_complete_failover_active_sync_unplanned_success(
+            self,
+            mock_configuration,
+            mock_ssc_library,
+            mock_get_client_for_backend,
+            mock_get_backend_configuration,
+    ):
+        dm = data_motion.DataMotionMixin()
+
+        mock_configuration.netapp_disaggregated_platform = False
+        mock_ssc_library.get_ssc_flexvol_names.return_value = ['flexB']
+
+        # Source client connect fails, destination succeeds
+        dst_client = mock.Mock()
+        dst_client.get_flexvols_cg_info.return_value = [{'cg_name': 'cgB'}]
+        mock_get_client_for_backend.side_effect = [Exception('src down'),
+                                                   dst_client]
+
+        volumes = [{'id': 'v1'}]
+        active, updates = dm._complete_failover_active_sync(
+            'src_backend',
+            'dst_backend', volumes)
+
+        self.assertEqual('dst_backend', active)
+        self.assertEqual(1, len(updates))
+        self.assertEqual(
+            fields.ReplicationStatus.FAILED_OVER,
+            updates[0]['updates']['replication_status']
+        )
+
+        mock_ssc_library.get_ssc_flexvol_names.assert_called_once()
+        dst_client.get_flexvols_cg_info.assert_called_once_with('flexB')
+        dst_client.failover_snapmirror_active_sync.assert_not_called()
+        mock_get_backend_configuration.assert_not_called()
+
+    @mock.patch.object(data_motion.LOG, 'error', create=True)
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'ssc_library', create=True)
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'configuration', create=True)
+    def test_complete_failover_active_sync_no_destination_backend(
+            self,
+            mock_configuration,
+            mock_ssc_library,
+            mock_get_client_for_backend,
+            mock_log_error,
+    ):
+        dm = data_motion.DataMotionMixin()
+
+        with self.assertRaisesRegex(
+                na_utils.NetAppDriverException,
+                'No suitable host was found to failover.'
+        ):
+            dm._complete_failover_active_sync(
+                'src_backend', None,
+                [])
+
+        mock_get_client_for_backend.assert_not_called()
+        mock_log_error.assert_called_once()
+
+    @mock.patch.object(data_motion.LOG, 'error', create=True)
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'ssc_library', create=True)
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'configuration', create=True)
+    def test_complete_failover_active_sync_destination_client_connect_failure(
+            self,
+            mock_configuration,
+            mock_ssc_library,
+            mock_get_client_for_backend,
+            mock_log_error,
+    ):
+        dm = data_motion.DataMotionMixin()
+
+        mock_configuration.netapp_disaggregated_platform = False
+
+        src_client = mock.Mock()
+        mock_get_client_for_backend.side_effect = [
+            src_client, Exception('dst')
+        ]
+
+        with self.assertRaisesRegex(
+                na_utils.NetAppDriverException,
+                'Failed to connect to destination backend client '
+                'for failover.'
+        ):
+            dm._complete_failover_active_sync(
+                'src_backend',
+                'dst_backend', [])
+
+        mock_log_error.assert_called()
+        mock_ssc_library.get_ssc_flexvol_names.assert_not_called()
+
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'ssc_library', create=True)
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'configuration', create=True)
+    def test_complete_failover_active_sync_asar2_not_supported(
+            self,
+            mock_configuration,
+            mock_ssc_library,
+            mock_get_client_for_backend,
+            mock_get_backend_configuration,
+    ):
+        dm = data_motion.DataMotionMixin()
+
+        mock_configuration.netapp_disaggregated_platform = True
+
+        src_client = mock.Mock()
+        dst_client = mock.Mock()
+        mock_get_client_for_backend.side_effect = [src_client, dst_client]
+
+        with self.assertRaisesRegex(
+                na_utils.NetAppDriverException,
+                'ASAr2 platform is not supported for replication'
+        ):
+            dm._complete_failover_active_sync(
+                'src_backend',
+                'dst_backend', [])
+
+        mock_ssc_library.get_ssc_flexvol_names.assert_not_called()
+        src_client.get_flexvols_cg_info.assert_not_called()
+        dst_client.get_flexvols_cg_info.assert_not_called()
+        dst_client.failover_snapmirror_active_sync.assert_not_called()
+
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.DataMotionMixin, 'ssc_library',
+                       create=True)
+    @mock.patch.object(data_motion.DataMotionMixin, 'configuration',
+                       create=True)
+    def test_complete_failback_active_sync_success(
+            self,
+            mock_configuration,
+            mock_ssc_library,
+            mock_get_client_for_backend,
+            mock_get_backend_configuration
+    ):
+        dm = data_motion.DataMotionMixin()
+        dm.backend_name = 'active_backend'
+
+        # Platform supported
+        mock_configuration.netapp_disaggregated_platform = False
+
+        dm._update_zapi_client = mock.Mock()
+
+        # Clients
+        src_client = mock.Mock()
+        mock_get_client_for_backend.return_value = src_client
+
+        # Flexvols and CG info
+        mock_ssc_library.get_ssc_flexvol_names.return_value = ['poolA']
+        src_client.get_flexvols_cg_info.return_value = [{'cg_name': 'cgX'}]
+
+        # Backend configurations
+        src_cfg = mock.Mock(netapp_vserver='svm_src')
+        dst_cfg = mock.Mock(netapp_vserver='svm_dst')
+        mock_get_backend_configuration.side_effect = [src_cfg, dst_cfg]
+
+        # Volumes input
+        volumes = [
+            {'id': 'v1', 'host': 'host@backend#poolA'},
+            {'id': 'v2', 'host': 'host@backend#poolB'},
+        ]
+
+        active_backend, volume_updates, extra = (
+            dm._complete_failback_active_sync(
+                primary_backend_name=None,
+                secondary_backend_name=None,
+                volumes=volumes,
+            )
+        )
+
+        # Active backend updated and flags set
+        self.assertTrue(dm._update_zapi_client.called)
+        self.assertEqual('active_backend', active_backend)
+        self.assertFalse(dm.failed_over)
+        self.assertEqual('active_backend', dm.failed_over_backend_name)
+
+        # Only last volume appended due to function logic
+        self.assertEqual(2, len(volume_updates))
+        self.assertEqual('v1', volume_updates[0]['volume_id'])
+        self.assertEqual(
+            fields.ReplicationStatus.ENABLED,
+            volume_updates[0]['updates']['replication_status'],
+        )
+        self.assertEqual([], extra)
+
+        # SnapMirror failback invoked with correct args
+        src_client.failover_snapmirror_active_sync.assert_called_once_with(
+            'svm_dst', 'cgX', 'svm_src', 'cgX'
+        )
+
+    @mock.patch.object(data_motion.DataMotionMixin, 'configuration',
+                       create=True)
+    def test_complete_failback_active_sync_primary_missing_required_raises(
+            self, mock_configuration
+    ):
+        dm = data_motion.DataMotionMixin()
+        # Trigger the early validation error by passing a non-empty primary
+        with self.assertRaisesRegex(
+                na_utils.NetAppDriverException,
+                'Primary backend to which the replication will be '
+                'failed back to is required.'
+        ):
+            dm._complete_failback_active_sync(
+                primary_backend_name='primaryA',
+                secondary_backend_name=None,
+                volumes=[],
+            )
+
+    @mock.patch.object(data_motion.DataMotionMixin, 'configuration',
+                       create=True)
+    def test_complete_failback_active_sync_secondary_missing_required_raises(
+            self, mock_configuration
+    ):
+        dm = data_motion.DataMotionMixin()
+        # Trigger the early validation error by passing a non-empty secondary
+        with self.assertRaisesRegex(
+                na_utils.NetAppDriverException,
+                'Secondary backend to which the replication is failed over is '
+                'required.'
+        ):
+            dm._complete_failback_active_sync(
+                primary_backend_name=None,
+                secondary_backend_name='secondaryB',
+                volumes=[],
+            )
+
+    @mock.patch.object(data_motion.DataMotionMixin, 'configuration',
+                       create=True)
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    def test_complete_failback_active_sync_asar2_not_supported_raises(
+            self, mock_get_client_for_backend, mock_configuration
+    ):
+        dm = data_motion.DataMotionMixin()
+        # Disaggregated platform triggers unsupported error
+        mock_configuration.netapp_disaggregated_platform = True
+
+        # Still create a client to pass initial try block
+        mock_get_client_for_backend.return_value = mock.Mock()
+
+        with self.assertRaisesRegex(
+                na_utils.NetAppDriverException,
+                'ASAr2 platform is not supported for replication'
+        ):
+            dm._complete_failback_active_sync(
+                primary_backend_name=None,
+                secondary_backend_name=None,
+                volumes=[],
+            )
+
+    @mock.patch.object(data_motion.config_utils, 'get_backend_configuration')
+    def test_negative_nfs_backend(self, m_get_backend_cfg):
+        cfg = mock.Mock()
+        cfg.safe_get.return_value = 'nfs'
+        m_get_backend_cfg.return_value = cfg
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy,  # noqa: E501
+            self.src_backend,
+            ['dest1'],
+            na_utils.StorageObjectType.VOLUME,
+            ['vol1'])
+
+    @mock.patch.object(data_motion.config_utils, 'get_backend_configuration')
+    def test_negative_multiple_destinations(self, m_get_backend_cfg):
+        cfg = mock.Mock()
+        cfg.safe_get.return_value = 'iscsi'
+        m_get_backend_cfg.return_value = cfg
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy,  # noqa: E501
+            self.src_backend,
+            ['dest1', 'dest2'],
+            na_utils.StorageObjectType.VOLUME,
+            ['vol1'])
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       '_check_cg_name_conflicts')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       '_check_flexvol_name_conflicts')
+    @mock.patch.object(data_motion.config_utils, 'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils, 'get_backend_configuration')
+    def test_positive_no_existing_mirrors_triggers_name_conflicts_checks(
+            self, m_get_backend_cfg, m_get_client, m_check_flex_conflicts,
+            m_check_cg_conflicts
+    ):
+        # Source backend config
+        src_cfg = mock.Mock()
+        src_cfg.safe_get.return_value = 'iscsi'
+        src_cfg.netapp_vserver = 'svm-src'
+        # Destination backend config
+        dest_cfg = mock.Mock()
+        dest_cfg.netapp_vserver = 'svm-dest'
+        m_get_backend_cfg.side_effect = [src_cfg, src_cfg, dest_cfg]
+
+        # Clients
+        src_client = mock.Mock()
+        # Flexvols part of a single CG "cgX"
+        src_client.get_flexvols_cg_info.return_value = [
+            {'cg_name': 'cgX', 'flexvol_name': 'volA'},
+            {'cg_name': 'cgX', 'flexvol_name': 'volB'},
+        ]
+        dest_client = mock.Mock()
+        # No existing mirrors
+        dest_client.get_snapmirrors.return_value = []
+        m_get_client.side_effect = [src_client, dest_client]
+
+        self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy(  # noqa: E501
+            self.src_backend, [self.dest_backend],
+            na_utils.StorageObjectType.VOLUME, ['vol1'])
+
+        # Conflict checks invoked with cg and volumes
+        m_check_flex_conflicts.assert_called_once_with(
+            dest_client, 'svm-dest', ['vol1'], self.dest_backend)
+        m_check_cg_conflicts.assert_called_once_with(
+            dest_client, 'svm-dest', 'cgX', self.dest_backend)
+
+        # Snapmirrors checked with cg path
+        dest_client.get_snapmirrors.assert_called_once()
+        args, kwargs = dest_client.get_snapmirrors.call_args
+        self.assertEqual(
+            ('svm-src', '/cg/cgX', 'svm-dest', '/cg/cgX'), args)
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       '_check_cg_name_conflicts')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       '_check_flexvol_name_conflicts')
+    @mock.patch.object(data_motion.config_utils, 'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils, 'get_backend_configuration')
+    def test_positive_existing_mirrors_skip_conflict_checks(
+            self, m_get_backend_cfg, m_get_client, m_check_flex_conflicts,
+            m_check_cg_conflicts
+    ):
+        src_cfg = mock.Mock()
+        src_cfg.safe_get.return_value = 'iscsi'
+        src_cfg.netapp_vserver = 'svm-src'
+        dest_cfg = mock.Mock()
+        dest_cfg.netapp_vserver = 'svm-dest'
+        m_get_backend_cfg.side_effect = [src_cfg, src_cfg, dest_cfg]
+
+        src_client = mock.Mock()
+        src_client.get_flexvols_cg_info.return_value = [
+            {'cg_name': 'cgY', 'flexvol_name': 'volA'},
+            {'cg_name': 'cgY', 'flexvol_name': 'volB'},
+        ]
+        dest_client = mock.Mock()
+        # Existing mirrors present
+        dest_client.get_snapmirrors.return_value = [
+            {'mirror-state': 'in_sync'}]
+        m_get_client.side_effect = [src_client, dest_client]
+
+        self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy(  # noqa: E501
+            self.src_backend, [self.dest_backend],
+            na_utils.StorageObjectType.VOLUME, ['volA', 'volB'])
+
+        m_check_flex_conflicts.assert_not_called()
+        m_check_cg_conflicts.assert_not_called()
+        dest_client.get_snapmirrors.assert_called_once()
+
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_negative_multiple_cg_names_raises(
+            self, m_get_backend_cfg, m_get_client):
+        src_cfg = mock.Mock()
+        src_cfg.safe_get.return_value = 'iscsi'
+        src_cfg.netapp_vserver = 'svm-src'
+        dest_cfg = mock.Mock()
+        dest_cfg.netapp_vserver = 'svm-dest'
+        m_get_backend_cfg.side_effect = [src_cfg, src_cfg, dest_cfg]
+
+        src_client = mock.Mock()
+        # Two different CGs found
+        src_client.get_flexvols_cg_info.return_value = [
+            {'cg_name': 'cg1', 'flexvol_name': 'volA'},
+            {'cg_name': 'cg2', 'flexvol_name': 'volB'},
+        ]
+        dest_client = mock.Mock()
+        m_get_client.side_effect = [src_client, dest_client]
+
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy,  # noqa: E501
+            self.src_backend,
+            [self.dest_backend],
+            na_utils.StorageObjectType.VOLUME, ['volA', 'volB'])
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       '_check_cg_name_conflicts')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       '_check_flexvol_name_conflicts')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_positive_no_cg_names_provided_creates_none_and_checks_conflicts(
+            self, m_get_backend_cfg, m_get_client,
+            m_check_flex_conflicts, m_check_cg_conflicts
+    ):
+        # Covers path where cg_names is empty -> cg_name becomes None
+        # and conflicts are checked
+        src_cfg = mock.Mock()
+        src_cfg.safe_get.return_value = 'iscsi'
+        src_cfg.netapp_vserver = 'svm-src'
+        dest_cfg = mock.Mock()
+        dest_cfg.netapp_vserver = 'svm-dest'
+        m_get_backend_cfg.side_effect = [src_cfg, src_cfg, dest_cfg]
+
+        src_client = mock.Mock()
+        # No CGs on source
+        src_client.get_flexvols_cg_info.return_value = [
+            {'cg_name': None, 'flexvol_name': 'volA'},
+            {'cg_name': None, 'flexvol_name': 'volB'},
+        ]
+        dest_client = mock.Mock()
+        # No existing mirrors
+        dest_client.get_snapmirrors.return_value = []
+        m_get_client.side_effect = [src_client, dest_client]
+
+        self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy(  # noqa: E501
+            self.src_backend, [self.dest_backend],
+            na_utils.StorageObjectType.VOLUME,
+            ['volA', 'volB'])
+
+        m_check_flex_conflicts.assert_called_once()
+        # cg_name is None still passed to conflict check
+        args, _ = m_check_cg_conflicts.call_args
+        self.assertIsNone(args[2])
+        dest_client.get_snapmirrors.assert_called_once()
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'get_replication_backend_names')
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'ssc_library', create=True)
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'configuration', create=True)
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_complete_failover_consistent_rep_async_success(
+            self,
+            mock_get_backend_configuration,
+            mock_get_client_for_backend,
+            mock_configuration,
+            mock_ssc_library,
+            mock_get_replication_backend_names):
+        dm = data_motion.DataMotionMixin()
+        dm.backend_name = 'src_backend'
+        mock_configuration.netapp_disaggregated_platform = False
+        mock_get_replication_backend_names.return_value = ['dst_backend']
+        mock_ssc_library.get_ssc_flexvol_names.return_value = ['volA', 'volB']
+
+        src_client = mock.Mock()
+        dst_client = mock.Mock()
+        src_client.get_flexvols_cg_info.return_value = [{'cg_name': 'cg1'}]
+        dst_client.get_flexvols_cg_info.return_value = [{'cg_name': 'cg1'}]
+        mock_get_client_for_backend.return_value = dst_client
+
+        src_cfg = mock.Mock(netapp_vserver='svm_src')
+        src_cfg.netapp_snapmirror_quiesce_timeout = 60
+        # mock_get_backend_configuration.side_effect = [src_cfg, dst_cfg]
+        mock_get_backend_configuration.return_value = src_cfg
+
+        existing_snapmirrors = [{'relationship-status': 'quiesced'}]
+        self.mock_object(dst_client, 'get_snapmirrors',
+                         return_value=existing_snapmirrors)
+
+        volumes = [{'id': 'v1'}, {'id': 'v2'}]
+        active, updates = dm._complete_failover_consistent_rep_async(
+            dm.backend_name,
+            ['dst_backend'],
+            volumes,
+            'dst_backend'
+        )
+
+        assert active == 'dst_backend'
+        assert len(updates) == 2
+        dst_client.update_snapmirror.assert_called_once()
+        dst_client.break_snapmirror.assert_called_once()
+
+    @mock.patch.object(data_motion.config_utils, 'get_backend_configuration')
+    @mock.patch.object(data_motion.config_utils, 'get_client_for_backend')
+    def test_choose_failover_target_of_cg_replication_first_backend_suitable(  # noqa: E501
+            self, mock_get_client_for_backend,
+            mock_get_backend_configuration):
+        # Setup: backend1 has in_sync snapmirror, backend2 does not
+        src_cfg = mock.Mock()
+        src_cfg.netapp_vserver = 'svm_src'
+        mock_get_backend_configuration.side_effect = [
+            src_cfg, mock.Mock(), mock.Mock()]
+        client1 = mock.Mock()
+        client1.get_snapmirrors.return_value = [{'lag-time': '100'}]
+        mock_get_client_for_backend.side_effect = [client1]
+
+        result = self.dm_mixin._choose_failover_target_of_cg_replication(
+            self.src_backend, 'cg_1', ["backend1"])
+
+        self.assertEqual('backend1', result)
+        client1.get_snapmirrors.assert_called_once()

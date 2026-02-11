@@ -71,6 +71,22 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                 self.driver.zapi_client = mock.Mock()
                 self.driver.using_cluster_credentials = True
 
+        # Mock StorageObjectType since it's not defined in na_utils
+        storage_object_type_mock = mock.Mock()
+        storage_object_type_mock.VOLUME = 'volume'
+        self.storage_type_patcher = mock.patch.object(
+            na_utils, 'StorageObjectType', storage_object_type_mock,
+            create=True)
+        self.storage_type_patcher.start()
+        self.addCleanup(self.storage_type_patcher.stop)
+
+        # Mock create_cg_path function
+        self.cg_path_patcher = mock.patch.object(
+            na_utils, 'create_cg_path',
+            lambda cg_name: f'/cg/{cg_name}', create=True)
+        self.cg_path_patcher.start()
+        self.addCleanup(self.cg_path_patcher.stop)
+
     def get_config_cmode(self):
         config = na_fakes.create_configuration_cmode()
         config.netapp_storage_protocol = 'nfs'
@@ -463,6 +479,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             FLEXGROUP=True))
         super_check_for_setup_error = self.mock_object(
             nfs_base.NetAppNfsDriver, 'check_for_setup_error')
+        self.driver.replication_enabled = False
 
         self.driver.check_for_setup_error()
 
@@ -470,6 +487,34 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertEqual(1, mock_add_looping_tasks.call_count)
         mock_add_looping_tasks.assert_called_once_with()
         mock_contains_fg.assert_called_once_with()
+
+    def test_check_for_setup_error_with_replication_enabled(self):
+        """Test brownfield validation is called when replication is enabled."""
+        mock_add_looping_tasks = self.mock_object(
+            self.driver, '_add_looping_tasks')
+        self.mock_object(
+            self.driver.ssc_library, 'contains_flexgroup_pool',
+            return_value=False)
+        self.driver.zapi_client = mock.Mock(features=mock.Mock(
+            FLEXGROUP=True))
+        super_check_for_setup_error = self.mock_object(
+            nfs_base.NetAppNfsDriver, 'check_for_setup_error')
+        mock_validate_brownfield = self.mock_object(
+            self.driver, 'validate_no_conflicting_snapmirrors')
+        mock_get_flexvol_names = self.mock_object(
+            self.driver.ssc_library, 'get_ssc_flexvol_names',
+            return_value=['vol1', 'vol2'])
+
+        self.driver.replication_enabled = True
+        self.driver.backend_name = 'test_backend'
+
+        self.driver.check_for_setup_error()
+
+        self.assertEqual(1, super_check_for_setup_error.call_count)
+        self.assertEqual(1, mock_add_looping_tasks.call_count)
+        mock_get_flexvol_names.assert_called_once_with()
+        mock_validate_brownfield.assert_called_once_with(
+            self.driver.configuration, 'test_backend', ['vol1', 'vol2'])
 
     def test_check_for_setup_error_fail(self):
         mock_add_looping_tasks = self.mock_object(
@@ -503,6 +548,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                          return_value=fake_ssc.SSC.keys())
         mock_remove_unused_qos_policy_groups = self.mock_object(
             self.driver.zapi_client, 'remove_unused_qos_policy_groups')
+        mock_is_consistent_replication = self.mock_object(
+            self.driver, '_is_consistent_replication_enabled',
+            return_value=False)
         self.driver.replication_enabled = replication_enabled
         self.driver.failed_over = failed_over
 
@@ -514,11 +562,54 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             mock_remove_unused_qos_policy_groups.assert_not_called()
 
         if replication_enabled and not failed_over:
+            mock_is_consistent_replication.assert_called_once_with(
+                self.driver.configuration)
             ensure_mirrors.assert_called_once_with(
                 self.driver.configuration, self.driver.backend_name,
                 fake_ssc.SSC.keys())
         else:
             self.assertFalse(ensure_mirrors.called)
+
+    def test_handle_housekeeping_tasks_with_consistent_replication(self):
+        """Test housekeeping calls consistent replication when enabled."""
+        self.driver.using_cluster_credentials = True
+        self.driver.replication_enabled = True
+        self.driver.failed_over = False
+
+        ensure_mirrors = self.mock_object(data_motion.DataMotionMixin,
+                                          'ensure_snapmirrors')
+        ensure_consistent_mirrors = self.mock_object(
+            data_motion.DataMotionMixin,
+            'ensure_consistent_replication_snapmirrors')
+        self.mock_object(self.driver.ssc_library, 'get_ssc_flexvol_names',
+                         return_value=['vol1', 'vol2'])
+        mock_remove_unused_qos_policy_groups = self.mock_object(
+            self.driver.zapi_client, 'remove_unused_qos_policy_groups')
+        mock_is_consistent_replication = self.mock_object(
+            self.driver, '_is_consistent_replication_enabled',
+            return_value=True)
+
+        self.driver._handle_housekeeping_tasks()
+
+        mock_remove_unused_qos_policy_groups.assert_called_once_with()
+        mock_is_consistent_replication.assert_called_once_with(
+            self.driver.configuration)
+        ensure_consistent_mirrors.assert_called_once_with(
+            self.driver.configuration, self.driver.backend_name,
+            na_utils.StorageObjectType.VOLUME, ['vol1', 'vol2'])
+        ensure_mirrors.assert_not_called()
+
+    @ddt.data(True, False)
+    def test_is_consistent_replication_enabled(self, config_value):
+        """Test _is_consistent_replication_enabled returns config value."""
+        mock_config = mock.Mock()
+        mock_config.safe_get.return_value = config_value
+
+        result = self.driver._is_consistent_replication_enabled(mock_config)
+
+        self.assertEqual(config_value, result)
+        mock_config.safe_get.assert_called_once_with(
+            'netapp_consistent_replication')
 
     def test_handle_ems_logging(self):
 

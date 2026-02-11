@@ -1,0 +1,39 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: Added support for async single consistency group (CG)
+    replication. When ``netapp_consistent_replication`` is enabled, the driver
+    creates a single ONTAP consistency group that includes all FlexVols in the
+    backend, providing crash-consistent replication across all
+    volumes. This ensures all volumes in the backend are replicated together
+    and enables crash consistent disaster recovery. The feature supports both
+    creating new consistency groups and adopting existing single CGs. Falls
+    back to per-FlexVol replication when disabled (default behavior).
+  - |
+    NetApp ONTAP driver: Added validation during driver initialization to check
+    for pre-existing SnapMirror relationships when replication is enabled. The
+    driver validates that existing SnapMirror relationships follow the NetApp
+    Cinder driver's naming convention (matching source and destination volume
+    names). If conflicting SnapMirrors are found with different destination
+    names, the driver raises an error with detailed remediation steps,
+    preventing replication conflicts.
+  - |
+    NetApp ONTAP driver: Improved replication policy configuration with explicit
+    choices validation. The ``netapp_replication_policy`` option now supports
+    values: AutomatedFailOver (SnapMirror active sync for automatic failover),
+    AutomatedFailOverDuplex (active sync with bidirectional replication),
+    Asynchronous (async with hourly schedule), and MirrorAllSnapshots (default,
+    async mirroring all snapshots).
+fixes:
+  - |
+    NetApp ONTAP driver: Fixed SnapMirror creation to always use
+    'extended_data_protection' (XDP) relationship type instead of the deprecated
+    'data_protection' (DP) type. XDP is required for consistency group support
+    and prevents ONTAP error 13001 on newer versions where DP relationships are
+    no longer supported. This change applies to all new SnapMirrors regardless
+    of FlexVol or FlexGroup pool type.
+  - |
+    NetApp ONTAP driver: Fixed replication policy detection to use explicit
+    string matching instead of substring matching. This prevents false positives
+    where policy names containing certain substrings would be incorrectly
+    identified.

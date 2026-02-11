@@ -128,6 +128,15 @@ class NetAppCmodeNfsDriver(
             msg = _('FlexGroup pool requires Data ONTAP 9.8 or later.')
             raise na_utils.NetAppDriverException(msg)
 
+        # Validate brownfield scenario for replication
+        if self.replication_enabled:
+            LOG.debug("Replication is enabled. Performing brownfield "
+                      "validation to check for conflicting SnapMirror "
+                      "relationships.")
+            flexvol_names = self.ssc_library.get_ssc_flexvol_names()
+            self.validate_no_conflicting_snapmirrors(
+                self.configuration, self.backend_name, flexvol_names)
+
         super(NetAppCmodeNfsDriver, self).check_for_setup_error()
 
     def _add_looping_tasks(self):
@@ -182,9 +191,24 @@ class NetAppCmodeNfsDriver(
 
         # Create pool mirrors if whole-backend replication configured
         if self.replication_enabled and not self.failed_over:
-            self.ensure_snapmirrors(
-                self.configuration, self.backend_name,
-                self.ssc_library.get_ssc_flexvol_names())
+            if self._is_consistent_replication_enabled(self.configuration):
+                LOG.debug("Ensuring consistent replication snapmirrors.")
+
+                storage_object_names = self.ssc_library.get_ssc_flexvol_names()
+                self.ensure_consistent_replication_snapmirrors(
+                    self.configuration, self.backend_name,
+                    na_utils.StorageObjectType.VOLUME,
+                    storage_object_names)
+            else:
+                LOG.debug(
+                    "Ensuring replication snapmirrors across each "
+                    "FlexVol")
+                self.ensure_snapmirrors(
+                    self.configuration, self.backend_name,
+                    self.ssc_library.get_ssc_flexvol_names())
+
+    def _is_consistent_replication_enabled(self, config):
+        return config.safe_get('netapp_consistent_replication')
 
     def _do_qos_for_volume(self, volume, extra_specs, cleanup=True):
         try:
