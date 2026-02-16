@@ -2038,18 +2038,30 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(1, mock_restore.call_count)
         self.assertEqual(1, mock_sem.__exit__.call_count)
 
-    @mock.patch('cinder.backup.manager.BackupManager._start_backup')
-    def test_backup_max_operations_backup(self, mock_backup):
+    def test_backup_max_operations_backup(self):
         mock_sem = self.mock_object(self.backup_mgr, '_semaphore')
+
         vol_id = self._create_volume_db_entry(
             status=fields.VolumeStatus.BACKING_UP)
         backup = self._create_backup_db_entry(
             volume_id=vol_id, status=fields.BackupStatus.CREATING)
 
-        self.backup_mgr.create_backup(self.ctxt, backup)
+        backup_device = mock.Mock()
+
+        # abort as early as possible inside the real function body
+        with mock.patch(
+            'cinder.objects.Volume.get_by_id',
+            side_effect=RuntimeError("boom")
+        ):
+            self.assertRaises(
+                RuntimeError,
+                self.backup_mgr.continue_backup,
+                self.ctxt,
+                backup,
+                backup_device,
+            )
 
         self.assertEqual(1, mock_sem.__enter__.call_count)
-        self.assertEqual(1, mock_backup.call_count)
         self.assertEqual(1, mock_sem.__exit__.call_count)
 
 

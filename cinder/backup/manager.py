@@ -362,7 +362,6 @@ class BackupManager(manager.SchedulerDependentManager):
         if backup.temp_snapshot_id:
             self._delete_temp_snapshot(ctxt, backup)
 
-    @utils.limit_operations
     def create_backup(self, context, backup):
         """Create volume backups using configured backup service."""
         volume_id = backup.volume_id
@@ -483,6 +482,7 @@ class BackupManager(manager.SchedulerDependentManager):
         LOG.info("Call Volume Manager to get_backup_device for %s", backup)
         self.volume_rpcapi.get_backup_device(context, backup, volume)
 
+    @utils.limit_operations
     def continue_backup(self, context, backup, backup_device):
         """This is the callback from the volume manager to continue."""
         message_created = False
