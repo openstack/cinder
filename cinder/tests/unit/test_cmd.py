@@ -123,12 +123,12 @@ class TestCinderBackupCmd(test.TestCase):
         launch_mock.assert_not_called()
 
     @mock.patch('cinder.utils.Semaphore')
-    @mock.patch('cinder.service.get_launcher')
+    @mock.patch('cinder.service.process_launcher')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.utils.monkey_patch')
     @mock.patch('oslo_log.log.setup')
     def test_main_multiprocess(self, log_setup, monkey_patch, service_create,
-                               get_launcher, mock_semaphore):
+                               process_launcher, mock_semaphore):
         if processutils.get_worker_count() < 2:
             raise test.testtools.TestCase.skipException(
                 'requires more than 1 cpu (to set backup_workers >1)')
@@ -154,7 +154,7 @@ class TestCinderBackupCmd(test.TestCase):
                        service_name='backup')
         service_create.assert_has_calls([c1, c2])
 
-        launcher = get_launcher.return_value
+        launcher = process_launcher.return_value
         self.assertEqual(2, launcher.launch_service.call_count)
         launcher.wait.assert_called_once_with()
 
@@ -191,27 +191,27 @@ class TestCinderVolumeCmd(test.TestCase):
         super(TestCinderVolumeCmd, self).setUp()
         sys.argv = ['cinder-volume']
 
-    @mock.patch('cinder.service.get_launcher')
+    @mock.patch('cinder.service.process_launcher')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.utils.monkey_patch')
     @mock.patch('oslo_log.log.setup')
     def test_main(self, log_setup, monkey_patch, service_create,
-                  get_launcher):
+                  process_launcher):
         CONF.set_override('enabled_backends', None)
         self.assertRaises(SystemExit, cinder_volume.main)
         self.assertFalse(service_create.called)
 
-    @mock.patch('cinder.service.get_launcher')
+    @mock.patch('cinder.service.process_launcher')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.utils.monkey_patch')
     @mock.patch('oslo_log.log.setup')
     def test_main_with_backends(self, log_setup, monkey_patch, service_create,
-                                get_launcher):
+                                process_launcher):
         backends = ['', 'backend1', 'backend2', '']
         CONF.set_override('enabled_backends', backends)
         CONF.set_override('host', 'host')
         CONF.set_override('cluster', None)
-        launcher = get_launcher.return_value
+        launcher = process_launcher.return_value
 
         cinder_volume.main()
 
@@ -219,7 +219,7 @@ class TestCinderVolumeCmd(test.TestCase):
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
-        get_launcher.assert_called_once_with()
+        process_launcher.assert_called_once_with()
         c1 = mock.call(binary=constants.VOLUME_BINARY, host='host@backend1',
                        service_name='backend1', coordination=True,
                        cluster=None)
