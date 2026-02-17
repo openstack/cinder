@@ -18,7 +18,6 @@ import pathlib
 from unittest import mock
 
 import requests.exceptions
-from requests.models import Response
 
 from cinder import exception
 from cinder.tests.unit import test
@@ -128,54 +127,59 @@ class TestPowerFlexClient(test.TestCase):
          ('The request to URL /types/Volume/instances failed with '
           'timeout exception Fake Read Timeout Exception', res['message']))
 
-    @mock.patch("requests.get")
-    def test_response_check_read_timeout_exception_1(self, mock_request):
-        r = requests.Response
-        r.status_code = http_client.UNAUTHORIZED
-        mock_request.side_effect = [r, (requests.exceptions.ReadTimeout
-                                    ('Fake Read Timeout Exception'))]
-        r, res = (self.client.
-                  execute_powerflex_get_request(url="/version", **{}))
-        self.assertEqual(self.expected_status_code, r.status_code)
-        self.assertEqual(self.expected_status_code, res['errorCode'])
-        (self.assertEqual
-         ('The request to URL /version failed with '
-          'timeout exception Fake Read Timeout Exception', res['message']))
+    @mock.patch('cinder.volume.drivers.dell_emc.powerflex.rest_client.LOG')
+    def test_start_token_refresh_thread(self, mock_log):
+        self.client._start_token_refresh_thread()
+        mock_log.info.assert_called_once_with(
+            "Start token refresh thread."
+        )
 
-    @mock.patch("requests.get")
-    def test_response_check_read_timeout_exception_2(self, mock_request):
-        res1 = requests.Response
-        res1.status_code = http_client.UNAUTHORIZED
-        res2 = Response()
-        res2.status_code = 200
-        res2._content = str.encode(json.dumps('faketoken'))
-        mock_request.side_effect = [res1, res2,
-                                    (requests.exceptions.ReadTimeout
-                                     ('Fake Read Timeout Exception'))]
-        r, res = (self.client.
-                  execute_powerflex_get_request(url="/version", **{}))
-        self.assertEqual(self.expected_status_code, r.status_code)
-        self.assertEqual(self.expected_status_code, res['errorCode'])
-        (self.assertEqual
-         ('The request to URL /version failed with '
-          'timeout exception Fake Read Timeout Exception', res['message']))
+    @mock.patch('cinder.volume.drivers.dell_emc.powerflex.rest_client.LOG')
+    def test_refresh_token_periodically_success(self, mock_log):
 
-    @mock.patch("requests.post")
-    @mock.patch("requests.get")
-    def test_response_check_read_timeout_exception_3(self, mock_post_request,
-                                                     mock_get_request):
-        r = requests.Response
-        r.status_code = http_client.UNAUTHORIZED
-        mock_post_request.side_effect = r
-        mock_get_request.side_effect = (requests.exceptions.ReadTimeout
-                                        ('Fake Read Timeout Exception'))
-        r, res = (self.client.execute_powerflex_post_request
-                  (url="/types/Volume/instances", params=self.params, **{}))
-        self.assertEqual(self.expected_status_code, r.status_code)
-        self.assertEqual(self.expected_status_code, res['errorCode'])
-        (self.assertEqual
-         ('The request to URL /types/Volume/instances failed with '
-          'timeout exception Fake Read Timeout Exception', res['message']))
+        self.client._refresh_token = mock.Mock(return_value=True)
+        expected_interval = self.client._refresh_token_periodically()
+        self.assertEqual(expected_interval, 300)
+        self.client._refresh_token.assert_called_once()
+
+        succ_info = "Token refresh succeeded. Sleeping for %d seconds."
+        mock_log.info.assert_called_once_with(succ_info, 300)
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerflex.rest_client.LOG')
+    def test_refresh_token_periodically_failure(self, mock_log):
+
+        self.client._refresh_token = mock.Mock(return_value=False)
+        expected_interval = self.client._refresh_token_periodically()
+        self.assertEqual(expected_interval, 60)
+        self.client._refresh_token.assert_called_once()
+
+        fail_info = "Token refresh failed. Sleeping for %d seconds."
+        mock_log.warning.assert_called_once_with(fail_info, 60)
+
+    @mock.patch('requests.get')
+    def test_refresh_token_success(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = "fake_token"
+        self.assertTrue(self.client._refresh_token())
+        self.assertEqual(self.client.rest_token, "fake_token")
+
+    @mock.patch('requests.get')
+    def test_refresh_token_exception(self, mock_get):
+        mock_get.side_effect = (requests.exceptions.RequestException
+                                ('Mocked request exception'))
+        self.assertFalse(self.client._refresh_token())
+
+    @mock.patch('requests.get')
+    def test_refresh_token_value_error(self, mock_get):
+        mock_get.return_value.json.side_effect = ValueError(
+            'Mocked JSON decode error')
+        self.assertFalse(self.client._refresh_token())
+
+    @mock.patch('requests.get')
+    def test_refresh_token_connection_error(self, mock_get):
+        mock_get.side_effect = (requests.exceptions.ConnectionError
+                                ('Mocked connection error'))
+        self.assertFalse(self.client._refresh_token())
 
     def _getJsonFile(self, filename):
         f = open(self.mockup_file_base + filename)

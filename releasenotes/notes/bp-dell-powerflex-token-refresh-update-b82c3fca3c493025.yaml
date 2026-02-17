@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Dell PowerFlex driver: Updated REST token refresh mechanism
+    to avoid potential downtime in a PowerFlex Management Platform (PFMP)
+    failure scenario.
