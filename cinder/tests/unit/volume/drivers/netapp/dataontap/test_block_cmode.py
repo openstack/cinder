@@ -20,6 +20,7 @@ from unittest import mock
 from unittest.mock import patch
 
 import ddt
+from oslo_utils import units
 
 from cinder import exception
 from cinder.objects import fields
@@ -42,7 +43,6 @@ from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import volume_utils
-from oslo_utils import units
 
 
 @ddt.ddt
