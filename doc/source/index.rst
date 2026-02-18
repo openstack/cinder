@@ -148,7 +148,7 @@ Contents:
 For reviewers
 -------------
 
-* :ref:`transition-guidelines`
+* :ref:`efficient-review-guidelines`
 
 Additional reference
 --------------------
