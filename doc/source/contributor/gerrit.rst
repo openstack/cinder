@@ -21,44 +21,6 @@ See `Getting Started`_ for information on how to get started using Gerrit.
 See `Development Workflow`_ for more detailed information on how to work with
 Gerrit.
 
-The Great Change
-----------------
-
-With the demise of Python 2.7 in January 2020, beginning with the Ussuri
-development cycle, Cinder only needs to support Python 3 runtimes (in
-particular, 3.6 and 3.7).  Thus we can begin to incorporate Python 3
-language features and remove Python 2 compatibility code.  At the same
-time, however, we are still supporting stable branches that must support
-Python 2.  Our biggest interaction with the stable branches is backporting
-bugfixes, where in the ideal case, we're just doing a simple cherry-pick of
-a commit from master to the stable branches.  You can see that there's some
-tension here.
-
-With that in mind, here are some guidelines for reviewers and developers
-that the Cinder community has agreed on during this phase where we want to
-write pure Python 3 but still must support Python 2 code.
-
-.. _transition-guidelines:
-
-Python 2 to Python 3 transition guidelines
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* We need to be checking the code coverage of test cases very carefully so
-  that new code has excellent coverage.  The idea is that we want these
-  tests to fail when a backport is proposed to a stable branch and the
-  tests are run under Python 2 (if the code is using any Python-3-only
-  language features).
-* New features can use Python-3-only language constructs, but bugfixes
-  likely to be backported should be more conservative and write for
-  Python 2 compatibilty.
-* The code for drivers may continue to use the six compatibility library at
-  their discretion.
-* We will not remove six from mainline Cinder code that impacts the drivers
-  (for example, classes they inherit from).
-* We can remove six from code that doesn't impact drivers, keeping in mind
-  that backports may be more problematic, and hence making sure that we have
-  really good test coverage.
-
 Targeting Milestones
 --------------------
 
@@ -176,6 +138,8 @@ In such cases we still have to look at the failures, because they can be
 failures that are going to take a while to fix, and issuing a recheck will be
 futile at that time and we should wait for a couple of hours, or maybe even a
 day, before issuing a recheck that can yield the desired result.
+
+.. _efficient-review-guidelines:
 
 Efficient Review Guidelines
 ---------------------------
