@@ -771,7 +771,11 @@ class HBSDRESTFCDriverTest(test.TestCase):
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('hitachi_host_mode_options', [],
                              group=conf.SHARED_CONF_GROUP)
-
+        self.override_config('hitachi_rest_use_object_caching', False,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_max_request_workers',
+                             hbsd_rest_api._MAX_REQUEST_WORKERS,
+                             group=conf.SHARED_CONF_GROUP)
         self.override_config('hitachi_zoning_request', False,
                              group=conf.SHARED_CONF_GROUP)
 
@@ -913,6 +917,9 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.driver.create_export_snapshot(None, None, None)
         self.driver.remove_export_snapshot(None, None)
         # stop the Loopingcall within the do_setup treatment
+        # We also added an initial delay of the actual session value
+        # since the initialization with threads is slower than
+        # the initial run of the looping call.
         self.driver.common.client.keep_session_loop.stop()
 
     def tearDown(self):
@@ -939,6 +946,9 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(1, brick_get_connector_properties.call_count)
         self.assertEqual(4, request.call_count)
         # stop the Loopingcall within the do_setup treatment
+        # We also added an initial delay of the actual session value
+        # since the initialization with threads is slower than
+        # the initial run of the looping call.
         drv.common.client.keep_session_loop.stop()
 
     @mock.patch.object(requests.Session, "request")
@@ -2981,3 +2991,8 @@ class HBSDRESTFCDriverTest(test.TestCase):
             self.ctxt, TEST_VOLUME[0], new_type, diff, host)
         self.assertEqual(4, request.call_count)
         self.assertTrue(ret)
+
+    def test_max_request_workers(self):
+        self.assertEqual(hbsd_rest_api._MAX_REQUEST_WORKERS,
+                         self.driver.common.request_thread_pool_executor.
+                         _max_workers)

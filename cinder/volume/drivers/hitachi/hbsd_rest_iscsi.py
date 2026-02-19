@@ -43,6 +43,46 @@ class HBSDRESTISCSI(rest.HBSDREST):
         }
         return True, ipv4_addr, tcp_port
 
+    def connector_searcher_query(self, port: str, group: int | str | None):
+        # See hbsd_utils.HostConnectorSearcher for a description of
+        # this method behavior.
+
+        def _lookup_group_targets(port: str, groupNum: int) -> list[str]:
+            # Returns list of WWNs/targets.
+            targets = []
+
+            hba_iscsis = self.client.get_hba_iscsis(port, groupNum)
+            if hba_iscsis:
+                targets = [hba_iscsi['iscsiName'] for hba_iscsi in hba_iscsis]
+            return targets
+
+        def _lookup_group_by_name(port: str,
+                                  group: str) -> tuple[int, list[str]]:
+            # Returns tuple of group number/metadata tuple and targets.
+            # None if group not found (or no targets in group).
+            hba_iscsis = self.client.get_hba_iscsis_by_name(port, group)
+            if hba_iscsis:
+                gid = hba_iscsis[0]['hostGroupNumber']
+                targets = [hba_iscsi['iscsiName'] for hba_iscsi in hba_iscsis]
+                storage_iqn = self.client.get_host_grp(port, gid)['iscsiName']
+                return (gid, {'iscsiName': storage_iqn}), targets
+            return None
+
+        def _lookup_all_groups(port: str) -> list[int]:
+            # Returns list of groups by int.
+            params = {'portId': port}
+            host_grp_list = self.client.get_host_grps(params)
+            return [(data['hostGroupNumber'],
+                    {'iscsiName': data['iscsiName']}) for
+                    data in host_grp_list]
+
+        if isinstance(group, int):
+            return _lookup_group_targets(port, group)
+        elif isinstance(group, str):
+            return _lookup_group_by_name(port, group)
+
+        return _lookup_all_groups(port)
+
     def connect_storage(self):
         """Prepare for using the storage."""
         target_ports = self.conf.hitachi_target_ports
@@ -143,73 +183,50 @@ class HBSDRESTISCSI(rest.HBSDREST):
                     body['hostModeOptions'].append(int(opt))
         self.client.modify_host_grp(port, gid, body)
 
-    def _is_host_iqn_registered_in_target(self, port, gid, host_iqn):
-        """Check if the specified IQN is registered with iSCSI target."""
-        for hba_iscsi in self.client.get_hba_iscsis(port, gid):
-            if host_iqn == hba_iscsi['iscsiName']:
-                return True
-        return False
-
-    def _set_target_info(self, targets, host_grps, iqn):
-        """Set the information of the iSCSI target having the specified IQN."""
-        for host_grp in host_grps:
-            port = host_grp['portId']
-            gid = host_grp['hostGroupNumber']
-            storage_iqn = host_grp['iscsiName']
-            if self._is_host_iqn_registered_in_target(port, gid, iqn):
-                targets['info'][port] = True
-                targets['list'].append((port, gid))
-                targets['iqns'][(port, gid)] = storage_iqn
-                return True
-        return False
-
-    def _get_host_iqn_registered_in_target_by_name(
-            self, port, target_name, host_iqn):
-        """Get the information of the iSCSI target having the specified name
-
-        and the specified IQN.
-        """
-        for hba_iscsi in self.client.get_hba_iscsis_by_name(port, target_name):
-            if host_iqn == hba_iscsi['iscsiName']:
-                return hba_iscsi
-        return None
-
-    def _set_target_info_by_name(self, targets, port, target_name, iqn):
-        """Set the information of the iSCSI target having the specified name
-
-        and the specified IQN.
-        """
-        host_iqn_registered_in_target = (
-            self._get_host_iqn_registered_in_target_by_name(
-                port, target_name, iqn))
-        if host_iqn_registered_in_target:
-            gid = host_iqn_registered_in_target['hostGroupNumber']
-            storage_iqn = self.client.get_host_grp(port, gid)['iscsiName']
-            targets['info'][port] = True
-            targets['list'].append((port, gid))
-            targets['iqns'][(port, gid)] = storage_iqn
-            return True
-        return False
-
     def find_targets_from_storage(self, targets, connector, target_ports):
+
         """Find mapped ports, memorize them and return unmapped port count."""
+
         iqn = self.get_hba_ids_from_connector(connector)
-        not_found_count = 0
+        target_names = []
+        if 'ip' in connector:
+            target_names.append(self.create_target_name(connector))
+
+        def _worker(port, iqn, target_names):
+            try:
+                groupAndMeta = self.connector_searcher.find(port, [iqn],
+                                                            target_names)
+                if groupAndMeta is not None:
+                    group, meta = groupAndMeta
+                    return (port, group, meta)
+                return None
+            except Exception as ex:
+                return ex
+
+        futures = []
         for port in target_ports:
             targets['info'][port] = False
-            if 'ip' in connector:
-                target_name = self.create_target_name(connector)
-                if self._set_target_info_by_name(
-                        targets, port, target_name, iqn):
-                    continue
-            host_grps = self.client.get_host_grps({'portId': port})
-            if 'ip' in connector:
-                host_grps = [hg for hg in host_grps
-                             if hg['hostGroupName'] != target_name]
-            if self._set_target_info(targets, host_grps, iqn):
-                pass
-            else:
+            future = self.request_thread_pool_executor.submit(
+                _worker, port, iqn, target_names)
+            futures.append(future)
+
+        not_found_count = 0
+        appended_set = set()
+        for future in futures:
+            result = future.result()
+            if result is None:
                 not_found_count += 1
+            elif isinstance(result, Exception):
+                raise result
+            else:
+                port, group, meta = result
+                storage_iqn = meta['iscsiName']
+                targets['info'][port] = True
+                if (port, group) not in appended_set:
+                    targets['list'].append((port, group))
+                    appended_set.add((port, group))
+                targets['iqns'][(port, group)] = storage_iqn
+
         return not_found_count
 
     def initialize_connection(

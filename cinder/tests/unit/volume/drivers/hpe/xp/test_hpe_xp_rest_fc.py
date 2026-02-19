@@ -503,6 +503,8 @@ class HPEXPRESTFCDriverTest(test.TestCase):
         self.configuration.hpexp_rest_tcp_keepcnt = (
             hbsd_rest_api._TCP_KEEPCNT)
         self.configuration.hpexp_host_mode_options = []
+        self.configuration.hpexp_rest_use_object_caching = False
+        self.configuration.hpexp_rest_max_request_workers = 8
 
         self.configuration.hpexp_zoning_request = False
 

@@ -832,7 +832,11 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('hitachi_host_mode_options', [],
                              group=conf.SHARED_CONF_GROUP)
-
+        self.override_config('hitachi_rest_use_object_caching', False,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_max_request_workers',
+                             hbsd_rest_api._MAX_REQUEST_WORKERS,
+                             group=conf.SHARED_CONF_GROUP)
         self.override_config('hitachi_zoning_request', False,
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('hitachi_extend_snapshot_volumes', False,

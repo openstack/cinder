@@ -46,6 +46,7 @@ _REST_SERVER_ERROR_TIMEOUT = 10 * 60
 _KEEP_SESSION_LOOP_INTERVAL = 3 * 60
 _ANOTHER_LDEV_MAPPED_RETRY_TIMEOUT = 10 * 60
 _LOCK_RESOURCE_GROUP_TIMEOUT = 3 * 60
+_MAX_REQUEST_WORKERS = 8
 
 _TCP_KEEPIDLE = 60
 _TCP_KEEPINTVL = 15
@@ -235,10 +236,11 @@ class ResponseData(dict):
 class RestApiClient():
 
     def __init__(self, conf, ip_addr, ip_port, storage_device_id,
-                 user_id, user_pass, driver_prefix, tcp_keepalive=False,
-                 verify=False, is_rep=False):
+                 user_id, user_pass, driver_prefix, connector_searcher,
+                 tcp_keepalive=False, verify=False, is_rep=False):
         """Initialize instance variables."""
         self.conf = conf
+        self.connector_searcher = connector_searcher
         self.ip_addr = ip_addr
         self.ip_port = ip_port
         self.storage_id = storage_device_id
@@ -600,7 +602,8 @@ class RestApiClient():
     def enter_keep_session(self):
         """Begin the keeping of a session."""
         self.keep_session_loop.start(
-            self.conf.hitachi_rest_keep_session_loop_interval)
+            self.conf.hitachi_rest_keep_session_loop_interval,
+            initial_delay=self.conf.hitachi_rest_keep_session_loop_interval)
         LOG.debug('enter_keep_session')
 
     @volume_utils.trace
@@ -748,6 +751,7 @@ class RestApiClient():
             'number': host_group_number,
         }
         self._delete_object(url)
+        self.connector_searcher.on_reset_group(port_id, host_group_number)
 
     def modify_host_grp(self, port_id, host_group_number, body, **kwargs):
         """Modify a host group information."""
@@ -781,7 +785,9 @@ class RestApiClient():
         }
         body = {"hostWwn": host_wwn, "portId": port_id,
                 "hostGroupNumber": host_group_number}
-        return self._add_object(url, body=body, **kwargs)[0]
+        ret = self._add_object(url, body=body, **kwargs)[0]
+        self.connector_searcher.on_reset_group(port_id, host_group_number)
+        return ret
 
     def get_hba_iscsis(self, port_id, host_group_number):
         """Get a list of ISCSI information."""
@@ -806,7 +812,9 @@ class RestApiClient():
         }
         body = {"iscsiName": iscsi_name, "portId": port_id,
                 "hostGroupNumber": host_group_number}
-        return self._add_object(url, body=body)[0]
+        ret = self._add_object(url, body=body)[0]
+        self.connector_searcher.on_reset_group(port_id, host_group_number)
+        return ret
 
     def get_luns(self, port_id, host_group_number,
                  is_basic_lun_information=False):

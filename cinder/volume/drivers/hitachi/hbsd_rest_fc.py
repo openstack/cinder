@@ -54,6 +54,44 @@ class HBSDRESTFC(rest.HBSDREST):
         super(HBSDRESTFC, self).__init__(conf, storage_protocol, db)
         self._lookup_service = fczm_utils.create_lookup_service()
 
+    def connector_searcher_query(self, port: str, group: int | str | None):
+        # See hbsd_utils.HostConnectorSearcher for a description of
+        # this method behavior.
+
+        def _lookup_group_targets(port: str, groupNum: int) -> list[str]:
+            # Returns list of WWNs/targets.
+
+            targets = []
+            hba_wwns = self.client.get_hba_wwns(port, groupNum)
+            if hba_wwns:
+                targets = [hba_wwn['hostWwn'] for hba_wwn in hba_wwns]
+            return targets
+
+        def _lookup_group_by_name(port: str,
+                                  group: str) -> tuple[int, list[str]]:
+            # Returns tuple of group number/metadata tuple and targets.
+            # None if group not found (or no targets in group).
+            hba_wwns = self.client.get_hba_wwns_by_name(port, group)
+            if hba_wwns:
+                gid = hba_wwns[0]['hostGroupNumber']
+                targets = [hba_wwn['hostWwn'] for hba_wwn in hba_wwns]
+                return (gid, None), targets
+
+            return None
+
+        def _lookup_all_groups(port: str) -> list[int]:
+            # Returns list of groups by int.
+            params = {'portId': port}
+            host_grp_list = self.client.get_host_grps(params)
+            return [(data['hostGroupNumber'], None) for data in host_grp_list]
+
+        if isinstance(group, int):
+            return _lookup_group_targets(port, group)
+        elif isinstance(group, str):
+            return _lookup_group_by_name(port, group)
+
+        return _lookup_all_groups(port)
+
     def connect_storage(self):
         """Prepare for using the storage."""
         target_ports = self.conf.hitachi_target_ports
@@ -191,56 +229,6 @@ class HBSDRESTFC(rest.HBSDREST):
                     body['hostModeOptions'].append(int(opt))
         self.client.modify_host_grp(port, gid, body, ignore_all_errors=True)
 
-    def _get_hwwns_in_hostgroup(self, port, gid, wwpns):
-        """Return WWN registered with the host group."""
-        hwwns_in_hostgroup = []
-        for hba_wwn in self.client.get_hba_wwns(port, gid):
-            hwwn = hba_wwn['hostWwn']
-            if hwwn in wwpns:
-                hwwns_in_hostgroup.append(hwwn)
-        return hwwns_in_hostgroup
-
-    def _set_target_info(self, targets, host_grps, wwpns):
-        """Set the information of the host group having the specified WWN."""
-        for host_grp in host_grps:
-            port = host_grp['portId']
-            gid = host_grp['hostGroupNumber']
-            hwwns_in_hostgroup = self._get_hwwns_in_hostgroup(port, gid, wwpns)
-            if hwwns_in_hostgroup:
-                targets['info'][port] = True
-                targets['list'].append((port, gid))
-                LOG.debug(
-                    'Found wwpns in host group. (port: %(port)s, '
-                    'gid: %(gid)s, wwpns: %(wwpns)s)',
-                    {'port': port, 'gid': gid, 'wwpns': hwwns_in_hostgroup})
-                return True
-        return False
-
-    def _get_hwwns_in_hostgroup_by_name(self, port, host_group_name, wwpns):
-        """Return WWN registered with the host group of the specified name."""
-        hba_wwns = self.client.get_hba_wwns_by_name(port, host_group_name)
-        return [hba_wwn for hba_wwn in hba_wwns if hba_wwn['hostWwn'] in wwpns]
-
-    def _set_target_info_by_names(self, targets, port, target_names, wwpns):
-        """Set the information of the host group having the specified name and
-
-        the specified WWN.
-        """
-        for target_name in target_names:
-            hwwns_in_hostgroup = self._get_hwwns_in_hostgroup_by_name(
-                port, target_name, wwpns)
-            if hwwns_in_hostgroup:
-                gid = hwwns_in_hostgroup[0]['hostGroupNumber']
-                targets['info'][port] = True
-                targets['list'].append((port, gid))
-                LOG.debug(
-                    'Found wwpns in host group. (port: %(port)s, '
-                    'gid: %(gid)s, wwpns: %(wwpns)s)',
-                    {'port': port, 'gid': gid, 'wwpns':
-                     [hwwn['hostWwn'] for hwwn in hwwns_in_hostgroup]})
-                return True
-        return False
-
     def find_targets_from_storage(
             self, targets, connector, target_ports):
         """Find mapped ports, memorize them and return unmapped port count."""
@@ -253,19 +241,39 @@ class HBSDRESTFC(rest.HBSDREST):
                     'ip': connector['ip'],
                 }
             )
-        not_found_count = 0
+
+        def _worker(port, wwpns, target_names):
+            try:
+                groupAndMeta = self.connector_searcher.find(port, wwpns,
+                                                            target_names)
+                if groupAndMeta is not None:
+                    group, meta = groupAndMeta
+                    return (port, group, meta)
+                return None
+            except Exception as ex:
+                return ex
+
+        futures = []
         for port in target_ports:
             targets['info'][port] = False
-            if self._set_target_info_by_names(
-                    targets, port, target_names, wwpns):
-                continue
-            host_grps = self.client.get_host_grps({'portId': port})
-            if self._set_target_info(
-                targets, [hg for hg in host_grps if hg['hostGroupName'] not in
-                          target_names], wwpns):
-                pass
-            else:
+            future = self.request_thread_pool_executor.submit(
+                _worker, port, wwpns, target_names)
+            futures.append(future)
+
+        not_found_count = 0
+        appended_set = set()
+        for future in futures:
+            result = future.result()
+            if result is None:
                 not_found_count += 1
+            elif isinstance(result, Exception):
+                raise result
+            else:
+                port, group, _ = result
+                targets['info'][port] = True
+                if (port, group) not in appended_set:
+                    targets['list'].append((port, group))
+                    appended_set.add((port, group))
 
         if self.get_port_scheduler_param():
             """

@@ -1,5 +1,5 @@
 # Copyright (C) 2020, 2024, Hitachi, Ltd.
-# Copyright (C) 2025, Hitachi Vantara
+# Copyright (C) 2025, 2026, Hitachi Vantara
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -18,16 +18,19 @@
 import enum
 import functools
 import logging as base_logging
+import threading
+import typing
 
 from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 
+from cinder import coordination
 from cinder import exception
 from cinder import utils as cinder_utils
 from cinder.volume import volume_types
 
-VERSION = '2.7.1'
+VERSION = '2.7.2'
 CI_WIKI_NAME = 'Hitachi_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
@@ -1086,3 +1089,386 @@ class Config(object):
             super().__getattribute__(DICT)[name] = opt.type(val)
         else:
             super().__getattribute__(DICT)[name] = opt.default
+
+
+class HostConnectorSearcher(object):
+    '''Searcher for host connections.'''
+
+    def __init__(self, queryFunc: typing.Callable):
+        # The query function has a signature like this:
+        #    def Query(port: str, group: int | str | None) ->
+        #       list[str] | tuple[tuple[int, Any], list[str]] |
+        #       list[tuple[int, Any]]
+
+        # Query functionality if group is:
+        #        int: do a lookup for the given group by number.
+        #             return list of WWNs/targets found
+        #        str: do a lookup for the given group by name.
+        #             return tuple of group #/metadata tuple, and list of
+        #             WWNs/targets found (tuple[tuple[int, Any], list[str]]).
+        #             If the host group is not found, this should return None.
+        #             and an empty list.
+        #        other: do a lookup for all groups on the port
+        #            return list of tuples of groups/metadata groups found
+        #                   (tuple[int, Any])
+
+        self._queryFunc = queryFunc
+
+    def find(self, port: str, targetOrWwns: list[str],
+             groupNameHints: list[str]) -> tuple[int, typing.Any] | None:
+        '''Find the group for the given target or WWN.'''
+
+        # This method finds the group for the given target or
+        # WWN in the cache. If it does not exist in the cache,
+        # it will do a search on the storage using the queryFunc.
+        # When performing the search, it will first use groupNameHints
+        # to query the host groups named there.'''
+
+        # If we've been given groupNameHints, we'll look for those
+        # groups first.
+        groupAndMeta = None
+        if groupNameHints:
+            for groupName in groupNameHints:
+                if groupAndMeta is not None:  # If we found our group, bail out
+                    break
+                res = self._queryGroupByName(port, groupName)
+                if res is None:
+                    continue
+                groupAndMetaTemp, targets = res
+                for target in targets:
+                    # Compare target and set if found.
+                    if target in targetOrWwns:
+                        groupAndMeta = groupAndMetaTemp
+                    # If we found our group, bail out.
+                    if groupAndMeta is not None:
+                        break
+
+        # If we still don't have a group, we'll use our queryFunc
+        # to find it (if possible).
+        if groupAndMeta is None:
+            # Query the group list.
+            searchGroupsAndMeta = self._queryGroupsOnPort(port)
+
+            # For each group, query the WWN(s) until we find what we're
+            # looking for. Cache all WWNs/groups found.
+            for searchGroupAndMeta in searchGroupsAndMeta:
+                groupTemp, metaTemp = searchGroupAndMeta
+
+                targets = self._queryGroup(port, groupTemp)
+
+                for target in targets:
+                    if target in targetOrWwns:
+                        groupAndMeta = searchGroupAndMeta
+                    # If we found our group, bail out.
+                    if groupAndMeta is not None:
+                        break
+
+                # If we found our group, bail out.
+                if groupAndMeta is not None:
+                    break
+
+        return groupAndMeta
+
+    def _queryGroupByName(self, port: str,
+                          group: str) -> tuple[tuple[int, typing.Any],
+                                               list[str]] | None:
+        return self._queryFunc(port, group)
+
+    def _queryGroup(self, port: str, group: int) -> list[str]:
+        return self._queryFunc(port, group)
+
+    def _queryGroupsOnPort(self, port: str) -> list[tuple[int, typing.Any]]:
+        return self._queryFunc(port, None)
+
+    def on_reset(self):
+        '''Reset any caching.'''
+
+        # This notifies that the system has changed in some way and
+        # is requesting a reset of any caches, etc.
+        pass
+
+    def on_reset_group(self, port: str, group: int):
+        '''Reset any cache for the given group.'''
+
+        # This notifies that the system has changed in some way in
+        # relation to the given group information and is
+        # requesting a reset of caches around this relationship.
+        pass
+
+
+class ConnectorSearcherCache(object):
+    '''Cache for the host connector searcher.'''
+
+    def __init__(self):
+
+        # This represents the cache of ports & targets/WWNs to group numbers.
+        # key: str [_generate_target_key(port, target/WWN)]
+        # value: tuple(int, typing.Any) [group #, meta-data]
+        self._target_cache = dict()
+        # This represents the cache of port/group number to group information.
+        # key: str [_generate_group_key(port, group)]
+        # value: tuple(str | None, list[str]) [name, target/wwn list]
+        self._group_cache = dict()
+        # This represents the cache of port/group name to group number.
+        # key: str [_generate_group_name_key(port, groupName)
+        # value: int [group #]
+        self._group_name_cache = dict()
+        self._separator = '\t'
+
+    def _generate_target_key(self, port: str, targetOrWwn: str) -> str:
+        return (port + self._separator + targetOrWwn)
+
+    def _generate_group_key(self, port: str, group: int) -> str:
+        return (port + self._separator + str(group))
+
+    def _generate_group_name_key(self, port: str, groupName: str) -> str:
+        # Triple separators between port and group to avoid collisions.
+        return (port + self._separator + groupName)
+
+    def lookup(self, port: str,
+               targetOrWwn: str) -> tuple[int, typing.Any] | None:
+        '''Find the group/meta information for the given target/WWN.'''
+
+        key = self._generate_target_key(port, targetOrWwn)
+        ret = self._target_cache.get(key, None)
+        if ret:
+            LOG.debug('Found group (and meta) %(group)s for target/WWN '
+                      '%(target)s on port %(port)s in cache.',
+                      {'group': ret, 'target': targetOrWwn, 'port': port})
+        return ret
+
+    def is_group_cached(self, port: str, group: int) -> bool:
+        '''Determine if the given group is in our cache.'''
+
+        key = self._generate_group_key(port, group)
+        return self._group_cache.get(key, None) is not None
+
+    def is_group_name_cached(self, port: str, groupName: str) -> bool:
+        '''Determine if the given group name is in our cache.'''
+
+        key = self._generate_group_name_key(port, groupName)
+        return self._group_name_cache.get(key, None) is not None
+
+    def cache(self, port: str, groupAndMeta: tuple[int, typing.Any],
+              groupName: str | None, targetsOrWwns: list[str] | None):
+        '''Cache the given group and its associations.'''
+
+        targetList = list()
+
+        # Extract our group number.
+        group, _ = groupAndMeta
+        LOG.debug("Caching information for group %(group)s.",
+                  {'group': group})
+
+        # 1. Cache our targets/WWNs with the given group/meta data.
+        # 2. Also build our target list for our group cache. We won't use
+        #    the given list directly to avoid a situation where it gets
+        #    modified elsewhere.
+        if targetsOrWwns:
+            for targetOrWwn in targetsOrWwns:
+                key = self._generate_target_key(port, targetOrWwn)
+                LOG.debug("Caching target to group %(targetKey)s:%(group)s.",
+                          {'targetKey': key, 'group': group})
+                self._target_cache[key] = groupAndMeta
+                targetList.append(targetOrWwn)
+
+        # Cache our group information.
+        key = self._generate_group_key(port, group)
+        self._group_cache[key] = (groupName, targetList)
+
+        # Cache our group name information if we have any.
+        if groupName:
+            key = self._generate_group_name_key(port, groupName)
+            LOG.debug("Caching group name to group%(groupNameKey)s:%(group)s.",
+                      {'groupNameKey': key, 'group': group})
+            self._group_name_cache[key] = group
+
+    def clear(self):
+
+        # Clear the entire cache.
+        self._target_cache.clear()
+        self._group_cache.clear()
+        self._group_name_cache.clear()
+
+    def clear_group(self, port: str, group: int):
+
+        # Clear the given group from the cache.
+        # This will clear the group in its entirety from all 3 caches.
+
+        groupKey = self._generate_group_key(port, group)
+        groupInfo = self._group_cache.get(groupKey, None)
+        if groupInfo:
+            name, targets = groupInfo
+            if name:
+                groupNameKey = self._generate_group_name_key(port, name)
+                del self._group_name_cache[groupNameKey]
+            for target in targets:
+                targetKey = self._generate_target_key(port, target)
+                del self._target_cache[targetKey]
+            del self._group_cache[groupKey]
+
+
+class CachingHostConnectorSearcher(HostConnectorSearcher):
+    '''Caching version of the host connector searcher.'''
+
+    def __init__(self, storage_id, queryFunc: typing.Callable):
+        super(CachingHostConnectorSearcher, self).__init__(queryFunc)
+        self._storage_id = storage_id
+        self._connector_cache = ConnectorSearcherCache()
+        self._cache_lock = threading.Lock()
+
+    # Only allow 1 search at a time per storage/port.
+    # This is because it's very expensive, and when a search is ongoing
+    # the next caller may have already had their data cached.
+    # So the next caller can come in and check the cache again when they
+    # have access to the lock.
+    # Note that this will also prevent cross-node searches simultaneously.
+    # We may want to change that in the future, but for the time being it
+    # will prevent the storage API from being overwhelmed on big searches.
+    @coordination.synchronized(
+        'target-search-{self._storage_id}-{port}')
+    def _locked_search(self, port: str, targetOrWwns: list[str],
+                       groupNameHints: list[str])\
+            -> tuple[int, typing.Any] | None:
+        '''Perform the search with a lock.'''
+
+        # Once we have our search lock we'll do a lookup
+        # in the cache again as another caller may have
+        # been doing a simultaneous search if we waited.
+        groupAndMeta = None
+        for targetOrWwn in targetOrWwns:
+            groupAndMeta = self._lookup(port, targetOrWwn)
+            if groupAndMeta is not None:
+                break
+
+        if groupAndMeta is None:
+            LOG.debug('Group not found in cache for port %(port)s '
+                      'and target/WWNs %(targets)s. '
+                      'Performing search.',
+                      {'port': port, 'targets': targetOrWwns})
+
+            # If we've been given groupNameHints, we'll look for those
+            # groups first.
+            if groupNameHints:
+                for groupName in groupNameHints:
+                    # If we already searched our group, skip it.
+                    if self._is_group_name_cached(port, groupName):
+                        LOG.debug('Skipping cached group %(group)s '
+                                  'on port %(port)s.',
+                                  {'group': groupName,
+                                   'port': port})
+                        continue
+
+                    res = self._queryGroupByName(port, groupName)
+                    if res is None:
+                        continue
+                    searchGroupAndMeta, targets = res
+
+                    # Only cache the group name if the group actually exists.
+                    # Cache searches will eventually cache everything
+                    # necessary.
+                    groupAndMeta = self._find_and_cache(port,
+                                                        searchGroupAndMeta,
+                                                        targetOrWwns,
+                                                        targets,
+                                                        groupName)
+
+            # If we still don't have a group, we'll use our queryFunc
+            # to find it (if possible).
+            if groupAndMeta is None:
+                # Query the group list.
+                searchGroupsAndMeta = self._queryGroupsOnPort(port)
+
+                # For each group, query the WWN(s) until we find what
+                # we're looking for. Cache all WWNs/groups found.
+                for searchGroupAndMeta in searchGroupsAndMeta:
+                    searchGroup, searchMeta = searchGroupAndMeta
+                    if self._is_group_cached(port, searchGroup):
+                        LOG.debug('Skipping cached group %(group)s '
+                                  'on port %(port)s.',
+                                  {'group': searchGroup,
+                                   'port': port})
+                        continue
+
+                    targets = self._queryGroup(port, searchGroup)
+                    groupAndMeta = self._find_and_cache(port,
+                                                        searchGroupAndMeta,
+                                                        targetOrWwns, targets,
+                                                        None)
+
+                    # If we found our group then stop the search.
+                    if groupAndMeta is not None:
+                        LOG.debug('Group/meta %(group)s found for port '
+                                  '%(port)s and target/WWN '
+                                  '%(targets)s.',
+                                  {'group': groupAndMeta, 'port': port,
+                                   'targets': targetOrWwns})
+                        break
+
+        return groupAndMeta
+
+    def find(self, port: str, targetOrWwns: list[str],
+             groupNameHints: list[str]) -> tuple[int, typing.Any] | None:
+        '''Find the group for the given target or WWN.'''
+
+        # This method finds the group for the given target or
+        # WWN in the cache. If it does not exist in the cache,
+        # it will do a search on the storage using the queryFunc.
+        # When performing the search, it will first use groupNameHints
+        # to query the host groups named there.'''
+        groupAndMeta = None
+        for targetOrWwn in targetOrWwns:
+            groupAndMeta = self._lookup(port, targetOrWwn)
+            if groupAndMeta is not None:
+                break
+        if groupAndMeta is None:
+            groupAndMeta = self._locked_search(port, targetOrWwns,
+                                               groupNameHints)
+        return groupAndMeta
+
+    def _find_and_cache(self, port: str, groupAndMeta: tuple[int, typing.Any],
+                        searchTargets: list[str], targets: list[str],
+                        groupName: str | None)\
+            -> tuple[int, typing.Any] | None:
+
+        with self._cache_lock:
+            self._connector_cache.cache(port, groupAndMeta, groupName, targets)
+
+        foundGroup = None
+        if targets:
+            for searchTarget in searchTargets:
+                if searchTarget in targets:
+                    foundGroup = groupAndMeta
+                    break
+
+        return foundGroup
+
+    def _lookup(self, port: str,
+                targetOrWwn: str) -> tuple[int, typing.Any] | None:
+        with self._cache_lock:
+            return self._connector_cache.lookup(port, targetOrWwn)
+
+    def _is_group_cached(self, port: str, group: int) -> bool:
+        with self._cache_lock:
+            return self._connector_cache.is_group_cached(port, group)
+
+    def _is_group_name_cached(self, port: str, groupName: str) -> bool:
+        with self._cache_lock:
+            return self._connector_cache.is_group_name_cached(port, groupName)
+
+    def on_reset(self):
+        '''Reset the entire cache.'''
+
+        LOG.debug("Resetting entire cache.")
+
+        with self._cache_lock:
+            self._connector_cache.clear()
+
+    def on_reset_group(self, port: str, group: int):
+        '''Reset the cache for the given group.'''
+
+        LOG.debug('Resetting cache for group: %(port)s-%(group)s.',
+                  {'port': port, 'group': group})
+
+        with self._cache_lock:
+            self._connector_cache.clear_group(port, group)

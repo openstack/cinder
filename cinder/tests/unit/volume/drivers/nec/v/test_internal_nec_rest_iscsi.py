@@ -408,6 +408,9 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
         self.configuration.nec_v_rest_tcp_keepcnt = (
             hbsd_rest_api._TCP_KEEPCNT)
         self.configuration.nec_v_host_mode_options = []
+        self.configuration.nec_v_rest_use_object_caching = False
+        self.configuration.nec_v_rest_max_request_workers = (
+            hbsd_rest_api._MAX_REQUEST_WORKERS)
 
         self.configuration.use_chap_auth = True
         self.configuration.chap_username = CONFIG_MAP['auth_user']

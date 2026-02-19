@@ -88,6 +88,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         2.6.1 - Support extending volume with snapshot.
         2.7.0 - Support adaptive QoS upperIops setting.
         2.7.1 - Support GAD coexisting with ADR.
+        2.7.2 - Add caching/batching to fix severe performance issues.
 
     """
 
