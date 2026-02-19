@@ -300,6 +300,123 @@ class NetAppBlockStorageCmodeLibrary(
                                  clone_lun['Size'],
                                  clone_lun))
 
+    def _clone_source_to_destination(self, source, destination_volume):
+        """Enhanced clone with cross-pool optimization support.
+
+        This override adds boundary detection for cross-pool
+        cloning when the clone_across_pools capability is enabled.
+        """
+        source_name = source['name']
+        destination_name = destination_volume['name']
+
+        # Get source and destination pool names
+        src_lun = self._get_lun_from_table(source_name)
+        src_metadata = src_lun.metadata
+        src_pool = src_metadata['Volume']
+        src_lun_path = src_metadata['Path']
+
+        # Get destination pool from volume host field
+        dest_pool = volume_utils.extract_host(
+            destination_volume['host'], level='pool')
+        dest_lun_path = '/vol/%s/%s' % (dest_pool, destination_name)
+
+        # Check if this is a cross-pool clone
+        if src_pool != dest_pool:
+            LOG.info("Cross-pool clone requested: %(src)s "
+                     "(pool: %(src_pool)s) -> %(dst)s (pool: %(dst_pool)s)",
+                     {'src': src_lun_path, 'src_pool': src_pool,
+                      'dst': dest_lun_path, 'dst_pool': dest_pool})
+
+            try:
+                # Get location information for source and destination
+                source_info = self._get_lun_location_info(src_lun_path)
+                # For destination, construct expected location
+                dest_info = {
+                    'vserver': self.vserver,
+                    'flexvol': dest_pool,
+                    'lun_path': dest_lun_path,
+                }
+                # Get destination aggregate info
+                try:
+                    dest_flexvol = self.zapi_client.get_flexvol(
+                        flexvol_name=dest_pool)
+                    dest_aggr_list = dest_flexvol.get('aggregate', [])
+                    if dest_aggr_list:
+                        dest_info['aggregate'] = (
+                            dest_aggr_list[0]
+                            if isinstance(dest_aggr_list, list)
+                            else dest_aggr_list)
+                except Exception as e:
+                    LOG.debug("Could not get destination aggregate: "
+                              "%(error)s", {'error': e})
+                    dest_info['aggregate'] = None
+
+                # Determine clone boundary
+                boundary = self._determine_clone_boundary(
+                    source_info, dest_info)
+
+                LOG.debug("Clone boundary: %(boundary)s",
+                          {'boundary': boundary})
+
+                # Handle cross-SVM and cross-aggregate clones
+                if boundary == na_utils.CloneBoundary.CROSS_SVM:
+                    # CinderException will trigger fallback to image download
+                    LOG.debug("Cross-pool clone across SVMs not "
+                              "supported, falling back to Glance "
+                              "download.")
+                    raise
+
+                elif boundary in (na_utils.CloneBoundary.CROSS_AGGREGATE,
+                                  na_utils.CloneBoundary.SAME_AGGREGATE):
+                    LOG.debug("Cross-pool clone using aggregate APIs: "
+                              "src=%(src)s, dst=%(dst)s",
+                              {'src': src_lun_path, 'dst': dest_lun_path})
+                    self._handle_cross_aggregate_clone(
+                        source, destination_volume, source_info, dest_info)
+                    return self._get_volume_model_update(destination_volume)
+
+            except exception.CinderException:
+                # CinderException will trigger fallback to image download
+                LOG.debug("Cross-pool clone failed, fallback to image "
+                          "download will be used if available.")
+                raise
+            except Exception as e:
+                # Unexpected error - log and raise CinderException for fallback
+                LOG.debug("Cross-pool clone setup failed: %(error)s. "
+                          "Fallback to image download will be used.",
+                          {'error': e})
+                raise exception.VolumeDriverException(
+                    message="Cross-pool clone failed: %s" % e)
+
+        # Use parent class implementation for same-pool only
+        return super(
+            NetAppBlockStorageCmodeLibrary, self
+        )._clone_source_to_destination(source, destination_volume)
+
+    def _handle_cross_aggregate_clone(self, source, destination_volume,
+                                      source_info, dest_info):
+        """Handle cross-aggregate LUN clone using lun-copy."""
+        destination_name = destination_volume['name']
+        src_lun_path = source_info['lun_path']
+        dest_lun_path = dest_info['lun_path']
+
+        # Perform the cross-aggregate copy
+        self._copy_lun_cross_aggregates(
+            src_lun_path, dest_lun_path, source_info, dest_info)
+
+        # Add LUN to table
+        lun = self.zapi_client.get_lun_by_args(
+            vserver=self.vserver,
+            path=dest_lun_path)
+        if lun:
+            clone_lun = lun[0]
+            self._add_lun_to_table(
+                block_base.NetAppLun(
+                    '%s:%s' % (clone_lun['Vserver'], clone_lun['Path']),
+                    destination_name,
+                    clone_lun['Size'],
+                    clone_lun))
+
     def _retry_clone_lun(self, volume, name, new_name, space_reserved,
                          qos_policy_group_name=None, src_block=0,
                          dest_block=0, block_count=0,
@@ -343,6 +460,173 @@ class NetAppBlockStorageCmodeLibrary(
                 else:
                     raise netapp_api.NaApiError(e.code, e.message)
 
+    def _get_lun_location_info(self, lun_path):
+        """Get location information for a LUN.
+
+        Returns a dict with vserver, flexvol, aggregate, and other
+        location details needed for boundary-aware cloning.
+        """
+        # Parse the LUN path: /vol/flexvol_name/lun_name
+        path_parts = lun_path.split('/')
+        if len(path_parts) < 4:
+            msg = _("Invalid LUN path format: %s") % lun_path
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        flexvol_name = path_parts[2]
+
+        # Get flexvol details including aggregate information
+        try:
+            flexvol = self.zapi_client.get_flexvol(flexvol_name=flexvol_name)
+
+            # Extract aggregate name
+            aggregate = None
+            aggr_list = flexvol.get('aggregate', [])
+            if aggr_list:
+                if isinstance(aggr_list, list):
+                    aggregate = aggr_list[0]
+                else:
+                    aggregate = aggr_list
+
+            location_info = {
+                'vserver': self.vserver,
+                'flexvol': flexvol_name,
+                'aggregate': aggregate,
+                'lun_path': lun_path,
+            }
+
+            return location_info
+
+        except Exception as e:
+            LOG.debug("Failed to get location info for LUN %(path)s: "
+                      "%(error)s", {'path': lun_path, 'error': e})
+            raise
+
+    def _determine_clone_boundary(self, source_info, dest_info):
+        """Determine the cloning boundary between source and destination.
+
+        Returns a CloneBoundary enum value indicating the relationship
+        between the source and destination locations.
+        """
+        # Cross-cluster is not supported - would need cluster info
+        # For now we assume same cluster since we're using same zapi_client
+
+        # Check SVM boundary
+        if source_info['vserver'] != dest_info['vserver']:
+            return na_utils.CloneBoundary.CROSS_SVM
+
+        # Check aggregate boundary (same SVM)
+        if source_info.get('aggregate') != dest_info.get('aggregate'):
+            return na_utils.CloneBoundary.CROSS_AGGREGATE
+
+        # Check FlexVol boundary (same aggregate)
+        if source_info['flexvol'] != dest_info['flexvol']:
+            return na_utils.CloneBoundary.SAME_AGGREGATE
+
+        # Same FlexVol (same pool)
+        return na_utils.CloneBoundary.SAME_POOL
+
+    def _wait_for_lun_copy_completion(self, job_uuid, timeout=None):
+        """Monitor LUN copy job status until completion or timeout."""
+        if timeout is None:
+            timeout = self.configuration.safe_get(
+                'netapp_lun_copy_timeout') or 300
+        # Use exponential backoff starting at 2s, capped at 30s, to avoid
+        # hammering the API on short copies while still detecting completion
+        # promptly on longer ones.
+        poll_interval = 2
+        max_poll_interval = 30
+        elapsed = 0
+
+        while elapsed < timeout:
+            try:
+                status = self.zapi_client.get_lun_copy_status(job_uuid)
+
+                if not status:
+                    LOG.debug("LUN copy job %(uuid)s not found",
+                              {'uuid': job_uuid})
+                else:
+                    job_status = status.get('job-status')
+
+                    if job_status == 'complete':
+                        LOG.debug("LUN copy job completed: UUID=%(uuid)s",
+                                  {'uuid': job_uuid})
+                        return
+
+                    if job_status == 'failed':
+                        failure_reason = status.get(
+                            'last-failure-reason', 'Unknown')
+                        msg = (_("LUN copy job failed: UUID=%(uuid)s, "
+                                 "reason=%(reason)s") %
+                               {'uuid': job_uuid, 'reason': failure_reason})
+                        raise exception.VolumeBackendAPIException(data=msg)
+
+                    # Job still in progress
+                    LOG.debug("LUN copy in progress: UUID=%(uuid)s, "
+                              "status=%(status)s, elapsed=%(elapsed)ss",
+                              {'uuid': job_uuid, 'status': job_status,
+                               'elapsed': elapsed})
+
+            except exception.VolumeBackendAPIException:
+                raise
+            except Exception as e:
+                LOG.warning("Error checking LUN copy status: %(error)s",
+                            {'error': e})
+
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+            poll_interval = min(poll_interval * 2, max_poll_interval)
+
+        # Timeout reached
+        try:
+            self.zapi_client.cancel_lun_copy(job_uuid)
+            LOG.debug("Cancelled LUN copy job due to timeout: %(uuid)s",
+                      {'uuid': job_uuid})
+        except Exception as e:
+            LOG.warning("Failed to cancel LUN copy job %(uuid)s: %(error)s",
+                        {'uuid': job_uuid, 'error': e})
+
+        msg = (_("LUN copy timeout: UUID=%(uuid)s, timeout=%(timeout)ss") %
+               {'uuid': job_uuid, 'timeout': timeout})
+        raise exception.VolumeBackendAPIException(data=msg)
+
+    def _copy_lun_cross_aggregates(self, source_lun_path, dest_lun_path,
+                                   source_info, dest_info):
+        """Copy LUN across different aggregates using lun-copy-start."""
+        source_flexvol = source_info['flexvol']
+        dest_flexvol = dest_info['flexvol']
+        source_vserver = source_info.get('vserver', self.vserver)
+        dest_vserver = dest_info.get('vserver', self.vserver)
+
+        # Extract LUN names from paths
+        source_lun_name = source_lun_path.split('/')[-1]
+        dest_lun_name = dest_lun_path.split('/')[-1]
+
+        LOG.debug("Starting cross-pool LUN copy: %(src)s -> %(dst)s",
+                  {'src': source_lun_path, 'dst': dest_lun_path})
+
+        try:
+            job_uuid = self.zapi_client.start_lun_copy(
+                lun_name=source_lun_name,
+                dest_ontap_volume=dest_flexvol,
+                dest_vserver=dest_vserver,
+                src_ontap_volume=source_flexvol,
+                src_vserver=source_vserver,
+                dest_lun_name=dest_lun_name
+            )
+
+            LOG.debug("LUN copy job started: UUID=%(uuid)s",
+                      {'uuid': job_uuid})
+
+            # Wait for copy to complete
+            self._wait_for_lun_copy_completion(job_uuid)
+
+            LOG.debug("Cross-pool LUN copy completed successfully")
+
+        except Exception as e:
+            LOG.debug("Cross-pool LUN copy failed: %(error)s",
+                      {'error': e})
+            raise exception.VolumeNotFound(volume_id=source_lun_name)
+
     def _get_fc_target_wwpns(self, include_partner=True):
         return self.zapi_client.get_fc_target_wwpns()
 
@@ -364,6 +648,9 @@ class NetAppBlockStorageCmodeLibrary(
 
         # Used for service state report
         data['replication_enabled'] = self.replication_enabled
+
+        # Enable cross-pool cloning for image volume cache optimization
+        data['clone_across_pools'] = True
 
         self._stats = data
 
@@ -427,6 +714,7 @@ class NetAppBlockStorageCmodeLibrary(
             pool['consistencygroup_support'] = True
             pool['consistent_group_snapshot_enabled'] = True
             pool['reserved_percentage'] = self.reserved_percentage
+            pool['clone_across_pools'] = True
             pool['max_over_subscription_ratio'] = (
                 self.max_over_subscription_ratio)
 

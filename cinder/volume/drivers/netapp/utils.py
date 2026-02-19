@@ -24,6 +24,7 @@ NetApp drivers to achieve the desired functionality.
 
 
 import decimal
+from enum import Enum
 import platform
 import re
 
@@ -84,6 +85,13 @@ BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
 CHAP_SECRET_LENGTH = 16
 DEFAULT_CHAP_USER_NAME = 'NetApp_iSCSI_CHAP_Username'
 API_TRACE_PATTERN = '(.*)'
+
+
+class CloneBoundary(Enum):
+    SAME_POOL = 'same_pool'
+    SAME_AGGREGATE = 'same_aggregate'
+    CROSS_AGGREGATE = 'cross_aggregate'
+    CROSS_SVM = 'cross_svm'
 
 
 class NetAppDriverException(exception.VolumeDriverException):

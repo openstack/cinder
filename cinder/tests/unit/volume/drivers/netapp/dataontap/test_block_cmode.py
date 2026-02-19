@@ -16,11 +16,11 @@
 #    under the License.
 """Mock unit tests for the NetApp block storage C-mode library."""
 
+import time
 from unittest import mock
 from unittest.mock import patch
 
 import ddt
-from oslo_utils import units
 
 from cinder import exception
 from cinder.objects import fields
@@ -74,6 +74,15 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             fake.SNAPSHOT_NAME: self.fake_snapshot_lun,
         }
         self.mock_object(block_base.NetAppBlockStorageLibrary, 'delete_volume')
+
+        # Cross-pool clone test fixtures
+        self.fake_cross_pool_src_lun = block_base.NetAppLun(
+            '%s:%s' % (fake.CROSS_POOL_VSERVER, fake.CROSS_POOL_SRC_LUN_PATH),
+            fake.CROSS_POOL_CLONE_SOURCE['name'],
+            1073741824,  # 1GB
+            fake.CROSS_POOL_SRC_LUN_METADATA)
+        self.library.lun_table[fake.CROSS_POOL_CLONE_SOURCE['name']] = (
+            self.fake_cross_pool_src_lun)
 
     def get_config_cmode(self):
         config = na_fakes.create_configuration_cmode()
@@ -581,6 +590,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'online_extend_support': True,
             'netapp_is_flexgroup': 'false',
             'total_volumes': 2,
+            'clone_across_pools': True,
         }]
         if report_provisioned_capacity:
             expected[0].update({'provisioned_capacity_gb': 5.0})
@@ -1991,130 +2001,488 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         mock_log.debug.assert_any_call(
             "Successfully updated perf cache for cluster.")
 
-    @test.testtools.skip("Method _get_disaggregated_capacity not implemented")
-    def test_get_disaggregated_capacity_basic(self):
-        """Aggregates present, all capacities present."""
-        aggregates = ['aggr1', 'aggr2']
-        aggr_capacities = {
-            'aggr1': {'size-total': 10 * units.Gi,
-                      'size-available': 4 * units.Gi},
-            'aggr2': {'size-total': 6 * units.Gi,
-                      'size-available': 2 * units.Gi},
+    # Tests for _get_lun_location_info
+    def test_get_lun_location_info(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        mock_get_flexvol = self.mock_object(
+            self.zapi_client, 'get_flexvol',
+            return_value=fake.CROSS_POOL_FLEXVOL_INFO)
+
+        result = self.library._get_lun_location_info(
+            fake.CROSS_POOL_SRC_LUN_PATH)
+
+        self.assertEqual(fake.CROSS_POOL_SOURCE_LOCATION_INFO, result)
+        mock_get_flexvol.assert_called_once_with(
+            flexvol_name=fake.CROSS_POOL_SRC_POOL)
+
+    def test_get_lun_location_info_invalid_path(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.library._get_lun_location_info,
+            '/invalid/path')
+
+    def test_get_lun_location_info_flexvol_error(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        self.mock_object(
+            self.zapi_client, 'get_flexvol',
+            side_effect=netapp_api.NaApiError())
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.library._get_lun_location_info,
+            fake.CROSS_POOL_SRC_LUN_PATH)
+
+    def test_get_lun_location_info_aggregate_as_string(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        self.mock_object(
+            self.zapi_client, 'get_flexvol',
+            return_value={'name': fake.CROSS_POOL_SRC_POOL,
+                          'aggregate': fake.CROSS_POOL_SRC_AGGREGATE})
+
+        result = self.library._get_lun_location_info(
+            fake.CROSS_POOL_SRC_LUN_PATH)
+
+        self.assertEqual(fake.CROSS_POOL_SRC_AGGREGATE, result['aggregate'])
+
+    def test_get_lun_location_info_no_aggregate(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        self.mock_object(
+            self.zapi_client, 'get_flexvol',
+            return_value={'name': fake.CROSS_POOL_SRC_POOL, 'aggregate': []})
+
+        result = self.library._get_lun_location_info(
+            fake.CROSS_POOL_SRC_LUN_PATH)
+
+        self.assertIsNone(result['aggregate'])
+
+    # Tests for _determine_clone_boundary
+    @ddt.data(
+        # Same pool
+        ({'vserver': 'svm1', 'flexvol': 'vol1', 'aggregate': 'aggr1'},
+         {'vserver': 'svm1', 'flexvol': 'vol1', 'aggregate': 'aggr1'},
+         na_utils.CloneBoundary.SAME_POOL),
+        # Same aggregate, different FlexVol
+        ({'vserver': 'svm1', 'flexvol': 'vol1', 'aggregate': 'aggr1'},
+         {'vserver': 'svm1', 'flexvol': 'vol2', 'aggregate': 'aggr1'},
+         na_utils.CloneBoundary.SAME_AGGREGATE),
+        # Cross aggregate
+        ({'vserver': 'svm1', 'flexvol': 'vol1', 'aggregate': 'aggr1'},
+         {'vserver': 'svm1', 'flexvol': 'vol2', 'aggregate': 'aggr2'},
+         na_utils.CloneBoundary.CROSS_AGGREGATE),
+        # Cross SVM
+        ({'vserver': 'svm1', 'flexvol': 'vol1', 'aggregate': 'aggr1'},
+         {'vserver': 'svm2', 'flexvol': 'vol2', 'aggregate': 'aggr2'},
+         na_utils.CloneBoundary.CROSS_SVM),
+    )
+    @ddt.unpack
+    def test_determine_clone_boundary(self, source_info, dest_info, expected):
+        result = self.library._determine_clone_boundary(source_info, dest_info)
+        self.assertEqual(expected, result)
+
+    # Tests for _wait_for_lun_copy_completion
+    def test_wait_for_lun_copy_completion_success(self):
+        self.library.configuration.netapp_lun_copy_timeout = 60
+        self.mock_object(time, 'sleep')
+        mock_get_status = self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            return_value={'job-status': 'complete'})
+
+        self.library._wait_for_lun_copy_completion(
+            fake.CROSS_POOL_JOB_UUID)
+
+        mock_get_status.assert_called_once_with(fake.CROSS_POOL_JOB_UUID)
+
+    def test_wait_for_lun_copy_completion_failed(self):
+        self.library.configuration.netapp_lun_copy_timeout = 60
+        self.mock_object(time, 'sleep')
+        self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            return_value={
+                'job-status': 'failed',
+                'last-failure-reason': 'Disk full',
+            })
+
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.library._wait_for_lun_copy_completion,
+            fake.CROSS_POOL_JOB_UUID)
+
+    def test_wait_for_lun_copy_completion_timeout(self):
+        self.library.configuration.netapp_lun_copy_timeout = 5
+        self.mock_object(time, 'sleep')
+        self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            return_value={'job-status': 'in-progress'})
+        mock_cancel = self.mock_object(
+            self.zapi_client, 'cancel_lun_copy')
+
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.library._wait_for_lun_copy_completion,
+            fake.CROSS_POOL_JOB_UUID)
+
+        mock_cancel.assert_called_once_with(fake.CROSS_POOL_JOB_UUID)
+
+    def test_wait_for_lun_copy_completion_default_timeout(self):
+        self.library.configuration.netapp_lun_copy_timeout = None
+        self.mock_object(time, 'sleep')
+        mock_get_status = self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            return_value={'job-status': 'complete'})
+
+        self.library._wait_for_lun_copy_completion(
+            fake.CROSS_POOL_JOB_UUID)
+
+        mock_get_status.assert_called_once_with(fake.CROSS_POOL_JOB_UUID)
+
+    def test_wait_for_lun_copy_completion_backoff(self):
+        self.library.configuration.netapp_lun_copy_timeout = 60
+        mock_sleep = self.mock_object(time, 'sleep')
+        self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            side_effect=[
+                {'job-status': 'in-progress'},
+                {'job-status': 'in-progress'},
+                {'job-status': 'in-progress'},
+                {'job-status': 'in-progress'},
+                {'job-status': 'complete'},
+            ])
+
+        self.library._wait_for_lun_copy_completion(
+            fake.CROSS_POOL_JOB_UUID)
+
+        mock_sleep.assert_has_calls([
+            mock.call(2),
+            mock.call(4),
+            mock.call(8),
+            mock.call(16),
+        ])
+
+    def test_wait_for_lun_copy_completion_max_poll_interval(self):
+        self.library.configuration.netapp_lun_copy_timeout = 180
+        mock_sleep = self.mock_object(time, 'sleep')
+        self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            side_effect=[
+                {'job-status': 'in-progress'},
+                {'job-status': 'in-progress'},
+                {'job-status': 'in-progress'},
+                {'job-status': 'in-progress'},
+                {'job-status': 'in-progress'},
+                {'job-status': 'in-progress'},
+                {'job-status': 'complete'},
+            ])
+
+        self.library._wait_for_lun_copy_completion(
+            fake.CROSS_POOL_JOB_UUID)
+
+        sleep_calls = [c[0][0] for c in mock_sleep.call_args_list]
+        self.assertEqual([2, 4, 8, 16, 30, 30], sleep_calls)
+
+    def test_wait_for_lun_copy_completion_status_not_found(self):
+        self.library.configuration.netapp_lun_copy_timeout = 60
+        self.mock_object(time, 'sleep')
+        mock_get_status = self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            side_effect=[None, None, {'job-status': 'complete'}])
+
+        self.library._wait_for_lun_copy_completion(fake.CROSS_POOL_JOB_UUID)
+
+        self.assertEqual(3, mock_get_status.call_count)
+
+    def test_wait_for_lun_copy_completion_transient_error(self):
+        self.library.configuration.netapp_lun_copy_timeout = 60
+        self.mock_object(time, 'sleep')
+        mock_get_status = self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            side_effect=[Exception('transient'), {'job-status': 'complete'}])
+
+        self.library._wait_for_lun_copy_completion(fake.CROSS_POOL_JOB_UUID)
+
+        self.assertEqual(2, mock_get_status.call_count)
+
+    def test_wait_for_lun_copy_completion_cancel_failure(self):
+        self.library.configuration.netapp_lun_copy_timeout = 5
+        self.mock_object(time, 'sleep')
+        self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            return_value={'job-status': 'in-progress'})
+        self.mock_object(
+            self.zapi_client, 'cancel_lun_copy',
+            side_effect=Exception('Cancel failed'))
+
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.library._wait_for_lun_copy_completion,
+            fake.CROSS_POOL_JOB_UUID)
+
+    # Tests for _copy_lun_cross_aggregates
+    def test_copy_lun_cross_aggregates_success(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        mock_start_lun_copy = self.mock_object(
+            self.zapi_client, 'start_lun_copy',
+            return_value=fake.CROSS_POOL_JOB_UUID)
+        mock_wait = self.mock_object(
+            self.library, '_wait_for_lun_copy_completion')
+
+        self.library._copy_lun_cross_aggregates(
+            fake.CROSS_POOL_SRC_LUN_PATH, fake.CROSS_POOL_DST_LUN_PATH,
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO,
+            fake.CROSS_POOL_DEST_LOCATION_INFO)
+
+        mock_start_lun_copy.assert_called_once_with(
+            lun_name='volume-src-uuid',
+            dest_ontap_volume=fake.CROSS_POOL_DST_POOL,
+            dest_vserver=fake.CROSS_POOL_VSERVER,
+            src_ontap_volume=fake.CROSS_POOL_SRC_POOL,
+            src_vserver=fake.CROSS_POOL_VSERVER,
+            dest_lun_name='volume-dst-uuid')
+        mock_wait.assert_called_once_with(fake.CROSS_POOL_JOB_UUID)
+
+    def test_copy_lun_cross_aggregates_vserver_fallback(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        src_info = {
+            'flexvol': fake.CROSS_POOL_SRC_POOL,
+            'aggregate': fake.CROSS_POOL_SRC_AGGREGATE,
+            'lun_path': fake.CROSS_POOL_SRC_LUN_PATH,
         }
-
-        self.library.zapi_client.get_vserver_aggregates.return_value = (
-            aggregates
-        )
-        self.library.zapi_client.get_aggregate_capacities.return_value = (
-            aggr_capacities
-        )
-
-        result = self.library._get_disaggregated_capacity()
-
-        (self.library.zapi_client.
-         get_vserver_aggregates.assert_called_once_with())
-        (self.library.zapi_client.
-            get_aggregate_capacities.assert_called_once_with(
-                aggregates
-            ))
-        self.assertEqual(16 * units.Gi, result['size-total'])
-        self.assertEqual(6 * units.Gi, result['size-available'])
-
-    @test.testtools.skip("Method _get_disaggregated_capacity not implemented")
-    def test_get_disaggregated_capacity_no_aggregates(self):
-        """No SVM mapped aggregates returns all zeros."""
-        aggregates = []
-        aggr_capacities = {}
-
-        self.library.zapi_client.get_vserver_aggregates.return_value = (
-            aggregates
-        )
-        self.library.zapi_client.get_aggregate_capacities.return_value = (
-            aggr_capacities
-        )
-
-        result = self.library._get_disaggregated_capacity()
-
-        (self.library.zapi_client.
-         get_vserver_aggregates.assert_called_once_with())
-        (self.library.zapi_client.
-            get_aggregate_capacities.assert_called_once_with(
-                aggregates
-            ))
-        self.assertEqual(0, result['size-total'])
-        self.assertEqual(0, result['size-available'])
-
-    @test.testtools.skip("Method _get_disaggregated_capacity not implemented")
-    def test_get_disaggregated_capacity_missing_keys(self):
-        """Gracefully handle capacity dicts missing size fields."""
-        aggregates = ['aggr1', 'aggr2']
-        aggr_capacities = {
-            'aggr1': {'size-total': 5 * units.Gi},  # missing size-available
-            'aggr2': {'size-available': 3 * units.Gi},  # missing size-total
+        dst_info = {
+            'flexvol': fake.CROSS_POOL_DST_POOL,
+            'aggregate': fake.CROSS_POOL_DST_AGGREGATE,
+            'lun_path': fake.CROSS_POOL_DST_LUN_PATH,
         }
+        mock_start_lun_copy = self.mock_object(
+            self.zapi_client, 'start_lun_copy',
+            return_value=fake.CROSS_POOL_JOB_UUID)
+        self.mock_object(self.library, '_wait_for_lun_copy_completion')
 
-        self.library.zapi_client.get_vserver_aggregates.return_value = (
-            aggregates
-        )
-        self.library.zapi_client.get_aggregate_capacities.return_value = (
-            aggr_capacities
-        )
+        self.library._copy_lun_cross_aggregates(
+            fake.CROSS_POOL_SRC_LUN_PATH, fake.CROSS_POOL_DST_LUN_PATH,
+            src_info, dst_info)
 
-        result = self.library._get_disaggregated_capacity()
+        mock_start_lun_copy.assert_called_once_with(
+            lun_name='volume-src-uuid',
+            dest_ontap_volume=fake.CROSS_POOL_DST_POOL,
+            dest_vserver=fake.CROSS_POOL_VSERVER,
+            src_ontap_volume=fake.CROSS_POOL_SRC_POOL,
+            src_vserver=fake.CROSS_POOL_VSERVER,
+            dest_lun_name='volume-dst-uuid')
 
-        self.assertEqual(5 * units.Gi, result['size-total'])
-        self.assertEqual(3 * units.Gi, result['size-available'])
+    def test_copy_lun_cross_aggregates_failure(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        self.mock_object(
+            self.zapi_client, 'start_lun_copy',
+            side_effect=Exception('Copy failed'))
+        mock_wait = self.mock_object(
+            self.library, '_wait_for_lun_copy_completion')
 
-    @test.testtools.skip(
-        "Method _get_disaggregated_provisioned_capacity not implemented")
-    def test_get_disaggregated_provisioned_capacity_sums_sizes(self):
-        # Ensure vserver is the expected string
-        self.library.vserver = 'fake_svm'
+        self.assertRaises(
+            exception.VolumeNotFound,
+            self.library._copy_lun_cross_aggregates,
+            fake.CROSS_POOL_SRC_LUN_PATH, fake.CROSS_POOL_DST_LUN_PATH,
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO,
+            fake.CROSS_POOL_DEST_LOCATION_INFO)
 
-        storage_units = [
-            {'name': 'su1', 'uuid': 'uuid1',
-             'provisioned-size': 10 * units.Gi},
-            {'name': 'su2', 'uuid': 'uuid2',
-             'provisioned-size': 20 * units.Gi},
-        ]
-        self.library.zapi_client.get_storage_units_by_svm.return_value = (
-            storage_units
-        )
+        mock_wait.assert_not_called()
 
-        result = self.library._get_disaggregated_provisioned_capacity()
+    def test_copy_lun_cross_aggregates_wait_failure(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        self.mock_object(
+            self.zapi_client, 'start_lun_copy',
+            return_value=fake.CROSS_POOL_JOB_UUID)
+        self.mock_object(
+            self.library, '_wait_for_lun_copy_completion',
+            side_effect=exception.VolumeBackendAPIException(data='Timeout'))
 
-        self.assertEqual(30 * units.Gi, result)
-        (self.library.zapi_client.get_storage_units_by_svm.
-         assert_called_once_with(vserver='fake_svm'))
+        self.assertRaises(
+            exception.VolumeNotFound,
+            self.library._copy_lun_cross_aggregates,
+            fake.CROSS_POOL_SRC_LUN_PATH, fake.CROSS_POOL_DST_LUN_PATH,
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO,
+            fake.CROSS_POOL_DEST_LOCATION_INFO)
 
-    @test.testtools.skip(
-        "Method _get_disaggregated_provisioned_capacity not implemented")
-    def test_get_disaggregated_provisioned_capacity_handles_bad_entries(self):
-        # Ensure vserver is the expected string
-        self.library.vserver = 'fake_svm'
+    # Tests for _clone_source_to_destination (cross-pool path)
+    def test_clone_source_to_destination_cross_aggregate(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        mock_location = self.mock_object(
+            self.library, '_get_lun_location_info',
+            return_value=fake.CROSS_POOL_SOURCE_LOCATION_INFO)
+        mock_boundary = self.mock_object(
+            self.library, '_determine_clone_boundary',
+            return_value=na_utils.CloneBoundary.CROSS_AGGREGATE)
+        mock_handle = self.mock_object(
+            self.library, '_handle_cross_aggregate_clone')
+        mock_model = self.mock_object(
+            self.library, '_get_volume_model_update',
+            return_value={'provider_location': 'fake'})
+        self.mock_object(
+            self.zapi_client, 'get_flexvol',
+            return_value={'aggregate': [fake.CROSS_POOL_DST_AGGREGATE]})
 
-        self.library.zapi_client.get_storage_units_by_svm.return_value = [
-            {'provisioned-size': '10'},
-            {'provisioned-size': 'not-a-number'},
-            {},
-        ]
+        result = self.library._clone_source_to_destination(
+            fake.CROSS_POOL_CLONE_SOURCE, fake.CROSS_POOL_CLONE_DESTINATION)
 
-        result = self.library._get_disaggregated_provisioned_capacity()
+        mock_location.assert_called_once_with(fake.CROSS_POOL_SRC_LUN_PATH)
+        mock_boundary.assert_called_once_with(
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO,
+            {'vserver': fake.CROSS_POOL_VSERVER,
+             'flexvol': fake.CROSS_POOL_DST_POOL,
+             'lun_path': fake.CROSS_POOL_DST_LUN_PATH,
+             'aggregate': fake.CROSS_POOL_DST_AGGREGATE})
+        mock_handle.assert_called_once_with(
+            fake.CROSS_POOL_CLONE_SOURCE,
+            fake.CROSS_POOL_CLONE_DESTINATION,
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO,
+            {'vserver': fake.CROSS_POOL_VSERVER,
+             'flexvol': fake.CROSS_POOL_DST_POOL,
+             'lun_path': fake.CROSS_POOL_DST_LUN_PATH,
+             'aggregate': fake.CROSS_POOL_DST_AGGREGATE})
+        mock_model.assert_called_once_with(fake.CROSS_POOL_CLONE_DESTINATION)
+        self.assertEqual({'provider_location': 'fake'}, result)
 
-        self.assertEqual(10, result)
-        self.library.zapi_client.get_storage_units_by_svm. \
-            assert_called_once_with(vserver='fake_svm')
+    def test_clone_source_to_destination_same_aggregate(self):
+        """Test cross-pool clone where both FlexVols share the same aggregate.
 
-    @test.testtools.skip(
-        "Method _get_disaggregated_provisioned_capacity not implemented")
-    def test_get_disaggregated_provisioned_capacity_empty_list(self):
-        # Ensure vserver is the expected string
-        self.library.vserver = 'fake_svm'
+        SAME_AGGREGATE and CROSS_AGGREGATE both delegate to
+        _handle_cross_aggregate_clone; this test explicitly validates the
+        cross-flexvol-same-aggregate code path is covered.
+        """
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        dest_info = {
+            'vserver': fake.CROSS_POOL_VSERVER,
+            'flexvol': fake.CROSS_POOL_DST_POOL,
+            'lun_path': fake.CROSS_POOL_DST_LUN_PATH,
+            'aggregate': fake.CROSS_POOL_SRC_AGGREGATE,
+        }
+        mock_location = self.mock_object(
+            self.library, '_get_lun_location_info',
+            return_value=fake.CROSS_POOL_SOURCE_LOCATION_INFO)
+        mock_boundary = self.mock_object(
+            self.library, '_determine_clone_boundary',
+            return_value=na_utils.CloneBoundary.SAME_AGGREGATE)
+        mock_handle = self.mock_object(
+            self.library, '_handle_cross_aggregate_clone')
+        mock_model = self.mock_object(
+            self.library, '_get_volume_model_update',
+            return_value={'provider_location': 'fake'})
+        # Destination FlexVol is in the *same* aggregate as source
+        self.mock_object(
+            self.zapi_client, 'get_flexvol',
+            return_value={'aggregate': [fake.CROSS_POOL_SRC_AGGREGATE]})
 
-        self.library.zapi_client.get_storage_units_by_svm.return_value = []
+        result = self.library._clone_source_to_destination(
+            fake.CROSS_POOL_CLONE_SOURCE, fake.CROSS_POOL_CLONE_DESTINATION)
 
-        result = self.library._get_disaggregated_provisioned_capacity()
+        mock_location.assert_called_once_with(fake.CROSS_POOL_SRC_LUN_PATH)
+        mock_boundary.assert_called_once_with(
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO, dest_info)
+        mock_handle.assert_called_once_with(
+            fake.CROSS_POOL_CLONE_SOURCE,
+            fake.CROSS_POOL_CLONE_DESTINATION,
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO,
+            dest_info)
+        mock_model.assert_called_once_with(fake.CROSS_POOL_CLONE_DESTINATION)
+        self.assertEqual({'provider_location': 'fake'}, result)
 
-        self.assertEqual(0, result)
-        (self.library.zapi_client.get_storage_units_by_svm.
-         assert_called_once_with(vserver='fake_svm'))
+    def test_clone_source_to_destination_cross_svm(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        mock_location = self.mock_object(
+            self.library, '_get_lun_location_info',
+            return_value=fake.CROSS_POOL_SOURCE_LOCATION_INFO)
+        self.mock_object(
+            self.library, '_determine_clone_boundary',
+            return_value=na_utils.CloneBoundary.CROSS_SVM)
+        self.mock_object(
+            self.zapi_client, 'get_flexvol',
+            return_value={'aggregate': [fake.CROSS_POOL_DST_AGGREGATE]})
+
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.library._clone_source_to_destination,
+            fake.CROSS_POOL_CLONE_SOURCE, fake.CROSS_POOL_CLONE_DESTINATION)
+
+        mock_location.assert_called_once_with(fake.CROSS_POOL_SRC_LUN_PATH)
+
+    def test_clone_source_to_destination_same_pool(self):
+        mock_super = self.mock_object(
+            block_base.NetAppBlockStorageLibrary,
+            '_clone_source_to_destination',
+            return_value={'provider_location': 'fake'})
+
+        same_pool_dest = fake.CROSS_POOL_CLONE_DESTINATION.copy()
+        same_pool_dest['host'] = ('openstack@cdotblock#%s' %
+                                  fake.CROSS_POOL_SRC_POOL)
+
+        result = self.library._clone_source_to_destination(
+            fake.CROSS_POOL_CLONE_SOURCE, same_pool_dest)
+
+        mock_super.assert_called_once_with(
+            fake.CROSS_POOL_CLONE_SOURCE, same_pool_dest)
+        self.assertEqual({'provider_location': 'fake'}, result)
+
+    def test_clone_source_to_destination_fallback_on_error(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        self.mock_object(
+            self.library, '_get_lun_location_info',
+            side_effect=exception.VolumeDriverException(
+                message='Cross-pool clone failed'))
+
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.library._clone_source_to_destination,
+            fake.CROSS_POOL_CLONE_SOURCE, fake.CROSS_POOL_CLONE_DESTINATION)
+
+    # Tests for _handle_cross_aggregate_clone
+    def test_handle_cross_aggregate_clone(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        fake_clone_lun = {
+            'Vserver': fake.CROSS_POOL_VSERVER,
+            'Path': fake.CROSS_POOL_DST_LUN_PATH,
+            'Size': 1073741824,
+        }
+        mock_copy = self.mock_object(
+            self.library, '_copy_lun_cross_aggregates')
+        mock_get_lun = self.mock_object(
+            self.zapi_client, 'get_lun_by_args',
+            return_value=[fake_clone_lun])
+        mock_add_lun = self.mock_object(self.library, '_add_lun_to_table')
+
+        self.library._handle_cross_aggregate_clone(
+            fake.CROSS_POOL_CLONE_SOURCE, fake.CROSS_POOL_CLONE_DESTINATION,
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO,
+            fake.CROSS_POOL_DEST_LOCATION_INFO)
+
+        mock_copy.assert_called_once_with(
+            fake.CROSS_POOL_SRC_LUN_PATH, fake.CROSS_POOL_DST_LUN_PATH,
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO,
+            fake.CROSS_POOL_DEST_LOCATION_INFO)
+        mock_get_lun.assert_called_once_with(
+            vserver=fake.CROSS_POOL_VSERVER,
+            path=fake.CROSS_POOL_DST_LUN_PATH)
+        mock_add_lun.assert_called_once()
+
+    def test_handle_cross_aggregate_clone_no_lun(self):
+        self.library.vserver = fake.CROSS_POOL_VSERVER
+        mock_copy = self.mock_object(
+            self.library, '_copy_lun_cross_aggregates')
+        mock_get_lun = self.mock_object(
+            self.zapi_client, 'get_lun_by_args',
+            return_value=[])
+        mock_add_lun = self.mock_object(self.library, '_add_lun_to_table')
+
+        self.library._handle_cross_aggregate_clone(
+            fake.CROSS_POOL_CLONE_SOURCE,
+            fake.CROSS_POOL_CLONE_DESTINATION,
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO,
+            fake.CROSS_POOL_DEST_LOCATION_INFO)
+
+        mock_copy.assert_called_once_with(
+            fake.CROSS_POOL_SRC_LUN_PATH, fake.CROSS_POOL_DST_LUN_PATH,
+            fake.CROSS_POOL_SOURCE_LOCATION_INFO,
+            fake.CROSS_POOL_DEST_LOCATION_INFO)
+        mock_get_lun.assert_called_once_with(
+            vserver=fake.CROSS_POOL_VSERVER,
+            path=fake.CROSS_POOL_DST_LUN_PATH)
+        mock_add_lun.assert_not_called()

@@ -301,7 +301,14 @@ netapp_san_opts = [
                     'in more frequent updates, which increases the load on '
                     'ONTAP. Conversely, setting a higher value means the '
                     'performance utilization data may be slightly outdated '
-                    'but reduces the load on ONTAP.')]
+                    'but reduces the load on ONTAP.'),
+    cfg.IntOpt('netapp_lun_copy_timeout',
+               min=60,
+               default=300,
+               help='Specifies the maximum time (in seconds) to wait for '
+                    'a LUN copy operation to complete during cross-pool '
+                    'cloning. The default value of 300 seconds is '
+                    'sufficient for most LUN copy operations.')]
 
 netapp_replication_opts = [
     cfg.MultiOpt('netapp_replication_aggregate_map',
