@@ -634,7 +634,3 @@ def wait() -> None:
     except KeyboardInterrupt:
         _launcher.stop()  # type: ignore
     rpc.cleanup()
-
-
-def get_launcher() -> service.ProcessLauncher:
-    return process_launcher()

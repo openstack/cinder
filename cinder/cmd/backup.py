@@ -127,7 +127,7 @@ def main() -> None:
 
     if CONF.backup_workers > 1:
         LOG.info('Backup running with %s processes.', CONF.backup_workers)
-        launcher = service.get_launcher()
+        launcher = service.process_launcher()
 
         for i in range(CONF.backup_workers):
             _launch_backup_process(launcher, i, semaphore)

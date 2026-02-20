@@ -121,7 +121,7 @@ def _notify_service_started() -> None:
 
 
 def _launch_services() -> None:
-    launcher = service.get_launcher()
+    launcher = service.process_launcher()
 
     backend: str
     for backend in filter(None, CONF.enabled_backends):
