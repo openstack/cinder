@@ -54,9 +54,10 @@ class PowerStoreDriver(driver.VolumeDriver):
         1.2.1 - Report trim/discard support
         1.2.2 - QoS (Quality of Service) support
         1.2.3 - Added Cinder active/active support
+        1.2.4 - Added PowerStore metro volume support
     """
 
-    VERSION = "1.2.3"
+    VERSION = "1.2.4"
     VENDOR = "Dell EMC"
     SUPPORTS_ACTIVE_ACTIVE = True
 
@@ -84,6 +85,15 @@ class PowerStoreDriver(driver.VolumeDriver):
               "creation."),
             "string"
         )
+        self._set_property(
+            properties,
+            utils.POWERSTORE_METRO_KEY,
+            "PowerStore Metro.",
+            _("Specifies the PowerStore Metro for a "
+              "volume type. Metro volume is configured during volume "
+              "creation."),
+            "string"
+        )
         return properties, "powerstore"
 
     @staticmethod
@@ -106,6 +116,9 @@ class PowerStoreDriver(driver.VolumeDriver):
         self.replication_devices = (
             self.configuration.safe_get("replication_device") or []
         )
+        self.host_connectivity = self.configuration.safe_get(
+            options.POWERSTORE_HOST_CONNECTIVITY)
+        LOG.info("Using host connectivity: %s", self.host_connectivity)
         self.adapters[manager.VolumeManager.FAILBACK_SENTINEL] = adapter_class(
             **self._get_device_configuration()
         )
@@ -125,15 +138,23 @@ class PowerStoreDriver(driver.VolumeDriver):
             adapter.check_for_setup_error()
 
     def create_volume(self, volume):
-        return self.adapter.create_volume(volume)
+        remote_system_name = None
+        if utils.is_metro_volume(volume):
+            remote_system_name = self.adapters.get(
+                list(self.failover_choices)[0]).get_cluster_name()
+
+        return self.adapter.create_volume(volume, remote_system_name)
 
     def delete_volume(self, volume):
-        if volume.is_replicated():
+        if utils.is_replication_volume(volume):
             self.adapter.teardown_volume_replication(volume)
             self.adapter.delete_volume(volume)
             if not self.is_failed_over:
                 for backend_id in self.failover_choices:
                     self.adapters.get(backend_id).delete_volume(volume)
+        elif utils.is_metro_volume(volume):
+            self.adapter.end_metro_volume(volume)
+            self.adapter.delete_volume(volume)
         else:
             self.adapter.delete_volume(volume)
 
@@ -156,9 +177,17 @@ class PowerStoreDriver(driver.VolumeDriver):
         return self.adapter.create_volume_from_source(volume, snapshot)
 
     def initialize_connection(self, volume, connector, **kwargs):
+        if utils.is_metro_volume(volume):
+            for backend_id in self.failover_choices:
+                self.adapters.get(backend_id).initialize_connection(
+                    volume, connector, **kwargs)
         return self.adapter.initialize_connection(volume, connector, **kwargs)
 
     def terminate_connection(self, volume, connector, **kwargs):
+        if utils.is_metro_volume(volume):
+            for backend_id in self.failover_choices:
+                self.adapters.get(backend_id).terminate_connection(
+                    volume, connector, **kwargs)
         return self.adapter.terminate_connection(volume, connector, **kwargs)
 
     def revert_to_snapshot(self, context, volume, snapshot):
@@ -293,9 +322,11 @@ class PowerStoreDriver(driver.VolumeDriver):
         if is_primary:
             get_value = self.configuration.safe_get
             backend_id = manager.VolumeManager.FAILBACK_SENTINEL
+            host_connectivity = self.host_connectivity
         else:
             get_value = self.replication_devices[device_index].get
             backend_id = get_value("backend_id")
+            host_connectivity = self._get_peer_host_connectivity()
         conf["backend_id"] = backend_id
         conf["backend_name"] = (
             self.configuration.safe_get("volume_backend_name") or "powerstore"
@@ -310,4 +341,9 @@ class PowerStoreDriver(driver.VolumeDriver):
             self.configuration.safe_get(utils.POWERSTORE_REST_CONNECT_TIMEOUT))
         conf["rest_api_read_timeout"] = (
             self.configuration.safe_get(utils.POWERSTORE_REST_READ_TIMEOUT))
+        conf["host_connectivity"] = host_connectivity
+        LOG.debug("Using host connectivity: %s", host_connectivity)
         return conf
+
+    def _get_peer_host_connectivity(self):
+        return utils.PEER_HOST_CONNECTIVITY.get(self.host_connectivity)

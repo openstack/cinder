@@ -47,12 +47,14 @@ class CommonAdapter(object):
                  backend_id,
                  backend_name,
                  ports,
+                 host_connectivity,
                  **client_config):
         if isinstance(ports, str):
             ports = ports.split(",")
         self.allowed_ports = [port.strip().lower() for port in ports]
         self.backend_id = backend_id
         self.backend_name = backend_name
+        self.host_connectivity = host_connectivity
         self.client = client.PowerStoreClient(**client_config)
         self.storage_protocol = None
         self.use_chap_auth = False
@@ -95,7 +97,7 @@ class CommonAdapter(object):
                       "use_chap_auth": self.use_chap_auth,
                   })
 
-    def create_volume(self, volume):
+    def create_volume(self, volume, remote_system_name=None):
         group_provider_id = None
         if (
                 volume.group_id and
@@ -109,7 +111,7 @@ class CommonAdapter(object):
             group_provider_id = self.client.get_vg_id_by_name(
                 volume.group_id
             )
-        if volume.is_replicated():
+        if utils.is_replication_volume(volume):
             pp_name = utils.get_protection_policy_from_volume(volume)
             pp_id = self.client.get_protection_policy_id_by_name(pp_name)
             replication_status = fields.ReplicationStatus.ENABLED
@@ -146,10 +148,48 @@ class CommonAdapter(object):
                       "group_id": volume.group_id,
                       "volume_provider_id": provider_id,
                   })
+        # configure metro volume
+        if utils.is_metro_volume(volume):
+            self._configure_metro_volume(provider_id, remote_system_name)
+            replication_status = fields.ReplicationStatus.ENABLED
         return {
             "provider_id": provider_id,
             "replication_status": replication_status,
         }
+
+    def _configure_metro_volume(self, provider_id, remote_system_name):
+        metro_replication_session_id = self.client.configure_metro(
+            provider_id, remote_system_name)
+        LOG.debug("Successfully configured PowerStore metro replication "
+                  "session with id %s.", metro_replication_session_id)
+
+    def end_metro_volume(self, volume):
+        provider_id = self._get_volume_provider_id(volume)
+        try:
+            metro_replication_session_id = \
+                self.client.get_volume_replication_session_id(
+                    provider_id)
+        except exception.VolumeBackendAPIException:
+            metro_replication_session_id = None
+        if not metro_replication_session_id:
+            LOG.warning("Volume %(volume_name)s with id %(volume_id)s "
+                        "does not have metro replication session. "
+                        "PowerStore volume id: %(volume_provider_id)s",
+                        {
+                            "volume_name": volume.name,
+                            "volume_id": volume.id,
+                            "volume_provider_id": provider_id,
+                        })
+            return
+        self.client.end_metro(provider_id)
+        self.client.wait_for_end_metro(metro_replication_session_id)
+        LOG.debug("Successfully ended PowerStore metro replication "
+                  "session with id %(session_id)s for volume with "
+                  "id %(volume_id)s.",
+                  {
+                      "session_id": metro_replication_session_id,
+                      "volume_id": volume.id,
+                  })
 
     def delete_volume(self, volume):
         try:
@@ -186,6 +226,21 @@ class CommonAdapter(object):
 
     def extend_volume(self, volume, new_size):
         provider_id = self._get_volume_provider_id(volume)
+        if utils.is_metro_volume(volume):
+            metro_replication_session_id = \
+                self.client.get_volume_replication_session_id(
+                    provider_id)
+            if self.client.get_replication_session_state(
+                    metro_replication_session_id) != "Paused":
+                msg = _("Error extending PowerStore metro "
+                        "volume %(volume_id)s. The replication "
+                        "session %(id)s must be paused in order to "
+                        "extend metro volumes." % {
+                            "volume_id": volume.id,
+                            "id": metro_replication_session_id,
+                        })
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
         LOG.debug("Extend PowerStore volume %(volume_name)s of size "
                   "%(volume_size)s GiB with id %(volume_id)s to "
                   "%(volume_new_size)s GiB. "
@@ -322,6 +377,10 @@ class CommonAdapter(object):
         return stats
 
     def create_volume_from_source(self, volume, source):
+        # metro volume doesn't support clone
+        if utils.is_metro_volume(volume):
+            msg = "PowerStore metro volumes don't support clone."
+            raise exception.NotSupportedOperation(message=msg)
         if isinstance(source, Snapshot):
             entity = "snapshot"
             source_size = source.volume_size
@@ -336,7 +395,7 @@ class CommonAdapter(object):
             entity = "volume"
             source_size = source.size
             source_provider_id = self._get_volume_provider_id(source)
-        if volume.is_replicated():
+        if utils.is_replication_volume(volume):
             pp_name = utils.get_protection_policy_from_volume(volume)
             pp_id = self.client.get_protection_policy_id_by_name(pp_name)
             replication_status = fields.ReplicationStatus.ENABLED
@@ -431,6 +490,7 @@ class CommonAdapter(object):
             chap_credentials = {}
         if host:
             self._modify_host_initiators(host, chap_credentials, initiators)
+            self._modify_host_connectivity(host)
         else:
             host_name = utils.powerstore_host_name(
                 connector,
@@ -449,7 +509,8 @@ class CommonAdapter(object):
                     **chap_credentials,
                 } for initiator in initiators
             ]
-            host = self.client.create_host(host_name, ports)
+            host = self.client.create_host(
+                host_name, ports, self.host_connectivity)
             host["name"] = host_name
             LOG.debug("Successfully created PowerStore host %(host_name)s. "
                       "Initiators: %(initiators)s. PowerStore host id: "
@@ -558,6 +619,26 @@ class CommonAdapter(object):
                           "initiators_to_modify": strutils.mask_password(
                               initiators_to_modify
                           ),
+                          "host_provider_id": host["id"],
+                      })
+
+    def _modify_host_connectivity(self, host):
+        """Update PowerStore host connectivity if needed.
+
+        param host: PowerStore host object
+        :return: None
+        """
+
+        if host["host_connectivity"] != self.host_connectivity:
+            self.client.modify_host_connectivity(host["id"],
+                                                 self.host_connectivity)
+            LOG.debug("Successfully modified host connectivity of "
+                      "PowerStore host %(host_name)s. "
+                      "Host connectivity: %(host_connectivity)s. "
+                      "PowerStore host id: %(host_provider_id)s.",
+                      {
+                          "host_name": host["name"],
+                          "host_connectivity": self.host_connectivity,
                           "host_provider_id": host["id"],
                       })
 
@@ -705,7 +786,25 @@ class CommonAdapter(object):
                 self._detach_volume_from_hosts(volume, [host["id"]])
 
     def revert_to_snapshot(self, volume, snapshot):
+        # metro volume can be reverted only when
+        # metro session is paused or fractured
         volume_provider_id = self._get_volume_provider_id(volume)
+        if utils.is_metro_volume(volume):
+            metro_replication_session_id = \
+                self.client.get_volume_replication_session_id(
+                    volume_provider_id)
+            if self.client.get_replication_session_state(
+                    metro_replication_session_id) not in ["Paused",
+                                                          "Fractured"]:
+                msg = _("Error extending PowerStore metro "
+                        "volume %(volume_id)s. The replication "
+                        "session %(id)s must be paused in order to "
+                        "extend metro volumes." % {
+                            "volume_id": volume.id,
+                            "id": metro_replication_session_id,
+                        })
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
         snapshot_volume_provider_id = self._get_volume_provider_id(
             snapshot.volume
         )
@@ -1118,6 +1217,10 @@ class CommonAdapter(object):
         else:
             self.client.update_qos_io_rule(io_rule_name, io_rule_params)
         return policy_id
+
+    def get_cluster_name(self):
+        """Gets cluster name."""
+        return self.client.get_cluster_name()
 
 
 class FibreChannelAdapter(CommonAdapter):

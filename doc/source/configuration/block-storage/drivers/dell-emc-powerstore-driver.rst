@@ -25,6 +25,7 @@ Supported operations
 - Create a Consistency Group from a Consistency Group snapshot.
 - Quality of Service (QoS)
 - Cinder volume active/active support.
+- Metro volume support.
 
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~
@@ -208,6 +209,96 @@ failback operation using ``--backend_id default``:
 .. code-block:: console
 
    $ cinder failover-host cinder_host@powerstore --backend_id default
+
+Metro volume support
+~~~~~~~~~~~~~~~~~~~~
+
+Configure metro
+^^^^^^^^^^^^^^^
+
+Metro volume supports FC or iSCSI connected Windows, Linux, and
+VMware ESXi hosts.
+
+.. note:: Windows and Linux hosts are supported as of PowerStore version 4.x.
+
+#. Pair source and destination PowerStore systems.
+
+#. Enable replication in ``cinder.conf`` file.
+
+   To enable replication feature for storage backend set ``replication_device``
+   as below:
+
+   .. code-block:: ini
+
+     ...
+     replication_device = backend_id:powerstore_repl_1,
+                          san_ip: <Replication system San ip>,
+                          san_login: <Replication system San username>,
+                          san_password: <Replication system San password>
+
+   * Only one replication device is supported for storage backend.
+
+   * Replication device supports the same options as the main storage backend.
+
+#. Configure host connectivity in ``cinder.conf`` file.
+
+   To configure host connectivity set ``powerstore_host_connectivity``
+   as below:
+
+   .. code-block:: ini
+
+     [DEFAULT]
+     enabled_backends = powerstore
+
+     [powerstore]
+     ...
+     powerstore_host_connectivity = Metro_Optimize_Local
+
+   * Host connectivity options are ``Local_Only``, ``Metro_Optimize_Both``,
+     ``Metro_Optimize_Local``, and ``Metro_Optimize_Remote``.
+     The default value is ``Local_Only``.
+
+   * The value of ``powerstore_host_connectivity`` applies to the local PowerStore cluster.
+     The host connectivity for the remote is set based on the below rules:
+
+.. table:: **Metro host connectivity configuration**
+
+  +----------------------------+---------------------------+
+  |  Local                     | Remote                    |
+  +============================+===========================+
+  |  ``Local_Only``            |  ``Local_Only``           |
+  +----------------------------+---------------------------+
+  |  ``Metro_Optimize_Both``   | ``Metro_Optimize_Both``   |
+  +----------------------------+---------------------------+
+  |  ``Metro_Optimize_Local``  | ``Metro_Optimize_Remote`` |
+  +----------------------------+---------------------------+
+  |  ``Metro_Optimize_Remote`` | ``Metro_Optimize_Local``  |
+  +----------------------------+---------------------------+
+
+#. Create volume type for volumes with replication enabled.
+
+   .. code-block:: console
+
+     $ openstack volume type create powerstore_metro
+     $ openstack volume type set --property replication_enabled='<is> True' powerstore_metro
+
+#. Enable metro for volume type.
+
+   .. code-block:: console
+
+     $ openstack volume type set --property powerstore:metro='<is> True' powerstore_metro
+
+Limitations
+^^^^^^^^^^^
+
+#. Extend a metro volume only when the metro session is paused.
+
+#. Revert a metro volume to a snapshot only when the metro session is
+   paused or fractured.
+
+#. Creating a metro volume from source is not supported.
+
+#. Failover host is not supported for metro volumes.
 
 Consistency Groups support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

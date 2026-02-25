@@ -84,6 +84,31 @@ QOS_UPDATE_IO_RULE_PARAMS = {
     "burst_percentage": "89"
 }
 
+HOST_RESP = [
+    {
+        "id": "0381297d-7c64-41d0-9077-95f90aee3dac",
+        "name": "test_host_lCdRMtul",
+        "host_initiators": [
+            {
+                "port_name": "iqn.1994-05.com.dell:tpxskxiwttsh",
+                "port_type": "iSCSI",
+            }
+        ],
+        "host_connectivity": "Local_Only"
+    },
+    {
+        "id": "accb64a9-833f-4f34-b866-bbf0de769024",
+        "name": "vpi6190-iSCSI",
+        "host_initiators": [
+            {
+                "port_name": "iqn.2016-04.com.open-iscsi:f5bc3538fe1e",
+                "port_type": "iSCSI",
+            }
+        ],
+        "host_connectivity": "Metro_Optimize_Local"
+    },
+]
+
 
 @ddt.ddt
 class TestClient(test.TestCase):
@@ -330,3 +355,215 @@ class TestClient(test.TestCase):
                                             "/metrics/generate",
                                             params)
         self.assertEqual(500, r.status_code)
+
+    @mock.patch('requests.request')
+    def test_get_all_hosts_success(self, mock_request):
+        mock_request.return_value = MockResponse(
+            content=HOST_RESP,
+            rc=200
+        )
+        response = self.client.get_all_hosts('iSCSI')
+        self.assertEqual(response, HOST_RESP)
+
+    @mock.patch('requests.request')
+    def test_get_all_hosts_failure(self, mock_request):
+        mock_request.return_value = MockResponse(rc=500)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.get_all_hosts,
+                          "iSCSI")
+
+    @mock.patch('requests.request')
+    def test_create_host_success(self, mock_request):
+        mock_request.return_value = MockResponse(
+            content=HOST_RESP[1],
+            rc=200
+        )
+        response = self.client.create_host(
+            'vpi6190-iSCSI',
+            'iqn.2016-04.com.open-iscsi:f5bc3538fe1e',
+            'Metro_Optimize_Local')
+        self.assertEqual(response, HOST_RESP[1])
+
+    @mock.patch('requests.request')
+    def test_create_host_failure(self, mock_request):
+        mock_request.return_value = MockResponse(rc=500)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.create_host,
+                          'host1',
+                          'port1')
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_post_request')
+    def test_configure_metro_with_remote_appliance_name(
+            self, mock_send_post_request):
+        r = MockResponse(
+            rc=200,
+            content={"metro_replication_session_id": "1234"}
+        )
+        mock_send_post_request.return_value = (r, r.json())
+        volume_id = "123"
+        remote_system_name = "system1"
+        remote_appliance_name = "appliance1"
+
+        result = self.client.configure_metro(
+            volume_id, remote_system_name, remote_appliance_name)
+
+        mock_send_post_request.assert_called_once_with(
+            "/volume/123/configure_metro",
+            {
+                "remote_system_id": "name:system1",
+                "remote_appliance_id": "name:appliance1"
+            }
+        )
+        self.assertEqual(result, "1234")
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_post_request')
+    def test_configure_metro_without_remote_appliance_name(
+            self, mock_send_post_request):
+        r = MockResponse(
+            rc=200,
+            content={"metro_replication_session_id": "5678"}
+        )
+        mock_send_post_request.return_value = (r, r.json())
+        volume_id = "456"
+        remote_system_name = "system2"
+
+        result = self.client.configure_metro(
+            volume_id, remote_system_name)
+
+        mock_send_post_request.assert_called_once_with(
+            "/volume/456/configure_metro",
+            {
+                "remote_system_id": "name:system2",
+                "remote_appliance_id": None
+            }
+        )
+        self.assertEqual(result, "5678")
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_post_request')
+    def test_configure_metro_with_failed_request(self, mock_send_post_request):
+        r = MockResponse(rc=500)
+        mock_send_post_request.return_value = (r, None)
+        volume_id = "789"
+        remote_system_name = "system3"
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.configure_metro,
+                          volume_id, remote_system_name)
+
+        mock_send_post_request.assert_called_once_with(
+            "/volume/789/configure_metro",
+            {
+                "remote_system_id": "name:system3",
+                "remote_appliance_id": None
+            }
+        )
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_post_request')
+    def test_end_metro_success(self, mock_send_post_request):
+        mock_send_post_request.return_value = (
+            MockResponse(rc=200),
+            None
+        )
+
+        self.client.end_metro("volume_id", delete_remote_volume=True)
+
+        mock_send_post_request.assert_called_once_with(
+            "/volume/volume_id/end_metro",
+            payload={"delete_remote_volume": True},
+        )
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_post_request')
+    def test_end_metro_failure(self, mock_send_post_request):
+        mock_send_post_request.return_value = (
+            MockResponse(rc=500),
+            None
+        )
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.end_metro,
+                          "volume_id",
+                          False)
+
+        mock_send_post_request.assert_called_once_with(
+            "/volume/volume_id/end_metro",
+            payload={"delete_remote_volume": False},
+        )
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_get_request')
+    def test_get_replication_session_state_success(
+            self, mock_send_get_request):
+        r = MockResponse(
+            rc=200,
+            content={'state': 'OK'}
+        )
+        mock_send_get_request.return_value = (r, r.json())
+        state = self.client.get_replication_session_state('rep_session_id')
+        self.assertEqual(state, 'OK')
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_get_request')
+    def test_get_replication_session_state_failure(
+            self, mock_send_get_request):
+        mock_send_get_request.return_value = (
+            MockResponse(rc=404),
+            None
+        )
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.get_replication_session_state,
+                          'rep_session_id')
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_get_request')
+    def test_get_cluster_name_success(self, mock_send_get_request):
+        r = MockResponse(
+            rc=200,
+            content=[{'name': 'cluster_name'}]
+        )
+        mock_send_get_request.return_value = (r, r.json())
+        result = self.client.get_cluster_name()
+        self.assertEqual(result, 'cluster_name')
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_get_request')
+    def test_get_cluster_name_failure(self, mock_send_get_request):
+        mock_send_get_request.return_value = (
+            MockResponse(rc=404),
+            None
+        )
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.get_cluster_name)
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_patch_request')
+    def test_modify_host_connectivity_success(
+            self, _send_patch_request):
+        _send_patch_request.return_value = (
+            MockResponse(rc=200),
+            None
+        )
+        self.client.modify_host_connectivity('host_id', 'Local_Only')
+        _send_patch_request.assert_called_once_with(
+            "/host/host_id",
+            payload={"host_connectivity": "Local_Only"}
+        )
+
+    @mock.patch('cinder.volume.drivers.dell_emc.powerstore.'
+                'client.PowerStoreClient._send_patch_request')
+    def test_modify_host_connectivity_failure(
+            self, _send_patch_request):
+        _send_patch_request.return_value = (
+            MockResponse(rc=500),
+            None
+        )
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.modify_host_connectivity,
+                          'host_id',
+                          'Local_Only')

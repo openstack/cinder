@@ -171,3 +171,37 @@ class TestVolumeCreateDeleteExtend(powerstore.TestPowerStoreDriver):
                          'storage volume backend API: Failed to '
                          'extend PowerStore volume with id fake_id.',
                          error.msg)
+
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.adapter."
+                "CommonAdapter", autospec=True)
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.utils."
+                "is_metro_volume")
+    def test_create_volume_is_metro_volume(self,
+                                           mock_is_metro_volume,
+                                           mock_adapetr):
+        mock_is_metro_volume.return_value = True
+        adapter = mock_adapetr.return_value
+        adapter.get_cluster_name.return_value = "fake_cluster"
+        adapter.create_volume.return_value = {
+            "provider_id": 'vol_1',
+            "replication_status": True,
+        }
+        self.driver.active_backend_id = "default"
+        self.driver.adapters = {"default": adapter,
+                                "rep_1": adapter}
+        update = self.driver.create_volume(self.volume)
+        adapter.create_volume.assert_called_once_with(
+            self.volume, "fake_cluster")
+        self.assertEqual('vol_1', update["provider_id"])
+
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.adapter."
+                "CommonAdapter.create_volume")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.utils."
+                "is_metro_volume")
+    def test_create_volume_not_metro_volume(self,
+                                            mock_is_metro_volume,
+                                            mock_adapetr_create_volume):
+        mock_is_metro_volume.return_value = False
+        self.driver.create_volume(self.volume)
+        mock_adapetr_create_volume.assert_called_once_with(
+            self.volume, None)

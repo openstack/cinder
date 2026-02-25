@@ -303,7 +303,7 @@ class PowerStoreClient(object):
         r, response = self._send_get_request(
             "/host",
             params={
-                "select": "id,name,host_initiators",
+                "select": "id,name,host_initiators,host_connectivity",
                 "host_initiators->0->>port_type": "eq.%s" % protocol,
             }
         )
@@ -313,13 +313,14 @@ class PowerStoreClient(object):
             raise exception.VolumeBackendAPIException(data=msg)
         return response
 
-    def create_host(self, name, ports):
+    def create_host(self, name, ports, connectivity=utils.LOCAL_ONLY):
         r, response = self._send_post_request(
             "/host",
             payload={
                 "name": name,
                 "os_type": "Linux",
-                "initiators": ports
+                "initiators": ports,
+                "host_connectivity": connectivity,
             }
         )
         if r.status_code not in self.ok_codes:
@@ -593,7 +594,7 @@ class PowerStoreClient(object):
             raise exception.VolumeBackendAPIException(data=msg)
         if not response:
             msg = _("PowerStore Replication session with "
-                    "id %s is still exists.") % rep_session_id
+                    "id %s still exists.") % rep_session_id
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -904,5 +905,104 @@ class PowerStoreClient(object):
         if r.status_code not in self.ok_codes:
             msg = (_("Failed to update PowerStore I/O limit rule %s.")
                    % io_rule_name)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def configure_metro(self, volume_id, remote_system_name,
+                        remote_appliance_name=None):
+        if remote_appliance_name:
+            payload = {
+                "remote_system_id": "name:%s" % remote_system_name,
+                "remote_appliance_id": "name:%s" % remote_appliance_name
+            }
+        else:
+            payload = {
+                "remote_system_id": "name:%s" % remote_system_name,
+                "remote_appliance_id": None
+            }
+        r, response = self._send_post_request(
+            "/volume/%s/configure_metro" % volume_id,
+            payload
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to configure metro for "
+                     "volume id %(volume_id)s with remote system name "
+                     "%(remote_system_name)s and "
+                     "remote appliance name %(remote_appliance_name)s.")
+                   % {"volume_id": volume_id,
+                      "remote_system_name": remote_system_name,
+                      "remote_appliance_name": remote_appliance_name, })
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response["metro_replication_session_id"]
+
+    def end_metro(self, volume_id, delete_remote_volume=True):
+        r, response = self._send_post_request(
+            "/volume/%s/end_metro" % volume_id,
+            payload={
+                "delete_remote_volume": delete_remote_volume,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to configure metro for "
+                     "volume id %(volume_id)s with delete_remote_volume "
+                     "%(delete_remote_volume)s.")
+                   % {"volume_id": volume_id,
+                      "delete_remote_volume": delete_remote_volume, })
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    @cinder_utils.retry(exception.VolumeBackendAPIException,
+                        interval=1, backoff_rate=3, retries=20)
+    def wait_for_end_metro(self, metro_replication_session_id):
+        r, response = self._send_get_request(
+            "/replication_session/%s" % metro_replication_session_id,
+        )
+        if r.status_code == requests.codes.not_found:
+            msg = _("PowerStore Metro replication session "
+                    "id %s is not found.") % metro_replication_session_id
+            LOG.info(msg)
+            return
+        if r.status_code in self.ok_codes:
+            msg = _("PowerStore Metro replication session "
+                    "id %s still exists.") % metro_replication_session_id
+            LOG.debug(msg)
+        else:
+            msg = _("Fail to query PowerStore Metro replication session "
+                    "id %s.") % metro_replication_session_id
+            LOG.error(msg)
+        raise exception.VolumeBackendAPIException(data=msg)
+
+    def get_replication_session_state(self, replication_session_id):
+        r, response = self._send_get_request(
+            "/replication_session/%s?select=state" % replication_session_id,
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Fail to query PowerStore replication session "
+                    "id %s state.") % replication_session_id
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response["state"]
+
+    def get_cluster_name(self):
+        r, response = self._send_get_request(
+            "/cluster?select=name",
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore cluster name.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response[0].get("name")
+
+    def modify_host_connectivity(self, host_id, host_connectivity):
+        r, response = self._send_patch_request(
+            "/host/%s" % host_id,
+            payload={
+                "host_connectivity": host_connectivity
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to modify host connectivity of PowerStore host "
+                     "with id %s.") % host_id)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)

@@ -40,6 +40,20 @@ VOLUME_ATTACH_OPERATION = 1
 VOLUME_DETACH_OPERATION = 2
 POWERSTORE_REST_CONNECT_TIMEOUT = "rest_api_call_connect_timeout"
 POWERSTORE_REST_READ_TIMEOUT = "rest_api_call_read_timeout"
+POWERSTORE_METRO_KEY = "powerstore:metro"
+LOCAL_ONLY = "Local_Only"
+METRO_OPTIMIZE_BOTH = "Metro_Optimize_Both"
+METRO_OPTIMIZE_LOCAL = "Metro_Optimize_Local"
+METRO_OPTIMIZE_REMOTE = "Metro_Optimize_Remote"
+HOST_CONNECTIVITY_OPTIONS = [LOCAL_ONLY, METRO_OPTIMIZE_BOTH,
+                             METRO_OPTIMIZE_LOCAL, METRO_OPTIMIZE_REMOTE]
+PEER_HOST_CONNECTIVITY = {
+    LOCAL_ONLY: LOCAL_ONLY,
+    METRO_OPTIMIZE_BOTH: METRO_OPTIMIZE_BOTH,
+    METRO_OPTIMIZE_LOCAL: METRO_OPTIMIZE_REMOTE,
+    METRO_OPTIMIZE_REMOTE: METRO_OPTIMIZE_LOCAL
+}
+IS_TRUE = ['<is> True', 'True', 'true', True]
 
 
 def bytes_to_gib(size_in_bytes):
@@ -191,3 +205,32 @@ def is_group_a_cg_snapshot_type(func):
 
 def version_gte(ver1, ver2):
     return version.parse(ver1) >= version.parse(ver2)
+
+
+def is_replication_volume(volume):
+    """Check if volume is of active/pasive replication.
+
+    :param volume: OpenStack Volume object
+    :return: True or False
+    """
+    return volume.is_replicated() and get_protection_policy_from_volume(volume)
+
+
+def is_metro_enabled(volume):
+    """Check if metro is enabled in the volume type.
+
+    :param volume: OpenStack Volume object
+    :return: True or False
+    """
+
+    metro = volume.volume_type.extra_specs.get(POWERSTORE_METRO_KEY, False)
+    return metro in IS_TRUE
+
+
+def is_metro_volume(volume):
+    """Check if volume is of type metro volume.
+
+    :param volume: OpenStack Volume object
+    :return: True or False
+    """
+    return volume.is_replicated() and is_metro_enabled(volume)
