@@ -100,6 +100,11 @@ CONF.register_opts(lightos_opts, group=config.SHARED_CONF_GROUP)
 BLOCK_SIZE = 8
 LIGHTOS = "LIGHTOS"
 INTERM_SNAPSHOT_PREFIX = "for_clone_"
+STOP_LIGHTOS_CMD_FOR_RETURN_STATUS_LIST = (httpstatus.OK,
+                                           httpstatus.BAD_REQUEST,
+                                           httpstatus.UNAUTHORIZED,
+                                           httpstatus.FORBIDDEN,
+                                           httpstatus.NOT_FOUND)
 
 
 class LightOSConnection(object):
@@ -511,6 +516,68 @@ class LightOSVolumeDriver(driver.VolumeDriver):
             project_name=project_name,
             timeout=timeout,
             volume_name=vol_name)
+
+    def _get_lightos_volume_with_retry(
+            self,
+            project_name,
+            vol_uuid=None,
+            vol_name=None,
+            retry_timeout=5):
+        """Get LightOS volume with retry logic for 10 seconds by default.
+
+        Args:
+            project_name: The project name
+            vol_uuid: Volume UUID (optional)
+            vol_name: Volume name (optional)
+            retry_timeout: How long to retry in seconds (default: 10)
+
+        Returns:
+            Tuple of (status_code, response_data)
+        """
+        if not (vol_uuid or vol_name):
+            raise exception.VolumeDriverException(
+                'LightOS volume name or UUID must be specified')
+
+        end_time = time.time() + retry_timeout
+        last_status = None
+        last_response = None
+
+        while time.time() < end_time:
+            try:
+                status, response = self._get_lightos_volume(
+                    project_name=project_name,
+                    timeout=self.logical_op_timeout,
+                    vol_uuid=vol_uuid,
+                    vol_name=vol_name)
+
+                # Return immediately for definitive status codes
+                # (success or permanent errors)
+                if (status in STOP_LIGHTOS_CMD_FOR_RETURN_STATUS_LIST and
+                        response):
+                    return status, response
+
+                # For transient errors (500), retry until timeout
+                # Store the last response for potential return after timeout
+                if status == httpstatus.INTERNAL_SERVER_ERROR:
+                    LOG.debug(
+                        'Got transient error %s while getting LightOS '
+                        'volume, will retry', status)
+                else:
+                    LOG.debug(
+                        'Got unexpected status %s while getting LightOS '
+                        'volume, will retry', status)
+
+                last_status = status
+                last_response = response
+
+            except Exception as e:
+                LOG.debug(
+                    'Exception while getting LightOS volume: %s', str(e))
+                last_status = None
+                last_response = str(e)
+
+        # Return the last status and response if we've exhausted retries
+        return last_status, last_response
 
     def _lightos_volname(self, volume):
         volid = volume.name_id
@@ -1585,7 +1652,16 @@ class LightOSVolumeDriver(driver.VolumeDriver):
             hostnqn)
 
         project_name = self._get_lightos_project_name(volume)
-
+        lightos_volname = self._lightos_volname(volume)
+        status, _response = self._get_lightos_volume_with_retry(
+            project_name, vol_name=lightos_volname)
+        LOG.debug("terminate_connection: requests status %s", status)
+        # if the volume is missing we can just return
+        if status == httpstatus.NOT_FOUND:
+            LOG.debug(
+                'terminate_connection: volume %s not found, nothing to do',
+                volume)
+            return
         if not hostnqn:
             if force:
                 LOG.debug(
@@ -1605,9 +1681,10 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                                          host_ips)
         if not success or not self._wait_for_volume_acl(
                 project_name, lightos_volname, hostnqn, False):
-            LOG.warning(
-                'Could not remove ACL for hostnqn %s LightOS \
+            msg = 'Could not remove ACL for hostnqn %s LightOS \
                 volume %s, limping along',
+            LOG.warning(
+                msg,
                 hostnqn,
                 lightos_volname)
 

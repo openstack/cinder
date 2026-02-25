@@ -881,6 +881,29 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
 
+    def test_terminate_connection_volume_was_deleted_by_admin(self):
+        InitialConnectorMock.nqn = "hostnqn1"
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+
+        def send_cmd_mock(cmd, **kwargs):
+            if cmd == "get_volume":
+                return (httpstatus.NOT_FOUND, {})
+            if cmd == "get_volume_by_name":
+                return (httpstatus.NOT_FOUND, {})
+            return cluster_send_cmd(cmd, **kwargs)
+        cluster_send_cmd = deepcopy(self.driver.cluster.send_cmd)
+        self.driver.cluster.send_cmd = send_cmd_mock
+        self.driver.terminate_connection(volume,
+                                         get_connector_properties())
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
     def test_terminate_connection_with_empty_hostnqn_should_fail(self):
         InitialConnectorMock.nqn = ""
         InitialConnectorMock.found_discovery_client = True
@@ -1004,3 +1027,45 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         assert volumes_data['free_capacity_gb'] == 'infinite', \
             "Expected 'infinite', received %s" % \
             volumes_data['free_capacity_gb']
+
+    def test_terminate_connection_volume_lookup_by_name(self):
+        """Test that terminate_connection looks up volume by name not UUID.
+
+        This test verifies the fix for a bug where terminate_connection
+        was using volume.id (Cinder's UUID) to look up the LightOS volume,
+        but should use the volume name instead. The DBMock generates random
+        UUIDs that don't match Cinder's volume.id, simulating the real
+        behavior where LightOS assigns its own UUIDs.
+        """
+        InitialConnectorMock.nqn = FAKE_CLIENT_HOSTNQN
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+
+        # Create a volume - DBMock will assign a random UUID different from
+        # volume.id
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+
+        # Initialize connection to add ACL
+        self.driver.initialize_connection(volume, get_connector_properties())
+
+        # Terminate connection should work even though volume.id !=
+        # lightos_uuid. This requires looking up by name, not UUID
+        self.driver.terminate_connection(volume, get_connector_properties())
+
+        # Verify the volume still exists and ACL was removed
+        project_name = self.driver._get_lightos_project_name(volume)
+        lightos_volname = self.driver._lightos_volname(volume)
+        status, vol_data = self.driver._get_lightos_volume(
+            project_name, timeout=30, vol_name=lightos_volname)
+        self.assertEqual(httpstatus.OK, status)
+        self.assertIsNotNone(vol_data)
+        # ACL should be ALLOW_NONE after termination
+        self.assertIn('ALLOW_NONE', vol_data['acl']['values'])
+
+        # Cleanup
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
