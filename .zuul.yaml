@@ -103,6 +103,10 @@
             irrelevant-files: *gate-irrelevant-files
         - grenade-skip-level:
             irrelevant-files: *gate-irrelevant-files
+        # make this template job non-voting until it gets fixed
+        - grenade-skip-level-always:
+            irrelevant-files: *gate-irrelevant-files
+            voting: false
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
         - openstacksdk-functional-devstack:
@@ -123,6 +127,10 @@
             irrelevant-files: *gate-irrelevant-files
         - openstacksdk-functional-devstack:
             irrelevant-files: *gate-irrelevant-files
+        # make this template job non-voting until it gets fixed
+        - grenade-skip-level-always:
+            irrelevant-files: *gate-irrelevant-files
+            voting: false
     experimental:
       jobs:
         - cinder-multibackend-matrix-migration:

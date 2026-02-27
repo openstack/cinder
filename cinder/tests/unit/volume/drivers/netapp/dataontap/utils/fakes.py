@@ -17,18 +17,6 @@ from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.netapp import options as na_opts
 
-SSC_VSERVER = 'fake_vserver'
-SSC_VOLUMES = ('volume1', 'volume2')
-SSC_VOLUME_MAP = {
-    SSC_VOLUMES[0]: {
-        'pool_name': SSC_VOLUMES[0],
-    },
-    SSC_VOLUMES[1]: {
-        'pool_name': SSC_VOLUMES[1],
-    },
-}
-SSC_AGGREGATES = ('aggr1', 'aggr2')
-
 SSC = {
     'volume1': {
         'thick_provisioning_support': True,
@@ -61,107 +49,6 @@ SSC = {
         'netapp_qos_min_support': 'false',
         'pool_name': 'volume2',
         'netapp_is_flexgroup': 'false',
-    },
-}
-
-SSC_FLEXVOL_INFO = {
-    'volume1': {
-        'thick_provisioning_support': True,
-        'thin_provisioning_support': False,
-        'netapp_thin_provisioned': 'false',
-        'netapp_aggregate': 'aggr1',
-        'netapp_is_flexgroup': 'false',
-    },
-    'volume2': {
-        'thick_provisioning_support': False,
-        'thin_provisioning_support': True,
-        'netapp_thin_provisioned': 'true',
-        'netapp_aggregate': 'aggr2',
-        'netapp_is_flexgroup': 'false',
-    },
-}
-
-SSC_DEDUPE_INFO = {
-    'volume1': {
-        'netapp_dedup': 'true',
-        'netapp_compression': 'false',
-    },
-    'volume2': {
-        'netapp_dedup': 'true',
-        'netapp_compression': 'true',
-    },
-}
-
-SSC_ENCRYPTION_INFO = {
-    'volume1': {
-        'netapp_flexvol_encryption': 'true',
-    },
-    'volume2': {
-        'netapp_flexvol_encryption': 'false',
-    },
-}
-
-SSC_QOS_MIN_INFO = {
-    'volume1': {
-        'netapp_qos_min_support': 'true',
-    },
-    'volume2': {
-        'netapp_qos_min_support': 'false',
-    },
-}
-
-SSC_VOLUME_COUNT_INFO = {
-    'volume1': {
-        'total_volumes': 3,
-    },
-    'volume2': {
-        'total_volumes': 2,
-    },
-}
-
-SSC_LUNS_BY_SIZES = [
-    {
-        'path': '/vol/volume-ae947c9b-2392-4956-b373-aaac4521f37e',
-        'size': 5368709120.0
-    },
-    {
-        'path': '/vol/snapshot-527eedad-a431-483d-b0ca-18995dd65b66',
-        'size': 1073741824.0
-    }
-]
-
-SSC_NAMESPACES_BY_SIZES = [
-    {
-        'path': '/vol/namespace-ae947c9b-2392-4956-b373-aaac4521f37e',
-        'size': 5379821234.0
-    },
-    {
-        'path': '/vol/namespace-527eedad-a431-483d-b0ca-18995dd65b66',
-        'size': 4673741874.0
-    }
-]
-
-SSC_MIRROR_INFO = {
-    'volume1': {
-        'netapp_mirrored': 'false',
-    },
-    'volume2': {
-        'netapp_mirrored': 'true',
-    },
-}
-
-SSC_AGGREGATE_INFO = {
-    'volume1': {
-        'netapp_disk_type': ['SSD'],
-        'netapp_raid_type': 'raid_dp',
-        'netapp_hybrid_aggregate': 'false',
-        'netapp_node_name': 'node1',
-    },
-    'volume2': {
-        'netapp_disk_type': ['FCAL', 'SSD'],
-        'netapp_raid_type': 'raid_dp',
-        'netapp_hybrid_aggregate': 'true',
-        'netapp_node_name': 'node2',
     },
 }
 
