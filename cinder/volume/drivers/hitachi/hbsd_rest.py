@@ -379,6 +379,7 @@ class HBSDREST(common.HBSDCommon):
             'isParallelExecutionEnabled': True,
         }
         capacity_saving = None
+        drs = None
         has_drs = False
         if self.driver_info.get('driver_dir_name'):
             capacity_saving = extra_specs.get(
@@ -1658,7 +1659,8 @@ class HBSDREST(common.HBSDCommon):
                  (pvol < ldev_range[0] or ldev_range[1] < pvol))):
             extra_specs = self.get_volume_extra_specs(volume)
             if new_type:
-                qos_specs = utils.get_qos_specs_from_volume_type(new_type)
+                qos_specs = utils.get_qos_specs_from_volume_type_and_size(
+                    new_type, volume.size)
             else:
                 qos_specs = utils.get_qos_specs_from_volume(volume)
             snap_pool_id = host['capabilities']['location_info'].get(
@@ -1796,7 +1798,8 @@ class HBSDREST(common.HBSDCommon):
 
         if 'qos_specs' in diff_items:
             old_qos_specs = self.get_qos_specs_from_ldev(ldev)
-            new_qos_specs = utils.get_qos_specs_from_volume_type(new_type)
+            new_qos_specs = utils.get_qos_specs_from_volume_type_and_size(
+                new_type, volume.size)
             if old_qos_specs != new_qos_specs:
                 self.change_qos_specs(ldev, old_qos_specs, new_qos_specs)
 

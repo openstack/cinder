@@ -748,6 +748,12 @@ class HBSDCommon():
         # Finally, extend our LDEV
         self.extend_ldev(ldev, volume['size'], new_size)
 
+        # If we have adaptive QoS, let's update our QoS now as well.
+        old_qos = utils.get_qos_specs_from_volume(volume)
+        new_qos = utils.get_qos_specs_from_volume(volume, new_size)
+        if old_qos != new_qos:
+            self.change_qos_specs(ldev, old_qos, new_qos)
+
     def get_ldev_by_name(self, name):
         """Get the LDEV number from the given name."""
         raise NotImplementedError()

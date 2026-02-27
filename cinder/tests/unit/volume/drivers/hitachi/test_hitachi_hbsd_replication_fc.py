@@ -1,4 +1,5 @@
-# Copyright (C) 2025, Hitachi, Ltd.
+# Copyright (C) 2020, 2024, Hitachi, Ltd.
+# Copyright (C) 2025, Hitachi Vantara
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -1124,7 +1125,9 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
         self.assertEqual(6, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
-    def test_extend_volume(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume(self, get_volume_type_qos_specs, request):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
@@ -1133,11 +1136,16 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.extend_volume(TEST_VOLUME[0], 256)
         self.assertEqual(6, request.call_count)
+        body = request.call_args_list[5][1]['json']
+        self.assertNotIn('enhancedExpansion', body['parameters'])
 
     @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     def test_extend_volume_replication(
-            self, get_volume_type_extra_specs, request):
+            self, get_volume_type_extra_specs, get_volume_type_qos_specs,
+            request):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         get_volume_type_extra_specs.return_value = {
             'replication_enabled': '<is> True'}
         self.ldev_count = 0
@@ -1178,6 +1186,10 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
         self.driver.extend_volume(TEST_VOLUME[4], 256)
         self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(27, request.call_count)
+        body = request.call_args_list[14][1]['json']
+        self.assertNotIn('enhancedExpansion', body['parameters'])
+        body = request.call_args_list[19][1]['json']
+        self.assertNotIn('enhancedExpansion', body['parameters'])
         for args, kwargs in request.call_args_list:
             if args[0] == 'POST' and 'remote-mirror-copypairs' in args[1]:
                 self.assertEqual(
@@ -1191,10 +1203,15 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
         self.assertFalse(isDataReductionForceCopy)
 
     @mock.patch.object(hbsd_common.HBSDCommon, "delete_pair")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(requests.Session, "request")
     def test_extend_volume_enable_having_snapshots(
-            self, request, get_volume_type_extra_specs, delete_pair):
+            self, request, get_volume_type_extra_specs,
+            get_volume_type_qos_specs, delete_pair):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.override_config('hitachi_extend_snapshot_volumes',
+                             True, group=conf.SHARED_CONF_GROUP)
         self.configuration.hitachi_extend_snapshot_volumes = (
             True)
         get_volume_type_extra_specs.return_value = {
@@ -1241,9 +1258,12 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
             False)
 
     @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     def test_extend_pair_volume_capacity_saving_dedup_compression(
-            self, get_volume_type_extra_specs, request):
+            self, get_volume_type_extra_specs, get_volume_type_qos_specs,
+            request):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         get_volume_type_extra_specs.return_value = {
             'replication_enabled': '<is> True',
             'hbsd:capacity_saving': 'deduplication_compression'}
@@ -1285,6 +1305,10 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
         self.driver.extend_volume(TEST_VOLUME[4], 256)
         self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(27, request.call_count)
+        body = request.call_args_list[14][1]['json']
+        self.assertNotIn('enhancedExpansion', body['parameters'])
+        body = request.call_args_list[19][1]['json']
+        self.assertNotIn('enhancedExpansion', body['parameters'])
         for args, kwargs in request.call_args_list:
             if args[0] == 'POST' and 'remote-mirror-copypairs' in args[1]:
                 self.assertEqual(

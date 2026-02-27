@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Hitachi driver: Added support for Adaptive QoS with the upperIops
+    parameter based on volume size.

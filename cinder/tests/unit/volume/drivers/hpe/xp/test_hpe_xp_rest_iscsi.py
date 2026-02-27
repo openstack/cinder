@@ -516,7 +516,9 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
         self.driver.common.client.keep_session_loop.wait()
 
     @mock.patch.object(requests.Session, "request")
-    def test_extend_volume(self, request):
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_extend_volume(self, get_volume_type_qos_specs, request):
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
