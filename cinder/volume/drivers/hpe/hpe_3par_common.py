@@ -2021,6 +2021,15 @@ class HPE3PARCommon(object):
         else:
             return default
 
+    def _is_alletra_mp(self):
+        """Check if the backend is AlletraMP based on WSAPI version.
+        
+        AlletraMP uses WSAPI version >= 100500000 (API_VERSION_2025).
+        
+        :returns: True if AlletraMP, False otherwise
+        """
+        return self.API_VERSION >= API_VERSION_2025
+
     def _get_qos_by_volume_type(self, volume_type):
         qos = {}
         qos_specs_id = volume_type.get('qos_specs_id')
@@ -2061,38 +2070,53 @@ class HPE3PARCommon(object):
         max_bw = self._get_qos_value(qos, 'maxBWS')
         latency = self._get_qos_value(qos, 'latency')
         priority = self._get_qos_value(qos, 'priority', 'normal')
+        
+        # Check if backend is AlletraMP
+        is_alletra_mp = self._is_alletra_mp()
 
         qosRule = {}
-        if min_io:
-            qosRule['ioMinGoal'] = int(min_io)
-            if max_io is None:
-                qosRule['ioMaxLimit'] = int(min_io)
-        if max_io:
-            qosRule['ioMaxLimit'] = int(max_io)
-            if min_io is None:
-                qosRule['ioMinGoal'] = int(max_io)
-        if min_bw:
-            qosRule['bwMinGoalKB'] = int(min_bw) * units.Ki
-            if max_bw is None:
-                qosRule['bwMaxLimitKB'] = int(min_bw) * units.Ki
-        if max_bw:
-            qosRule['bwMaxLimitKB'] = int(max_bw) * units.Ki
-            if min_bw is None:
-                qosRule['bwMinGoalKB'] = int(max_bw) * units.Ki
-        if latency:
-            # latency could be values like 2, 5, etc or
-            # small values like 0.1, 0.02, etc.
-            # we are converting to float so that 0.1 doesn't become 0
-            latency = float(latency)
-            if latency >= 1:
-                # by default, latency in millisecs
-                qosRule['latencyGoal'] = int(latency)
-            else:
-                # latency < 1 Eg. 0.1, 0.02, etc
-                # convert latency to microsecs
-                qosRule['latencyGoaluSecs'] = int(latency * 1000)
-        if priority:
-            qosRule['priority'] = self.qos_priority_level.get(priority.lower())
+        
+        # For AlletraMP, ioMinGoal, bwMinGoalKB, latencyGoal, and priority
+        # are deprecated. Only use max limits.
+        if is_alletra_mp:
+            # AlletraMP: Only set max limits, min goals are deprecated
+            if max_io:
+                qosRule['ioMaxLimit'] = int(max_io)
+            
+            if max_bw:
+                qosRule['bwMaxLimitKB'] = int(max_bw) * units.Ki
+        else:
+            # 3PAR/Primera/Alletra 9k: Use traditional QoS parameters
+            if min_io:
+                qosRule['ioMinGoal'] = int(min_io)
+                if max_io is None:
+                    qosRule['ioMaxLimit'] = int(min_io)
+            if max_io:
+                qosRule['ioMaxLimit'] = int(max_io)
+                if min_io is None:
+                    qosRule['ioMinGoal'] = int(max_io)
+            if min_bw:
+                qosRule['bwMinGoalKB'] = int(min_bw) * units.Ki
+                if max_bw is None:
+                    qosRule['bwMaxLimitKB'] = int(min_bw) * units.Ki
+            if max_bw:
+                qosRule['bwMaxLimitKB'] = int(max_bw) * units.Ki
+                if min_bw is None:
+                    qosRule['bwMinGoalKB'] = int(max_bw) * units.Ki
+            if latency:
+                # latency could be values like 2, 5, etc or
+                # small values like 0.1, 0.02, etc.
+                # we are converting to float so that 0.1 doesn't become 0
+                latency = float(latency)
+                if latency >= 1:
+                    # by default, latency in millisecs
+                    qosRule['latencyGoal'] = int(latency)
+                else:
+                    # latency < 1 Eg. 0.1, 0.02, etc
+                    # convert latency to microsecs
+                    qosRule['latencyGoaluSecs'] = int(latency * 1000)
+            if priority:
+                qosRule['priority'] = self.qos_priority_level.get(priority.lower())
 
         try:
             self.client.createQoSRules(vvs_name, qosRule)
