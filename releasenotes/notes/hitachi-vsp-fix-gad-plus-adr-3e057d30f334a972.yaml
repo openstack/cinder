@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Hitachi driver: As of version 2.6.3 the Hitachi driver now has
+    support for Adaptive Data Reduction (ADR) on Global-active
+    device (GAD) volumes. This allows deduplication and compression
+    to be enabled for active-active stretched volumes on supported
+    VSP storage systems.

@@ -86,7 +86,8 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         2.5.0 - Add B20 support.
         2.6.0 - Add UR volume support.
         2.6.1 - Support extending volume with snapshot.
-        2.6.2 - Support adaptive QoS upperIops setting.
+        2.7.0 - Support adaptive QoS upperIops setting.
+        2.7.1 - Support GAD coexisting with ADR.
 
     """
 

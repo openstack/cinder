@@ -2198,8 +2198,8 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
                           TEST_VOLUME[4],
                           TEST_VOLUME[5])
         self.assertEqual(2, get_volume_type_extra_specs.call_count)
-        self.assertEqual(1, get_volume_type_qos_specs.call_count)
-        self.assertEqual(16, request.call_count)
+        self.assertEqual(2, get_volume_type_qos_specs.call_count)
+        self.assertEqual(17, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')

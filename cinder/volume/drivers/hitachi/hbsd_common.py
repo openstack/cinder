@@ -328,6 +328,7 @@ class HBSDCommon():
         extra_specs_drs = (self.driver_info['driver_dir_name'] +
                            ':drs')
         drs = extra_specs.get(extra_specs_drs)
+
         extra_specs_csv = (self.driver_info['driver_dir_name'] +
                            ':capacity_saving')
         capacity_saving = extra_specs.get(extra_specs_csv)

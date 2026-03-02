@@ -938,15 +938,6 @@ class HBSDREPLICATION(rest.HBSDREST):
                 self.driver_info['driver_dir_name'] + ':capacity_saving')
         is_data_reduction_force_copy = (
             capacity_saving == 'deduplication_compression')
-        if (self.conf.hitachi_mirror_storage_id
-                and is_data_reduction_force_copy):
-            msg = self.output_log(
-                MSG.DEDUPLICATION_IS_ENABLED,
-                rep_type=rep_type, volume_id=volume.id,
-                volume_type=volume.volume_type.name, size=volume.size)
-            if pvol is not None:
-                self.rep_primary.delete_ldev(pvol)
-            self.raise_error(msg)
         svol = None
         pvol, svol = self._create_rep_ldev(volume, extra_specs, rep_type, pvol)
         try:
