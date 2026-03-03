@@ -39,6 +39,10 @@ The Quobyte volume driver supports the following volume operations:
 
 - Generic volume migration (no back end optimization)
 
+- cache based optimization for volumes created from snapshots
+
+- overlay volumes for faster creation of volumes from the snapshot cache
+
 .. note::
 
    When running VM instances off Quobyte volumes, ensure that the `Quobyte
