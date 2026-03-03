@@ -28,7 +28,7 @@ Set the following in the cinder.conf file to enable the
 
 volume_driver=cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver
 """
-
+import threading
 try:
     from hpe3parclient import exceptions as hpeexceptions
 except ImportError:
@@ -209,8 +209,11 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         """
         LOG.debug("volume id: %(volume_id)s",
                   {'volume_id': volume['id']})
+        
         array_id = self.get_volume_replication_driver_data(volume)
         common = self._login(array_id=array_id)
+        s_key=common.client.get_session_key()
+        LOG.debug("initialize_connection entry from FC with session key %s and thread id: %s", s_key, threading.get_native_id())
         try:
             # we have to make sure we have a host
             host, cpg = self._create_host(common, volume, connector)
