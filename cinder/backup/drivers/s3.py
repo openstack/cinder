@@ -218,9 +218,15 @@ class S3BackupDriver(chunkeddriver.ChunkedBackupDriver):
         try:
             self.conn.head_bucket(Bucket=bucket)
         except boto_exc.ClientError as e:
-            # NOTE: If it was a 404 error, then the bucket does not exist.
+            # NOTE: If it was a 404 error, and we do not allow to create a
+            #       new bucket, then raise "bucket does not exist".
             error_code = e.response['Error']['Code']
             if error_code != '404':
+                raise
+            if error_code == '404' and not self.backup_create_containers:
+                LOG.debug('Creation of new backup containers is disabled. '
+                          'Returning 404 as bucket %s does not exist',
+                          bucket)
                 raise
             self.conn.create_bucket(Bucket=bucket)
 

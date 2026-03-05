@@ -30,6 +30,7 @@ import base64
 import hashlib
 import io
 import os
+from types import SimpleNamespace
 
 try:
     from google.auth import exceptions as gexceptions
@@ -125,7 +126,7 @@ def gcs_logger(func):
     def func_wrapper(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
-        except errors.Error as err:
+        except (errors.Error, errors.HttpError) as err:
             raise GCSApiFailure(reason=err)
         except OAUTH_EXCEPTIONS as err:
             raise GCSOAuth2Failure(reason=err)
@@ -210,6 +211,14 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
             fields="items(name)").execute(
                 num_retries=self.num_retries).get('items', [])
         if not any(b.get('name') == bucket for b in buckets):
+            if not self.backup_create_containers:
+                LOG.debug('Creation of new backup containers is disabled. '
+                          'Returning 404 as bucket %s does not exist',
+                          bucket)
+                resp = {'status': 404, 'reason': 'Not Found'}
+                content = b'Backup destination bucket does not exist'
+                raise errors.HttpError(SimpleNamespace(**resp), content)
+
             self.conn.buckets().insert(
                 project=self.gcs_project_id,
                 body={'name': bucket,

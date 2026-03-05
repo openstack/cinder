@@ -105,6 +105,11 @@ class PosixBackupDriver(chunkeddriver.ChunkedBackupDriver):
     def put_container(self, container):
         path = os.path.join(self.backup_path, container)
         if not os.path.exists(path):
+            if not self.backup_create_containers:
+                LOG.debug('Creation of new backup containers is disabled. '
+                          'Returning 404 as path %s does not exist',
+                          container)
+                raise OSError("Backup directory for container does not exist")
             os.makedirs(path)
             permissions = (
                 stat.S_IRUSR |
