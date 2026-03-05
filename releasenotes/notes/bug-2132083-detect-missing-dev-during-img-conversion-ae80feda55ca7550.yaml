@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #2132083 <https://bugs.launchpad.net/cinder/+bug/2132083>`_: When
+    creating a volume from an image, a storage connectivity failure or
+    similar could result in the local block device node disappearing. In
+    this situation, avoid writing the image to a file in /dev/ when calling
+    qemu-img.
