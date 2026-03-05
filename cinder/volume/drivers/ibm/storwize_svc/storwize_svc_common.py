@@ -642,6 +642,27 @@ class StorwizeSSH(object):
                             params["volumegroup"]])
         self.run_ssh_assert_no_output(ssh_cmd)
 
+    def restorefromsnapshot(self, params):
+        ssh_cmd = ['svctask', 'restorefromsnapshot']
+
+        if "id" in params:
+            ssh_cmd.extend(['-snapshotid', params["id"]])
+        elif "name" and "volumegroup_name" in params:
+            ssh_cmd.extend(['-snapshot', params["name"],
+                            '-volumegroup',
+                            params["volumegroup_name"]])
+        elif "name" and "parentuid" in params:
+            ssh_cmd.extend(['-snapshot', params["name"],
+                            '-parentuid', params["parentuid"]])
+        try:
+            LOG.info(ssh_cmd)
+            self.run_ssh_assert_no_output(ssh_cmd)
+        except Exception as ex:
+            msg = (_('Failed to run restorefromsnapshot. '
+                     'Exception: %(ex)s' % {'ex': ex}))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
     def mkvdisk(self, name, size, units, pool, opts, params):
         ssh_cmd = ['svctask', 'mkvdisk', '-name', '"%s"' % name, '-mdiskgrp',
                    '"%s"' % pool, '-iogrp', str(opts['iogrp']),
@@ -3134,6 +3155,15 @@ class StorwizeHelpers(object):
                 LOG.error(msg)
 
         return model_update, snapshots_model
+
+    def restorefromsnapshot(self, params):
+        """Restore a volumegroup from the volumegroup snapshot"""
+        if not self.is_volumegroup_snapshot_exists(params):
+            msg = (_('restore_from_snapshot: volumegroup_snaphshot '
+                     'does not exist'))
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+        self.ssh.restorefromsnapshot(params)
 
     def get_volume_name_from_metadata(self, volume):
         """Get Volume name from metadata if metadata exists"""
@@ -6948,6 +6978,47 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             raise NotImplementedError()
 
         return model_update, snapshots_model
+
+    def restore_from_snapshot(self, context, group_snapshot):
+        """Restore a volume group from the volume group snapshot."""
+
+        # Ensure supported code level
+        if self._state['code_level'] < (8, 6, 2, 0):
+            msg = (_("Restore from snapshot is supported only for code level "
+                     "8.6.2.0 or higher. Current level: %(code_level)s.")
+                   % {'code_level': self._state['code_level']})
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        try:
+            # Retrieve snapshots and metadata
+            snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+                context, group_snapshot.id)
+            if not snapshots:
+                msg = (_("No snapshots found for group snapshot '%s'.")
+                       % group_snapshot.name)
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+
+            # Extract snapshot ID from metadata
+            metadata_dict = dict(snapshots[0].get('metadata', {}))
+            snapshot_id = metadata_dict.get('svc_volumegroup_snapshot_id')
+            if not snapshot_id:
+                msg = _("Snapshot metadata is missing "
+                        "'svc_volumegroup_snapshot_id'.")
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+            vg_restore_params = {'id': snapshot_id}
+
+            # Perform restore operation using the snapshot ID
+            self._helpers.restorefromsnapshot(vg_restore_params)
+
+        except Exception as err:
+            msg = (_("Failed to restore group-snapshot: %(group_snapshot)s"
+                     "Error: %(err)s.") %
+                   {"group_snapshot": group_snapshot.name, "err": err})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
     @volume_utils.trace
     def revert_to_snapshot(self, context, volume, snapshot):

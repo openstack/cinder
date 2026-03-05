@@ -2545,8 +2545,9 @@ port_speed!N/A
         if 'name' in kwargs:
             volumegroup_info['name'] = kwargs["name"].strip('\'\"')
         else:
-            volumegroup_info['name'] = self.driver._get_volumegroup_name(
-                None, volumegroup_info['id'])
+            volumegroup_info['name'] = (
+                self.driver._helpers.get_volumegroup_name(
+                    None, volumegroup_info['id']))
         volumegroup_info['volume_count'] = '0'
         volumegroup_info['backup_status'] = 'empty'
         volumegroup_info['last_backup_time'] = ''
@@ -7690,6 +7691,92 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                          model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
+
+    def test_restore_from_snapshot_with_valid_id(self):
+        # Mock group snapshot
+        group_snapshot = mock.Mock()
+        group_snapshot.id = 'fake_group_snapshot_id'
+        group_snapshot.name = 'fake_group_snapshot_name'
+
+        # Mock snapshot metadata
+        snapshot_metadata = {
+            'svc_volumegroup_snapshot_id': 'fake_snapshot_id'}
+        snapshot_mock = mock.Mock()
+        # Mock metadata as a dictionary
+        snapshot_mock.get.return_value = snapshot_metadata
+
+        # Mock SnapshotList.get_all_for_group_snapshot to return a list
+        # with one snapshot
+        self.mock_object(objects.SnapshotList,
+                         'get_all_for_group_snapshot',
+                         return_value=[snapshot_mock])
+
+        # Mock restorefromsnapshot helper method
+        self.mock_object(self.driver._helpers, 'restorefromsnapshot')
+
+        # Set supported code level
+        self.driver._state['code_level'] = (8, 6, 2, 0)
+
+        # Call restore_from_snapshot
+        self.driver.restore_from_snapshot(self.ctxt, group_snapshot)
+
+        # Assert restorefromsnapshot was called with correct params
+        self.driver._helpers.restorefromsnapshot.assert_called_once_with(
+            {'id': 'fake_snapshot_id'})
+
+    @mock.patch('cinder.objects.SnapshotList.get_all_for_group_snapshot')
+    def test_restore_from_snapshot_with_no_snapshots(self,
+                                                     mock_snapshot_list):
+        # Mock group snapshot
+        group_snapshot = mock.Mock()
+        group_snapshot.id = 'fake_group_snapshot_id'
+        group_snapshot.name = 'fake_group_snapshot_name'
+
+        # Mock no snapshots found
+        mock_snapshot_list.return_value = []
+
+        # Expect VolumeDriverException
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.driver.restore_from_snapshot,
+            self.ctxt,
+            group_snapshot)
+
+    @mock.patch('cinder.objects.SnapshotList.get_all_for_group_snapshot')
+    def test_restore_from_snapshot_with_invalid_metadata(self,
+                                                         mock_snapshot_list):
+        # Mock group snapshot
+        group_snapshot = mock.Mock()
+        group_snapshot.id = 'fake_group_snapshot_id'
+        group_snapshot.name = 'fake_group_snapshot_name'
+
+        # Mock invalid metadata
+        mock_snapshot = mock.Mock()
+        mock_snapshot.metadata = {}
+        mock_snapshot_list.return_value = [mock_snapshot]
+
+        # Expect VolumeDriverException
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.driver.restore_from_snapshot,
+            self.ctxt,
+            group_snapshot)
+
+    def test_restore_from_snapshot_with_unsupported_code_level(self):
+        # Mock group snapshot
+        group_snapshot = mock.Mock()
+        group_snapshot.id = 'fake_group_snapshot_id'
+        group_snapshot.name = 'fake_group_snapshot_name'
+
+        # Set an unsupported code level
+        self.driver._state['code_level'] = (8, 5, 0, 0)
+
+        # Expect VolumeDriverException
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.driver.restore_from_snapshot,
+            self.ctxt,
+            group_snapshot)
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'create_rccg')

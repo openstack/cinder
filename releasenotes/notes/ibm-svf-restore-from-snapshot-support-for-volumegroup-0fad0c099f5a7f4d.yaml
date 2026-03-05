@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family driver: Added support for
+    restorefromsnapshot CLI for volumegroup feature. Supported in SVC Code
+    Level 8.6.2.0 and above. User can now restore a volumegroup using an
+    exising volumegroup snapshot.
