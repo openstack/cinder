@@ -19,6 +19,10 @@ import random
 import re
 import time
 import unicodedata
+import uuid
+
+from glob import glob
+from subprocess import run
 
 from eventlet import greenthread
 from oslo_concurrency import processutils
@@ -349,6 +353,10 @@ class StorwizeSSH(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
         return self.run_ssh_info(ssh_cmd, with_header=True)
+
+    def lscloudcallhome(self):
+        ssh_cmd = ['svcinfo', 'lscloudcallhome', '-delim', '!']
+        return self.run_ssh_info(ssh_cmd)
 
     def mkvdiskhostmap(self, host, vdisk, lun, multihostmap):
         """Map vdisk to host.
@@ -936,6 +944,17 @@ class StorwizeSSH(object):
         ssh_cmd = ['svctask', 'rmvolumecopy', '-pool',
                    '"%s"' % pool, '"%s"' % name]
         self.run_ssh_assert_no_output(ssh_cmd)
+
+    def registerplugin(self, driver_version, metadata):
+        name = storwize_const.CINDER
+        host = uuid.getnode()
+        uniquekey = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(host)))
+        ssh_cmd = [
+            'svctask', 'registerplugin', '-name', '"%s"' % name,
+            '-version', '"%s"' % driver_version, '-uniquekey',
+            '"%s"' % uniquekey, '-metadata', '"%s"' % metadata
+        ]
+        return self._run_ssh(ssh_cmd)
 
 
 class StorwizeHelpers(object):
@@ -1668,6 +1687,30 @@ class StorwizeHelpers(object):
             if mapping_info['host_name'] == host_name:
                 return True
         return False
+
+    def check_for_callhome_enabled(self, configuration, VERSION):
+        callhome_data = self.ssh.lscloudcallhome()
+        if callhome_data and callhome_data[0]['status'] == "enabled":
+            registerplugin_metadata = ''
+            ispbhaenabled = bool(getattr(self, 'is_pbha_partition', None))
+            isreplication = bool(
+                    configuration.safe_get('replication_device'))
+            volume_driver = configuration.safe_get('volume_driver')
+            if "powervc" in (volume_driver, ''):
+                deployment = storwize_const.POWERVC
+            else:
+                deployment = storwize_const.COMMUNITY
+            registerplugin_metadata = f"ispbhaenabled - {ispbhaenabled}, " \
+                f"isreplication - {isreplication}, " \
+                f"deployment - {deployment}, "
+            if self.register_cinder_plugin(VERSION,
+                                           registerplugin_metadata):
+                LOG.info("CINDER plugin is registered successfully on SVC "
+                         "backend.")
+                raise loopingcall.LoopingCallDone()
+        else:
+            LOG.warning("Callhome service is disabled on the backend.")
+
 
     @staticmethod
     def build_default_opts(config):
@@ -3537,6 +3580,49 @@ class StorwizeHelpers(object):
                     self.ssh.stopfcmap(map_id)
 
     @staticmethod
+    def get_os_name():
+        release_files = glob('/etc/*-release')
+        os_name = ''
+        for file in release_files:
+            with open(file, 'r') as fh:
+                try:
+                    for line in fh.readlines():
+                        if line.startswith('PRETTY_NAME'):
+                            _, os_name = line.split("=")
+                            break
+                except Exception:
+                    continue
+            if os_name:
+                break
+        return os_name.strip('\n"')
+
+    @staticmethod
+    def execute_cinder_cli(cmd):
+        out = ''
+        try:
+            result = run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                out = result.stdout.strip()
+        except Exception:
+            pass
+        return out
+
+    def register_cinder_plugin(self, driver_version, metadata):
+        ret = False
+        try:
+            osname = self.get_os_name()
+            cinderversion = self.execute_cinder_cli(
+                ["cinder-manage", "--version"])
+            metadata += f"osname - {str(osname)}, "\
+                f"cinderversion - {str(cinderversion)}"
+            self.ssh.registerplugin(driver_version, metadata)
+            ret = True
+        except Exception as e:
+            LOG.debug("Failed to register plugin due to %s", e)
+        return ret
+
+
+    @staticmethod
     def check_code_level_within_limit(min_level, max_level, code_level):
         if max_level is None:
             max_level = code_level
@@ -3896,7 +3982,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         opts = self._helpers.build_default_opts(self.configuration)
         self._helpers.check_vdisk_opts(self._state, opts)
-
+        self._check_callhome_loop = loopingcall.FixedIntervalLoopingCall(
+            self._helpers.check_for_callhome_enabled,
+            self.configuration,
+            self.VERSION)
+        self._check_callhome_loop.start(
+            interval=storwize_const.DEFAULT_RP_TIMEOUT)
         LOG.debug('leave: check_for_setup_error')
 
     def _run_ssh(self, cmd_list, check_exit_code=True, attempts=1):
