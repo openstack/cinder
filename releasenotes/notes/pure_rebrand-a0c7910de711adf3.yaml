@@ -1,0 +1,8 @@
+---
+other:
+  - |
+    Updated all documentation to reflect the rebranding of Pure Storage
+    to Everpure. This is a documentation-only change. All driver code,
+    configuration options, and class names remain unchanged for backwards
+    compatibility. The driver continues to support Everpure FlashArray
+    systems (formerly Pure Storage FlashArray).

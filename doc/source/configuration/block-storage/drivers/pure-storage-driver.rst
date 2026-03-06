@@ -1,30 +1,16 @@
-=========================================================
-Pure Storage iSCSI, Fibre Channel and NVMe volume drivers
-=========================================================
+=========================
+Everpure Storage driver
+=========================
 
-The Pure Storage FlashArray volume drivers for OpenStack Block Storage
-interact with configured Pure Storage arrays and support various
-operations.
+Overview
+--------
 
-Support for iSCSI storage protocol is available with the PureISCSIDriver
-Volume Driver class, Fibre Channel with the PureFCDriver and
-NVMe-ROCE or NVMe-TCP with the PureNVMEDriver.
+Everpure (formerly Pure Storage) provides flash-based storage solutions.
+The Everpure FlashArray Cinder driver provides OpenStack Block Storage
+service integration with Everpure FlashArray storage systems.
 
-iSCSI, Fibre Channel and NVMe-RoCE drivers are compatible with FlashArrays
-that support the REST API version 2.4 and higher (Purity 6.1.0 and newer).
-The NVMe-TCP driver is compatible with FlashArrays
-that are running Purity 6.4.2 and higher.
-Some features may require newer versions of Purity.
-
-Limitations and known issues
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-If you do not set up the nodes hosting instances to use multipathing,
-all network connectivity will use a single physical port on the array.
-In addition to significantly limiting the available bandwidth, this
-means you do not have the high-availability and non-disruptive upgrade
-benefits provided by FlashArray. Multipathing must be used to take advantage
-of these benefits.
+The driver supports iSCSI, Fibre Channel, and NVMe-RoCE/NVMe-TCP protocols
+for connecting OpenStack compute instances to Everpure storage.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -49,9 +35,9 @@ Supported operations
 
 * Create a thin provisioned volume.
 
-* Replicate volumes to remote Pure Storage array(s)
+* Replicate volumes to remote Everpure array(s)
 
-QoS support for the Pure Storage drivers include the ability to set the
+QoS support for the Everpure drivers include the ability to set the
 following capabilities in the OpenStack Block Storage API
 ``cinder.api.contrib.qos_spec_manage`` qos specs extension module:
 
@@ -95,11 +81,11 @@ Configure the OpenStack Block Storage service
 
 In these steps, you will edit the ``cinder.conf`` file to configure the
 OpenStack Block Storage service to enable multipathing and to use the
-Pure Storage FlashArray as back-end storage.
+Everpure FlashArray as back-end storage.
 
-#. Install Pure Storage PyPI module.
-   A requirement for the Pure Storage driver is the installation of the
-   Pure Storage Python SDK version 1.47.0 or later from PyPI.
+#. Install Everpure PyPI module.
+   A requirement for the Everpure driver is the installation of the
+   Everpure Python SDK version 1.47.0 or later from PyPI.
 
    .. code-block:: console
 
@@ -152,7 +138,7 @@ Pure Storage FlashArray as back-end storage.
 #. Edit the OpenStack Block Storage service configuration file.
    The following sample ``/etc/cinder/cinder.conf`` configuration lists the
    relevant settings for a typical Block Storage service using a single
-   Pure Storage array:
+   Everpure array:
 
    .. code-block:: ini
 
@@ -179,12 +165,12 @@ Pure Storage FlashArray as back-end storage.
        Supported values are ``roce`` or ``tcp``.
 
    IP_PURE_MGMT
-       The IP address of the Pure Storage array's management interface or a
+       The IP address of the Everpure array's management interface or a
        domain name that resolves to that IP address.
 
    PURE_API_TOKEN
        The Purity Authorization token that the volume driver uses to
-       perform volume management on the Pure Storage array.
+       perform volume management on the Everpure array.
 
 .. note::
 
@@ -211,7 +197,7 @@ groups on deletion, modify the following option in the ``cinder.conf`` file:
    pure_eradicate_on_delete = true
 
 By default, auto-eradication is disabled and all deleted volumes, snapshots,
-and consistency groups are retained on the Pure Storage array in a recoverable
+and consistency groups are retained on the Everpure array in a recoverable
 state for 24 hours from time of deletion.
 
 Setting host personality
@@ -267,7 +253,7 @@ Array to replicate to:
     [puredriver-1]
     replication_device = backend_id:PURE2_NAME,san_ip:IP_PURE2_MGMT,api_token:PURE2_API_TOKEN,type:REPLICATION_TYPE
 
-Where ``PURE2_NAME`` is the name of the remote Pure Storage system,
+Where ``PURE2_NAME`` is the name of the remote Everpure system,
 ``IP_PURE2_MGMT`` is the management IP address of the remote array,
 and ``PURE2_API_TOKEN`` is the Purity Authorization token
 of the remote array.
@@ -306,9 +292,9 @@ async replication:
    $ openstack volume type set --property replication_type='<in> async' ReplicationType
 
 The following table contains the optional configuration parameters available
-for async replication configuration with the Pure Storage array.
+for async replication configuration with the Everpure array.
 
-.. list-table:: Pure Storage replication configuration options
+.. list-table:: Everpure replication configuration options
    :header-rows: 1
 
    * - Option
@@ -327,12 +313,12 @@ for async replication configuration with the Pure Storage array.
      - Retain snapshots per day on target for this time (in days).
      - ``7``
    * - ``pure_replication_pg_name``
-     - Pure Protection Group name to use for async replication (will be created
-       if it does not exist).
+     - Everpure Protection Group name to use for async replication (will be
+       created if it does not exist).
      - ``cinder-group``
    * - ``pure_replication_pod_name``
-     - Pure Pod name to use for sync replication (will be created if it does
-       not exist).
+     - Everpure Pod name to use for sync replication (will be created if it
+       does not exist).
      - ``cinder-pod``
 
 
@@ -412,20 +398,20 @@ other external documentation.
 Configuration Options
 ~~~~~~~~~~~~~~~~~~~~~
 
-The following list all Pure driver specific configuration options that can be
-set in `cinder.conf`:
+The following list all Everpure driver specific configuration options that can
+be set in `cinder.conf`:
 
 .. config-table::
    :config-target: Pure
 
    cinder.volume.drivers.pure
 
-Pure Storage-supported extra specs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Everpure-supported extra specs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Extra specs are associated with Block Storage volume types. When users request
 volumes of a particular volume type, the volumes are created on storage
-backends that meet the list of requirements. In the case of Pure Storage, these
+backends that meet the list of requirements. In the case of Everpure, these
 vendor-specific extra specs can be used to bring all volumes of a specific
 volume type into a construct known as a volume group. Additionally, the
 storage quality of service limits can be applied to the volume group.
