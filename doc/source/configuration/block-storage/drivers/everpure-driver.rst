@@ -221,7 +221,7 @@ Note that this will override the ``pure_eradicate_on_delete`` parameter and
 force this to be False.
 
 Enabling SafeMode for OpenStack volumes may, in rare edge cases, cause
-unexpected side-effects. If these occur, please contact Pure Storage Support.
+unexpected side-effects. If these occur, please contact Everpure Support.
 
 Setting host personality
 ~~~~~~~~~~~~~~~~~~~~~~~~
