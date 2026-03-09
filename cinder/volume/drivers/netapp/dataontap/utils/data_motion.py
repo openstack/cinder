@@ -191,9 +191,9 @@ class DataMotionMixin(object):
         active_sync_asymmetric_policy = self.is_active_sync_asymmetric_policy(
             replication_policy)
         src_cg = "cg_" + src_flexvol_name if active_sync_asymmetric_policy \
-            else ""
+            else None
         dest_cg = "cg_" + dest_flexvol_name if active_sync_asymmetric_policy \
-            else ""
+            else None
         src_cg_path = "/cg/" + str(src_cg)
         dest_cg_path = "/cg/" + str(dest_cg)
 
