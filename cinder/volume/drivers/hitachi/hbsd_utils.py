@@ -24,6 +24,7 @@ import typing
 from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
+import requests
 
 from cinder import coordination
 from cinder import exception
@@ -1472,3 +1473,38 @@ class CachingHostConnectorSearcher(HostConnectorSearcher):
 
         with self._cache_lock:
             self._connector_cache.clear_group(port, group)
+
+
+class HBSDRequest(object):
+    def __init__(self, method: str, path: str,
+                 params: dict | list[tuple] | None,
+                 body: typing.Any, headers: dict | None,
+                 auth: tuple | None):
+        self.method = method
+        self.path = path
+        self.params = params
+        self.body = body
+        self.headers = headers
+        self.auth = auth
+
+
+class RequestAudit(object):
+    def __init__(self, request: HBSDRequest):
+        self.request = request
+
+
+class RequestAuditor(object):
+
+    def begin_request(self, request: HBSDRequest) -> RequestAudit:
+        return RequestAudit(request)
+
+    def end_request(self, audit: RequestAudit,
+                    response: requests.Response):
+        pass
+
+    def end_request_exception(self, audit: RequestAudit, exception: Exception):
+        pass
+
+
+def create_default_request_auditor(conf):
+    return RequestAuditor()

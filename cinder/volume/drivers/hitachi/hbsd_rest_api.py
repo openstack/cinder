@@ -30,6 +30,7 @@ from requests.adapters import HTTPAdapter
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.volume.drivers.hitachi import hbsd_utils as debug
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume import volume_utils
 
@@ -270,6 +271,8 @@ class RestApiClient():
                         "accept": "application/json"}
         self.driver_prefix = driver_prefix
 
+        self.request_auditor = debug.create_default_request_auditor(conf)
+
     class Session(requests.auth.AuthBase):
 
         def __init__(self, id, token):
@@ -282,6 +285,9 @@ class RestApiClient():
                 'token': self.token,
             }
             return req
+
+        def __str__(self):
+            return str((self.id, self.token))
 
     def _request(self, method, url, params=None, body=None,
                  async_=False, **kwargs):
@@ -329,6 +335,9 @@ class RestApiClient():
 
         while retry:
             watch.restart()
+            audit = self.request_auditor.begin_request(
+                utils.HBSDRequest(method, url, params, body, headers,
+                                  auth_data))
             try:
                 with requests.Session() as session:
                     if self.tcp_keepalive:
@@ -340,8 +349,11 @@ class RestApiClient():
                                           auth=auth_data,
                                           timeout=timeout,
                                           verify=self.verify)
+                    self.request_auditor.end_request(audit, rsp)
 
             except Exception as e:
+                self.request_auditor.end_request_exception(audit, e)
+
                 msg = self.output_log(
                     MSG.REST_SERVER_CONNECT_FAILED,
                     exception=type(e), message=e,
