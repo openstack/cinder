@@ -2000,20 +2000,43 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                    " eradicated - will recreate.", vgname)
             self.array.delete_volume_groups.assert_called_with(names=[vgname])
 
+    @ddt.data(
+        (False, False),  # safemode off + disabled
+        (True, True),    # safemode on + enabled
+        (True, False),   # safemode on + disabled
+        (False, True),   # safemode off + enabled (ignored)
+    )
+    @ddt.unpack
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
     @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")
-    def test_create_volume(self, mock_get_repl_type, mock_add_to_group,
+    def test_create_volume(self, safemode, safemode_enabled,
+                           mock_get_repl_type, mock_add_to_group,
                            mock_fa):
         mock_get_repl_type.return_value = None
         vol_obj = fake_volume.fake_volume_obj(mock.MagicMock(), size=2)
         mock_data = self.array.flasharray.VolumePost(provisioned=2147483648)
         mock_fa.return_value = mock_data
+
+        # configure safemode
+        self.array.safemode = safemode
+        self.driver._safemode_enabled = safemode_enabled
+
         self.driver.create_volume(vol_obj)
         vol_name = vol_obj["name"] + "-cinder"
-        self.array.post_volumes.assert_called_with(names=[vol_name],
-                                                   with_default_protection=
-                                                   False, volume=mock_data)
+
+        if safemode:
+            # when safemode is on, driver must respect _safemode_enabled
+            self.array.post_volumes.assert_called_with(
+                names=[vol_name],
+                with_default_protection=safemode_enabled,
+                volume=mock_data)
+        else:
+            # when safemode is off, _safemode_enabled is ignored
+            self.array.post_volumes.assert_called_with(
+                names=[vol_name],
+                volume=mock_data)
+
         mock_add_to_group.assert_called_once_with(vol_obj, vol_name)
         self.assert_error_propagates([mock_fa],
                                      self.driver.create_volume, vol_obj)
@@ -2056,11 +2079,19 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_logger.debug.\
             assert_called_with("Returning spec value %s", vgname)
 
+    @ddt.data(
+        (False, False),  # safemode off + disabled
+        (True, True),    # safemode on + enabled
+        (True, False),   # safemode on + disabled
+        (False, True),   # safemode off + enabled (ignored)
+    )
+    @ddt.unpack
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
     @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")
     @mock.patch.object(volume_types, 'get_volume_type')
-    def test_create_volume_from_snapshot(self, mock_get_volume_type,
+    def test_create_volume_from_snapshot(self, safemode, safemode_enabled,
+                                         mock_get_volume_type,
                                          mock_get_replicated_type,
                                          mock_add_to_group, mock_fa):
         srcvol, _ = self.new_fake_vol()
@@ -2074,13 +2105,28 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                      name=vol_name)
         mock_fa.return_value = mock_data
 
+        # configure safemode
+        self.array.safemode = safemode
+        self.driver._safemode_enabled = safemode_enabled
+
         mock_get_volume_type.return_value = vol.volume_type
         # Branch where extend unneeded
         self.driver.create_volume_from_snapshot(vol, snap)
-        self.array.post_volumes.assert_called_with(names=[vol_name],
-                                                   with_default_protection=
-                                                   False,
-                                                   volume=mock_data)
+
+        if safemode:
+            # when safemode is on, driver must
+            # respect _safemode_enabled
+            self.array.post_volumes.assert_called_with(
+                names=[vol_name],
+                with_default_protection=safemode_enabled,
+                volume=mock_data)
+        else:
+            # when safemode is off, _safemode_enabled
+            # is ignored
+            self.array.post_volumes.assert_called_with(
+                names=[vol_name],
+                volume=mock_data
+            )
         self.assertFalse(self.array.extend_volume.called)
         mock_add_to_group.assert_called_once_with(vol, vol_name)
         self.assert_error_propagates(

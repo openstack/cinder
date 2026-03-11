@@ -134,7 +134,13 @@ PURE_OPTS = [
                 help="When enabled and two replication devices are provided, "
                      "one each of types sync and async, this will enable "
                      "the ability to create a volume that is sync replicated "
-                     "to one array and async replicated to a separate array.")
+                     "to one array and async replicated to a separate array."),
+    cfg.BoolOpt("pure_safemode_enabled",
+                default=False,
+                help="When enabled SafeMode protection will be enforced for "
+                     "all objects created by the Pure Cinder driver. This "
+                     "overrides the pure_eradicate_on_delete parameter and "
+                     "forces it to be false.")
 ]
 
 CONF = cfg.CONF
@@ -264,6 +270,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._is_replication_enabled = False
         self._is_active_cluster_enabled = False
         self._is_trisync_enabled = False
+        self._safemode_enabled = False
         self._active_backend_id = kwargs.get('active_backend_id', None)
         self._failed_over_primary_array = None
         self._user_agent = '%(base)s %(class)s/%(version)s (%(platform)s)' % {
@@ -280,7 +287,8 @@ class PureBaseVolumeDriver(san.SanDriver):
             'use_chap_auth', 'replication_device', 'reserved_percentage',
             'max_over_subscription_ratio', 'pure_nvme_transport',
             'pure_nvme_cidr_list', 'pure_nvme_cidr',
-            'pure_trisync_enabled', 'pure_trisync_pg_name')
+            'pure_trisync_enabled', 'pure_trisync_pg_name',
+            'pure_safemode_enabled')
         return PURE_OPTS + additional_opts
 
     def parse_replication_configs(self):
@@ -420,7 +428,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         vg_volname = vgroup + "/" + vol_name
         if self._array.safemode:
             array.post_volumes(names=[vg_volname],
-                               with_default_protection=False,
+                               with_default_protection=self._safemode_enabled,
                                volume=flasharray.VolumePost(
                                    source=flasharray.Reference(
                                        name=snap_name)))
@@ -455,7 +463,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         vg_volname = vgroup + "/" + vol_name
         if self._array.safemode:
             array.post_volumes(names=[vg_volname],
-                               with_default_protection=False,
+                               with_default_protection=self._safemode_enabled,
                                volume=flasharray.VolumePost(
                                provisioned=vol_size))
         else:
@@ -481,32 +489,36 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         if self._array.safemode:
             if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
-                array.post_volumes(names=[vol_name],
-                                   with_default_protection=False,
-                                   volume=flasharray.VolumePost(
-                                       provisioned=vol_size))
+                array.post_volumes(
+                    names=[vol_name],
+                    with_default_protection=self._safemode_enabled,
+                    volume=flasharray.VolumePost(
+                        provisioned=vol_size))
             elif qos['maxIOPS'] == 0:
-                array.post_volumes(names=[vol_name],
-                                   with_default_protection=False,
-                                   volume=flasharray.VolumePost(
-                                       provisioned=vol_size,
-                                       qos=flasharray.Qos(
-                                           bandwidth_limit=qos['maxBWS'])))
+                array.post_volumes(
+                    names=[vol_name],
+                    with_default_protection=self._safemode_enabled,
+                    volume=flasharray.VolumePost(
+                        provisioned=vol_size,
+                        qos=flasharray.Qos(
+                            bandwidth_limit=qos['maxBWS'])))
             elif qos['maxBWS'] == 0:
-                array.post_volumes(names=[vol_name],
-                                   with_default_protection=False,
-                                   volume=flasharray.VolumePost(
-                                       provisioned=vol_size,
-                                       qos=flasharray.Qos(
-                                           iops_limit=qos['maxIOPS'])))
+                array.post_volumes(
+                    names=[vol_name],
+                    with_default_protection=self._safemode_enabled,
+                    volume=flasharray.VolumePost(
+                        provisioned=vol_size,
+                        qos=flasharray.Qos(
+                            iops_limit=qos['maxIOPS'])))
             else:
-                array.post_volumes(names=[vol_name],
-                                   with_default_protection=False,
-                                   volume=flasharray.VolumePost(
-                                       provisioned=vol_size,
-                                       qos=flasharray.Qos(
-                                           iops_limit=qos['maxIOPS'],
-                                           bandwidth_limit=qos['maxBWS'])))
+                array.post_volumes(
+                    names=[vol_name],
+                    with_default_protection=self._safemode_enabled,
+                    volume=flasharray.VolumePost(
+                        provisioned=vol_size,
+                        qos=flasharray.Qos(
+                            iops_limit=qos['maxIOPS'],
+                            bandwidth_limit=qos['maxBWS'])))
         else:
             if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
                 array.post_volumes(names=[vol_name],
@@ -572,12 +584,16 @@ class PureBaseVolumeDriver(san.SanDriver):
             self._array.preferred = True
             self._array.uniform = True
             self._array.version = array_info.version
+            self._safemode_enabled = (
+                self.configuration.pure_safemode_enabled)
             if version.parse(array_info.version) < version.parse(
                 '6.3.4'
             ):
                 self._array.safemode = False
             else:
                 self._array.safemode = True
+                if self._safemode_enabled:
+                    self.configuration.pure_eradicate_on_delete = False
 
             LOG.info("Primary array: backend_id='%s', name='%s', id='%s'",
                      self.configuration.config_group,
@@ -798,10 +814,11 @@ class PureBaseVolumeDriver(san.SanDriver):
             self.create_with_qos(current_array, vol_name, vol_size, qos)
         else:
             if self._array.safemode:
-                current_array.post_volumes(names=[vol_name],
-                                           with_default_protection=False,
-                                           volume=flasharray.VolumePost(
-                                               provisioned=vol_size))
+                current_array.post_volumes(
+                    names=[vol_name],
+                    with_default_protection=self._safemode_enabled,
+                    volume=flasharray.VolumePost(
+                        provisioned=vol_size))
             else:
                 current_array.post_volumes(names=[vol_name],
                                            volume=flasharray.VolumePost(
@@ -846,13 +863,14 @@ class PureBaseVolumeDriver(san.SanDriver):
                 qos = self._get_qos_settings(volume_type)
 
         if self._array.safemode:
-            current_array.post_volumes(names=[vol_name],
-                                       with_default_protection=False,
-                                       volume=flasharray.VolumePost(
-                                           source=flasharray.Reference(
-                                               name=snap_name)))
+            current_array.post_volumes(
+                names=[vol_name],
+                with_default_protection=self._safemode_enabled,
+                volume=flasharray.VolumePost(
+                    source=flasharray.Reference(
+                        name=snap_name)))
         else:
-            current_array.post_volume(names=[vol_name],
+            current_array.post_volumes(names=[vol_name],
                                       volume=flasharray.VolumePost(
                                           source=flasharray.Reference(
                                               name=snap_name)))
@@ -1861,7 +1879,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                     _("Unable to manage snapshot in a Realm"))
             # Purity snapshot names are prefixed with the source volume name.
             ref_vol_name, ref_snap_suffix = existing_ref['source-name'].split(
-                '.')
+                '.', 1)
         else:
             ref_vol_name = existing_ref['source-name']
 
@@ -3542,11 +3560,12 @@ class PureBaseVolumeDriver(san.SanDriver):
             if self._array.safemode:
                 # Now we check to ensure that the created pod does not have a
                 # safemode protection group attached to it as this is not
-                # supported by Cinder
+                # supported by Cinder, however if SafeMode has been
+                # enabled then do not remove the protection.
                 safemode_pg = list(
                     source_array.get_container_default_protections(
                         names=[name]).items)[0].default_protections
-                if safemode_pg:
+                if safemode_pg and not self._safemode_enabled:
                     pgname = safemode_pg[0].name
                     res = source_array.patch_container_default_protections(
                         names=[name],
@@ -3753,7 +3772,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                         int(vg_bws))
                 if secondary_safemode:
                     secondary_array.post_volumes(
-                        with_default_protection=False,
+                        with_default_protection=self._safemode_enabled,
                         volume=flasharray.VolumePost(
                             source=flasharray.Reference(
                                 name=volume_snaps[snap].name)
@@ -3906,7 +3925,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     @pure_driver_debug_trace
     def _untag_volume(self, volume_name):
         array = self._get_current_array()
-        array.delete_volumes_tags(namespace=[TAG_NAMESPACE],
+        array.delete_volumes_tags(namespaces=[TAG_NAMESPACE],
                                   resource_names=[volume_name])
 
     @pure_driver_debug_trace

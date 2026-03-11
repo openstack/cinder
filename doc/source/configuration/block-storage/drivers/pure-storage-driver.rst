@@ -198,7 +198,30 @@ groups on deletion, modify the following option in the ``cinder.conf`` file:
 
 By default, auto-eradication is disabled and all deleted volumes, snapshots,
 and consistency groups are retained on the Everpure array in a recoverable
-state for 24 hours from time of deletion.
+state for the array's eradication configuration period, from time of deletion.
+
+SafeMode(TM) Support
+~~~~~~~~~~~~~~~~~~~~
+
+From Purity//FA 6.4.3 a FlashArray backend can have SafeMode enabled, which
+acts as a ransomware protection function that creates immutable snapshots
+of volumes.
+
+By default SafeMode protection is disabled for all OpenStack managed volumes.
+
+If an administrator wishes to allow a FlashArray backend to enable SafeMode
+protection for OpenStack managed volumes, this can be enabled by adding the
+following into the backend stanza in the ``cinder.conf`` file:
+
+.. code-block:: ini
+
+   pure_safemode_enabled = true
+
+Note that this will override the ``pure_eradicate_on_delete`` parameter and
+force this to be False.
+
+Enabling SafeMode for OpenStack volumes may, in rare edge cases, cause
+unexpected side-effects. If these occur, please contact Pure Storage Support.
 
 Setting host personality
 ~~~~~~~~~~~~~~~~~~~~~~~~
