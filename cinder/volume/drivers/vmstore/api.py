@@ -119,7 +119,12 @@ class VmstoreRequest(object):
                     code = 'RESOURCE_NOT_FOUND'
                     message = str(error)
                     self.error = VmstoreException(message, code=code)
-                if 'cinder/host/refresh' in response.request.url:
+
+                url = None
+                if hasattr(error, "response") and error.response is not None:
+                    url = getattr(error.response.request, "url", None)
+
+                if url and 'cinder/host/refresh' in url:
                     raise self.error
                 else:
                     LOG.error('Failed request %(info)s: %(error)s',
