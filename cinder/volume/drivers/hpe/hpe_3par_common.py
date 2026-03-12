@@ -2659,8 +2659,8 @@ class HPE3PARCommon(object):
                 LOG.info("array version: %(ver)s",
                          {'ver': self.API_VERSION})
                 comment_line = None
-                if self.API_VERSION >= 40600000:
-                    # comment can be added
+                if self.API_VERSION >= 40600000 and self.API_VERSION < API_VERSION_2023:
+                    # comment added for online copy only for Alletra9k version
                     comments = {'volume_id': volume['id'],
                                 'name': volume['name'],
                                 'type': 'OpenStack'}
