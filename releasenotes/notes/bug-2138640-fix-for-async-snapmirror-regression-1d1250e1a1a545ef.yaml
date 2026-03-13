@@ -1,7 +1,7 @@
 ---
 fixes:
   - |
-    `Bug #2138640 <https://bugs.launchpad.net/cinder/+bug/2138640>`_:
-      Fixed the issue where replication using the default MirrorAllSnapshot
-      policy is failing for Cinder Volumes. This issue was introduced due to
-      a regression while adding support for AutomatedFailover policy.
+    NetApp driver `bug #2138640 <https://bugs.launchpad.net/cinder/+bug/2138640>`_:
+    Fixed the issue where replication using the default MirrorAllSnapshot
+    policy is failing for Cinder Volumes. This issue was introduced due to
+    a regression while adding support for AutomatedFailover policy.

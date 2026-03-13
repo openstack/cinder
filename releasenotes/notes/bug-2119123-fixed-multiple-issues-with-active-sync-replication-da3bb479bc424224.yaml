@@ -6,5 +6,5 @@ fixes:
     added to the driver to ensure ONTAP version checks and initialization
     of SnapMirror as part of creation of SMAS relationship.
   - |
-    `Bug #2119123 <https://bugs.launchpad.net/cinder/+bug/2119123>`_:
-     Fix for NetApp Cinder Driver - Active Sync issues
+    NetApp driver `bug #2119123 <https://bugs.launchpad.net/cinder/+bug/2119123>`_:
+    Fix for NetApp Cinder Driver - Active Sync issues
