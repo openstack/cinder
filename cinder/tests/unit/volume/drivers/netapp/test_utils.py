@@ -1266,3 +1266,24 @@ class BitSetTestCase(test.TestCase):
         actual >>= 16
 
         self.assertEqual(na_utils.BitSet(1), actual)
+
+    def test_get_backend_lun_or_ns_name_disaggregated(self):
+        config = mock.Mock()
+        config.netapp_disaggregated_platform = True
+        volume_names = [
+            ('vol-1234-5678-90ab-cdef', 'vol_1234_5678_90ab_cdef'),
+            ('test-0000-1111-2222-3333', 'test_0000_1111_2222_3333'),
+            ('simple', 'simple'),
+            ('with-dash-', 'with_dash_'),
+        ]
+        for volume_name, expected in volume_names:
+            result = na_utils.get_backend_lun_or_ns_name(volume_name, config)
+            self.assertEqual(expected, result)
+
+    def test_get_backend_lun_or_ns_name_non_disaggregated(self):
+        config = mock.Mock()
+        config.netapp_disaggregated_platform = False
+        volume_name = 'vol-1234-5678-90ab-cdef'
+        expected = volume_name
+        result = na_utils.get_backend_lun_or_ns_name(volume_name, config)
+        self.assertEqual(expected, result)

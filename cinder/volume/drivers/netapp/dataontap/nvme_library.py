@@ -280,6 +280,14 @@ class NetAppNVMeStorageLibrary(
         metadata = {'OsType': self.namespace_ostype,
                     'Path': '/vol/%s/%s' % (pool_name, namespace)}
 
+        if self.configuration.netapp_disaggregated_platform:
+            namespace = na_utils.get_backend_lun_or_ns_name(
+                namespace,
+                self.configuration,
+            )
+            # For ASAr2 path name is same as namespace name
+            metadata = {'OsType': self.namespace_ostype,
+                        'Path': namespace}
         try:
             self.client.create_namespace(pool_name, namespace, size, metadata)
         except Exception:
@@ -303,7 +311,10 @@ class NetAppNVMeStorageLibrary(
 
     def _delete_namespace(self, namespace_name):
         """Helper method to delete namespace backing a volume or snapshot."""
-
+        namespace_name = na_utils.get_backend_lun_or_ns_name(
+            namespace_name,
+            self.configuration,
+        )
         metadata = self._get_namespace_attr(namespace_name, 'metadata')
         if metadata:
             try:
@@ -455,6 +466,7 @@ class NetAppNVMeStorageLibrary(
 
         Refreshes cache if namespace not found in cache.
         """
+        name = na_utils.get_backend_lun_or_ns_name(name, self.configuration)
         namespace = self.namespace_table.get(name)
         if namespace is None:
             namespace_list = self.client.get_namespace_list()
@@ -618,7 +630,8 @@ class NetAppNVMeStorageLibrary(
 
     def _extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
-        name = volume['name']
+        name = na_utils.get_backend_lun_or_ns_name(volume['name'],
+                                                   self.configuration)
         namespace = self._get_namespace_from_table(name)
         path = namespace.metadata['Path']
         curr_size_bytes = str(namespace.size)
