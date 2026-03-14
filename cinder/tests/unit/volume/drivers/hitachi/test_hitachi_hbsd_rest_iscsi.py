@@ -482,6 +482,11 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('hitachi_host_mode_options', [],
                              group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_use_object_caching', False,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_rest_max_request_workers',
+                             hbsd_rest_api._MAX_REQUEST_WORKERS,
+                             group=conf.SHARED_CONF_GROUP)
 
         self.override_config('use_chap_auth', True,
                              group=conf.SHARED_CONF_GROUP)
@@ -620,6 +625,9 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.driver.create_export_snapshot(None, None, None)
         self.driver.remove_export_snapshot(None, None)
         # stop the Loopingcall within the do_setup treatment
+        # We also added an initial delay of the actual session value
+        # since the initialization with threads is slower than
+        # the initial run of the looping call.
         self.driver.common.client.keep_session_loop.stop()
 
     def tearDown(self):
@@ -651,6 +659,9 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.assertEqual(1, brick_get_connector_properties.call_count)
         self.assertEqual(6, request.call_count)
         # stop the Loopingcall within the do_setup treatment
+        # We also added an initial delay of the actual session value
+        # since the initialization with threads is slower than
+        # the initial run of the looping call.
         drv.common.client.keep_session_loop.stop()
 
     @mock.patch.object(requests.Session, "request")

@@ -182,6 +182,15 @@ REST_VOLUME_OPTS = [
         'hpexp_host_mode_options',
         default=[],
         help='Host mode option for host group or iSCSI target.'),
+    cfg.BoolOpt(
+        'hpexp_rest_use_object_caching',
+        default=True,
+        help='Set True to enable object caching of certain REST objects '
+             'for better performance.'),
+    cfg.IntOpt(
+        'hpexp_rest_max_request_workers',
+        default=16,
+        help='The maximum number of workers for concurrent requests.'),
 ]
 
 FC_VOLUME_OPTS = [
@@ -272,6 +281,10 @@ class HPEXPRESTFC(hbsd_rest_fc.HBSDRESTFC):
             self.conf.hpexp_rest_tcp_keepcnt)
         self.conf.hitachi_host_mode_options = (
             self.conf.hpexp_host_mode_options)
+        self.conf.hitachi_rest_use_object_caching = (
+            self.conf.hpexp_rest_use_object_caching)
+        self.conf.hitachi_rest_max_request_workers = (
+            self.conf.hpexp_rest_max_request_workers)
 
         # FC_VOLUME_OPTS
         self.conf.hitachi_zoning_request = self.conf.hpexp_zoning_request
@@ -345,3 +358,7 @@ class HPEXPRESTISCSI(hbsd_rest_iscsi.HBSDRESTISCSI):
             self.conf.hpexp_rest_tcp_keepcnt)
         self.conf.hitachi_host_mode_options = (
             self.conf.hpexp_host_mode_options)
+        self.conf.hitachi_rest_use_object_caching = (
+            self.conf.hpexp_rest_use_object_caching)
+        self.conf.hitachi_rest_max_request_workers = (
+            self.conf.hpexp_rest_max_request_workers)

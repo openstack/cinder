@@ -258,6 +258,10 @@ def update_conf(conf):
         conf.nec_v_rest_tcp_keepcnt)
     conf.hitachi_host_mode_options = (
         conf.nec_v_host_mode_options)
+    conf.hitachi_rest_use_object_caching = (
+        conf.nec_v_rest_use_object_caching)
+    conf.hitachi_rest_max_request_workers = (
+        conf.nec_v_rest_max_request_workers)
 
     return conf
 

@@ -16,6 +16,7 @@
 """REST interface module for Hitachi HBSD Driver."""
 
 from collections import defaultdict
+import concurrent.futures
 import json
 import re
 
@@ -215,6 +216,15 @@ REST_VOLUME_OPTS = [
         item_type=types.Integer(),
         default=[],
         help='Host mode option for host group or iSCSI target.'),
+    cfg.BoolOpt(
+        'hitachi_rest_use_object_caching',
+        default=True,
+        help='Set True to enable object caching of certain REST objects '
+             'for better performance.'),
+    cfg.IntOpt(
+        'hitachi_rest_max_request_workers',
+        default=rest_api._MAX_REQUEST_WORKERS,
+        help='The maximum number of workers for concurrent requests.'),
 ]
 
 REST_PAIR_OPTS = [
@@ -305,6 +315,28 @@ class HBSDREST(common.HBSDCommon):
 
         self.client = None
 
+        self.request_thread_pool_executor = \
+            concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.conf.safe_get(
+                    self.driver_info['param_prefix'] +
+                    '_rest_max_request_workers'))
+
+        self.connector_searcher = None
+        if self.conf.safe_get(self.driver_info['param_prefix'] +
+                              '_rest_use_object_caching'):
+            self.connector_searcher = utils.CachingHostConnectorSearcher(
+                self.conf.safe_get(self.driver_info['param_prefix'] +
+                                   '_storage_id'),
+                self.connector_searcher_query)
+        else:
+            self.connector_searcher = utils.HostConnectorSearcher(
+                self.connector_searcher_query)
+
+    def __del__(self):
+        """Shut down the driver."""
+        self.request_thread_pool_executor.shutdown(wait=False,
+                                                   cancel_futures=True)
+
     def do_setup(self, context):
         if hasattr(
                 self.conf,
@@ -337,6 +369,7 @@ class HBSDREST(common.HBSDCommon):
             self.conf.san_login,
             self.conf.san_password,
             self.driver_info['driver_prefix'],
+            self.connector_searcher,
             tcp_keepalive=self.conf.hitachi_rest_tcp_keepalive,
             verify=verify,
             is_rep=is_rep)
@@ -350,6 +383,11 @@ class HBSDREST(common.HBSDCommon):
         """Begin the keeping of the session."""
         if self.client is not None:
             self.client.enter_keep_session()
+
+    def connector_searcher_query(self, port: str, group: int | str | None):
+        # See hbsd_utils.HostConnectorSearcher for a description of
+        # this method behavior.
+        pass
 
     def _set_dr_mode(self, body, capacity_saving):
         dr_mode = _CAPACITY_SAVING_DR_MODE.get(capacity_saving)
@@ -845,18 +883,31 @@ class HBSDREST(common.HBSDCommon):
             port, gid = targets['list'][0]
             lun = self._run_add_lun(ldev, port, gid)
             targets['lun'][port] = True
+
+        def _worker(ldev, port, gid, lun):
+            try:
+                lun = self._run_add_lun(ldev, port, gid, lun=lun)
+                return port
+            except exception.VolumeDriverException:
+                self.output_log(MSG.MAP_LDEV_FAILED, ldev=ldev,
+                                port=port, id=gid, lun=lun)
+            return None
+
+        futures = []
         for port, gid in targets['list'][head:]:
             # When multipath is configured, Nova compute expects that
             # target_lun define the same value in all storage target.
             # Therefore, it should use same value of lun in other target.
-            try:
-                lun2 = self._run_add_lun(ldev, port, gid, lun=lun)
-                if lun2 is not None:
-                    targets['lun'][port] = True
-                    raise_err = False
-            except exception.VolumeDriverException:
-                self.output_log(MSG.MAP_LDEV_FAILED, ldev=ldev,
-                                port=port, id=gid, lun=lun)
+            future = self.request_thread_pool_executor.submit(
+                _worker, ldev, port, gid, lun)
+            futures.append(future)
+
+        for future in futures:
+            result = future.result()
+            if result is not None:
+                targets['lun'][result] = True
+                raise_err = False
+
         if raise_err:
             msg = self.output_log(
                 MSG.CONNECT_VOLUME_FAILED,
@@ -910,19 +961,37 @@ class HBSDREST(common.HBSDCommon):
         ignore_return_code = [EX_ENOOBJ]
         ignore_message_id = [rest_api.MSGID_SPECIFIED_OBJECT_DOES_NOT_EXIST]
         timeout = self.conf.hitachi_state_transition_timeout
+
+        def _worker(port, gid, lun):
+            try:
+                self.client.delete_lun(port, gid, lun,
+                                       interval=interval,
+                                       ignore_return_code=ignore_return_code,
+                                       ignore_message_id=ignore_message_id,
+                                       timeout=timeout)
+                LOG.debug(
+                    'Deleted logical unit path of the specified logical '
+                    'device. (LDEV: %(ldev)s, host group: %(gid)s)',
+                    {'ldev': ldev, 'gid': gid})
+                return None
+            except Exception as ex:
+                return ex
+
+        futures = []
         for target in targets['list']:
             port = target['portId']
             gid = target['hostGroupNumber']
             lun = target['lun']
-            self.client.delete_lun(port, gid, lun,
-                                   interval=interval,
-                                   ignore_return_code=ignore_return_code,
-                                   ignore_message_id=ignore_message_id,
-                                   timeout=timeout)
-            LOG.debug(
-                'Deleted logical unit path of the specified logical '
-                'device. (LDEV: %(ldev)s, host group: %(target)s)',
-                {'ldev': ldev, 'target': target})
+            future = self.request_thread_pool_executor.submit(
+                _worker, port, gid, lun)
+            futures.append(future)
+
+        # If we failed any of our operations with an exception, throw the
+        # first one encountered now.
+        for future in futures:
+            result = future.result()
+            if result is not None:
+                raise result
 
     def _get_target_luns(self, target):
         """Get the LUN mapping information of the host group."""
