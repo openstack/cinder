@@ -48,7 +48,7 @@ class FakeMD5(object):
 
     @classmethod
     def digest(cls):
-        return 'gcscindermd5'
+        return b'gcscindermd5'
 
     @classmethod
     def hexdigest(cls):

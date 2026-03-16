@@ -324,7 +324,6 @@ class GoogleObjectWriter(object):
             media_body=media).execute(num_retries=self.num_retries)
         etag = resp['md5Hash']
         md5 = hashlib.md5(self.data, usedforsecurity=False).digest()
-        md5 = md5.encode('utf-8')
         etag = bytes(etag, 'utf-8')
         md5 = base64.b64encode(md5)
         if etag != md5:
