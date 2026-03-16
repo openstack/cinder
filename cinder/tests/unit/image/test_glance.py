@@ -445,7 +445,7 @@ class TestGlanceImageService(test.TestCase):
                 'status': None,
                 'protected': None,
                 'name': 'TestImage %d' % (i),
-                'properties': {'properties': {}},
+                'properties': {},
                 'size': None,
                 'min_disk': None,
                 'min_ram': None,
@@ -502,7 +502,7 @@ class TestGlanceImageService(test.TestCase):
                 'status': None,
                 'protected': None,
                 'name': 'TestImage %d' % (i),
-                'properties': {'properties': {}},
+                'properties': {},
                 'size': None,
                 'min_disk': None,
                 'min_ram': None,
@@ -637,7 +637,7 @@ class TestGlanceImageService(test.TestCase):
             'updated_at': self.NOW_DATETIME,
             'deleted': None,
             'status': None,
-            'properties': {'is_public': True, 'properties': {}},
+            'properties': {'is_public': True},
             'owner': None,
             'visibility': None
         }
@@ -664,7 +664,7 @@ class TestGlanceImageService(test.TestCase):
             'updated_at': self.NOW_DATETIME,
             'deleted': None,
             'status': None,
-            'properties': {'properties': {}},
+            'properties': {},
             'owner': None,
             'visibility': None
         }
@@ -692,7 +692,7 @@ class TestGlanceImageService(test.TestCase):
             'updated_at': self.NOW_DATETIME,
             'deleted': None,
             'status': None,
-            'properties': {'properties': {}},
+            'properties': {},
             'owner': None,
             'visibility': 'public'
         }
@@ -752,7 +752,7 @@ class TestGlanceImageService(test.TestCase):
                 'updated_at': self.NOW_DATETIME,
                 'deleted': None,
                 'status': None,
-                'properties': {'is_public': True, 'properties': {}},
+                'properties': {'is_public': True},
                 'owner': None,
                 'visibility': None
             },
