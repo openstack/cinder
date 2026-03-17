@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Hitachi HBSD driver: Enable support for VSP One Block High End. VSP One
+    Block High End supports ADR functionality that offers up to 4:1 data
+    saving, up to 50M IOPS, 8 9's of availability, and Thin Image Advanced that
+    supports superior ROW functionality. In addition, the Block High End
+    supports vClone technology that allows for instantaneous cloning and shared
+    data between clones.
