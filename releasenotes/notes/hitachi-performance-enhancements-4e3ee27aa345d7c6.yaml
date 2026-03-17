@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Fixed performance issues in the Hitachi HBSD driver by adding
+    caching and request batching. Caching is enabled by default, and can be
+    disabled by setting hitachi_rest_use_object_caching to False in
+    cinder.conf.
+    With a 4 port configuration, this patch offers a roughly 70% increase in
+    performance when host groups are managed by the driver, and a 90%+
+    increase in performance when using custom configured host groups (after
+    the cache has been built).
+
+
