@@ -1,4 +1,5 @@
 # Copyright (C) 2020, 2024, Hitachi, Ltd.
+# Copyright (C) 2025, Hitachi Vantara
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -48,7 +49,14 @@ _GROUP_NAME_VAR_LEN = {GROUP_NAME_VAR_WWN: _GROUP_NAME_VAR_WWN_LEN,
 STR_VOLUME = 'volume'
 STR_SNAPSHOT = 'snapshot'
 
+STR_MANAGED_VCP_LDEV_NAME = 'HBSD-VCP'
+
 _UUID_PATTERN = re.compile(r'^[\da-f]{32}$')
+
+DRS_MODE = {
+    '<is> True': True,
+    '<is> False': False,
+}
 
 _INHERITED_VOLUME_OPTS = [
     'volume_backend_name',
@@ -124,6 +132,11 @@ COMMON_VOLUME_OPTS = [
         min=1, max=600,
         help='Interval in seconds to check asynchronous copying status during '
              'a copy pair deletion or data restoration.'),
+    cfg.BoolOpt(
+        'hitachi_manage_drs_volumes',
+        default=False,
+        help='If true, the driver will create a driver managed vClone parent '
+             'for each non-cloned DRS volume it creates.'),
 ]
 
 COMMON_PORT_OPTS = [
@@ -263,7 +276,14 @@ class HBSDCommon():
 
     def create_volume(self, volume):
         """Create a volume and return its properties."""
+
         extra_specs = self.get_volume_extra_specs(volume)
+
+        # If we're a managed DRS volume, we need to call
+        # create_managed_drs_volume.
+        if self.is_managed_drs_volume(extra_specs):
+            return self.create_managed_drs_volume(volume)
+
         pool_id = self.get_pool_id_of_volume(volume)
         ldev_range = self.storage_info['ldev_range']
         qos_specs = utils.get_qos_specs_from_volume(volume)
@@ -274,6 +294,80 @@ class HBSDCommon():
             with excutils.save_and_reraise_exception():
                 self.output_log(MSG.CREATE_LDEV_FAILED)
         self.modify_ldev_name(ldev, volume['id'].replace("-", ""))
+        return {
+            'provider_location': str(ldev),
+        }
+
+    def is_managed_drs_volume(self, extra_specs):
+
+        is_managed_drs = False
+        if (self.conf.hitachi_manage_drs_volumes and
+                self.driver_info.get('driver_dir_name')):
+
+            extra_specs_drs = (self.driver_info['driver_dir_name'] +
+                               ':drs')
+            drs = extra_specs.get(extra_specs_drs)
+
+            is_managed_drs = DRS_MODE.get(drs, False)
+
+        return is_managed_drs
+
+    def get_drs_parent_extra_specs(self, extra_specs):
+        """Build subset of extra specs for a DRS vClone parent."""
+
+        extra_specs_parent = {}
+
+        extra_specs_drs = (self.driver_info['driver_dir_name'] +
+                           ':drs')
+        drs = extra_specs.get(extra_specs_drs)
+        extra_specs_csv = (self.driver_info['driver_dir_name'] +
+                           ':capacity_saving')
+        capacity_saving = extra_specs.get(extra_specs_csv)
+
+        extra_specs_parent[extra_specs_drs] = drs
+        extra_specs_parent[extra_specs_csv] = capacity_saving
+
+        LOG.debug("Managed parent extra specs: %s", extra_specs_parent)
+
+        return extra_specs_parent
+
+    def create_managed_drs_volume(self, volume):
+        """Create a managed DRS volume and return its properties."""
+
+        LOG.debug("Creating managed DRS volume.")
+
+        extra_specs = self.get_volume_extra_specs(volume)
+        pool_id = self.get_pool_id_of_volume(volume)
+        ldev_range = self.storage_info['ldev_range']
+        qos_specs = utils.get_qos_specs_from_volume(volume)
+        size = volume['size']
+
+        # Create our parent volume using only the DRS-related
+        # specs.
+        try:
+
+            parent = self.create_ldev(size,
+                                      self.get_drs_parent_extra_specs(
+                                          extra_specs),
+                                      pool_id, ldev_range)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.output_log(MSG.CREATE_LDEV_FAILED)
+        self.modify_ldev_name(parent, STR_MANAGED_VCP_LDEV_NAME)
+
+        # Create a clone using our parent volume and the
+        # given extra specs.
+        try:
+            ldev = self.copy_on_storage(parent, size, extra_specs,
+                                        pool_id,
+                                        pool_id, ldev_range,
+                                        qos_specs=qos_specs)
+        except Exception:
+            self.delete_ldev(parent)
+            with excutils.save_and_reraise_exception():
+                self.output_log(MSG.CREATE_LDEV_FAILED)
+        self.modify_ldev_name(ldev, volume['id'].replace("-", ""))
+
         return {
             'provider_location': str(ldev),
         }
@@ -616,6 +710,27 @@ class HBSDCommon():
                                   volume_id=volume['id'])
             self.raise_error(msg)
         self.delete_pair(ldev)
+
+        # Extend a Managed parent if we have one and it's necessary.
+        ldev_info = self.get_ldev_info(['parentLdevId'], ldev)
+        if ldev_info['parentLdevId']:
+            parent_ldev = int(ldev_info['parentLdevId'])
+            parent_ldev_info = self.get_ldev_info(
+                ['blockCapacity', 'label'], parent_ldev)
+
+            if (parent_ldev_info['label'] and
+                parent_ldev_info['label'] == STR_MANAGED_VCP_LDEV_NAME and
+                (parent_ldev_info['blockCapacity'] /
+                 utils.GIGABYTE_PER_BLOCK_SIZE < new_size)):
+
+                LOG.debug("Resizing Managed parent volume %d.",
+                          parent_ldev)
+                self.extend_ldev(parent_ldev,
+                                 int(parent_ldev_info['blockCapacity'] /
+                                     utils.GIGABYTE_PER_BLOCK_SIZE),
+                                 new_size)
+
+        # Finally, extend our LDEV
         self.extend_ldev(ldev, volume['size'], new_size)
 
     def get_ldev_by_name(self, name):

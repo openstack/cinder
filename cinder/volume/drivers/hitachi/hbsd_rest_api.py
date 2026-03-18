@@ -1,4 +1,5 @@
 # Copyright (C) 2020, 2024, Hitachi, Ltd.
+# Copyright (C) 2025, Hitachi Vantara
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -835,6 +836,15 @@ class RestApiClient():
         }
         self._delete_object(url, **kwargs)
 
+    def get_snapshot_by_svol(self, svolLdevId):
+        """Get a snapshot information by using svolLdevId."""
+        url = '%(url)s/snapshots?svolLdevId=%(ldevId)d' % {
+            'url': self.object_url,
+            'ldevId': svolLdevId,
+        }
+
+        return self._get_object(url)
+
     def get_snapshots(self, params=None):
         """Get a list of snapshot information."""
         url = '%(url)s/snapshots' % {
@@ -885,6 +895,19 @@ class RestApiClient():
             'action': 'split',
         }
         self._invoke(url)
+
+    def snapshot_pair_to_vclone(self, snapshotId):
+        """convert snapshot(TIA) to vClone."""
+        url = '%(url)s/snapshots/%(ssid)s/actions/virtual-clone/invoke' % {
+            'url': self.object_url,
+            'ssid': snapshotId,
+        }
+        body = {
+            "parameters": {
+                "operationType": "create"
+            }
+        }
+        self._add_object(url, body=body)
 
     def discard_zero_page(self, ldev_id):
         """Return the ldev's no-data pages to the storage pool."""

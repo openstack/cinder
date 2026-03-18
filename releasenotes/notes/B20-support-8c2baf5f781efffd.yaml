@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Hitachi driver: Enable support for VSP One B20. VSP One B20 supports ADR
+    functionality that offers up to 4:1 data saving, and Thin Image Advanced that supports
+    superior ROW functionality.  In addition, the B20 supports vClone technology that allows
+    for instantaneous cloning and shared data between clones.
