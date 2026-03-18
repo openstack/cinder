@@ -71,7 +71,7 @@ class SchedulerManagerTestCase(test.TestCase):
         self.assertIsInstance(manager.driver, self.driver_cls)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.is_first_receive')
-    @mock.patch('eventlet.sleep')
+    @mock.patch('time.sleep')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.publish_service_capabilities')
     def test_init_host_with_rpc_delay_after_3_tries(self,
                                                     publish_capabilities_mock,
@@ -87,7 +87,7 @@ class SchedulerManagerTestCase(test.TestCase):
         self.assertFalse(self.manager._startup_delay)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.is_first_receive')
-    @mock.patch('eventlet.sleep')
+    @mock.patch('time.sleep')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.publish_service_capabilities')
     @ddt.data(71, 17)
     def test_init_host_with_rpc_delay_uses_new_config(
@@ -369,7 +369,7 @@ class SchedulerManagerTestCase(test.TestCase):
 
     @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
     @mock.patch('cinder.scheduler.driver.Scheduler.is_ready')
-    @mock.patch('eventlet.sleep')
+    @mock.patch('time.sleep')
     def test_create_volume_delay_scheduled_after_3_tries(self, _mock_sleep,
                                                          _mock_is_ready,
                                                          _mock_sched_create):
