@@ -63,6 +63,9 @@ Supported storages:
 | B26,            |                        |
 | B28             |                        |
 +-----------------+------------------------+
+| VSP One Block   | A0-05-21 or later      |
+| High End        |                        |
++-----------------+------------------------+
 
 Required storage licenses:
 
@@ -367,7 +370,14 @@ For details about Universal Replicator, see the
 +-----------------+------------------------+
 | Storage model   | Firmware version       |
 +=================+========================+
-| VSP F350,       | 88-03-25 or later      |
+| VSP E590,       | 93-03-22 or later      |
+| E790            |                        |
++-----------------+------------------------+
+| VSP E990        | 93-01-01 or later      |
++-----------------+------------------------+
+| VSP E1090,      | 93-06-2x or later      |
+| E1090H          |                        |
+| VSP F350,       | 88-06-01 or later      |
 | F370,           |                        |
 | F700,           |                        |
 | F900            |                        |
@@ -377,23 +387,17 @@ For details about Universal Replicator, see the
 | G700,           |                        |
 | G900            |                        |
 +-----------------+------------------------+
-| VSP F400,       | 83-05-31 or later      |
-| F600,           |                        |
-| F800            |                        |
-|                 |                        |
-| VSP G200,       |                        |
-| G400,           |                        |
-| G600,           |                        |
-| G800            |                        |
+| VSP 5100,       | 90-04-01 or later      |
+| 5500,           |                        |
+| 5100H,          |                        |
+| 5500H           |                        |
 +-----------------+------------------------+
-| VSP N400,       | 83-06-03 or later      |
-| N600,           |                        |
-| N800            |                        |
+| VSP One B24,    | A3-04-20 or later      |
+| B26,            |                        |
+| B28             |                        |
 +-----------------+------------------------+
-| VSP F1500       | 80-06-68 or later      |
-|                 |                        |
-| VSP G1000,      |                        |
-| VSP G1500       |                        |
+| VSP One Block   | A0-05-21 or later      |
+| High End        |                        |
 +-----------------+------------------------+
 
 **Storage management software**
@@ -515,7 +519,7 @@ each volume. However, you cannot configure these settings for journal volumes.
   volumes.  I/O is adjusted for faster I/O response, starting with
   high-priority volumes.
 
-**System requirements for a QoS**
+**System requirements for QoS**
 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 **Storage firmware versions**
@@ -523,6 +527,13 @@ each volume. However, you cannot configure these settings for journal volumes.
 +-----------------+------------------------+
 | Storage model   | Firmware version       |
 +=================+========================+
+| VSP E590,       | 93-03-22 or later      |
+| E790            |                        |
++-----------------+------------------------+
+| VSP E990        | 93-01-01 or later      |
++-----------------+------------------------+
+| VSP E1090,      | 93-06-2x or later      |
+| E1090H          |                        |
 | VSP F350,       | 88-06-01 or later      |
 | F370,           |                        |
 | F700,           |                        |
@@ -537,6 +548,13 @@ each volume. However, you cannot configure these settings for journal volumes.
 | 5500,           |                        |
 | 5100H,          |                        |
 | 5500H           |                        |
++-----------------+------------------------+
+| VSP One B24,    | A3-04-20 or later      |
+| B26,            |                        |
+| B28             |                        |
++-----------------+------------------------+
+| VSP One Block   | A0-05-21 or later      |
+| High End        |                        |
 +-----------------+------------------------+
 
 **Storage management software**
@@ -621,6 +639,13 @@ Before you begin, Check the following information.
  | responsePriority   | The priority level of the I/O processing.|
  +--------------------+------------------------------------------+
 
+ +----------------------------+----------------------------------+
+ | Dynamic QoS specs property | Description                      |
+ +============================+==================================+
+ | upperIopsPerGB             | The upper limit on IOPS per GB   |
+ |                            | of volume size.                  |
+ +----------------------------+----------------------------------+
+
  The following is an example of running the command.
 
 \
@@ -689,6 +714,29 @@ type for which QoS specs are set, and vice versa.
 
 To clear the QoS settings, clear the association between the volume type and
 QoS specs, and then delete the QoS specs.
+
+**Adaptive QoS settings**
+
+Adaptive QoS settings can be used to configure QoS based on volume properties.
+
+*upperIopsPerGB* can be used to configure the *upperIops* setting based on the
+volume size. If the volume is resized the QoS settings will be updated as
+necessary.
+
+This value is applied per each GB of volume size. For example, if the cinder
+volume is of size 1 (1GB) and the *upperIopsPerGB* value is set to 1000, then
+*upperIops* will be configured as 1000.
+
+This dynamically generated value will be within the legal range for IOPS
+configuration.
+
+If *upperIops* is also configured then *upperIops* will be the largest possible
+dynamically generated value.
+
+If *lowerIops* is also configured, the *lowerIops* will be configured for the
+volume and the smallest possible dynamically generated value will be
+*lowerIops* + 1.
+
 
 Data deduplication and compression
 ----------------------------------
