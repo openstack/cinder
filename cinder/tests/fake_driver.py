@@ -197,6 +197,9 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
 
         return model_update
 
+    def extend_volume(self, volume, new_size):
+        return
+
     def _update_volume_stats(self):
         data = {'volume_backend_name': self.backend_name,
                 'vendor_name': 'Open Source',
