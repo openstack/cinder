@@ -228,9 +228,12 @@ Connector configuration
 
 .. note::
 
-   Since the 2025.2 release, connector configuration is no longer required
-   for new attachments. The connector.conf file must still be retained for
-   legacy attached volumes until they are fully detached.
+   - Since the 2025.2 release, connector configuration is no longer required
+     for new attachments. The connector.conf file must still be retained for
+     legacy attached volumes until they are fully detached.
+   - From the 2026.1 release onward, we can configure the PowerFlex backend
+     user in the connector.conf file to support backend user rotation for
+     legacy volumes operations.
 
 Before using attach/detach volume operations PowerFlex connector must be
 properly configured. On each node where PowerFlex SDC is installed do the
@@ -245,17 +248,21 @@ following:
      $ touch /opt/emc/scaleio/openstack/connector.conf
 
 #. For each PowerFlex section in the ``cinder.conf`` create the same section in
-   the ``/opt/emc/scaleio/openstack/connector.conf`` and populate it with
-   passwords. Example:
+   the ``/opt/emc/scaleio/openstack/connector.conf`` and populate it with username
+   and passwords. Example:
 
    .. code-block:: ini
 
       [powerflex]
+      san_username = POWERFLEX_USER
       san_password = POWERFLEX_PASSWD
+      replicating_san_username = REPLICATION_SYSTEM_POWERFLEX_USER # if applicable
       replicating_san_password = REPLICATION_SYSTEM_POWERFLEX_PASSWD # if applicable
 
       [powerflex-new]
+      san_username = SIO2_USER
       san_password = SIO2_PASSWD
+      replicating_san_username = REPLICATION_SYSTEM_SIO2_USER # if applicable
       replicating_san_password = REPLICATION_SYSTEM_SIO2_PASSWD # if applicable
 
 .. _cg_configuration_options_dellemc:

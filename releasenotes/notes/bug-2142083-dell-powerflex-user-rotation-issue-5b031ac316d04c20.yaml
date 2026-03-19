@@ -1,0 +1,21 @@
+---
+upgrade:
+  - |
+    With the fix for `Bug #2142083
+    <https://bugs.launchpad.net/os-brick/+bug/2142083>`_, starting from
+    os-brick version 6.15.0 or later, users can configure the PowerFlex
+    ``san_username`` in the `/opt/emc/scaleio/openstack/connector.conf` file.
+    This allows volume detach operations to succeed even if the PowerFlex
+    ``san_username`` is changed.
+    This issue only affects legacy attached volumes. New volume
+    attachment and detachment operations will not encounter this
+    issue since the mapping happens on the Cinder side.
+fixes:
+  - |
+    PowerFlex Driver `Bug #2142083
+    <https://bugs.launchpad.net/os-brick/+bug/2142083>`_: Fixed an issue where
+    volume detach operations failed after changing the PowerFlex ``san_username``.
+    Previously, the PowerFlex ``san_username`` was stored in the
+    Nova block_device_mapping table and reused during detach operations.
+    With this fix, the driver now reads the ``san_username`` from the
+    `connector.conf` file instead.
