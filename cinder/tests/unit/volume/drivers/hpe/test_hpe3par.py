@@ -7163,6 +7163,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected)
             self.assertTrue(common._replication_enabled)
 
+    @test.testtools.skip("launchpad bug #2146339")
     def test_thread_local_sessions_are_isolated(self):
         self.setup_driver()
         session_counter = [0]
