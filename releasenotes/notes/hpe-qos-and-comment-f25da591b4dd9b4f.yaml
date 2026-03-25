@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    HPE driver `Bug #2143385 <https://bugs.launchpad.net/cinder/+bug/2143385>`_:
+    Fixed: Handled deprecation of QOS parameters and comments for
+    online copy. While passing QOS params use units.k(1000) as multiplier,
+    as backend is expecting values in KB.

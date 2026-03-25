@@ -1241,6 +1241,52 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected)
             self.assertIsNone(return_model)
 
+    def test_qos_alletra_mp_uses_kb_bandwidth(self):
+        """Ensure Alletra MP QOS uses kB/s for bandwidth limits.
+
+        When the backend API version indicates Alletra MP, maxBWS should be
+        converted using a 1000-based factor into bwMaxLimitKB, and only the
+        max limits should be sent to createQoSRules.
+        """
+
+        # Create a common driver instance with Alletra MP API_VERSION.
+        conf = self.setup_configuration()
+        common = hpecommon.HPE3PARCommon(conf)
+        mock_client = mock.Mock()
+        common.client = mock_client
+        common.API_VERSION = hpecommon.API_VERSION_2025
+
+        # Use the standard QoS specs defined for these tests.
+        common._set_qos_rule(self.QOS_SPECS, 'vvs-test')
+
+        mock_client.createQoSRules.assert_called_once_with(
+            'vvs-test',
+            {'ioMaxLimit': 1000, 'bwMaxLimitKB': 50000})
+
+    def test_qos_alletra_mp_invalid_without_max_limits(self):
+        """Alletra MP QOS requires at least one max limit.
+
+        For Alletra MP backends, _set_qos_rule should raise InvalidInput
+        if both maxIOPS and maxBWS are omitted from the QOS specs.
+        """
+
+        conf = self.setup_configuration()
+        common = hpecommon.HPE3PARCommon(conf)
+        mock_client = mock.Mock()
+        common.client = mock_client
+        # Force Alletra MP behavior based on API version.
+        common.API_VERSION = hpecommon.API_VERSION_2025
+
+        # No maxIOPS or maxBWS provided; invalid for Alletra MP.
+        invalid_qos = {}
+
+        self.assertRaises(exception.InvalidInput,
+                          common._set_qos_rule,
+                          invalid_qos,
+                          'vvs-test')
+
+        mock_client.createQoSRules.assert_not_called()
+
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_replicated_periodic(self, _mock_volume_types):
         # setup_mock_client drive with default configuration
@@ -2450,7 +2496,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 mock.call.createQoSRules(
                     'vvs-0DM4qZEVSKON-DXN-NwVpw',
                     {'ioMinGoal': 100, 'ioMaxLimit': 1000,
-                     'bwMinGoalKB': 25600, 'bwMaxLimitKB': 51200,
+                     'bwMinGoalKB': 25000, 'bwMaxLimitKB': 50000,
                      'priority': 3,
                      'latencyGoal': 25}
                 ),
@@ -2804,6 +2850,52 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                                'tdvv': False, 'online': True}
             if wsapi_version:
                 optional_fields['comment'] = mock.ANY
+
+            expected = [
+                mock.call.createSnapshot(snap_name, vol_name, optional),
+                mock.call.getVolume(snap_name),
+                mock.call.copyVolume(
+                    snap_name,
+                    'osv-0DM4qZEVSKON-AAAAAAAAA',
+                    HPE3PAR_CPG2,
+                    optional_fields)]
+
+            mock_client.assert_has_calls(expected)
+
+    @ddt.data('volume', 'volume_name_id')
+    def test_create_cloned_volume_wsapi_2023_no_comment(self, volume_attr):
+        src_vref = getattr(self, volume_attr)
+        vol_name = getattr(self, volume_attr.upper() + '_3PAR_NAME')
+
+        mock_client = self.setup_driver(wsapi_version=self.wsapi_version_2023)
+        mock_client.getVolume.return_value = {'name': mock.ANY}
+        mock_client.copyVolume.return_value = {'taskid': 1}
+        mock_client.getStorageSystemInfo.return_value = {
+            'id': self.CLIENT_ID,
+            'serialNumber': 'XXXXXXX'}
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                      'id': HPE3PARBaseDriver.CLONE_ID,
+                      'display_name': 'Foo Volume',
+                      'size': 2,
+                      'host': volume_utils.append_host(self.FAKE_HOST,
+                                                       HPE3PAR_CPG2),
+                      'source_volid': src_vref.id}
+
+            common = self.driver._login()
+            model_update = common.create_cloned_volume(volume, src_vref)
+
+            self.assertIsNone(model_update)
+
+            snap_name = mock.ANY
+            optional = mock.ANY
+            optional_fields = {'tpvv': True,
+                               'tdvv': False,
+                               'online': True}
 
             expected = [
                 mock.call.createSnapshot(snap_name, vol_name, optional),
@@ -4688,8 +4780,8 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 mock.call.createQoSRules(
                     vvs_matcher,
                     {'ioMinGoal': 100, 'ioMaxLimit': 1000,
-                     'bwMinGoalKB': 25600, 'priority': 1, 'latencyGoal': 25,
-                     'bwMaxLimitKB': 51200}),
+                     'bwMinGoalKB': 25000, 'priority': 1, 'latencyGoal': 25,
+                     'bwMaxLimitKB': 50000}),
                 mock.call.addVolumeToVolumeSet(vvs_matcher, osv_matcher),
                 mock.call.tuneVolume(
                     osv_matcher, 1,

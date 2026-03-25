@@ -1,4 +1,4 @@
-#    (c) Copyright 2012-2016 Hewlett Packard Enterprise Development LP
+#    (c) Copyright 2012-2026 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -316,11 +316,12 @@ class HPE3PARCommon(object):
         4.0.25 - Update the calculation of free_capacity
         4.0.26 - Added comment for cloned volumes. Bug #2062524
         4.0.27 - Skip license check for new WSAPI (of 2025). Bug #2119709
+        4.0.28 - Improved QOS handling for Alletra MP. Bug #2143385
 
 
     """
 
-    VERSION = "4.0.27"
+    VERSION = "4.0.28"
 
     stats = {}
 
@@ -2021,6 +2022,15 @@ class HPE3PARCommon(object):
         else:
             return default
 
+    def _is_alletra_mp(self):
+        """Check if the backend is AlletraMP based on WSAPI version.
+
+        AlletraMP uses WSAPI version >= 100500000 (API_VERSION_2025).
+
+        :returns: True if AlletraMP, False otherwise
+        """
+        return self.API_VERSION >= API_VERSION_2025
+
     def _get_qos_by_volume_type(self, volume_type):
         qos = {}
         qos_specs_id = volume_type.get('qos_specs_id')
@@ -2062,37 +2072,76 @@ class HPE3PARCommon(object):
         latency = self._get_qos_value(qos, 'latency')
         priority = self._get_qos_value(qos, 'priority', 'normal')
 
+        # Check if backend is AlletraMP
+        is_alletra_mp = self._is_alletra_mp()
+
         qosRule = {}
-        if min_io:
-            qosRule['ioMinGoal'] = int(min_io)
-            if max_io is None:
-                qosRule['ioMaxLimit'] = int(min_io)
-        if max_io:
-            qosRule['ioMaxLimit'] = int(max_io)
-            if min_io is None:
-                qosRule['ioMinGoal'] = int(max_io)
-        if min_bw:
-            qosRule['bwMinGoalKB'] = int(min_bw) * units.Ki
-            if max_bw is None:
-                qosRule['bwMaxLimitKB'] = int(min_bw) * units.Ki
-        if max_bw:
-            qosRule['bwMaxLimitKB'] = int(max_bw) * units.Ki
-            if min_bw is None:
-                qosRule['bwMinGoalKB'] = int(max_bw) * units.Ki
-        if latency:
-            # latency could be values like 2, 5, etc or
-            # small values like 0.1, 0.02, etc.
-            # we are converting to float so that 0.1 doesn't become 0
-            latency = float(latency)
-            if latency >= 1:
-                # by default, latency in millisecs
-                qosRule['latencyGoal'] = int(latency)
-            else:
-                # latency < 1 Eg. 0.1, 0.02, etc
-                # convert latency to microsecs
-                qosRule['latencyGoaluSecs'] = int(latency * 1000)
-        if priority:
-            qosRule['priority'] = self.qos_priority_level.get(priority.lower())
+
+        # For Alletra MP, ioMinGoal, bwMinGoalKB, latencyGoal, and priority
+        # are deprecated. Only use max limits.
+        if is_alletra_mp:
+            # For Alletra MP, at least one of maxIOPS or maxBWS must be
+            # provided.
+            if max_io is None and max_bw is None:
+                err = _(
+                    "For Alletra MP, at least one of maxIOPS or maxBWS "
+                    "QOS parameters must be provided.")
+                LOG.error(err)
+                raise exception.InvalidInput(reason=err)
+            # Alletra MP: Only set max limits, min goals are deprecated
+            if max_io:
+                qosRule['ioMaxLimit'] = int(max_io)
+            if max_bw:
+                # Alletra MP expects bandwidth in kB/s
+                qosRule['bwMaxLimitKB'] = int(max_bw) * units.k
+            if min_io:
+                LOG.warning(
+                    "minIOPS QOS parameter is deprecated for "
+                    "Alletra MP and will be ignored.")
+            if min_bw:
+                LOG.warning(
+                    "minBWS QOS parameter is deprecated for "
+                    "Alletra MP and will be ignored.")
+            if latency:
+                LOG.warning("latency QOS parameter is deprecated for "
+                            "Alletra MP and will be ignored.")
+            if priority:
+                LOG.warning("priority QOS parameter is deprecated for "
+                            "Alletra MP and will be ignored.")
+        else:
+            # 3PAR/Primera/Alletra 9k: Use traditional QoS parameters
+            if min_io:
+                qosRule['ioMinGoal'] = int(min_io)
+                if max_io is None:
+                    qosRule['ioMaxLimit'] = int(min_io)
+            if max_io:
+                qosRule['ioMaxLimit'] = int(max_io)
+                if min_io is None:
+                    qosRule['ioMinGoal'] = int(max_io)
+            if min_bw:
+                # 3PAR/Primera/Alletra 9k expect bandwidth in kB/s
+                qosRule['bwMinGoalKB'] = int(min_bw) * units.k
+                if max_bw is None:
+                    qosRule['bwMaxLimitKB'] = int(min_bw) * units.k
+            if max_bw:
+                qosRule['bwMaxLimitKB'] = int(max_bw) * units.k
+                if min_bw is None:
+                    qosRule['bwMinGoalKB'] = int(max_bw) * units.k
+            if latency:
+                # latency could be values like 2, 5, etc or
+                # small values like 0.1, 0.02, etc.
+                # we are converting to float so that 0.1 doesn't become 0
+                latency = float(latency)
+                if latency >= 1:
+                    # by default, latency in millisecs
+                    qosRule['latencyGoal'] = int(latency)
+                else:
+                    # latency < 1 Eg. 0.1, 0.02, etc
+                    # convert latency to microsecs
+                    qosRule['latencyGoaluSecs'] = int(latency * 1000)
+            if priority:
+                qosRule['priority'] = (
+                    self.qos_priority_level.get(priority.lower()))
 
         try:
             self.client.createQoSRules(vvs_name, qosRule)
@@ -2659,8 +2708,10 @@ class HPE3PARCommon(object):
                 LOG.info("array version: %(ver)s",
                          {'ver': self.API_VERSION})
                 comment_line = None
-                if self.API_VERSION >= 40600000:
-                    # comment can be added
+                if self.API_VERSION >= 40600000 and \
+                   self.API_VERSION < API_VERSION_2023:
+                    # comment added for online copy only for
+                    # Alletra9k version
                     comments = {'volume_id': volume['id'],
                                 'name': volume['name'],
                                 'type': 'OpenStack'}
