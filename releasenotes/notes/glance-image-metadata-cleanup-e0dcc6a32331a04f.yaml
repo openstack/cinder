@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug 1936474
+    <https://bugs.launchpad.net/cinder/+bug/1936474>`__
+    Fixed improper cleanup of glance image metadata when
+    rescheduling instance.
