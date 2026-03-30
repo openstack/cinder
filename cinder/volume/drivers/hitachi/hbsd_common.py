@@ -398,21 +398,66 @@ class HBSDCommon():
         """Wait until copy is completed."""
         raise NotImplementedError()
 
+    def _is_vclone(self, extra_specs, ldev_info, pool_id, snap_pool_id):
+        """Check if a snapshot created from these parameters will be vClone"""
+        capacity_saving_key = (self.driver_info['driver_dir_name'] +
+                               ':capacity_saving')
+        drs_key = self.driver_info['driver_dir_name'] + ':drs'
+
+        # Check pool ID consistency:
+        # pvol and svol must be in the same pool as snap_pool_id
+        pvol_pool_id = ldev_info.get('poolId')
+        if pvol_pool_id is not None:
+            pvol_pool_id = int(pvol_pool_id)
+
+        if (extra_specs.get(capacity_saving_key) ==
+                'deduplication_compression' and
+                extra_specs.get(drs_key) == '<is> True' and
+                ldev_info.get('attributes') and
+                utils.DRS_VOL_ATTR in ldev_info['attributes'] and
+                pvol_pool_id == snap_pool_id and
+                pool_id == snap_pool_id):
+            # if "DRS" and "clone", it means "vClone"
+            return True
+
+        return False
+
+    def _extend_ldevs_for_ss(self, svol, ldev_info, curr_size, new_size):
+        if new_size == curr_size:
+            return
+        LOG.debug("extend-svol=%s, curr_size=%d,new_size=%d ",
+                  svol, curr_size, new_size)
+        self._extend_ldevs(ldev_info, new_size, svol, curr_size)
+
     def copy_on_storage(
             self, pvol, size, extra_specs, pool_id, snap_pool_id, ldev_range,
             is_snapshot=False, sync=False, is_rep=False, qos_specs=None):
         """Create a copy of the specified LDEV on the storage."""
-        ldev_info = self.get_ldev_info(['status', 'attributes'], pvol)
+        ldev_info = self.get_ldev_info(
+            ['blockCapacity', 'poolId', 'status', 'attributes',
+             'parentLdevId'], pvol)
         if ldev_info['status'] != 'NML':
             msg = self.output_log(MSG.INVALID_LDEV_STATUS_FOR_COPY, ldev=pvol)
             self.raise_error(msg)
+        new_size = size
+        if not is_snapshot and self._is_vclone(
+                extra_specs, ldev_info, pool_id, snap_pool_id):
+            new_size = utils.blocks_to_gb(ldev_info)
+        LOG.debug("pvol=%d, is_snapshot=%s, extra_specs=%s, "
+                  "pvol_ldev_info=%s, new_size=%d, size=%d, "
+                  "pool_id=%d, snap_pool_id=%d",
+                  pvol, is_snapshot, repr(extra_specs), repr(ldev_info),
+                  new_size, size, pool_id, snap_pool_id)
         svol = self.create_ldev(
-            size, extra_specs, pool_id, ldev_range, qos_specs=qos_specs)
+            new_size, extra_specs, pool_id, ldev_range, qos_specs=qos_specs)
         try:
             self.create_pair_on_storage(
                 pvol, svol, snap_pool_id, is_snapshot=is_snapshot)
             if sync or is_rep:
                 self.wait_copy_completion(pvol, svol)
+            if size != new_size:
+                self._extend_ldevs_for_ss(svol, ldev_info,
+                                          new_size, size)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
@@ -711,6 +756,24 @@ class HBSDCommon():
         """Extend the specified LDEV to the specified new size."""
         raise NotImplementedError()
 
+    def _extend_ldevs(self, ldev_info, new_size, ldev,
+                      old_size):
+        parent_ldev_id = ldev_info.get('parentLdevId')
+        if parent_ldev_id:
+            parent_ldev_id = int(parent_ldev_id)
+            parent_ldev_info = self.get_ldev_info(
+                ['blockCapacity', 'label'], parent_ldev_id)
+            if (parent_ldev_info['label'] and
+                    parent_ldev_info['label'] == STR_MANAGED_VCP_LDEV_NAME and
+                    (utils.blocks_to_gb(parent_ldev_info) < new_size)):
+                LOG.debug("Will extend Managed VCP parent ldev %d to %d GB",
+                          parent_ldev_id, new_size)
+                self.extend_ldev(parent_ldev_id,
+                                 utils.blocks_to_gb(parent_ldev_info),
+                                 new_size)
+        LOG.debug("Will extend _ldev %d to %d GB", ldev, new_size)
+        self.extend_ldev(ldev, old_size, new_size)
+
     def extend_volume(self, volume, new_size):
         """Extend the specified volume to the specified size."""
         ldev = self.get_ldev(volume)
@@ -733,25 +796,7 @@ class HBSDCommon():
 
         # Extend a Managed parent if we have one and it's necessary.
         ldev_info = self.get_ldev_info(['parentLdevId'], ldev)
-        if ldev_info['parentLdevId']:
-            parent_ldev = int(ldev_info['parentLdevId'])
-            parent_ldev_info = self.get_ldev_info(
-                ['blockCapacity', 'label'], parent_ldev)
-
-            if (parent_ldev_info['label'] and
-                parent_ldev_info['label'] == STR_MANAGED_VCP_LDEV_NAME and
-                (parent_ldev_info['blockCapacity'] /
-                 utils.GIGABYTE_PER_BLOCK_SIZE < new_size)):
-
-                LOG.debug("Resizing Managed parent volume %d.",
-                          parent_ldev)
-                self.extend_ldev(parent_ldev,
-                                 int(parent_ldev_info['blockCapacity'] /
-                                     utils.GIGABYTE_PER_BLOCK_SIZE),
-                                 new_size)
-
-        # Finally, extend our LDEV
-        self.extend_ldev(ldev, volume['size'], new_size)
+        self._extend_ldevs(ldev_info, new_size, ldev, volume['size'])
 
         # If we have adaptive QoS, let's update our QoS now as well.
         old_qos = utils.get_qos_specs_from_volume(volume)

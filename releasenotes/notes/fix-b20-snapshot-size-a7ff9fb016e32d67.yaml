@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Hitachi driver: Fixed cloning for B20 Storage Array when creating a
+    clone that is larger than the source volume. This fix first creates
+    the clone, and then resizes it. The parent LDEV must be resized first
+    if it was created with hitachi_manage_drs_volumes=False configured.
