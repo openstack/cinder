@@ -205,7 +205,7 @@ class StorwizeSSH(object):
                    {'cmd': ssh_cmd,
                     'out': e.stdout,
                     'err': e.stderr})
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
     def run_ssh_info(self, ssh_cmd, delim='!', with_header=False):
