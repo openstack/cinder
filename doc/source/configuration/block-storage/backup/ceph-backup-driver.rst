@@ -59,6 +59,29 @@ To enable the Ceph backup driver, include the following option in the
 
     backup_driver = cinder.backup.drivers.ceph.CephBackupDriver
 
+If `cephx authentication
+<https://docs.ceph.com/en/latest/rados/configuration/auth-config-ref/>`_ is
+enabled, create a Ceph user for the backup service::
+
+  ceph auth get-or-create client.cinder-backup \
+    mon 'profile rbd' \
+    osd 'profile rbd pool=backups, profile rbd-read-only pool=volumes' \
+    mgr 'profile rbd pool=backups, profile rbd-read-only pool=volumes'
+
+Then copy the keyring to the Cinder backup node::
+
+  ceph auth get-or-create client.cinder-backup | ssh {your-cinder-backup-server} \
+    sudo tee /etc/ceph/ceph.client.cinder-backup.keyring
+  ssh {your-cinder-backup-server} \
+    sudo chown cinder:cinder /etc/ceph/ceph.client.cinder-backup.keyring
+
+The read-only access to the ``volumes`` pool allows the backup service to read
+volume data when creating backups. Adjust the pool names to match your
+deployment. See the
+`Ceph Block Devices and OpenStack documentation
+<https://docs.ceph.com/en/latest/rbd/rbd-openstack/#setup-ceph-client-authentication>`_
+for the complete set of authentication commands for all OpenStack services.
+
 The following configuration options are available for the Ceph backup
 driver.
 

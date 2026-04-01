@@ -102,6 +102,43 @@ Ceph exposes RADOS; you can access it through the following interfaces:
  Linux kernel and QEMU block devices that stripe
  data across multiple objects.
 
+Ceph authentication
+~~~~~~~~~~~~~~~~~~~
+
+If `cephx authentication
+<https://docs.ceph.com/en/latest/rados/configuration/auth-config-ref/>`_ is
+enabled on your Ceph cluster, you must create a Ceph user for the Cinder
+volume service and set up its capabilities. Using managed capability profiles
+is recommended over raw capabilities::
+
+  ceph auth get-or-create client.cinder \
+    mon 'profile rbd' \
+    osd 'profile rbd pool=volumes, profile rbd-read-only pool=images' \
+    mgr 'profile rbd pool=volumes, profile rbd-read-only pool=images'
+
+Then copy the keyring to the Cinder volume node::
+
+  ceph auth get-or-create client.cinder | ssh {your-cinder-volume-server} \
+    sudo tee /etc/ceph/ceph.client.cinder.keyring
+  ssh {your-cinder-volume-server} \
+    sudo chown cinder:cinder /etc/ceph/ceph.client.cinder.keyring
+
+The read-only access to the ``images`` pool allows Cinder to create volumes
+from Glance images using efficient copy-on-write clones. Adjust the pool
+names to match your deployment (``volumes`` corresponds to the ``rbd_pool``
+configuration option).
+
+.. note::
+
+   The ``profile rbd`` capabilities are preferred over raw capabilities
+   such as ``allow rwx`` because they include permissions needed for
+   `RBD exclusive locks
+   <https://docs.ceph.com/en/latest/rbd/rbd-exclusive-locks/>`_
+   (e.g. blocklisting stale clients). See the
+   `Ceph Block Devices and OpenStack documentation
+   <https://docs.ceph.com/en/latest/rbd/rbd-openstack/#setup-ceph-client-authentication>`_
+   for the complete set of authentication commands for all OpenStack services.
+
 RBD pool
 ~~~~~~~~
 
