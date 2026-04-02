@@ -997,11 +997,12 @@ class FungibleDriver(driver.BaseVD):
         try:
             # Wait until the device path appears
             self.wait_for_device(attach_info["device"]["path"])
-            image_utils.upload_volume(
+            volume_utils.upload_volume(
                 context,
                 image_service,
                 image_meta,
                 attach_info["device"]["path"],
+                volume,
                 compress=True,
             )
             LOG.debug(
