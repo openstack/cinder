@@ -120,10 +120,6 @@ from cinder.volume.drivers.hpe.xp import hpe_xp_rest as \
     cinder_volume_drivers_hpe_xp_hpexprest
 from cinder.volume.drivers.huawei import common as \
     cinder_volume_drivers_huawei_common
-from cinder.volume.drivers.ibm import flashsystem_common as \
-    cinder_volume_drivers_ibm_flashsystemcommon
-from cinder.volume.drivers.ibm import flashsystem_iscsi as \
-    cinder_volume_drivers_ibm_flashsystemiscsi
 from cinder.volume.drivers.ibm import gpfs as cinder_volume_drivers_ibm_gpfs
 from cinder.volume.drivers.ibm.ibm_storage import ds8k_proxy as \
     cinder_volume_drivers_ibm_ibm_storage_ds8kproxy
@@ -385,9 +381,6 @@ def list_opts():
                 cinder_volume_drivers_hpe_xp_hpexprest.REST_VOLUME_OPTS,
                 cinder_volume_drivers_hpe_xp_hpexprest.FC_VOLUME_OPTS,
                 cinder_volume_drivers_huawei_common.huawei_opts,
-                cinder_volume_drivers_ibm_flashsystemcommon.flashsystem_opts,
-                cinder_volume_drivers_ibm_flashsystemiscsi.
-                flashsystem_iscsi_opts,
                 cinder_volume_drivers_ibm_gpfs.gpfs_opts,
                 cinder_volume_drivers_ibm_gpfs.gpfs_remote_ssh_opts,
                 cinder_volume_drivers_ibm_ibm_storage_ds8kproxy.ds8k_opts,

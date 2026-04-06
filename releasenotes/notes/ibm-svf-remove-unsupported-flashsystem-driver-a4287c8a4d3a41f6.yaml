@@ -1,0 +1,8 @@
+---
+deprecations:
+  - |
+    The IBM Flashsystem drivers have been marked as 'unsupported'
+    since the OpenStack Train release, thereby indicating that they
+    are subject to removal from the cinder codebase.
+    The vendor no longer supports the Flashsystem drivers, and so
+    they are removed in this release.
