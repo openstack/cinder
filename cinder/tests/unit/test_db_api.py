@@ -3166,6 +3166,7 @@ class DBAPIQuotaTestCase(BaseTest):
             self.ctxt, **kwargs)
 
 
+@ddt.ddt
 class DBAPIBackupTestCase(BaseTest):
 
     """Tests for db.api.backup_* methods."""
@@ -3299,6 +3300,236 @@ class DBAPIBackupTestCase(BaseTest):
             mock.call(self.ctxt, 'fake_proj'),
             mock.call(self.ctxt, 'fake_proj')
         ])
+
+    @ddt.data(
+        {
+            "existing_backup_params": {
+                "display_name": "Case: backup has different project id",
+                "project_id": fake.PROJECT2_ID,
+                "user_id": fake.USER_ID,
+                "volume_id": fake.VOLUME_ID,
+                "size": 1,
+                "object_count": 1,
+                "status": "available",
+            },
+            "new_backup_params": {
+                "project_id": fake.PROJECT_ID,
+                "volume_id": fake.VOLUME_ID,
+                "before_data_timestamp": None,
+            },
+        },
+        {
+            "existing_backup_params": {
+                "display_name": "Case: backup has different volume id",
+                "project_id": fake.PROJECT_ID,
+                "user_id": fake.USER_ID,
+                "volume_id": fake.VOLUME2_ID,
+                "size": 1,
+                "object_count": 1,
+                "status": "available",
+            },
+            "new_backup_params": {
+                "project_id": fake.PROJECT_ID,
+                "volume_id": fake.VOLUME_ID,
+                "before_data_timestamp": None,
+            },
+        },
+        {
+            "existing_backup_params": {
+                "display_name": "Case: backup has wrong status",
+                "project_id": fake.PROJECT_ID,
+                "user_id": fake.USER_ID,
+                "volume_id": fake.VOLUME_ID,
+                "size": 1,
+                "object_count": 1,
+                "status": "error",
+            },
+            "new_backup_params": {
+                "project_id": fake.PROJECT_ID,
+                "volume_id": fake.VOLUME_ID,
+                "before_data_timestamp": None,
+            },
+        },
+        {
+            "existing_backup_params": {
+                "display_name": "Case: backup too young",
+                "project_id": fake.PROJECT_ID,
+                "user_id": fake.USER_ID,
+                "volume_id": fake.VOLUME_ID,
+                "size": 1,
+                "object_count": 1,
+                "status": "available",
+                "data_timestamp": timeutils.utcnow(with_timezone=True) +
+                datetime.timedelta(seconds=1),
+            },
+            "new_backup_params": {
+                "project_id": fake.PROJECT_ID,
+                "volume_id": fake.VOLUME_ID,
+                "before_data_timestamp": timeutils.utcnow(with_timezone=True),
+            },
+        },
+        {
+            "existing_backup_params": {
+                "display_name": "Case: backup has suitable data_timestamp " +
+                "but is in wrong state",
+                "project_id": fake.PROJECT_ID,
+                "user_id": fake.USER_ID,
+                "volume_id": fake.VOLUME_ID,
+                "size": 1,
+                "object_count": 1,
+                "status": "error",
+                "data_timestamp": timeutils.utcnow(with_timezone=True) -
+                datetime.timedelta(seconds=1),
+
+
+            },
+            "new_backup_params": {
+                "project_id": fake.PROJECT_ID,
+                "volume_id": fake.VOLUME_ID,
+                "before_data_timestamp": timeutils.utcnow(with_timezone=True),
+            },
+        },
+    )
+    @ddt.unpack
+    @mock.patch.object(sqlalchemy_api, "authorize_project_context")
+    def test_backup_get_parent_for_incremental_negative(
+        self, mock_authorize, existing_backup_params, new_backup_params
+    ):
+
+        user_context = context.RequestContext(
+            fake.USER_ID, fake.PROJECT_ID, is_admin=False
+        )
+
+        # Always create the existing backup with admin context to allow
+        # overriding any value
+        backup = objects.Backup(self.ctxt, **existing_backup_params)
+        backup.create()
+
+        parent_backup = objects.Backup.get_parent_for_incremental(
+            context=user_context,
+            volume_id=new_backup_params["volume_id"],
+            volume_project_id=new_backup_params["project_id"],
+            before_data_timestamp=new_backup_params["before_data_timestamp"],
+        )
+
+        self.assertIsNone(parent_backup)
+        mock_authorize.assert_has_calls(
+            [mock.call(user_context, new_backup_params["project_id"])]
+        )
+
+        # Test as admin and scoped to a different project again to ensure
+        # cross-project isolation is maintained
+        admin_context = context.RequestContext(fake.USER_ID,
+                                               fake.PROJECT3_ID,
+                                               is_admin=True)
+        parent_backup = objects.Backup.get_parent_for_incremental(
+            context=admin_context,
+            volume_id=new_backup_params["volume_id"],
+            volume_project_id=new_backup_params["project_id"],
+            before_data_timestamp=new_backup_params["before_data_timestamp"],
+        )
+
+        self.assertIsNone(parent_backup)
+        mock_authorize.assert_has_calls(
+            [mock.call(admin_context, new_backup_params["project_id"])]
+        )
+
+    @ddt.data(
+        {
+            "backup_history":
+                [
+                    {"status": "available", "data_age_offset_hours": 99},
+                    {"status": "error", "data_age_offset_hours": 88},
+                    {"status": "error", "data_age_offset_hours": 77},
+                    {"status": "available", "data_age_offset_hours": 10}
+                ],
+            "expected_idx": 3
+        },
+        {
+            "backup_history":
+                [
+                    {"status": "restoring", "data_age_offset_hours": 99},
+                    {"status": "error", "data_age_offset_hours": 88},
+                    {"status": "error", "data_age_offset_hours": 77},
+                    {"status": "error", "data_age_offset_hours": 10}
+                ],
+            "expected_idx": 0
+        },
+        {
+            "backup_history":
+                [
+                    {"status": "available", "data_age_offset_hours": 99},
+                    {"status": "restoring", "data_age_offset_hours": 88},
+                    {"status": "available", "data_age_offset_hours": 77},
+                    {"status": "available", "data_age_offset_hours": -1}
+                ],
+            "expected_idx": 2
+        }
+    )
+    @ddt.unpack
+    @mock.patch.object(sqlalchemy_api, "authorize_project_context")
+    def test_backup_get_parent_for_incremental_positive(self, mock_authorize,
+                                                        backup_history,
+                                                        expected_idx):
+
+        UTC_NOW_TZ = timeutils.utcnow(with_timezone=True)
+        user_context = context.RequestContext(
+            fake.USER_ID, fake.PROJECT_ID, is_admin=False
+        )
+
+        previous_backup = None
+
+        # Create a history of backups
+        created_backups = []
+        for idx, backup in enumerate(backup_history, start=1):
+            new_backup_params = {
+                "display_name": f"Backup generation {idx} with "
+                                f"status {backup['status']} and data from "
+                                f"{backup['data_age_offset_hours']} hours ago",
+                "project_id": fake.PROJECT_ID,
+                "user_id": fake.USER_ID,
+                "volume_id": fake.VOLUME_ID,
+                "size": 1,
+                "object_count": 1,
+                "status": backup["status"],
+                "data_timestamp": UTC_NOW_TZ
+                - datetime.timedelta(hours=backup["data_age_offset_hours"]),
+            }
+
+            # Make all backups but first incremental
+            if previous_backup:
+                new_backup_params["parent_id"] = previous_backup.id
+
+            new_backup = objects.Backup(self.ctxt, **new_backup_params)
+            new_backup.create()
+            created_backups.append(new_backup)
+            previous_backup = new_backup
+
+        # Test finding suitable parent with data_timestamp filter
+        parent_backup = objects.Backup.get_parent_for_incremental(
+            context=user_context,
+            volume_id=fake.VOLUME_ID,
+            volume_project_id=fake.PROJECT_ID,
+            before_data_timestamp=UTC_NOW_TZ,
+        )
+
+        # parent has data_timestamp before new backup
+        self.assertLessEqual(
+            parent_backup["data_timestamp"],
+            UTC_NOW_TZ
+        )
+
+        # parent is in any usable state
+        self.assertIn(
+            parent_backup["status"],
+            ["available", "restoring"]
+        )
+
+        # parent is the expected parent as defined in each test-case
+        self.assertEqual(created_backups[expected_idx].id, parent_backup.id)
+
+        mock_authorize.assert_has_calls(
+            [mock.call(user_context, fake.PROJECT_ID)])
 
     def test_backup_update_nonexistent(self):
         self.assertRaises(exception.BackupNotFound,

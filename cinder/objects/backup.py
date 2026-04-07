@@ -223,6 +223,25 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         retval = jsonutils.dump_as_bytes(kwargs)
         return base64.encode_as_text(retval)
 
+    # The returned backup object is intentionally without metadata
+    # (joined_load=False). The backup manager only requires the id of a
+    # suitable parent backup and no other details.
+    @classmethod
+    def get_parent_for_incremental(cls,
+                                   context,
+                                   volume_id,
+                                   volume_project_id,
+                                   before_data_timestamp=None
+                                   ) -> 'Backup | None':
+        db_backup = db.backup_get_parent_for_incremental(context,
+                                                         volume_id,
+                                                         volume_project_id,
+                                                         before_data_timestamp)
+        if db_backup:
+            return cls._from_db_object(context, objects.Backup(), db_backup)
+
+        return None
+
 
 @base.CinderObjectRegistry.register
 class BackupList(base.ObjectListBase, base.CinderObject):

@@ -440,6 +440,13 @@ class MigrationsWalk(
         self.assertEqual({'backups', 'backup_gigabytes'},
                          {r[0] for r in res})
 
+    def _check_385d1313da9a(self, connection):
+        """Test backups as index on volume_id and data_timestamp."""
+        self.assertTrue(db_utils.index_exists(
+                        connection,
+                        'backups',
+                        'backups_volume_id_data_timestamp_idx')
+                        )
     # TODO: (D Release) Uncomment method _check_afd7494d43b7 and create a
     # migration with hash afd7494d43b7 using the following command:
     #   $ tox -e venv -- alembic -c cinder/db/alembic.ini revision \

@@ -17,11 +17,9 @@
 
 """Handles all requests relating to the volume backups service."""
 
-from datetime import datetime
 import random
 import time
 from typing import Optional
-from zoneinfo import ZoneInfo
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -232,7 +230,6 @@ class API(base.Base):
         snapshot = None
         if snapshot_id:
             snapshot = self.volume_api.get_snapshot(context, snapshot_id)
-
             if volume_id != snapshot.volume_id:
                 msg = (_('Volume %(vol1)s does not match with '
                          'snapshot.volume_id %(vol2)s.')
@@ -266,56 +263,52 @@ class API(base.Base):
                 context, e,
                 resource='backups',
                 size=volume.size)
-        # Find the latest backup and use it as the parent backup to do an
+
+        # Find the most recent backup and use it as the parent backup for an
         # incremental backup.
-        latest_backup = None
-        latest_host = None
-        if incremental:
-            backups = objects.BackupList.get_all_by_volume(
-                context, volume_id, volume['project_id'],
-                filters={'project_id': context.project_id})
-            if backups.objects:
-                # NOTE(xyang): The 'data_timestamp' field records the time
-                # when the data on the volume was first saved. If it is
-                # a backup from volume, 'data_timestamp' will be the same
-                # as 'created_at' for a backup. If it is a backup from a
-                # snapshot, 'data_timestamp' will be the same as
-                # 'created_at' for a snapshot.
-                # If not backing up from snapshot, the backup with the latest
-                # 'data_timestamp' will be the parent; If backing up from
-                # snapshot, the backup with the latest 'data_timestamp' will
-                # be chosen only if 'data_timestamp' is earlier than the
-                # 'created_at' timestamp of the snapshot; Otherwise, the
-                # backup will not be chosen as the parent.
-                # For example, a volume has a backup taken at 8:00, then
-                # a snapshot taken at 8:10, and then a backup at 8:20.
-                # When taking an incremental backup of the snapshot, the
-                # parent should be the backup at 8:00, not 8:20, and the
-                # 'data_timestamp' of this new backup will be 8:10.
-                latest_backup = max(
-                    backups.objects,
-                    key=lambda x: x['data_timestamp']
-                    if (x['status'] == fields.BackupStatus.AVAILABLE and (
-                        not snapshot or (snapshot and x['data_timestamp']
-                                         < snapshot['created_at'])))
-                    else datetime(1, 1, 1, 1, 1, 1, tzinfo=ZoneInfo('UTC')))
-            else:
-                QUOTAS.rollback(context, reservations)
-                msg = _('No backups available to do an incremental backup.')
-                raise exception.InvalidBackup(reason=msg)
-
+        parent_backup = None
+        parent_host = None
         parent_id = None
-        parent = None
+        if incremental:
+            # NOTE(xyang): The 'data_timestamp' field records the time
+            # when the data on the volume was first saved. If it is
+            # a backup from volume, 'data_timestamp' will be the same
+            # as 'created_at' for a backup. If it is a backup from a
+            # snapshot, 'data_timestamp' will be the same as
+            # 'created_at' for a snapshot.
+            # If not backing up from snapshot, the backup with the latest
+            # 'data_timestamp' will be the parent; If backing up from
+            # snapshot, the backup with the latest 'data_timestamp' will
+            # be chosen only if 'data_timestamp' is earlier than the
+            # 'created_at' timestamp of the snapshot; Otherwise, the
+            # backup will not be chosen as the parent.
+            # For example, a volume has a backup taken at 8:00, then
+            # a snapshot taken at 8:10, and then a backup at 8:20.
+            # When taking an incremental backup of the snapshot, the
+            # parent should be the backup at 8:00, not 8:20, and the
+            # 'data_timestamp' of this new backup will be 8:10.
+            before_data_timestamp = None
+            if snapshot:
+                before_data_timestamp = snapshot['created_at']
 
-        if latest_backup:
-            parent = latest_backup
-            parent_id = latest_backup.id
-            if 'posix' in latest_backup.service:
-                # The posix driver needs to schedule incremental backups
-                #  on the same host as the last backup, otherwise there's
-                #  nothing to base the incremental backup on.
-                latest_host = latest_backup.host
-            if latest_backup['status'] != fields.BackupStatus.AVAILABLE:
+            # Fetch the most recent, suitable backup in an optimized way via
+            # the database to serve as parent
+            parent_backup = objects.Backup.get_parent_for_incremental(
+                context=context,
+                volume_id=volume.id,
+                volume_project_id=volume.project_id,
+                before_data_timestamp=before_data_timestamp
+            )
+
+            if parent_backup:
+                parent_id = parent_backup.id
+
+                if 'posix' in parent_backup.service:
+                    # The posix driver needs to schedule incremental backups
+                    #  on the same host as the last backup, otherwise there's
+                    #  nothing to base the incremental backup on.
+                    parent_host = parent_backup.host
+            else:
                 QUOTAS.rollback(context, reservations)
                 msg = _('No backups available to do an incremental backup.')
                 raise exception.InvalidBackup(reason=msg)
@@ -329,7 +322,7 @@ class API(base.Base):
                 {'status': fields.SnapshotStatus.BACKING_UP})
         else:
             self.db.volume_update(context, volume_id,
-                                  {'status': 'backing-up',
+                                  {'status': fields.VolumeStatus.BACKING_UP,
                                    'previous_status': previous_status})
 
         kwargs = {
@@ -344,8 +337,8 @@ class API(base.Base):
             'size': volume['size'],
             'snapshot_id': snapshot_id,
             'data_timestamp': data_timestamp,
-            'parent': parent,
-            'host': latest_host,
+            'parent': parent_backup,
+            'host': parent_host,
             'metadata': metadata or {},
             'availability_zone': availability_zone
         }

@@ -1011,6 +1011,11 @@ class Backup(BASE, CinderBase):
     __table_args__ = (
         # Speed up normal listings
         sa.Index('backups_deleted_project_id_idx', 'deleted', 'project_id'),
+        # Speed up searches on volume_id and data_timestamp
+        # (e.g. to find suitable parent backups for an incremental)
+        sa.Index('backups_volume_id_data_timestamp_idx',
+                 'volume_id',
+                 'data_timestamp'),
         CinderBase.__table_args__,
     )
 
