@@ -20,6 +20,7 @@ import re
 import typing
 from typing import Any, Iterable, Optional, Union
 import urllib
+import urllib.parse
 
 from oslo_config import cfg
 from oslo_log import log as logging
