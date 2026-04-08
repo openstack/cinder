@@ -42,6 +42,7 @@ from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import volume_utils
+from oslo_utils import units
 
 
 @ddt.ddt
@@ -175,6 +176,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             return_value={'fake_map': None})
         mock_add_looping_tasks = self.mock_object(
             self.library, '_add_looping_tasks')
+        self.library.replication_enabled = False
 
         self.library.check_for_setup_error()
 
@@ -182,6 +184,33 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertEqual(1, mock_add_looping_tasks.call_count)
         mock_get_pool_map.assert_called_once_with()
         mock_add_looping_tasks.assert_called_once_with()
+
+    def test_check_for_setup_error_with_replication_enabled(self):
+        """Test brownfield validation is called when replication is enabled."""
+        super_check_for_setup_error = self.mock_object(
+            block_base.NetAppBlockStorageLibrary, 'check_for_setup_error')
+        mock_get_pool_map = self.mock_object(
+            self.library, '_get_flexvol_to_pool_map',
+            return_value={'fake_map': None})
+        mock_add_looping_tasks = self.mock_object(
+            self.library, '_add_looping_tasks')
+        mock_validate_brownfield = self.mock_object(
+            self.library, 'validate_no_conflicting_snapmirrors')
+        mock_get_flexvol_names = self.mock_object(
+            self.library.ssc_library, 'get_ssc_flexvol_names',
+            return_value=['vol1', 'vol2'])
+
+        self.library.replication_enabled = True
+        self.library.backend_name = 'test_backend'
+
+        self.library.check_for_setup_error()
+
+        self.assertEqual(1, super_check_for_setup_error.call_count)
+        self.assertEqual(1, mock_add_looping_tasks.call_count)
+        mock_get_pool_map.assert_called_once_with()
+        mock_get_flexvol_names.assert_called_once_with()
+        mock_validate_brownfield.assert_called_once_with(
+            self.library.configuration, 'test_backend', ['vol1', 'vol2'])
 
     def test_check_for_setup_error_no_filtered_pools(self):
         self.mock_object(block_base.NetAppBlockStorageLibrary,
@@ -530,7 +559,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'consistencygroup_support': True,
             'consistent_group_snapshot_enabled': True,
             'reserved_percentage': 5,
-            'max_over_subscription_ratio': 10.0,
+            'max_over_subscription_ratio': 10,
             'multiattach': True,
             'total_capacity_gb': 10.0,
             'free_capacity_gb': 2.0,
@@ -560,7 +589,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         if not cluster_credentials:
             expected[0].update({
                 'netapp_aggregate_used_percent': 0,
-                'netapp_dedupe_used_percent': 0
+                'netapp_dedupe_used_percent': 0.0
             })
 
         if replication_backends:
@@ -1704,6 +1733,18 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         mock_destroy_lun.assert_called_once_with(new_lun_path)
 
+    def test_revert_to_snapshot_success_asar2(self):
+        self.library.configuration.netapp_disaggregated_platform = True
+        volume = {'name': 'vol1'}
+        snapshot = {'volume_name': 'vol1', 'name': 'snap1'}
+
+        # Mock _revert_to_snapshot since revert_to_snapshot calls it
+        mock_revert = self.mock_object(self.library, '_revert_to_snapshot')
+
+        self.library.revert_to_snapshot(volume, snapshot)
+
+        mock_revert.assert_called_once_with(volume, snapshot)
+
     def test__clone_snapshot(self):
         lun_obj = block_base.NetAppLun(fake.LUN_WITH_METADATA['handle'],
                                        fake.LUN_WITH_METADATA['name'],
@@ -1949,3 +1990,131 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         mock_log.debug.assert_any_call("Updating perf cache for cluster.")
         mock_log.debug.assert_any_call(
             "Successfully updated perf cache for cluster.")
+
+    @test.testtools.skip("Method _get_disaggregated_capacity not implemented")
+    def test_get_disaggregated_capacity_basic(self):
+        """Aggregates present, all capacities present."""
+        aggregates = ['aggr1', 'aggr2']
+        aggr_capacities = {
+            'aggr1': {'size-total': 10 * units.Gi,
+                      'size-available': 4 * units.Gi},
+            'aggr2': {'size-total': 6 * units.Gi,
+                      'size-available': 2 * units.Gi},
+        }
+
+        self.library.zapi_client.get_vserver_aggregates.return_value = (
+            aggregates
+        )
+        self.library.zapi_client.get_aggregate_capacities.return_value = (
+            aggr_capacities
+        )
+
+        result = self.library._get_disaggregated_capacity()
+
+        (self.library.zapi_client.
+         get_vserver_aggregates.assert_called_once_with())
+        (self.library.zapi_client.
+            get_aggregate_capacities.assert_called_once_with(
+                aggregates
+            ))
+        self.assertEqual(16 * units.Gi, result['size-total'])
+        self.assertEqual(6 * units.Gi, result['size-available'])
+
+    @test.testtools.skip("Method _get_disaggregated_capacity not implemented")
+    def test_get_disaggregated_capacity_no_aggregates(self):
+        """No SVM mapped aggregates returns all zeros."""
+        aggregates = []
+        aggr_capacities = {}
+
+        self.library.zapi_client.get_vserver_aggregates.return_value = (
+            aggregates
+        )
+        self.library.zapi_client.get_aggregate_capacities.return_value = (
+            aggr_capacities
+        )
+
+        result = self.library._get_disaggregated_capacity()
+
+        (self.library.zapi_client.
+         get_vserver_aggregates.assert_called_once_with())
+        (self.library.zapi_client.
+            get_aggregate_capacities.assert_called_once_with(
+                aggregates
+            ))
+        self.assertEqual(0, result['size-total'])
+        self.assertEqual(0, result['size-available'])
+
+    @test.testtools.skip("Method _get_disaggregated_capacity not implemented")
+    def test_get_disaggregated_capacity_missing_keys(self):
+        """Gracefully handle capacity dicts missing size fields."""
+        aggregates = ['aggr1', 'aggr2']
+        aggr_capacities = {
+            'aggr1': {'size-total': 5 * units.Gi},  # missing size-available
+            'aggr2': {'size-available': 3 * units.Gi},  # missing size-total
+        }
+
+        self.library.zapi_client.get_vserver_aggregates.return_value = (
+            aggregates
+        )
+        self.library.zapi_client.get_aggregate_capacities.return_value = (
+            aggr_capacities
+        )
+
+        result = self.library._get_disaggregated_capacity()
+
+        self.assertEqual(5 * units.Gi, result['size-total'])
+        self.assertEqual(3 * units.Gi, result['size-available'])
+
+    @test.testtools.skip(
+        "Method _get_disaggregated_provisioned_capacity not implemented")
+    def test_get_disaggregated_provisioned_capacity_sums_sizes(self):
+        # Ensure vserver is the expected string
+        self.library.vserver = 'fake_svm'
+
+        storage_units = [
+            {'name': 'su1', 'uuid': 'uuid1',
+             'provisioned-size': 10 * units.Gi},
+            {'name': 'su2', 'uuid': 'uuid2',
+             'provisioned-size': 20 * units.Gi},
+        ]
+        self.library.zapi_client.get_storage_units_by_svm.return_value = (
+            storage_units
+        )
+
+        result = self.library._get_disaggregated_provisioned_capacity()
+
+        self.assertEqual(30 * units.Gi, result)
+        (self.library.zapi_client.get_storage_units_by_svm.
+         assert_called_once_with(vserver='fake_svm'))
+
+    @test.testtools.skip(
+        "Method _get_disaggregated_provisioned_capacity not implemented")
+    def test_get_disaggregated_provisioned_capacity_handles_bad_entries(self):
+        # Ensure vserver is the expected string
+        self.library.vserver = 'fake_svm'
+
+        self.library.zapi_client.get_storage_units_by_svm.return_value = [
+            {'provisioned-size': '10'},
+            {'provisioned-size': 'not-a-number'},
+            {},
+        ]
+
+        result = self.library._get_disaggregated_provisioned_capacity()
+
+        self.assertEqual(10, result)
+        self.library.zapi_client.get_storage_units_by_svm. \
+            assert_called_once_with(vserver='fake_svm')
+
+    @test.testtools.skip(
+        "Method _get_disaggregated_provisioned_capacity not implemented")
+    def test_get_disaggregated_provisioned_capacity_empty_list(self):
+        # Ensure vserver is the expected string
+        self.library.vserver = 'fake_svm'
+
+        self.library.zapi_client.get_storage_units_by_svm.return_value = []
+
+        result = self.library._get_disaggregated_provisioned_capacity()
+
+        self.assertEqual(0, result)
+        (self.library.zapi_client.get_storage_units_by_svm.
+         assert_called_once_with(vserver='fake_svm'))

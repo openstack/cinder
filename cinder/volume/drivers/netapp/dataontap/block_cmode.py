@@ -149,6 +149,15 @@ class NetAppBlockStorageCmodeLibrary(
                     'Ensure ASA r2 configuration option is set correctly.')
             raise na_utils.NetAppDriverException(msg)
 
+        # Validate existing snapmirror scenario for replication
+        if self.replication_enabled:
+            LOG.debug("Replication is enabled. Performing existing "
+                      "snapmirror validation to check for conflicting "
+                      "relationships.")
+            flexvol_names = self.ssc_library.get_ssc_flexvol_names()
+            self.validate_no_conflicting_snapmirrors(
+                self.configuration, self.backend_name, flexvol_names)
+
         self._add_looping_tasks()
         super(NetAppBlockStorageCmodeLibrary, self).check_for_setup_error()
 
