@@ -978,10 +978,12 @@ class BackupCephTestCase(test.TestCase):
         volume_is_new = True
         src_snap = ''
         with tempfile.NamedTemporaryFile() as dest_file:
-            with mock.patch.object(self.service,
-                                   '_transfer_data') as mock_transfer_data, \
-                mock.patch.object(self.service,
-                                  '_get_backup_base_name') as mock_getbasename:
+            with (mock.patch.object(self.service, '_transfer_data')
+                  as mock_transfer_data,
+                  mock.patch.object(self.service, '_get_backup_base_name')
+                  as mock_getbasename,
+                  mock.patch.object(rbd_driver, 'RADOSClient')
+                  as mock_rados_client):
 
                 self.service._full_restore(self.backup, dest_file, length,
                                            volume_is_new, src_snap)
@@ -989,6 +991,7 @@ class BackupCephTestCase(test.TestCase):
                 mock_getbasename.assert_called_once_with(self.volume_id,
                                                          backup=self.backup)
                 mock_transfer_data.assert_called_once()
+                mock_rados_client.assert_called_once()
 
     @common_mocks
     def test_full_restore_without_snapshot_id_w_src_snap(self):
@@ -996,10 +999,12 @@ class BackupCephTestCase(test.TestCase):
         volume_is_new = True
         src_snap = 'random_snap'
         with tempfile.NamedTemporaryFile() as dest_file:
-            with mock.patch.object(self.service,
-                                   '_transfer_data') as mock_transfer_data, \
-                mock.patch.object(self.service,
-                                  '_get_backup_base_name') as mock_getbasename:
+            with (mock.patch.object(self.service, '_transfer_data')
+                  as mock_transfer_data,
+                  mock.patch.object(self.service, '_get_backup_base_name')
+                  as mock_getbasename,
+                  mock.patch.object(rbd_driver, 'RADOSClient')
+                  as mock_rados_client):
 
                 self.service._full_restore(self.backup, dest_file, length,
                                            volume_is_new, src_snap)
@@ -1007,6 +1012,7 @@ class BackupCephTestCase(test.TestCase):
                 mock_getbasename.assert_called_once_with(self.volume_id,
                                                          backup=self.backup)
                 mock_transfer_data.assert_called_once()
+                mock_rados_client.assert_called_once()
 
     @common_mocks
     def test_full_restore_with_snapshot_id(self):
@@ -1026,16 +1032,19 @@ class BackupCephTestCase(test.TestCase):
         backup.parent.service_metadata = '{"base": "random"}'
 
         with tempfile.NamedTemporaryFile() as dest_file:
-            with mock.patch.object(self.service,
-                                   '_transfer_data') as mock_transfer_data, \
-                mock.patch.object(self.service,
-                                  '_get_backup_base_name') as mock_getbasename:
+            with (mock.patch.object(self.service, '_transfer_data')
+                  as mock_transfer_data,
+                  mock.patch.object(self.service, '_get_backup_base_name')
+                  as mock_getbasename,
+                  mock.patch.object(rbd_driver, 'RADOSClient')
+                  as mock_rados_client):
 
                 self.service._full_restore(backup, dest_file, length,
                                            volume_is_new, src_snap)
 
                 mock_getbasename.assert_called_once_with(self.volume_id)
                 mock_transfer_data.assert_called_once()
+                mock_rados_client.assert_called_once()
 
     @common_mocks
     def test_full_restore_with_image_not_found(self):
