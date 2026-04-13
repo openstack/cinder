@@ -193,6 +193,7 @@ CONF.register_opts(storwize_svc_opts, group=configuration.SHARED_CONF_GROUP)
 
 class StorwizeSSH(object):
     """SSH interface to IBM Storwize family and SVC storage systems."""
+
     def __init__(self, run_ssh):
         self._ssh = run_ssh
 
@@ -617,7 +618,7 @@ class StorwizeSSH(object):
                 return None
 
             return CLIResponse((out, err), ssh_cmd=ssh_cmd, delim='!',
-                                with_header=True)
+                               with_header=True)
         except exception.VolumeBackendAPIException as ex:
             msg = (_('Unable to fetch the volumegroupsnapshot.\n'
                      'Exception: %(ex)s') %
@@ -1694,7 +1695,7 @@ class StorwizeHelpers(object):
             registerplugin_metadata = ''
             ispbhaenabled = bool(getattr(self, 'is_pbha_partition', None))
             isreplication = bool(
-                    configuration.safe_get('replication_device'))
+                configuration.safe_get('replication_device'))
             volume_driver = configuration.safe_get('volume_driver')
             if "powervc" in (volume_driver, ''):
                 deployment = storwize_const.POWERVC
@@ -1710,7 +1711,6 @@ class StorwizeHelpers(object):
                 raise loopingcall.LoopingCallDone()
         else:
             LOG.warning("Callhome service is disabled on the backend.")
-
 
     @staticmethod
     def build_default_opts(config):
@@ -3620,7 +3620,6 @@ class StorwizeHelpers(object):
         except Exception as e:
             LOG.debug("Failed to register plugin due to %s", e)
         return ret
-
 
     @staticmethod
     def check_code_level_within_limit(min_level, max_level, code_level):
@@ -5707,7 +5706,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         backend_helper.initialize_host_info()
 
         info = {}
-        if 'host' in connector:
+        if connector and 'host' in connector:
             # get host according to FC protocol
             connector = connector.copy()
             if not iscsi:

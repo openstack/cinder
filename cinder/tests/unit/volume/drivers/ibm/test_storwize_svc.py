@@ -3629,6 +3629,55 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
         self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
 
+    # force detach volume without volume mapping
+    def test_storwize_terminate_iscsi_connection_force_detach_no_mapping(self):
+        # create a iSCSI volume
+        volume_iSCSI = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
+
+        # terminate connection without initializing connection and passing
+        # None connector.
+        ret_term = self.iscsi_driver.terminate_connection(volume_iSCSI, None)
+        self.assertEqual({}, ret_term)
+
+    # force detach volume with volume mapping
+    def test_storwize_terminate_iscsi_connection_force_detach_mapping(self):
+        # create a iSCSI volume
+        volume_iscsi = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iscsi = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iscsi['volume_type_id'] = vol_type_iscsi['id']
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.iscsi_driver.initialize_connection(volume_iscsi, connector)
+        vol_updates = {'id': volume_iscsi['id'], 'size': 1}
+        volume_model = models.Volume(**vol_updates)
+        attachment_updates1 = {
+            'volume': volume_model,
+            'volume_id': volume_iscsi['id'],
+            'id': '271eb937-5a5a-45bc-86a1-014afa8e4c37',
+            'attach_status': 'attached',
+            'attached_host': 'storwize-svc-host'
+        }
+        models.VolumeAttachment(**attachment_updates1)
+
+        detach_info = self.iscsi_driver.terminate_connection(
+            volume_iscsi, None)
+        self.assertEqual({}, detach_info)
+
+        # Verify no mappings exist for the volume
+        volume_mappings = [m for m in self.sim._mappings_list.values()
+                           if m['vol'] == volume_iscsi['name']]
+        self.assertEqual(0, len(volume_mappings),
+                         "Volume should have no host mappings after "
+                         "force detach")
+
     @ddt.data(({'is_multi_attach': True}, 1),
               ({'is_multi_attach': True}, 2),
               ({'is_multi_attach': False}, 1))
@@ -3706,6 +3755,90 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                 pass
             if attachment_count > 1:
                 self.assertEqual(0, do_term_conn.call_count)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'initialize_host_info')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdiskhostmap')
+    @mock.patch.object(cinder.db.api, 'volume_attachment_get_all_by_volume_id')
+    def test_storwize_terminate_iscsi_multiAttachForceDetach(self,
+                                                             get_db_vol_attach,
+                                                             lsvdishosmap,
+                                                             init_host_info):
+        # create a iSCSI volume
+        volume_iscsi = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iscsi = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iscsi['volume_type_id'] = vol_type_iscsi['id']
+        volume_iscsi['multiattach'] = True
+
+        connector1 = {'host': 'storwize-svc-host',
+                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                      'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        connector2 = {'host': 'storwize-svc-host',
+                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                      'wwpns': ['ff00000000000002', 'ff00000000000003'],
+                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.iscsi_driver.initialize_connection(volume_iscsi, connector1)
+        self.iscsi_driver.initialize_connection(volume_iscsi, connector2)
+        init_host_info.assert_called()
+
+        for conn in [connector1, connector2]:
+            host = self.iscsi_driver._helpers.get_host_from_connector(
+                conn, iscsi=True)
+            self.assertIsNotNone(host)
+
+        vol_updates = {'id': volume_iscsi['id'], 'size': 1}
+        volume_model = models.Volume(**vol_updates)
+        attachment_updates1 = {
+            'volume': volume_model,
+            'volume_id': volume_iscsi['id'],
+            'id': '271eb937-5a5a-45bc-86a1-014afa8e4c37',
+            'attach_status': 'attached',
+            'attached_host': 'storwize-svc-host'
+        }
+        db_attachment1 = models.VolumeAttachment(**attachment_updates1)
+        attachment_updates2 = {
+            'volume': volume_model,
+            'volume_id': volume_iscsi['id'],
+            'id': '9a3b9fc4-2524-4367-8092-5382a43e5125',
+            'attach_status': 'attached',
+            'attached_host': 'storwize-svc-host'
+        }
+        db_attachment2 = models.VolumeAttachment(**attachment_updates2)
+        get_db_vol_attach.return_value = [db_attachment1, db_attachment2]
+
+        attachments = objects.VolumeAttachmentList.get_all_by_volume_id(
+            self.ctxt, volume_iscsi['id'])
+        volume_iscsi['volume_attachment'] = attachments
+
+        # Validate test preconditions for same-host multiattach
+        self.assertEqual('storwize-svc-host', connector1['host'])
+        self.assertEqual('storwize-svc-host', connector2['host'])
+        self.assertEqual(2, len(volume_iscsi['volume_attachment']))
+
+        for attachment in volume_iscsi['volume_attachment']:
+            self.assertEqual('attached', attachment.attach_status)
+            self.assertEqual('storwize-svc-host', attachment.attached_host)
+
+        same_host_attach_count = len(
+            [a for a in volume_iscsi['volume_attachment']
+             if a.attach_status == 'attached' and
+             a.attached_host == connector1['host']
+             ])
+        self.assertEqual(2, same_host_attach_count)
+
+        # Terminate with None connector (force detach)
+        ret = self.iscsi_driver.terminate_connection(volume_iscsi, None)
+        self.assertIsNone(ret)
+
+        # Verify mappings still exist for the volume after force detach
+        volume_mappings = [m for m in self.sim._mappings_list.values()
+                           if m['vol'] == volume_iscsi['name']]
+        self.assertEqual(2, len(volume_mappings),
+                         "Volume should have host mappings after "
+                         "force detach")
 
     def test_storwize_get_host_from_connector_with_both_fc_iscsi_host(self):
         volume_iSCSI = self._create_volume()
@@ -4572,6 +4705,54 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                               volume_fc,
                               connector)
 
+    # force detach volume without volume mapping
+    def test_storwize_terminate_fc_connection_force_detach_no_mapping(self):
+        # create a FC volume
+        volume_fc = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
+        vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
+        volume_fc['volume_type_id'] = vol_type_fc['id']
+
+        # terminate connection without initializing connection and passing
+        # None connector.
+        ret_terminate = self.fc_driver.terminate_connection(volume_fc, None)
+        self.assertEqual({}, ret_terminate)
+
+    # force detach volume with volume mapping
+    def test_storwize_terminate_fc_connection_force_detach_with_mapping(self):
+        # create a FC volume
+        volume_fc = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
+        vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
+        volume_fc['volume_type_id'] = vol_type_fc['id']
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.fc_driver.initialize_connection(volume_fc, connector)
+
+        vol_updates = {'id': volume_fc['id'], 'size': 1}
+        volume_model = models.Volume(**vol_updates)
+        attachment_updates = {
+            'volume': volume_model,
+            'volume_id': volume_fc['id'],
+            'id': '271eb937-5a5a-45bc-86a1-014afa8e4c37',
+            'attach_status': 'attached',
+            'attached_host': 'storwize-svc-host'
+        }
+        models.VolumeAttachment(**attachment_updates)
+        term_conn = self.fc_driver.terminate_connection(volume_fc, None)
+        self.assertEqual({}, term_conn)
+
+        # Verify no mappings exist for the volume
+        volume_mappings = [m for m in self.sim._mappings_list.values()
+                           if m['vol'] == volume_fc['name']]
+        self.assertEqual(0, len(volume_mappings),
+                         "Volume should have no host mappings after "
+                         "force detach")
+
     def test_storwize_initialize_fc_connection_with_host_site(self):
         connector = {'host': 'storwize-svc-host',
                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
@@ -4747,6 +4928,90 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                 pass
             if attachment_count > 1:
                 self.assertEqual(0, do_term_conn.call_count)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'initialize_host_info')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdiskhostmap')
+    @mock.patch.object(cinder.db.api, 'volume_attachment_get_all_by_volume_id')
+    def test_storwize_terminate_fc_multi_attach_ForceDetach(self,
+                                                            get_db_vol_attach,
+                                                            lsvdishosmap,
+                                                            init_host_info):
+        # create a FC  volume
+        volume_fc = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
+        vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
+        volume_fc['volume_type_id'] = vol_type_fc['id']
+        volume_fc['multiattach'] = True
+
+        connector1 = {'host': 'storwize-svc-host',
+                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                      'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        connector2 = {'host': 'storwize-svc-host',
+                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                      'wwpns': ['ff00000000000002', 'ff00000000000003'],
+                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.fc_driver.initialize_connection(volume_fc, connector1)
+        self.fc_driver.initialize_connection(volume_fc, connector2)
+        init_host_info.assert_called()
+        for conn in [connector1, connector2]:
+            host = self.fc_driver._helpers.get_host_from_connector(conn)
+            self.assertIsNotNone(host)
+
+        vol_updates = {'id': volume_fc['id'], 'size': 1}
+        volume_model = models.Volume(**vol_updates)
+
+        attachment_updates1 = {
+            'volume': volume_model,
+            'volume_id': volume_fc['id'],
+            'id': '271eb937-5a5a-45bc-86a1-014afa8e4c37',
+            'attach_status': 'attached',
+            'attached_host': 'storwize-svc-host'
+        }
+        db_attachment1 = models.VolumeAttachment(**attachment_updates1)
+
+        attachment_updates2 = {
+            'volume': volume_model,
+            'volume_id': volume_fc['id'],
+            'id': '9a3b9fc4-2524-4367-8092-5382a43e5125',
+            'attach_status': 'attached',
+            'attached_host': 'storwize-svc-host'
+        }
+        db_attachment2 = models.VolumeAttachment(**attachment_updates2)
+        get_db_vol_attach.return_value = [db_attachment1, db_attachment2]
+
+        attachments = objects.VolumeAttachmentList.get_all_by_volume_id(
+            self.ctxt, volume_fc['id'])
+        volume_fc['volume_attachment'] = attachments
+
+        # Validate test preconditions for same-host multiattach
+        self.assertEqual('storwize-svc-host', connector1['host'])
+        self.assertEqual('storwize-svc-host', connector2['host'])
+        self.assertEqual(2, len(volume_fc['volume_attachment']))
+
+        for attachment in volume_fc['volume_attachment']:
+            self.assertEqual('attached', attachment.attach_status)
+            self.assertEqual('storwize-svc-host', attachment.attached_host)
+
+        same_host_attach_count = len(
+            [a for a in volume_fc['volume_attachment']
+             if a.attach_status == 'attached' and
+             a.attached_host == connector1['host']
+             ])
+        self.assertEqual(2, same_host_attach_count)
+
+        # Terminate with None connector (force detach)
+        ret = self.fc_driver.terminate_connection(volume_fc, None)
+        self.assertIsNone(ret)
+
+        # Verify mappings still exist for the volume after force detach
+        volume_mappings = [m for m in self.sim._mappings_list.values()
+                           if m['vol'] == volume_fc['name']]
+        self.assertEqual(2, len(volume_mappings),
+                         "Volume should have host mappings after "
+                         "force detach")
 
     def test_storwize_terminate_fc_connection_multi_attach(self):
         # create a FC volume
