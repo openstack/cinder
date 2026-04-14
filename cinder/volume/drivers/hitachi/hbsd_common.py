@@ -51,6 +51,8 @@ STR_SNAPSHOT = 'snapshot'
 
 STR_MANAGED_VCP_LDEV_NAME = 'HBSD-VCP'
 
+NO_SNAPSHOT_RETENTION = 0
+
 _UUID_PATTERN = re.compile(r'^[\da-f]{32}$')
 
 DRS_MODE = {
@@ -390,7 +392,8 @@ class HBSDCommon():
         raise NotImplementedError()
 
     def create_pair_on_storage(
-            self, pvol, svol, snap_pool_id, is_snapshot=False):
+            self, pvol, svol, snap_pool_id, is_snapshot=False,
+            snapshot_retention_period=NO_SNAPSHOT_RETENTION):
         """Create a copy pair on the storage."""
         raise NotImplementedError()
 
@@ -429,9 +432,43 @@ class HBSDCommon():
                   svol, curr_size, new_size)
         self._extend_ldevs(ldev_info, new_size, svol, curr_size)
 
+    def _get_snapshot_retention_period(self, extra_specs, meta_data):
+        extra_specs_ss_ret = (self.driver_info['driver_dir_name'] +
+                              ':snapshot_retention')
+
+        do_raise = False
+
+        if meta_data and extra_specs_ss_ret in meta_data:
+            ss_ret = meta_data[extra_specs_ss_ret]
+        else:
+            ss_ret = extra_specs.get(extra_specs_ss_ret)
+
+        if ss_ret is not None:
+            try:
+                int_ss_ret = int(ss_ret)
+
+                # Also make sure that we haven't been given a floating
+                # point value that is not equal to a whole number.
+                if float(ss_ret) != float(int_ss_ret):
+                    do_raise = True
+
+                ss_ret = int_ss_ret
+            except ValueError:
+                do_raise = True
+        else:
+            ss_ret = NO_SNAPSHOT_RETENTION  # No Retention
+
+        if do_raise or ss_ret < 0:
+            msg = self.output_log(MSG.INVALID_SNAPSHOT_RETENTION_VALUE,
+                                  retention=ss_ret)
+            self.raise_error(msg)
+
+        return ss_ret
+
     def copy_on_storage(
             self, pvol, size, extra_specs, pool_id, snap_pool_id, ldev_range,
-            is_snapshot=False, sync=False, is_rep=False, qos_specs=None):
+            is_snapshot=False, sync=False, is_rep=False, qos_specs=None,
+            meta_data=None):
         """Create a copy of the specified LDEV on the storage."""
         ldev_info = self.get_ldev_info(
             ['blockCapacity', 'poolId', 'status', 'attributes',
@@ -439,6 +476,13 @@ class HBSDCommon():
         if ldev_info['status'] != 'NML':
             msg = self.output_log(MSG.INVALID_LDEV_STATUS_FOR_COPY, ldev=pvol)
             self.raise_error(msg)
+
+        snapshot_retention_period = 0
+        if is_snapshot:
+            snapshot_retention_period =\
+                self._get_snapshot_retention_period(
+                    extra_specs, meta_data)
+
         new_size = size
         if not is_snapshot and self._is_vclone(
                 extra_specs, ldev_info, pool_id, snap_pool_id):
@@ -452,7 +496,9 @@ class HBSDCommon():
             new_size, extra_specs, pool_id, ldev_range, qos_specs=qos_specs)
         try:
             self.create_pair_on_storage(
-                pvol, svol, snap_pool_id, is_snapshot=is_snapshot)
+                pvol, svol, snap_pool_id,
+                is_snapshot=is_snapshot,
+                snapshot_retention_period=snapshot_retention_period)
             if sync or is_rep:
                 self.wait_copy_completion(pvol, svol)
             if size != new_size:
@@ -640,9 +686,12 @@ class HBSDCommon():
         snap_pool_id = self.storage_info['snap_pool_id']
         ldev_range = self.storage_info['ldev_range']
         qos_specs = utils.get_qos_specs_from_volume(snapshot)
+        meta_data = None
+        if 'metadata' in snapshot:
+            meta_data = snapshot['metadata']
         new_ldev = self.copy_on_storage(
             ldev, size, extra_specs, pool_id, snap_pool_id, ldev_range,
-            is_snapshot=True, qos_specs=qos_specs)
+            is_snapshot=True, qos_specs=qos_specs, meta_data=meta_data)
         self.modify_ldev_name(new_ldev, snapshot.id.replace("-", ""))
         return {
             'provider_location': str(new_ldev),

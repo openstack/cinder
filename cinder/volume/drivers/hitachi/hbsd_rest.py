@@ -541,7 +541,8 @@ class HBSDREST(common.HBSDCommon):
                 MSG.PAIR_STATUS_WAIT_TIMEOUT, svol=ldev)
             self.raise_error(msg)
 
-    def _create_snap_pair(self, pvol, svol):
+    def _create_snap_pair(self, pvol, svol,
+                          retention=common.NO_SNAPSHOT_RETENTION):
         """Create a snapshot copy pair on the storage."""
         snapshot_name = '%(prefix)s%(svol)s' % {
             'prefix': self.driver_info['driver_prefix'] + '-snap',
@@ -555,6 +556,8 @@ class HBSDREST(common.HBSDCommon):
                     "autoSplit": True,
                     "canCascade": True,
                     "isDataReductionForceCopy": True}
+            if retention != common.NO_SNAPSHOT_RETENTION and retention > 0:
+                body['retentionPeriod'] = retention
             self.client.add_snapshot(body)
         except exception.VolumeDriverException as ex:
             if (utils.safe_get_err_code(ex.kwargs.get('errobj')) ==
@@ -700,10 +703,12 @@ class HBSDREST(common.HBSDCommon):
             self._create_regular_clone_pair(pvol, svol, snap_pool_id)
 
     def create_pair_on_storage(
-            self, pvol, svol, snap_pool_id, is_snapshot=False):
+            self, pvol, svol, snap_pool_id, is_snapshot=False,
+            snapshot_retention_period=common.NO_SNAPSHOT_RETENTION):
         """Create a copy pair on the storage."""
         if is_snapshot:
-            self._create_snap_pair(pvol, svol)
+            self._create_snap_pair(pvol, svol,
+                                   retention=snapshot_retention_period)
         else:
             self._create_clone_pair(pvol, svol, snap_pool_id)
 

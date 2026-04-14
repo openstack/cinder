@@ -820,6 +820,12 @@ class HBSDMsg(enum.Enum):
         'msg': 'Failed to ss2vclone. p-vol=%(pvol)s,s-vol=%(svol)s',
         'suffix': ERROR_SUFFIX,
     }
+    INVALID_SNAPSHOT_RETENTION_VALUE = {
+        'msg_id': 774,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Invalid value for snapshot retention. retention=%(retention)s',
+        'suffix': ERROR_SUFFIX,
+    }
 
     def __init__(self, error_info):
         """Initialize Enum attributes."""

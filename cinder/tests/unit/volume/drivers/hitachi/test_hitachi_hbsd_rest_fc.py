@@ -15,6 +15,7 @@
 #
 """Unit tests for Hitachi HBSD Driver."""
 
+import copy
 import functools
 from unittest import mock
 
@@ -1989,6 +1990,164 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('1', ret['provider_location'])
         self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(5, request.call_count)
+
+    @ddt.data(1, 2, 3, 4, 5, 12287, 12288)
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_snapshot_immutable_extra_spec(
+            self, retention_value, get_volume_type_qos_specs, volume_get,
+            get_volume_type_extra_specs, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        extra_specs = {"hbsd:snapshot_retention": retention_value}
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_snapshot(TEST_SNAPSHOT[0])
+        self.assertEqual('1', ret['provider_location'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
+        self.assertEqual(5, request.call_count)
+        body = request.call_args_list[2][1]['json']
+        self.assertIn('retentionPeriod', body)
+        self.assertEqual(retention_value, int(body['retentionPeriod']))
+
+    @ddt.data(0)
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_snapshot_immutable_extra_spec_off(
+            self, retention_value, get_volume_type_qos_specs, volume_get,
+            get_volume_type_extra_specs, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        extra_specs = {"hbsd:snapshot_retention": retention_value}
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        ret = self.driver.create_snapshot(TEST_SNAPSHOT[0])
+        self.assertEqual('1', ret['provider_location'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
+        self.assertEqual(5, request.call_count)
+        body = request.call_args_list[2][1]['json']
+        self.assertNotIn('retentionPeriod', body)
+
+    @ddt.data(-1, 'abc', 12.5, 'c')
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_snapshot_immutable_extra_spec_invalid(
+            self, retention_value, get_volume_type_qos_specs, volume_get,
+            get_volume_type_extra_specs, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        extra_specs = {"hbsd:snapshot_retention": retention_value}
+        get_volume_type_extra_specs.return_value = extra_specs
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_snapshot,
+                          TEST_SNAPSHOT[0])
+
+    @ddt.data(1, 2, 3, 4, 5, 12287, 12288)
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_snapshot_immutable_ss_property(
+            self, retention_value, get_volume_type_qos_specs, volume_get,
+            get_volume_type_extra_specs, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        get_volume_type_extra_specs.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        test_snap = copy.deepcopy(TEST_SNAPSHOT[0])
+        test_snap['metadata'] = {
+            'hbsd:snapshot_retention': retention_value}
+        ret = self.driver.create_snapshot(test_snap)
+        self.assertEqual('1', ret['provider_location'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
+        self.assertEqual(5, request.call_count)
+        body = request.call_args_list[2][1]['json']
+        self.assertIn('retentionPeriod', body)
+        self.assertEqual(retention_value, int(body['retentionPeriod']))
+
+    @ddt.data(0)
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_snapshot_immutable_ss_property_off(
+            self, retention_value, get_volume_type_qos_specs, volume_get,
+            get_volume_type_extra_specs, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        get_volume_type_extra_specs.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        test_snap = copy.deepcopy(TEST_SNAPSHOT[0])
+        test_snap['metadata'] = {
+            'hbsd:snapshot_retention': retention_value}
+        ret = self.driver.create_snapshot(test_snap)
+        self.assertEqual('1', ret['provider_location'])
+        self.assertEqual(1, get_volume_type_extra_specs.call_count)
+        self.assertEqual(5, request.call_count)
+        body = request.call_args_list[2][1]['json']
+        self.assertNotIn('retentionPeriod', body)
+
+    @ddt.data(-1, 'abc', 12.5, 'c')
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
+    def test_create_snapshot_immutable_ss_property_invalid(
+            self, retention_value, get_volume_type_qos_specs, volume_get,
+            get_volume_type_extra_specs, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        get_volume_type_extra_specs.return_value = {}
+        get_volume_type_qos_specs.return_value = {'qos_specs': None}
+        self.driver.common._stats = {}
+        self.driver.common._stats['pools'] = [
+            {'location_info': {'pool_id': 30}}]
+        test_snap = copy.deepcopy(TEST_SNAPSHOT[0])
+        test_snap['metadata'] = {
+            'hbsd:snapshot_retention': retention_value}
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_snapshot,
+                          test_snap)
 
     @mock.patch.object(requests.Session, "request")
     def test_delete_snapshot(self, request):
