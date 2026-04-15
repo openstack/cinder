@@ -1651,6 +1651,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                            'encrypt.cipher-alg=%(cipher_alg)s,'
                            'encrypt.cipher-mode=%(cipher_mode)s,'
                            'encrypt.ivgen-alg=%(ivgen_alg)s' % cipher_spec,
+                           '-F', 'qcow2',
                            '-b', 'json:' + file_json,
                            '--object', 'secret,id=s0,file=' + tmp_key.name,
                            '--object', 'secret,id=s1,file=' + tmp_key.name,
