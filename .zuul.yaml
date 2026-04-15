@@ -90,9 +90,6 @@
             irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-nfs-tempest-full:
             irrelevant-files: *gate-irrelevant-files
-        - devstack-plugin-nfs-tempest-full-fips-py311:
-            voting: false
-            irrelevant-files: *gate-irrelevant-files
         - tempest-slow-py3:
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
@@ -128,6 +125,8 @@
         - cinder-grenade-mn-sub-bak:
             irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-ceph-tempest-py3:
+            irrelevant-files: *gate-irrelevant-files
+        - devstack-plugin-nfs-tempest-full-fips-py311:
             irrelevant-files: *gate-irrelevant-files
         - tempest-pg-full:
             irrelevant-files: *gate-irrelevant-files
