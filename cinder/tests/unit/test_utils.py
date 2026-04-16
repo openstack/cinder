@@ -1500,7 +1500,8 @@ class TestKeystoneProjectGet(test.TestCase):
 
     @mock.patch('keystoneclient.client.Client')
     def test_get_project_keystoneclient_v2(self, ksclient_class):
-        self.context = context.RequestContext('fake_user', 'fake_proj_id')
+        self.context = context.RequestContext(
+            'fake_user', 'fake_proj_id', auth_token='fake_token')
         keystoneclient = ksclient_class.return_value
         keystoneclient.version = 'v2.0'
         returned_project = self.FakeProject(self.context.project_id, 'bar')
@@ -1514,7 +1515,8 @@ class TestKeystoneProjectGet(test.TestCase):
 
     @mock.patch('keystoneclient.client.Client')
     def test_get_project_keystoneclient_v3(self, ksclient_class):
-        self.context = context.RequestContext('fake_user', 'fake_proj_id')
+        self.context = context.RequestContext(
+            'fake_user', 'fake_proj_id', auth_token='fake_token')
         keystoneclient = ksclient_class.return_value
         keystoneclient.version = 'v3'
         returned_project = self.FakeProject(self.context.project_id, 'bar')
