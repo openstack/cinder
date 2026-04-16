@@ -16,6 +16,7 @@
 from collections import abc
 
 from cinder.tests.unit import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.volume.drivers.netapp.dataontap import fc_cmode
 from cinder.volume.drivers.netapp.dataontap import iscsi_cmode
@@ -29,8 +30,10 @@ class NetAppBlockStorageDriverInterfaceTestCase(test.TestCase):
         self.mock_object(block_cmode.NetAppBlockStorageCmodeLibrary,
                          '__init__',
                          return_value=None)
-        self.iscsi_cmode_driver = iscsi_cmode.NetAppCmodeISCSIDriver()
-        self.fc_cmode_driver = fc_cmode.NetAppCmodeFibreChannelDriver()
+        self.iscsi_cmode_driver = iscsi_cmode.NetAppCmodeISCSIDriver(
+            configuration=conf.Configuration(None))
+        self.fc_cmode_driver = fc_cmode.NetAppCmodeFibreChannelDriver(
+            configuration=conf.Configuration(None))
 
     def test_driver_interfaces_match(self):
         """Ensure the NetApp block storage driver interfaces match.

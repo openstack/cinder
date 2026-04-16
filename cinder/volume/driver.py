@@ -462,34 +462,41 @@ class BaseVD(object, metaclass=abc.ABCMeta):
     REPLICATION_FEATURE_CHECKERS = {'v2.1': 'failover_host',
                                     'a/a': 'failover_completed'}
 
-    def __init__(self, execute=utils.execute, *args, **kwargs):
+    def __init__(
+        self,
+        execute=utils.execute,
+        host=None,
+        cluster_name=None,
+        *,
+        configuration,
+        **kwargs,
+    ):
         # TODO(stephenfin): Drop this in favour of using 'db' directly
         self.db = db
-        self.host = kwargs.get('host')
-        self.cluster_name = kwargs.get('cluster_name')
-        self.configuration = kwargs.get('configuration', None)
+        self.host = host
+        self.cluster_name = cluster_name
+        self.configuration = configuration
 
-        if self.configuration:
-            self.configuration.append_config_values(volume_opts)
-            self.configuration.append_config_values(iser_opts)
-            self.configuration.append_config_values(nvmeof_opts)
-            self.configuration.append_config_values(nvmet_opts)
-            self.configuration.append_config_values(scst_opts)
-            self.configuration.append_config_values(backup_opts)
-            self.configuration.append_config_values(image_opts)
-            self.configuration.append_config_values(fqdn_opts)
-            volume_utils.setup_tracing(
-                self.configuration.safe_get('trace_flags'))
+        self.configuration.append_config_values(volume_opts)
+        self.configuration.append_config_values(iser_opts)
+        self.configuration.append_config_values(nvmeof_opts)
+        self.configuration.append_config_values(nvmet_opts)
+        self.configuration.append_config_values(scst_opts)
+        self.configuration.append_config_values(backup_opts)
+        self.configuration.append_config_values(image_opts)
+        self.configuration.append_config_values(fqdn_opts)
+        volume_utils.setup_tracing(
+            self.configuration.safe_get('trace_flags'))
 
-            # NOTE(geguileo): Don't allow to start if we are enabling
-            # replication on a cluster service with a backend that doesn't
-            # support the required mechanism for Active-Active.
-            replication_devices = self.configuration.safe_get(
-                'replication_device')
-            if (self.cluster_name and replication_devices and
-                    not self.supports_replication_feature('a/a')):
-                raise exception.Invalid(_("Driver doesn't support clustered "
-                                          "replication."))
+        # NOTE(geguileo): Don't allow to start if we are enabling
+        # replication on a cluster service with a backend that doesn't
+        # support the required mechanism for Active-Active.
+        replication_devices = self.configuration.safe_get(
+            'replication_device')
+        if (self.cluster_name and replication_devices and
+                not self.supports_replication_feature('a/a')):
+            raise exception.Invalid(_("Driver doesn't support clustered "
+                                      "replication."))
 
         self.driver_utils = driver_utils.VolumeDriverUtils(
             self._driver_data_namespace(), self.db)
@@ -517,11 +524,9 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         self._initialized = False
 
     def _driver_data_namespace(self):
-        namespace = self.__class__.__name__
-        if self.configuration:
-            namespace = self.configuration.safe_get('driver_data_namespace')
-            if not namespace:
-                namespace = self.configuration.safe_get('volume_backend_name')
+        namespace = self.configuration.safe_get('driver_data_namespace')
+        if not namespace:
+            namespace = self.configuration.safe_get('volume_backend_name')
         return namespace
 
     def _is_non_recoverable(self, err, non_recoverable_list):
