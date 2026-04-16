@@ -229,16 +229,16 @@ _vars = {}
 
 def _def_parser():
     # Enabling packrat parsing greatly speeds up the parsing.
-    pyparsing.ParserElement.enablePackrat()
+    pyparsing.ParserElement.enable_packrat()
 
     alphas = pyparsing.alphas
     Combine = pyparsing.Combine
     nums = pyparsing.nums
     quoted_string = pyparsing.quotedString
 
-    oneOf = pyparsing.oneOf
-    opAssoc = pyparsing.opAssoc
-    infixNotation = pyparsing.infixNotation
+    one_of = pyparsing.one_of
+    OpAssoc = pyparsing.OpAssoc
+    infix_notation = pyparsing.infix_notation
     Word = pyparsing.Word
 
     integer = Word(nums)
@@ -248,28 +248,28 @@ def _def_parser():
     fn = Word(alphas + '_' + '.')
     operand = number | variable | fn | quoted_string
 
-    signop = oneOf('+ -')
-    addop = oneOf('+ -')
-    multop = oneOf('* /')
-    comparisonop = oneOf(' '.join(EvalComparisonOp.operations.keys()))
+    signop = one_of('+ -')
+    addop = one_of('+ -')
+    multop = one_of('* /')
+    comparisonop = one_of(' '.join(EvalComparisonOp.operations.keys()))
     ternaryop = ('?', ':')
-    boolandop = oneOf('AND and &&')
-    boolorop = oneOf('OR or ||')
-    negateop = oneOf('NOT not !')
+    boolandop = one_of('AND and &&')
+    boolorop = one_of('OR or ||')
+    negateop = one_of('NOT not !')
 
-    operand.setParseAction(EvalConstant)
-    expr = infixNotation(operand, [
-        (fn, 1, opAssoc.RIGHT, EvalFunction),
-        ("^", 2, opAssoc.RIGHT, EvalPowerOp),
-        (signop, 1, opAssoc.RIGHT, EvalSignOp),
-        (multop, 2, opAssoc.LEFT, EvalMultOp),
-        (addop, 2, opAssoc.LEFT, EvalAddOp),
-        (negateop, 1, opAssoc.RIGHT, EvalNegateOp),
-        (comparisonop, 2, opAssoc.LEFT, EvalComparisonOp),
-        (ternaryop, 3, opAssoc.LEFT, EvalTernaryOp),
-        (boolandop, 2, opAssoc.LEFT, EvalBoolAndOp),
-        (boolorop, 2, opAssoc.LEFT, EvalBoolOrOp),
-        (',', 2, opAssoc.RIGHT, EvalCommaSeperator), ])
+    operand.set_parse_action(EvalConstant)
+    expr = infix_notation(operand, [
+        (fn, 1, OpAssoc.RIGHT, EvalFunction),
+        ("^", 2, OpAssoc.RIGHT, EvalPowerOp),
+        (signop, 1, OpAssoc.RIGHT, EvalSignOp),
+        (multop, 2, OpAssoc.LEFT, EvalMultOp),
+        (addop, 2, OpAssoc.LEFT, EvalAddOp),
+        (negateop, 1, OpAssoc.RIGHT, EvalNegateOp),
+        (comparisonop, 2, OpAssoc.LEFT, EvalComparisonOp),
+        (ternaryop, 3, OpAssoc.LEFT, EvalTernaryOp),
+        (boolandop, 2, OpAssoc.LEFT, EvalBoolAndOp),
+        (boolorop, 2, OpAssoc.LEFT, EvalBoolOrOp),
+        (',', 2, OpAssoc.RIGHT, EvalCommaSeperator), ])
 
     return expr
 
@@ -297,7 +297,7 @@ def evaluate(expression, **kwargs):
         sys.setrecursionlimit(3000)
 
     try:
-        result = _parser.parseString(expression, parseAll=True)[0]
+        result = _parser.parse_string(expression, parseAll=True)[0]
     except pyparsing.ParseException as e:
         raise exception.EvaluatorParseException(
             _("ParseException: %s") % e)
