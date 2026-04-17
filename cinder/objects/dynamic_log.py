@@ -17,6 +17,11 @@ from oslo_versionedobjects import fields
 
 from cinder.objects import base
 
+__all__ = [
+    'LogLevel',
+    'LogLevelList',
+]
+
 
 @base.CinderObjectRegistry.register
 class LogLevel(base.CinderObject):

@@ -16,6 +16,14 @@ from oslo_versionedobjects import fields
 
 from cinder.objects import base
 
+__all__ = [
+    'ManageableObject',
+    'ManageableVolume',
+    'ManageableSnapshot',
+    'ManageableVolumeList',
+    'ManageableSnapshotList',
+]
+
 
 class ManageableObject(object):
 

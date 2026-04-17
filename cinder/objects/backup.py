@@ -28,6 +28,13 @@ from cinder.objects import fields as c_fields
 
 CONF = cfg.CONF
 
+__all__ = [
+    'Backup',
+    'BackupList',
+    'BackupImport',
+    'BackupDeviceInfo',
+]
+
 
 @base.CinderObjectRegistry.register
 class Backup(base.CinderPersistentObject, base.CinderObject,

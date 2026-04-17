@@ -23,6 +23,11 @@ from cinder.objects import base
 from cinder.objects import fields as c_fields
 from cinder import utils
 
+__all__ = [
+    'Cluster',
+    'ClusterList',
+]
+
 
 @base.CinderObjectRegistry.register
 class Cluster(base.CinderPersistentObject, base.CinderObject,

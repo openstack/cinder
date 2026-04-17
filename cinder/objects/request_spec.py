@@ -17,6 +17,11 @@ from oslo_versionedobjects import fields
 from cinder import objects
 from cinder.objects import base
 
+__all__ = [
+    'RequestSpec',
+    'VolumeProperties',
+]
+
 
 @base.CinderObjectRegistry.register
 class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,

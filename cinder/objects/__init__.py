@@ -19,6 +19,27 @@
 # on this module automatically, pointing to the newest/latest version of
 # the object.
 
+import typing
+
+if typing.TYPE_CHECKING:
+    from cinder.objects.backup import *  # noqa
+    from cinder.objects.cleanup_request import *  # noqa
+    from cinder.objects.cgsnapshot import *  # noqa
+    from cinder.objects.cluster import *  # noqa
+    from cinder.objects.consistencygroup import *  # noqa
+    from cinder.objects.qos_specs import *  # noqa
+    from cinder.objects.request_spec import *  # noqa
+    from cinder.objects.service import *  # noqa
+    from cinder.objects.snapshot import *  # noqa
+    from cinder.objects.volume import *  # noqa
+    from cinder.objects.volume_attachment import *  # noqa
+    from cinder.objects.volume_type import *  # noqa
+    from cinder.objects.group_type import *  # noqa
+    from cinder.objects.group import *  # noqa
+    from cinder.objects.group_snapshot import *  # noqa
+    from cinder.objects.manageableresources import *  # noqa
+    from cinder.objects.dynamic_log import *  # noqa
+
 
 def register_all():
     # NOTE(danms): You must make sure your object gets imported in this

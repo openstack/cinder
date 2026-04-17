@@ -23,6 +23,11 @@ from cinder.objects import fields as c_fields
 
 LOG = logging.getLogger(__name__)
 
+__all__ = [
+    'QualityOfServiceSpecs',
+    'QualityOfServiceSpecsList',
+]
+
 
 @base.CinderObjectRegistry.register
 class QualityOfServiceSpecs(base.CinderPersistentObject,
