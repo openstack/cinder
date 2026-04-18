@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import copy
 from datetime import datetime
 from datetime import timedelta
 import math
@@ -876,29 +875,6 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         return [lif_info['ip']['address']
                 for lif_info in response['records']]
 
-    def _list_vservers(self):
-        """Get the names of vservers present"""
-        query = {
-            'fields': 'name',
-        }
-        response = self.send_request('/svm/svms', 'get', query=query,
-                                     enable_tunneling=False)
-
-        return [svm['name'] for svm in response.get('records', [])]
-
-    def _get_ems_log_destination_vserver(self):
-        """Returns the best vserver destination for EMS messages."""
-
-        # NOTE(nahimsouza): Differently from ZAPI, only 'data' SVMs can be
-        # managed by the SVM REST APIs - that's why the vserver type is not
-        # specified.
-        vservers = self._list_vservers()
-
-        if vservers:
-            return vservers[0]
-
-        raise exception.NotFound("No Vserver found to receive EMS messages.")
-
     def send_ems_log_message(self, message_dict):
         """Sends a message to the Data ONTAP EMS log."""
 
@@ -913,28 +889,12 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
             'event_description': message_dict['event-description'],
         }
 
-        bkp_connection = copy.copy(self.connection)
-        bkp_timeout = self.connection.get_timeout()
-        bkp_vserver = self.vserver
-
-        self.connection.set_timeout(25)
         try:
-            # TODO(nahimsouza): Vserver is being set to replicate the ZAPI
-            # behavior, but need to check if this could be removed in REST API
-            self.connection.set_vserver(
-                self._get_ems_log_destination_vserver())
             self.send_request('/support/ems/application-logs',
                               'post', body=body)
             LOG.debug('EMS executed successfully.')
         except netapp_api.NaApiError as e:
             LOG.warning('Failed to invoke EMS. %s', e)
-        finally:
-            # Restores the data
-            timeout = (
-                bkp_timeout if bkp_timeout is not None else DEFAULT_TIMEOUT)
-            self.connection.set_timeout(timeout)
-            self.connection = copy.copy(bkp_connection)
-            self.connection.set_vserver(bkp_vserver)
 
     def get_performance_counter_info(self, object_name, counter_name):
         """Gets info about one or more Data ONTAP performance counters."""
