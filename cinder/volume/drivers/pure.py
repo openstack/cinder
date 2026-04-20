@@ -2071,7 +2071,6 @@ class PureBaseVolumeDriver(san.SanDriver):
                     if repl_type not in [REPLICATION_TYPE_ASYNC,
                                          REPLICATION_TYPE_SYNC,
                                          REPLICATION_TYPE_TRISYNC]:
-                        # Unsupported configuration
                         LOG.error("Unable to create group: create consistent "
                                   "replication group with a non-replicated "
                                   "volume type is not supported.")
@@ -2085,8 +2084,24 @@ class PureBaseVolumeDriver(san.SanDriver):
                                   "replication types is not supported.")
                         model_update = {'status': fields.GroupStatus.ERROR}
                         return model_update
-            return self.create_consistencygroup(ctxt, group, cgr_type)
+            else:
+                # Non-replicated CG: reject any replicated volume types
+                for vol_type_id in group.volume_type_ids:
+                    vol_type = volume_type.VolumeType.get_by_name_or_id(
+                        ctxt,
+                        vol_type_id)
+                    repl_type = self._get_replication_type_from_vol_type(
+                        vol_type)
+                    if repl_type in [REPLICATION_TYPE_ASYNC,
+                                     REPLICATION_TYPE_SYNC,
+                                     REPLICATION_TYPE_TRISYNC]:
+                        LOG.error("Unable to create group: non-replicated "
+                                  "consistency group cannot contain "
+                                  "replicated volume types.")
+                        model_update = {'status': fields.GroupStatus.ERROR}
+                        return model_update
 
+            return self.create_consistencygroup(ctxt, group, cgr_type)
         # If it wasn't a consistency group request ignore it and we'll rely on
         # the generic group implementation.
         raise NotImplementedError()

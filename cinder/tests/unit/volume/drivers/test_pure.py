@@ -6559,6 +6559,110 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         mock_create_cg.assert_called_once_with(self.ctxt, group, None)
         self.driver._is_replication_enabled = False
 
+    @mock.patch('cinder.objects.volume_type.VolumeType.get_by_name_or_id')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_create_group_non_replicated_cg_with_async_repl_type(
+            self, mock_get_specs, mock_is_cg, mock_is_group_type,
+            mock_get_vol_type):
+        """Test non-replicated CG rejects async replicated volume types."""
+        mock_get_specs.return_value = '<is> True'
+        # is_group_a_cg_snapshot_type returns True (it is a CG)
+        mock_is_cg.return_value = True
+        # is_group_a_type returns False for
+        # consistent_group_replication_enabled
+        mock_is_group_type.return_value = False
+
+        # Create a mock volume type with async replication
+        mock_vol_type = mock.MagicMock()
+        mock_vol_type.is_replicated.return_value = True
+        mock_vol_type.get.return_value = {
+            'extra_specs': {
+                'replication_type': '<in> async'
+            }
+        }
+        mock_get_vol_type.return_value = mock_vol_type
+
+        # Create group with volume type IDs
+        group = mock.MagicMock()
+        group.volume_type_ids = [fake.VOLUME_TYPE_ID]
+
+        # Call create_group and expect ERROR status
+        result = self.driver.create_group(self.ctxt, group)
+
+        self.assertEqual({'status': fields.GroupStatus.ERROR}, result)
+        mock_get_vol_type.assert_called_once_with(self.ctxt,
+                                                  fake.VOLUME_TYPE_ID)
+
+    @mock.patch('cinder.objects.volume_type.VolumeType.get_by_name_or_id')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_create_group_non_replicated_cg_with_trisync_repl_type(
+            self, mock_get_specs, mock_is_cg, mock_is_group_type,
+            mock_get_vol_type):
+        """Test non-replicated CG rejects trisync replicated volume types."""
+        mock_get_specs.return_value = '<is> True'
+        # is_group_a_cg_snapshot_type returns True (it is a CG)
+        mock_is_cg.return_value = True
+        # is_group_a_type returns False for
+        # consistent_group_replication_enabled
+        mock_is_group_type.return_value = False
+
+        # Create a mock volume type with trisync replication
+        mock_vol_type = mock.MagicMock()
+        mock_vol_type.is_replicated.return_value = True
+        mock_vol_type.get.return_value = {
+            'extra_specs': {
+                'replication_type': '<in> trisync'
+            }
+        }
+        mock_get_vol_type.return_value = mock_vol_type
+
+        # Create group with volume type IDs
+        group = mock.MagicMock()
+        group.volume_type_ids = [fake.VOLUME_TYPE_ID]
+
+        # Call create_group and expect ERROR status
+        result = self.driver.create_group(self.ctxt, group)
+
+        self.assertEqual({'status': fields.GroupStatus.ERROR}, result)
+        mock_get_vol_type.assert_called_once_with(self.ctxt,
+                                                  fake.VOLUME_TYPE_ID)
+
+    @mock.patch(BASE_DRIVER_OBJ + '.create_consistencygroup')
+    @mock.patch('cinder.objects.volume_type.VolumeType.get_by_name_or_id')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_create_group_non_replicated_cg_with_non_repl_type(
+            self, mock_get_specs, mock_is_cg, mock_is_group_type,
+            mock_get_vol_type, mock_create_cg):
+        """Test non-replicated CG accepts non-replicated volume types."""
+        mock_get_specs.return_value = '<is> True'
+        # is_group_a_cg_snapshot_type returns True (it is a CG)
+        mock_is_cg.return_value = True
+        # is_group_a_type returns False for
+        # consistent_group_replication_enabled
+        mock_is_group_type.return_value = False
+
+        # Create a mock volume type without replication
+        mock_vol_type = mock.MagicMock()
+        mock_vol_type.is_replicated.return_value = False
+        mock_get_vol_type.return_value = mock_vol_type
+
+        # Create group with volume type IDs
+        group = mock.MagicMock()
+        group.volume_type_ids = [fake.VOLUME_TYPE_ID]
+
+        # Call create_group and expect success
+        self.driver.create_group(self.ctxt, group)
+
+        mock_create_cg.assert_called_once_with(self.ctxt, group, None)
+        mock_get_vol_type.assert_called_once_with(self.ctxt,
+                                                  fake.VOLUME_TYPE_ID)
+
     @mock.patch(BASE_DRIVER_OBJ + '.delete_consistencygroup')
     @mock.patch('cinder.volume.group_types.get_group_type_specs')
     def test_delete_group_with_cg(self, mock_get_specs, mock_delete_cg):
