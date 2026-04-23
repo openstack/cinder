@@ -942,6 +942,47 @@ class RestApiClient():
         }
         self._invoke(url)
 
+    def add_local_clone_copypair(self, body, **kwargs):
+        """Create a ShadowImage pair."""
+        url = '%(url)s/local-clone-copypairs' % {
+            'url': self.object_url,
+        }
+        return self._add_object(url, body=body, **kwargs)[0]
+
+    def get_local_clone_copypair(self, copy_group_name,
+                                 pvol_device_group_name,
+                                 svol_device_group_name,
+                                 copy_pair_name, **kwargs):
+        """Get information about a specific ShadowImage pair."""
+        local_clone_copypair_id = '%(cg)s,%(pvol_dg)s,%(svol_dg)s,%(pair)s' % {
+            'cg': copy_group_name,
+            'pvol_dg': pvol_device_group_name,
+            'svol_dg': svol_device_group_name,
+            'pair': copy_pair_name,
+        }
+        url = '%(url)s/local-clone-copypairs/%(id)s' % {
+            'url': self.object_url,
+            'id': local_clone_copypair_id,
+        }
+        return self._get_object(url, **kwargs)
+
+    def delete_local_clone_copypair(self, copy_group_name,
+                                    pvol_device_group_name,
+                                    svol_device_group_name,
+                                    copy_pair_name, **kwargs):
+        """Delete a ShadowImage pair."""
+        local_clone_copypair_id = '%(cg)s,%(pvol_dg)s,%(svol_dg)s,%(pair)s' % {
+            'cg': copy_group_name,
+            'pvol_dg': pvol_device_group_name,
+            'svol_dg': svol_device_group_name,
+            'pair': copy_pair_name,
+        }
+        url = '%(url)s/local-clone-copypairs/%(id)s' % {
+            'url': self.object_url,
+            'id': local_clone_copypair_id,
+        }
+        self._delete_object(url, **kwargs)
+
     def get_journals(self):
         url = '%(url)s/journals' % {
             'url': self.object_url,
