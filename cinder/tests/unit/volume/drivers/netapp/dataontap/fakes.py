@@ -62,6 +62,110 @@ DEST_NFS_SHARE = '%s:%s' % (SHARE_IP, DEST_EXPORT_PATH)
 CLUSTER_NAME = 'fake-cluster-name'
 DEST_CLUSTER_NAME = 'fake-dest-cluster-name'
 JOB_UUID = 'fb132b04-6422-43ce-9451-ee819f0131a4'
+CROSS_POOL_SRC_POOL = 'src_flexvol'
+CROSS_POOL_DST_POOL = 'dst_flexvol'
+CROSS_POOL_SRC_AGGREGATE = 'aggr1'
+CROSS_POOL_DST_AGGREGATE = 'aggr2'
+CROSS_POOL_VSERVER = 'test_vserver'
+CROSS_POOL_DST_VSERVER = 'dest_vserver'
+CROSS_POOL_JOB_UUID = 'fb132b04-6422-43ce-9451-ee819f0131a4'
+
+CROSS_POOL_SRC_LUN_PATH = '/vol/%s/volume-src-uuid' % CROSS_POOL_SRC_POOL
+CROSS_POOL_DST_LUN_PATH = '/vol/%s/volume-dst-uuid' % CROSS_POOL_DST_POOL
+
+CROSS_POOL_SRC_LUN_METADATA = {
+    'Path': CROSS_POOL_SRC_LUN_PATH,
+    'Volume': CROSS_POOL_SRC_POOL,
+    'OsType': 'linux',
+    'SpaceReserved': 'true',
+}
+
+CROSS_POOL_SOURCE_LOCATION_INFO = {
+    'vserver': CROSS_POOL_VSERVER,
+    'flexvol': CROSS_POOL_SRC_POOL,
+    'aggregate': CROSS_POOL_SRC_AGGREGATE,
+    'lun_path': CROSS_POOL_SRC_LUN_PATH,
+}
+
+CROSS_POOL_DEST_LOCATION_INFO = {
+    'vserver': CROSS_POOL_VSERVER,
+    'flexvol': CROSS_POOL_DST_POOL,
+    'aggregate': CROSS_POOL_DST_AGGREGATE,
+    'lun_path': CROSS_POOL_DST_LUN_PATH,
+}
+
+CROSS_POOL_CLONE_SOURCE = {
+    'name': 'volume-src-uuid',
+    'size': 1,
+    'id': 'src-volume-id',
+}
+
+CROSS_POOL_CLONE_DESTINATION = {
+    'name': 'volume-dst-uuid',
+    'size': 1,
+    'id': 'dst-volume-id',
+    'host': 'openstack@cdotblock#%s' % CROSS_POOL_DST_POOL,
+}
+
+CROSS_POOL_CLONE_DESTINATION_LARGER = {
+    'name': 'volume-dst-uuid',
+    'size': 2,
+    'id': 'dst-volume-id',
+    'host': 'openstack@cdotblock#%s' % CROSS_POOL_DST_POOL,
+}
+
+CROSS_POOL_FLEXVOL_INFO = {
+    'name': CROSS_POOL_SRC_POOL,
+    'aggregate': [CROSS_POOL_SRC_AGGREGATE],
+}
+
+# NVMe Cross-pool cloning test data
+CROSS_POOL_SRC_NS_NAME = 'volume-src-uuid'
+CROSS_POOL_DST_NS_NAME = 'volume-dst-uuid'
+CROSS_POOL_SRC_NS_PATH = ('/vol/%s/%s' %
+                          (CROSS_POOL_SRC_POOL, CROSS_POOL_SRC_NS_NAME))
+CROSS_POOL_DST_NS_PATH = ('/vol/%s/%s' %
+                          (CROSS_POOL_DST_POOL, CROSS_POOL_DST_NS_NAME))
+
+CROSS_POOL_SRC_NS_METADATA = {
+    'Path': CROSS_POOL_SRC_NS_PATH,
+    'Volume': CROSS_POOL_SRC_POOL,
+    'Vserver': CROSS_POOL_VSERVER,
+}
+
+CROSS_POOL_NS_CLONE_SOURCE = {
+    'name': CROSS_POOL_SRC_NS_NAME,
+    'size': 1,
+    'id': 'src-volume-id',
+}
+
+CROSS_POOL_NS_CLONE_DESTINATION = {
+    'name': CROSS_POOL_DST_NS_NAME,
+    'size': 1,
+    'id': 'dst-volume-id',
+    'host': 'openstack@nvme#%s' % CROSS_POOL_DST_POOL,
+}
+
+CROSS_POOL_NS_CLONE_DESTINATION_LARGER = {
+    'name': CROSS_POOL_DST_NS_NAME,
+    'size': 2,
+    'id': 'dst-volume-id',
+    'host': 'openstack@nvme#%s' % CROSS_POOL_DST_POOL,
+}
+
+CROSS_POOL_NS_CLONE_SOURCE_SAME_POOL = {
+    'name': CROSS_POOL_SRC_NS_NAME,
+    'size': 1,
+    'id': 'src-volume-id',
+}
+
+CROSS_POOL_NS_CLONE_DESTINATION_SAME_POOL = {
+    'name': CROSS_POOL_DST_NS_NAME,
+    'size': 1,
+    'id': 'dst-volume-id',
+    'host': 'openstack@nvme#%s' % CROSS_POOL_SRC_POOL,  # Same pool as source
+}
+
 LUN_METADATA = {
     'OsType': None,
     'SpaceReserved': 'true',

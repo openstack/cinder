@@ -1,0 +1,31 @@
+---
+features:
+  - |
+    NetApp ONTAP iSCSI and FC drivers: Added support for the
+    ``clone_across_pools`` capability, enabling efficient cross-pool
+    volume cloning.
+
+    When creating a volume from a source that is located in a different
+    storage pool (FlexVol) — such as a cached Glance image or a
+    volume-backed Glance image stored directly in Cinder — the driver
+    can now perform the clone operation directly on the storage backend
+    instead of falling back to the slower "attach and dd" method. This
+    significantly improves volume creation performance when using
+    multiple pools, including deployments where Cinder is configured as
+    a Glance backend with images stored in raw format (see
+    `Volume-backed images
+    <https://docs.openstack.org/cinder/latest/admin/volume-backed-image.html>`__).
+
+    The driver automatically detects the clone boundary and uses the
+    appropriate ONTAP operation:
+
+    * **Same FlexVol**: Uses efficient FlexClone (instant clone)
+    * **Cross-aggregate**: Uses ONTAP LUN copy operation
+
+    This feature works with both ZAPI and REST API clients and requires
+    no additional configuration. The capability is automatically reported
+    in the volume stats and used by the image-volume cache when enabled.
+
+    For more details about the clone_across_pools capability, please see
+    `bp clone_across_pools
+    <https://blueprints.launchpad.net/cinder/+spec/clone-across-pools>`__
