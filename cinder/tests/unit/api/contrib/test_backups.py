@@ -58,7 +58,8 @@ class BackupsAPITestCase(test.TestCase):
         self.context.project_id = fake.PROJECT_ID
         self.context.user_id = fake.USER_ID
         self.user_context = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True,
+            roles=['member', 'reader'])
         self.controller = backups.BackupsController()
         self.patch('cinder.objects.service.Service._get_minimum_version',
                    return_value=None)
@@ -2036,7 +2037,8 @@ class BackupsAPITestCase(test.TestCase):
                                      status=fields.BackupStatus.AVAILABLE,
                                      size=10)
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         backup_service = 'fake'
         backup_url = 'fake'
         _mock_export_record_rpc.return_value = \
@@ -2061,7 +2063,8 @@ class BackupsAPITestCase(test.TestCase):
     def test_export_record_with_bad_backup_id(self):
 
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         backup_id = fake.WILL_NOT_BE_FOUND_ID
         req = webob.Request.blank('/v3/%s/backups/%s/export_record' %
                                   (fake.PROJECT_ID, backup_id))
@@ -2081,7 +2084,8 @@ class BackupsAPITestCase(test.TestCase):
         backup = utils.create_backup(self.context,
                                      status=fields.BackupStatus.RESTORING)
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         req = webob.Request.blank('/v3/%s/backups/%s/export_record' %
                                   (fake.PROJECT_ID, backup.id))
         req.method = 'GET'
@@ -2109,7 +2113,8 @@ class BackupsAPITestCase(test.TestCase):
         backup = utils.create_backup(self.context,
                                      status=fields.BackupStatus.AVAILABLE)
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         req = webob.Request.blank('/v3/%s/backups/%s/export_record' %
                                   (fake.PROJECT_ID, backup.id))
         req.method = 'GET'
@@ -2156,7 +2161,8 @@ class BackupsAPITestCase(test.TestCase):
         mock_reserve.return_value = "fake_reservation"
         project_id = fake.PROJECT_ID
         backup_service = 'fake'
-        ctx = context.RequestContext(fake.USER_ID, project_id, is_admin=True)
+        ctx = context.RequestContext(fake.USER_ID, project_id, is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         backup = objects.Backup(ctx, id=fake.BACKUP_ID, user_id=fake.USER_ID,
                                 project_id=project_id,
                                 size=1,
@@ -2204,7 +2210,8 @@ class BackupsAPITestCase(test.TestCase):
                                                     mock_commit,
                                                     ):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         mock_reserve.return_value = 'fake_reservation'
         utils.replace_obj_loader(self, objects.Backup)
 
@@ -2253,7 +2260,8 @@ class BackupsAPITestCase(test.TestCase):
     def test_import_record_with_no_backup_services(self,
                                                    _mock_list_services):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         backup_service = 'fake'
         backup_url = 'fake'
         _mock_list_services.return_value = []
@@ -2278,7 +2286,8 @@ class BackupsAPITestCase(test.TestCase):
     @mock.patch('cinder.backup.api.API._list_backup_hosts')
     def test_import_backup_with_wrong_backup_url(self, _mock_list_services):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         backup_service = 'fake'
         backup_url = 'fake'
         _mock_list_services.return_value = ['no-match1', 'no-match2']
@@ -2308,7 +2317,8 @@ class BackupsAPITestCase(test.TestCase):
                                                        mock_rollback,
                                                        mock_commit):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         mock_reserve.return_value = "fake_reservation"
         backup = utils.create_backup(self.context, fake.VOLUME_ID, size=1)
         backup_service = 'fake'
@@ -2353,7 +2363,8 @@ class BackupsAPITestCase(test.TestCase):
                                                         _mock_import_record,
                                                         _mock_list_services):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         backup = utils.create_backup(self.context, fake.VOLUME_ID,
                                      status=fields.BackupStatus.DELETED)
         backup_service = 'fake'
@@ -2381,7 +2392,8 @@ class BackupsAPITestCase(test.TestCase):
 
     def test_import_record_with_missing_body_elements(self):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
         backup_service = 'fake'
         backup_url = 'fake'
 
@@ -2442,7 +2454,8 @@ class BackupsAPITestCase(test.TestCase):
 
     def test_import_record_with_no_body(self):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                     is_admin=True)
+                                     is_admin=True,
+                                     roles=['admin', 'member', 'reader'])
 
         req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)

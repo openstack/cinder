@@ -71,7 +71,8 @@ def wsgi_app(inner_app_v2=None, fake_auth=True, fake_auth_context=None,
             ctxt = fake_auth_context
         else:
             ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                          auth_token=True)
+                                          auth_token=True,
+                                          roles=['member', 'reader'])
         api_v3 = fault.FaultWrapper(auth.InjectContext(ctxt,
                                                        inner_app_v3))
     elif use_no_auth:
@@ -120,12 +121,17 @@ class HTTPRequest(webob.Request):
         use_admin_context = kwargs.pop('use_admin_context', False)
         version = kwargs.pop('version', api_version._MIN_API_VERSION)
         system_scope = kwargs.pop('system_scope', None)
+        roles = kwargs.pop(
+            'roles',
+            ['admin', 'member', 'reader'] if use_admin_context
+            else ['member', 'reader'])
         out = os_wsgi.Request.blank(*args, **kwargs)
         out.environ['cinder.context'] = FakeRequestContext(
             fake.USER_ID,
             fake.PROJECT_ID,
             is_admin=use_admin_context,
-            system_scope=system_scope)
+            system_scope=system_scope,
+            roles=roles)
         out.api_version_request = api_version.APIVersionRequest(version)
         return out
 

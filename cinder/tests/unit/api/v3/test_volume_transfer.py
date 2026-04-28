@@ -53,7 +53,8 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.controller = volume_transfer.VolumeTransferController()
         self.v3_controller = volume_transfer_v3.VolumeTransferController()
         self.user_ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True, is_admin=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True, is_admin=True,
+            roles=['admin', 'member', 'reader'])
 
     def _create_transfer(self, volume_id=fake.VOLUME_ID,
                          display_name='test_transfer'):
@@ -376,7 +377,8 @@ class VolumeTransferEncryptedAPITestCase(test.TestCase):
         self.volume_transfer_api = cinder.transfer.API()
         self.controller = volume_transfer_v3.VolumeTransferController()
         self.user_ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True,
+            roles=['member', 'reader'])
         self.admin_ctxt = context.get_admin_context()
 
     def _create_volume(self, encryption_key_id):

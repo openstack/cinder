@@ -32,23 +32,23 @@ class CinderPolicyTests(test.TestCase):
         self.other_project_id = fake_constants.PROJECT2_ID
         self.admin_context = cinder_context.RequestContext(
             user_id=fake_constants.USER_ID, project_id=self.project_id,
-            roles=['admin']
+            roles=['admin', 'member', 'reader']
         )
         self.other_admin_context = cinder_context.RequestContext(
             user_id=fake_constants.USER_ID, project_id=self.other_project_id,
-            roles=['admin']
+            roles=['admin', 'member', 'reader']
         )
         self.user_context = cinder_context.RequestContext(
             user_id=fake_constants.USER2_ID, project_id=self.project_id,
-            roles=['non-admin']
+            roles=['member', 'reader']
         )
         self.other_user_context = cinder_context.RequestContext(
             user_id=fake_constants.USER3_ID, project_id=self.other_project_id,
-            roles=['non-admin']
+            roles=['member', 'reader']
         )
         self.system_admin_context = cinder_context.RequestContext(
             user_id=fake_constants.USER_ID, project_id=self.project_id,
-            roles=['admin'], system_scope='all')
+            roles=['admin', 'member', 'reader'], system_scope='all')
         fake_image.mock_image_service(self)
 
     def _get_request_response(self, context, path, method, body=None,

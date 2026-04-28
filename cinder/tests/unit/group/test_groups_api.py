@@ -45,9 +45,11 @@ class GroupAPITestCase(test.TestCase):
         self.group_api = cinder.group.API()
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                            auth_token=True,
-                                           is_admin=True)
+                                           is_admin=True,
+                                           roles=['admin', 'member', 'reader'])
         self.user_ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True,
+            roles=['member', 'reader'])
 
     @mock.patch('cinder.objects.Group.get_by_id')
     def test_get(self, mock_group_get):

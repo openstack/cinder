@@ -32,14 +32,8 @@ from cinder import policies
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
-# TODO(gmann): Remove overriding the default value of config options:
-# - 'enforce_scope', and 'enforce_new_defaults' once cinder is ready with the
-# new RBAC (oslo_policy enable them by default)
 DEFAULT_POLICY_FILENAME = 'policy.yaml'
-policy_opts.set_defaults(
-    cfg.CONF,
-    enforce_scope=False,
-    enforce_new_defaults=False)
+policy_opts.set_defaults(cfg.CONF)
 
 _ENFORCER: Optional[policy.Enforcer] = None
 

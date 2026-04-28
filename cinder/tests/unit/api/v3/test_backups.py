@@ -47,10 +47,12 @@ class BackupsControllerAPITestCase(test.TestCase):
         self.backup_api = cinder.backup.API()
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                            auth_token=True,
-                                           is_admin=True)
+                                           is_admin=True,
+                                           roles=['admin', 'member', 'reader'])
         self.controller = backups.BackupsController()
         self.user_context = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True,
+            roles=['member', 'reader'])
 
     def _fake_update_request(self, backup_id, version=mv.BACKUP_UPDATE):
         req = fakes.HTTPRequest.blank('/v3/%s/backups/%s/update' %
@@ -97,11 +99,14 @@ class BackupsControllerAPITestCase(test.TestCase):
 
     def _create_multiple_backups_with_different_project(self):
         test_utils.create_backup(
-            context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True))
+            context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                   roles=['admin', 'member', 'reader']))
         test_utils.create_backup(
-            context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True))
+            context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                   roles=['admin', 'member', 'reader']))
         test_utils.create_backup(
-            context.RequestContext(fake.USER_ID, fake.PROJECT2_ID, True))
+            context.RequestContext(fake.USER_ID, fake.PROJECT2_ID, True,
+                                   roles=['admin', 'member', 'reader']))
 
     @ddt.data('backups', 'backups/detail')
     def test_list_backup_with_count_param_version_not_matched(self, action):
@@ -113,7 +118,8 @@ class BackupsControllerAPITestCase(test.TestCase):
             mv.get_prior_version(mv.SUPPORT_COUNT_INFO))
         req.api_version_request = mv.get_api_version(
             mv.get_prior_version(mv.SUPPORT_COUNT_INFO))
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                      roles=['admin', 'member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._get_backups(req, is_detail=is_detail)
         self.assertNotIn('count', res_dict)
@@ -142,7 +148,8 @@ class BackupsControllerAPITestCase(test.TestCase):
             "/v3/%s?with_count=%s&limit=1" % (method, display_param))
         req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False,
+                                      roles=['member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._get_backups(req, is_detail=is_detail)
         self.assertEqual(1, len(res_dict['backups']))
@@ -156,7 +163,8 @@ class BackupsControllerAPITestCase(test.TestCase):
             "/v3/%s?with_count=%s" % (method, display_param))
         req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False,
+                                      roles=['member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._get_backups(req, is_detail=is_detail)
         self.assertEqual(2, len(res_dict['backups']))
@@ -170,7 +178,8 @@ class BackupsControllerAPITestCase(test.TestCase):
             "/v3/%s?with_count=%s&all_tenants=1" % (method, display_param))
         req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                      roles=['admin', 'member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._get_backups(req, is_detail=is_detail)
         self.assertEqual(3, len(res_dict['backups']))

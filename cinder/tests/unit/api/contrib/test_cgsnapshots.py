@@ -43,7 +43,8 @@ class CgsnapshotsAPITestCase(test.TestCase):
         self.context.project_id = fake.PROJECT_ID
         self.context.user_id = fake.USER_ID
         self.user_ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True,
+            roles=['member', 'reader'])
 
     def test_show_cgsnapshot(self):
         vol_type = utils.create_volume_type(context.get_admin_context(),
