@@ -2,8 +2,8 @@
 upgrade:
   - |
     With the fix for `Bug #2142083
-    <https://bugs.launchpad.net/os-brick/+bug/2142083>`_, starting from
-    os-brick version 6.15.0 or later, users can configure the PowerFlex
+    <https://bugs.launchpad.net/os-brick/+bug/2142083>`_, for
+    os-brick versions later than 7.0.0, users can configure the PowerFlex
     ``san_username`` in the `/opt/emc/scaleio/openstack/connector.conf` file.
     This allows volume detach operations to succeed even if the PowerFlex
     ``san_username`` is changed.
