@@ -1428,6 +1428,25 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         return igroup_list
 
+    def get_igroup_by_name(self, igroup_name):
+        """Get igroup by name."""
+
+        query = {
+            'svm.name': self.vserver,
+            'name': igroup_name,
+            'fields': 'uuid'
+        }
+
+        response = self.send_request('/protocols/san/igroups',
+                                     'get', query=query)
+        records = response.get('records', [])
+
+        igroup = {'initiator-group-uuid': records[0]['uuid'],
+                  'initiator-group-name': records[0]['name']} \
+            if records else None
+
+        return igroup
+
     def add_igroup_initiator(self, igroup, initiator):
         """Adds initiators to the specified igroup."""
         query_initiator_uuid = {
@@ -1840,6 +1859,20 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         return response['num_records'] > 0
 
+    def flexvol_exists_in_svm(self, svm_name, volume_name):
+        """Checks if a flexvol exists on the storage array."""
+        LOG.debug('Checking if volume %s exists', volume_name)
+
+        query = {
+            'svm.name': svm_name,
+            'name': volume_name,
+            'return_records': 'false'
+        }
+
+        response = self.send_request('/storage/volumes/', 'get', query=query)
+
+        return response['num_records'] > 0
+
     def create_volume_async(self, name, aggregate_list, size_gb,
                             space_guarantee_type=None, snapshot_policy=None,
                             language=None, dedupe_enabled=False,
@@ -2009,6 +2042,25 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         return snapmirrors
 
+    def get_snapmirror_policies(self, snapmirror_policy_name):
+
+        LOG.debug('client_cmode_rest.get_snapmirror_policies: start')
+
+        fields = ['uuid', 'name', "type", "sync_type"]
+
+        query = {}
+        query['fields'] = '{}'.format(','.join(f for f in fields))
+
+        query['name'] = snapmirror_policy_name
+
+        response = self.send_request('/snapmirror/policies/',
+                                     'get', query=query)
+
+        records = response.get('records', [])
+
+        LOG.debug('client_cmode_rest.get_snapmirror_policies: end')
+        return records
+
     def get_snapmirrors(self, source_vserver, source_volume,
                         destination_vserver, destination_volume,
                         desired_attributes=None):
@@ -2027,27 +2079,82 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         return snapmirrors
 
-    def create_ontap_consistency_group(self, source_vserver, source_volume,
-                                       source_cg):
-        """Creates a ontap consistency group"""
+    def create_ontap_consistency_group(self, source_vserver,
+                                       flexvol_names, source_cg):
+        """Creates an ONTAP consistency group
+
+        with multiple FlexVol volumes,
+        including provisioning options for each FlexVol.
+
+        :param source_vserver: Name of the source SVM.
+        :param flexvol_names: List of FlexVol volume
+            names to include in the CG.
+        :param source_cg: Name of the consistency group to create.
+        """
+        volumes = []
+        for vol in flexvol_names:
+            volumes.append(
+                {'name': vol, 'provisioning_options': {'action': 'add'}})
 
         body = {
             'svm': {
                 'name': source_vserver
             },
             'name': source_cg,
-            'volumes': [{
-                'name': source_volume,
-                "provisioning_options": {"action": "add"}
-            }]
+            'volumes': volumes
         }
 
         try:
-            self.send_request('/application/consistency-groups/', 'post',
-                              body=body)
+            self.send_request('/application/consistency-groups/',
+                              'post', body=body)
         except netapp_api.NaApiError as e:
             if e.code != netapp_api.REST_ERELATION_EXISTS:
                 raise e
+
+    def expand_ontap_consistency_group(self, source_vserver, cg_name,
+                                       new_flexvol_names):
+        """Expands an existing ONTAP consistency group by adding new FlexVols.
+
+        :param source_vserver: Name of the source SVM.
+        :param cg_name: Name of the consistency group to expand.
+        :param new_flexvol_names: List of FlexVol names to add to the CG.
+        :raises: exception.NotFound if the CG does not exist.
+        :raises: netapp_api.NaApiError if the update fails.
+        """
+        LOG.debug("Starting expand_ontap_consistency_group")
+
+        query = {
+            'svm.name': source_vserver,
+            'name': cg_name
+        }
+
+        # Retrieve the CG details
+        cg_response = self.send_request(
+            '/application/consistency-groups/',
+            'get',
+            query=query
+        )
+        cg_records = cg_response.get('records', [])
+        if not cg_records:
+            raise exception.NotFound(f"Consistency group {cg_name} not found.")
+        cg = cg_records[0]
+
+        # Get current FlexVols and add new ones if not present
+        body = {
+            'volumes': [
+                {'name': v,
+                 'provisioning_options': {'action': 'add'}}
+                for v in new_flexvol_names]}
+
+        # Update the CG with the new volume list
+        self.send_request(
+            f"/application/consistency-groups/{cg['uuid']}",
+            'patch',
+            body=body
+        )
+        LOG.info("Successfully expanded consistency group %s "
+                 "with FlexVols: %s.", cg_name, new_flexvol_names)
+        LOG.debug("Finished expand_ontap_consistency_group")
 
     def create_snapmirror(self, source_vserver, source_volume,
                           destination_vserver, destination_volume,
@@ -2064,6 +2171,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         relationship_type will be ignored because XDP is the only type
         supported through REST API.
         """
+
         if source_cg is not None:
             body = {
                 'source': {
@@ -2074,8 +2182,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
                     'path': destination_vserver + ':/cg/' + destination_cg,
                     'consistency_group_volumes':
                         [{'name': destination_volume}]
-                },
-                'state': 'in_sync'
+                }
             }
         else:
             body = {
@@ -2091,10 +2198,106 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
             body['policy'] = {'name': policy}
 
         try:
-            self.send_request('/snapmirror/relationships/', 'post', body=body)
+            self.send_request(
+                '/snapmirror/relationships/', 'post', body=body)
         except netapp_api.NaApiError as e:
             if e.code != netapp_api.REST_ERELATION_EXISTS:
                 raise e
+
+    def create_snapmirror_for_cg_with_flexvols(
+            self,
+            source_vserver,
+            source_cg_name,
+            destination_vserver,
+            destination_cg_name,
+            flexvols,
+            replication_policy=None):
+        """Creates a SnapMirror relationship for a consistency group (CG)."""
+
+        LOG.debug("Creating SnapMirror for CG using REST API")
+        LOG.debug("source_cg: %s", source_cg_name)
+        LOG.debug("destination_cg: %s", destination_cg_name)
+
+        # flexvols is expected to be a list of source FlexVol names
+        # Destination FlexVols are created with _dst suffix
+        source_vols = [{"name": src} for src in flexvols]
+        dest_vols = [{"name": f"{dst}_dst"} for dst in flexvols]
+
+        state = na_utils.get_desired_replication_state(replication_policy)
+
+        body = {
+            "source": {
+                "path": f"{source_vserver}:/cg/{source_cg_name}",
+                "consistency_group_volumes": source_vols
+            },
+            "destination": {
+                "path": f"{destination_vserver}:/cg/{destination_cg_name}",
+                "consistency_group_volumes": dest_vols
+            },
+            "create_destination": {
+                "enabled": True
+            },
+            "state": state
+        }
+
+        if replication_policy:
+            body["policy"] = replication_policy
+
+        try:
+            self.send_request(
+                '/snapmirror/relationships/', 'post', body=body)
+        except netapp_api.NaApiError as e:
+            if e.code != netapp_api.REST_ERELATION_EXISTS:
+                raise e
+
+    def failover_snapmirror_active_sync(
+            self,
+            source_vserver,
+            source_cg_name,
+            destination_vserver,
+            destination_cg_name):
+        """Creates a SnapMirror relationship for a consistency group (CG)."""
+
+        LOG.debug("client_cmode_rest: failover_snapmirror_active_sync started")
+        LOG.debug("source_cg: %s, destination_cg: %s, source_vserver: %s, "
+                  "destination_vserver: %s",
+                  source_cg_name,
+                  destination_cg_name,
+                  source_vserver,
+                  destination_vserver)
+
+        # Fetch snapmirror details
+        source_cg_path = na_utils.create_cg_path(source_cg_name)
+        destination_cg_path = na_utils.create_cg_path(destination_cg_name)
+        snapmirror_info = self.get_snapmirrors(source_vserver,
+                                               source_cg_path,
+                                               destination_vserver,
+                                               destination_cg_path)
+
+        if snapmirror_info is not None and len(snapmirror_info) > 0:
+            snapmirror_uuid = snapmirror_info[0]['uuid']
+        else:
+            raise na_utils.NetAppDriverException(
+                "SnapMirror relationship not found for "
+                "failover for source CG %s "
+                "and destination CG %s."
+                % (source_cg_name, destination_cg_name))
+
+        body = {
+            "source": {
+                "path": f"{destination_vserver}:/cg/{destination_cg_name}",
+            },
+            "destination": {
+                "path": f"{source_vserver}:/cg/{source_cg_name}",
+            },
+            "state": 'in_sync'
+        }
+
+        self.send_request(
+            '/snapmirror/relationships/' + snapmirror_uuid,
+            'patch', body=body)
+
+        LOG.debug("client_cmode_rest: failover_snapmirror_active_sync ended")
 
     def _set_snapmirror_state(self, state, source_vserver, source_volume,
                               destination_vserver, destination_volume,
@@ -2395,7 +2598,8 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         if vserver_name:
             query['svm.name'] = vserver_name
 
-        response = self.send_request('/svm/peers', 'get', query=query,
+        response = self.send_request('/svm/peers', 'get',
+                                     query=query,
                                      enable_tunneling=False)
         records = response.get('records', [])
 
@@ -2407,6 +2611,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
                 'peer-state': vserver_info['state'],
                 'peer-cluster': vserver_info['peer']['cluster']['name'],
                 'applications': vserver_info['applications'],
+                'uuid': vserver_info['uuid']
             }
             vserver_peers.append(vserver_peer)
 
@@ -2944,3 +3149,137 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
                     {'code': code, 'message': message}
                 )
                 raise
+
+    def get_flexvols_cg_info(self, flexvol_names):
+        """Gets consistency group info for one or more flexvols."""
+        query = {
+            'svm.name': self.vserver,
+            'name': ','.join(flexvol_names) if isinstance(flexvol_names, list)
+            else flexvol_names,
+            'fields': 'consistency_group'
+        }
+
+        try:
+            response = self.send_request('/storage/volumes',
+                                         'get', query=query)
+        except netapp_api.NaApiError:
+            LOG.exception('Failed to get cg information for flex volumes %s.',
+                          flexvol_names)
+            raise na_utils.NetAppDriverException(
+                _('Failed to get cg information '
+                  'for flex volumes %s.') % flexvol_names)
+
+        if response["num_records"] == 0:
+            LOG.exception('Could not find cg '
+                          'information for flex volumes %s.',
+                          flexvol_names)
+            raise na_utils.NetAppDriverException(
+                _('Could not find cg information for '
+                  'flex volumes %s.') % flexvol_names)
+
+        results = []
+        for record in response.get("records", []):
+            cg_name = record.get("consistency_group", {}).get("name") \
+                if record.get("consistency_group") else None
+            results.append({
+                "flexvol_name": record.get("name"),
+                "svm_name": record.get("svm", {}).get("name"),
+                "cg_name": cg_name
+            })
+
+        return results
+
+    def consistency_group_exists(self, svm_name, cg_name):
+        """Checks if a consistency group exists on the storage array."""
+        LOG.debug('Checking if consistency group %s exists', cg_name)
+
+        query = {
+            'svm.name': svm_name,
+            'name': cg_name,
+            'return_records': 'false'
+        }
+
+        response = self.send_request('/application/consistency-groups/',
+                                     'get', query=query)
+
+        return response['num_records'] > 0
+
+    def is_igroup_proximity_configured(self, igroup_uuid):
+        """Check if host proximity is configured on any initiator in igroup.
+
+        :param igroup_uuid: UUID of the igroup to check
+        :return: True if any initiator has proximity.local_svm set, else False
+        """
+        query = {
+            'fields': 'proximity'
+        }
+
+        response = self.send_request(
+            f'/protocols/san/igroups/{igroup_uuid}/initiators',
+            'get', query=query)
+
+        records = response.get('records', [])
+        for initiator in records:
+            proximity = initiator.get('proximity', {})
+            if proximity.get('local_svm') is not None:
+                LOG.debug('is_igroup_proximity_configured: igroup_uuid=%s, '
+                          'proximity configured=True', igroup_uuid)
+                return True
+
+        LOG.debug('is_igroup_proximity_configured: igroup_uuid=%s, '
+                  'proximity configured=False', igroup_uuid)
+        return False
+
+    def set_igroup_host_proximity(self, igroup_uuid, local_initiators,
+                                  peer_svm_name):
+        """Set host proximity settings on igroup initiators for active sync.
+
+        This configures which initiators are proximal to the local SVM
+        by setting local_svm=True for local initiators. This enables optimal
+        I/O path selection in active-active metro cluster configurations.
+
+        Per ONTAP API, proximity is set per initiator using:
+        PATCH /protocols/san/igroups/{igroup.uuid}/initiators/{name}
+        with body: {"proximity": {"local_svm": true/false, "peer_svms": [...]}}
+
+        :param igroup_uuid: UUID of the igroup
+        :param local_initiators: List of initiator IQNs/WWPNs proximal to
+                                 the current SVM
+        :param peer_svm_name: Name of the peer SVM for non-local initiators
+        """
+        LOG.debug('set_igroup_host_proximity: entered with igroup_uuid=%s, '
+                  'local_initiators=%s, peer_svm_name=%s',
+                  igroup_uuid, local_initiators, peer_svm_name)
+
+        if not local_initiators:
+            LOG.debug('set_igroup_host_proximity: no local_initiators '
+                      'provided, exiting (no-op)')
+            return
+
+        LOG.debug('set_igroup_host_proximity: processing %d initiators',
+                  len(local_initiators))
+
+        for idx, initiator in enumerate(local_initiators):
+            LOG.debug('set_igroup_host_proximity: processing initiator '
+                      '%d/%d: %s', idx + 1, len(local_initiators), initiator)
+
+            body = {
+                'proximity': {
+                    'local_svm': True
+                }
+            }
+            # Optionally add peer SVM if provided
+            if peer_svm_name:
+                body['proximity']['peer_svms'] = [{'name': peer_svm_name}]
+
+            api_path = (f'/protocols/san/igroups/{igroup_uuid}/initiators/'
+                        f'{initiator}')
+
+            self.send_request(api_path, 'patch', body=body)
+
+            LOG.debug('set_igroup_host_proximity: successfully set proximity '
+                      'for initiator %s (local_svm=True, peer_svms=[%s])',
+                      initiator, peer_svm_name)
+
+        LOG.debug('set_igroup_host_proximity: exiting - processed %d '
+                  'initiators successfully', len(local_initiators))

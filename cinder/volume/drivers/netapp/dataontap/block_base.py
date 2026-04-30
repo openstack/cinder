@@ -40,6 +40,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
+from cinder.volume.drivers.netapp.dataontap.utils import utils as cmode_utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import volume_utils
@@ -119,6 +120,8 @@ class NetAppBlockStorageLibrary(
         self.configuration.append_config_values(
             na_opts.netapp_provisioning_opts)
         self.configuration.append_config_values(na_opts.netapp_san_opts)
+        self.configuration.append_config_values(
+            na_opts.netapp_replication_opts)
         self.max_over_subscription_ratio = (
             volume_utils.get_max_over_subscription_ratio(
                 self.configuration.max_over_subscription_ratio,
@@ -455,8 +458,10 @@ class NetAppBlockStorageLibrary(
         """Maps LUN to the initiator(s) and returns LUN ID assigned."""
         metadata = self._get_lun_attr(name, 'metadata')
         path = metadata['Path']
+
         igroup_name, ig_host_os, ig_type = self._get_or_create_igroup(
             initiator_list, initiator_type, self.host_type)
+
         if ig_host_os != self.host_type:
             LOG.warning("LUN misalignment may occur for current"
                         " initiator group %(ig_nm)s) with host OS type"
@@ -467,7 +472,19 @@ class NetAppBlockStorageLibrary(
         try:
             result = self.zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
             if self._is_active_sync_configured(self.configuration):
-                self.dest_zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
+                dest_path = path
+                if self._is_consistent_replication_enabled(
+                        self.configuration):
+                    # Destination FlexVols have a _dst suffix when
+                    # consistent replication is enabled, so transform
+                    # the LUN path from /vol/<flexvol>/<lun> to
+                    # /vol/<flexvol>_dst/<lun> for the destination.
+                    path_parts = path.split('/')
+                    # path format: /vol/<flexvol_name>/<lun_name>
+                    path_parts[2] = path_parts[2] + '_dst'
+                    dest_path = '/'.join(path_parts)
+                self.dest_zapi_client.map_lun(
+                    dest_path, igroup_name, lun_id=lun_id)
             return result
         except netapp_api.NaApiError as e:
             (_igroup, lun_id) = self._find_mapped_lun_igroup(path,
@@ -499,7 +516,15 @@ class NetAppBlockStorageLibrary(
         for _path, _igroup_name in lun_unmap_list:
             self.zapi_client.unmap_lun(_path, _igroup_name)
             if self._is_active_sync_configured(self.configuration):
-                self.dest_zapi_client.unmap_lun(_path, _igroup_name)
+                _dest_path = _path
+                if self._is_consistent_replication_enabled(
+                        self.configuration):
+                    # Transform path for destination: /vol/<flexvol>/<lun>
+                    # becomes /vol/<flexvol>_dst/<lun>
+                    _path_parts = _path.split('/')
+                    _path_parts[2] = _path_parts[2] + '_dst'
+                    _dest_path = '/'.join(_path_parts)
+                self.dest_zapi_client.unmap_lun(_dest_path, _igroup_name)
 
     def _find_mapped_lun_igroup(self, path, initiator_list):
         """Find an igroup for a LUN mapped to the given initiator(s)."""
@@ -518,9 +543,15 @@ class NetAppBlockStorageLibrary(
                 return False
             return version.parse(ver) >= version.parse(threshold)
         ontap_version = self.zapi_client.get_ontap_version(cached=True)
-        if (not ontap_version or
+
+        if ontap_version is None:
+            return False
+
+        ontap_version_str = "".join(map(str, ontap_version))
+
+        if (not ontap_version_str or
                 not is_smas_version_supported(
-                    ontap_version, self.MINIMUM_SMAS_VERSION_SUPPORTED)):
+                    ontap_version_str, self.MINIMUM_SMAS_VERSION_SUPPORTED)):
             return False
 
         backend_names = []
@@ -533,9 +564,13 @@ class NetAppBlockStorageLibrary(
 
         replication_enabled = True if backend_names else False
         if replication_enabled:
-            return config.safe_get('netapp_replication_policy') == \
-                "AutomatedFailOver"
+            replication_policy = config.safe_get('netapp_replication_policy')
+            return replication_policy in (
+                "AutomatedFailOver", "AutomatedFailOverDuplex")
         return False
+
+    def _is_consistent_replication_enabled(self, config):
+        return config.safe_get('netapp_consistent_replication')
 
     def _get_or_create_igroup(self, initiator_list, initiator_group_type,
                               host_os_type):
@@ -557,6 +592,12 @@ class NetAppBlockStorageLibrary(
         else:
             igroup_name = self._create_igroup_add_initiators(
                 initiator_group_type, host_os_type, initiator_list)
+
+        # For active sync, ensure igroup exists on destination SVM as well.
+        # Manually create igroup on destination if not already present.
+        # The destination igroup must have the same name as the source
+        # igroup so that _map_lun can map the LUN using the same name
+        # on both SVMs.
         if self._is_active_sync_configured(self.configuration):
             igroups_dest = self.dest_zapi_client.get_igroup_by_initiators(
                 initiator_list)
@@ -567,26 +608,44 @@ class NetAppBlockStorageLibrary(
                     initiator_group_type = igroup['initiator-group-type']
                     break
             else:
-                self._create_igroup_add_initiators(
-                    initiator_group_type, host_os_type, initiator_list)
+                self._create_igroup_add_initiators_on_dest(
+                    igroup_name, initiator_group_type,
+                    host_os_type, initiator_list)
+
+            # Configure host proximity for AFD policy
+            self._ensure_igroup_host_proximity(
+                igroup_name, self.dest_zapi_client.vserver)
 
         return igroup_name, host_os_type, initiator_group_type
 
     def _create_igroup_add_initiators(self, initiator_group_type,
                                       host_os_type, initiator_list):
-        """Creates igroup and adds initiators."""
+        """Creates igroup and adds initiators on the source SVM."""
+
         igroup_name = na_utils.OPENSTACK_PREFIX + str(uuid.uuid4())
         self.zapi_client.create_igroup(igroup_name, initiator_group_type,
                                        host_os_type)
-        if self._is_active_sync_configured(self.configuration):
-            self.dest_zapi_client.create_igroup(igroup_name,
-                                                initiator_group_type,
-                                                host_os_type)
         for initiator in initiator_list:
             self.zapi_client.add_igroup_initiator(igroup_name, initiator)
-            if self._is_active_sync_configured(self.configuration):
-                self.dest_zapi_client.add_igroup_initiator(igroup_name,
-                                                           initiator)
+        return igroup_name
+
+    def _create_igroup_add_initiators_on_dest(self, igroup_name,
+                                              initiator_group_type,
+                                              host_os_type, initiator_list):
+        """Creates igroup and adds initiators on the destination SVM.
+
+        This is used for active sync configurations to manually create
+        igroups on the destination SVM. The igroup is created with the
+        same name as the source igroup to ensure consistent LUN mapping.
+        """
+
+        LOG.debug("Creating igroup %s on destination SVM.", igroup_name)
+        self.dest_zapi_client.create_igroup(
+            igroup_name, initiator_group_type, host_os_type)
+        for initiator in initiator_list:
+            LOG.debug("Adding initiator %s to igroup %s on destination SVM.",
+                      initiator, igroup_name)
+            self.dest_zapi_client.add_igroup_initiator(igroup_name, initiator)
         return igroup_name
 
     def _delete_lun_from_table(self, name):
@@ -1225,3 +1284,231 @@ class NetAppBlockStorageLibrary(
     def _get_backing_flexvol_names(self):
         """Returns a list of backing flexvol names."""
         raise NotImplementedError()
+
+    def _is_automated_failover_duplex_policy(self, config):
+        """Check if AutomatedFailOverDuplex replication policy is configured.
+
+        This policy enables bidirectional synchronous replication with
+        automatic failover for active-active metro cluster configurations.
+        """
+        replication_policy = config.safe_get('netapp_replication_policy')
+        return replication_policy == 'AutomatedFailOverDuplex'
+
+    def _ensure_igroup_host_proximity(self, igroup_name, destination_svm):
+        """Ensure host proximity is configured on igroup for AFD policy.
+
+        For AutomatedFailOverDuplex policy, check if host proximity is
+        configured on the igroup. If not, configure it.
+
+        :param igroup_name: Name of the igroup
+        :param destination_svm: Name of the destination SVM
+        """
+        if not self._is_automated_failover_duplex_policy(self.configuration):
+            LOG.debug("_ensure_igroup_host_proximity: not AFD policy, "
+                      "skipping proximity check for igroup %s", igroup_name)
+            return
+
+        igroup_info = self.zapi_client.get_igroup_by_name(igroup_name)
+        if not igroup_info:
+            LOG.warning("_ensure_igroup_host_proximity: igroup %s not found, "
+                        "skipping", igroup_name)
+            return
+
+        igroup_uuid = igroup_info['initiator-group-uuid']
+
+        is_proximity_configured = \
+            self.zapi_client.is_igroup_proximity_configured(igroup_uuid)
+
+        if not is_proximity_configured:
+            LOG.info("_ensure_igroup_host_proximity: proximity not "
+                     "configured on igroup %s, configuring now", igroup_name)
+            self._configure_igroup_host_proximity(
+                igroup_name, igroup_uuid, destination_svm)
+        else:
+            LOG.debug("_ensure_igroup_host_proximity: proximity already "
+                      "configured on igroup %s", igroup_name)
+
+    def _configure_igroup_host_proximity(self, igroup_name, igroup_uuid,
+                                         destination_svm):
+        """Configure host proximity settings on igroup for AFD policy.
+
+        For AutomatedFailOverDuplex (active sync with bidirectional
+        replication), host proximity settings help ONTAP determine optimal
+        I/O paths. Each initiator is configured with local_svm=True on the
+        SVM it is proximal to.
+
+        An initiator that appears in both source and destination
+        netapp_proximal_nodes (i.e. the host is physically connected to
+        both sites) must additionally have peer_svms set so that ONTAP
+        treats it as proximal to both SVMs. Initiators that appear in only
+        one stanza must NOT have peer_svms set, otherwise ONTAP will
+        incorrectly treat them as proximal to both SVMs.
+
+        The proximity settings are configured on both source and destination
+        igroups with appropriate local/peer mappings.
+
+        :param igroup_name: Name of the igroup
+        :param igroup_uuid: UUID of the source igroup
+        :param destination_svm: Name of the destination SVM
+        """
+        LOG.debug("_configure_igroup_host_proximity: entered with "
+                  "igroup_name=%s, igroup_uuid=%s, destination_svm=%s",
+                  igroup_name, igroup_uuid, destination_svm)
+
+        # Get source SVM name
+        source_svm = self.configuration.safe_get('netapp_vserver')
+        LOG.debug("_configure_igroup_host_proximity: source_svm=%s",
+                  source_svm)
+
+        # Get local initiators from source backend configuration
+        # These are initiators proximal to the source SVM
+        local_initiators = self.configuration.safe_get(
+            'netapp_proximal_nodes') or []
+        LOG.debug("_configure_igroup_host_proximity: local_initiators "
+                  "from config (netapp_proximal_nodes)=%s", local_initiators)
+
+        # Get peer initiators from destination backend configuration
+        # These are initiators proximal to the destination SVM
+        peer_initiators = []
+        backend_names = []
+        replication_devices = self.configuration.safe_get('replication_device')
+        LOG.debug("_configure_igroup_host_proximity: replication_devices=%s",
+                  replication_devices)
+        if replication_devices:
+            for replication_device in replication_devices:
+                backend_id = replication_device.get('backend_id')
+                if backend_id:
+                    backend_names.append(backend_id)
+        LOG.debug("_configure_igroup_host_proximity: backend_names=%s",
+                  backend_names)
+
+        # Find the destination backend config to get peer initiators
+        for backend_name in backend_names:
+            LOG.debug("_configure_igroup_host_proximity: checking backend %s",
+                      backend_name)
+            try:
+                dest_config = cmode_utils.get_backend_configuration(
+                    backend_name)
+                LOG.debug("_configure_igroup_host_proximity: dest_config "
+                          "vserver=%s", dest_config.netapp_vserver)
+                if dest_config.netapp_vserver == destination_svm:
+                    peer_initiators = dest_config.safe_get(
+                        'netapp_proximal_nodes') or []
+                    LOG.debug("_configure_igroup_host_proximity: found "
+                              "matching backend, peer_initiators=%s",
+                              peer_initiators)
+                    break
+            except Exception as e:
+                LOG.warning("Could not get configuration for backend %s: %s",
+                            backend_name, e)
+
+        LOG.debug("_configure_igroup_host_proximity: final values - "
+                  "local_initiators=%s, peer_initiators=%s",
+                  local_initiators, peer_initiators)
+
+        if not local_initiators and not peer_initiators:
+            LOG.debug("_configure_igroup_host_proximity: no initiators "
+                      "configured, skipping proximity for igroup %s",
+                      igroup_name)
+            LOG.debug("_configure_igroup_host_proximity: exiting (no-op)")
+            return
+
+        # Determine which initiators appear in both source and destination
+        # configs (shared initiators). These hosts are connected to both
+        # sites and need peer_svms set. Initiators in only one config
+        # must NOT have peer_svms set.
+        local_set = set(local_initiators)
+        peer_set = set(peer_initiators)
+        shared_initiators = local_set & peer_set
+
+        LOG.debug("_configure_igroup_host_proximity: shared_initiators=%s",
+                  shared_initiators)
+
+        # Split source local_initiators into those that need peer_svms
+        # and those that don't
+        src_local_only = [i for i in local_initiators
+                          if i not in shared_initiators]
+        src_shared = [i for i in local_initiators
+                      if i in shared_initiators]
+
+        # Set proximity on source igroup for local-only initiators
+        # (no peer_svms - these hosts are only proximal to source SVM)
+        if src_local_only:
+            LOG.info("_configure_igroup_host_proximity: setting proximity on "
+                     "SOURCE igroup %s (uuid=%s): local_only_initiators=%s "
+                     "(no peer_svms)", igroup_name, igroup_uuid,
+                     src_local_only)
+            self.zapi_client.set_igroup_host_proximity(
+                igroup_uuid, src_local_only, None)
+
+        # Set proximity on source igroup for shared initiators
+        # (with peer_svms - these hosts are proximal to both SVMs)
+        if src_shared:
+            LOG.info("_configure_igroup_host_proximity: setting proximity on "
+                     "SOURCE igroup %s (uuid=%s): shared_initiators=%s, "
+                     "peer_svm=%s", igroup_name, igroup_uuid,
+                     src_shared, destination_svm)
+            self.zapi_client.set_igroup_host_proximity(
+                igroup_uuid, src_shared, destination_svm)
+
+        if not local_initiators:
+            LOG.debug("_configure_igroup_host_proximity: no local_initiators, "
+                      "skipping source igroup proximity")
+
+        LOG.debug("_configure_igroup_host_proximity:"
+                  "proximity set successfully for igroup %s", igroup_name)
+
+        # Get destination igroup UUID and set proximity with swapped values
+        # (what is local to source is peer to destination and vice versa)
+        LOG.debug("_configure_igroup_host_proximity: fetching destination "
+                  "igroup %s from dest_zapi_client", igroup_name)
+        dest_igroup_info = self.dest_zapi_client.get_igroup_by_name(
+            igroup_name)
+        LOG.debug("_configure_igroup_host_proximity: dest_igroup_info=%s",
+                  dest_igroup_info)
+
+        if dest_igroup_info:
+            dest_igroup_uuid = dest_igroup_info['initiator-group-uuid']
+            LOG.debug("_configure_igroup_host_proximity: dest_igroup_uuid=%s",
+                      dest_igroup_uuid)
+
+            # Split destination peer_initiators into local-only and shared
+            dest_local_only = [i for i in peer_initiators
+                               if i not in shared_initiators]
+            dest_shared = [i for i in peer_initiators
+                           if i in shared_initiators]
+
+            # Set proximity on destination igroup for local-only initiators
+            # (no peer_svms - these hosts are only proximal to dest SVM)
+            if dest_local_only:
+                LOG.info("_configure_igroup_host_proximity: setting "
+                         "proximity on DESTINATION igroup %s (uuid=%s): "
+                         "local_only_initiators=%s (no peer_svms)",
+                         igroup_name, dest_igroup_uuid, dest_local_only)
+                self.dest_zapi_client.set_igroup_host_proximity(
+                    dest_igroup_uuid, dest_local_only, None)
+
+            # Set proximity on destination igroup for shared initiators
+            # (with peer_svms - these hosts are proximal to both SVMs)
+            if dest_shared:
+                LOG.info("_configure_igroup_host_proximity: setting "
+                         "proximity on DESTINATION igroup %s (uuid=%s): "
+                         "shared_initiators=%s, peer_svm=%s",
+                         igroup_name, dest_igroup_uuid,
+                         dest_shared, source_svm)
+                self.dest_zapi_client.set_igroup_host_proximity(
+                    dest_igroup_uuid, dest_shared, source_svm)
+
+            if not peer_initiators:
+                LOG.debug("_configure_igroup_host_proximity: no "
+                          "peer_initiators, skipping destination igroup "
+                          "proximity")
+            else:
+                LOG.debug("_configure_igroup_host_proximity: destination "
+                          "igroup proximity set successfully")
+        else:
+            LOG.warning("_configure_igroup_host_proximity: could not find "
+                        "igroup %s on destination SVM %s",
+                        igroup_name, destination_svm)
+
+        LOG.debug("_configure_igroup_host_proximity: exiting")

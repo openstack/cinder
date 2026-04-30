@@ -145,19 +145,29 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                                 'lag-time'])
         self.assertEqual(1, self.mock_dest_client.get_snapmirrors.call_count)
 
-    @ddt.data([], ['backend1'], ['backend1', 'backend2'])
-    def test_get_replication_backend_stats(self, replication_backend_names):
+    @ddt.data(
+        {'backend_names': [], 'active_sync': False},
+        {'backend_names': ['backend1'], 'active_sync': False},
+        {'backend_names': ['backend1', 'backend2'], 'active_sync': False},
+        {'backend_names': ['backend1'], 'active_sync': True},
+        {'backend_names': ['backend1', 'backend2'], 'active_sync': True},
+    )
+    @ddt.unpack
+    def test_get_replication_backend_stats(self, backend_names, active_sync):
         self.mock_object(self.dm_mixin, 'get_replication_backend_names',
-                         return_value=replication_backend_names)
+                         return_value=backend_names)
+        self.mock_object(self.dm_mixin, 'is_active_sync_configured',
+                         return_value=active_sync)
+        expected_replication_type = 'sync' if active_sync else 'async'
         enabled_stats = {
-            'replication_count': len(replication_backend_names),
-            'replication_targets': replication_backend_names,
-            'replication_type': 'async',
+            'replication_count': len(backend_names),
+            'replication_targets': backend_names,
+            'replication_type': expected_replication_type,
         }
         expected_stats = {
-            'replication_enabled': len(replication_backend_names) > 0,
+            'replication_enabled': len(backend_names) > 0,
         }
-        if len(replication_backend_names) > 0:
+        if len(backend_names) > 0:
             expected_stats.update(enabled_stats)
 
         actual_stats = self.dm_mixin.get_replication_backend_stats(self.config)
@@ -1804,22 +1814,23 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                        'create_snapmirror_for_cg')
     @mock.patch.object(
         data_motion.DataMotionMixin,
-        '_consistent_replication_precheck_for_automated_failover_policy')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_policy')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_backend_names')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_client_for_backend')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_backend_configuration')
-    def test_ensure_consistent_replication_snapmirrors_automated_failover_single_cg_used(  # noqa: E501
-            self, mock_get_backend_configuration,
-            mock_get_client_for_backend,
-            mock_get_replication_backend_names,
-            mock_get_replication_policy,
-            mock_precheck_automated_failover,
-            mock_create_snapmirror_for_cg):
+        '_consistent_replication_precheck_for_af_policy')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_policy')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_backend_names')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_client_for_backend')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_backend_configuration')
+    def test_ensure_consistent_replication_snapmirrors_af_single_cg_used(
+            self, mock_get_backend_configuration, mock_get_client_for_backend,
+            mock_get_replication_backend_names, mock_get_replication_policy,
+            mock_precheck_automated_failover, mock_create_snapmirror_for_cg):
 
         src_backend = 'src_backend'
         dst_backend = 'dst_backend'
@@ -1877,19 +1888,24 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             storage_object_type, storage_object_names, policy
         )
 
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'create_snapmirror_for_cg')
     @mock.patch.object(
         data_motion.DataMotionMixin,
-        '_consistent_replication_precheck_for_automated_failover_policy')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_policy')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_backend_names')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_client_for_backend')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_backend_configuration')
+        'create_snapmirror_for_cg')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        '_consistent_replication_precheck_for_af_policy')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_policy')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_backend_names')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_client_for_backend')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_backend_configuration')
     def test_ensure_consistent_replication_snapmirrors_af_new_cg_create(
             self, mock_get_backend_configuration, mock_get_client_for_backend,
             mock_get_replication_backend_names, mock_get_replication_policy,
@@ -1917,11 +1933,11 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         config = mock.Mock()
 
-        with (mock.patch.object(data_motion.timeutils, 'utcnow')
-              as mock_utcnow):
+        with (mock.patch.object(data_motion, 'timeutils')
+              as mock_timeutils):
             mock_now = mock.Mock()
             mock_now.timestamp.return_value = 1234567890
-            mock_utcnow.return_value = mock_now
+            mock_timeutils.utcnow.return_value = mock_now
 
             self.dm_mixin.ensure_consistent_replication_snapmirrors(
                 config=config,
@@ -1947,17 +1963,22 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             storage_object_type, storage_object_names, policy
         )
 
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'create_snapmirror_for_cg')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_policy')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_backend_names')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_client_for_backend')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_backend_configuration')
-    def test_ensure_consistent_replication_async_single_cg_multiple_destination(  # noqa: E501
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'create_snapmirror_for_cg')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_policy')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_backend_names')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_client_for_backend')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_backend_configuration')
+    def test_ensure_consistent_replication_async_single_cg_multiple_dest(
             self, mock_get_backend_configuration, mock_get_client_for_backend,
             mock_get_replication_backend_names, mock_get_replication_policy,
             mock_create_snapmirror_for_cg):
@@ -2005,16 +2026,21 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         ])
         self.assertEqual(2, mock_create_snapmirror_for_cg.call_count)
 
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'create_snapmirror_for_cg')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_policy')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_backend_names')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_client_for_backend')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_backend_configuration')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'create_snapmirror_for_cg')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_policy')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_backend_names')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_client_for_backend')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_backend_configuration')
     def test_ensure_consistent_replication_async_create_cg_with_mult_dest(
             self, mock_get_backend_configuration, mock_get_client_for_backend,
             mock_get_replication_backend_names, mock_get_replication_policy,
@@ -2044,11 +2070,11 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         config = mock.Mock()
 
-        with (mock.patch.object(data_motion.timeutils, 'utcnow')
-              as mock_utcnow):
+        with (mock.patch.object(data_motion, 'timeutils')
+              as mock_timeutils):
             mock_now = mock.Mock()
-            mock_now.timestamp.return_value = 42
-            mock_utcnow.return_value = mock_now
+            mock_now.timestamp.return_value = 1234567890
+            mock_timeutils.utcnow.return_value = mock_now
 
             self.dm_mixin.ensure_consistent_replication_snapmirrors(
                 config=config,
@@ -2057,7 +2083,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                 storage_object_names=storage_object_names,
             )
 
-        expected_cg = 'cg_cinder_pool_42'
+        expected_cg = 'cg_cinder_pool_1234567890'
 
         src_client.create_ontap_consistency_group.assert_called_once_with(
             src_vserver, storage_object_names, expected_cg
@@ -2075,24 +2101,29 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
     @mock.patch.object(
         data_motion.DataMotionMixin,
-        '_consistent_replication_precheck_for_automated_failover_policy'
+        '_consistent_replication_precheck_for_af_policy'
     )
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_policy')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_backend_names')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_client_for_backend')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_backend_configuration')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'create_snapmirror_for_cg')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_policy')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_backend_names')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_client_for_backend')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_backend_configuration')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'create_snapmirror_for_cg')
     def test_ensure_consistent_replication_snapmirrors_af_precheck_error(
             self, mock_create_snapmirror_for_cg,
             mock_get_backend_configuration,
-            mock_get_client_for_backend,
-            mock_get_replication_backend_names,
-            mock_get_replication_policy, mock_precheck):
+            mock_get_client_for_backend, mock_get_replication_backend_names,
+            mock_get_replication_policy, mock_precheck
+    ):
         src_backend = 'src_backend'
         dst_backend = 'dst_backend'
         src_vserver = 'source_vserver'
@@ -2130,17 +2161,22 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         )
         mock_create_snapmirror_for_cg.assert_not_called()
 
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_policy')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'get_replication_backend_names')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_client_for_backend')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_backend_configuration')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'create_snapmirror_for_cg')
-    def test_ensure_consistent_replication_snapmirrors_async_multiple_cgs_error(  # noqa: E501
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_policy')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'get_replication_backend_names')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_client_for_backend')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_backend_configuration')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'create_snapmirror_for_cg')
+    def test_ensure_consistent_replication_sm_async_multiple_cgs_error(
             self, mock_create_snapmirror_for_cg,
             mock_get_backend_configuration,
             mock_get_client_for_backend, mock_get_replication_backend_names,
@@ -2172,21 +2208,26 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.assertRaises(
             na_utils.NetAppDriverException,
             self.dm_mixin.ensure_consistent_replication_snapmirrors,
-            mock.Mock(), src_backend, storage_object_type, storage_object_names
+            mock.Mock(), src_backend,
+            storage_object_type, storage_object_names
         )
 
         src_client.create_ontap_consistency_group.assert_not_called()
         src_client.expand_ontap_consistency_group.assert_not_called()
         mock_create_snapmirror_for_cg.assert_not_called()
 
-    @mock.patch.object(data_motion.config_utils,
-                       'get_backend_configuration')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_client_for_backend')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'ssc_library', create=True)
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'configuration', create=True)
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_backend_configuration')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_client_for_backend')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'ssc_library', create=True)
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'configuration', create=True)
     def test_complete_failover_active_sync_planned_success(
             self,
             mock_configuration,
@@ -2273,17 +2314,66 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         )
 
         mock_ssc_library.get_ssc_flexvol_names.assert_called_once()
-        dst_client.get_flexvols_cg_info.assert_called_once_with('flexB')
+        # Flexvol name 'flexB' does not have '_dst' suffix, so the code
+        # appends it before querying the destination backend.
+        dst_client.get_flexvols_cg_info.assert_called_once_with('flexB_dst')
         dst_client.failover_snapmirror_active_sync.assert_not_called()
         mock_get_backend_configuration.assert_not_called()
 
-    @mock.patch.object(data_motion.LOG, 'error', create=True)
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
     @mock.patch.object(data_motion.config_utils,
                        'get_client_for_backend')
     @mock.patch.object(data_motion.DataMotionMixin,
                        'ssc_library', create=True)
     @mock.patch.object(data_motion.DataMotionMixin,
                        'configuration', create=True)
+    def test_complete_failover_active_sync_unplanned_dst_suffix_present(
+            self,
+            mock_configuration,
+            mock_ssc_library,
+            mock_get_client_for_backend,
+            mock_get_backend_configuration,
+    ):
+        """Flexvol already has '_dst' suffix — must not be double-suffixed."""
+        dm = data_motion.DataMotionMixin()
+
+        mock_configuration.netapp_disaggregated_platform = False
+        mock_ssc_library.get_ssc_flexvol_names.return_value = ['flexC_dst']
+
+        dst_client = mock.Mock()
+        dst_client.get_flexvols_cg_info.return_value = [{'cg_name': 'cgC'}]
+        mock_get_client_for_backend.side_effect = [Exception('src down'),
+                                                   dst_client]
+
+        volumes = [{'id': 'v1'}]
+        active, updates = dm._complete_failover_active_sync(
+            'src_backend',
+            'dst_backend', volumes)
+
+        self.assertEqual('dst_backend', active)
+        self.assertEqual(1, len(updates))
+        self.assertEqual(
+            fields.ReplicationStatus.FAILED_OVER,
+            updates[0]['updates']['replication_status']
+        )
+
+        mock_ssc_library.get_ssc_flexvol_names.assert_called_once()
+        # Flexvol name already has '_dst' suffix — must be used as-is.
+        dst_client.get_flexvols_cg_info.assert_called_once_with('flexC_dst')
+        dst_client.failover_snapmirror_active_sync.assert_not_called()
+        mock_get_backend_configuration.assert_not_called()
+
+    @mock.patch.object(data_motion.LOG, 'error', create=True)
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_client_for_backend')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'ssc_library', create=True)
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'configuration', create=True)
     def test_complete_failover_active_sync_no_destination_backend(
             self,
             mock_configuration,
@@ -2305,12 +2395,15 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         mock_log_error.assert_called_once()
 
     @mock.patch.object(data_motion.LOG, 'error', create=True)
-    @mock.patch.object(data_motion.config_utils,
-                       'get_client_for_backend')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'ssc_library', create=True)
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'configuration', create=True)
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_client_for_backend')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'ssc_library', create=True)
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'configuration', create=True)
     def test_complete_failover_active_sync_destination_client_connect_failure(
             self,
             mock_configuration,
@@ -2323,14 +2416,13 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         mock_configuration.netapp_disaggregated_platform = False
 
         src_client = mock.Mock()
-        mock_get_client_for_backend.side_effect = [
-            src_client, Exception('dst')
-        ]
+        mock_get_client_for_backend.side_effect = \
+            [src_client, Exception('dst')]
 
         with self.assertRaisesRegex(
                 na_utils.NetAppDriverException,
-                'Failed to connect to destination backend client '
-                'for failover.'
+                'Failed to connect to destination '
+                'backend client for failover.'
         ):
             dm._complete_failover_active_sync(
                 'src_backend',
@@ -2339,12 +2431,15 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         mock_log_error.assert_called()
         mock_ssc_library.get_ssc_flexvol_names.assert_not_called()
 
-    @mock.patch.object(data_motion.config_utils,
-                       'get_backend_configuration')
-    @mock.patch.object(data_motion.config_utils,
-                       'get_client_for_backend')
-    @mock.patch.object(data_motion.DataMotionMixin,
-                       'ssc_library', create=True)
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_backend_configuration')
+    @mock.patch.object(
+        data_motion.config_utils,
+        'get_client_for_backend')
+    @mock.patch.object(
+        data_motion.DataMotionMixin,
+        'ssc_library', create=True)
     @mock.patch.object(data_motion.DataMotionMixin,
                        'configuration', create=True)
     def test_complete_failover_active_sync_asar2_not_supported(
@@ -2379,10 +2474,10 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                        'get_backend_configuration')
     @mock.patch.object(data_motion.config_utils,
                        'get_client_for_backend')
-    @mock.patch.object(data_motion.DataMotionMixin, 'ssc_library',
-                       create=True)
-    @mock.patch.object(data_motion.DataMotionMixin, 'configuration',
-                       create=True)
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'ssc_library', create=True)
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'configuration', create=True)
     def test_complete_failback_active_sync_success(
             self,
             mock_configuration,
@@ -2392,6 +2487,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
     ):
         dm = data_motion.DataMotionMixin()
         dm.backend_name = 'active_backend'
+        dm.failed_over_backend_name = 'secondary_backend'
 
         # Platform supported
         mock_configuration.netapp_disaggregated_platform = False
@@ -2419,8 +2515,8 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         active_backend, volume_updates, extra = (
             dm._complete_failback_active_sync(
-                primary_backend_name=None,
-                secondary_backend_name=None,
+                primary_backend_name='active_backend',
+                secondary_backend_name='secondary_backend',
                 volumes=volumes,
             )
         )
@@ -2451,29 +2547,11 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             self, mock_configuration
     ):
         dm = data_motion.DataMotionMixin()
-        # Trigger the early validation error by passing a non-empty primary
         with self.assertRaisesRegex(
                 na_utils.NetAppDriverException,
-                'Primary backend to which the replication will be '
-                'failed back to is required.'
-        ):
-            dm._complete_failback_active_sync(
-                primary_backend_name='primaryA',
-                secondary_backend_name=None,
-                volumes=[],
-            )
-
-    @mock.patch.object(data_motion.DataMotionMixin, 'configuration',
-                       create=True)
-    def test_complete_failback_active_sync_secondary_missing_required_raises(
-            self, mock_configuration
-    ):
-        dm = data_motion.DataMotionMixin()
-        # Trigger the early validation error by passing a non-empty secondary
-        with self.assertRaisesRegex(
-                na_utils.NetAppDriverException,
-                'Secondary backend to which the replication is failed over is '
-                'required.'
+                'Primary backend to which the replication '
+                'will be failed back to '
+                'is required.'
         ):
             dm._complete_failback_active_sync(
                 primary_backend_name=None,
@@ -2481,11 +2559,28 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                 volumes=[],
             )
 
-    @mock.patch.object(data_motion.DataMotionMixin, 'configuration',
-                       create=True)
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'configuration', create=True)
+    def test_complete_failback_active_sync_secondary_missing_required_raises(
+            self, mock_configuration
+    ):
+        dm = data_motion.DataMotionMixin()
+        with self.assertRaisesRegex(
+                na_utils.NetAppDriverException,
+                'Secondary backend to which the replication is failed over is '
+                'required.'
+        ):
+            dm._complete_failback_active_sync(
+                primary_backend_name='primaryA',
+                secondary_backend_name=None,
+                volumes=[],
+            )
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       'configuration', create=True)
     @mock.patch.object(data_motion.config_utils,
                        'get_client_for_backend')
-    def test_complete_failback_active_sync_asar2_not_supported_raises(
+    def test_complete_failback_active_sync_asar2_not_supported_exception(
             self, mock_get_client_for_backend, mock_configuration
     ):
         dm = data_motion.DataMotionMixin()
@@ -2500,32 +2595,36 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                 'ASAr2 platform is not supported for replication'
         ):
             dm._complete_failback_active_sync(
-                primary_backend_name=None,
-                secondary_backend_name=None,
+                primary_backend_name='primary_backend',
+                secondary_backend_name='secondary_backend',
                 volumes=[],
             )
 
-    @mock.patch.object(data_motion.config_utils, 'get_backend_configuration')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
     def test_negative_nfs_backend(self, m_get_backend_cfg):
         cfg = mock.Mock()
         cfg.safe_get.return_value = 'nfs'
         m_get_backend_cfg.return_value = cfg
         self.assertRaises(
             na_utils.NetAppDriverException,
-            self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy,  # noqa: E501
+            self.dm_mixin.
+            _consistent_replication_precheck_for_af_policy,
             self.src_backend,
             ['dest1'],
             na_utils.StorageObjectType.VOLUME,
             ['vol1'])
 
-    @mock.patch.object(data_motion.config_utils, 'get_backend_configuration')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
     def test_negative_multiple_destinations(self, m_get_backend_cfg):
         cfg = mock.Mock()
         cfg.safe_get.return_value = 'iscsi'
         m_get_backend_cfg.return_value = cfg
         self.assertRaises(
             na_utils.NetAppDriverException,
-            self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy,  # noqa: E501
+            self.dm_mixin.
+            _consistent_replication_precheck_for_af_policy,
             self.src_backend,
             ['dest1', 'dest2'],
             na_utils.StorageObjectType.VOLUME,
@@ -2535,11 +2634,13 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                        '_check_cg_name_conflicts')
     @mock.patch.object(data_motion.DataMotionMixin,
                        '_check_flexvol_name_conflicts')
-    @mock.patch.object(data_motion.config_utils, 'get_client_for_backend')
-    @mock.patch.object(data_motion.config_utils, 'get_backend_configuration')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
     def test_positive_no_existing_mirrors_triggers_name_conflicts_checks(
-            self, m_get_backend_cfg, m_get_client, m_check_flex_conflicts,
-            m_check_cg_conflicts
+            self, m_get_backend_cfg,
+            m_get_client, m_check_flex_conflicts, m_check_cg_conflicts
     ):
         # Source backend config
         src_cfg = mock.Mock()
@@ -2562,9 +2663,10 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         dest_client.get_snapmirrors.return_value = []
         m_get_client.side_effect = [src_client, dest_client]
 
-        self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy(  # noqa: E501
-            self.src_backend, [self.dest_backend],
-            na_utils.StorageObjectType.VOLUME, ['vol1'])
+        (self.dm_mixin.
+            _consistent_replication_precheck_for_af_policy(
+                self.src_backend, [self.dest_backend],
+                na_utils.StorageObjectType.VOLUME, ['vol1']))
 
         # Conflict checks invoked with cg and volumes
         m_check_flex_conflicts.assert_called_once_with(
@@ -2575,18 +2677,19 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         # Snapmirrors checked with cg path
         dest_client.get_snapmirrors.assert_called_once()
         args, kwargs = dest_client.get_snapmirrors.call_args
-        self.assertEqual(
-            ('svm-src', '/cg/cgX', 'svm-dest', '/cg/cgX'), args)
+        self.assertEqual(('svm-src', '/cg/cgX', 'svm-dest', '/cg/cgX'), args)
 
     @mock.patch.object(data_motion.DataMotionMixin,
                        '_check_cg_name_conflicts')
     @mock.patch.object(data_motion.DataMotionMixin,
                        '_check_flexvol_name_conflicts')
-    @mock.patch.object(data_motion.config_utils, 'get_client_for_backend')
-    @mock.patch.object(data_motion.config_utils, 'get_backend_configuration')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
     def test_positive_existing_mirrors_skip_conflict_checks(
-            self, m_get_backend_cfg, m_get_client, m_check_flex_conflicts,
-            m_check_cg_conflicts
+            self, m_get_backend_cfg,
+            m_get_client, m_check_flex_conflicts, m_check_cg_conflicts
     ):
         src_cfg = mock.Mock()
         src_cfg.safe_get.return_value = 'iscsi'
@@ -2602,13 +2705,15 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         ]
         dest_client = mock.Mock()
         # Existing mirrors present
-        dest_client.get_snapmirrors.return_value = [
-            {'mirror-state': 'in_sync'}]
+        dest_client.get_snapmirrors.return_value = \
+            [{'mirror-state': 'in_sync'}]
         m_get_client.side_effect = [src_client, dest_client]
 
-        self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy(  # noqa: E501
-            self.src_backend, [self.dest_backend],
-            na_utils.StorageObjectType.VOLUME, ['volA', 'volB'])
+        (self.dm_mixin.
+            _consistent_replication_precheck_for_af_policy(
+                self.src_backend, [self.dest_backend],
+                na_utils.StorageObjectType.VOLUME,
+                ['volA', 'volB']))
 
         m_check_flex_conflicts.assert_not_called()
         m_check_cg_conflicts.assert_not_called()
@@ -2618,7 +2723,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                        'get_client_for_backend')
     @mock.patch.object(data_motion.config_utils,
                        'get_backend_configuration')
-    def test_negative_multiple_cg_names_raises(
+    def test_negative_multiple_cg_names_exception(
             self, m_get_backend_cfg, m_get_client):
         src_cfg = mock.Mock()
         src_cfg.safe_get.return_value = 'iscsi'
@@ -2638,7 +2743,8 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         self.assertRaises(
             na_utils.NetAppDriverException,
-            self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy,  # noqa: E501
+            (self.dm_mixin.
+                _consistent_replication_precheck_for_af_policy),
             self.src_backend,
             [self.dest_backend],
             na_utils.StorageObjectType.VOLUME, ['volA', 'volB'])
@@ -2652,11 +2758,11 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
     @mock.patch.object(data_motion.config_utils,
                        'get_backend_configuration')
     def test_positive_no_cg_names_provided_creates_none_and_checks_conflicts(
-            self, m_get_backend_cfg, m_get_client,
-            m_check_flex_conflicts, m_check_cg_conflicts
+            self, m_get_backend_cfg,
+            m_get_client, m_check_flex_conflicts, m_check_cg_conflicts
     ):
-        # Covers path where cg_names is empty -> cg_name becomes None
-        # and conflicts are checked
+        # Covers path where cg_names is empty -> cg_name
+        # becomes None and conflicts are checked
         src_cfg = mock.Mock()
         src_cfg.safe_get.return_value = 'iscsi'
         src_cfg.netapp_vserver = 'svm-src'
@@ -2675,16 +2781,107 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         dest_client.get_snapmirrors.return_value = []
         m_get_client.side_effect = [src_client, dest_client]
 
-        self.dm_mixin._consistent_replication_precheck_for_automated_failover_policy(  # noqa: E501
-            self.src_backend, [self.dest_backend],
-            na_utils.StorageObjectType.VOLUME,
-            ['volA', 'volB'])
+        (self.dm_mixin.
+            _consistent_replication_precheck_for_af_policy(
+                self.src_backend, [self.dest_backend],
+                na_utils.StorageObjectType.VOLUME,
+                ['volA', 'volB']))
 
         m_check_flex_conflicts.assert_called_once()
         # cg_name is None still passed to conflict check
         args, _ = m_check_cg_conflicts.call_args
         self.assertIsNone(args[2])
         dest_client.get_snapmirrors.assert_called_once()
+
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_afd_precheck_consistent_replication_disabled(
+            self, m_get_backend_cfg):
+        """Test AFD precheck fails when consistent_replication is disabled."""
+        cfg = mock.Mock()
+        cfg.safe_get.return_value = False
+        m_get_backend_cfg.return_value = cfg
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.dm_mixin.
+            _consistent_replication_precheck_for_afd_policy,
+            self.src_backend,
+            ['dest1'],
+            na_utils.StorageObjectType.VOLUME,
+            ['vol1'])
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       '_consistent_replication_precheck_for_active_sync')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_afd_precheck_calls_active_sync_precheck(
+            self, m_get_backend_cfg, m_active_sync_precheck):
+        """Test AFD precheck calls the common active sync precheck."""
+        cfg = mock.Mock()
+        cfg.safe_get.return_value = True
+        m_get_backend_cfg.return_value = cfg
+
+        self.dm_mixin._consistent_replication_precheck_for_afd_policy(
+            self.src_backend,
+            ['dest1'],
+            na_utils.StorageObjectType.VOLUME,
+            ['vol1'])
+
+        m_active_sync_precheck.assert_called_once_with(
+            self.src_backend,
+            ['dest1'],
+            na_utils.StorageObjectType.VOLUME,
+            ['vol1'])
+
+    @mock.patch.object(data_motion.DataMotionMixin,
+                       '_consistent_replication_precheck_for_active_sync')
+    def test_af_precheck_calls_active_sync_precheck(
+            self, m_active_sync_precheck):
+        """Test AF precheck calls the common active sync precheck."""
+        self.dm_mixin._consistent_replication_precheck_for_af_policy(
+            self.src_backend,
+            ['dest1'],
+            na_utils.StorageObjectType.VOLUME,
+            ['vol1'])
+
+        m_active_sync_precheck.assert_called_once_with(
+            self.src_backend,
+            ['dest1'],
+            na_utils.StorageObjectType.VOLUME,
+            ['vol1'])
+
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_active_sync_precheck_nfs_backend_error(self, m_get_backend_cfg):
+        """Test active sync precheck fails for NFS backends."""
+        cfg = mock.Mock()
+        cfg.safe_get.return_value = 'nfs'
+        m_get_backend_cfg.return_value = cfg
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.dm_mixin.
+            _consistent_replication_precheck_for_active_sync,
+            self.src_backend,
+            ['dest1'],
+            na_utils.StorageObjectType.VOLUME,
+            ['vol1'])
+
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_active_sync_precheck_multiple_destinations_error(
+            self, m_get_backend_cfg):
+        """Test active sync precheck fails for multiple destinations."""
+        cfg = mock.Mock()
+        cfg.safe_get.return_value = 'iscsi'
+        m_get_backend_cfg.return_value = cfg
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.dm_mixin.
+            _consistent_replication_precheck_for_active_sync,
+            self.src_backend,
+            ['dest1', 'dest2'],
+            na_utils.StorageObjectType.VOLUME,
+            ['vol1'])
 
     @mock.patch.object(data_motion.DataMotionMixin,
                        'get_replication_backend_names')

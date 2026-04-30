@@ -33,7 +33,6 @@ from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode_rest
 from cinder.volume.drivers.netapp import utils as netapp_utils
 
-
 CONNECTION_INFO = {'hostname': 'hostname',
                    'transport_type': 'https',
                    'port': 443,
@@ -2855,7 +2854,6 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                         'consistency_group_volumes': [
                             {'name': fake_client.SM_DEST_VOLUME}]
                 },
-                'state': 'in_sync'
             }
         else:
             body = {
@@ -2919,7 +2917,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request',
                          side_effect = copy.deepcopy(api_responses))
         self.client.create_ontap_consistency_group(
-            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_SOURCE_VSERVER, [fake_client.SM_SOURCE_VOLUME],
             fake_client.SM_SOURCE_CG)
 
         body = {
@@ -3494,6 +3492,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'peer-state': vserver_info['state'],
             'peer-cluster': vserver_info['peer']['cluster']['name'],
             'applications': vserver_info['applications'],
+            'uuid': vserver_info['uuid']
         }]
 
         self.mock_object(
@@ -4312,3 +4311,557 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             "Error mapping host to subsystem. Code :"
             "%(code)s, Message: %(message)s",
             {'code': api_error.code, 'message': api_error.message})
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_get_igroup_by_name_found(self, mock_send_request):
+        # Simulate API response with one record
+        mock_send_request.return_value = {
+            'records': [{'uuid': 'fake-uuid', 'name': 'test-igroup'}]
+        }
+        result = self.client.get_igroup_by_name('test-igroup')
+        expected = {
+            'initiator-group-uuid': 'fake-uuid',
+            'initiator-group-name': 'test-igroup'
+        }
+        self.assertEqual(result, expected)
+        mock_send_request.assert_called_once_with(
+            '/protocols/san/igroups', 'get',
+            query={'svm.name': 'fake_vserver', 'name': 'test-igroup',
+                   'fields': 'uuid'}
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_get_igroup_by_name_not_found(self, mock_send_request):
+        # Simulate API response with no records
+        mock_send_request.return_value = {'records': []}
+        result = self.client.get_igroup_by_name('nonexistent-igroup')
+        self.assertIsNone(result)
+        mock_send_request.assert_called_once_with(
+            '/protocols/san/igroups', 'get',
+            query={'svm.name': 'fake_vserver', 'name': 'nonexistent-igroup',
+                   'fields': 'uuid'}
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_flexvol_exists_in_svm_true(self, mock_send_request):
+        # Simulate response indicating the volume exists
+        mock_send_request.return_value = {'num_records': 1}
+        result = self.client.flexvol_exists_in_svm('svm1',
+                                                   'vol1')
+        self.assertTrue(result)
+        mock_send_request.assert_called_once_with(
+            '/storage/volumes/', 'get',
+            query={'svm.name': 'svm1', 'name': 'vol1',
+                   'return_records': 'false'}
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_flexvol_exists_in_svm_false(self, mock_send_request):
+        # Simulate response indicating the volume does not exist
+        mock_send_request.return_value = {'num_records': 0}
+        result = self.client.flexvol_exists_in_svm('svm1',
+                                                   'vol1')
+        self.assertFalse(result)
+        mock_send_request.assert_called_once_with(
+            '/storage/volumes/', 'get',
+            query={'svm.name': 'svm1', 'name': 'vol1',
+                   'return_records': 'false'}
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_expand_ontap_consistency_group_success(self, mock_send_request):
+        # Arrange
+        source_vserver = 'svm1'
+        cg_name = 'cg1'
+        new_flexvol_names = ['vol2', 'vol3']
+        # Mock the GET response to return a CG record
+        mock_send_request.side_effect = [
+            {'records': [{'uuid': 'cg-uuid', 'name': cg_name}]},  # GET
+            None  # PATCH
+        ]
+
+        # Act
+        self.client.expand_ontap_consistency_group(source_vserver,
+                                                   cg_name, new_flexvol_names)
+
+        # Assert
+        # First call: GET
+        mock_send_request.assert_any_call(
+            '/application/consistency-groups/',
+            'get',
+            query={'svm.name': source_vserver, 'name': cg_name}
+        )
+        # Second call: PATCH
+        mock_send_request.assert_any_call(
+            '/application/consistency-groups/cg-uuid',
+            'patch',
+            body={'volumes': [
+                {'name': 'vol2', 'provisioning_options': {'action': 'add'}},
+                {'name': 'vol3', 'provisioning_options': {'action': 'add'}}
+            ]}
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_expand_ontap_consistency_group_not_found(self, mock_send_request):
+        # Simulate no records found for the CG
+        mock_send_request.return_value = {'records': []}
+        self.assertRaises(
+            exception.NotFound,
+            self.client.expand_ontap_consistency_group,
+            'svm1',
+            'cg_missing',
+            ['vol1', 'vol2']
+        )
+        # Ensure send_request was called to fetch the CG
+        mock_send_request.assert_called_with(
+            '/application/consistency-groups/',
+            'get',
+            query={'svm.name': 'svm1', 'name': 'cg_missing'}
+        )
+
+    def test_expand_ontap_consistency_group_patch_failure1(self):
+        self.mock_object(
+            self.client, 'send_request',
+            side_effect=[
+                {'records': [{'uuid': 'cg-uuid'}]},  # GET returns CG found
+                netapp_api.NaApiError('patch_failed')  # PATCH fails
+            ]
+        )
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.expand_ontap_consistency_group,
+            'svm1',
+            'cg1',
+            ['vol1', 'vol2'])
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_expand_ontap_consistency_group_patch_failure2(self,
+                                                           mock_send_request):
+        # Simulate successful GET returning a CG record
+        mock_send_request.side_effect = [
+            {'records': [{'uuid': 'cg-uuid'}]},  # GET for CG details
+            netapp_api.NaApiError(code=123, message='Patch failed')
+        ]
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.expand_ontap_consistency_group,
+            'svm1',
+            'cg1',
+            ['vol2'])
+        # Ensure GET and PATCH were called
+        self.assertEqual(mock_send_request.call_count, 2)
+        self.assertIn('patch', mock_send_request.call_args_list[1][0])
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_create_snapmirror_for_cg_with_flexvols_success(
+            self, mock_send_request):
+
+        source_vserver = 'svm1'
+        source_cg_name = 'cg1'
+        destination_vserver = 'svm2'
+        destination_cg_name = 'cg2'
+        flexvols = ['vol1', 'vol2']
+
+        self.client.create_snapmirror_for_cg_with_flexvols(
+            source_vserver, source_cg_name, destination_vserver,
+            destination_cg_name, flexvols,
+            replication_policy='MirrorAllSnapshots'
+        )
+
+        expected_body = {
+            "source": {
+                "path": f"{source_vserver}:/cg/{source_cg_name}",
+                "consistency_group_volumes": [{"name": "vol1"},
+                                              {"name": "vol2"}]
+            },
+            "destination": {
+                "path": f"{destination_vserver}:/cg/{destination_cg_name}",
+                "consistency_group_volumes": [{"name": "vol1_dst"},
+                                              {"name": "vol2_dst"}]
+            },
+            "create_destination": {"enabled": True},
+            'policy': 'MirrorAllSnapshots',
+            "state": "snapmirrored"
+        }
+        mock_send_request.assert_called_once_with(
+            '/snapmirror/relationships/', 'post', body=expected_body
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_create_snapmirror_for_cg_with_flexvols_with_policy(
+            self, mock_send_request):
+        source_vserver = 'svm1'
+        source_cg_name = 'cg1'
+        destination_vserver = 'svm2'
+        destination_cg_name = 'cg2'
+        flexvols = ['vol1']
+        replication_policy = 'AutomatedFailOver'
+
+        self.client.create_snapmirror_for_cg_with_flexvols(
+            source_vserver, source_cg_name, destination_vserver,
+            destination_cg_name, flexvols,
+            replication_policy=replication_policy
+        )
+
+        expected_body = {
+            "source": {
+                "path": f"{source_vserver}:/cg/{source_cg_name}",
+                "consistency_group_volumes": [{"name": "vol1"}]
+            },
+            "destination": {
+                "path": f"{destination_vserver}:/cg/{destination_cg_name}",
+                "consistency_group_volumes": [{"name": "vol1_dst"}]
+            },
+            "create_destination": {"enabled": True},
+            "state": "in_sync",
+            "policy": replication_policy
+        }
+        mock_send_request.assert_called_once_with(
+            '/snapmirror/relationships/', 'post', body=expected_body
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_create_snapmirror_for_cg_with_flexvols_relation_exists(
+            self, mock_send_request):
+
+        source_vserver = 'svm1'
+        source_cg_name = 'cg1'
+        destination_vserver = 'svm2'
+        destination_cg_name = 'cg2'
+        flexvols = ['vol1']
+
+        error = netapp_api.NaApiError(code=netapp_api.REST_ERELATION_EXISTS)
+        mock_send_request.side_effect = error
+
+        # Should not raise
+        self.client.create_snapmirror_for_cg_with_flexvols(
+            source_vserver, source_cg_name, destination_vserver,
+            destination_cg_name, flexvols
+        )
+
+        self.assertTrue(mock_send_request.called)
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_create_snapmirror_for_cg_with_flexvols_other_error(
+            self, mock_send_request):
+
+        source_vserver = 'svm1'
+        source_cg_name = 'cg1'
+        destination_vserver = 'svm2'
+        destination_cg_name = 'cg2'
+        flexvols = ['vol1']
+
+        error = netapp_api.NaApiError(code=9999)
+        mock_send_request.side_effect = error
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.create_snapmirror_for_cg_with_flexvols,
+            source_vserver, source_cg_name, destination_vserver,
+            destination_cg_name, flexvols
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_get_flexvols_cg_info_success_list(self, mock_send_request):
+        mock_send_request.return_value = {
+            'num_records': 2,
+            'records': [
+                {
+                    'name': 'vol1',
+                    'svm': {'name': 'vs1'},
+                    'consistency_group': {'name': 'cg1'},
+                },
+                {
+                    'name': 'vol2',
+                    'svm': {'name': 'vs1'},
+                    # No CG for this one
+                },
+            ],
+        }
+
+        result = self.client.get_flexvols_cg_info(['vol1', 'vol2'])
+
+        mock_send_request.assert_called_once_with(
+            '/storage/volumes',
+            'get',
+            query={
+                'svm.name': self.client.vserver,
+                'name': 'vol1,vol2',
+                'fields': 'consistency_group',
+            },
+        )
+        self.assertEqual(
+            [
+                {'flexvol_name': 'vol1', 'svm_name': 'vs1', 'cg_name': 'cg1'},
+                {'flexvol_name': 'vol2', 'svm_name': 'vs1', 'cg_name': None},
+            ],
+            result,
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_get_flexvols_cg_info_success_single_name(self, mock_send_request):
+        mock_send_request.return_value = {
+            'num_records': 1,
+            'records': [
+                {
+                    'name': 'vol1',
+                    'svm': {'name': 'vs1'},
+                    'consistency_group': {'name': 'cg1'},
+                },
+            ],
+        }
+
+        result = self.client.get_flexvols_cg_info('vol1')
+
+        mock_send_request.assert_called_once_with(
+            '/storage/volumes',
+            'get',
+            query={
+                'svm.name': self.client.vserver,
+                'name': 'vol1',
+                'fields': 'consistency_group',
+            },
+        )
+        self.assertEqual(
+            [{'flexvol_name': 'vol1', 'svm_name': 'vs1', 'cg_name': 'cg1'}],
+            result,
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_get_flexvols_cg_info_raises_netapp_driver_exception_on_naapierror(
+            self, mock_send_request):
+        mock_send_request.side_effect = netapp_api.NaApiError(
+            code=netapp_api.EAPIERROR, message='boom')
+
+        self.assertRaises(
+            netapp_api.na_utils.NetAppDriverException,
+            self.client.get_flexvols_cg_info,
+            ['vol1'],
+        )
+
+        mock_send_request.assert_called_once_with(
+            '/storage/volumes',
+            'get',
+            query={
+                'svm.name': self.client.vserver,
+                'name': 'vol1',
+                'fields': 'consistency_group',
+            },
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_get_flexvols_cg_info_raises_netapp_driver_exception_on_no_records(
+            self, mock_send_request):
+        mock_send_request.return_value = {
+            'num_records': 0,
+            'records': [],
+        }
+
+        self.assertRaises(
+            netapp_api.na_utils.NetAppDriverException,
+            self.client.get_flexvols_cg_info,
+            ['vol1'],
+        )
+
+        mock_send_request.assert_called_once_with(
+            '/storage/volumes',
+            'get',
+            query={
+                'svm.name': self.client.vserver,
+                'name': 'vol1',
+                'fields': 'consistency_group',
+            },
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_consistency_group_exists_returns_true(self, mock_send_request):
+        mock_send_request.return_value = {'num_records': 1}
+
+        result = self.client.consistency_group_exists(
+            'svm1', 'cg1')
+
+        self.assertTrue(result)
+        mock_send_request.assert_called_once_with(
+            '/application/consistency-groups/',
+            'get',
+            query={
+                'svm.name': 'svm1',
+                'name': 'cg1',
+                'return_records': 'false',
+            },
+        )
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_consistency_group_exists_returns_false(self, mock_send_request):
+        mock_send_request.return_value = {'num_records': 0}
+
+        result = self.client.consistency_group_exists(
+            'svm1', 'cg1')
+
+        self.assertFalse(result)
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_is_igroup_proximity_configured_true(self, mock_send_request):
+        """Test when proximity is configured on an initiator."""
+        igroup_uuid = 'fake-uuid'
+        mock_send_request.return_value = {
+            'records': [
+                {
+                    'name': 'iqn.source1',
+                    'proximity': {'local_svm': True}
+                }
+            ]
+        }
+
+        result = self.client.is_igroup_proximity_configured(igroup_uuid)
+
+        self.assertTrue(result)
+        mock_send_request.assert_called_once_with(
+            f'/protocols/san/igroups/{igroup_uuid}/initiators',
+            'get', query={'fields': 'proximity'})
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_is_igroup_proximity_configured_false(self, mock_send_request):
+        """Test when proximity is not configured."""
+        igroup_uuid = 'fake-uuid'
+        mock_send_request.return_value = {
+            'records': [
+                {
+                    'name': 'iqn.source1',
+                    'proximity': {}
+                }
+            ]
+        }
+
+        result = self.client.is_igroup_proximity_configured(igroup_uuid)
+
+        self.assertFalse(result)
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_is_igroup_proximity_configured_no_initiators(
+            self, mock_send_request):
+        """Test when no initiators exist."""
+        igroup_uuid = 'fake-uuid'
+        mock_send_request.return_value = {'records': []}
+
+        result = self.client.is_igroup_proximity_configured(igroup_uuid)
+
+        self.assertFalse(result)
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_set_igroup_host_proximity_success(self, mock_send_request):
+        """Test setting host proximity for local initiators."""
+        igroup_uuid = 'fake-uuid'
+        local_initiators = ['iqn.source1', 'iqn.source2']
+        peer_svm_name = 'dest-svm'
+
+        self.client.set_igroup_host_proximity(
+            igroup_uuid, local_initiators, peer_svm_name)
+
+        self.assertEqual(2, mock_send_request.call_count)
+        for initiator in local_initiators:
+            api_path = (f'/protocols/san/igroups/{igroup_uuid}'
+                        f'/initiators/{initiator}')
+            mock_send_request.assert_any_call(
+                api_path, 'patch',
+                body={
+                    'proximity': {
+                        'local_svm': True,
+                        'peer_svms': [{'name': peer_svm_name}]
+                    }
+                })
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_set_igroup_host_proximity_no_peer_svm(self, mock_send_request):
+        """Test setting proximity without a peer SVM."""
+        igroup_uuid = 'fake-uuid'
+        local_initiators = ['iqn.source1']
+        peer_svm_name = None
+
+        self.client.set_igroup_host_proximity(
+            igroup_uuid, local_initiators, peer_svm_name)
+
+        api_path = (f'/protocols/san/igroups/{igroup_uuid}'
+                    f'/initiators/iqn.source1')
+        mock_send_request.assert_called_once_with(
+            api_path, 'patch',
+            body={
+                'proximity': {
+                    'local_svm': True
+                }
+            })
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    def test_set_igroup_host_proximity_no_initiators(self, mock_send_request):
+        """Test when no initiators provided."""
+        igroup_uuid = 'fake-uuid'
+
+        self.client.set_igroup_host_proximity(igroup_uuid, [], 'dest-svm')
+
+        mock_send_request.assert_not_called()
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    @mock.patch.object(client_cmode_rest.RestClient, 'get_snapmirrors')
+    def test_failover_snapmirror_active_sync_success(
+            self, mock_get_snapmirrors, mock_send_request):
+
+        source_vserver = 'svm_src'
+        source_cg_name = 'cg_src'
+        destination_vserver = 'svm_dst'
+        destination_cg_name = 'cg_dst'
+
+        # Make get_snapmirrors return at least 1 record so the "if"
+        # branch is taken.
+        # Include uuid (commonly used later to build URLs).
+        mock_get_snapmirrors.return_value = [{
+            'uuid': 'sm-uuid-123',
+            'source-vserver': source_vserver,
+            'destination-vserver': destination_vserver,
+        }]
+
+        # If the function issues REST calls (post/patch/get),
+        # just let them succeed.
+        mock_send_request.return_value = {}
+
+        self.client.failover_snapmirror_active_sync(
+            source_vserver, source_cg_name, destination_vserver,
+            destination_cg_name)
+
+        mock_get_snapmirrors.assert_called_once_with(
+            source_vserver, '/cg/' + source_cg_name,
+            destination_vserver, '/cg/' + destination_cg_name)
+
+        # We can't assert the exact REST sequence without duplicating
+        # implementation details, but we can still ensure it
+        # attempted at least one REST call.
+        assert mock_send_request.call_count >= 1
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'get_snapmirrors')
+    def test_failover_snapmirror_active_sync_naapierror_from_get_snapmirrors(
+            self, mock_get_snapmirrors
+    ):
+
+        na_err = netapp_api.NaApiError(code=13001, message='boom')
+        mock_get_snapmirrors.side_effect = na_err
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.failover_snapmirror_active_sync,
+            'svm_src', 'cg_src', 'svm_dst', 'cg_dst'),
+
+    @mock.patch.object(client_cmode_rest.RestClient, 'send_request')
+    @mock.patch.object(client_cmode_rest.RestClient, 'get_snapmirrors')
+    def test_failover_snapmirror_active_sync_naapierror_from_send_request(
+            self, mock_get_snapmirrors, mock_send_request
+    ):
+
+        mock_get_snapmirrors.return_value = [{'uuid': 'sm-uuid-123'}]
+
+        na_err = netapp_api.NaApiError(code=13002, message='send failed')
+        mock_send_request.side_effect = na_err
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.failover_snapmirror_active_sync,
+            'svm_src', 'cg_src', 'svm_dst', 'cg_dst')
+        assert mock_send_request.call_count >= 1

@@ -178,6 +178,7 @@ def create_configuration():
     config.append_config_values(na_opts.netapp_basicauth_opts)
     config.append_config_values(na_opts.netapp_certificateauth_opts)
     config.append_config_values(na_opts.netapp_provisioning_opts)
+    config.append_config_values(na_opts.netapp_replication_opts)
     config.append_config_values(na_opts.netapp_cluster_opts)
 
     return config

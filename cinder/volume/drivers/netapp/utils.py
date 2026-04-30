@@ -86,6 +86,25 @@ CHAP_SECRET_LENGTH = 16
 DEFAULT_CHAP_USER_NAME = 'NetApp_iSCSI_CHAP_Username'
 API_TRACE_PATTERN = '(.*)'
 
+REPLICATED_VOLUME_SUFFIX = '_dst'
+
+
+class StorageObjectType(Enum):
+    LUN = 'lun'
+    VOLUME = 'volume'
+
+
+class ReplicationPolicy(Enum):
+    AUTOMATED_FAIL_OVER = 'AutomatedFailOver'
+    AUTOMATED_FAIL_OVER_DUPLEX = 'AutomatedFailOverDuplex'
+    ASYNCHRONOUS = 'Asynchronous'
+    MIRROR_ALL_SNAPSHOTS = 'MirrorAllSnapshots'
+
+
+class SnapMirrorState(Enum):
+    IN_SYNC = 'in_sync'
+    SNAPMIRRORED = 'snapmirrored'
+
 
 class CloneBoundary(Enum):
     SAME_POOL = 'same_pool'
@@ -596,6 +615,22 @@ def get_backend_lun_or_ns_name(volume_name, config):
         return volume_name.replace("-", "_")
     else:
         return volume_name
+
+
+def get_desired_replication_state(replication_policy):
+    state = None
+    if replication_policy in (
+            ReplicationPolicy.AUTOMATED_FAIL_OVER.value,
+            ReplicationPolicy.AUTOMATED_FAIL_OVER_DUPLEX.value):
+        state = SnapMirrorState.IN_SYNC.value
+    elif replication_policy in (ReplicationPolicy.ASYNCHRONOUS.value,
+                                ReplicationPolicy.MIRROR_ALL_SNAPSHOTS.value):
+        state = SnapMirrorState.SNAPMIRRORED.value
+    return state
+
+
+def create_cg_path(cg_name):
+    return "/cg/" + str(cg_name)
 
 
 class hashabledict(dict):
