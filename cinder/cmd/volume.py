@@ -16,55 +16,21 @@
 #    under the License.
 
 """Starter script for Cinder Volume."""
-import logging as python_logging
-import os
+
+from cinder import monkey_patch; monkey_patch.patch()  # noqa
+
+import logging as python_logging  # noqa: I100
 import shlex
 import sys
-import threading
 
+import os_brick
 from oslo_config import cfg
-
-
-def is_threading_enabled() -> bool:
-    env = os.environ.get('OS_CINDER_DISABLE_EVENTLET_PATCHING', '').lower()
-    match env:
-        case ('1' | 'true' | 'yes'):
-            return True
-        case _:
-            return False
-
-
-using_threading = is_threading_enabled()
-
-if not using_threading:
-    import eventlet
-    import eventlet.tpool
-    # Monkey patching must go before the oslo.log import, otherwise
-    # oslo.context will not use greenthread thread local and all greenthreads
-    # will share the same context.
-    eventlet.monkey_patch()
-    # Monkey patch the original current_thread to use the up-to-date _active
-    # global variable. See https://bugs.launchpad.net/bugs/1863021 and
-    # https://github.com/eventlet/eventlet/issues/592
-    import __original_module_threading as \
-        orig_threading  # pylint: disable=E0401
-    import threading # noqa
-    orig_threading.current_thread.__globals__['_active'] = \
-        threading._active  # type: ignore
-
-from oslo_log import log as logging  # noqa: I202
+from oslo_log import log as logging
 from oslo_privsep import priv_context
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
 import oslo_service
 import oslo_service.backend
-
-
-if using_threading:
-    oslo_service.backend.init_backend(
-        oslo_service.backend.BackendType.THREADING)
-
-import os_brick   # noqa: I202
 
 # Need to register global_opts
 from cinder.common import config  # noqa
@@ -157,13 +123,6 @@ def _launch_services() -> None:
     launcher.wait()
 
 
-def setup_eventlet():
-    if using_threading:
-        pass
-    else:
-        utils.monkey_patch()
-
-
 def main() -> None:
     objects.register_all()
     gmr_opts.set_defaults(CONF)
@@ -172,14 +131,10 @@ def main() -> None:
     logging.setup(CONF, "cinder")
     python_logging.captureWarnings(True)
     priv_context.init(root_helper=shlex.split(utils.get_root_helper()))
-    setup_eventlet()
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
     os_brick.setup(CONF)
     global LOG
     LOG = logging.getLogger(__name__)
-
-    if using_threading:
-        LOG.debug('threading backend initialized')
 
     if not CONF.enabled_backends:
         LOG.error('Configuration for cinder-volume does not specify '
