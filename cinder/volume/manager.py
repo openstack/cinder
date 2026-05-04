@@ -36,6 +36,7 @@ intact.
 """
 
 import functools
+import threading
 import time
 import typing
 from typing import Any, Optional, Union
@@ -5466,3 +5467,8 @@ class VolumeManager(manager.CleanableManager,
                         resource_uuid=volume.id,
                         detail=
                         message_field.Detail.IMAGE_FORMAT_UNACCEPTABLE)
+
+    @periodic_task.periodic_task(spacing=60, run_immediately=True)
+    def _thread_info(self, _context) -> None:
+        LOG.debug("thread count: %s", threading.active_count())
+        LOG.debug("thread info: %s", threading.enumerate())

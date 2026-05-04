@@ -26,6 +26,7 @@ __all__ = [
 ]
 
 import functools
+import os
 from typing import Union
 
 from oslo_config import cfg
@@ -52,6 +53,16 @@ ALLOWED_EXMODS = [
     cinder.exception.__name__,
 ]
 EXTRA_EXMODS = []
+
+
+def is_threading_enabled() -> bool:
+    # TODO: deduplicate this function
+    env = os.environ.get('OS_CINDER_DISABLE_EVENTLET_PATCHING', '').lower()
+    match env:
+        case ('1' | 'true' | 'yes'):
+            return True
+        case _:
+            return False
 
 
 def init(conf) -> None:
@@ -158,10 +169,11 @@ def get_server(target,
         raise AssertionError('RPC transport is not initialized.')
     serializer = RequestContextSerializer(serializer)
     access_policy = dispatcher.DefaultRPCAccessPolicy
+    executor = 'threading' if is_threading_enabled() else 'eventlet'
     return messaging.get_rpc_server(TRANSPORT,
                                     target,
                                     endpoints,
-                                    executor='eventlet',
+                                    executor=executor,
                                     serializer=serializer,
                                     access_policy=access_policy)
 

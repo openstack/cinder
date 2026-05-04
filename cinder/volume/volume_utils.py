@@ -38,7 +38,6 @@ import uuid
 from castellan.common.credentials import keystone_password
 from castellan.common import exception as castellan_exception
 from castellan import key_manager as castellan_key_manager
-import eventlet
 from eventlet import tpool
 from keystoneauth1 import loading as ks_loading
 from os_brick import encryptors
@@ -555,7 +554,7 @@ def _transfer_data(src: IO, dest: IO,
                   {'chunk': chunk + 1, 'chunks': chunks, 'rate': rate})
 
         # yield to any other pending operations
-        eventlet.sleep(0)
+        time.sleep(0)
 
     tpool.execute(dest.flush)
 

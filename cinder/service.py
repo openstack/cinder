@@ -271,8 +271,8 @@ class Service(service.Service):
         self.manager.init_host_with_rpc()
 
         if self.report_interval:
-            self.tg.add_timer(self.report_interval, self.report_state,
-                              initial_delay=self.report_interval)
+            self.tg.add_timer_args(self.report_interval, self.report_state,
+                                   initial_delay=self.report_interval)
 
         if self.periodic_interval:
             initial_delay: Optional[int]
@@ -280,8 +280,8 @@ class Service(service.Service):
                 initial_delay = random.randint(0, self.periodic_fuzzy_delay)
             else:
                 initial_delay = None
-            self.tg.add_timer(self.periodic_interval, self.periodic_tasks,
-                              initial_delay=initial_delay)
+            self.tg.add_timer_args(self.periodic_interval, self.periodic_tasks,
+                                   initial_delay=initial_delay)
 
     def basic_config_check(self) -> None:
         """Perform basic config checks before starting service."""
