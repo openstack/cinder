@@ -394,7 +394,7 @@ class NetAppBlockStorageCmodeLibrary(
                     LOG.debug("Cross-pool clone across SVMs not "
                               "supported, falling back to Glance "
                               "download.")
-                    raise
+                    raise exception.VolumeDriverException()
 
                 elif boundary in (na_utils.CloneBoundary.CROSS_AGGREGATE,
                                   na_utils.CloneBoundary.SAME_AGGREGATE):
