@@ -833,6 +833,23 @@ in the extra specs for the volume type.
 you can create a volume with the deduplication and compression function and
 DRS function enabled.
 
+Automatic DRS volume creation
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+You can configure DRS to be automatically used on a backend by setting
+the configuration value ``hitachi_use_drs_volumes`` to ``True``. If set to
+``True``, the ``hitachi_drs_default_csv`` setting will determine the capacity
+saving value (currently, the only supported value is
+``deduplication_compression``).
+
+This setting is overridden by the ``hbsd:drs`` extra spec, which may be set
+to ``<is> False`` to create a non-DRS volume. The ``hbsd:capacity_saving``
+extra spec may also be provided to override the configuration setting for
+capacity saving when using DRS.
+
+Setting ``hitachi_use_drs_volumes`` to ``True`` is recommended when working
+with VSP One Block storage arrays.
+
 Deleting a volume with deduplication and compression enabled
 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 

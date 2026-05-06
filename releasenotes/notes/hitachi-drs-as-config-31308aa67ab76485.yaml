@@ -1,0 +1,32 @@
+---
+features:
+  - |
+    Hitachi: Add ability to configure Data Reduction Shared (DRS) volumes using
+    configuration elements instead of through typing. As storage requirements
+    for DRS are currently all or none, this simplifies creating volumes for
+    DRS-required storage. This patch also sets DRS management to True by
+    default.
+  - |
+    HPE/XP: Add ability to configure Data Reduction Shared (DRS) volumes using
+    configuration elements instead of through typing. As storage requirements
+    for DRS are currently all or none, this simplifies creating volumes for
+    DRS-required storage. This patch also sets DRS management to True by
+    default.
+  - |
+    NEC: Add ability to configure Data Reduction Shared (DRS) volumes using
+    configuration elements instead of through typing. As storage requirements
+    for DRS are currently all or none, this simplifies creating volumes for
+    DRS-required storage. This patch also sets DRS management to True by
+    default.
+upgrade:
+  - |
+    Previously, DRS configurations could only be achieved with extra specs.
+    The new ``hitachi_use_drs_volumes`` allows for configuring the driver to
+    always use DRS volumes. This is useful for for storage such as the
+    VSP One Block series that always require DRS volumes.
+  - |
+    The ``hitachi_manage_drs_volumes`` configuration value is now defaulted to True.
+    This is an important change as the False setting may cause failures when
+    volume resize and delete operations are requested, and cloning has occurred.
+    Only set this to False if you anticipate not needing to delete or resize
+    volumes.
