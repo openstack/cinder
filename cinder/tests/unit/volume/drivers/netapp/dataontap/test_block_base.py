@@ -130,6 +130,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_add_lun_to_table')
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
         self.mock_object(self.library, '_get_volume_model_update')
+        self.zapi_client.get_ontap_version.return_value = (9, 14, 0)
 
         self.library.create_volume(fake.VOLUME)
 
@@ -159,6 +160,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_add_lun_to_table')
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
         self.mock_object(self.library, '_get_volume_model_update')
+        self.zapi_client.get_ontap_version.return_value = (9, 14, 0)
 
         self.library.create_volume(fake.VOLUME)
 
@@ -234,6 +236,56 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             0, self.library._mark_qos_policy_group_for_deletion.call_count)
         self.assertEqual(0, block_base.LOG.error.call_count)
 
+    def test_create_volume_space_allocation_ontap_pre_9_15_1(self):
+        """No extra spec + ONTAP < 9.15.1 → space_allocation disabled."""
+        volume_size_in_bytes = int(fake.SIZE) * units.Gi
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value={})
+        self.mock_object(na_utils, 'log_extra_spec_warnings')
+        self.mock_object(block_base, 'LOG')
+        self.mock_object(volume_utils, 'extract_host',
+                         return_value=fake.POOL_NAME)
+        self.mock_object(self.library, '_setup_qos_for_volume',
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
+        self.mock_object(self.library, '_create_lun')
+        self.mock_object(self.library, '_create_lun_handle')
+        self.mock_object(self.library, '_add_lun_to_table')
+        self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.mock_object(self.library, '_get_volume_model_update')
+        self.zapi_client.get_ontap_version.return_value = (9, 14, 0)
+
+        self.library.create_volume(fake.VOLUME)
+
+        self.library._create_lun.assert_called_once_with(
+            fake.POOL_NAME, fake.LUN_NAME, volume_size_in_bytes,
+            fake.LUN_METADATA,
+            fake.QOS_POLICY_GROUP_NAME, False)
+
+    def test_create_volume_space_allocation_ontap_9_15_1(self):
+        """No extra spec + ONTAP >= 9.15.1 → space_allocation enabled."""
+        volume_size_in_bytes = int(fake.SIZE) * units.Gi
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value={})
+        self.mock_object(na_utils, 'log_extra_spec_warnings')
+        self.mock_object(block_base, 'LOG')
+        self.mock_object(volume_utils, 'extract_host',
+                         return_value=fake.POOL_NAME)
+        self.mock_object(self.library, '_setup_qos_for_volume',
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
+        self.mock_object(self.library, '_create_lun')
+        self.mock_object(self.library, '_create_lun_handle')
+        self.mock_object(self.library, '_add_lun_to_table')
+        self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.mock_object(self.library, '_get_volume_model_update')
+        self.zapi_client.get_ontap_version.return_value = (9, 15, 1)
+
+        self.library.create_volume(fake.VOLUME)
+
+        self.library._create_lun.assert_called_once_with(
+            fake.POOL_NAME, fake.LUN_NAME, volume_size_in_bytes,
+            fake.LUN_METADATA_WITH_SPACE_ALLOCATION,
+            fake.QOS_POLICY_GROUP_NAME, False)
+
     def test_create_volume_no_pool(self):
         self.mock_object(volume_utils, 'extract_host', return_value=None)
 
@@ -259,6 +311,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                          return_value=fake.QOS_POLICY_GROUP_INFO)
         self.mock_object(self.library, '_create_lun', side_effect=Exception)
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.zapi_client.get_ontap_version.return_value = (9, 14, 0)
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.library.create_volume, fake.VOLUME)

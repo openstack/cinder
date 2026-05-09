@@ -1,0 +1,22 @@
+---
+fixes:
+  - |
+    NetApp ONTAP block driver
+    `bug #2152031 <https://bugs.launchpad.net/cinder/+bug/2152031>`_:
+    Fixed an inconsistency in the NetApp ONTAP block driver where LUN
+    space-allocation (thin-provisioning SCSI UNMAP support) was always
+    disabled when creating volumes, regardless of the ONTAP version in
+    use.
+
+    Starting with ONTAP 9.15.1, NetApp changed the default LUN
+    space-allocation setting from disabled to enabled. The driver now
+    reflects this: when the ``netapp:space_allocation`` extra spec is
+    not set, the driver checks the ONTAP version and enables
+    space-allocation by default for ONTAP 9.15.1 and later, preserving
+    the previous disabled default for older versions.
+
+    The explicit ``netapp:space_allocation`` extra spec continues to
+    take precedence over version-based defaults.
+
+    `ONTAP defaults and limits
+    <https://docs.netapp.com/us-en/ontap/release-notes/defaults-limits.html>`_
