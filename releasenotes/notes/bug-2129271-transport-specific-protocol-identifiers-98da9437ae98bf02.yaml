@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    `Bug #2129271 <https://bugs.launchpad.net/cinder/+bug/2129271>`_: Transport
+    specific NVMe-oF protocol identifiers (for example, NVMe-TCP) are now
+    included when the scheduler determines whether a driver's storage protocol
+    is an NVMe-oF protocol.  Previously, only non-protocol-specific identifier
+    variants were considered which could lead to shared targets not working
+    correctly.

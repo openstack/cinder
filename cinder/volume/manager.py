@@ -895,7 +895,7 @@ class VolumeManager(manager.CleanableManager,
 
         protocol = capabilities.get('storage_protocol')
 
-        if protocol in constants.NVMEOF_VARIANTS:
+        if protocol in constants.NVMEOF_ALL_PROTOCOLS:
             return None  # True must be changed to None for NVMe-oF drivers
 
         # Only iSCSI drivers would need to do locking for shared targets
