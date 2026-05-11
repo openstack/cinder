@@ -292,7 +292,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
         self.assertIn('cacheable', conn_info['data'])
         self.assertIs(conn_info['data']['cacheable'], False)
 
-    @ddt.data(*(constants.ISCSI_VARIANTS + constants.NVMEOF_VARIANTS))
+    @ddt.data(*(constants.ISCSI_VARIANTS + constants.NVMEOF_ALL_PROTOCOLS))
     def test__driver_shares_targets_reported_shared(self, protocol):
         """Shared targets must be reported for iSCSI and NVMe-oF."""
         manager = vol_manager.VolumeManager()
@@ -305,7 +305,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
         expected = True if protocol in constants.ISCSI_VARIANTS else None
         self.assertIs(expected, res)
 
-    @ddt.data(*(constants.ISCSI_VARIANTS + constants.NVMEOF_VARIANTS))
+    @ddt.data(*(constants.ISCSI_VARIANTS + constants.NVMEOF_ALL_PROTOCOLS))
     def test__driver_shares_targets_reported_nonshared(self, protocol):
         """Protocol is irrelevant for drivers that don't share targets."""
         manager = vol_manager.VolumeManager()
@@ -317,7 +317,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
         res = manager._driver_shares_targets()
         self.assertFalse(res)
 
-    @ddt.data(*(constants.ISCSI_VARIANTS + constants.NVMEOF_VARIANTS))
+    @ddt.data(*(constants.ISCSI_VARIANTS + constants.NVMEOF_ALL_PROTOCOLS))
     def test__driver_shares_targets_not_reported(self, protocol):
         """When driver doesn't report, assume it's shared."""
         manager = vol_manager.VolumeManager()
