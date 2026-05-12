@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 
 from oslo_utils import timeutils
 
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder import exception
 from cinder import objects
 from cinder.tests.unit import fake_constants as fake
@@ -85,7 +85,7 @@ class TestQos(test_objects.BaseObjectsTestCase):
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
     @mock.patch('cinder.objects.VolumeTypeList.get_all_types_for_qos',
                 return_value=None)
-    @mock.patch('cinder.db.sqlalchemy.api.qos_specs_delete')
+    @mock.patch('cinder.db.api.qos_specs_delete')
     def test_destroy_no_vol_types(self, qos_fake_delete, fake_get_vol_types,
                                   utcnow_mock):
         qos_fake_delete.return_value = {
@@ -101,7 +101,7 @@ class TestQos(test_objects.BaseObjectsTestCase):
             utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
             qos_object.deleted_at)
 
-    @mock.patch('cinder.db.sqlalchemy.api.qos_specs_delete')
+    @mock.patch('cinder.db.api.qos_specs_delete')
     @mock.patch('cinder.db.api.qos_specs_disassociate_all')
     @mock.patch('cinder.objects.VolumeTypeList.get_all_types_for_qos')
     def test_destroy_with_vol_types(self, fake_get_vol_types,

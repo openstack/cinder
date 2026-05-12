@@ -27,8 +27,8 @@ from cinder import backup
 from cinder.backup import api as backup_api
 from cinder import context
 from cinder.db import api as db
-from cinder.db.sqlalchemy import api as sqa_api
-from cinder.db.sqlalchemy import models as sqa_models
+from cinder.db import api as sqa_api
+from cinder.db import models as sqa_models
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
@@ -1357,7 +1357,7 @@ class FakeUsage(sqa_models.QuotaUsage):
 
 
 class QuotaReserveSqlAlchemyTestCase(test.TestCase):
-    # cinder.db.sqlalchemy.api.quota_reserve is so complex it needs its
+    # cinder.db.api.quota_reserve is so complex it needs its
     # own test case, and since it's a quota manipulator, this is the
     # best place to put it...
 

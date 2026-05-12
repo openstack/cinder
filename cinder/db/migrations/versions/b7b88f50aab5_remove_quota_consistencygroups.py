@@ -20,7 +20,7 @@ Create Date: 2021-11-10 11:54:50.123389
 from alembic import op
 from sqlalchemy import orm
 
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 
 
 # revision identifiers, used by Alembic.

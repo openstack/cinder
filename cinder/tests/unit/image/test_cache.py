@@ -19,7 +19,7 @@ import ddt
 from oslo_utils import timeutils
 
 from cinder import context as ctxt
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder.image import cache as image_cache
 from cinder import objects
 from cinder.tests.unit import fake_constants as fake

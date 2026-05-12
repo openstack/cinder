@@ -22,7 +22,7 @@ import requests
 from requests import models
 
 from cinder import context as cinder_context
-from cinder.db.sqlalchemy import api as sqlalchemy_api
+from cinder.db import api as sqlalchemy_api
 from cinder import exception
 from cinder.objects import group_snapshot as obj_group_snap
 from cinder.objects import snapshot as obj_snap

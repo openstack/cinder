@@ -18,7 +18,7 @@ from unittest import mock
 import ddt
 from oslo_utils import timeutils
 
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder import objects
 from cinder.tests.unit import fake_cluster
 from cinder.tests.unit import objects as test_objects
@@ -47,7 +47,7 @@ class TestCluster(test_objects.BaseObjectsTestCase):
     """Test Cluster Versioned Object methods."""
     cluster = fake_cluster.fake_cluster_orm()
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get', return_value=cluster)
+    @mock.patch('cinder.db.api.cluster_get', return_value=cluster)
     def test_get_by_id(self, cluster_get_mock):
         filters = _get_filters_sentinel()
         cluster = objects.Cluster.get_by_id(self.context,
@@ -59,7 +59,7 @@ class TestCluster(test_objects.BaseObjectsTestCase):
                                                  mock.sentinel.cluster_id,
                                                  **filters)
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_create',
+    @mock.patch('cinder.db.api.cluster_create',
                 return_value=cluster)
     def test_create(self, cluster_create_mock):
         cluster = objects.Cluster(context=self.context, name='cluster_name')
@@ -68,7 +68,7 @@ class TestCluster(test_objects.BaseObjectsTestCase):
         cluster_create_mock.assert_called_once_with(self.context,
                                                     {'name': 'cluster_name'})
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_update',
+    @mock.patch('cinder.db.api.cluster_update',
                 return_value=cluster)
     def test_save(self, cluster_update_mock):
         cluster = fake_cluster.fake_cluster_ovo(self.context)
@@ -77,13 +77,13 @@ class TestCluster(test_objects.BaseObjectsTestCase):
         cluster_update_mock.assert_called_once_with(self.context, cluster.id,
                                                     {'disabled': True})
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_destroy')
+    @mock.patch('cinder.db.api.cluster_destroy')
     def test_destroy(self, cluster_destroy_mock):
         cluster = fake_cluster.fake_cluster_ovo(self.context)
         cluster.destroy()
         cluster_destroy_mock.assert_called_once_with(mock.ANY, cluster.id)
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get', return_value=cluster)
+    @mock.patch('cinder.db.api.cluster_get', return_value=cluster)
     def test_refresh(self, cluster_get_mock):
         cluster = fake_cluster.fake_cluster_ovo(self.context)
         cluster.refresh()
@@ -127,7 +127,7 @@ class TestCluster(test_objects.BaseObjectsTestCase):
 class TestClusterList(test_objects.BaseObjectsTestCase):
     """Test ClusterList Versioned Object methods."""
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get_all')
+    @mock.patch('cinder.db.api.cluster_get_all')
     def test_cluster_get_all(self, cluster_get_all_mock):
         orm_values = [
             fake_cluster.fake_cluster_orm(),
@@ -139,9 +139,7 @@ class TestClusterList(test_objects.BaseObjectsTestCase):
         result = objects.ClusterList.get_all(self.context, **filters)
 
         cluster_get_all_mock.assert_called_once_with(
-            self.context, filters.pop('is_up'), filters.pop('get_services'),
-            filters.pop('services_summary'), filters.pop('read_deleted'),
-            filters.pop('name_match_level'), **filters)
+            self.context, **filters)
         self.assertEqual(2, len(result))
         for i in range(len(result)):
             self.assertIsInstance(result[i], objects.Cluster)

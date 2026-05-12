@@ -15,8 +15,8 @@ from unittest import mock
 from alembic.runtime import migration as alembic_migration
 from oslotest import base as test_base
 
+from cinder.db import api as db_api
 from cinder.db import migration
-from cinder.db.sqlalchemy import api as db_api
 
 
 class TestDBSync(test_base.BaseTestCase):

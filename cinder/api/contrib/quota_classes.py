@@ -20,7 +20,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.schemas import quota_classes as schema
 from cinder.api import validation
 from cinder.db import api as db
-from cinder.db.sqlalchemy import api as sqla_db
+from cinder.db import api as sqla_db
 from cinder import exception
 from cinder.policies import quota_class as policy
 from cinder import quota

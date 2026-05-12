@@ -28,8 +28,8 @@ from sqlalchemy.sql import operators
 from cinder.api import common
 from cinder import context
 from cinder.db import api as db
-from cinder.db.sqlalchemy import api as sqlalchemy_api
-from cinder.db.sqlalchemy import models
+from cinder.db import api as sqlalchemy_api
+from cinder.db import models
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
@@ -744,7 +744,7 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertRaises(exception.VolumeNotFound, db.volume_get,
                           self.ctxt, volume['id'])
 
-    @mock.patch('cinder.db.sqlalchemy.api.model_query')
+    @mock.patch('cinder.db.api.model_query')
     def test_volume_destroy_deletes_dependent_data(self, mock_model_query):
         """Addresses LP Bug #1542169."""
         db.volume_destroy(self.ctxt, fake.VOLUME_ID)
@@ -1456,7 +1456,7 @@ class DBAPIVolumeTestCase(BaseTest):
 
         self.assertEqual(should_be, db_meta)
 
-    @mock.patch('cinder.db.sqlalchemy.api._volume_glance_metadata_key_to_id',
+    @mock.patch('cinder.db.api._volume_glance_metadata_key_to_id',
                 return_value = '1')
     def test_volume_glance_metadata_key_to_id_called(self,
                                                      metadata_key_to_id_mock):

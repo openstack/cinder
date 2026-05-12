@@ -75,7 +75,7 @@ class ManageSnapshotFlowTestCase(test.TestCase):
                           real_size)
 
     @mock.patch('cinder.quota.QuotaEngine.reserve')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_type_get')
+    @mock.patch('cinder.db.api.volume_type_get')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     def test_quota_reservation_task(self, mock_get_vol_by_id, mock_type_get,
                                     mock_quota_reserve):
@@ -99,7 +99,7 @@ class ManageSnapshotFlowTestCase(test.TestCase):
 
     @ddt.data(True, False)
     @mock.patch('cinder.quota.QuotaEngine.reserve')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_type_get')
+    @mock.patch('cinder.db.api.volume_type_get')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     def test_quota_reservation_task_with_update_flag(
             self, need_update, mock_get_vol_by_id,

@@ -259,8 +259,8 @@ class ServiceTestCase(test.TestCase):
             self.assertTrue(serv.model_disconnected)
             self.assertFalse(mock_db.service_update.called)
 
-    @mock.patch('cinder.db.sqlalchemy.api.service_update')
-    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    @mock.patch('cinder.db.api.service_update')
+    @mock.patch('cinder.db.api.service_get')
     def test_report_state_newly_connected(self, get_by_id, service_update):
         get_by_id.return_value = self.service_ref
 

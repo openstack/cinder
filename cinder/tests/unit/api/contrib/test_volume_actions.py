@@ -79,7 +79,7 @@ class VolumeActionsTest(test.TestCase):
         self.addCleanup(self.update_patcher.stop)
         self.mock_volume_update.return_value = vol
         self.db_get_patcher = mock.patch(
-            'cinder.db.sqlalchemy.api._volume_get')
+            'cinder.db.api._volume_get')
         self.mock_volume_db_get = self.db_get_patcher.start()
         self.addCleanup(self.db_get_patcher.stop)
         self.mock_volume_db_get.return_value = vol
@@ -527,7 +527,7 @@ class VolumeRetypeActionsTest(test.TestCase):
             self.retype_mocks[name] = patcher.start()
             self.addCleanup(patcher.stop)
 
-    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
+    @mock.patch('cinder.db.api.resource_exists', return_value=True)
     def _retype_volume_exec(self, expected_status,
                             new_type=fake.VOLUME_TYPE2_ID, vol_id=None,
                             exists_mock=None):

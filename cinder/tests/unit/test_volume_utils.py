@@ -30,7 +30,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder.db import api as db
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder import exception
 from cinder.objects import fields
 from cinder.objects import volume as volume_object
@@ -877,14 +877,14 @@ class VolumeUtilsTestCase(test.TestCase):
         result = volume_utils.extract_id_from_volume_name(vol_name)
         self.assertIsNone(result)
 
-    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
+    @mock.patch('cinder.db.api.resource_exists', return_value=True)
     def test_check_managed_volume_already_managed(self, exists_mock):
         id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
         result = volume_utils.check_already_managed_volume(id_)
         self.assertTrue(result)
         exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
 
-    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=False)
+    @mock.patch('cinder.db.api.resource_exists', return_value=False)
     def test_check_managed_volume_not_managed_proper_uuid(self, exists_mock):
         id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
         result = volume_utils.check_already_managed_volume(id_)
@@ -1231,7 +1231,7 @@ class VolumeUtilsTestCase(test.TestCase):
         encryption = db.volume_type_encryption_create(
             ctxt, type_ref['id'], encryption_metadata)
         with mock.patch(
-                'cinder.db.sqlalchemy.api.volume_encryption_metadata_get',
+                'cinder.db.api.volume_encryption_metadata_get',
                 return_value=encryption):
             volume_data = {'id': fake.VOLUME_ID,
                            'volume_type_id': type_ref['id']}
@@ -1252,7 +1252,7 @@ class VolumeUtilsTestCase(test.TestCase):
         encryption = db.volume_type_encryption_create(
             ctxt, type_ref['id'], encryption_metadata)
         with mock.patch(
-                'cinder.db.sqlalchemy.api.volume_encryption_metadata_get',
+                'cinder.db.api.volume_encryption_metadata_get',
                 return_value=encryption):
             volume_data = {'id': fake.VOLUME_ID,
                            'volume_type_id': type_ref['id']}

@@ -23,7 +23,7 @@ from cinder.tests.unit import objects as test_objects
 
 class TestGroupType(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.sqlalchemy.api._group_type_get_full')
+    @mock.patch('cinder.db.api._group_type_get_full')
     def test_get_by_id(self, group_type_get):
         db_group_type = fake_group.fake_db_group_type()
         group_type_get.return_value = db_group_type
@@ -73,7 +73,7 @@ class TestGroupType(test_objects.BaseObjectsTestCase):
         admin_context = group_type_destroy.call_args[0][0]
         self.assertTrue(admin_context.is_admin)
 
-    @mock.patch('cinder.db.sqlalchemy.api._group_type_get_full')
+    @mock.patch('cinder.db.api._group_type_get_full')
     def test_refresh(self, group_type_get):
         db_type1 = fake_group.fake_db_group_type()
         db_type2 = db_type1.copy()

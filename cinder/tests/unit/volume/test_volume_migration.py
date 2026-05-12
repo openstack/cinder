@@ -223,7 +223,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.compute.API')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 'migrate_volume_completion')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_migrate_volume_generic(self, volume_get,
                                     migrate_volume_completion,
                                     nova_api):
@@ -293,7 +293,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.compute.API')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 'migrate_volume_completion')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_migrate_volume_generic_attached_volume(self, volume_get,
                                                     migrate_volume_completion,
                                                     nova_api):
@@ -323,7 +323,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.compute.API')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 'migrate_volume_completion')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_migrate_volume_generic_volume_from_snap(self, volume_get,
                                                      migrate_volume_completion,
                                                      nova_api, create_volume,
@@ -360,7 +360,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.compute.API')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 'migrate_volume_completion')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_migrate_volume_generic_for_clone(self, volume_get,
                                               migrate_volume_completion,
                                               nova_api, create_volume, save):

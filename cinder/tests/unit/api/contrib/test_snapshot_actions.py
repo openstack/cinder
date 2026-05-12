@@ -51,7 +51,7 @@ class SnapshotActionsTest(test.TestCase):
         self.controller = snapshot_actions.SnapshotActionsController()
 
     @mock.patch('cinder.db.api.snapshot_update', autospec=True)
-    @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
+    @mock.patch('cinder.db.api._snapshot_get',
                 side_effect=fake_snapshot_get)
     @mock.patch('cinder.db.api.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_status(self, metadata_get, *args):
@@ -68,7 +68,7 @@ class SnapshotActionsTest(test.TestCase):
             fake_auth_context=self.user_ctxt))
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
-    @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
+    @mock.patch('cinder.db.api._snapshot_get',
                 side_effect=fake_snapshot_get)
     @mock.patch('cinder.db.api.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_status_invalid_status(self, metadata_get, *args):
@@ -97,7 +97,7 @@ class SnapshotActionsTest(test.TestCase):
         self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     @mock.patch('cinder.db.api.snapshot_update', autospec=True)
-    @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
+    @mock.patch('cinder.db.api._snapshot_get',
                 side_effect=fake_snapshot_get)
     @mock.patch('cinder.db.api.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_valid_progress(self, metadata_get, *args):

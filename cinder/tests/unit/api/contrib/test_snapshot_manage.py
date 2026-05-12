@@ -114,7 +114,7 @@ class SnapshotManageTest(test.TestCase):
         'cinder.scheduler.rpcapi.SchedulerAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db',
                 return_value=mock.MagicMock(id=fake.SNAPSHOT_ID))
-    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    @mock.patch('cinder.db.api.service_get')
     def test_manage_snapshot_ok(self, mock_db,
                                 mock_create_snapshot, mock_rpcapi):
         """Test successful manage snapshot execution.
@@ -178,7 +178,7 @@ class SnapshotManageTest(test.TestCase):
         'cinder.scheduler.rpcapi.SchedulerAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db',
                 return_value=mock.MagicMock(id=fake.SNAPSHOT_ID))
-    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    @mock.patch('cinder.db.api.service_get')
     def test_manage_snapshot_ok_ref_as_string(self, mock_db,
                                               mock_create_snapshot,
                                               mock_rpcapi):
@@ -204,7 +204,7 @@ class SnapshotManageTest(test.TestCase):
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db',
                 return_value=mock.MagicMock(id=fake.SNAPSHOT_ID))
-    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    @mock.patch('cinder.db.api.service_get')
     def test_manage_snapshot_disabled(self, mock_db, mock_create_snapshot,
                                       mock_rpcapi, mock_is_up):
         """Test manage snapshot failure due to disabled service."""
@@ -227,7 +227,7 @@ class SnapshotManageTest(test.TestCase):
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db',
                 return_value=mock.MagicMock(id=fake.SNAPSHOT_ID))
-    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    @mock.patch('cinder.db.api.service_get')
     def test_manage_snapshot_is_down(self, mock_db, mock_create_snapshot,
                                      mock_rpcapi, mock_is_up):
         """Test manage snapshot failure due to down service."""
@@ -359,7 +359,7 @@ class SnapshotManageTest(test.TestCase):
         self.assertTrue(mock_api_manageable.called)
 
     @mock.patch('cinder.objects.service.Service.is_up', return_value=True)
-    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    @mock.patch('cinder.db.api.service_get')
     def test_get_manageable_snapshots_disabled(self, mock_db, mock_is_up):
         mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt,
                                                              disabled=True)
@@ -371,7 +371,7 @@ class SnapshotManageTest(test.TestCase):
 
     @mock.patch('cinder.objects.service.Service.is_up', return_value=False,
                 new_callable=mock.PropertyMock)
-    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    @mock.patch('cinder.db.api.service_get')
     def test_get_manageable_snapshots_is_down(self, mock_db, mock_is_up):
         mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt)
         res = self._get_resp_get('host_ok', False, True)

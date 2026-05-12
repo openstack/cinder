@@ -47,15 +47,15 @@ class ServicesSampleJsonTest(test_base.ApiSampleTestBase):
     def setUp(self):
         super().setUp()
         self.stub_out(
-            'cinder.db.sqlalchemy.api.service_get_all',
+            'cinder.db.api.service_get_all',
             test_services.fake_db_api_service_get_all,
         )
         self.stub_out(
-            'cinder.db.sqlalchemy.api.service_get',
+            'cinder.db.api.service_get',
             test_services.fake_db_api_service_get,
         )
         self.stub_out(
-            'cinder.db.sqlalchemy.api.service_update',
+            'cinder.db.api.service_update',
             test_services.fake_db_api_service_update,
         )
         self.stub_out(

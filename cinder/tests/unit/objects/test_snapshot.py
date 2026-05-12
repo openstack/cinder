@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 import ddt
 from oslo_utils import timeutils
 
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
@@ -57,7 +57,7 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
         self._compare(self, fake_snapshot_obj, snapshot)
         snapshot_get.assert_called_once_with(self.context, models.Snapshot, 1)
 
-    @mock.patch('cinder.db.sqlalchemy.api.model_query')
+    @mock.patch('cinder.db.api.model_query')
     def test_get_by_id_no_existing_id(self, model_query):
         query = model_query().options().options().filter_by().first
         query.return_value = None
@@ -117,7 +117,7 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
                                                          True)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
-    @mock.patch('cinder.db.sqlalchemy.api.snapshot_destroy')
+    @mock.patch('cinder.db.api.snapshot_destroy')
     def test_destroy(self, snapshot_destroy, utcnow_mock):
         snapshot_destroy.return_value = {
             'status': 'deleted',
@@ -207,7 +207,7 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
                                                   volume_type_id,
                                                   host=None)
 
-    @mock.patch('cinder.db.sqlalchemy.api.snapshot_get')
+    @mock.patch('cinder.db.api.snapshot_get')
     def test_refresh(self, snapshot_get):
         db_snapshot1 = fake_snapshot.fake_db_snapshot()
         db_snapshot2 = db_snapshot1.copy()

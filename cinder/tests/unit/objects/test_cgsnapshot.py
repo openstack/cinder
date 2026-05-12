@@ -37,7 +37,7 @@ fake_cgsnapshot = {
 
 class TestCGSnapshot(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.sqlalchemy.api.cgsnapshot_get',
+    @mock.patch('cinder.db.api.cgsnapshot_get',
                 return_value=fake_cgsnapshot)
     def test_get_by_id(self, cgsnapshot_get):
         cgsnapshot = objects.CGSnapshot.get_by_id(self.context,
@@ -84,7 +84,7 @@ class TestCGSnapshot(test_objects.BaseObjectsTestCase):
         self.assertRaises(exception.ObjectActionError, cgsnapshot.save)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
-    @mock.patch('cinder.db.sqlalchemy.api.cgsnapshot_destroy')
+    @mock.patch('cinder.db.api.cgsnapshot_destroy')
     def test_destroy(self, cgsnapshot_destroy, utcnow_mock):
         cgsnapshot_destroy.return_value = {
             'status': 'deleted',
@@ -126,7 +126,7 @@ class TestCGSnapshot(test_objects.BaseObjectsTestCase):
         snapshotlist_get_for_cgs.assert_called_once_with(
             self.context, cgsnapshot.id)
 
-    @mock.patch('cinder.db.sqlalchemy.api.cgsnapshot_get')
+    @mock.patch('cinder.db.api.cgsnapshot_get')
     def test_refresh(self, cgsnapshot_get):
         db_cgsnapshot1 = fake_cgsnapshot.copy()
         db_cgsnapshot2 = db_cgsnapshot1.copy()

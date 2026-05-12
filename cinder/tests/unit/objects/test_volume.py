@@ -49,7 +49,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
               if not k.endswith('metadata') or k.startswith('volume')}
         test_objects.BaseObjectsTestCase._compare(test, db, obj)
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_get_by_id(self, volume_get):
         db_volume = fake_volume.fake_db_volume()
         volume_get.return_value = db_volume
@@ -57,7 +57,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         volume_get.assert_called_once_with(self.context, fake.VOLUME_ID)
         self._compare(self, db_volume, volume)
 
-    @mock.patch('cinder.db.sqlalchemy.api.model_query')
+    @mock.patch('cinder.db.api.model_query')
     def test_get_by_id_no_existing_id(self, model_query):
         pf = (model_query().options().options().options().options().options().
               options())
@@ -162,7 +162,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertRaises(exception.ObjectActionError, volume.save)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
-    @mock.patch('cinder.db.sqlalchemy.api.volume_destroy')
+    @mock.patch('cinder.db.api.volume_destroy')
     def test_destroy(self, volume_destroy, utcnow_mock):
         volume_destroy.return_value = {
             'status': 'deleted',
@@ -344,7 +344,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self._compare(self, db_snapshots, volume.snapshots)
 
     @mock.patch('cinder.db.api.volume_glance_metadata_get', return_value={})
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_refresh(self, volume_get, volume_metadata_get):
         db_volume1 = fake_volume.fake_db_volume()
         db_volume2 = db_volume1.copy()
@@ -461,7 +461,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertDictEqual({}, volume.obj_get_changes())
 
     @mock.patch('cinder.db.api.volume_admin_metadata_update')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_attach')
+    @mock.patch('cinder.db.api.volume_attach')
     def test_begin_attach(self, volume_attach, metadata_update):
         volume = fake_volume.fake_volume_obj(self.context, use_quota=True)
         db_attachment = fake_volume.volume_attachment_db_obj(
@@ -484,7 +484,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             self.assertEqual('rw', volume.admin_metadata['attached_mode'])
 
     @mock.patch('cinder.db.api.volume_admin_metadata_delete')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_detached')
+    @mock.patch('cinder.db.api.volume_detached')
     @mock.patch('cinder.objects.volume_attachment.VolumeAttachmentList.'
                 'get_all_by_volume_id')
     def test_volume_detached_with_attachment(
@@ -527,7 +527,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             self.assertNotIn('attached_mode', volume.admin_metadata)
 
     @mock.patch('cinder.db.api.volume_admin_metadata_delete')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_detached')
+    @mock.patch('cinder.db.api.volume_detached')
     @mock.patch('cinder.objects.volume_attachment.VolumeAttachmentList.'
                 'get_all_by_volume_id')
     def test_volume_detached_without_attachment(

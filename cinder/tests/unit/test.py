@@ -44,8 +44,8 @@ from cinder.api import common as api_common
 from cinder.common import config
 from cinder import context
 from cinder import coordination
+from cinder.db import api as db
 from cinder.db import migration
-from cinder.db.sqlalchemy import api as sqla_api
 from cinder import i18n
 from cinder.objects import base as objects_base
 from cinder import rpc
@@ -85,7 +85,7 @@ class Database(fixtures.Fixture):
 
     def setUp(self):
         super().setUp()
-        engine = sqla_api.get_engine()
+        engine = db.get_engine()
         engine.dispose()
         self._cache_schema()
         conn = engine.connect()
@@ -95,14 +95,14 @@ class Database(fixtures.Fixture):
     def _cache_schema(self):
         global DB_SCHEMA
         if not DB_SCHEMA:
-            engine = sqla_api.get_engine()
+            engine = db.get_engine()
             conn = engine.connect()
             migration.db_sync()
             DB_SCHEMA = "".join(line for line in conn.connection.iterdump())
             engine.dispose()
 
     def cleanup(self):
-        engine = sqla_api.get_engine()
+        engine = db.get_engine()
         engine.dispose()
 
 
@@ -278,10 +278,10 @@ class TestCase(testtools.TestCase):
         self._disable_osprofiler()
 
         # NOTE(geguileo): This is required because common get_by_id method in
-        # cinder.db.sqlalchemy.api caches get methods and if we use a mocked
+        # cinder.db.api caches get methods and if we use a mocked
         # get method in one test it would carry on to the next test.  So we
         # clear out the cache.
-        sqla_api._GET_METHODS = {}
+        db._GET_METHODS = {}
 
         self.override_config('backend_url', 'file://' + lock_path,
                              group='coordination')

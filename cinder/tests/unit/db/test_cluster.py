@@ -240,7 +240,7 @@ class ClusterTestCase(test_db_api.BaseTest):
         result = db.cluster_get_all(self.ctxt, is_up=True)
         self.assertListEqual([], result)
 
-    @mock.patch('cinder.db.sqlalchemy.api._cluster_query')
+    @mock.patch('cinder.db.api._cluster_query')
     def test_cluster_get_all_passes_parameters(self, cluster_query_mock):
         """Test that get_all passes all parameters.
 

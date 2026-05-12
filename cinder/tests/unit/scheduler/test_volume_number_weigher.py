@@ -20,7 +20,7 @@ from unittest import mock
 
 from cinder.common import constants
 from cinder import context
-from cinder.db.sqlalchemy import api
+from cinder.db import api
 from cinder.scheduler import weights
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit.scheduler import fakes
@@ -67,7 +67,7 @@ class VolumeNumberWeigherTestCase(test.TestCase):
             hosts,
             weight_properties)[0]
 
-    @mock.patch('cinder.db.sqlalchemy.api.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def _get_all_backends(self, _mock_service_get_all, disabled=False):
         ctxt = context.get_admin_context()
         fakes.mock_host_manager_db_calls(_mock_service_get_all,
@@ -75,7 +75,6 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         backend_states = self.host_manager.get_all_backend_states(ctxt)
         _mock_service_get_all.assert_called_once_with(
             ctxt,
-            None,  # backend_match_level
             topic=constants.VOLUME_TOPIC,
             frozen=False,
             disabled=disabled)

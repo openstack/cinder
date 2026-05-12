@@ -61,7 +61,7 @@ class VolumeConsistencyGroupDriver(base.CinderInterface):
         The source can be cgsnapshot or a source cg.
 
         param volumes is retrieved directly from the db. It is a list of
-        cinder.db.sqlalchemy.models.Volume to be precise. It cannot be
+        cinder.db.models.Volume to be precise. It cannot be
         assigned to volumes_model_update. volumes_model_update is a list of
         dictionaries. It has to be built by the driver. An entry will be
         in this format: {'id': xxx, 'status': xxx, ......}. model_update
@@ -83,7 +83,7 @@ class VolumeConsistencyGroupDriver(base.CinderInterface):
         :returns: model_update, volumes_model_update
 
         param volumes is retrieved directly from the db. It is a list of
-        cinder.db.sqlalchemy.models.Volume to be precise. It cannot be
+        cinder.db.models.Volume to be precise. It cannot be
         assigned to volumes_model_update. volumes_model_update is a list of
         dictionaries. It has to be built by the driver. An entry will be
         in this format: {'id': xxx, 'status': xxx, ......}. model_update
@@ -137,7 +137,7 @@ class VolumeConsistencyGroupDriver(base.CinderInterface):
         volume entry can be updated. If None is returned, the volume will
         remain its original status. Also note that you cannot directly
         assign add_volumes to add_volumes_update as add_volumes is a list of
-        cinder.db.sqlalchemy.models.Volume objects and cannot be used for
+        cinder.db.models.Volume objects and cannot be used for
         db update directly. Same with remove_volumes.
 
         If the driver throws an exception, the status of the group as well as
@@ -153,7 +153,7 @@ class VolumeConsistencyGroupDriver(base.CinderInterface):
         :returns: model_update, snapshots_model_update
 
         param snapshots is retrieved directly from the db. It is a list of
-        cinder.db.sqlalchemy.models.Snapshot to be precise. It cannot be
+        cinder.db.models.Snapshot to be precise. It cannot be
         assigned to snapshots_model_update. snapshots_model_update is a list
         of dictionaries. It has to be built by the driver. An entry will be
         in this format: {'id': xxx, 'status': xxx, ......}. model_update
@@ -196,7 +196,7 @@ class VolumeConsistencyGroupDriver(base.CinderInterface):
         :returns: model_update, snapshots_model_update
 
         param snapshots is retrieved directly from the db. It is a list of
-        cinder.db.sqlalchemy.models.Snapshot to be precise. It cannot be
+        cinder.db.models.Snapshot to be precise. It cannot be
         assigned to snapshots_model_update. snapshots_model_update is a list
         of dictionaries. It has to be built by the driver. An entry will be
         in this format: {'id': xxx, 'status': xxx, ......}. model_update

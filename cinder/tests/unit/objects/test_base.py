@@ -22,7 +22,7 @@ from oslo_versionedobjects import fields
 from sqlalchemy import sql
 
 from cinder import context
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder.db import utils as db_utils
 from cinder import exception
 from cinder import objects
@@ -660,7 +660,7 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
                   'previous_status': volume.model.status,
                   'migration_status': case_values}
 
-        with mock.patch('cinder.db.sqlalchemy.api.model_query') as model_query:
+        with mock.patch('cinder.db.api.model_query') as model_query:
             update = model_query.return_value.filter.return_value.update
             update.return_value = 0
             self.assertFalse(volume.conditional_update(
@@ -694,7 +694,7 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
 
         order = ['status']
 
-        with mock.patch('cinder.db.sqlalchemy.api.model_query') as model_query:
+        with mock.patch('cinder.db.api.model_query') as model_query:
             update = model_query.return_value.filter.return_value.update
             update.return_value = 0
             self.assertFalse(volume.conditional_update(
@@ -720,7 +720,7 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
                   'previous_status': 'available',
                   'migration_status': None}
 
-        with mock.patch('cinder.db.sqlalchemy.api.model_query') as model_query:
+        with mock.patch('cinder.db.api.model_query') as model_query:
             update = model_query.return_value.filter.return_value.update
             update.return_value = 0
             self.assertFalse(volume.conditional_update(

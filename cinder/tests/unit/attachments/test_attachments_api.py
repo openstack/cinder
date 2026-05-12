@@ -308,11 +308,11 @@ class AttachmentManagerTestCase(test.TestCase):
             self.context, aref, connector)
         self.assertEqual(409, caught_exc.code)
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_attachment_update',
+    @mock.patch('cinder.db.api.volume_attachment_update',
                 return_value={})
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update',
                 return_value={})
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get',
+    @mock.patch('cinder.db.api._volume_type_get',
                 v3_fakes.fake_volume_type_get)
     def test_attachment_update_duplicate(self, mock_va_update, mock_db_upd):
         volume_params = {'status': 'available'}

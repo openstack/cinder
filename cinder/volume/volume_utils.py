@@ -952,7 +952,7 @@ def create_encryption_key(context: context.RequestContext,
                           volume_type_id: str) -> Optional[str]:
     encryption_key_id = None
     if volume_types.is_encrypted(context, volume_type_id):
-        volume_type_encryption: db.sqlalchemy.models.Encryption = (
+        volume_type_encryption: db.models.Encryption = (
             volume_types.get_volume_type_encryption(context,
                                                     volume_type_id))
         if volume_type_encryption is None:

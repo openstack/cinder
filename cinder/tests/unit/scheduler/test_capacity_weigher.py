@@ -42,7 +42,7 @@ class CapacityWeigherTestCase(test.TestCase):
             hosts,
             weight_properties)
 
-    @mock.patch('cinder.db.sqlalchemy.api.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def _get_all_backends(self, _mock_service_get_all, disabled=False):
         ctxt = context.get_admin_context()
         fakes.mock_host_manager_db_calls(_mock_service_get_all,
@@ -50,7 +50,6 @@ class CapacityWeigherTestCase(test.TestCase):
         backend_states = self.host_manager.get_all_backend_states(ctxt)
         _mock_service_get_all.assert_called_once_with(
             ctxt,
-            None,  # backend_match_level
             topic=constants.VOLUME_TOPIC, frozen=False, disabled=disabled)
         return backend_states
 

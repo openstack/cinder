@@ -28,7 +28,7 @@ from cinder.tests.unit import objects as test_objects
 @ddt.ddt
 class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_attachment_get')
+    @mock.patch('cinder.db.api.volume_attachment_get')
     def test_get_by_id(self, volume_attachment_get):
         db_attachment = fake_volume.volume_attachment_db_obj()
         attachment_obj = fake_volume.volume_attachment_ovo(self.context)
@@ -72,7 +72,7 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
             self.context, attachment.id,
             {'attach_status': fields.VolumeAttachStatus.ATTACHING})
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_attachment_get')
+    @mock.patch('cinder.db.api.volume_attachment_get')
     def test_refresh(self, attachment_get):
         db_attachment1 = fake_volume.volume_attachment_db_obj()
         attachment_obj1 = fake_volume.volume_attachment_ovo(self.context)
@@ -98,7 +98,7 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
                                          mock.call(self.context,
                                                    fake.ATTACHMENT_ID)])
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_attached')
+    @mock.patch('cinder.db.api.volume_attached')
     def test_volume_attached(self, volume_attached):
         attachment = fake_volume.volume_attachment_ovo(self.context)
         updated_values = {'mountpoint': '/dev/sda',
@@ -116,14 +116,13 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
                                                 fake.INSTANCE_ID,
                                                 'fake_host',
                                                 '/dev/sda',
-                                                'rw',
-                                                True)
+                                                'rw')
         self.assertEqual('/dev/sda', attachment.mountpoint)
         self.assertEqual(fake.INSTANCE_ID, attachment.instance_uuid)
         self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
                          attachment.attach_status)
 
-    @mock.patch('cinder.db.sqlalchemy.models.Volume')
+    @mock.patch('cinder.db.models.Volume')
     def test_migrate_attachment_specs(self, mock_volume_model):
         mock_volume_model.project_id = self.context.project_id
         # Create an attachment

@@ -15,7 +15,7 @@
 from oslo_utils.uuidutils import is_uuid_like
 from oslo_versionedobjects import fields
 
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder import objects
 from cinder.objects import fields as c_fields
 from cinder.tests.unit import fake_constants as fake

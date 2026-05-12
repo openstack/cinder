@@ -21,13 +21,13 @@ class ClustersSampleJsonTest(test_base.ApiSampleTestBase):
     def setUp(self):
         super().setUp()
         self.stub_out(
-            'cinder.db.sqlalchemy.api.cluster_get_all',
+            'cinder.db.api.cluster_get_all',
             test_cluster.fake_db_api_cluster_get_all)
         self.stub_out(
-            'cinder.db.sqlalchemy.api.cluster_get',
+            'cinder.db.api.cluster_get',
             test_cluster.fake_db_api_cluster_get)
         self.stub_out(
-            'cinder.db.sqlalchemy.api.cluster_update',
+            'cinder.db.api.cluster_update',
             test_cluster.fake_db_api_cluster_update)
         self.subs = {}
 

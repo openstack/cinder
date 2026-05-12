@@ -30,9 +30,9 @@ from oslo_log.fixture import logging_error as log_fixture
 from oslotest import base as test_base
 import sqlalchemy
 
+from cinder.db import api
 from cinder.db import migration
-from cinder.db.sqlalchemy import api
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder.tests import fixtures as cinder_fixtures
 
 

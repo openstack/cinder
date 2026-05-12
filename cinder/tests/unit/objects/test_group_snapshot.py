@@ -37,7 +37,7 @@ fake_group_snapshot = {
 
 class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.sqlalchemy.api.group_snapshot_get',
+    @mock.patch('cinder.db.api.group_snapshot_get',
                 return_value=fake_group_snapshot)
     def test_get_by_id(self, group_snapshot_get):
         group_snapshot = objects.GroupSnapshot.get_by_id(
@@ -88,7 +88,7 @@ class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
         self.assertRaises(exception.ObjectActionError, group_snapshot.save)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
-    @mock.patch('cinder.db.sqlalchemy.api.group_snapshot_destroy')
+    @mock.patch('cinder.db.api.group_snapshot_destroy')
     def test_destroy(self, group_snapshot_destroy, utcnow_mock):
         group_snapshot_destroy.return_value = {
             'status': fields.GroupSnapshotStatus.DELETED,
@@ -132,7 +132,7 @@ class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
         snapshotlist_get_for_cgs.assert_called_once_with(
             self.context, group_snapshot.id)
 
-    @mock.patch('cinder.db.sqlalchemy.api.group_snapshot_get')
+    @mock.patch('cinder.db.api.group_snapshot_get')
     def test_refresh(self, group_snapshot_get):
         db_group_snapshot1 = fake_group_snapshot.copy()
         db_group_snapshot2 = db_group_snapshot1.copy()
