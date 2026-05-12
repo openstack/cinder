@@ -12,11 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_versionedobjects import fields as ovo_fields
+
 from cinder.objects import fields
 from cinder.tests.unit import test
 
 
-class FakeFieldType(fields.FieldType):
+class FakeFieldType(ovo_fields.FieldType):
     def coerce(self, obj, attr, value):
         return '*%s*' % value
 
@@ -30,7 +32,7 @@ class FakeFieldType(fields.FieldType):
 class TestField(test.TestCase):
     def setUp(self):
         super(TestField, self).setUp()
-        self.field = fields.Field(FakeFieldType())
+        self.field = ovo_fields.Field(FakeFieldType())
         self.coerce_good_values = [('foo', '*foo*')]
         self.coerce_bad_values = []
         self.to_primitive_values = [('foo', '!foo!')]
