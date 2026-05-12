@@ -175,18 +175,27 @@ def _keystone_client(context: 'context.RequestContext',
     :return: keystoneclient.client.Client object
     """
     if context.system_scope is not None:
+        if context.auth_token is None:
+            raise exception.NotAuthorized()
+
         auth_plugin = identity.Token(
             auth_url=CONF.keystone_authtoken.auth_url,
             token=context.auth_token,
             system_scope=context.system_scope
         )
     elif context.domain_id is not None:
+        if context.auth_token is None:
+            raise exception.NotAuthorized()
+
         auth_plugin = identity.Token(
             auth_url=CONF.keystone_authtoken.auth_url,
             token=context.auth_token,
             domain_id=context.domain_id
         )
     elif context.project_id is not None:
+        if context.auth_token is None:
+            raise exception.NotAuthorized()
+
         auth_plugin = identity.Token(
             auth_url=CONF.keystone_authtoken.auth_url,
             token=context.auth_token,
