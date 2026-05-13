@@ -1,0 +1,128 @@
+[
+    {
+        "name": "Sdt-pie104058",
+        "sdtState": "Normal",
+        "ipList": [
+            {
+                "role": "StorageAndHost",
+                "ip": "192.168.45.22"
+            },
+            {
+                "role": "StorageAndHost",
+                "ip": "192.168.44.187"
+            }
+        ],
+        "systemId": "1250de83018c2d0f",
+        "protectionDomainId": "898f75c900000003",
+        "storagePort": 12200,
+        "nvmePort": 4420,
+        "discoveryPort": 8009,
+        "certificateInfo": null,
+        "mdmConnectionState": "Connected",
+        "membershipState": "Joined",
+        "faultSetId": null,
+        "softwareVersionInfo": "R4_5.0.0",
+        "maintenanceState": "NoMaintenance",
+        "authenticationError": "None",
+        "persistentDiscoveryControllersNum": 0,
+        "id": "a76b314f00000000",
+        "links": [
+            {
+                "rel": "self",
+                "href": "/api/instances/Sdt::a76b314f00000000"
+            },
+            {
+                "rel": "/api/Sdt/relationship/Statistics",
+                "href": "/api/instances/Sdt::a76b314f00000000/relationships/Statistics"
+            },
+            {
+                "rel": "/api/parent/relationship/protectionDomainId",
+                "href": "/api/instances/ProtectionDomain::898f75c900000003"
+            }
+        ]
+    },
+    {
+        "name": "Sdt-pie104060",
+        "sdtState": "Normal",
+        "ipList": [
+            {
+                "role": "StorageAndHost",
+                "ip": "192.168.45.24"
+            },
+            {
+                "role": "StorageAndHost",
+                "ip": "192.168.44.189"
+            }
+        ],
+        "systemId": "1250de83018c2d0f",
+        "protectionDomainId": "898f75c900000003",
+        "storagePort": 12200,
+        "nvmePort": 4420,
+        "discoveryPort": 8009,
+        "certificateInfo": null,
+        "mdmConnectionState": "Connected",
+        "membershipState": "Joined",
+        "faultSetId": null,
+        "softwareVersionInfo": "R4_5.0.0",
+        "maintenanceState": "NoMaintenance",
+        "authenticationError": "None",
+        "persistentDiscoveryControllersNum": 0,
+        "id": "a76b315100000002",
+        "links": [
+            {
+                "rel": "self",
+                "href": "/api/instances/Sdt::a76b315100000002"
+            },
+            {
+                "rel": "/api/Sdt/relationship/Statistics",
+                "href": "/api/instances/Sdt::a76b315100000002/relationships/Statistics"
+            },
+            {
+                "rel": "/api/parent/relationship/protectionDomainId",
+                "href": "/api/instances/ProtectionDomain::898f75c900000003"
+            }
+        ]
+    },
+    {
+        "name": "Sdt-pie104059",
+        "sdtState": "Normal",
+        "ipList": [
+            {
+                "role": "StorageAndHost",
+                "ip": "192.168.45.23"
+            },
+            {
+                "role": "StorageAndHost",
+                "ip": "192.168.44.188"
+            }
+        ],
+        "systemId": "1250de83018c2d0f",
+        "protectionDomainId": "898f75c900000003",
+        "storagePort": 12200,
+        "nvmePort": 4420,
+        "discoveryPort": 8009,
+        "certificateInfo": null,
+        "mdmConnectionState": "Connected",
+        "membershipState": "Joined",
+        "faultSetId": null,
+        "softwareVersionInfo": "R4_5.0.0",
+        "maintenanceState": "NoMaintenance",
+        "authenticationError": "None",
+        "persistentDiscoveryControllersNum": 0,
+        "id": "a76b315000000001",
+        "links": [
+            {
+                "rel": "self",
+                "href": "/api/instances/Sdt::a76b315000000001"
+            },
+            {
+                "rel": "/api/Sdt/relationship/Statistics",
+                "href": "/api/instances/Sdt::a76b315000000001/relationships/Statistics"
+            },
+            {
+                "rel": "/api/parent/relationship/protectionDomainId",
+                "href": "/api/instances/ProtectionDomain::898f75c900000003"
+            }
+        ]
+    }
+]

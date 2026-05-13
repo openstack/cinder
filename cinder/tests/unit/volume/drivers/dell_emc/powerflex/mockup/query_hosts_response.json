@@ -1,0 +1,100 @@
+[
+    {
+        "name": "host_6188",
+        "hostOsFullType": "Generic",
+        "sdcIps": null,
+        "osType": null,
+        "sdcApproved": null,
+        "sdcAgentActive": null,
+        "mdmIpAddressesCurrent": null,
+        "sdcIp": null,
+        "perfProfile": null,
+        "peerMdmId": null,
+        "sdtId": null,
+        "mdmConnectionState": null,
+        "softwareVersionInfo": null,
+        "socketAllocationFailure": null,
+        "memoryAllocationFailure": null,
+        "versionInfo": null,
+        "sdcType": null,
+        "nqn": "nqn.2014-08.org.nvmexpress:uuid:c470396a-2a3b-48ad-9c22-d3811fe1036d",
+        "maxNumPaths": 4,
+        "maxNumSysPorts": 10,
+        "sdcGuid": null,
+        "installedSoftwareVersionInfo": null,
+        "kernelVersion": null,
+        "kernelBuildNumber": null,
+        "sdcApprovedIps": null,
+        "hostType": "NVMeHost",
+        "sdrId": null,
+        "systemId": "1250de83018c2d0f",
+        "id": "13bf22b500010004",
+        "links": [
+            {
+                "rel": "self",
+                "href": "/api/instances/Host::13bf22b500010004"
+            },
+            {
+                "rel": "/api/Host/relationship/Volume",
+                "href": "/api/instances/Host::13bf22b500010004/relationships/Volume"
+            },
+            {
+                "rel": "/api/Host/relationship/NvmeController",
+                "href": "/api/instances/Host::13bf22b500010004/relationships/NvmeController"
+            },
+            {
+                "rel": "/api/parent/relationship/systemId",
+                "href": "/api/instances/System::1250de83018c2d0f"
+            }
+        ]
+    },
+    {
+        "name": "host_6190",
+        "hostOsFullType": "Generic",
+        "sdcIps": null,
+        "osType": null,
+        "sdcApproved": null,
+        "sdcAgentActive": null,
+        "mdmIpAddressesCurrent": null,
+        "sdcIp": null,
+        "perfProfile": null,
+        "peerMdmId": null,
+        "sdtId": null,
+        "mdmConnectionState": null,
+        "softwareVersionInfo": null,
+        "socketAllocationFailure": null,
+        "memoryAllocationFailure": null,
+        "versionInfo": null,
+        "sdcType": null,
+        "nqn": "nqn.2014-08.org.nvmexpress:uuid:fc9aaff0-09bb-4825-b590-4897d1a4eade",
+        "maxNumPaths": 4,
+        "maxNumSysPorts": 10,
+        "sdcGuid": null,
+        "installedSoftwareVersionInfo": null,
+        "kernelVersion": null,
+        "kernelBuildNumber": null,
+        "sdcApprovedIps": null,
+        "hostType": "NVMeHost",
+        "sdrId": null,
+        "systemId": "1250de83018c2d0f",
+        "id": "13bf228a00010001",
+        "links": [
+            {
+                "rel": "self",
+                "href": "/api/instances/Host::13bf228a00010001"
+            },
+            {
+                "rel": "/api/Host/relationship/Volume",
+                "href": "/api/instances/Host::13bf228a00010001/relationships/Volume"
+            },
+            {
+                "rel": "/api/Host/relationship/NvmeController",
+                "href": "/api/instances/Host::13bf228a00010001/relationships/NvmeController"
+            },
+            {
+                "rel": "/api/parent/relationship/systemId",
+                "href": "/api/instances/System::1250de83018c2d0f"
+            }
+        ]
+    }
+]

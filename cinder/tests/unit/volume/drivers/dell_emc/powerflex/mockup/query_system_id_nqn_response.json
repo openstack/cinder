@@ -1,0 +1,24 @@
+[
+    {
+        "name": "scaleio-block-legacy-gateway",
+        "lastRealignNetPathTime": 0,
+        "realignNetPathInterval": 0,
+        "restrictedSdcModeEnabled": false,
+        "enterpriseFeaturesEnabled": true,
+        "restrictedSdcMode": "None",
+        "swid": "ELMSIODEVSME01",
+        "daysInstalled": 131,
+        "maxCapacityInGb": "307200",
+        "systemNqn": "nqn.1988-11.com.dell:powerflex:00:1250de83018c2d0f",
+        "remoteReadOnlyLimitState": false,
+        "mdmManagementPort": 8611,
+        "mdmExternalPort": 7612,
+        "lastUpgradeTime": 0,
+        "cliPasswordAllowed": true,
+        "managementClientSecureCommunicationEnabled": true,
+        "tlsVersion": "TLSv1.2",
+        "showGuid": true,
+        "defragmentationEnabled": true,
+        "id": "1250de83018c2d0f"
+    }
+]

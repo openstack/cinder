@@ -71,7 +71,7 @@ class TestSDC(powerflex.TestPowerFlexDriver):
         self.driver.initialize_connection(self.volume, self.connector)
 
         self.driver._initialize_connection.assert_called_once_with(
-            self.volume, self.connector, self.volume.size)
+            self.volume, self.connector)
 
     def test__initialize_connection(self):
         self.client_mock.query_sdc_id_by_guid.return_value = self.host_id
@@ -79,7 +79,7 @@ class TestSDC(powerflex.TestPowerFlexDriver):
         self.driver._check_volume_mapped = mock.MagicMock()
 
         result = self.driver._initialize_connection(
-            self.volume, self.connector, self.volume.size)
+            self.volume, self.connector)
 
         self.assertEqual(result['driver_volume_type'], "scaleio")
         self.driver._attach_volume_to_host.assert_called_with(
@@ -87,12 +87,12 @@ class TestSDC(powerflex.TestPowerFlexDriver):
         self.driver._check_volume_mapped.assert_called_with(
             self.host_id, self.volume.provider_id)
 
-    def test__initialize_connection_no_connector(self):
-        self.assertRaises(exception.InvalidHost,
-                          self.driver._initialize_connection,
-                          self.volume,
-                          {},
-                          self.volume.size)
+    def test__initialize_connection_no_sdc_guid(self):
+        ex = self.assertRaises(exception.InvalidHost,
+                               self.driver._initialize_connection,
+                               self.volume,
+                               {})
+        self.assertIn("SDC guid is not configured.", ex.msg)
 
     def test__attach_volume_to_host_success(self):
         self.client_mock.query_sdc_by_id.return_value = self.host
@@ -180,7 +180,7 @@ class TestSDC(powerflex.TestPowerFlexDriver):
 
     def test__terminate_connection_multiattached(self):
         self.driver._is_multiattached_to_host = mock.MagicMock(
-            return_valure=False)
+            return_value=True)
 
         self.driver._terminate_connection(self.volume, self.connector)
 
