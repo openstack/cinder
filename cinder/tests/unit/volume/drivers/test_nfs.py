@@ -49,7 +49,6 @@ class RemoteFsDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(RemoteFsDriverTestCase, self).setUp()
-        self._driver = remotefs.RemoteFSDriver()
         self.configuration = conf.Configuration(None)
         self.configuration.append_config_values(nfs.nfs_opts)
         self.configuration.append_config_values(remotefs.nas_opts)

@@ -24,6 +24,7 @@ import requests
 from cinder import exception
 from cinder.objects import fields
 from cinder.tests.unit import test
+from cinder.volume import configuration as conf
 import cinder.volume.drivers.stx.client
 import cinder.volume.drivers.stx.common
 import cinder.volume.drivers.stx.exception as stx_exception
@@ -836,7 +837,8 @@ class TestSeagateFC(test.TestCase):
         mock_setup.return_value = True
 
         def fake_init(self, *args, **kwargs):
-            super(STXFCDriver, self).__init__()
+            super(STXFCDriver, self).__init__(
+                configuration=conf.Configuration(None))
             self.common = None
             self.configuration = FakeConfiguration1()
             self.lookup_service = fczm_utils.create_lookup_service()
@@ -975,7 +977,8 @@ class TestSeagateISCSI(TestSeagateFC):
         mock_setup.return_value = True
 
         def fake_init(self, *args, **kwargs):
-            super(STXISCSIDriver, self).__init__()
+            super(STXISCSIDriver, self).__init__(
+                configuration=conf.Configuration(None))
             self.common = None
             self.configuration = FakeConfiguration2()
             self.iscsi_ips = ['10.0.0.11']

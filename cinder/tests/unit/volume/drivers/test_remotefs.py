@@ -32,6 +32,7 @@ from cinder.tests.unit import fake_volume
 from cinder.tests.unit.keymgr import fake as fake_keymgr
 from cinder.tests.unit import test
 from cinder import utils
+from cinder.volume import configuration as conf
 from cinder.volume.drivers import remotefs
 from cinder.volume import volume_utils
 
@@ -48,7 +49,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(RemoteFsSnapDriverTestCase, self).setUp()
-        self._driver = remotefs.RemoteFSSnapDriver()
+        self._driver = remotefs.RemoteFSSnapDriver(
+            configuration=conf.Configuration(None))
         self._driver._remotefsclient = mock.Mock()
         self._driver._execute = mock.Mock()
         self._driver._delete = mock.Mock()

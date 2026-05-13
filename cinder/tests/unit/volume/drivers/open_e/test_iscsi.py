@@ -200,9 +200,7 @@ class TestOpenEJovianDSSISCSIDriver(test.TestCase):
         cfg.append_config_values.return_value = None
         cfg.get = lambda val, default: config.get(val, default)
 
-        jdssd = iscsi.JovianISCSIDriver()
-
-        jdssd.configuration = cfg
+        jdssd = iscsi.JovianISCSIDriver(configuration=cfg)
         lib_to_patch = ('cinder.volume.drivers.open_e.jovian_common.rest.'
                         'JovianRESTAPI')
         with mock.patch(lib_to_patch) as ra:
@@ -225,8 +223,7 @@ class TestOpenEJovianDSSISCSIDriver(test.TestCase):
         cfg = mock.Mock()
         cfg.append_config_values.return_value = None
 
-        jdssd = iscsi.JovianISCSIDriver()
-        jdssd.configuration = cfg
+        jdssd = iscsi.JovianISCSIDriver(configuration=cfg)
 
         jdssd.ra = mock.Mock()
         jdssd.driver = mock.Mock()

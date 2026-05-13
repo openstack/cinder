@@ -136,7 +136,9 @@ class DriverTestCase(test.TestCase):
 
     def test_failover(self):
         """Test default failover behavior of calling failover_host."""
-        my_driver = self._get_driver(True, 'a/a')()
+        config = manager.config.Configuration(manager.volume_manager_opts,
+                                              config_group='volume')
+        my_driver = self._get_driver(True, 'a/a')(configuration=config)
         with mock.patch.object(my_driver, 'failover_host') as failover_mock:
             res = my_driver.failover(mock.sentinel.context,
                                      mock.sentinel.volumes,
