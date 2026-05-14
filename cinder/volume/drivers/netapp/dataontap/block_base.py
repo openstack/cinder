@@ -241,9 +241,19 @@ class NetAppBlockStorageLibrary(
 
         extra_specs = na_utils.get_volume_extra_specs(volume)
 
-        space_allocation = volume_utils.is_boolean_str(
-            extra_specs.get('netapp:space_allocation')
-        )
+        ontap_version = self.zapi_client.get_ontap_version(cached=True)
+        space_allocation_spec = extra_specs.get('netapp:space_allocation')
+        if space_allocation_spec is not None:
+            space_allocation = volume_utils.is_boolean_str(
+                space_allocation_spec
+            )
+        elif ontap_version >= (9, 15, 1):
+            # ONTAP 9.15.1+ enables space-allocation by default for new LUNs
+            # Ref: https://docs.netapp.com/us-en/ontap/release-notes/
+            #      defaults-limits.html
+            space_allocation = True
+        else:
+            space_allocation = False
         LOG.debug('create_volume space_allocation %r', space_allocation)
         lun_name = volume['name']
 
