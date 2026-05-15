@@ -622,34 +622,6 @@ def is_blk_device(dev: str) -> bool:
         return False
 
 
-class ComparableMixin(object):
-    def _compare(self, other: object, method: Callable):
-        try:
-            return method(self._cmpkey(), other._cmpkey())  # type: ignore
-        except (AttributeError, TypeError):
-            # _cmpkey not implemented, or return different type,
-            # so I can't compare with "other".
-            return NotImplemented
-
-    def __lt__(self, other: object):
-        return self._compare(other, lambda s, o: s < o)
-
-    def __le__(self, other: object):
-        return self._compare(other, lambda s, o: s <= o)
-
-    def __eq__(self, other: object):
-        return self._compare(other, lambda s, o: s == o)
-
-    def __ge__(self, other: object):
-        return self._compare(other, lambda s, o: s >= o)
-
-    def __gt__(self, other: object):
-        return self._compare(other, lambda s, o: s > o)
-
-    def __ne__(self, other: object):
-        return self._compare(other, lambda s, o: s != o)
-
-
 class retry_if_exit_code(tenacity.retry_if_exception):
     """Retry on ProcessExecutionError specific exit codes."""
     def __init__(self, codes):

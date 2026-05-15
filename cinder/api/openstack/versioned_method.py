@@ -14,10 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder import utils
+from cinder.api import api_utils
 
 
-class VersionedMethod(utils.ComparableMixin):
+class VersionedMethod(api_utils.ComparableMixin):
 
     def __init__(self, name, start_version, end_version, experimental, func):
         """Versioning information for a single method.

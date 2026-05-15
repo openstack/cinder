@@ -11,7 +11,8 @@
 #    under the License.
 
 import typing
-from typing import Any, Generator, Iterable, Optional, Union
+from typing import Any, Callable, Generator
+from typing import Iterable, Optional, Union
 
 from keystoneauth1 import exceptions as ks_exc
 from keystoneauth1 import identity
@@ -263,3 +264,31 @@ def validate_project_and_authorize(context: 'context.RequestContext',
         explanation = _("You are not authorized to perform this "
                         "operation.")
         raise exc.HTTPForbidden(explanation=explanation)
+
+
+class ComparableMixin(object):
+    def _compare(self, other: object, method: Callable):
+        try:
+            return method(self._cmpkey(), other._cmpkey())  # type: ignore
+        except (AttributeError, TypeError):
+            # _cmpkey not implemented, or return different type,
+            # so I can't compare with "other".
+            return NotImplemented
+
+    def __lt__(self, other: object):
+        return self._compare(other, lambda s, o: s < o)
+
+    def __le__(self, other: object):
+        return self._compare(other, lambda s, o: s <= o)
+
+    def __eq__(self, other: object):
+        return self._compare(other, lambda s, o: s == o)
+
+    def __ge__(self, other: object):
+        return self._compare(other, lambda s, o: s >= o)
+
+    def __gt__(self, other: object):
+        return self._compare(other, lambda s, o: s > o)
+
+    def __ne__(self, other: object):
+        return self._compare(other, lambda s, o: s != o)
