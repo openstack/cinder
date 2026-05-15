@@ -8,11 +8,6 @@ secondary attached storage similar to the Amazon Elastic Block Storage
 (EBS) offering. In addition, you can write images to a Block Storage
 device for Compute to use as a bootable persistent instance.
 
-The Block Storage service differs slightly from the Amazon EBS offering.
-The Block Storage service does not provide a shared storage solution
-like NFS. With the Block Storage service, you can attach a device to
-only one instance.
-
 The Block Storage service provides:
 
 -  ``cinder-api`` - a WSGI app that authenticates and routes requests
@@ -25,14 +20,16 @@ The Block Storage service provides:
    round-robin scheduling to the running volume services, or it can be
    more sophisticated through the use of the Filter Scheduler. The
    Filter Scheduler is the default and enables filters on things like
-   Capacity, Availability Zone, Volume Types, and Capabilities as well
-   as custom filters.
+   Availability Zone, Capacity and Capabilities (by defualt) as well
+   as custom filters. After the filtering is done, Cinder also weighs
+   the selected backends to choose the best option for scheduling based
+   on Capacity (default) and custom weighers like Goodness weigher.
 
 -  ``cinder-volume`` - manages Block Storage devices, specifically the
    back-end devices themselves.
 
 -  ``cinder-backup`` - provides a means to back up a Block Storage volume to
-   OpenStack Object Storage (swift).
+   an Object storage (Ceph, NFS, S3, Swift).
 
 The Block Storage service contains the following components:
 
@@ -82,7 +79,8 @@ The Block Storage service contains the following components:
       attached to instances as secondary storage or they can be used as
       the root store to boot instances. Volumes are persistent R/W block
       storage devices most commonly attached to the compute node through
-      iSCSI.
+      iSCSI, Fibre Channel or NVMe-oF. Other vendor specific protocols are
+      also used.
 
    -  **Snapshots** - a read-only point in time copy of a volume. The
       snapshot can be created from a volume that is currently in use
@@ -90,5 +88,5 @@ The Block Storage service contains the following components:
       The snapshot can then be used to create a new volume through
       create from snapshot.
 
-   -  **Backups** - an archived copy of a volume currently stored in
-      Object Storage (swift).
+   -  **Backups** - an archived copy of a volume currently stored in an
+      Object Storage solution.
