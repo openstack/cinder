@@ -123,9 +123,6 @@ reference, are:
 - `cinder/volume/drivers/huawei/huawei_driver.py`
 - `cinder/volume/drivers/huawei/rest_client.py`
 - `cinder/volume/drivers/huawei/smartx.py`
-- `cinder/volume/drivers/ibm/flashsystem_common.py`
-- `cinder/volume/drivers/ibm/flashsystem_fc.py`
-- `cinder/volume/drivers/ibm/flashsystem_iscsi.py`
 - `cinder/volume/drivers/ibm/ibm_storage/ds8k_helper.py`
 - `cinder/volume/drivers/ibm/ibm_storage/ds8k_proxy.py`
 - `cinder/volume/drivers/ibm/ibm_storage/ds8k_replication.py`
