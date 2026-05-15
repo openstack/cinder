@@ -145,83 +145,102 @@ class TestCreateClonedVolume(powerflex.TestPowerFlexDriver):
         # Should proceed directly to _create_volume_from_source
         mock_create.assert_called_once_with(self.new_volume, self.src_volume)
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.'
-                'PowerFlexDriver._create_volume_from_source')
-    @mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.'
-                'PowerFlexDriver._get_client')
-    def test_create_cloned_volume_image_cache_within_limit(self, mock_client,
-                                                           mock_create):
-        """Test cloning image cache volume when within clone limit."""
+    def _test_create_cloned_volume_image_cache(self, vtree_volumes,
+                                               expect_raises,
+                                               max_size=20,
+                                               vtree_id='test_vtree_id'):
+        """Helper for image cache vTree clone limit tests.
+
+        Sets up mocks for query_volume and query_vtree_volumes, then
+        calls create_cloned_volume and verifies the expected outcome.
+
+        :param vtree_volumes: list of volume dicts for query_vtree_volumes
+        :param expect_raises: True if SnapshotLimitReached should be raised
+        :param max_size: powerflex_max_image_cache_vtree_size config value
+        :param vtree_id: vtree ID returned by query_volume
+        """
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
-        mock_create.return_value = {}
+        self.override_config(options.POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE,
+                             max_size, configuration.SHARED_CONF_GROUP)
 
-        # Set clone limit to 20
-        self.override_config(options.POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE, 20,
-                             configuration.SHARED_CONF_GROUP)
+        with mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.'
+                        'PowerFlexDriver._get_client') as mock_client, \
+             mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.'
+                        'PowerFlexDriver._create_volume_from_source'
+                        ) as mock_create:
+            mock_create.return_value = {}
+            mock_rest_client = mock.Mock()
+            mock_client.return_value = mock_rest_client
+            mock_rest_client.query_volume.return_value = {
+                'vtreeId': vtree_id
+            }
+            mock_rest_client.query_vtree_volumes.return_value = vtree_volumes
 
-        # Mock REST client and vtree statistics response
-        mock_rest_client = mock.Mock()
-        mock_client.return_value = mock_rest_client
-        mock_rest_client.query_volume.return_value = {
-            'vtreeId': 'test_vtree_id'
-        }
-        mock_rest_client.query_vtree_statistics.return_value = {
-            'numOfVolumes': '10'  # Within limit
-        }
+            with mock.patch(
+                    'cinder.volume.volume_utils.is_image_cache_entry',
+                    return_value=True):
+                if expect_raises:
+                    self.assertRaises(
+                        exception.SnapshotLimitReached,
+                        self.driver.create_cloned_volume,
+                        self.new_volume, self.src_volume)
+                else:
+                    self.driver.create_cloned_volume(self.new_volume,
+                                                     self.src_volume)
 
-        # Mock volume_utils to indicate source volume is an image cache entry
-        with mock.patch('cinder.volume.volume_utils.is_image_cache_entry',
-                        return_value=True):
-            self.driver.create_cloned_volume(self.new_volume, self.src_volume)
+            mock_rest_client.query_volume.assert_called_once_with(
+                self.src_volume.provider_id)
+            mock_rest_client.query_vtree_volumes.assert_called_once_with(
+                vtree_id)
+            if expect_raises:
+                mock_create.assert_not_called()
+            else:
+                mock_create.assert_called_once_with(self.new_volume,
+                                                    self.src_volume)
 
-        # Should query volume and vtree statistics and proceed to create
-        mock_rest_client.query_volume.assert_called_once_with(
-            self.src_volume.provider_id)
-        mock_rest_client.query_vtree_statistics.assert_called_once_with(
-            'test_vtree_id')
-        mock_create.assert_called_once_with(self.new_volume, self.src_volume)
+    def test_create_cloned_volume_image_cache_within_limit(self):
+        """Test cloning image cache volume when within clone limit.
 
-    @mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.'
-                'PowerFlexDriver._get_client')
-    def test_create_cloned_volume_image_cache_limit_reached(self, mock_client):
-        """Test cloning image cache volume when clone limit is reached."""
-        self.set_https_response_mode(self.RESPONSE_MODE.Valid)
+        10 direct children with max_size=20: 10 < 20, no raise.
+        """
+        src_provider_id = self.src_volume.provider_id
+        vtree_volumes = [
+            {'id': 'root_vol', 'ancestorVolumeId': None},
+        ] + [
+            {'id': 'child_%d' % i, 'ancestorVolumeId': src_provider_id}
+            for i in range(10)
+        ]
+        self._test_create_cloned_volume_image_cache(vtree_volumes,
+                                                    expect_raises=False,
+                                                    max_size=20)
 
-        # Set clone limit to 20
-        self.override_config(options.POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE, 20,
-                             configuration.SHARED_CONF_GROUP)
+    def test_create_cloned_volume_image_cache_limit_reached(self):
+        """Test cloning image cache volume when clone limit is reached.
 
-        # Mock REST client and vtree statistics response
-        mock_rest_client = mock.Mock()
-        mock_client.return_value = mock_rest_client
-        mock_rest_client.query_volume.return_value = {
-            'vtreeId': 'test_vtree_id'
-        }
-        mock_rest_client.query_vtree_statistics.return_value = {
-            'numOfVolumes': '20'  # At limit
-        }
-
-        # Mock volume_utils to indicate source volume is an image cache entry
-        with mock.patch('cinder.volume.volume_utils.is_image_cache_entry',
-                        return_value=True):
-            self.assertRaises(exception.SnapshotLimitReached,
-                              self.driver.create_cloned_volume,
-                              self.new_volume, self.src_volume)
-
-        # Should query volume and vtree statistics but fail before create
-        mock_rest_client.query_volume.assert_called_once_with(
-            self.src_volume.provider_id)
-        mock_rest_client.query_vtree_statistics.assert_called_once_with(
-            'test_vtree_id')
+        20 direct children with max_size=20: 20 >= 20, raises.
+        """
+        src_provider_id = self.src_volume.provider_id
+        vtree_volumes = [
+            {'id': 'root_vol', 'ancestorVolumeId': None},
+        ] + [
+            {'id': 'child_%d' % i, 'ancestorVolumeId': src_provider_id}
+            for i in range(20)
+        ]
+        self._test_create_cloned_volume_image_cache(vtree_volumes,
+                                                    expect_raises=True,
+                                                    max_size=20)
 
     @mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.'
                 'PowerFlexDriver._create_volume_from_source')
     @mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.'
                 'PowerFlexDriver._get_client')
     @mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.LOG')
-    def test_create_cloned_volume_image_cache_stats_query_fails(
+    def test_create_cloned_volume_image_cache_query_fails(
             self, mock_log, mock_client, mock_create):
-        """Test cloning when volume statistics query fails."""
+        """Test cloning when vtree volumes query fails.
+
+        On VolumeBackendAPIException, log warning and proceed with clone.
+        """
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
         mock_create.return_value = {}
 
@@ -246,38 +265,105 @@ class TestCreateClonedVolume(powerflex.TestPowerFlexDriver):
         mock_log.warning.assert_called_once()
         mock_create.assert_called_once_with(self.new_volume, self.src_volume)
 
+    def test_create_cloned_volume_image_cache_excludes_grandchildren(self):
+        """Test that grandchildren of the cache volume are not counted.
+
+        2 direct children + 8 grandchildren with max_size=3:
+        only 2 direct children counted, 2 < 3 so no raise.
+        If grandchildren were incorrectly counted (2+1=3 >= 3),
+        the test would fail, proving they are excluded.
+        """
+        src_provider_id = self.src_volume.provider_id
+        vtree_volumes = [
+            {'id': 'root_vol', 'ancestorVolumeId': None},
+            {'id': 'child_1', 'ancestorVolumeId': src_provider_id},
+            {'id': 'child_2', 'ancestorVolumeId': src_provider_id},
+            {'id': 'grandchild_1', 'ancestorVolumeId': 'child_1'},
+            {'id': 'grandchild_2', 'ancestorVolumeId': 'child_1'},
+            {'id': 'grandchild_3', 'ancestorVolumeId': 'child_1'},
+            {'id': 'grandchild_4', 'ancestorVolumeId': 'child_1'},
+            {'id': 'grandchild_5', 'ancestorVolumeId': 'child_2'},
+            {'id': 'grandchild_6', 'ancestorVolumeId': 'child_2'},
+            {'id': 'grandchild_7', 'ancestorVolumeId': 'child_2'},
+            {'id': 'grandchild_8', 'ancestorVolumeId': 'child_2'},
+        ]
+        self._test_create_cloned_volume_image_cache(vtree_volumes,
+                                                    expect_raises=False,
+                                                    max_size=3)
+
+    def test_create_cloned_volume_image_cache_filtering_edge_cases(self):
+        """Test comprehensive filtering edge cases.
+
+        6 volumes total, only 2 are direct children, max_size=3:
+        2 < 3 so no raise. If any non-child volume were incorrectly
+        counted (2+1=3 >= 3), the test would fail. This validates:
+        - Root volume with ancestorVolumeId=None is excluded
+        - Volumes missing ancestorVolumeId field are excluded
+        - Volumes with None ancestorVolumeId value are excluded
+        - Orphan volumes (unknown parent) are excluded
+        - Only exact matches to src_provider_id are counted
+        """
+        src_provider_id = self.src_volume.provider_id
+        vtree_volumes = [
+            {'id': 'root_vol', 'ancestorVolumeId': None},
+            {'id': 'root_no_field'},
+            {'id': 'root_none_value', 'ancestorVolumeId': None},
+            {'id': 'child_1', 'ancestorVolumeId': src_provider_id},
+            {'id': 'child_2', 'ancestorVolumeId': src_provider_id},
+            {'id': 'orphan', 'ancestorVolumeId': 'unknown_parent'},
+        ]
+        self._test_create_cloned_volume_image_cache(vtree_volumes,
+                                                    expect_raises=False,
+                                                    max_size=3)
+
+    def test_create_cloned_volume_image_cache_vtree_volumes_api_call(self):
+        """Integration: verify query_vtree_volumes called with correct ID.
+
+        Validates the full flow from query_volume (to get vtreeId) through
+        query_vtree_volumes (to get volume list for filtering).
+        """
+        src_provider_id = self.src_volume.provider_id
+        vtree_volumes = [
+            {'id': 'root', 'ancestorVolumeId': None},
+            {'id': 'child_1', 'ancestorVolumeId': src_provider_id},
+        ]
+        self._test_create_cloned_volume_image_cache(
+            vtree_volumes, expect_raises=False,
+            max_size=20, vtree_id='specific_vtree_id_123')
+
     @mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.'
                 'PowerFlexDriver._create_volume_from_source')
     @mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.'
                 'PowerFlexDriver._get_client')
-    def test_create_cloned_volume_image_cache_missing_stats_field(
-            self, mock_client, mock_create):
-        """Test cloning when statistics response missing expected field."""
+    @mock.patch('cinder.volume.drivers.dell_emc.powerflex.driver.LOG')
+    def test_create_cloned_volume_image_cache_vtree_volumes_query_fails(
+            self, mock_log, mock_client, mock_create):
+        """Test cloning when query_vtree_volumes fails.
+
+        query_volume succeeds but query_vtree_volumes raises
+        VolumeBackendAPIException. Should log warning and proceed.
+        """
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
         mock_create.return_value = {}
 
-        # Set clone limit to 20
         self.override_config(options.POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE, 20,
                              configuration.SHARED_CONF_GROUP)
 
-        # Mock REST client with response missing numOfVolumes
         mock_rest_client = mock.Mock()
         mock_client.return_value = mock_rest_client
         mock_rest_client.query_volume.return_value = {
             'vtreeId': 'test_vtree_id'
         }
-        mock_rest_client.query_vtree_statistics.return_value = {
-            'otherField': 'value'  # Missing numOfVolumes
-        }
+        mock_rest_client.query_vtree_volumes.side_effect = (
+            exception.VolumeBackendAPIException(data="VTree query failed"))
 
-        # Mock volume_utils to indicate source volume is an image cache entry
         with mock.patch('cinder.volume.volume_utils.is_image_cache_entry',
                         return_value=True):
             self.driver.create_cloned_volume(self.new_volume, self.src_volume)
 
-        # Should query volume and vtree statistics, default to 0, proceed
         mock_rest_client.query_volume.assert_called_once_with(
             self.src_volume.provider_id)
-        mock_rest_client.query_vtree_statistics.assert_called_once_with(
+        mock_rest_client.query_vtree_volumes.assert_called_once_with(
             'test_vtree_id')
+        mock_log.warning.assert_called_once()
         mock_create.assert_called_once_with(self.new_volume, self.src_volume)
