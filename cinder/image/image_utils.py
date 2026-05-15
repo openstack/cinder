@@ -168,6 +168,9 @@ def qemu_img_info(
         img_format: Optional[str] = None) -> imageutils.QemuImgInfo:
     """Return an object containing the parsed output from qemu-img info."""
 
+    # guarantee that qemu-img info will only see an absolute path
+    path = os.path.abspath(path)
+
     format_name = img_format
     # NOTE(sfernand): In case we are trying to inspect a raw volume containing
     # a qcow2 image, inspection will incorrectly report the inner (qcow2)
