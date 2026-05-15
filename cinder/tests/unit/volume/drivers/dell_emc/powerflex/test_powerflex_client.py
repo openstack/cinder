@@ -647,3 +647,282 @@ class TestPowerFlexClient(test.TestCase):
         self.assertEqual("snap-vol-789", result)
         mock_post.assert_called_once()
         mock_id_to_base64.assert_called_once_with(snapshot_id)
+
+    # Tests for _get_response_message helper
+
+    @ddt.data(
+        ({"errorCode": "123", "message": "Some error"}, None, "Some error"),
+        ({"errorCode": "123"}, None, "Unknown error"),
+        ({"errorCode": "123"}, "Custom default", "Custom default"),
+        (None, None, "Unknown error"),
+        (None, "Custom default", "Custom default"),
+        ({}, None, "Unknown error"),
+    )
+    @ddt.unpack
+    def test_get_response_message(self, response, default, expected):
+        if default is not None:
+            result = self.client._get_response_message(response, default)
+        else:
+            result = self.client._get_response_message(response)
+        self.assertEqual(result, expected)
+
+    # Tests for NVMe GET methods with various error responses
+
+    @ddt.data(
+        ('query_system_id_nqn',
+         {"httpStatusCode": 400, "errorCode": 999},
+         "Failed to query system nqn: Unknown error."),
+        ('query_SDTs',
+         {"httpStatusCode": 400, "errorCode": 999},
+         "Failed to query SDTs: Unknown error."),
+        ('query_hosts',
+         {"httpStatusCode": 400, "errorCode": 999},
+         "Failed to query hosts: Unknown error."),
+        ('query_system_id_nqn',
+         {"errorCode": "123", "message": "Error message"},
+         "Failed to query system nqn: Error message."),
+        ('query_SDTs',
+         {"errorCode": "123", "message": "Error message"},
+         "Failed to query SDTs: Error message."),
+        ('query_hosts',
+         {"errorCode": "123", "message": "Error message"},
+         "Failed to query hosts: Error message."),
+    )
+    @ddt.unpack
+    def test_nvme_get_method_failure(self, method_name, response,
+                                     expected_msg):
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_bad,
+                                             response)):
+            method = getattr(self.client, method_name)
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   method)
+            self.assertIn(expected_msg, ex.msg)
+
+    # Tests for create_nvme_host with various failure responses
+
+    @ddt.data(
+        ({"httpStatusCode": 400, "errorCode": 999},
+         "Failed to create nvme host: Unknown error."),
+        (None,
+         "Failed to create nvme host: Unknown error."),
+        ({"errorCode": "123", "message": "Error message"},
+         "Failed to create nvme host: Error message."),
+    )
+    @ddt.unpack
+    def test_create_nvme_host_failure_responses(self, response,
+                                                expected_msg):
+        with mock.patch.object(self.client,
+                               'execute_powerflex_post_request',
+                               return_value=(self.status_code_bad,
+                                             response)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.create_nvme_host,
+                                   self.host_nqn, self.host_name)
+            self.assertIn(expected_msg, ex.msg)
+
+    # =========================================================================
+    # Tests for non-PowerFlex error responses (e.g. proxy, rate limiter,
+    # load balancer returning non-OK without errorCode).
+    # These verify that errors are NOT silently swallowed.
+    # =========================================================================
+
+    @ddt.data(
+        ({"some_field": "some_value"},
+         "Failed to query volume: Unknown error."),
+        ({"errorCode": "123", "message": "Error message"},
+         "Failed to query volume: Error message."),
+    )
+    @ddt.unpack
+    def test_query_volume_failure_bad_response(self, response,
+                                               expected_msg):
+        """Non-PowerFlex or standard error response must raise."""
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_bad,
+                                             response)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.query_volume,
+                                   self.volume_id)
+            self.assertIn(expected_msg, ex.msg)
+
+    @ddt.data(
+        {"some_field": "some_value"},
+        None,
+    )
+    def test_create_volume_failure_bad_response(self, response):
+        """Non-PowerFlex error or None response must still raise."""
+        with mock.patch.object(self.client,
+                               'execute_powerflex_post_request',
+                               return_value=(self.status_code_bad,
+                                             response)):
+            with mock.patch.object(self.client,
+                                   '_get_protection_domain_id',
+                                   return_value='domain_id'):
+                with mock.patch.object(self.client,
+                                       'get_storage_pool_id',
+                                       return_value='pool_id'):
+                    ex = self.assertRaises(
+                        exception.VolumeBackendAPIException,
+                        self.client.create_volume,
+                        'PD1', 'SP1', 'vol_id', 1,
+                        'ThinProvisioned', 'None')
+                    self.assertIn(
+                        "Failed to create volume: Unknown error.",
+                        ex.msg)
+
+    @ddt.data(
+        {"some_field": "some_value"},
+        None,
+    )
+    def test_snapshot_volume_failure_bad_response(self, response):
+        """Non-PowerFlex error or None response must still raise."""
+        with mock.patch.object(self.client,
+                               'execute_powerflex_post_request',
+                               return_value=(self.status_code_bad,
+                                             response)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.snapshot_volume,
+                                   'vol_provider_id', 'snap_id')
+            self.assertIn("Failed to create snapshot", ex.msg)
+
+    @ddt.data(
+        {"some_field": "some_value"},
+        None,
+    )
+    def test_remove_volume_failure_bad_response(self, response):
+        """Non-PowerFlex error or None response must still raise."""
+        with mock.patch.object(self.client,
+                               '_unmap_volume_from_all_sdcs'):
+            with mock.patch.object(self.client,
+                                   'execute_powerflex_post_request',
+                                   return_value=(self.status_code_bad,
+                                                 response)):
+                ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                       self.client.remove_volume,
+                                       self.volume_id)
+                self.assertIn("Failed to delete volume", ex.msg)
+
+    def test_rename_volume_failure_no_error_code(self):
+        """Non-PowerFlex error (no errorCode) must still raise."""
+        response_no_errorcode = {"some_field": "some_value"}
+        volume = {"provider_id": self.volume_id}
+        with mock.patch.object(self.client,
+                               'execute_powerflex_post_request',
+                               return_value=(self.status_code_bad,
+                                             response_no_errorcode)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.rename_volume,
+                                   volume, "new_name")
+            self.assertIn("Failed to rename volume", ex.msg)
+
+    @ddt.data(
+        {"some_field": "some_value"},
+        None,
+    )
+    def test_create_volumes_pair_failure_bad_response(self, response):
+        """Non-PowerFlex error or None response must still raise."""
+        with mock.patch.object(self.client,
+                               '_get_replication_cg_id_by_name',
+                               return_value='rcg_id'):
+            with mock.patch.object(self.client,
+                                   'execute_powerflex_post_request',
+                                   return_value=(self.status_code_bad,
+                                                 response)):
+                ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                       self.client.create_volumes_pair,
+                                       'rcg_name', 'src_id', 'dest_id')
+                self.assertIn("Failed to create volumes pair", ex.msg)
+
+    def test_query_vtree_statistics_failure_no_error_code(self):
+        """Non-PowerFlex error (no errorCode) must still raise."""
+        response_no_errorcode = {"some_field": "some_value"}
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_bad,
+                                             response_no_errorcode)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.query_vtree_statistics,
+                                   'vtree_id')
+            self.assertIn("Failed to query vtree statistics", ex.msg)
+
+    def test_unmap_volume_from_all_sdcs_failure_none_response(self):
+        """POST with None response must still raise."""
+        mapped_volume = {"mappedSdcInfo": [{"sdcId": "sdc1"}]}
+        with mock.patch.object(self.client,
+                               'query_volume',
+                               return_value=mapped_volume):
+            with mock.patch.object(self.client,
+                                   'execute_powerflex_post_request',
+                                   return_value=(self.status_code_bad, None)):
+                ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                       self.client._unmap_volume_from_all_sdcs,
+                                       self.volume_id)
+                self.assertIn("Failed to unmap volume", ex.msg)
+
+    def test_map_volume_failure_none_response(self):
+        """POST with None response must still raise."""
+        with mock.patch.object(self.client,
+                               'execute_powerflex_post_request',
+                               return_value=(self.status_code_bad, None)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.map_volume,
+                                   self.volume_id, self.sdc_id)
+            self.assertIn("Failed to map volume", ex.msg)
+
+    def test_set_sdc_limits_failure_none_response(self):
+        """POST with None response must still raise."""
+        with mock.patch.object(self.client,
+                               'execute_powerflex_post_request',
+                               return_value=(self.status_code_bad, None)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.set_sdc_limits,
+                                   self.volume_id, self.sdc_id)
+            self.assertIn("Failed to set SDC limits: Unknown error.", ex.msg)
+
+    def test_overwrite_volume_content_failure_none_response(self):
+        """POST with None response must still raise."""
+        volume = mock.Mock()
+        volume.id = 'vol_id'
+        volume.provider_id = 'vol_provider_id'
+        snapshot = mock.Mock()
+        snapshot.id = 'snap_id'
+        snapshot.provider_id = 'snap_provider_id'
+        with mock.patch.object(self.client,
+                               'execute_powerflex_post_request',
+                               return_value=(self.status_code_bad, None)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.overwrite_volume_content,
+                                   volume, snapshot)
+            self.assertIn("Failed to revert volume", ex.msg)
+
+    def test_migrate_vtree_failure_no_error_code(self):
+        """Non-PowerFlex error (no errorCode) must still raise."""
+        response_no_errorcode = {"some_field": "some_value"}
+        volume = mock.Mock()
+        volume.id = 'vol_id'
+        volume.provider_id = 'vol_provider_id'
+        params = {"destSPId": "pool_id"}
+        with mock.patch.object(self.client,
+                               'execute_powerflex_post_request',
+                               return_value=(self.status_code_bad,
+                                             response_no_errorcode)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.migrate_vtree,
+                                   volume, params)
+            self.assertIn("Failed to migrate volume", ex.msg)
+
+    def test_failover_failback_replication_cg_failure_none_response(self):
+        """POST with None response must still raise."""
+        with mock.patch.object(self.client,
+                               '_get_replication_cg_id_by_name',
+                               return_value='rcg_id'):
+            with mock.patch.object(self.client,
+                                   'execute_powerflex_post_request',
+                                   return_value=(self.status_code_bad, None)):
+                ex = self.assertRaises(
+                    exception.VolumeBackendAPIException,
+                    self.client.failover_failback_replication_cg,
+                    'rcg_name', False)
+                self.assertIn("Failed to failover rcg", ex.msg)

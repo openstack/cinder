@@ -218,8 +218,9 @@ class RestClient(object):
         url = "/instances/Volume::%(vol_id)s"
 
         r, response = self.execute_powerflex_get_request(url, vol_id=vol_id)
-        if r.status_code != http_client.OK and "errorCode" in response:
-            msg = (_("Failed to query volume: %s.") % response["message"])
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query volume: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response
@@ -252,8 +253,9 @@ class RestClient(object):
         if self.check_powerflex_ec_version():
             params.pop('compressionMethod')
         r, response = self.execute_powerflex_post_request(url, params)
-        if r.status_code != http_client.OK and "errorCode" in response:
-            msg = (_("Failed to create volume: %s.") % response["message"])
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to create volume: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response["id"]
@@ -275,14 +277,14 @@ class RestClient(object):
             ],
         }
         r, response = self.execute_powerflex_post_request(url, params)
-        if r.status_code != http_client.OK and "errorCode" in response:
+        if r.status_code != http_client.OK:
             msg = (_("Failed to create snapshot for volume %(vol_name)s: "
                      "%(response)s.") %
                    {"vol_name": volume_provider_id,
-                    "response": response["message"]})
+                    "response": self._get_response_message(response)})
             LOG.error(msg)
             # check if the volume reached snapshot limit
-            if ("details" in response and
+            if (response and "details" in response and
                     response["details"][0]["rc"] == TOO_MANY_SNAPS_ERROR):
                 raise exception.SnapshotLimitReached(
                     set_limit=MAX_SNAPS_IN_VTREE)
@@ -307,10 +309,11 @@ class RestClient(object):
             msg = (_("Replication CG with name %s wasn't found.") % rcg_id)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
-        if r.status_code != http_client.OK and "errorCode" in rcg_id:
+        if r.status_code != http_client.OK:
             msg = (_("Failed to get Replication CG id with name "
                      "%(name)s: %(message)s.") %
-                   {"name": rcg_name, "message": rcg_id["message"]})
+                   {"name": rcg_name,
+                    "message": self._get_response_message(rcg_id)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         LOG.info("Replication CG id: %s.", rcg_id)
@@ -322,9 +325,10 @@ class RestClient(object):
         url = "/instances/ReplicationPair::%(pair_id)s"
 
         r, response = self.execute_powerflex_get_request(url, pair_id=pair_id)
-        if r.status_code != http_client.OK and "errorCode" in response:
+        if r.status_code != http_client.OK:
             msg = (_("Failed to query volumes pair %(pair_id)s: %(err)s.") %
-                   {"pair_id": pair_id, "err": response["message"]})
+                   {"pair_id": pair_id,
+                    "err": self._get_response_message(response)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response
@@ -333,9 +337,9 @@ class RestClient(object):
         url = "/types/ReplicationPair/instances"
 
         r, response = self.execute_powerflex_get_request(url)
-        if r.status_code != http_client.OK and "errorCode" in response:
-            msg = (_("Failed to query replication pairs: %s.") %
-                   response["message"])
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query replication pairs: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response
@@ -379,9 +383,9 @@ class RestClient(object):
             "destinationVolumeId": dest_provider_id,
         }
         r, response = self.execute_powerflex_post_request(url, params, )
-        if r.status_code != http_client.OK and "errorCode" in response:
-            msg = (_("Failed to create volumes pair: %s.") %
-                   response["message"])
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to create volumes pair: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         replication_pair = self._query_volumes_pair(response["id"])
@@ -403,7 +407,8 @@ class RestClient(object):
         if r.status_code != http_client.OK:
             msg = (_("Failed to delete volumes pair "
                      "%(vol_pair_id)s: %(err)s.") %
-                   {"vol_pair_id": vol_pair_id, "err": response["message"]})
+                   {"vol_pair_id": vol_pair_id,
+                    "err": self._get_response_message(response)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -423,10 +428,11 @@ class RestClient(object):
                    % domain_name)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
-        if r.status_code != http_client.OK and "errorCode" in domain_id:
+        if r.status_code != http_client.OK:
             msg = (_("Failed to get Protection Domain id with name "
                      "%(name)s: %(err_msg)s.") %
-                   {"name": domain_name, "err_msg": domain_id["message"]})
+                   {"name": domain_name,
+                    "err_msg": self._get_response_message(domain_id)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         LOG.info("Protection Domain id: %s.", domain_id)
@@ -478,10 +484,11 @@ class RestClient(object):
                    {"pool_name": pool_name, "domain_id": domain_id})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
-        if r.status_code != http_client.OK and "errorCode" in pool_id:
+        if r.status_code != http_client.OK:
             msg = (_("Failed to get pool id from name %(pool_name)s: "
                      "%(err_msg)s.") %
-                   {"pool_name": pool_name, "err_msg": pool_id["message"]})
+                   {"pool_name": pool_name,
+                    "err_msg": self._get_response_message(pool_id)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         LOG.info("Pool id: %s.", pool_id)
@@ -586,6 +593,20 @@ class RestClient(object):
                 response.text)
         return response
 
+    def _get_response_message(self, response, default_msg=None):
+        """Safely extract message from response.
+
+        Handle None responses and missing keys.
+
+        :param response: Response dict from REST API call, may be None.
+        :param default_msg: Default message if response is None or has no
+            'message' key.
+        :returns: The message string from the response.
+        """
+        if response is None:
+            return default_msg or "Unknown error"
+        return response.get("message", default_msg or "Unknown error")
+
     @retry(exception.VolumeBackendAPIException)
     def extend_volume(self, vol_id, new_size):
         url = "/instances/Volume::%(vol_id)s/action/setVolumeSize"
@@ -603,9 +624,9 @@ class RestClient(object):
                                                           params,
                                                           vol_id=vol_id)
         if r.status_code != http_client.OK:
-            response = r.json()
             msg = (_("Failed to extend volume %(vol_id)s: %(err)s.") %
-                   {"vol_id": vol_id, "err": response["message"]})
+                   {"vol_id": vol_id,
+                    "err": self._get_response_message(response)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -628,8 +649,9 @@ class RestClient(object):
                                                               vol_id=vol_id)
             if r.status_code != http_client.OK:
                 msg = (_("Failed to unmap volume %(vol_id)s from all SDCs: "
-                         "%(err)s.") % {"vol_id": vol_id,
-                                        "err": response["message"]})
+                         "%(err)s.") % {
+                             "vol_id": vol_id,
+                             "err": self._get_response_message(response)})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
@@ -643,7 +665,7 @@ class RestClient(object):
                                                           params,
                                                           vol_id=vol_id)
         if r.status_code != http_client.OK:
-            error_code = response["errorCode"]
+            error_code = (response or {}).get("errorCode")
             if error_code == VOLUME_NOT_FOUND_ERROR:
                 LOG.warning("Ignoring error in delete volume %s: "
                             "Volume not found.", vol_id)
@@ -653,7 +675,8 @@ class RestClient(object):
                             "Allowing deletion to proceed.")
             else:
                 msg = (_("Failed to delete volume %(vol_id)s: %(err)s.") %
-                       {"vol_id": vol_id, "err": response["message"]})
+                       {"vol_id": vol_id,
+                        "err": self._get_response_message(response)})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
@@ -693,7 +716,7 @@ class RestClient(object):
                                                           params,
                                                           id=vol_id)
         if r.status_code != http_client.OK:
-            error_code = response["errorCode"]
+            error_code = (response or {}).get("errorCode")
             if ((error_code == VOLUME_NOT_FOUND_ERROR or
                  error_code == OLD_VOLUME_NOT_FOUND_ERROR or
                  error_code == ILLEGAL_SYNTAX)):
@@ -702,7 +725,8 @@ class RestClient(object):
                          {"vol_id": vol_id})
             else:
                 msg = (_("Failed to rename volume %(vol_id)s: %(err)s.") %
-                       {"vol_id": vol_id, "err": response["message"]})
+                       {"vol_id": vol_id,
+                        "err": self._get_response_message(response)})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         else:
@@ -720,9 +744,10 @@ class RestClient(object):
                                                           action=action)
         if r.status_code != http_client.OK:
             msg = (_("Failed to %(action)s rcg with id %(rcg_id)s: "
-                     "%(err_msg)s.") % {"action": action,
-                                        "rcg_id": rcg_id,
-                                        "err_msg": response["message"]})
+                     "%(err_msg)s.") % {
+                         "action": action,
+                         "rcg_id": rcg_id,
+                         "err_msg": self._get_response_message(response)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -743,9 +768,9 @@ class RestClient(object):
 
         r, response = self.execute_powerflex_get_request(url,
                                                          vtree_id=vtree_id)
-        if r.status_code != http_client.OK and "errorCode" in response:
-            msg = (_("Failed to query vtree statistics: %s.") %
-                   response["message"])
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query vtree statistics: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response
@@ -759,7 +784,7 @@ class RestClient(object):
             vol_id=volume.provider_id
         )
         if r.status_code != http_client.OK:
-            error_code = response["errorCode"]
+            error_code = (response or {}).get("errorCode")
             if error_code not in [
                 VOLUME_MIGRATION_IN_PROGRESS_ERROR,
                 VOLUME_MIGRATION_ALREADY_ON_DESTINATION_POOL_ERROR,
@@ -780,9 +805,10 @@ class RestClient(object):
         )
         if r.status_code != http_client.OK:
             msg = (_("Failed to revert volume %(vol_id)s to snapshot "
-                     "%(snap_id)s: %(err)s.") % {"vol_id": volume.id,
-                                                 "snap_id": snapshot.id,
-                                                 "err": response["message"]})
+                     "%(snap_id)s: %(err)s.") % {
+                         "vol_id": volume.id,
+                         "snap_id": snapshot.id,
+                         "err": self._get_response_message(response)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(msg)
 
@@ -791,7 +817,7 @@ class RestClient(object):
         r, response = self.execute_powerflex_get_request(url)
         if r.status_code != http_client.OK:
             msg = (_("Failed to query SDC: %(err)s.") %
-                   {"err": response["message"]})
+                   {"err": self._get_response_message(response)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         for sdc in response:
@@ -811,7 +837,8 @@ class RestClient(object):
             sdc_id = sdc_id)
         if r.status_code != http_client.OK:
             msg = (_("Failed to query SDC id %(sdc_id)s: %(err)s.") % {
-                "sdc_id": sdc_id, "err": response["message"]})
+                "sdc_id": sdc_id,
+                "err": self._get_response_message(response)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response
@@ -824,9 +851,10 @@ class RestClient(object):
         r, response = self.execute_powerflex_post_request(url, params)
         if r.status_code != http_client.OK:
             msg = (_("Failed to map volume %(vol_id)s to SDC "
-                     "%(host_id)s: %(err)s.") % {"vol_id": volume_id,
-                                                 "host_id": sdc_id,
-                                                 "err": response["message"]})
+                     "%(host_id)s: %(err)s.") % {
+                         "vol_id": volume_id,
+                         "host_id": sdc_id,
+                         "err": self._get_response_message(response)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -842,7 +870,7 @@ class RestClient(object):
                          "%(sdc_id)s: %(err)s.") % {
                              "vol_id": volume_id,
                              "sdc_id": sdc_id,
-                             "err": response["message"]})
+                             "err": self._get_response_message(response)})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         else:
@@ -854,7 +882,8 @@ class RestClient(object):
 
         r, response = self.execute_powerflex_get_request(url)
         if r.status_code != http_client.OK:
-            msg = (_("Failed to query SDC volumes: %s.") % response["message"])
+            msg = (_("Failed to query SDC volumes: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return [volume["id"] for volume in response]
@@ -874,7 +903,8 @@ class RestClient(object):
 
         r, response = self.execute_powerflex_post_request(url, params)
         if r.status_code != http_client.OK:
-            msg = (_("Failed to set SDC limits: %s.") % response["message"])
+            msg = (_("Failed to set SDC limits: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -886,8 +916,9 @@ class RestClient(object):
         url = "/types/System/instances"
 
         r, response = self.execute_powerflex_get_request(url)
-        if r.status_code != http_client.OK and "errorCode" in response:
-            msg = (_("Failed to query system nqn: %s.") % response["message"])
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query system nqn: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response[0]["id"], response[0]["systemNqn"]
@@ -896,8 +927,9 @@ class RestClient(object):
         url = "/types/Sdt/instances"
 
         r, response = self.execute_powerflex_get_request(url)
-        if r.status_code != http_client.OK and "errorCode" in response:
-            msg = (_("Failed to query SDTs: %s.") % response["message"])
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query SDTs: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response
@@ -906,8 +938,9 @@ class RestClient(object):
         url = "/types/Host/instances"
 
         r, response = self.execute_powerflex_get_request(url)
-        if r.status_code != http_client.OK and "errorCode" in response:
-            msg = (_("Failed to query hosts: %s.") % response["message"])
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query hosts: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response
@@ -927,8 +960,9 @@ class RestClient(object):
             "name": name,
         }
         r, response = self.execute_powerflex_post_request(url, params)
-        if r.status_code != http_client.OK and "errorCode" in response:
-            msg = (_("Failed to create nvme host: %s.") % response["message"])
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to create nvme host: %s.")
+                   % self._get_response_message(response))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response["id"]
