@@ -93,7 +93,8 @@ the volume.
    .. code-block:: console
 
       $ openstack volume type create --encryption-provider luks \
-        --encryption-cipher aes-xts-plain64 --encryption-key-size 256 --encryption-control-location front-end LUKS
+        --encryption-cipher aes-xts-plain64 --encryption-key-size 256 \
+        --encryption-control-location front-end LUKS
 
         +-------------+----------------------------------------------------------------+
         | Field       | Value                                                          |
