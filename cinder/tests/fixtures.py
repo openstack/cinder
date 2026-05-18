@@ -147,19 +147,6 @@ class WarningsFixture(fixtures.Fixture):
                     ' This key is deprecated. Please update your policy '
                     'file to use the standard policy values.')
 
-        # We can't do anything about this outside of cinder
-        warnings.filterwarnings(
-            'ignore',
-            message='distutils Version classes are deprecated. .*',
-            category=DeprecationWarning,
-        )
-
-        warnings.filterwarnings(
-            'ignore',
-            message='the imp module is deprecated in favour of importlib',
-            category=DeprecationWarning,
-        )
-
         warnings.filterwarnings(
             'ignore',
             message='invalid escape sequence',
@@ -208,6 +195,53 @@ class WarningsFixture(fixtures.Fixture):
             module='cinder',
             message='The Session.begin.subtransactions flag is deprecated ',
             category=sqla_exc.SADeprecationWarning,
+        )
+
+        # NOTE(stephenfin): Ignore deprecation warnings related to eventlet: we
+        # know it needs to go, there's no point having our unit tests
+        # continuously shout about it
+        warnings.filterwarnings(
+            'ignore',
+            message=(
+                "Using class 'GreenThreadPoolExecutor' \\(either directly or "
+                "via inheritance\\) is deprecated: Eventlet support is "
+                "deprecated. Please migrate your code and stop using Green "
+                "executor."
+            ),
+            category=DeprecationWarning,
+        )
+        warnings.filterwarnings(
+            'ignore',
+            message=(
+                "Using class 'GreenFuture' \\(either directly or "
+                "via inheritance\\) is deprecated: Eventlet support is "
+                "deprecated. Please migrate your code and stop using Green "
+                "future."
+            ),
+            category=DeprecationWarning,
+        )
+        warnings.filterwarnings(
+            'ignore',
+            message='Eventlet support is deprecated and will be removed.',
+            category=DeprecationWarning,
+        )
+        warnings.filterwarnings(
+            'ignore',
+            message=(
+                "Using the 'executor' argument is deprecated: the eventlet "
+                "executor is now deprecated. Threading will be the only "
+                "execution model available."
+            ),
+            category=DeprecationWarning,
+        )
+        warnings.filterwarnings(
+            'ignore',
+            message=(
+                "Eventlet usages are deprecated and the removal of Eventlet "
+                "from OpenStack is planned, for this reason the Eventlet "
+                "executor is deprecated."
+            ),
+            category=DeprecationWarning,
         )
 
         self.addCleanup(self._reset_warning_filters)
