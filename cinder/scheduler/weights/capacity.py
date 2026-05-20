@@ -20,8 +20,8 @@ import math
 
 from oslo_config import cfg
 
+from cinder.scheduler import sched_utils
 from cinder.scheduler import weights
-from cinder import utils
 
 
 capacity_weight_opts = [
@@ -115,7 +115,7 @@ class CapacityWeigher(weights.BaseHostWeigher):
             if provision_type == 'thick':
                 thin = False
 
-            free = utils.calculate_virtual_free_capacity(
+            free = sched_utils.calculate_virtual_free_capacity(
                 total_space,
                 free_space,
                 host_state.provisioned_capacity_gb,

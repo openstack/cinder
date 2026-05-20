@@ -20,7 +20,7 @@
 from oslo_log import log as logging
 
 from cinder.scheduler import filters
-from cinder import utils
+from cinder.scheduler import sched_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ class CapacityFilter(filters.BaseBackendFilter):
         # NOTE(hemna): this takes into consideration all major factors
         # including reserved space, free_space (reported by driver),
         # and over subscription ratio.
-        factors = utils.calculate_capacity_factors(
+        factors = sched_utils.calculate_capacity_factors(
             total_space,
             free_space,
             backend_state.provisioned_capacity_gb,
