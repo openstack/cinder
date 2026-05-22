@@ -87,6 +87,10 @@ COMMON_VOLUME_OPTS = [
         default=False,
         help='If true, the driver will create a driver managed vClone parent '
              'for each non-cloned DRS volume it creates.'),
+    cfg.BoolOpt(
+        'hpexp_report_discard_support',
+        default=False,
+        help='Set True to announce auto unmap/discard support.'),
 ]
 
 REST_VOLUME_OPTS = [
@@ -242,6 +246,8 @@ class HPEXPRESTFC(hbsd_rest_fc.HBSDRESTFC):
             self.conf.hpexp_async_copy_check_interval)
         self.conf.hitachi_manage_drs_volumes = (
             self.conf.hpexp_manage_drs_volumes)
+        self.conf.hitachi_report_discard_support = (
+            self.conf.hpexp_report_discard_support)
 
         # REST_VOLUME_OPTS
         self.conf.hitachi_rest_disable_io_wait = (
@@ -319,6 +325,8 @@ class HPEXPRESTISCSI(hbsd_rest_iscsi.HBSDRESTISCSI):
             self.conf.hpexp_async_copy_check_interval)
         self.conf.hitachi_manage_drs_volumes = (
             self.conf.hpexp_manage_drs_volumes)
+        self.conf.hitachi_report_discard_support = (
+            self.conf.hpexp_report_discard_support)
 
         # REST_VOLUME_OPTS
         self.conf.hitachi_rest_disable_io_wait = (

@@ -137,6 +137,10 @@ COMMON_VOLUME_OPTS = [
         default=False,
         help='If true, the driver will create a driver managed vClone parent '
              'for each non-cloned DRS volume it creates.'),
+    cfg.BoolOpt(
+        'hitachi_report_discard_support',
+        default=False,
+        help='Set True to announce auto unmap/discard support.'),
 ]
 
 COMMON_PORT_OPTS = [
@@ -1204,6 +1208,7 @@ class HBSDCommon():
                 if targets['lun'][target[0]]:
                     target_luns.append(target_lun)
             data['target_luns'] = target_luns
+        data['discard'] = self.conf.hitachi_report_discard_support
         return data
 
     # A synchronization to prevent conflicts between host group creation
