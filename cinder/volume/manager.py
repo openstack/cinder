@@ -304,7 +304,7 @@ class VolumeManager(manager.CleanableManager,
 
         if self.configuration.suppress_requests_ssl_warnings:
             LOG.warning("Suppressing requests library SSL Warnings")
-            rpu = requests.packages.urllib3  # type: ignore
+            rpu = requests.packages.urllib3
             rpu.disable_warnings(rpu.exceptions.InsecureRequestWarning)
             rpu.disable_warnings(rpu.exceptions.InsecurePlatformWarning)
 
