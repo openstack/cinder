@@ -224,7 +224,7 @@ class EvalBoolOrOp(object):
 
 
 _parser = None
-_vars = {}
+_vars: dict = {}
 
 
 def _def_parser():
