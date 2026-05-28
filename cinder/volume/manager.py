@@ -55,8 +55,8 @@ from oslo_utils import units
 from oslo_utils import uuidutils
 from oslo_versionedobjects import fields as ovo_fields
 profiler = importutils.try_import('osprofiler.profiler')
-import requests
 from taskflow import exceptions as tfe
+import urllib3
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
@@ -304,9 +304,9 @@ class VolumeManager(manager.CleanableManager,
 
         if self.configuration.suppress_requests_ssl_warnings:
             LOG.warning("Suppressing requests library SSL Warnings")
-            rpu = requests.packages.urllib3
-            rpu.disable_warnings(rpu.exceptions.InsecureRequestWarning)
-            rpu.disable_warnings(rpu.exceptions.InsecurePlatformWarning)
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            urllib3.disable_warnings(
+                urllib3.exceptions.InsecurePlatformWarning)
 
         self.key_manager = key_manager.API(CONF)
         self.driver = importutils.import_object(
