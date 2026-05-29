@@ -20,6 +20,7 @@ import time
 from oslo_log import log as logging
 from oslo_utils import excutils
 import requests
+import urllib3
 
 from cinder import exception
 from cinder.i18n import _
@@ -47,11 +48,8 @@ class RestClient(object):
         self.url = None
         self.device_id = None
 
-        if hasattr(requests, 'packages'):
-            requests.packages.urllib3.disable_warnings(
-                requests.packages.urllib3.exceptions.InsecureRequestWarning)
-            requests.packages.urllib3.disable_warnings(
-                requests.packages.urllib3.exceptions.InsecurePlatformWarning)
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        urllib3.disable_warnings(urllib3.exceptions.InsecurePlatformWarning)
 
     def init_http_head(self):
         self.url = None

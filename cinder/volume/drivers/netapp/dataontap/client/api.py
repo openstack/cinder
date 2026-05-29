@@ -33,7 +33,7 @@ from oslo_utils import netutils
 import requests
 from requests.adapters import HTTPAdapter
 from requests import auth
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util.retry import Retry
 
 from cinder import exception
 from cinder.i18n import _

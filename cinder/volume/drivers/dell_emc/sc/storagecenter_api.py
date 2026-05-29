@@ -22,6 +22,7 @@ import eventlet
 from oslo_log import log as logging
 from oslo_utils import excutils
 import requests
+import urllib3
 
 from cinder.common import constants
 from cinder import exception
@@ -112,7 +113,7 @@ class HttpClient(object):
         # Verify is a configurable option.  So if this is false do not
         # spam the c-vol log.
         if not verify:
-            requests.packages.urllib3.disable_warnings()
+            urllib3.disable_warnings()
 
     def __enter__(self):
         return self

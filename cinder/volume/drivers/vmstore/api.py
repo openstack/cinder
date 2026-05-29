@@ -23,6 +23,7 @@ from eventlet import greenthread
 from oslo_log import log as logging
 from oslo_utils import netutils
 import requests
+import urllib3
 
 from cinder import exception
 from cinder.i18n import _
@@ -454,7 +455,7 @@ class VmstoreProxy(object):
             self.session.verify = conf.driver_ssl_cert_path
         self.session.headers.update(self.headers)
         if not conf.driver_ssl_cert_verify:
-            requests.packages.urllib3.disable_warnings()
+            urllib3.disable_warnings()
         self.token = ""
         self.update_lock()
 

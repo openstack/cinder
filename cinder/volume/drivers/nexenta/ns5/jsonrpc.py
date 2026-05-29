@@ -21,6 +21,9 @@ import urllib
 from eventlet import greenthread
 from oslo_log import log as logging
 import requests
+import urllib3
+from urllib3.util import retry as urllib3_retry
+from urllib3.util import timeout as urllib3_timeout
 
 from cinder import exception
 from cinder.i18n import _
@@ -560,10 +563,10 @@ class NefProxy(object):
         self.path = path
         self.backoff_factor = conf.nexenta_rest_backoff_factor
         self.retries = len(self.hosts) * conf.nexenta_rest_retry_count
-        self.timeout = requests.packages.urllib3.util.timeout.Timeout(
+        self.timeout = urllib3_timeout.Timeout(
             connect=conf.nexenta_rest_connect_timeout,
             read=conf.nexenta_rest_read_timeout)
-        max_retries = requests.packages.urllib3.util.retry.Retry(
+        max_retries = urllib3_retry.Retry(
             total=conf.nexenta_rest_retry_count,
             backoff_factor=conf.nexenta_rest_backoff_factor)
         adapter = requests.adapters.HTTPAdapter(max_retries=max_retries)
@@ -571,7 +574,7 @@ class NefProxy(object):
         self.session.headers.update(self.headers)
         self.session.mount('%s://' % self.scheme, adapter)
         if not conf.driver_ssl_cert_verify:
-            requests.packages.urllib3.disable_warnings()
+            urllib3.disable_warnings()
         self.update_lock()
 
     def __getattr__(self, name):
