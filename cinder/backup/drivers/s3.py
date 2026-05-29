@@ -73,6 +73,7 @@ import socket
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
+from urllib3 import exceptions as urllib_exc
 
 from cinder.backup import chunkeddriver
 from cinder import exception
@@ -83,8 +84,6 @@ try:
     import boto3
     from botocore.config import Config
     from botocore import exceptions as boto_exc
-    from botocore.vendored.requests.packages.urllib3 import exceptions as \
-        urrlib_exc
 except ImportError:
     boto3 = None
 
@@ -388,7 +387,7 @@ class S3ObjectReader(object):
                 resp = self.conn.get_object(**get_args)
                 return resp.get('Body').read()
             except (socket.timeout, socket.error,
-                    urrlib_exc.ReadTimeoutError,
+                    urllib_exc.ReadTimeoutError,
                     boto_exc.IncompleteReadError) as e:
                 last_exception = e
                 continue
