@@ -284,6 +284,14 @@ detail:
   in: query
   required: false
   type: boolean
+filter_availability_zone:
+  description: |
+    Filters results by ``availability_zone`` field.  Only volumes that are
+    associated with the specified availability zone are returned.
+    Default is to not filter by it.
+  in: query
+  required: false
+  type: string
 filter_consumes_quota:
   description: |
     Filters results by ``consumes_quota`` field.  Resources that don't use
@@ -521,7 +529,7 @@ sort_key:
   description: |
     Sorts by an attribute. A valid value is ``name``,
     ``status``, ``container_format``, ``disk_format``, ``size``,
-    ``id``, ``created_at``, or ``updated_at``. Default is
+    ``id``, ``created_at``, ``updated_at``, or ``availability_zone``. Default is
     ``created_at``. The API uses the natural sorting direction of the
     ``sort_key`` attribute value.
     Deprecated in favour of the combined ``sort`` parameter.

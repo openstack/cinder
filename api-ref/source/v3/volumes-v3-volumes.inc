@@ -102,6 +102,7 @@ Request
    - created_at: filter_created_at
    - updated_at: filter_updated_at
    - consumes_quota: filter_consumes_quota
+   - availability_zone: filter_availability_zone
 
 
 Response Parameters
@@ -321,6 +322,7 @@ Request
    - created_at: filter_created_at
    - consumes_quota: filter_consumes_quota
    - updated_at: filter_updated_at
+   - availability_zone: filter_availability_zone
 
 
 Response Parameters
