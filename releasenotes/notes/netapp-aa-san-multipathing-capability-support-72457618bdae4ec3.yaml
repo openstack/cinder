@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: Added pool-level capability
+    ``netapp_san_active_active`` that exposes the ONTAP 9.19.1 SVM-level
+    ``san_multipathing`` property (``active_active`` or ``local_active``)
+    as a schedulable extra spec. Operators can steer volume placement
+    toward Active-Active or Local-Active backends via volume types using
+    ``netapp_san_active_active=<is> True`` or
+    ``netapp_san_active_active=<is> False``. The ZAPI client uses a lazy,
+    cached ``RestNaServer`` to query this REST-only property without
+    requiring migration to the full REST client. The REST client queries
+    it natively. The capability is injected into each pool's SSC data
+    during ``update_ssc()`` and excluded from ASAr2 backends where
+    Active-Active is inherent. A version gate ensures the capability is
+    only advertised on clusters running ONTAP 9.19.1 or later; older
+    releases omit the key entirely.

@@ -20,9 +20,11 @@ import copy
 import re
 
 from oslo_log import log as logging
-
+from packaging import version
 
 LOG = logging.getLogger(__name__)
+
+MINIMUM_SAN_AA_VERSION = '9.19.1'
 
 
 class CapabilitiesLibrary(object):
@@ -92,6 +94,11 @@ class CapabilitiesLibrary(object):
 
         ssc = {}
 
+        san_mp_info = {}
+        # SVM-level property -- query once, apply to all pools
+        if self.protocol.casefold() != 'nfs':
+            san_mp_info = self._get_ssc_san_multipathing_info()
+
         for flexvol_name, flexvol_info in flexvol_map.items():
 
             ssc_volume = {}
@@ -114,6 +121,10 @@ class CapabilitiesLibrary(object):
             ssc_volume.update(aggr_info)
 
             ssc_volume.update(self._get_ssc_qos_min_info(node_name))
+
+            if san_mp_info:
+                # SVM-level SAN multipathing capability
+                ssc_volume.update(san_mp_info)
 
             if self.protocol.casefold() != 'nfs':
                 ssc_volume.update
@@ -317,6 +328,33 @@ class CapabilitiesLibrary(object):
 
         return {
             'total_volumes': volume_count,
+        }
+
+    def _get_ssc_san_multipathing_info(self):
+        """Gather SVM san-multipathing info for the SSC.
+
+        This is an SVM-level property indicating whether the SVM has
+        active-active SAN multipathing enabled (ONTAP 9.19.1+).
+        The capability is queried via REST; when using the legacy ZAPI
+        client the ZAPI Client performs a lightweight REST fallback.
+        Returns an empty dict on ONTAP < 9.19.1 so that the key is
+        never advertised on clusters that do not support it.
+        """
+        ontap_version = self.zapi_client.get_ontap_version(cached=True)
+        if ontap_version is None:
+            return {}
+
+        ontap_version_str = ".".join(map(str, ontap_version))
+        if (version.parse(ontap_version_str) <
+                version.parse(MINIMUM_SAN_AA_VERSION)):
+            return {}
+
+        san_multipathing = self.zapi_client.get_svm_san_multipathing()
+        if san_multipathing is None:
+            return {}
+        is_active_active = (san_multipathing == 'active_active')
+        return {
+            'netapp_san_active_active': str(is_active_active).lower(),
         }
 
     def get_matching_flexvols_for_extra_specs(self, extra_specs):

@@ -4480,3 +4480,154 @@ class NetAppCmodeClientTestCase(test.TestCase):
                           self.client.check_api_permissions)
 
         self.assertEqual(0, mock_log.call_count)
+
+    def test_get_rest_connection_creates_once(self):
+        mock_rest = mock.Mock()
+        self.mock_object(netapp_api, 'RestNaServer',
+                         return_value=mock_rest)
+        self.connection._host = 'fake_host'
+        self.connection._protocol = 'https'
+        self.connection._ssl_cert_path = '/fake/ca.pem'
+        self.connection._username = 'admin'
+        self.connection._password = 'pass'
+        self.connection._port = '443'
+        self.connection._private_key_file = None
+        self.connection._certificate_file = None
+        self.connection._ca_certificate_file = None
+        self.connection._certificate_host_validation = False
+
+        conn1 = self.client._get_rest_connection()
+        conn2 = self.client._get_rest_connection()
+
+        self.assertIs(conn1, conn2)
+        netapp_api.RestNaServer.assert_called_once()
+
+    def test_get_rest_connection_ssl_cert_path_string(self):
+        self.mock_object(netapp_api, 'RestNaServer',
+                         return_value=mock.Mock())
+        self.connection._host = 'fake_host'
+        self.connection._protocol = 'https'
+        self.connection._ssl_cert_path = '/fake/ca.pem'
+        self.connection._username = 'admin'
+        self.connection._password = 'pass'
+        self.connection._port = '443'
+        self.connection._private_key_file = None
+        self.connection._certificate_file = None
+        self.connection._ca_certificate_file = None
+        self.connection._certificate_host_validation = False
+
+        self.client._get_rest_connection()
+
+        call_kwargs = netapp_api.RestNaServer.call_args[1]
+        self.assertEqual('/fake/ca.pem', call_kwargs['ssl_cert_path'])
+
+    def test_get_rest_connection_ssl_cert_path_none(self):
+        self.mock_object(netapp_api, 'RestNaServer',
+                         return_value=mock.Mock())
+        self.connection._host = 'fake_host'
+        self.connection._protocol = 'https'
+        self.connection._ssl_cert_path = None
+        self.connection._username = 'admin'
+        self.connection._password = 'pass'
+        self.connection._port = '443'
+        self.connection._private_key_file = None
+        self.connection._certificate_file = None
+        self.connection._ca_certificate_file = None
+        self.connection._certificate_host_validation = False
+
+        self.client._get_rest_connection()
+
+        call_kwargs = netapp_api.RestNaServer.call_args[1]
+        self.assertFalse(call_kwargs['ssl_cert_path'])
+
+    def test_get_rest_connection_ssl_cert_path_missing_attr(self):
+        self.mock_object(netapp_api, 'RestNaServer',
+                         return_value=mock.Mock())
+        self.connection._host = 'fake_host'
+        self.connection._protocol = 'https'
+        self.connection._username = 'admin'
+        self.connection._password = 'pass'
+        self.connection._port = '443'
+        self.connection._private_key_file = None
+        self.connection._certificate_file = None
+        self.connection._ca_certificate_file = None
+        self.connection._certificate_host_validation = False
+        if hasattr(self.connection, '_ssl_cert_path'):
+            delattr(self.connection, '_ssl_cert_path')
+
+        self.client._get_rest_connection()
+
+        call_kwargs = netapp_api.RestNaServer.call_args[1]
+        self.assertFalse(call_kwargs['ssl_cert_path'])
+
+    def test_get_svm_san_multipathing_active_active(self):
+        mock_rest_conn = mock.Mock()
+        mock_rest_conn.invoke_successfully.return_value = (
+            200,
+            {'records': [{'san_multipathing': 'active_active'}]})
+        self.mock_object(self.client, '_get_rest_connection',
+                         return_value=mock_rest_conn)
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertEqual('active_active', result)
+        mock_rest_conn.invoke_successfully.assert_called_once_with(
+            'svm/svms', 'get',
+            query={'name': self.client.vserver,
+                   'fields': 'san_multipathing'})
+
+    def test_get_svm_san_multipathing_local_active(self):
+        mock_rest_conn = mock.Mock()
+        mock_rest_conn.invoke_successfully.return_value = (
+            200,
+            {'records': [{'san_multipathing': 'local_active'}]})
+        self.mock_object(self.client, '_get_rest_connection',
+                         return_value=mock_rest_conn)
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertEqual('local_active', result)
+
+    def test_get_svm_san_multipathing_empty_records(self):
+        mock_rest_conn = mock.Mock()
+        mock_rest_conn.invoke_successfully.return_value = (
+            200, {'records': []})
+        self.mock_object(self.client, '_get_rest_connection',
+                         return_value=mock_rest_conn)
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertIsNone(result)
+
+    def test_get_svm_san_multipathing_no_records_key(self):
+        mock_rest_conn = mock.Mock()
+        mock_rest_conn.invoke_successfully.return_value = (200, {})
+        self.mock_object(self.client, '_get_rest_connection',
+                         return_value=mock_rest_conn)
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertIsNone(result)
+
+    def test_get_svm_san_multipathing_exception(self):
+        mock_rest_conn = mock.Mock()
+        mock_rest_conn.invoke_successfully.side_effect = (
+            netapp_api.NaApiError(code=0, message='connection failed'))
+        self.mock_object(self.client, '_get_rest_connection',
+                         return_value=mock_rest_conn)
+        mock_log = self.mock_object(client_cmode.LOG, 'exception')
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertIsNone(result)
+        mock_log.assert_called_once()
+
+    def test_get_svm_san_multipathing_unexpected_exception(self):
+        mock_rest_conn = mock.Mock()
+        mock_rest_conn.invoke_successfully.side_effect = ValueError(
+            'connection failed')
+        self.mock_object(self.client, '_get_rest_connection',
+                         return_value=mock_rest_conn)
+
+        self.assertRaises(
+            ValueError, self.client.get_svm_san_multipathing)
