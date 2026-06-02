@@ -81,6 +81,9 @@
               - ^releasenotes/.*$
               - ^reno.yaml$
               - ^tools/.*$
+        - cinder-tempest-plugin-lvm-lio-barbican-threading:
+            voting: false
+            irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-plugin-lvm-lio-barbican-fips-py311:
             voting: false
             irrelevant-files: *gate-irrelevant-files
@@ -174,6 +177,23 @@
       - ^setup.cfg$
       - ^tools/.*$
       - ^tox.ini$
+
+- job:
+    name: cinder-tempest-plugin-lvm-lio-barbican-threading
+    parent: cinder-tempest-plugin-lvm-lio-barbican
+    description: |
+      Run cinder-tempest-plugin tests with Cinder using native threading
+      instead of eventlet. Tests the eventlet removal migration by setting
+      OS_CINDER_DISABLE_EVENTLET_PATCHING=true for Cinder services via
+      SYSTEMD_ENV_VARS to ensure the environment variable reaches systemd services.
+      This job is non-voting while we work through threading compatibility
+      issues as part of the OpenStack-wide eventlet removal goal.
+    vars:
+      devstack_localrc:
+        'SYSTEMD_ENV_VARS["c-api"]': OS_CINDER_DISABLE_EVENTLET_PATCHING=true
+        'SYSTEMD_ENV_VARS["c-sch"]': OS_CINDER_DISABLE_EVENTLET_PATCHING=true
+        'SYSTEMD_ENV_VARS["c-vol"]': OS_CINDER_DISABLE_EVENTLET_PATCHING=true
+        'SYSTEMD_ENV_VARS["c-bak"]': OS_CINDER_DISABLE_EVENTLET_PATCHING=true
 
 - job:
     name: cinder-rally-task
