@@ -19,7 +19,6 @@ import os
 import re
 import typing
 from typing import Any, Iterable, Optional, Union
-import urllib
 import urllib.parse
 
 from oslo_config import cfg
