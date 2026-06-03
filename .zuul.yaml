@@ -80,8 +80,6 @@
             irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-plugin-protection-functional:
             irrelevant-files: *gate-irrelevant-files
-        - cinder-grenade-mn-sub-volbak:
-            irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-lvm-multibackend:
             voting: false
             irrelevant-files: *gate-irrelevant-files
@@ -99,8 +97,6 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage-ubuntu-jammy:
             irrelevant-files: *gate-irrelevant-files
-        - grenade:
-            irrelevant-files: *gate-irrelevant-files
         - grenade-skip-level:
             irrelevant-files: *gate-irrelevant-files
         # make this template job non-voting until it gets fixed
@@ -113,15 +109,11 @@
             irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
-        - cinder-grenade-mn-sub-volbak:
-            irrelevant-files: *gate-irrelevant-files
         - cinder-plugin-ceph-tempest:
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage-ubuntu-jammy:
-            irrelevant-files: *gate-irrelevant-files
-        - grenade:
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
@@ -152,6 +144,14 @@
     description: This is integrated storage job testing on Ubuntu jammy(22.04)
     parent: tempest-integrated-storage
     nodeset: openstack-single-node-jammy
+    required-projects:
+      - name: openstack/cinder-tempest-plugin
+        override-checkout: 1.17.0
+      - name: openstack/tempest
+        override-checkout: 46.3.0
+    vars:
+      devstack_localrc:
+        TEMPEST_VENV_UPPER_CONSTRAINTS: '/opt/stack/requirements/upper-constraints.txt'
 
 - job:
     # Security testing for known issues
