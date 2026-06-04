@@ -95,7 +95,7 @@ class HostTestCase(test.TestCase):
     def setUp(self):
         super(HostTestCase, self).setUp()
         self.controller = os_hosts.HostController()
-        self.patch('cinder.db.service_get_all', autospec=True,
+        self.patch('cinder.db.api.service_get_all', autospec=True,
                    return_value=SERVICE_LIST)
         self.mock_object(timeutils, 'utcnow', stub_utcnow)
 

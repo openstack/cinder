@@ -30,7 +30,7 @@ from oslo_utils import units
 import paramiko
 
 from cinder import context
-import cinder.db
+import cinder.db.api
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _
@@ -3537,7 +3537,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
-        self.db = cinder.db
+        self.db = cinder.db.api
         self.iscsi_driver.db = self.db
         self.iscsi_driver.do_setup(None)
         self.iscsi_driver.check_for_setup_error()
@@ -3637,7 +3637,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdiskhostmap')
     @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                        '_do_terminate_connection')
-    @mock.patch.object(cinder.db, 'volume_attachment_get_all_by_volume_id')
+    @mock.patch('cinder.db.api.volume_attachment_get_all_by_volume_id')
     @ddt.unpack
     def test_storwize_terminate_iscsi_multi_attach(self, vol_spec,
                                                    no_of_fake_attachments,
@@ -4262,7 +4262,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
-        self.db = cinder.db
+        self.db = cinder.db.api
         self.fc_driver.db = self.db
         self.fc_driver.do_setup(None)
         self.fc_driver.check_for_setup_error()
@@ -4679,7 +4679,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdiskhostmap')
     @mock.patch.object(storwize_svc_fc.StorwizeSVCFCDriver,
                        '_do_terminate_connection')
-    @mock.patch.object(cinder.db, 'volume_attachment_get_all_by_volume_id')
+    @mock.patch('cinder.db.api.volume_attachment_get_all_by_volume_id')
     @ddt.unpack
     def test_storwize_terminate_conn_fc_multi_attach(self, vol_spec,
                                                      no_of_fake_attachments,
@@ -5166,7 +5166,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         else:
             self._reset_flags()
         self.ctxt = context.get_admin_context()
-        self.db = cinder.db
+        self.db = cinder.db.api
         self.driver.db = self.db
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
@@ -11809,7 +11809,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
-        self.db = cinder.db
+        self.db = cinder.db.api
         self.driver.db = self.db
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()

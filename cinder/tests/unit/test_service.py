@@ -26,7 +26,7 @@ from oslo_db import exception as db_exc
 
 from cinder.common import constants
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import manager
 from cinder import objects
@@ -278,7 +278,7 @@ class ServiceTestCase(test.TestCase):
         self.assertTrue(service_update.called)
 
     def test_report_state_manager_not_working(self):
-        with mock.patch('cinder.db') as mock_db:
+        with mock.patch('cinder.db.api') as mock_db:
             mock_db.service_get.return_value = self.service_ref
 
             serv = service.Service(
@@ -303,7 +303,7 @@ class ServiceTestCase(test.TestCase):
         self.assertEqual(25, CONF.service_down_time)
 
     @mock.patch.object(rpc, 'get_server')
-    @mock.patch('cinder.db')
+    @mock.patch('cinder.db.api')
     def test_service_stop_waits_for_rpcserver(self, mock_db, mock_rpc):
         serv = service.Service(
             self.host,
@@ -321,7 +321,7 @@ class ServiceTestCase(test.TestCase):
     @mock.patch('cinder.service.Service.report_state')
     @mock.patch('cinder.service.Service.periodic_tasks')
     @mock.patch.object(rpc, 'get_server')
-    @mock.patch('cinder.db')
+    @mock.patch('cinder.db.api')
     def test_service_stop_wait(self, mock_db, mock_rpc,
                                mock_periodic, mock_report):
         """Test that we wait for loopcalls only if stop succeeds."""

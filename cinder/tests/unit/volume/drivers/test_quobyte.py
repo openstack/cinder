@@ -29,7 +29,7 @@ from oslo_utils import imageutils
 from oslo_utils import units
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.image import image_utils
 from cinder.tests.unit import fake_snapshot
@@ -1342,7 +1342,7 @@ class QuobyteDriverTestCase(test.TestCase):
         self.assertEqual(self.TEST_MNT_POINT_BASE,
                          conn_info['mount_point_base'])
 
-    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
+    @mock.patch('cinder.db.api.volume_glance_metadata_get', return_value={})
     def test_copy_volume_to_image_raw_image(self, vol_glance_metadata):
         drv = self._driver
 
@@ -1395,7 +1395,7 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume_format='raw', volume_fd=None)
             self.assertTrue(mock_create_temporary_file.called)
 
-    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
+    @mock.patch('cinder.db.api.volume_glance_metadata_get', return_value={})
     def test_copy_volume_to_image_qcow2_image(self, vol_glance_metadata):
         """Upload a qcow2 image file which has to be converted to raw first."""
         drv = self._driver
@@ -1453,7 +1453,7 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume_format='raw', volume_fd=None)
             self.assertTrue(mock_create_temporary_file.called)
 
-    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
+    @mock.patch('cinder.db.api.volume_glance_metadata_get', return_value={})
     def test_copy_volume_to_image_snapshot_exists(self, vol_glance_metadata):
         """Upload an active snapshot which has to be converted to raw first."""
         drv = self._driver

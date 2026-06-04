@@ -20,7 +20,7 @@ import webob
 from cinder.api.contrib import volume_type_access as type_access
 from cinder.api.v3 import types
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake

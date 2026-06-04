@@ -1768,7 +1768,7 @@ class GPFSDriverTestCase(test.TestCase):
         ret = self.driver.local_path(volume)
         self.assertEqual(volume_path, ret)
 
-    @mock.patch('cinder.db.get_by_id')
+    @mock.patch('cinder.db.api.get_by_id')
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_local_path_volume_in_cg(self, mock_group_cg_snapshot_type,
                                      mock_group_obj):
@@ -2250,7 +2250,7 @@ class GPFSNFSDriverTestCase(test.TestCase):
             self.assertEqual('GPFSNFS', stats['volume_backend_name'])
             self.assertEqual('file', stats['storage_protocol'])
 
-    @mock.patch('cinder.db.get_by_id')
+    @mock.patch('cinder.db.api.get_by_id')
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_get_volume_path(self, mock_group_cg_snapshot_type, mock_group):
         mock_group_cg_snapshot_type.return_value = True
@@ -2271,7 +2271,7 @@ class GPFSNFSDriverTestCase(test.TestCase):
         self.assertEqual(volume_path,
                          self.driver._get_volume_path(volume))
 
-    @mock.patch('cinder.db.get_by_id')
+    @mock.patch('cinder.db.api.get_by_id')
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSNFSDriver.'
                 '_get_mount_point_for_share')

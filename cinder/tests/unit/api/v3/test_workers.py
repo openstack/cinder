@@ -146,7 +146,7 @@ class WorkersTestCase(test.TestCase):
             self.assertEqual(value, getattr(cleanup_request, key))
         self.assertEqual(self._expected_services(*SERVICES), res.json)
 
-    @mock.patch('cinder.db.worker_get_all',
+    @mock.patch('cinder.db.api.worker_get_all',
                 return_value=[mock.Mock(service_id=1, resource_type='Volume')])
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.work_cleanup',
                 return_value=SERVICES)

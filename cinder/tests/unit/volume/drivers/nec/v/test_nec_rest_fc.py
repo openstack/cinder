@@ -20,7 +20,7 @@ from oslo_config import cfg
 import requests
 
 from cinder import context as cinder_context
-from cinder import db
+from cinder.db import api as db
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 from cinder.volume import configuration as conf

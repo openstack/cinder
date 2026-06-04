@@ -15,7 +15,7 @@
 from oslo_config import cfg
 from oslo_versionedobjects import fields
 
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects

@@ -21,7 +21,7 @@ from oslo_utils import importutils
 from oslo_utils import units
 
 from cinder.brick.local_dev import lvm as brick_lvm
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.objects import fields
 from cinder.tests import fake_driver
@@ -653,9 +653,9 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                                                       None,
                                                       'default')
 
-    @mock.patch.object(db.sqlalchemy.api, 'volume_get',
-                       side_effect=exception.VolumeNotFound(
-                           volume_id='d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'))
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get',
+                side_effect=exception.VolumeNotFound(
+                    volume_id='d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'))
     def test_lvm_manage_existing_not_found(self, mock_vol_get):
         self._setup_stubs_for_manage_existing()
 

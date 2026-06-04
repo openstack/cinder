@@ -31,7 +31,7 @@ from oslo_utils import units
 
 from cinder.backup.drivers import s3 as s3_dr
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects

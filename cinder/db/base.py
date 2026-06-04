@@ -16,7 +16,7 @@
 
 """Base class for classes that need modular database access."""
 
-import cinder.db
+import cinder.db.api
 
 
 class Base(object):
@@ -25,5 +25,5 @@ class Base(object):
     def __init__(self):
         super().__init__()
 
-        self.db = cinder.db
+        self.db = cinder.db.api
         self.db.dispose_engine()

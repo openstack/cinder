@@ -311,7 +311,7 @@ class SchedulerManagerTestCase(test.TestCase):
 
     @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
     @mock.patch('cinder.message.api.API.create')
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     def test_create_volume_exception_puts_volume_in_error_state(
             self, _mock_volume_update, _mock_message_create,
             _mock_sched_create):
@@ -411,9 +411,9 @@ class SchedulerManagerTestCase(test.TestCase):
                                                    request_spec_obj, {})
         self.assertFalse(_mock_sleep.called)
 
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     @mock.patch('cinder.scheduler.driver.Scheduler.backend_passes_filters')
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     def test_migrate_volume_exception_returns_volume_state(
             self, _mock_volume_update, _mock_backend_passes,
             _mock_volume_get):
@@ -424,9 +424,9 @@ class SchedulerManagerTestCase(test.TestCase):
             _mock_volume_update, _mock_backend_passes, _mock_volume_get,
             'available', fake_updates)
 
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     @mock.patch('cinder.scheduler.driver.Scheduler.backend_passes_filters')
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     def test_migrate_volume_exception_returns_volume_state_maintenance(
             self, _mock_volume_update, _mock_backend_passes,
             _mock_volume_get):
@@ -456,8 +456,8 @@ class SchedulerManagerTestCase(test.TestCase):
         _mock_backend_passes.assert_called_once_with(self.context, 'host',
                                                      request_spec, {})
 
-    @mock.patch('cinder.db.volume_update')
-    @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
+    @mock.patch('cinder.db.api.volume_update')
+    @mock.patch('cinder.db.api.volume_attachment_get_all_by_volume_id')
     @mock.patch('cinder.quota.QUOTAS.rollback')
     def test_retype_volume_exception_returns_volume_state(
             self, quota_rollback, _mock_vol_attachment_get, _mock_vol_update):
@@ -594,7 +594,7 @@ class SchedulerManagerTestCase(test.TestCase):
     @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
     @mock.patch('cinder.objects.backup.Backup.save')
     @mock.patch('cinder.scheduler.driver.Scheduler.get_backup_host')
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_create_backup(self, mock_volume_get, mock_host, mock_save,
                            mock_create):
         volume = fake_volume.fake_db_volume()
@@ -612,7 +612,7 @@ class SchedulerManagerTestCase(test.TestCase):
     @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
     @mock.patch('cinder.objects.backup.Backup.save')
     @mock.patch('cinder.scheduler.driver.Scheduler.get_backup_host')
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_create_backup_with_host(self, mock_volume_get,
                                      mock_host, mock_save, mock_create):
         volume = fake_volume.fake_db_volume()
@@ -632,8 +632,8 @@ class SchedulerManagerTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.volume_utils.update_backup_error')
     @mock.patch('cinder.scheduler.driver.Scheduler.get_backup_host')
-    @mock.patch('cinder.db.volume_get')
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_get')
+    @mock.patch('cinder.db.api.volume_update')
     def test_create_backup_no_service(self, mock_volume_update,
                                       mock_volume_get, mock_host, mock_error):
         volume = fake_volume.fake_db_volume()
@@ -725,7 +725,7 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         super(SchedulerDriverModuleTestCase, self).setUp()
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     def test_volume_host_update_db(self, _mock_volume_get, _mock_vol_update):
         volume = fake_volume.fake_volume_obj(self.context, use_quota=True)
@@ -741,7 +741,7 @@ class SchedulerDriverModuleTestCase(test.TestCase):
                                       'scheduled_at': scheduled_at,
                                       'availability_zone': None})
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     def test_volume_host_update_db_vol_present(self, _mock_volume_get,
                                                _mock_vol_update):

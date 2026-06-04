@@ -24,7 +24,7 @@ from oslo_utils import timeutils
 from sqlalchemy.dialects import sqlite
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.db.sqlalchemy import api as db_api
 from cinder import exception
 from cinder.tests.unit import test

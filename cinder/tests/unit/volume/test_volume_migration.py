@@ -26,7 +26,7 @@ from oslo_utils import imageutils
 
 from cinder.common import constants
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
@@ -474,7 +474,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         self.assertEqual('success', volume.migration_status)
         self.assertEqual(glance_metadata, volume.glance_metadata)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     def test_update_migrated_volume(self, volume_update):
         fake_host = 'fake_host'
         fake_new_host = 'fake_new_host'
@@ -879,7 +879,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                 mock.patch.object(volume_types,
                                   'volume_types_diff') as _diff, \
                 mock.patch.object(self.volume, 'migrate_volume') as _mig, \
-                mock.patch.object(db.sqlalchemy.api, 'volume_get') as _vget, \
+                mock.patch('cinder.db.api.volume_get') as _vget, \
                 mock.patch.object(context.RequestContext,
                                   'elevated') as _ctx, \
                 mock.patch.object(objects.VolumeType, 'get_by_id') as _vtget:

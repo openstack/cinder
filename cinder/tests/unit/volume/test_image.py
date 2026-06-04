@@ -23,7 +23,7 @@ from unittest import mock
 from oslo_utils import imageutils
 from oslo_utils import units
 
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.image import image_utils
 from cinder.message import message_field
@@ -84,8 +84,8 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
             'host': 'dummy',
             'volume_type_id': fake.VOLUME_TYPE_ID
         }
-        self.mock_object(db.sqlalchemy.api, 'volume_type_get',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api.volume_type_get',
+                   v3_fakes.fake_volume_type_get)
 
     def test_copy_volume_to_image_status_available(self):
         # creating volume testdata

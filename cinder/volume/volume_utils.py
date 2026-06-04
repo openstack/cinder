@@ -53,7 +53,7 @@ from oslo_utils import units
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils

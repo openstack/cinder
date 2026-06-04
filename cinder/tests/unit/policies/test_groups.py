@@ -91,7 +91,7 @@ class GroupsPolicyTest(base.BasePolicyTest):
 
     @ddt.data(*base.all_users)
     @mock.patch('cinder.group.api.GROUP_QUOTAS')
-    @mock.patch('cinder.db.group_type_get')
+    @mock.patch('cinder.db.api.group_type_get')
     def test_create_group_policy(self, user_id, mock_get_type, mock_quotas):
         vol_type = self._create_volume_type()
         grp_type = {'id': fake_constants.GROUP_TYPE_ID, 'name': 'group_type'}

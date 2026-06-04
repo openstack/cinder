@@ -19,7 +19,7 @@ from oslo_serialization import jsonutils
 import webob
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test

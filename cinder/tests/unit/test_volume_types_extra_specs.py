@@ -17,7 +17,7 @@ Unit Tests for volume types extra specs code
 """
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.tests.unit import test
 
 

@@ -18,7 +18,7 @@ import ddt
 from oslo_utils import timeutils
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.db.sqlalchemy import api as db_api
 from cinder.db.sqlalchemy import models
 from cinder import exception
@@ -314,8 +314,8 @@ class VolumeTransferTestCase(test.TestCase):
               {'all_tenants': '0', 'name': 'transfer1'},
               {'name': 'transfer1'})
     @mock.patch.object(context.RequestContext, 'authorize')
-    @mock.patch('cinder.db.transfer_get_all')
-    @mock.patch('cinder.db.transfer_get_all_by_project')
+    @mock.patch('cinder.db.api.transfer_get_all')
+    @mock.patch('cinder.db.api.transfer_get_all_by_project')
     def test_get_all_transfers_non_admin(self, search_opts, get_all_by_project,
                                          get_all, auth_mock):
         ctxt = context.RequestContext(user_id=None, is_admin=False,

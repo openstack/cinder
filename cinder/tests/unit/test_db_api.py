@@ -27,7 +27,7 @@ from sqlalchemy.sql import operators
 
 from cinder.api import common
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder.db.sqlalchemy import models
 from cinder import exception
@@ -1456,9 +1456,8 @@ class DBAPIVolumeTestCase(BaseTest):
 
         self.assertEqual(should_be, db_meta)
 
-    @mock.patch.object(db.sqlalchemy.api,
-                       '_volume_glance_metadata_key_to_id',
-                       return_value = '1')
+    @mock.patch('cinder.db.sqlalchemy.api._volume_glance_metadata_key_to_id',
+                return_value = '1')
     def test_volume_glance_metadata_key_to_id_called(self,
                                                      metadata_key_to_id_mock):
         image_metadata = {'abc': '123'}

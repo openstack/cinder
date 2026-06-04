@@ -443,7 +443,7 @@ class TestCinderManageCmd(test.TestCase):
         self.assertEqual(127, exit.code)
         cinder_manage.DbCommands.online_migrations[0].assert_not_called()
 
-    @mock.patch('cinder.db.reset_active_backend')
+    @mock.patch('cinder.db.api.reset_active_backend')
     @mock.patch('cinder.context.get_admin_context')
     def test_db_commands_reset_active_backend(self, admin_ctxt_mock,
                                               reset_backend_mock):
@@ -493,7 +493,7 @@ class TestCinderManageCmd(test.TestCase):
         purge_deleted_rows.assert_called_once_with(
             ctxt, age_in_days=age_in_days)
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.context.get_admin_context')
     def test_host_commands_list(self, get_admin_context, service_get_all):
         get_admin_context.return_value = mock.sentinel.ctxt
@@ -515,7 +515,7 @@ class TestCinderManageCmd(test.TestCase):
             service_get_all.assert_called_once_with(mock.sentinel.ctxt)
             self.assertEqual(expected_out, fake_out.getvalue())
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.context.get_admin_context')
     def test_host_commands_list_with_zone(self, get_admin_context,
                                           service_get_all):
@@ -576,7 +576,7 @@ class TestCinderManageCmd(test.TestCase):
             unmanage_only=False,
             volume=volume_obj)
 
-    @mock.patch('cinder.db.volume_destroy')
+    @mock.patch('cinder.db.api.volume_destroy')
     @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     @mock.patch('cinder.context.get_admin_context')
     @mock.patch('cinder.rpc.init')
@@ -603,7 +603,7 @@ class TestCinderManageCmd(test.TestCase):
             self.assertTrue(admin_context.is_admin)
             self.assertEqual(expected_out, fake_out.getvalue())
 
-    @mock.patch('cinder.db.volume_destroy')
+    @mock.patch('cinder.db.api.volume_destroy')
     @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     @mock.patch('cinder.context.get_admin_context')
     @mock.patch('cinder.rpc.init')
@@ -648,7 +648,7 @@ class TestCinderManageCmd(test.TestCase):
 
             self.assertEqual(expected_out, fake_out.getvalue())
 
-    @mock.patch('cinder.db.backup_get_all')
+    @mock.patch('cinder.db.api.backup_get_all')
     @mock.patch('cinder.context.get_admin_context')
     def test_backup_commands_list(self, get_admin_context, backup_get_all):
         ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
@@ -699,8 +699,8 @@ class TestCinderManageCmd(test.TestCase):
                                                    None, None, None)
             self.assertEqual(expected_out, fake_out.getvalue())
 
-    @mock.patch('cinder.db.backup_update')
-    @mock.patch('cinder.db.backup_get_all_by_host')
+    @mock.patch('cinder.db.api.backup_update')
+    @mock.patch('cinder.db.api.backup_get_all_by_host')
     @mock.patch('cinder.context.get_admin_context')
     def test_update_backup_host(self, get_admin_context,
                                 backup_get_by_host,
@@ -728,8 +728,8 @@ class TestCinderManageCmd(test.TestCase):
         backup_update.assert_called_once_with(ctxt, fake.BACKUP_ID,
                                               {'host': 'fake_host2'})
 
-    @mock.patch('cinder.db.consistencygroup_update')
-    @mock.patch('cinder.db.consistencygroup_get_all')
+    @mock.patch('cinder.db.api.consistencygroup_update')
+    @mock.patch('cinder.db.api.consistencygroup_get_all')
     @mock.patch('cinder.context.get_admin_context')
     def test_update_consisgroup_host(self, get_admin_context,
                                      consisgroup_get_all,
@@ -755,7 +755,7 @@ class TestCinderManageCmd(test.TestCase):
 
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.context.get_admin_context')
     def _test_service_commands_list(self, service, get_admin_context,
                                     service_get_all, service_is_up):
@@ -859,7 +859,7 @@ class TestCinderManageCmd(test.TestCase):
         self.assertEqual(expected, my_func.args)
 
     @mock.patch('cinder.context.get_admin_context')
-    @mock.patch('cinder.db.cluster_get_all')
+    @mock.patch('cinder.db.api.cluster_get_all')
     def tests_cluster_commands_list(self, get_all_mock, get_admin_mock,
                                     ):
         now = timeutils.utcnow()
@@ -1120,16 +1120,16 @@ class TestCinderManageCmd(test.TestCase):
             self.assertFalse(log_setup.called)
             self.assertEqual(2, exit.code)
 
-    @mock.patch('cinder.db')
+    @mock.patch('cinder.db.api')
     def test_remove_service_failure(self, mock_db):
         mock_db.service_destroy.side_effect = SystemExit(1)
         service_commands = cinder_manage.ServiceCommands()
         exit = service_commands.remove('abinary', 'ahost')
         self.assertEqual(2, exit)
 
-    @mock.patch('cinder.db.service_destroy')
+    @mock.patch('cinder.db.api.service_destroy')
     @mock.patch(
-        'cinder.db.service_get',
+        'cinder.db.api.service_get',
         return_value = {'id': '12',
                         'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'})
     def test_remove_service_success(self, mock_get_by_args,

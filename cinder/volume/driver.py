@@ -26,7 +26,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder.common import constants
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils

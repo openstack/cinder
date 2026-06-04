@@ -31,7 +31,7 @@ from oslo_utils import units
 import paramiko
 
 from cinder import context
-import cinder.db
+import cinder.db.api
 from cinder import exception
 from cinder.objects import volume_attachment
 from cinder import ssh_utils
@@ -780,7 +780,7 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.set_fake_storage(self.sim)
         self.ctxt = context.get_admin_context()
 
-        self.db = cinder.db
+        self.db = cinder.db.api
         self.iscsi_driver.db = self.db
         self.iscsi_driver.get_driver_options()
         self.iscsi_driver.do_setup(None)
@@ -973,7 +973,7 @@ class Acs5000FCDriverTestCase(test.TestCase):
         self.fc_driver.set_fake_storage(self.sim)
         self.ctxt = context.get_admin_context()
 
-        self.db = cinder.db
+        self.db = cinder.db.api
         self.fc_driver.db = self.db
         self.fc_driver.get_driver_options()
         self.fc_driver.do_setup(None)
@@ -1165,7 +1165,7 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         self._driver.set_fake_storage(self.sim)
         self.ctxt = context.get_admin_context()
 
-        self.db = cinder.db
+        self.db = cinder.db.api
         self._driver.db = self.db
         self._driver.do_setup(None)
         self._driver.check_for_setup_error()

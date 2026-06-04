@@ -64,7 +64,7 @@ from oslo_service import periodic_task
 from oslo_utils import timeutils
 
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.db import base
 from cinder import exception
 from cinder import monkey_patch

@@ -30,7 +30,7 @@ from cinder.api.openstack import api_version_request as api_version
 import cinder.backup
 from cinder.backup import api as backup_api
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -545,7 +545,7 @@ class BackupsAPITestCase(test.TestCase):
                           "name": "test   "}},
               {"backup": {"description": " sample description ",
                           "name": "  test  "}})
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_create_backup_name_description_with_leading_trailing_spaces(
             self, body, _mock_service_get_all):
         _mock_service_get_all.return_value = [
@@ -579,7 +579,7 @@ class BackupsAPITestCase(test.TestCase):
                          res_dict['backup']['description'])
         volume.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_create_backup_with_metadata(self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
@@ -620,7 +620,7 @@ class BackupsAPITestCase(test.TestCase):
         volume.destroy()
 
     @mock.patch('cinder.objects.Service.is_up', mock.Mock(return_value=True))
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_create_backup_with_availability_zone(self, _mock_service_get_all):
         vol_az = 'az1'
         backup_svc_az = 'az2'
@@ -646,7 +646,7 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(202, res.status_code)
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_create_backup_inuse_no_force(self,
                                           _mock_service_get_all):
         _mock_service_get_all.return_value = [
@@ -972,7 +972,7 @@ class BackupsAPITestCase(test.TestCase):
             snapshot.destroy()
         volume.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_create_incremental_backup_invalid_status(
             self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
@@ -1113,7 +1113,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_create_backup_WithOUT_enabled_backup_service(
             self,
             _mock_service_get_all):
@@ -1139,7 +1139,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual('available', volume.status)
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_create_incremental_backup_invalid_no_full(
             self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
@@ -1197,7 +1197,7 @@ class BackupsAPITestCase(test.TestCase):
 
         volume.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_create_backup_with_metadata_null_validate(
             self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
@@ -1226,7 +1226,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertIn('id', res_dict['backup'])
         volume.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_is_backup_service_enabled(self, _mock_service_get_all):
 
         testhost = 'test_host'
@@ -1301,7 +1301,7 @@ class BackupsAPITestCase(test.TestCase):
                         volume.availability_zone,
                         testhost))
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_get_available_backup_service(self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost1',
@@ -1323,7 +1323,7 @@ class BackupsAPITestCase(test.TestCase):
             'testhost4', 'az1')
         self.assertEqual('testhost1', actual_host)
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_get_available_backup_service_with_same_host(
             self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
@@ -1344,7 +1344,7 @@ class BackupsAPITestCase(test.TestCase):
                           self.backup_api._get_available_backup_service_host,
                           'testhost4', 'az1')
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_delete_backup_available(self, _mock_service_get_all):
         _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
@@ -1367,7 +1367,7 @@ class BackupsAPITestCase(test.TestCase):
 
         backup.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_delete_delta_backup(self,
                                  _mock_service_get_all):
         _mock_service_get_all.return_value = [
@@ -1396,7 +1396,7 @@ class BackupsAPITestCase(test.TestCase):
         delta.destroy()
         backup.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_delete_backup_error(self,
                                  _mock_service_get_all):
         _mock_service_get_all.return_value = [
@@ -1455,7 +1455,7 @@ class BackupsAPITestCase(test.TestCase):
 
         backup.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_delete_backup_with_InvalidBackup2(self,
                                                _mock_service_get_all):
         _mock_service_get_all.return_value = [
@@ -1487,7 +1487,7 @@ class BackupsAPITestCase(test.TestCase):
         delta_backup.destroy()
         backup.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_delete_backup_service_down(self,
                                         _mock_service_get_all):
         _mock_service_get_all.return_value = [
@@ -1508,7 +1508,7 @@ class BackupsAPITestCase(test.TestCase):
         backup.destroy()
 
     @mock.patch('cinder.backup.manager.BackupManager.is_working')
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_delete_backup_service_is_none_and_is_not_working(
             self, _mock_service_get_all, _mock_backup_is_working):
         _mock_service_get_all.return_value = [
@@ -1604,7 +1604,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertIn("'' was unexpected)",
                       res_dict['badRequest']['message'])
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.volume.api.API.create')
     def test_restore_backup_volume_id_unspecified(
             self, _mock_volume_api_create, _mock_service_get_all):
@@ -1637,7 +1637,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(backup.id, res_dict['restore']['backup_id'])
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.volume.api.API.create')
     def test_restore_backup_name_specified(self,
                                            _mock_volume_api_create,

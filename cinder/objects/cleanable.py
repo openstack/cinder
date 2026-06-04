@@ -19,7 +19,7 @@ import inspect
 import decorator
 from oslo_utils import versionutils
 
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.objects import base
 from cinder import service

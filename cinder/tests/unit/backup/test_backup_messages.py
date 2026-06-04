@@ -26,7 +26,7 @@ from cinder.tests.unit import test
 
 class BackupUserMessagesTest(test.TestCase):
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager._start_backup')
@@ -58,7 +58,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.BACKUP_INVALID_STATE)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager._start_backup')
@@ -92,7 +92,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.BACKUP_SERVICE_DOWN)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager.is_working')
@@ -126,7 +126,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.ATTACH_ERROR)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager.is_working')
@@ -165,7 +165,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.BACKUP_CREATE_DRIVER_ERROR)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager.is_working')
@@ -204,7 +204,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.DETACH_ERROR)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager.is_working')
@@ -249,8 +249,8 @@ class BackupUserMessagesTest(test.TestCase):
     @mock.patch('cinder.scheduler.host_manager.HostManager.'
                 '_get_available_backup_service_host')
     @mock.patch('cinder.volume.volume_utils.update_backup_error')
-    @mock.patch('cinder.db.volume_update')
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.api.volume_update')
+    @mock.patch('cinder.db.api.volume_get')
     @mock.patch('cinder.message.api.API.create')
     def test_backup_create_scheduling_error(
             self, mock_msg_create, mock_get_vol, mock_vol_update,
@@ -274,7 +274,7 @@ class BackupUserMessagesTest(test.TestCase):
             resource_uuid=fake_backup.id,
             detail=message_field.Detail.BACKUP_SCHEDULE_ERROR)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch(
         'cinder.backup.manager.BackupManager._notify_about_backup_usage')
@@ -299,7 +299,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.BACKUP_INVALID_STATE)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager.is_working')
     @mock.patch(
@@ -327,7 +327,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.BACKUP_SERVICE_DOWN)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager._is_our_backup')
     @mock.patch('cinder.backup.manager.BackupManager.is_working')
@@ -359,7 +359,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.BACKUP_DELETE_DRIVER_ERROR)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create')
     @mock.patch('cinder.backup.manager.BackupManager.'
@@ -390,7 +390,7 @@ class BackupUserMessagesTest(test.TestCase):
             resource_uuid=mock_vol.id,
             detail=message_field.Detail.VOLUME_INVALID_STATE)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager.'
@@ -423,7 +423,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.BACKUP_INVALID_STATE)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager._is_our_backup')
@@ -469,7 +469,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.ATTACH_ERROR)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager._is_our_backup')
@@ -519,7 +519,7 @@ class BackupUserMessagesTest(test.TestCase):
             fake_context,
             detail=message_field.Detail.BACKUP_RESTORE_ERROR)
 
-    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.api.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
     @mock.patch('cinder.backup.manager.BackupManager._is_our_backup')

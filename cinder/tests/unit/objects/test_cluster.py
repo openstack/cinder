@@ -18,7 +18,6 @@ from unittest import mock
 import ddt
 from oslo_utils import timeutils
 
-import cinder.db
 from cinder.db.sqlalchemy import models
 from cinder import objects
 from cinder.tests.unit import fake_cluster
@@ -115,7 +114,7 @@ class TestCluster(test_objects.BaseObjectsTestCase):
                                                 last_heartbeat=expired_time)
         self.assertFalse(cluster.is_up)
 
-    @mock.patch.object(cinder.db, 'conditional_update')
+    @mock.patch('cinder.db.api.conditional_update')
     def test_reset_service_replication(self, mock_update):
         cluster = fake_cluster.fake_cluster_ovo(self.context)
         cluster.reset_service_replication()

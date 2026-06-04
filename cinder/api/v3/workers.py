@@ -22,7 +22,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.schemas import workers as schema
 from cinder.api.v3.views import workers as workers_view
 from cinder.api import validation
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects

@@ -23,7 +23,7 @@ import testtools
 import cinder.backup.manager  # noqa
 from cinder.cmd import status
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder import exception
 from cinder.tests.unit import fake_constants as fakes

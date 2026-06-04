@@ -32,7 +32,7 @@ import cinder
 from cinder.backup import api
 from cinder.backup import manager
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.message import message_field
 from cinder import objects
@@ -2365,7 +2365,7 @@ class BackupAPITestCase(BaseBackupTest):
             self.ctxt, volume_id, 'vol_proj_id',
             filters={'project_id': 'fake_project'})
 
-    @mock.patch('cinder.db.backup_get_all_by_volume',
+    @mock.patch('cinder.db.api.backup_get_all_by_volume',
                 return_value=[v3_fakes.fake_backup('fake-1')])
     @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
     @mock.patch.object(api.API, '_get_available_backup_service_host',

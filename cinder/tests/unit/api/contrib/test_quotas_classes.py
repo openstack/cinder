@@ -22,7 +22,7 @@ from unittest import mock
 
 from cinder.api.contrib import quota_classes
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import quota
 from cinder.tests.unit import fake_constants as fake

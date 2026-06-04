@@ -25,7 +25,7 @@ from oslo_utils import timeutils
 
 from cinder.common import constants
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder import objects
 from cinder.scheduler import filters
@@ -527,7 +527,7 @@ class HostManagerTestCase(test.TestCase):
 
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_has_all_capabilities(self, _mock_service_get_all,
                                   _mock_service_is_up):
         _mock_service_is_up.return_value = True
@@ -571,7 +571,7 @@ class HostManagerTestCase(test.TestCase):
 
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_first_receive_capabilities_case1(self, _mock_service_get_all,
                                               _mock_service_is_up):
         # No volume service startup
@@ -595,7 +595,7 @@ class HostManagerTestCase(test.TestCase):
 
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     def test_first_receive_capabilities_case2(self, _mock_service_get_all,
                                               _mock_service_is_up):
         _mock_service_is_up.return_value = True
@@ -637,7 +637,7 @@ class HostManagerTestCase(test.TestCase):
                                                       None, timestamp)
         self.assertTrue(self.host_manager.first_receive_capabilities())
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
     @mock.patch('oslo_utils.timeutils.utcnow')
@@ -752,7 +752,7 @@ class HostManagerTestCase(test.TestCase):
                     ('non_clustered_host#_pool0', 4000)}
         self.assertSetEqual(expected, result)
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
     def test_get_all_backend_states(self, _mock_service_is_up,
@@ -859,7 +859,7 @@ class HostManagerTestCase(test.TestCase):
             test_service.TestService._compare(self, volume_node,
                                               backend_state_map[host].service)
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
     def test_get_pools(self, _mock_service_is_up,
@@ -1086,7 +1086,7 @@ class HostManagerTestCase(test.TestCase):
         self.assertEqual(sorted(expected2, key=sort_func),
                          sorted(res2, key=sort_func))
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
     def test_get_pools_filter_name(self, _mock_service_is_up,
@@ -1180,7 +1180,7 @@ class HostManagerTestCase(test.TestCase):
 
         self.assertEqual(expected, res)
 
-    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.db.api.service_get_all')
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
     def test_get_pools_filter_multiattach(self, _mock_service_is_up,

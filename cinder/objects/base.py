@@ -23,7 +23,7 @@ from oslo_utils import versionutils
 from oslo_versionedobjects import base
 from oslo_versionedobjects import fields
 
-from cinder import db
+from cinder.db import api as db
 from cinder.db import utils as db_utils
 from cinder import exception
 from cinder.i18n import _

@@ -94,7 +94,7 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
         backup = Backup(status='cleanable')
         self.assertTrue(backup.is_cleanable(pinned=False))
 
-    @mock.patch('cinder.db.worker_create', autospec=True)
+    @mock.patch('cinder.db.api.worker_create', autospec=True)
     def test_create_worker(self, mock_create):
         """Test worker creation as if it were from an rpc call."""
         self.set_version('1.3')
@@ -108,7 +108,7 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
                                             resource_type='Backup',
                                             resource_id=mock.sentinel.id)
 
-    @mock.patch('cinder.db.worker_create', autospec=True)
+    @mock.patch('cinder.db.api.worker_create', autospec=True)
     def test_create_worker_pinned_too_old(self, mock_create):
         """Test worker creation when we are pinnned with an old version."""
         self.set_version('1.0')
@@ -119,7 +119,7 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
         self.assertFalse(res)
         self.assertFalse(mock_create.called)
 
-    @mock.patch('cinder.db.worker_create', autospec=True)
+    @mock.patch('cinder.db.api.worker_create', autospec=True)
     def test_create_worker_non_cleanable(self, mock_create):
         """Test worker creation when status is non cleanable."""
         self.set_version('1.3')
@@ -130,8 +130,8 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
         self.assertFalse(res)
         self.assertFalse(mock_create.called)
 
-    @mock.patch('cinder.db.worker_update', autospec=True)
-    @mock.patch('cinder.db.worker_create', autospec=True)
+    @mock.patch('cinder.db.api.worker_update', autospec=True)
+    @mock.patch('cinder.db.api.worker_create', autospec=True)
     def test_create_worker_already_exists(self, mock_create, mock_update):
         """Test worker creation when a worker for the resource exists."""
         self.set_version('1.3')
@@ -148,8 +148,8 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
                      'resource_id': mock.sentinel.id},
             service_id=None, status='cleanable')
 
-    @mock.patch('cinder.db.worker_update', autospec=True)
-    @mock.patch('cinder.db.worker_create', autospec=True)
+    @mock.patch('cinder.db.api.worker_update', autospec=True)
+    @mock.patch('cinder.db.api.worker_create', autospec=True)
     def test_create_worker_cleaning(self, mock_create, mock_update):
         """Test worker creation on race condition.
 
@@ -168,8 +168,8 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
         self.assertEqual(2, mock_create.call_count)
         self.assertTrue(mock_update.called)
 
-    @mock.patch('cinder.db.worker_update', autospec=True)
-    @mock.patch('cinder.db.worker_get', autospec=True)
+    @mock.patch('cinder.db.api.worker_update', autospec=True)
+    @mock.patch('cinder.db.api.worker_get', autospec=True)
     def test_set_worker(self, mock_get, mock_update):
         """Test set worker for a normal job received from an rpc call."""
         service.Service.service_id = mock.sentinel.service_id
@@ -192,8 +192,8 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
             orm_worker=worker)
         self.assertEqual(worker, backup.worker)
 
-    @mock.patch('cinder.db.worker_create', autospec=True)
-    @mock.patch('cinder.db.worker_get', autospec=True)
+    @mock.patch('cinder.db.api.worker_create', autospec=True)
+    @mock.patch('cinder.db.api.worker_get', autospec=True)
     def test_set_worker_direct(self, mock_get, mock_create):
         """Test set worker for direct call (non rpc call)."""
         mock_get.side_effect = exception.WorkerNotFound
@@ -216,8 +216,8 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
                                             service_id=service_id)
         self.assertEqual(mock_create.return_value, backup.worker)
 
-    @mock.patch('cinder.db.worker_update', autospec=True)
-    @mock.patch('cinder.db.worker_get', autospec=True)
+    @mock.patch('cinder.db.api.worker_update', autospec=True)
+    @mock.patch('cinder.db.api.worker_get', autospec=True)
     def test_set_worker_claim_from_another_host(self, mock_get, mock_update):
         """Test set worker when the job was started on another failed host."""
         service_id = mock.sentinel.service_id
@@ -242,8 +242,8 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
             orm_worker=worker)
         self.assertEqual(worker, backup.worker)
 
-    @mock.patch('cinder.db.worker_create', autospec=True)
-    @mock.patch('cinder.db.worker_get', autospec=True)
+    @mock.patch('cinder.db.api.worker_create', autospec=True)
+    @mock.patch('cinder.db.api.worker_get', autospec=True)
     def test_set_worker_race_condition_fail(self, mock_get, mock_create):
         """Test we cannot claim a work if we lose race condition."""
         service.Service.service_id = mock.sentinel.service_id
@@ -257,8 +257,8 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
         self.assertTrue(mock_get.called)
         self.assertTrue(mock_create.called)
 
-    @mock.patch('cinder.db.worker_update', autospec=True)
-    @mock.patch('cinder.db.worker_get', autospec=True)
+    @mock.patch('cinder.db.api.worker_update', autospec=True)
+    @mock.patch('cinder.db.api.worker_get', autospec=True)
     def test_set_worker_claim_fail_after_get(self, mock_get, mock_update):
         """Test we don't have race condition if worker changes after get."""
         service.Service.service_id = mock.sentinel.service_id
@@ -275,7 +275,7 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
         self.assertTrue(mock_get.called)
         self.assertTrue(mock_update.called)
 
-    @mock.patch('cinder.db.worker_destroy')
+    @mock.patch('cinder.db.api.worker_destroy')
     def test_unset_worker(self, destroy_mock):
         backup = Backup(_context=self.context, status=mock.sentinel.status,
                         id=mock.sentinel.id)
@@ -287,15 +287,15 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
                                              service_id=worker.service_id)
         self.assertIsNone(backup.worker)
 
-    @mock.patch('cinder.db.worker_destroy')
+    @mock.patch('cinder.db.api.worker_destroy')
     def test_unset_worker_not_set(self, destroy_mock):
         backup = Backup(_context=self.context, status=mock.sentinel.status,
                         id=mock.sentinel.id)
         backup.unset_worker()
         self.assertFalse(destroy_mock.called)
 
-    @mock.patch('cinder.db.worker_update', autospec=True)
-    @mock.patch('cinder.db.worker_get', autospec=True)
+    @mock.patch('cinder.db.api.worker_update', autospec=True)
+    @mock.patch('cinder.db.api.worker_get', autospec=True)
     def test_set_workers_no_arguments(self, mock_get, mock_update):
         """Test set workers decorator without arguments."""
         @Backup.set_workers
@@ -337,8 +337,8 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
             orm_worker=worker)
         self.assertEqual(worker, backup.worker)
 
-    @mock.patch('cinder.db.worker_update', autospec=True)
-    @mock.patch('cinder.db.worker_get', autospec=True)
+    @mock.patch('cinder.db.api.worker_update', autospec=True)
+    @mock.patch('cinder.db.api.worker_get', autospec=True)
     def test_set_workers_with_arguments(self, mock_get, mock_update):
         """Test set workers decorator with an argument."""
         @Backup.set_workers('arg2', 'kwarg1')

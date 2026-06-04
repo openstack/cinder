@@ -76,13 +76,13 @@ class GroupAPITestCase(test.TestCase):
             self.assertEqual(fake_groups_by_project, grps)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.delete_group')
-    @mock.patch('cinder.db.volume_get_all_by_generic_group')
-    @mock.patch('cinder.db.volumes_update')
+    @mock.patch('cinder.db.api.volume_get_all_by_generic_group')
+    @mock.patch('cinder.db.api.volumes_update')
     @mock.patch('cinder.group.api.API._cast_create_group')
     @mock.patch('cinder.group.api.API.update_quota')
     @mock.patch('cinder.objects.Group')
-    @mock.patch('cinder.db.group_type_get')
-    @mock.patch('cinder.db.volume_types_get_by_name_or_id')
+    @mock.patch('cinder.db.api.group_type_get')
+    @mock.patch('cinder.db.api.volume_types_get_by_name_or_id')
     def test_create_delete(self, mock_volume_types_get,
                            mock_group_type_get, mock_group,
                            mock_update_quota, mock_cast_create_group,
@@ -117,8 +117,8 @@ class GroupAPITestCase(test.TestCase):
     @mock.patch('cinder.group.api.API._cast_create_group')
     @mock.patch('cinder.group.api.API.update_quota')
     @mock.patch('cinder.objects.Group')
-    @mock.patch('cinder.db.group_type_get_by_name')
-    @mock.patch('cinder.db.volume_types_get_by_name_or_id')
+    @mock.patch('cinder.db.api.group_type_get_by_name')
+    @mock.patch('cinder.db.api.volume_types_get_by_name_or_id')
     def test_create_with_group_name(self, mock_volume_types_get,
                                     mock_group_type_get, mock_group,
                                     mock_update_quota, mock_cast_create_group):
@@ -144,9 +144,9 @@ class GroupAPITestCase(test.TestCase):
 
     @mock.patch('cinder.group.api.API._cast_create_group')
     @mock.patch('cinder.group.api.API.update_quota')
-    @mock.patch('cinder.db.group_type_get')
-    @mock.patch('cinder.db.group_type_get_by_name')
-    @mock.patch('cinder.db.volume_types_get_by_name_or_id')
+    @mock.patch('cinder.db.api.group_type_get')
+    @mock.patch('cinder.db.api.group_type_get_by_name')
+    @mock.patch('cinder.db.api.volume_types_get_by_name_or_id')
     def test_create_with_uuid_format_group_type_name(
             self, mock_volume_types_get, mock_group_type_get_by_name,
             mock_group_type_get, mock_update_quota, mock_cast_create_group):
@@ -165,7 +165,7 @@ class GroupAPITestCase(test.TestCase):
 
     @mock.patch('cinder.group.api.API._cast_create_group')
     @mock.patch('cinder.group.api.API.update_quota')
-    @mock.patch('cinder.db.group_type_get_by_name')
+    @mock.patch('cinder.db.api.group_type_get_by_name')
     @mock.patch('cinder.db.sqlalchemy.api._volume_type_get')
     @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_by_name')
     def test_create_with_uuid_format_volume_type_name(
@@ -187,8 +187,8 @@ class GroupAPITestCase(test.TestCase):
 
     @mock.patch('cinder.group.api.API._cast_create_group')
     @mock.patch('cinder.group.api.API.update_quota')
-    @mock.patch('cinder.db.group_type_get_by_name')
-    @mock.patch('cinder.db.volume_types_get_by_name_or_id')
+    @mock.patch('cinder.db.api.group_type_get_by_name')
+    @mock.patch('cinder.db.api.volume_types_get_by_name_or_id')
     def test_create_with_multi_types(self, mock_volume_types_get,
                                      mock_group_type_get,
                                      mock_update_quota,
@@ -228,8 +228,8 @@ class GroupAPITestCase(test.TestCase):
 
     @mock.patch.object(GROUP_QUOTAS, "reserve")
     @mock.patch('cinder.objects.Group')
-    @mock.patch('cinder.db.group_type_get_by_name')
-    @mock.patch('cinder.db.volume_types_get_by_name_or_id')
+    @mock.patch('cinder.db.api.group_type_get_by_name')
+    @mock.patch('cinder.db.api.volume_types_get_by_name_or_id')
     def test_create_group_failed_update_quota(self,
                                               mock_volume_types_get,
                                               mock_group_type_get, mock_group,
@@ -260,7 +260,7 @@ class GroupAPITestCase(test.TestCase):
                           availability_zone='nova')
 
     @mock.patch('cinder.objects.Group')
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test__validate_add_volumes(self, mock_volume_get, mock_group):
         grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
                                  volume_type_ids=[fake.VOLUME_TYPE_ID],
@@ -277,12 +277,12 @@ class GroupAPITestCase(test.TestCase):
     @ddt.data(['test_host@fakedrv#fakepool', 'test_host@fakedrv#fakepool'],
               ['test_host@fakedrv#fakepool', 'test_host2@fakedrv#fakepool'])
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.update_group')
-    @mock.patch('cinder.db.volume_get_all_by_generic_group')
+    @mock.patch('cinder.db.api.volume_get_all_by_generic_group')
     @mock.patch('cinder.group.api.API._cast_create_group')
     @mock.patch('cinder.group.api.API.update_quota')
     @mock.patch('cinder.objects.Group')
-    @mock.patch('cinder.db.group_type_get')
-    @mock.patch('cinder.db.volume_types_get_by_name_or_id')
+    @mock.patch('cinder.db.api.group_type_get')
+    @mock.patch('cinder.db.api.volume_types_get_by_name_or_id')
     def test_update(self, hosts, mock_volume_types_get,
                     mock_group_type_get, mock_group,
                     mock_update_quota, mock_cast_create_group,
@@ -432,7 +432,7 @@ class GroupAPITestCase(test.TestCase):
 
     @mock.patch('cinder.volume.api.API.delete')
     @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
-    @mock.patch('cinder.db.group_volume_type_mapping_create')
+    @mock.patch('cinder.db.api.group_volume_type_mapping_create')
     @mock.patch('cinder.volume.api.API.create')
     @mock.patch('cinder.objects.GroupSnapshot.get_by_id')
     @mock.patch('cinder.objects.SnapshotList.get_all_for_group_snapshot')
@@ -510,7 +510,7 @@ class GroupAPITestCase(test.TestCase):
 
     @mock.patch('cinder.group.api.API._update_volumes_host')
     @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
-    @mock.patch('cinder.db.group_volume_type_mapping_create')
+    @mock.patch('cinder.db.api.group_volume_type_mapping_create')
     @mock.patch('cinder.volume.api.API.create')
     @mock.patch('cinder.objects.GroupSnapshot.get_by_id')
     @mock.patch('cinder.objects.SnapshotList.get_all_for_group_snapshot')
@@ -588,7 +588,7 @@ class GroupAPITestCase(test.TestCase):
 
     @mock.patch('cinder.group.api.API._update_volumes_host')
     @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
-    @mock.patch('cinder.db.group_volume_type_mapping_create')
+    @mock.patch('cinder.db.api.group_volume_type_mapping_create')
     @mock.patch('cinder.volume.api.API.create')
     @mock.patch('cinder.objects.Group.get_by_id')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.create_group_from_src')
@@ -658,7 +658,7 @@ class GroupAPITestCase(test.TestCase):
 
     @mock.patch('cinder.volume.api.API.delete')
     @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
-    @mock.patch('cinder.db.group_volume_type_mapping_create')
+    @mock.patch('cinder.db.api.group_volume_type_mapping_create')
     @mock.patch('cinder.volume.api.API.create')
     @mock.patch('cinder.objects.Group.get_by_id')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.create_group_from_src')

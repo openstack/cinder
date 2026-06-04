@@ -214,8 +214,8 @@ def fake_get_pools(ctxt, filters=None):
 
 @ddt.ddt
 @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools', fake_get_pools)
-@mock.patch('cinder.db.service_get_all', fake_db_api_service_get_all)
-@mock.patch('cinder.db.service_get', fake_db_api_service_get)
+@mock.patch('cinder.db.api.service_get_all', fake_db_api_service_get_all)
+@mock.patch('cinder.db.api.service_get', fake_db_api_service_get)
 @mock.patch('oslo_utils.timeutils.utcnow', fake_utcnow)
 @mock.patch(
     'cinder.db.sqlalchemy.api.service_update', fake_db_api_service_update)

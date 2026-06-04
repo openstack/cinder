@@ -266,7 +266,7 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.objects.volume.VolumeList.include_in_cluster')
     @mock.patch('cinder.objects.consistencygroup.ConsistencyGroupList.'
                 'include_in_cluster')
-    @mock.patch('cinder.db.image_volume_cache_include_in_cluster')
+    @mock.patch('cinder.db.api.image_volume_cache_include_in_cluster')
     def test_init_host_added_to_cluster(self, image_cache_include_mock,
                                         cg_include_mock,
                                         vol_include_mock, vol_get_all_mock,

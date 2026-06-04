@@ -26,7 +26,7 @@ from cinder.api.contrib import volume_actions
 from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder import context
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.image import glance
 from cinder import objects

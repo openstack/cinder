@@ -69,7 +69,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
     def setUp(self):
         super(VolumeTypesExtraSpecsTest, self).setUp()
         self.flags(host='fake')
-        self.mock_object(cinder.db, 'volume_type_get', return_volume_type)
+        self.patch('cinder.db.api.volume_type_get', return_volume_type)
         self.api_path = '/v3/%s/types/%s/extra_specs' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID)
         self.controller = types_extra_specs.VolumeTypeExtraSpecsController()
@@ -80,8 +80,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
     )
     @ddt.unpack
     def test_index(self, is_admin, visible_specs):
-        self.mock_object(cinder.db, 'volume_type_extra_specs_get',
-                         return_volume_type_extra_specs)
+        self.patch('cinder.db.api.volume_type_extra_specs_get',
+                   return_volume_type_extra_specs)
 
         req = fakes.HTTPRequest.blank(self.api_path,
                                       use_admin_context=is_admin)
@@ -90,8 +90,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual(visible_specs, res_dict['extra_specs'])
 
     def test_index_no_data(self):
-        self.mock_object(cinder.db, 'volume_type_extra_specs_get',
-                         return_value={})
+        self.patch('cinder.db.api.volume_type_extra_specs_get',
+                   return_value={})
 
         req = fakes.HTTPRequest.blank(self.api_path,
                                       use_admin_context=True)
@@ -108,8 +108,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
     )
     @ddt.unpack
     def test_show(self, is_admin, spec, is_sensitive):
-        self.mock_object(cinder.db, 'volume_type_extra_specs_get',
-                         return_volume_type_extra_specs)
+        self.patch('cinder.db.api.volume_type_extra_specs_get',
+                   return_volume_type_extra_specs)
 
         req = fakes.HTTPRequest.blank(self.api_path + '/' + spec,
                                       use_admin_context=is_admin)
@@ -121,15 +121,15 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
             self.assertEqual(volume_type_extra_specs[spec], res_dict[spec])
 
     def test_show_spec_not_found(self):
-        self.mock_object(cinder.db, 'volume_type_extra_specs_get',
-                         return_value={})
+        self.patch('cinder.db.api.volume_type_extra_specs_get',
+                   return_value={})
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key6')
         self.assertRaises(exception.VolumeTypeExtraSpecsNotFound,
                           self.controller.show, req, fake.VOLUME_ID, 'key6')
 
     def test_delete(self):
-        self.mock_object(cinder.db, 'volume_type_extra_specs_delete')
+        self.patch('cinder.db.api.volume_type_extra_specs_delete')
 
         self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank(self.api_path + '/key5',
@@ -141,9 +141,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertIn('deleted_at', self.notifier.notifications[0]['payload'])
 
     def test_delete_not_found(self):
-        self.mock_object(cinder.db, 'volume_type_extra_specs_delete',
-                         side_effect=exception.VolumeTypeExtraSpecsNotFound(
-                             "Not Found"))
+        self.patch('cinder.db.api.volume_type_extra_specs_delete',
+                   side_effect=exception.VolumeTypeExtraSpecsNotFound(
+                       "Not Found"))
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key6',
                                       use_admin_context=True)
@@ -151,7 +151,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                           self.controller.delete, req, fake.VOLUME_ID, 'key6')
 
     def test_create(self):
-        self.mock_object(cinder.db,
+        self.mock_object(cinder.db.api,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
         body = {"extra_specs": {"key1": "value1"}}
@@ -176,7 +176,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                 'read-only': 'true'
             }]
         }
-        self.mock_object(cinder.db,
+        self.mock_object(cinder.db.api,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
         body = {"extra_specs": {"image_service:store_id": "cheap"}}
@@ -227,7 +227,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                           self.controller.create,
                           req, fake.VOLUME_ID, body=body)
 
-    @mock.patch.object(cinder.db, 'volume_type_extra_specs_update_or_create')
+    @mock.patch('cinder.db.api.volume_type_extra_specs_update_or_create')
     def test_create_key_allowed_chars(
             self, volume_type_extra_specs_update_or_create):
         mock_return_value = {"key1": "value1",
@@ -249,7 +249,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value1',
                          res_dict['extra_specs']['other_alphanum.-_:'])
 
-    @mock.patch.object(cinder.db, 'volume_type_extra_specs_update_or_create')
+    @mock.patch('cinder.db.api.volume_type_extra_specs_update_or_create')
     def test_create_too_many_keys_allowed_chars(
             self, volume_type_extra_specs_update_or_create):
         mock_return_value = {"key1": "value1",
@@ -291,7 +291,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                 'read-only': 'true'
             }]
         }
-        self.mock_object(cinder.db,
+        self.mock_object(cinder.db.api,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
         body = {"image_service:store_id": "fast"}
@@ -323,7 +323,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                 'read-only': 'true'
             }]
         }
-        self.mock_object(cinder.db,
+        self.mock_object(cinder.db.api,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
         body = {"image_service:store_id": "very_fast"}
@@ -352,7 +352,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                 'read-only': 'true'
             }]
         }
-        self.mock_object(cinder.db,
+        self.mock_object(cinder.db.api,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
         body = {"image_service:store_id": "read_only_store"}
@@ -368,7 +368,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                           body=body)
 
     def test_update_item(self):
-        self.mock_object(cinder.db,
+        self.mock_object(cinder.db.api,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
         body = {"key1": "value1"}
@@ -385,7 +385,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value1', res_dict['key1'])
 
     def test_update_item_too_many_keys(self):
-        self.mock_object(cinder.db,
+        self.mock_object(cinder.db.api,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
         body = {"key1": "value1", "key2": "value2"}
@@ -396,7 +396,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                           req, fake.VOLUME_ID, 'key1', body=body)
 
     def test_update_item_body_uri_mismatch(self):
-        self.mock_object(cinder.db,
+        self.mock_object(cinder.db.api,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
         body = {"key1": "value1"}
@@ -452,14 +452,14 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self._extra_specs_create_bad_body(body=body)
 
     def test_create_volumes_exist(self):
-        self.mock_object(cinder.db,
+        self.mock_object(cinder.db.api,
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
         body = {"extra_specs": {"key1": "value1"}}
         req = fakes.HTTPRequest.blank(self.api_path,
                                       use_admin_context=True)
         with mock.patch.object(
-                cinder.db,
+                cinder.db.api,
                 'volume_get_all',
                 return_value=['a']):
             req = fakes.HTTPRequest.blank('/v3/%s/types/%s/extra_specs' % (

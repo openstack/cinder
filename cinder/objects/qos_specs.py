@@ -14,7 +14,7 @@ from oslo_db import exception as db_exc
 from oslo_log import log as logging
 from oslo_versionedobjects import fields
 
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects

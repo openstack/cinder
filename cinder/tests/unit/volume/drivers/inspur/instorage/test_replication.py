@@ -22,7 +22,7 @@ from eventlet import greenthread
 from oslo_utils import units
 
 from cinder import context
-import cinder.db
+import cinder.db.api
 from cinder import exception
 from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
@@ -86,7 +86,7 @@ class InStorageMCSReplicationTestCase(test.TestCase):
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
-        self.driver.db = cinder.db
+        self.driver.db = cinder.db.api
 
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()

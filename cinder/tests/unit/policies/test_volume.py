@@ -682,7 +682,7 @@ class VolumesPolicyTest(base.BasePolicyTest):
         self.assertEqual(volume_count, len(volumes))
 
     @ddt.data(*base.all_users)
-    @mock.patch('cinder.db.volume_encryption_metadata_get')
+    @mock.patch('cinder.db.api.volume_encryption_metadata_get')
     def test_get_volume_encryption_meta_policy(self, user_id,
                                                mock_encrypt_meta):
         encryption_key_id = fake_constants.ENCRYPTION_KEY_ID

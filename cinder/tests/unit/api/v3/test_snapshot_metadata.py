@@ -25,7 +25,6 @@ from cinder.api import extensions
 from cinder.api.v3 import snapshot_metadata
 from cinder.api.v3 import snapshots
 from cinder import context
-import cinder.db
 from cinder import exception
 from cinder.objects import fields
 from cinder.scheduler import rpcapi as scheduler_rpcapi
@@ -113,12 +112,12 @@ class SnapshotMetadataTest(test.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.volume_api = cinder.volume.api.API()
+        self.volume_api = volume.api.API()
         self.mock_object(volume.api.API, 'get', fake_get)
-        self.mock_object(cinder.db.sqlalchemy.api, 'volume_type_get',
-                         v3_fakes.fake_volume_type_get)
+        self.patch('cinder.db.sqlalchemy.api.volume_type_get',
+                   v3_fakes.fake_volume_type_get)
         self.mock_object(scheduler_rpcapi.SchedulerAPI, 'create_snapshot')
-        self.mock_object(cinder.db, 'snapshot_get', return_snapshot)
+        self.patch('cinder.db.api.snapshot_get', return_snapshot)
         self.mock_object(self.volume_api, 'update_snapshot_metadata')
         self.patch('cinder.objects.volume.Volume.refresh')
         self.patch('cinder.quota.QuotaEngine.reserve')
@@ -231,7 +230,7 @@ class SnapshotMetadataTest(test.TestCase):
         self.assertRaises(exception.SnapshotMetadataNotFound,
                           self.controller.show, req, self.req_id, 'key6')
 
-    @mock.patch('cinder.db.snapshot_metadata_delete')
+    @mock.patch('cinder.db.api.snapshot_metadata_delete')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_delete(self, snapshot_get_by_id, snapshot_metadata_delete):
         snapshot = {
@@ -250,8 +249,7 @@ class SnapshotMetadataTest(test.TestCase):
         self.assertEqual(HTTPStatus.OK, res.status_int)
 
     def test_delete_nonexistent_snapshot(self):
-        self.mock_object(cinder.db, 'snapshot_get',
-                         return_snapshot_nonexistent)
+        self.patch('cinder.db.api.snapshot_get', return_snapshot_nonexistent)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.environ['cinder.context'] = self.ctx
         req.method = 'DELETE'
@@ -273,7 +271,7 @@ class SnapshotMetadataTest(test.TestCase):
         self.assertRaises(exception.SnapshotMetadataNotFound,
                           self.controller.delete, req, self.req_id, 'key6')
 
-    @mock.patch('cinder.db.snapshot_update')
+    @mock.patch('cinder.db.api.snapshot_update')
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_create(self, snapshot_get_by_id, volume_get_by_id,
@@ -287,8 +285,8 @@ class SnapshotMetadataTest(test.TestCase):
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = fake_volume_obj
 
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
 
         req = fakes.HTTPRequest.blank('/v3/snapshot_metadata')
         req.environ['cinder.context'] = self.ctx
@@ -301,7 +299,7 @@ class SnapshotMetadataTest(test.TestCase):
         res_dict = self.controller.create(req, self.req_id, body=body)
         self.assertEqual(body, res_dict)
 
-    @mock.patch('cinder.db.snapshot_update')
+    @mock.patch('cinder.db.api.snapshot_update')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_create_with_keys_in_uppercase_and_lowercase(
             self, snapshot_get_by_id, snapshot_update):
@@ -314,8 +312,8 @@ class SnapshotMetadataTest(test.TestCase):
 
         # if the keys in uppercase_and_lowercase, should return the one
         # which server added
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata_insensitive)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata_insensitive)
 
         req = fakes.HTTPRequest.blank('/v3/snapshot_metadata')
         req.environ['cinder.context'] = self.ctx
@@ -336,8 +334,8 @@ class SnapshotMetadataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_create_empty_body(self):
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.environ['cinder.context'] = self.ctx
         req.method = 'POST'
@@ -347,8 +345,8 @@ class SnapshotMetadataTest(test.TestCase):
                           self.controller.create, req, self.req_id, body=None)
 
     def test_create_item_empty_key(self):
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -360,8 +358,8 @@ class SnapshotMetadataTest(test.TestCase):
                           self.controller.create, req, self.req_id, body=body)
 
     def test_create_item_key_too_long(self):
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -374,10 +372,9 @@ class SnapshotMetadataTest(test.TestCase):
                           req, self.req_id, body=body)
 
     def test_create_nonexistent_snapshot(self):
-        self.mock_object(cinder.db, 'snapshot_get',
-                         return_snapshot_nonexistent)
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_get', return_snapshot_nonexistent)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
 
         req = fakes.HTTPRequest.blank('/v3/snapshot_metadata')
         req.environ['cinder.context'] = self.ctx
@@ -388,7 +385,7 @@ class SnapshotMetadataTest(test.TestCase):
         self.assertRaises(exception.SnapshotNotFound,
                           self.controller.create, req, self.req_id, body=body)
 
-    @mock.patch('cinder.db.snapshot_update')
+    @mock.patch('cinder.db.api.snapshot_update')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_update_all(self, snapshot_get_by_id, snapshot_update):
         snapshot = {
@@ -398,8 +395,8 @@ class SnapshotMetadataTest(test.TestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
         snapshot_get_by_id.return_value = snapshot_obj
 
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_new_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_new_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -416,7 +413,7 @@ class SnapshotMetadataTest(test.TestCase):
 
         self.assertEqual(expected, res_dict)
 
-    @mock.patch('cinder.db.snapshot_update',
+    @mock.patch('cinder.db.api.snapshot_update',
                 return_value={'key10': 'value10',
                               'key99': 'value99',
                               'KEY20': 'value20'})
@@ -430,8 +427,8 @@ class SnapshotMetadataTest(test.TestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
         snapshot_get_by_id.return_value = snapshot_obj
 
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_new_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_new_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -456,7 +453,7 @@ class SnapshotMetadataTest(test.TestCase):
 
         self.assertEqual(expected, res_dict)
 
-    @mock.patch('cinder.db.snapshot_update')
+    @mock.patch('cinder.db.api.snapshot_update')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_update_all_empty_container(self, snapshot_get_by_id,
                                         snapshot_update):
@@ -467,8 +464,8 @@ class SnapshotMetadataTest(test.TestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
         snapshot_get_by_id.return_value = snapshot_obj
 
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_value={})
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_value={})
         req = fakes.HTTPRequest.blank(self.url)
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -480,8 +477,8 @@ class SnapshotMetadataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_update_all_malformed_container(self):
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -494,8 +491,8 @@ class SnapshotMetadataTest(test.TestCase):
                           body=expected)
 
     def test_update_all_malformed_data(self):
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -508,8 +505,8 @@ class SnapshotMetadataTest(test.TestCase):
                           body=expected)
 
     def test_update_all_nonexistent_snapshot(self):
-        self.mock_object(cinder.db, 'snapshot_get',
-                         return_snapshot_nonexistent)
+        self.patch('cinder.db.api.snapshot_get',
+                   return_snapshot_nonexistent)
         req = fakes.HTTPRequest.blank(self.url)
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -520,8 +517,8 @@ class SnapshotMetadataTest(test.TestCase):
         self.assertRaises(exception.SnapshotNotFound,
                           self.controller.update_all, req, '100', body=body)
 
-    @mock.patch('cinder.db.snapshot_metadata_update', return_value=dict())
-    @mock.patch('cinder.db.snapshot_update')
+    @mock.patch('cinder.db.api.snapshot_metadata_update', return_value=dict())
+    @mock.patch('cinder.db.api.snapshot_update')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_update_item(self, snapshot_get_by_id,
                          snapshot_update, snapshot_metadata_update):
@@ -543,8 +540,7 @@ class SnapshotMetadataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_update_item_nonexistent_snapshot(self):
-        self.mock_object(cinder.db, 'snapshot_get',
-                         return_snapshot_nonexistent)
+        self.patch('cinder.db.api.snapshot_get', return_snapshot_nonexistent)
         req = fakes.HTTPRequest.blank(
             '/v3/%s/snapshots/asdf/metadata/key1' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctx
@@ -558,8 +554,8 @@ class SnapshotMetadataTest(test.TestCase):
                           body=body)
 
     def test_update_item_empty_body(self):
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -570,7 +566,7 @@ class SnapshotMetadataTest(test.TestCase):
                           body=None)
 
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get')
-    @mock.patch('cinder.db.snapshot_metadata_update', autospec=True)
+    @mock.patch('cinder.db.api.snapshot_metadata_update', autospec=True)
     def test_update_item_empty_key(self, metadata_update, snapshot_get):
         snapshot_get.side_effect = return_snapshot
         req = fakes.HTTPRequest.blank(self.url + '/key1')
@@ -593,8 +589,8 @@ class SnapshotMetadataTest(test.TestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
         snapshot_get_by_id.return_value = snapshot_obj
 
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -615,8 +611,8 @@ class SnapshotMetadataTest(test.TestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
         snapshot_get_by_id.return_value = snapshot_obj
 
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -636,8 +632,8 @@ class SnapshotMetadataTest(test.TestCase):
             'id': self.req_id,
             'expected_attrs': ['metadata']
         }
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
         snapshot_get_by_id.return_value = snapshot_obj
         req = fakes.HTTPRequest.blank(self.url + '/key1')
@@ -651,8 +647,8 @@ class SnapshotMetadataTest(test.TestCase):
                           body=body)
 
     def test_update_item_body_uri_mismatch(self):
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/bad')
         req.environ['cinder.context'] = self.ctx
         req.method = 'PUT'
@@ -677,8 +673,8 @@ class SnapshotMetadataTest(test.TestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
         snapshot_get_by_id.return_value = snapshot_obj
 
-        self.mock_object(cinder.db, 'snapshot_metadata_update',
-                         return_create_snapshot_metadata)
+        self.patch('cinder.db.api.snapshot_metadata_update',
+                   return_create_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.environ['cinder.context'] = self.ctx
         req.method = 'POST'

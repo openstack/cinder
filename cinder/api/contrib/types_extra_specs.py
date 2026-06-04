@@ -24,7 +24,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.schemas import types_extra_specs as schema
 from cinder.api import validation
 from cinder import context as ctxt
-from cinder import db
+from cinder.db import api as db
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
