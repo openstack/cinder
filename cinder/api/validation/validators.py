@@ -29,7 +29,7 @@ from oslo_utils import uuidutils
 import webob.exc
 
 from cinder.api import api_utils
-from cinder import db
+from cinder.common import constants
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields as c_fields
@@ -247,8 +247,9 @@ def _validate_quota_set(quota_set):
         if key in NON_QUOTA_KEYS:
             continue
 
-        api_utils.validate_integer(value, key, min_value=-1,
-                                   max_value=db.MAX_INT)
+        api_utils.validate_integer(
+            value, key, min_value=-1, max_value=constants.DB_MAX_INT,
+        )
 
     if len(bad_keys) > 0:
         msg = _("Bad key(s) in quota set: %s") % ", ".join(bad_keys)

@@ -38,6 +38,7 @@ from cinder import context
 from cinder import coordination
 from cinder import db
 from cinder.db import base
+from cinder.db import utils as db_utils
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _
@@ -471,7 +472,7 @@ class API(base.Base):
 
         # Build required conditions for conditional update
         expected = {
-            'attach_status': db.Not(fields.VolumeAttachStatus.ATTACHED),
+            'attach_status': db_utils.Not(fields.VolumeAttachStatus.ATTACHED),
             'migration_status': self.AVAILABLE_MIGRATION_STATUS,
             'consistencygroup_id': None,
             'group_id': None}
@@ -776,9 +777,12 @@ class API(base.Base):
         expected = {'status': 'attaching'}
         # Status change depends on whether it has attachments (in-use) or not
         # (available)
-        value = {'status': db.Case([(db.volume_has_attachments_filter(),
-                                     'in-use')],
-                                   else_='available')}
+        value = {
+            'status': db_utils.Case(
+                [(db.volume_has_attachments_filter(), 'in-use')],
+                else_='available',
+            )
+        }
         result = volume.conditional_update(value, expected)
         if not result:
             LOG.debug("Attempted to unreserve volume that was not "
@@ -1764,9 +1768,9 @@ class API(base.Base):
         # We want to make sure that the migration is to another host or
         # another cluster.
         if cluster_name:
-            expected['cluster_name'] = db.Not(cluster_name)
+            expected['cluster_name'] = db_utils.Not(cluster_name)
         else:
-            expected['host'] = db.Not(host)
+            expected['host'] = db_utils.Not(host)
 
         filters = [~db.volume_has_snapshots_filter()]
 
@@ -1780,7 +1784,7 @@ class API(base.Base):
         # that this volume is in maintenance mode, and no action is allowed
         # on this volume, e.g. attach, detach, retype, migrate, etc.
         if lock_volume:
-            updates['status'] = db.Case(
+            updates['status'] = db_utils.Case(
                 [(volume.model.status == 'available', 'maintenance')],
                 else_=volume.model.status)
 
@@ -1953,7 +1957,7 @@ class API(base.Base):
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS,
                     'consistencygroup_id': (None, ''),
                     'group_id': (None, ''),
-                    'volume_type_id': db.Not(new_type_id)}
+                    'volume_type_id': db_utils.Not(new_type_id)}
 
         # We don't support changing QoS at the front-end yet for in-use volumes
         # TODO(avishay): Call Nova to change QoS setting (libvirt has support

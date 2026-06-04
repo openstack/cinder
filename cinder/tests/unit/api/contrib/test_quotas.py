@@ -24,6 +24,7 @@ from oslo_config import fixture as config_fixture
 import webob.exc
 
 from cinder.api.contrib import quotas
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -163,7 +164,7 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
         result = self.controller.update(self.req, fake.PROJECT_ID, body=body)
         self.assertDictEqual(body, result)
 
-        body = make_body(gigabytes=db.MAX_INT, tenant_id=None)
+        body = make_body(gigabytes=constants.DB_MAX_INT, tenant_id=None)
         result = self.controller.update(self.req, fake.PROJECT_ID, body=body)
         self.assertDictEqual(body, result)
 
@@ -215,7 +216,7 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
         body = {'quota_set': {'gigabytes': -1000}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, fake.PROJECT_ID, body=body)
-        body = {'quota_set': {'gigabytes': db.MAX_INT + 1}}
+        body = {'quota_set': {'gigabytes': constants.DB_MAX_INT + 1}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, fake.PROJECT_ID, body=body)
 

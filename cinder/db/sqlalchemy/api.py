@@ -35,7 +35,6 @@ these objects be simple dictionaries.
 """
 
 import collections
-from collections import abc
 import datetime as dt
 import functools
 import itertools
@@ -67,8 +66,8 @@ from sqlalchemy.sql import sqltypes
 
 from cinder.api import common
 from cinder.common import sqlalchemyutils
-from cinder import db
 from cinder.db.sqlalchemy import models
+from cinder.db import utils as db_utils
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -79,12 +78,28 @@ from cinder.volume import volume_utils
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
-# Map with cases where attach status differs from volume status
-ATTACH_STATUS_MAP = {'attached': 'in-use', 'detached': 'available'}
-
 options.set_defaults(CONF, connection='sqlite:///$state_path/cinder.sqlite')
 
+# Map with cases where attach status differs from volume status
+ATTACH_STATUS_MAP = {'attached': 'in-use', 'detached': 'available'}
+DEFAULT_QUOTA_NAME = 'default'
+
 main_context_manager = enginefacade.transaction_context()
+
+
+###################
+
+
+def configure(conf):
+    main_context_manager.configure(**dict(conf.database))
+    # NOTE(geguileo): To avoid a cyclical dependency we import the
+    # group here.  Dependency cycle is objects.base requires db.api,
+    # which requires db.sqlalchemy.api, which requires service which
+    # requires objects.base
+    CONF.import_group("profiler", "cinder.service")
+    if CONF.profiler.enabled:
+        if CONF.profiler.trace_sqlalchemy:
+            lambda eng: osprofiler_sqlalchemy.add_tracing(sa, eng, "db")
 
 
 def get_engine():
@@ -92,16 +107,25 @@ def get_engine():
 
 
 def dispose_engine():
-    get_engine().dispose()
+    """Force the engine to establish new connections."""
+    # FIXME(jdg): When using sqlite if we do the dispose
+    # we seem to lose our DB here.  Adding this check
+    # means we don't do the dispose, but we keep our sqlite DB
+    # This likely isn't the best way to handle this
 
-
-_DEFAULT_QUOTA_NAME = 'default'
+    if 'sqlite' not in get_engine().name:
+        get_engine().dispose()
+    else:
+        return
 
 
 def get_backend():
     """The backend is this module itself."""
 
     return sys.modules[__name__]
+
+
+###################
 
 
 def is_admin_context(context):
@@ -374,54 +398,6 @@ def get_by_id(context, model, id, *args, **kwargs):
     return _GET_METHODS[model](context, id, *args, **kwargs)
 
 
-def condition_db_filter(model, field, value):
-    """Create matching filter.
-
-    If value is an iterable other than a string, any of the values is
-    a valid match (OR), so we'll use SQL IN operator.
-
-    If it's not an iterator == operator will be used.
-    """
-    orm_field = getattr(model, field)
-    # For values that must match and are iterables we use IN
-    if isinstance(value, abc.Iterable) and not isinstance(value, str):
-        # We cannot use in_ when one of the values is None
-        if None not in value:
-            return orm_field.in_(value)
-
-        return or_(orm_field == v for v in value)
-
-    # For values that must match and are not iterables we use ==
-    return orm_field == value
-
-
-def condition_not_db_filter(model, field, value, auto_none=True):
-    """Create non matching filter.
-
-    If value is an iterable other than a string, any of the values is
-    a valid match (OR), so we'll use SQL IN operator.
-
-    If it's not an iterator == operator will be used.
-
-    If auto_none is True then we'll consider NULL values as different as well,
-    like we do in Python and not like SQL does.
-    """
-    result = ~condition_db_filter(model, field, value)  # pylint: disable=E1130
-
-    if auto_none and (
-        (
-            isinstance(value, abc.Iterable)
-            and not isinstance(value, str)
-            and None not in value
-        )
-        or (value is not None)
-    ):
-        orm_field = getattr(model, field)
-        result = or_(result, orm_field.is_(None))
-
-    return result
-
-
 def is_orm_value(obj):
     """Check if object is an ORM field or expression."""
     return isinstance(
@@ -473,7 +449,66 @@ def _conditional_update(
     project_only=False,
     order=None,
 ):
-    """Compare-and-swap conditional update SQLAlchemy implementation."""
+    """Compare-and-swap conditional update.
+
+    Update will only occur in the DB if conditions are met.
+
+    We have 4 different condition types we can use in expected_values:
+
+    - Equality:  {'status': 'available'}
+    - Inequality: {'status': vol_obj.Not('deleting')}
+    - In range: {'status': ['available', 'error']
+    - Not in range: {'status': vol_obj.Not(['in-use', 'attaching'])
+
+    Method accepts additional filters, which are basically anything that can be
+    passed to a sqlalchemy query's filter method, for example:
+
+    .. code-block:: python
+
+        [~sql.exists().where(models.Volume.id == models.Snapshot.volume_id)]
+
+    We can select values based on conditions using Case objects in the 'values'
+    argument. For example:
+
+    .. code-block:: python
+
+        has_snapshot_filter = sql.exists().where(
+            models.Snapshot.volume_id == models.Volume.id
+        )
+        case_values = db_utils.Case(
+            [(has_snapshot_filter, 'has-snapshot')],
+            else_='no-snapshot'
+        )
+        db.conditional_update(
+            context,
+            models.Volume,
+            {'status': case_values},
+            {'status': 'available'},
+        )
+
+    And we can use DB fields for example to store previous status in the
+    corresponding field even though we don't know which value is in the db from
+    those we allowed:
+
+    .. code-block:: python
+
+        db.conditional_update(
+            context,
+            models.Volume,
+            {'status': 'deleting', 'previous_status': models.Volume.status},
+            {'status': ('available', 'error')},
+        )
+
+    :param values: Dictionary of key-values to update in the DB.
+    :param expected_values: Dictionary of conditions that must be met for the
+        update to be executed.
+    :param filters: Iterable with additional filters.
+    :param include_deleted: Should the update include deleted items, this is
+        equivalent to read_deleted.
+    :param project_only: Should the query be limited to context's project.
+    :param order: Specific order of fields in which to update the values
+    :returns: Boolean indicating whether db rows were updated.
+    """
     _check_is_not_multitable(values, model)
 
     # Provided filters will become part of the where clause
@@ -481,8 +516,8 @@ def _conditional_update(
 
     # Build where conditions with operators ==, !=, NOT IN and IN
     for field, condition in expected_values.items():
-        if not isinstance(condition, db.Condition):
-            condition = db.Condition(condition, field)
+        if not isinstance(condition, db_utils.Condition):
+            condition = db_utils.Condition(condition, field)
         where_conds.append(condition.get_filter(model, field))
 
     # Create the query with the where clause
@@ -513,7 +548,7 @@ def _conditional_update(
     case_list = []
     unordered_list = []
     for key, value in values.items():
-        if isinstance(value, db.Case):
+        if isinstance(value, db_utils.Case):
             value = sa.case(
                 *value.whens,
                 value=value.value,
@@ -1350,11 +1385,11 @@ def quota_class_get(context, class_name, resource):
 def quota_class_get_defaults(context):
     rows = (
         model_query(context, models.QuotaClass, read_deleted="no")
-        .filter_by(class_name=_DEFAULT_QUOTA_NAME)
+        .filter_by(class_name=DEFAULT_QUOTA_NAME)
         .all()
     )
 
-    result = {'class_name': _DEFAULT_QUOTA_NAME}
+    result = {'class_name': DEFAULT_QUOTA_NAME}
     for row in rows:
         result[row.resource] = row.hard_limit
 
@@ -3517,7 +3552,7 @@ def _volume_x_metadata_update(
         expected_values = {'volume_id': volume_id}
         # We don't want to delete keys we are going to update
         if metadata:
-            expected_values['key'] = db.Not(metadata.keys())
+            expected_values['key'] = db_utils.Not(metadata.keys())
         _conditional_update(
             context,
             model,

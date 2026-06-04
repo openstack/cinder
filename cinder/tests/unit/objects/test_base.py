@@ -22,8 +22,8 @@ from oslo_versionedobjects import fields
 from sqlalchemy import sql
 
 from cinder import context
-from cinder import db
 from cinder.db.sqlalchemy import models
+from cinder.db import utils as db_utils
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields as c_fields
@@ -356,7 +356,7 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
         volume = self._create_volume()
         self.assertTrue(volume.conditional_update(
             {'status': 'deleting', 'size': 2},
-            {'status': db.Not('in-use'), 'size': db.Not(2)}))
+            {'status': db_utils.Not('in-use'), 'size': db_utils.Not(2)}))
 
         # Check that the object in memory has been updated
         self._check_volume(volume, 'deleting', 2)
@@ -408,9 +408,15 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
 
     def test_conditional_update_negated_iterable_expected(self):
         volume = self._create_volume()
-        self.assertTrue(volume.conditional_update(
-            {'status': 'deleting', 'size': 20},
-            {'status': db.Not(('creating', 'in-use')), 'size': range(10)}))
+        self.assertTrue(
+            volume.conditional_update(
+                {'status': 'deleting', 'size': 20},
+                {
+                    'status': db_utils.Not(('creating', 'in-use')),
+                    'size': range(10),
+                }
+            )
+        )
 
         # Check that the object in memory has been updated
         self._check_volume(volume, 'deleting', 20)
@@ -433,7 +439,7 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
     def test_conditional_update_fail_negated_non_iterable_expected(self):
         volume = self._create_volume()
         result = volume.conditional_update({'status': 'deleting'},
-                                           {'status': db.Not('in-use'),
+                                           {'status': db_utils.Not('in-use'),
                                             'size': 2})
         self.assertFalse(result)
 
@@ -457,9 +463,15 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
 
     def test_conditional_update_fail_negated_iterable_expected(self):
         volume = self._create_volume()
-        self.assertFalse(volume.conditional_update(
-            {'status': 'error'},
-            {'status': db.Not(('available', 'in-use')), 'size': range(2, 10)}))
+        self.assertFalse(
+            volume.conditional_update(
+                {'status': 'error'},
+                {
+                    'status': db_utils.Not(('available', 'in-use')),
+                    'size': range(2, 10),
+                }
+            )
+        )
 
         # Check that the object in memory hasn't changed
         self._check_volume(volume, 'available', 1)
