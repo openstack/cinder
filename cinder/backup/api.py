@@ -19,10 +19,10 @@
 
 from datetime import datetime
 import random
+import time
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from eventlet import greenthread
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -409,7 +409,7 @@ class API(base.Base):
                 volume = self.volume_api.get(context, volume_id)
                 if volume['status'] != 'creating':
                     break
-                greenthread.sleep(1)
+                time.sleep(1)
 
             if volume['status'] == "error":
                 msg = (_('Error while creating volume %(volume_id)s '
