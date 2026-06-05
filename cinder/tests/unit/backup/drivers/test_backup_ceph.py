@@ -426,6 +426,39 @@ class BackupCephTestCase(test.TestCase):
             self.assertEqual(checksum.digest(), self.checksum.digest())
 
     @common_mocks
+    def test_transfer_data_discard_zeros_advances_offset(self):
+        # bug #2155612: a discarded zero chunk must still advance the
+        # destination offset, else later chunks land at the wrong place and
+        # a sparse volume restored to a new volume comes back shifted.
+        chunk = self.chunk_size
+        self.service.chunk_size = chunk
+        src_data = (b'\xab' * chunk + b'\x00' * chunk + b'\xcd' * chunk +
+                    b'\x00' * chunk + b'\xef' * chunk)
+        dest_data = bytearray(len(src_data))
+
+        def fake_read(offset, length):
+            return src_data[offset:offset + length]
+
+        def fake_write(data, offset):
+            dest_data[offset:offset + len(data)] = data
+
+        src_rbd = mock.Mock()
+        src_rbd.read.side_effect = fake_read
+        src_rbd.size.return_value = len(src_data)
+        dest_rbd = mock.Mock()
+        dest_rbd.write.side_effect = fake_write
+        dest_rbd.size.return_value = len(src_data)
+
+        src_io = self._get_wrapped_rbd_io(src_rbd)
+        dest_io = self._get_wrapped_rbd_io(dest_rbd)
+
+        with mock.patch.object(ceph.time, 'time', self.time_inc):
+            self.service._transfer_data(src_io, 'src_foo', dest_io, 'dest_foo',
+                                        len(src_data), discard_zeros=True)
+
+        self.assertEqual(src_data, bytes(dest_data))
+
+    @common_mocks
     def test_backup_volume_from_file(self):
         checksum = hashlib.sha256()
         thread_dict = {}
