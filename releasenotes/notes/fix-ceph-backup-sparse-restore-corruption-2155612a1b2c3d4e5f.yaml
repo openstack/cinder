@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Ceph backup driver `bug #2155612
+    <https://bugs.launchpad.net/cinder/+bug/2155612>`_: Fixed data corruption
+    when restoring a sparse volume (such as a LUKS-encrypted one) to a new
+    volume. The driver skipped all-zero chunks without advancing the
+    destination offset, so every subsequent non-zero chunk was written at the
+    wrong location and the restored volume was silently truncated even though
+    the restore reported success. The destination offset is now advanced when
+    a zero chunk is discarded, so the restored layout matches the source.

@@ -458,6 +458,10 @@ class CephBackupDriver(driver.BackupDriver):
                 return
 
             if (discard_zeros and volume_utils.is_all_zero(data)):
+                # Skip writing the zero chunk but still move the destination
+                # forward, otherwise the next chunk overwrites it and the
+                # restored volume ends up shifted (bug #2155612).
+                dest.seek(len(data), os.SEEK_CUR)
                 action = "Discarded"
             else:
                 dest.write(data)
