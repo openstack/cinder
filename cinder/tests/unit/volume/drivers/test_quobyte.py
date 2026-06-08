@@ -139,11 +139,13 @@ class QuobyteDriverTestCase(test.TestCase):
         if not caught:
             self.fail('Expected raised exception but nothing caught.')
 
-    def get_mock_partitions(self):
-        mypart = mock.Mock()
-        mypart.device = "quobyte@"
-        mypart.mountpoint = self.TEST_MNT_POINT
-        return [mypart]
+    def get_mock_proc_mount(self, device="quobyte@quobyte-host/openstack",
+                            mountpoint=None, fstype="fuse"):
+        """Returns a StringIO mimicking a /proc/mounts entry."""
+        if mountpoint is None:
+            mountpoint = self.TEST_MNT_POINT
+        return StringIO("%s %s %s rw,nosuid,nodev,noatime 0 0"
+                        % (device, mountpoint, fstype))
 
     @mock.patch.object(os, "symlink")
     def test__create_overlay_volume_from_snapshot(self, os_sl_mock):
@@ -500,21 +502,18 @@ class QuobyteDriverTestCase(test.TestCase):
                                           any_order=False)
             mock_validate.assert_called_once_with(self.TEST_MNT_POINT)
 
-    @mock.patch.object(quobyte, 'psutil')
-    def test_mount_quobyte_should_reraise_already_mounted_error(self,
-                                                                ps_mock):
+    def test_mount_quobyte_should_reraise_already_mounted_error(self):
         """test_mount_quobyte_should_reraise_already_mounted_error
 
         Like test_mount_quobyte_should_suppress_already_mounted_error
         but with ensure=False.
         """
-        part_mock = ps_mock.disk_partitions
-        part_mock.return_value = []  # no quobyte@ devices
         with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('oslo_utils.fileutils.ensure_tree') as mock_mkdir, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open:
-            mock_open.return_value = StringIO()
+            # _mount_quobyte and _validate_volume each consume a proc mount
+            mock_open.side_effect = lambda: StringIO()
             mock_execute.side_effect = [
                 None,  # mkdir
                 putils.ProcessExecutionError(  # mount
@@ -532,6 +531,24 @@ class QuobyteDriverTestCase(test.TestCase):
                 self.TEST_MNT_POINT, run_as_root=False)
             mock_execute.assert_has_calls([mount_call],
                                           any_order=False)
+
+    def test_mount_quobyte_detects_escaped_mountpoint_as_mounted(self):
+        # an escaped mountpoint (e.g. containing a space) must still match
+        mount_path = self.TEST_MNT_POINT + "/my volume"
+        with mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
+                        '.read_proc_mount') as mock_open, \
+                mock.patch('oslo_utils.fileutils.ensure_tree') as mock_mkdir, \
+                mock.patch.object(self._driver, '_execute') as mock_execute, \
+                mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
+                           '._validate_volume') as mock_validate:
+            mock_open.return_value = self.get_mock_proc_mount(
+                mountpoint=mount_path.replace(" ", r"\040"))
+
+            self._driver._mount_quobyte(self.TEST_QUOBYTE_VOLUME, mount_path)
+
+            mock_mkdir.assert_not_called()
+            mock_execute.assert_not_called()
+            mock_validate.assert_called_once_with(mount_path)
 
     def test_get_hash_str(self):
         """_get_hash_str should calculation correct value."""
@@ -762,17 +779,7 @@ class QuobyteDriverTestCase(test.TestCase):
         qb_snso_mock.assert_called_once_with(is_new_cinder_install=mock.ANY)
         self.assertFalse(drv.configuration.quobyte_overlay_volumes)
 
-    @mock.patch.object(quobyte, 'psutil', new=None)
-    def test_check_for_setup_error_throws_psutil_missing(self):
-        """check_for_setup_error raises if psutil not installed."""
-        drv = self._driver
-        e = self.assertRaises(exception.VolumeDriverException,
-                              drv.check_for_setup_error)
-        self.assertIn("psutil", str(e))
-
-    @mock.patch.object(quobyte, 'psutil')
-    def test_check_for_setup_error_throws_quobyte_volume_url_not_set(
-            self, mock_psutil):
+    def test_check_for_setup_error_throws_quobyte_volume_url_not_set(self):
         """check_for_setup_error throws if 'quobyte_volume_url' is not set."""
         drv = self._driver
 
@@ -782,9 +789,7 @@ class QuobyteDriverTestCase(test.TestCase):
                                            'no Quobyte volume configured',
                                            drv.check_for_setup_error)
 
-    @mock.patch.object(quobyte, 'psutil')
-    def test_check_for_setup_error_throws_client_not_installed(
-            self, mock_psutil):
+    def test_check_for_setup_error_throws_client_not_installed(self):
         """check_for_setup_error throws if client is not installed."""
         drv = self._driver
         drv._execute = mock.Mock(side_effect=OSError
@@ -797,9 +802,7 @@ class QuobyteDriverTestCase(test.TestCase):
                                              check_exit_code=False,
                                              run_as_root=False)
 
-    @mock.patch.object(quobyte, 'psutil')
-    def test_check_for_setup_error_throws_client_not_executable(
-            self, mock_psutil):
+    def test_check_for_setup_error_throws_client_not_executable(self):
         """check_for_setup_error throws if client cannot be executed."""
         drv = self._driver
 
@@ -1809,11 +1812,10 @@ class QuobyteDriverTestCase(test.TestCase):
                          drv.configuration.nas_secure_file_permissions)
         self.assertFalse(drv._execute_as_root)
 
-    @mock.patch.object(quobyte, 'psutil')
+    @mock.patch.object(quobyte.QuobyteDriver, "read_proc_mount")
     @mock.patch.object(os, "stat")
-    def test_validate_volume_all_good_prefix_val(self, stat_mock, ps_mock):
-        part_mock = ps_mock.disk_partitions
-        part_mock.return_value = self.get_mock_partitions()
+    def test_validate_volume_all_good_prefix_val(self, stat_mock, mount_mock):
+        mount_mock.return_value = self.get_mock_proc_mount()
         drv = self._driver
 
         def statMockCall(*args):
@@ -1827,15 +1829,13 @@ class QuobyteDriverTestCase(test.TestCase):
         drv._validate_volume(self.TEST_MNT_POINT)
 
         stat_mock.assert_called_once_with(self.TEST_MNT_POINT)
-        part_mock.assert_called_once_with(all=True)
+        mount_mock.assert_called_once_with()
 
-    @mock.patch.object(quobyte, 'psutil')
+    @mock.patch.object(quobyte.QuobyteDriver, "read_proc_mount")
     @mock.patch.object(os, "stat")
-    def test_validate_volume_all_good_subtype_val(self, stat_mock, ps_mock):
-        part_mock = ps_mock.disk_partitions
-        part_mock.return_value = self.get_mock_partitions()
-        part_mock.return_value[0].device = "not_quobyte"
-        part_mock.return_value[0].fstype = "fuse.quobyte"
+    def test_validate_volume_all_good_subtype_val(self, stat_mock, mount_mock):
+        mount_mock.return_value = self.get_mock_proc_mount(
+            device="not_quobyte", fstype="fuse.quobyte")
         drv = self._driver
 
         def statMockCall(*args):
@@ -1849,31 +1849,26 @@ class QuobyteDriverTestCase(test.TestCase):
         drv._validate_volume(self.TEST_MNT_POINT)
 
         stat_mock.assert_called_once_with(self.TEST_MNT_POINT)
-        part_mock.assert_called_once_with(all=True)
+        mount_mock.assert_called_once_with()
 
-    @mock.patch.object(quobyte, 'psutil')
+    @mock.patch.object(quobyte.QuobyteDriver, "read_proc_mount")
     @mock.patch.object(os, "stat")
-    def test_validate_volume_mount_not_working(self, stat_mock, ps_mock):
-        part_mock = ps_mock.disk_partitions
-        part_mock.return_value = self.get_mock_partitions()
+    def test_validate_volume_mount_not_working(self, stat_mock, mount_mock):
+        mount_mock.return_value = self.get_mock_proc_mount()
         drv = self._driver
 
-        def statMockCall(*args):
-            if args[0] == self.TEST_MNT_POINT:
-                raise exception.VolumeDriverException()
-        stat_mock.side_effect = [statMockCall, os.stat]
+        stat_mock.side_effect = OSError("mount not working")
 
         self.assertRaises(
             exception.VolumeDriverException,
             drv._validate_volume,
             self.TEST_MNT_POINT)
         stat_mock.assert_called_once_with(self.TEST_MNT_POINT)
-        part_mock.assert_called_once_with(all=True)
+        mount_mock.assert_called_once_with()
 
-    @mock.patch.object(quobyte, 'psutil')
-    def test_validate_volume_no_mtab_entry(self, ps_mock):
-        part_mock = ps_mock.disk_partitions
-        part_mock.return_value = []  # no quobyte@ devices
+    @mock.patch.object(quobyte.QuobyteDriver, "read_proc_mount")
+    def test_validate_volume_no_mtab_entry(self, mount_mock):
+        mount_mock.return_value = StringIO()  # no quobyte@ devices
         msg = ("Volume driver reported an error: "
                "No matching Quobyte mount entry for %(mpt)s"
                " could be found for validation in partition list."
@@ -1885,13 +1880,10 @@ class QuobyteDriverTestCase(test.TestCase):
             self._driver._validate_volume,
             self.TEST_MNT_POINT)
 
-    @mock.patch.object(quobyte, 'psutil')
-    def test_validate_volume_wrong_mount_type(self, ps_mock):
-        part_mock = ps_mock.disk_partitions
-        mypart = mock.Mock()
-        mypart.device = "not-quobyte"
-        mypart.mountpoint = self.TEST_MNT_POINT
-        part_mock.return_value = [mypart]
+    @mock.patch.object(quobyte.QuobyteDriver, "read_proc_mount")
+    def test_validate_volume_wrong_mount_type(self, mount_mock):
+        mount_mock.return_value = self.get_mock_proc_mount(
+            device="not-quobyte", fstype="fuse")
         msg = ("Volume driver reported an error: "
                "The mount %(mpt)s is not a valid"
                " Quobyte volume according to partition list."
@@ -1903,12 +1895,11 @@ class QuobyteDriverTestCase(test.TestCase):
             msg,
             drv._validate_volume,
             self.TEST_MNT_POINT)
-        part_mock.assert_called_once_with(all=True)
+        mount_mock.assert_called_once_with()
 
-    @mock.patch.object(quobyte, 'psutil')
-    def test_validate_volume_stale_mount(self, ps_mock):
-        part_mock = ps_mock.disk_partitions
-        part_mock.return_value = self.get_mock_partitions()
+    @mock.patch.object(quobyte.QuobyteDriver, "read_proc_mount")
+    def test_validate_volume_stale_mount(self, mount_mock):
+        mount_mock.return_value = self.get_mock_proc_mount()
         drv = self._driver
 
         # As this uses a local fs the dir size is >0, raising an exception
@@ -1916,3 +1907,56 @@ class QuobyteDriverTestCase(test.TestCase):
             exception.VolumeDriverException,
             drv._validate_volume,
             self.TEST_MNT_POINT)
+
+    def test_unescape_proc_mount_field(self):
+        unescape = quobyte.QuobyteDriver._unescape_proc_mount_field
+        # the four characters the kernel octal-escapes
+        self.assertEqual(" ", unescape(r"\040"))
+        self.assertEqual("\t", unescape(r"\011"))
+        self.assertEqual("\n", unescape(r"\012"))
+        self.assertEqual("\\", unescape(r"\134"))
+        # combined, as seen in a Quobyte volume name with a space and tab
+        self.assertEqual("quobyte@host/my vol\tx",
+                         unescape(r"quobyte@host/my\040vol\011x"))
+        # an unescaped backslash must not spawn a further escape
+        self.assertEqual(r"\040", unescape(r"\134040"))
+        # a field without escapes is returned unchanged
+        self.assertEqual("quobyte@host/openstack",
+                         unescape("quobyte@host/openstack"))
+
+    @mock.patch.object(quobyte.QuobyteDriver, "read_proc_mount")
+    def test_disk_partitions(self, mount_mock):
+        # parses each line into an unescaped (device, mountpoint, fstype)
+        mount_mock.return_value = StringIO(
+            "quobyte@quobyte-host/openstack %s fuse"
+            " rw,nosuid,nodev,noatime 0 0\n"
+            "/dev/sda5 /mnt/x\\040y ext4 rw,relatime,data=ordered 0 0\n"
+            % self.TEST_MNT_POINT)
+
+        partitions = quobyte.QuobyteDriver.disk_partitions(all=True)
+
+        self.assertEqual(2, len(partitions))
+        self.assertEqual("quobyte@quobyte-host/openstack",
+                         partitions[0].device)
+        self.assertEqual(self.TEST_MNT_POINT, partitions[0].mountpoint)
+        self.assertEqual("fuse", partitions[0].fstype)
+        self.assertEqual("/dev/sda5", partitions[1].device)
+        self.assertEqual("/mnt/x y", partitions[1].mountpoint)
+        self.assertEqual("ext4", partitions[1].fstype)
+
+    @mock.patch.object(quobyte.QuobyteDriver, "read_proc_mount")
+    @mock.patch.object(os, "stat")
+    def test_validate_volume_escaped_mountpoint(self, stat_mock, mount_mock):
+        # A Quobyte volume name with a space appears octal-escaped in
+        # /proc/mounts and must still match the real mount path.
+        mount_path = self.TEST_MNT_POINT + "/my volume"
+        mount_mock.return_value = self.get_mock_proc_mount(
+            mountpoint=mount_path.replace(" ", r"\040"))
+        stat_result = mock.Mock()
+        stat_result.st_size = 0
+        stat_mock.return_value = stat_result
+
+        self._driver._validate_volume(mount_path)
+
+        stat_mock.assert_called_once_with(mount_path)
+        mount_mock.assert_called_once_with()
