@@ -18,7 +18,6 @@
 """Tests for NetApp API layer"""
 
 from unittest import mock
-import urllib
 
 import ddt
 from lxml import etree
@@ -129,14 +128,12 @@ class NetAppApiServerTests(test.TestCase):
 
         self.root.set_api_version(**args)
 
-    @ddt.data({'params': {'result': zapi_fakes.FAKE_RESULT_API_ERR_REASON}},
-              {'params': {'result': zapi_fakes.FAKE_RESULT_API_ERRNO_INVALID}},
-              {'params': {'result': zapi_fakes.FAKE_RESULT_API_ERRNO_VALID}})
-    @ddt.unpack
-    def test_invoke_successfully_naapi_error(self, params):
+    @ddt.data(zapi_fakes.FAKE_RESULT_API_ERR_REASON,
+              zapi_fakes.FAKE_RESULT_API_ERRNO_INVALID,
+              zapi_fakes.FAKE_RESULT_API_ERRNO_VALID)
+    def test_invoke_successfully_naapi_error(self, result):
         """Tests invoke successfully raising NaApiError"""
-        self.mock_object(self.root, 'send_http_request',
-                         return_value=params['result'])
+        self.mock_object(self.root, 'send_http_request', return_value=result)
 
         self.assertRaises(netapp_api.NaApiError,
                           self.root.invoke_successfully,
@@ -159,20 +156,18 @@ class NetAppApiServerTests(test.TestCase):
         self.mock_object(netapp_api.NaElement, 'add_child_elem')
         self.mock_object(netapp_api.NaElement, 'to_string',
                          return_value=zapi_fakes.FAKE_XML_STR)
-        mock_invoke = self.mock_object(urllib.request, 'Request')
 
-        self.root._create_request(zapi_fakes.FAKE_NA_ELEMENT, True)
+        request_data, request_elem = self.root._create_request(
+            zapi_fakes.FAKE_NA_ELEMENT, True)
 
-        self.assertTrue(mock_invoke.called)
+        self.assertEqual(zapi_fakes.FAKE_XML_STR, request_data)
+        self.assertIsInstance(request_elem, netapp_api.NaElement)
 
-    @ddt.data({'params': {'server': zapi_fakes.FAKE_NA_SERVER_API_1_5}},
-              {'params': {'server': zapi_fakes.FAKE_NA_SERVER_API_1_14}})
-    @ddt.unpack
-    def test__enable_tunnel_request__value_error(self, params):
+    @ddt.data(zapi_fakes.FAKE_NA_SERVER_API_1_5,
+              zapi_fakes.FAKE_NA_SERVER_API_1_14)
+    def test__enable_tunnel_request__value_error(self, server):
         """Tests value errors with creating tunnel request"""
-
-        self.assertRaises(ValueError, params['server']._enable_tunnel_request,
-                          'test')
+        self.assertRaises(ValueError, server._enable_tunnel_request, 'test')
 
     def test__enable_tunnel_request_valid(self):
         """Tests creating tunnel request with correct values"""
@@ -199,53 +194,50 @@ class NetAppApiServerTests(test.TestCase):
 
         mock_invoke.assert_called_with(zapi_fakes.FAKE_XML_STR)
 
-    def test_build_opener_with_certificate_auth(self):
-        """Tests whether build opener works with """
-        """valid certificate parameters"""
-        self.root._private_key_file = 'fake_key.pem'
-        self.root._certificate_file = 'fake_cert.pem'
-        auth_handler = self.mock_object(self.root,
-                                        '_create_certificate_auth_handler',
-                                        mock.Mock(return_value='fake_auth'))
-        expected_opener = 'fake_auth'
-        self.mock_object(urllib.request, 'build_opener', auth_handler)
-        self.root._build_opener()
-        self.assertEqual(self.root._opener, expected_opener)
-        self.root._create_certificate_auth_handler.assert_called()
+    @ddt.data(
+        # (host_validation, ca_cert_file, expected_verify)
+        (False, None, False),
+        (True, None, True),
+        (True, zapi_fakes.FAKE_CA_CERT_FILE, zapi_fakes.FAKE_CA_CERT_FILE),
+        (False, zapi_fakes.FAKE_CA_CERT_FILE, False),
+    )
+    @ddt.unpack
+    def test_build_session_with_certificate_auth(
+            self, host_validation, ca_cert_file, expected_verify):
+        """Tests _build_session cert/verify for all self-signed cert paths."""
+        self.root._private_key_file = zapi_fakes.FAKE_KEY_FILE
+        self.root._certificate_file = zapi_fakes.FAKE_CERT_FILE
+        self.root._certificate_host_validation = host_validation
+        self.root._ca_certificate_file = ca_cert_file
+        mock_session = self.mock_object(requests, 'Session')
+        mock_session.return_value.headers = {}
 
-    def test__build_opener_default(self):
-        """Tests whether build opener works with """
-        """default(basic auth) parameters"""
-        mock_invoke = self.mock_object(urllib.request, 'build_opener')
+        self.root._build_session()
 
-        self.root._build_opener()
+        self.assertEqual(mock_session.return_value, self.root._session)
+        self.assertEqual((zapi_fakes.FAKE_CERT_FILE, zapi_fakes.FAKE_KEY_FILE),
+                         self.root._session.cert)
+        self.assertEqual(expected_verify, self.root._session.verify)
+        self.assertFalse(self.root._refresh_conn)
 
-        self.assertTrue(mock_invoke.called)
+    @ddt.data(
+        (None, False),
+        (zapi_fakes.FAKE_SSL_CERT_PATH, zapi_fakes.FAKE_SSL_CERT_PATH),
+    )
+    @ddt.unpack
+    def test_build_session_with_basic_auth(
+            self, ssl_cert_path, expected_verify):
+        """Tests _build_session with basic auth; verify follows ssl_cert"""
+        self.root._ssl_cert_path = ssl_cert_path
+        mock_session = self.mock_object(requests, 'Session')
+        mock_session.return_value.headers = {}
 
-    @mock.patch('ssl._create_unverified_context')
-    @mock.patch('urllib.request.build_opener')
-    def test_build_opener_with_ssl_verification_disabled(
-            self, mock_build_opener, mock_unverified_context):
-        self.root._ssl_verify = False
-        mock_unverified_context.return_value = 'mock_unverified_context'
+        self.root._build_session()
 
-        self.root._build_opener()
-
-        mock_unverified_context.assert_called_once()
-        mock_build_opener.assert_called_once()
-
-    @mock.patch('urllib.request.HTTPPasswordMgrWithDefaultRealm')
-    @mock.patch('urllib.request.build_opener')
-    def test_build_opener_with_basic_auth(self, mock_build_opener,
-                                          mock_password_mgr):
-        self.root._username = 'user'
-        self.root._password = 'pass'
-        mock_password_mgr.return_value = mock.Mock()
-
-        self.root._build_opener()
-
-        mock_password_mgr.assert_called_once()
-        mock_build_opener.assert_called_once()
+        self.assertEqual(mock_session.return_value, self.root._session)
+        self.assertIsNotNone(self.root._session.auth)
+        self.assertEqual(expected_verify, self.root._session.verify)
+        self.assertFalse(self.root._refresh_conn)
 
     @ddt.data(None, zapi_fakes.FAKE_XML_STR)
     def test_send_http_request_value_error(self, na_element):
@@ -253,49 +245,37 @@ class NetAppApiServerTests(test.TestCase):
 
         self.assertRaises(ValueError, self.root.send_http_request, na_element)
 
-    def test_send_http_request_http_error(self):
-        """Tests handling of HTTPError"""
+    @ddt.data(
+        (requests.HTTPError(response=mock.Mock(status_code=401,
+                                               reason='Unauthorized')), False),
+        (Exception, True),
+    )
+    @ddt.unpack
+    def test_send_http_request_error(self, side_effect, check_log):
+        """Tests handling of HTTPError and unknown exceptions."""
         na_element = zapi_fakes.FAKE_NA_ELEMENT
         self.mock_object(self.root, '_create_request',
-                         return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT))
-        self.mock_object(netapp_api, 'LOG')
-        self.root._opener = zapi_fakes.FAKE_HTTP_OPENER
-        self.mock_object(self.root, '_build_opener')
-        self.mock_object(self.root._opener, 'open',
-                         side_effect=urllib.error.HTTPError(url='', hdrs='',
-                                                            fp=None,
-                                                            code='401',
-                                                            msg='httperror'))
-
-        self.assertRaises(netapp_api.NaApiError, self.root.send_http_request,
-                          na_element)
-
-    def test_send_http_request_unknown_exception(self):
-        """Tests handling of Unknown Exception"""
-        na_element = zapi_fakes.FAKE_NA_ELEMENT
-        self.mock_object(self.root, '_create_request',
-                         return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT))
+                         return_value=(b'<xml/>', zapi_fakes.FAKE_NA_ELEMENT))
         mock_log = self.mock_object(netapp_api, 'LOG')
-        self.root._opener = zapi_fakes.FAKE_HTTP_OPENER
-        self.mock_object(self.root, '_build_opener')
-        self.mock_object(self.root._opener, 'open', side_effect=Exception)
+        self.root._session = mock.Mock()
+        self.mock_object(self.root, '_build_session')
+        self.mock_object(self.root._session, 'post', side_effect=side_effect)
 
         self.assertRaises(netapp_api.NaApiError, self.root.send_http_request,
                           na_element)
-        self.assertEqual(1, mock_log.exception.call_count)
+        if check_log:
+            self.assertEqual(1, mock_log.exception.call_count)
 
     def test_send_http_request_valid(self):
         """Tests the method send_http_request with valid parameters"""
         na_element = zapi_fakes.FAKE_NA_ELEMENT
         self.mock_object(self.root, '_create_request',
-                         return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT))
+                         return_value=(b'<xml/>', zapi_fakes.FAKE_NA_ELEMENT))
         self.mock_object(netapp_api, 'LOG')
-        self.root._opener = zapi_fakes.FAKE_HTTP_OPENER
-        self.mock_object(self.root, '_build_opener')
+        self.root._session = mock.Mock()
+        self.mock_object(self.root, '_build_session')
         self.mock_object(self.root, '_get_result',
                          return_value=zapi_fakes.FAKE_NA_ELEMENT)
-        opener_mock = self.mock_object(self.root._opener, 'open')
-        opener_mock.read.side_effect = ['resp1', 'resp2']
 
         self.root.send_http_request(na_element)
 
@@ -319,6 +299,7 @@ class NetAppApiServerTests(test.TestCase):
         self.assertEqual(result, url)
 
 
+@ddt.ddt
 class NetAppApiElementTransTests(test.TestCase):
     """Test case for NetApp API element translations."""
 
@@ -925,8 +906,8 @@ class NetAppRestApiServerTests(test.TestCase):
     def test__build_session_with_certificate_auth(self):
         """Tests whether build session works with """
         """valid certificate parameters"""
-        self.rest_client._private_key_file = 'fake_key.pem'
-        self.rest_client._certificate_file = 'fake_cert.pem'
+        self.rest_client._private_key_file = zapi_fakes.FAKE_KEY_FILE
+        self.rest_client._certificate_file = zapi_fakes.FAKE_CERT_FILE
         self.rest_client._certificate_host_validation = False
         fake_session = mock.Mock()
         mock_requests_session = self.mock_object(
@@ -969,32 +950,25 @@ class NetAppRestApiServerTests(test.TestCase):
         expected = auth.HTTPBasicAuth(username, password)
         self.assertEqual(expected.__dict__, res.__dict__)
 
-    def test__create_certificate_auth_handler_default(self):
-        """Test whether create certificate auth handler """
-        """works with default params"""
-        self.rest_client._private_key_file = 'fake_key.pem'
-        self.rest_client._certificate_file = 'fake_cert.pem'
-        self.rest_client._certificate_host_validation = False
-        cert = self.rest_client._certificate_file, \
-            self.rest_client._private_key_file
+    @ddt.data(
+        # (ca_cert_file, session_verify, expected_verify)
+        (None, False, False),
+        (None, True, True),
+        (zapi_fakes.FAKE_CA_CERT_FILE, True, zapi_fakes.FAKE_CA_CERT_FILE),
+        (zapi_fakes.FAKE_CA_CERT_FILE, False, False),
+    )
+    @ddt.unpack
+    def test__create_certificate_auth_handler(
+            self, ca_cert_file, session_verify, expected_verify):
+        """Tests all self-signed cert paths."""
+        self.rest_client._private_key_file = zapi_fakes.FAKE_KEY_FILE
+        self.rest_client._certificate_file = zapi_fakes.FAKE_CERT_FILE
+        self.rest_client._ca_certificate_file = ca_cert_file
         self.rest_client._session = mock.Mock()
-        if not self.rest_client._certificate_host_validation:
-            self.assertFalse(self.rest_client._certificate_host_validation)
-        res = self.rest_client._create_certificate_auth_handler()
-        self.assertEqual(res,
-                         (cert, self.rest_client._certificate_host_validation))
+        self.rest_client._session.verify = session_verify
+        cert = (self.rest_client._certificate_file,
+                self.rest_client._private_key_file)
 
-    def test__create_certificate_auth_handler_with_host_validation(self):
-        """Test whether create certificate auth handler """
-        """works with host validation enabled"""
-        self.rest_client._private_key_file = 'fake_key.pem'
-        self.rest_client._certificate_file = 'fake_cert.pem'
-        self.rest_client._ca_certificate_file = 'fake_ca_cert.crt'
-        self.rest_client._certificate_host_validation = True
-        cert = self.rest_client._certificate_file, \
-            self.rest_client._private_key_file
-        self.rest_client._session = mock.Mock()
-        if self.rest_client._certificate_host_validation:
-            self.assertTrue(self.rest_client._certificate_host_validation)
         res = self.rest_client._create_certificate_auth_handler()
-        self.assertEqual(res, (cert, self.rest_client._ca_certificate_file))
+
+        self.assertEqual((cert, expected_verify), res)

@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver `bug #2153545
+    <https://bugs.launchpad.net/cinder/+bug/2153545>`_: Fixed excessive
+    401 Unauthorized noise flooding the ONTAP HTTP access logs.
+    Python's urllib HTTPBasicAuthHandler was performing a challenge-response
+    round-trip on every ZAPI call, generating a large number of 401
+    entries per minute.
+    The NaServer HTTP client has been migrated to requests.Session with
+    HTTPBasicAuth to send credentials preemptively.
