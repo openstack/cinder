@@ -3803,7 +3803,7 @@ class VolumeManager(manager.CleanableManager,
             self._check_is_our_resource(vol_obj)
 
         self._notify_about_group_usage(
-            context, group, "delete.start")
+            context, group, "delete.start", volumes=volumes)
 
         volumes_model_update = None
         model_update = None
@@ -3906,7 +3906,7 @@ class VolumeManager(manager.CleanableManager,
 
         group.destroy()
         self._notify_about_group_usage(
-            context, group, "delete.end")
+            context, group, "delete.end", volumes=volumes)
         self.publish_service_capabilities(context)
         LOG.info("Delete group "
                  "completed successfully.",
