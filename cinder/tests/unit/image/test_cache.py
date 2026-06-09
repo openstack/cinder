@@ -46,8 +46,7 @@ class ImageVolumeCacheTestCase(test.TestCase):
         cache = image_cache.ImageVolumeCache(self.mock_db,
                                              self.mock_volume_api,
                                              max_gb,
-                                             max_count,
-                                             clone_across_pools)
+                                             max_count)
         cache.notifier = self.notifier
         return cache
 
@@ -115,7 +114,8 @@ class ImageVolumeCacheTestCase(test.TestCase):
         found_entry = cache.get_entry(self.context,
                                       self.volume_ovo,
                                       entry['image_id'],
-                                      image_meta)
+                                      image_meta,
+                                      clone_across_pools=clone_across_pools)
         self.assertDictEqual(entry, found_entry)
         (self.mock_db.
          image_volume_cache_get_and_update_last_used.assert_called_once_with)(

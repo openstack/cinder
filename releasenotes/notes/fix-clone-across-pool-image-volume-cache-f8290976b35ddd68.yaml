@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #2127675 <https://bugs.launchpad.net/cinder/+bug/2127675>`_: Fixed
+    cloning across pools functionality for image volume cache.

@@ -34,13 +34,11 @@ class ImageVolumeCache(object):
                  db,
                  volume_api,
                  max_cache_size_gb: int = 0,
-                 max_cache_size_count: int = 0,
-                 clone_across_pools: bool = False):
+                 max_cache_size_count: int = 0):
         self.db = db
         self.volume_api = volume_api
         self.max_cache_size_gb = int(max_cache_size_gb)
         self.max_cache_size_count = int(max_cache_size_count)
-        self.clone_across_pools = bool(clone_across_pools)
         self.notifier = rpc.get_notifier('volume', CONF.host)
 
     def get_by_image_volume(self,
@@ -57,10 +55,11 @@ class ImageVolumeCache(object):
         self._notify_cache_eviction(context, cache_entry['image_id'],
                                     cache_entry['host'])
 
-    def _get_query_filters(self, volume_ref: objects.Volume) -> dict:
+    def _get_query_filters(self, volume_ref: objects.Volume,
+                           clone_across_pools: bool = False) -> dict:
         if volume_ref.is_clustered:
             return {'cluster_name': volume_ref.cluster_name}
-        if not self.clone_across_pools:
+        if not clone_across_pools:
             return {'host': volume_ref.host}
         # FIXME(whoami-rajat): If we have two cinder backends pointing to
         # two different storage arrays, this logic will allow the operation
@@ -73,11 +72,13 @@ class ImageVolumeCache(object):
                   context: context.RequestContext,
                   volume_ref: objects.Volume,
                   image_id: str,
-                  image_meta: dict) -> Optional[dict]:
+                  image_meta: dict,
+                  clone_across_pools: bool = False) -> Optional[dict]:
         cache_entry = self.db.image_volume_cache_get_and_update_last_used(
             context,
             image_id,
-            **self._get_query_filters(volume_ref)
+            **self._get_query_filters(volume_ref,
+                                      clone_across_pools=clone_across_pools)
         )
 
         if cache_entry:
