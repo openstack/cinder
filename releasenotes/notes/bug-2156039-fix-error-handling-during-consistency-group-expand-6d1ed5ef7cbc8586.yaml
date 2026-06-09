@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    Fixed `bug #2156039 <https://bugs.launchpad.net/cinder/+bug/2156039>`_:
+    NetApp ONTAP driver: During backend reinitialization, if a consistency
+    group expand is still in progress on the array, SnapMirror repair for the
+    CG relationship can return ONTAP error 6621658 with "Expand operation in
+    progress, wait for the operation to complete". Cinder now treats this as
+    an expected transient condition and logs an informational message instead
+    of reporting a SnapMirror re-sync failure in the logs.
+  - |
+    NetApp ONTAP driver: Fixed a pre-existing key mismatch in the
+    ``create_snapmirror_for_cg`` SnapMirror repair log message. The debug
+    log format string referenced ``%(src_cg)s`` and ``%(dest_cg)s`` but the
+    payload used ``src_volume`` and ``dest_volume``, which would have caused
+    a ``KeyError`` if the repair branch was triggered. The payload keys are
+    now aligned with the format string.

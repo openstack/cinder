@@ -593,16 +593,25 @@ class DataMotionMixin(object):
                            "'%(state)s' state. Attempting to repair it.")
                     msg_payload = {'state': snapmirror.get('mirror-state'),
                                    'src_vserver': src_vserver,
-                                   'src_volume': src_cg_name,
+                                   'src_cg': src_cg_name,
                                    'dest_vserver': dest_vserver,
-                                   'dest_volume': dest_cg_name}
+                                   'dest_cg': dest_cg_name}
                     LOG.debug(msg, msg_payload)
                     dest_client.resume_snapmirror(src_vserver,
                                                   src_cg_path,
                                                   dest_vserver,
                                                   dest_cg_path)
-                except netapp_api.NaApiError:
-                    LOG.exception("Could not re-sync SnapMirror.")
+                except netapp_api.NaApiError as e:
+                    if e.code == netapp_api.REST_CG_EXPAND_IN_PROGRESS:
+                        LOG.info(
+                            "CG expand is still in progress between "
+                            "%(src_vserver)s:%(src_cg)s and "
+                            "%(dest_vserver)s:%(dest_cg)s. "
+                            "Skipping SnapMirror update during "
+                            "reinitialization.",
+                            msg_payload)
+                    else:
+                        LOG.exception("Could not re-sync SnapMirror.")
         LOG.debug("Finished create_snapmirror_for_cg method")
 
     def _get_create_snapmirror_for_cg_client(self, dest_client,
