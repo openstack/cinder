@@ -61,8 +61,8 @@ Sample settings for cinder.conf:
 """
 import ast
 import json
+import threading
 
-import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -440,7 +440,9 @@ class DS8KProxy(proxy.IBMStorageProxy):
                     src_luns.append(Lun(src_vol))
                     tgt_luns.append(tgt_lun)
         if src_luns and tgt_luns:
-            eventlet.spawn(self._wait_flashcopy, src_luns, tgt_luns)
+            threading.Thread(target=self._wait_flashcopy,
+                             args=(src_luns, tgt_luns),
+                             daemon=True).start()
 
     @proxy.logger
     def _do_replication_setup(self, devices, src_helper):
@@ -765,7 +767,9 @@ class DS8KProxy(proxy.IBMStorageProxy):
                          "in the background.",
                          {'src': src_lun.ds_id, 'tgt': tgt_lun.ds_id})
                 tgt_lun.metadata['flashcopy'] = "started"
-                eventlet.spawn(self._wait_flashcopy, [src_lun], [tgt_lun])
+                threading.Thread(target=self._wait_flashcopy,
+                                 args=([src_lun], [tgt_lun]),
+                                 daemon=True).start()
         finally:
             if not tgt_lun.async_clone and tgt_lun.status == 'error':
                 self._helper.delete_lun(tgt_lun)

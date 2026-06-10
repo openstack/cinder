@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import threading
 import time
 import uuid
 
-from eventlet.green import threading
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
@@ -227,7 +227,7 @@ class DateraDriver(san.SanISCSIDriver, api21.DateraApi, api22.DateraApi,
             not self.configuration.datera_disable_extended_metadata)
         self.image_cache = self.configuration.datera_enable_image_cache
         self.image_type = self.configuration.datera_image_cache_volume_type_id
-        self.thread_local = threading.local()  # pylint: disable=no-member
+        self.thread_local = threading.local()
         self.datera_version = None
         self.apiv = None
         self.api = None

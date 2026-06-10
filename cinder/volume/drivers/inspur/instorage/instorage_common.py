@@ -2852,7 +2852,7 @@ class InStorageAssistant(object):
         timer = loopingcall.FixedIntervalLoopingCall(
             self._check_vdisk_lc_mappings, name,
             allow_snaps, allow_lctgt)
-        # Create a timer greenthread. The default volume service heart
+        # Create a timer thread. The default volume service heart
         # beat is every 10 seconds. The localcopy usually takes hours
         # before it finishes. Don't set the sleep interval shorter
         # than the heartbeat. Otherwise volume service heartbeat

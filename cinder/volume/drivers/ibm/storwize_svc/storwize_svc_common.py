@@ -2741,7 +2741,7 @@ class StorwizeHelpers(object):
         timer = loopingcall.FixedIntervalLoopingCall(
             self._check_vdisk_fc_mappings, name,
             allow_snaps, allow_fctgt, rel_info)
-        # Create a timer greenthread. The default volume service heart
+        # Create a timer thread. The default volume service heart
         # beat is every 10 seconds. The flashcopy usually takes hours
         # before it finishes. Don't set the sleep interval shorter
         # than the heartbeat. Otherwise volume service heartbeat
