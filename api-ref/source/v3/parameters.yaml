@@ -349,6 +349,13 @@ instance_uuid_query_optional:
   in: query
   required: false
   type: string
+is_public_group_type_query:
+  description: |
+    Filter the group type by public visibility.
+    See :ref:`valid boolean values <valid-boolean-values>`.
+  in: query
+  required: false
+  type: boolean
 is_public_volume_type_query:
   description: |
     Filter the volume type by public visibility.
