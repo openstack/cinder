@@ -17,8 +17,6 @@
 
 from unittest import mock
 
-from eventlet import greenthread
-
 from cinder import context
 import cinder.db.api
 from cinder import exception
@@ -26,6 +24,7 @@ from cinder.tests.unit import test
 from cinder.tests.unit import utils as testutils
 from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.inspur.instorage import instorage_common
 from cinder.volume.drivers.inspur.instorage import instorage_iscsi
 from cinder.volume import volume_types
 
@@ -33,7 +32,8 @@ from cinder.volume import volume_types
 class InStorageMCSISCSIDriverTestCase(test.TestCase):
     def setUp(self):
         super(InStorageMCSISCSIDriverTestCase, self).setUp()
-        self.mock_object(greenthread, 'sleep')
+        self.mock_object(instorage_common, 'time',
+                         testutils.time_module_mock())
         self.iscsi_driver = fakes.FakeInStorageMCSISCSIDriver(
             configuration=conf.Configuration(None))
         self._def_flags = {'san_ip': 'hostname',

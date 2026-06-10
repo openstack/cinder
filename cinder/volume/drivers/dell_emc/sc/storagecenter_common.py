@@ -12,7 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
+import time
+
 from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log as logging
@@ -1557,7 +1558,7 @@ class SCCommonDriver(driver.ManageableVD,
             # This is part of an async call so we should be good sleeping here.
             # Have to balance hammering the backend for no good reason with
             # the max timeout for the unit tests. Yeah, silly.
-            eventlet.sleep(self.failback_timeout)
+            time.sleep(self.failback_timeout)
 
     def _reattach_remaining_replications(self, api, items):
         # Wiffle through our backends and reattach any remaining replication

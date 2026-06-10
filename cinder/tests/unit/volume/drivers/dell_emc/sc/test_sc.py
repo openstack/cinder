@@ -14,8 +14,6 @@
 
 from unittest import mock
 
-import eventlet
-
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
@@ -23,7 +21,9 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder.volume.drivers.dell_emc.sc import storagecenter_api
+from cinder.volume.drivers.dell_emc.sc import storagecenter_common
 from cinder.volume.drivers.dell_emc.sc import storagecenter_iscsi
 from cinder.volume import volume_types
 
@@ -250,7 +250,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.backends = None
         self.driver.replication_enabled = False
 
-        self.mock_sleep = self.mock_object(eventlet, 'sleep')
+        mock_time = test_utils.time_module_mock()
+        self.mock_sleep = mock_time.sleep
+        self.mock_object(storagecenter_api, 'time', mock_time)
+        self.mock_object(storagecenter_common, 'time', mock_time)
 
         self.volid = fake.VOLUME_ID
         self.volume_name = "volume" + self.volid

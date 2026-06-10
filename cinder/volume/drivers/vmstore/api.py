@@ -17,9 +17,9 @@
 import hashlib
 import json
 import posixpath
+import time
 from urllib import parse as urlparse
 
-from eventlet import greenthread
 from oslo_log import log as logging
 from oslo_utils import netutils
 import requests
@@ -510,5 +510,5 @@ class VmstoreProxy(object):
         interval = float(backoff * (2 ** (attempt - 1)))
         LOG.debug('Waiting for %(interval)s seconds',
                   {'interval': interval})
-        greenthread.sleep(interval)
+        time.sleep(interval)
         return interval

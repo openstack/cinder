@@ -20,7 +20,6 @@ import random
 import time
 import uuid
 
-import eventlet
 from os_brick import exception as brick_exception
 from oslo_log import log as logging
 from oslo_serialization import jsonutils as json
@@ -905,7 +904,7 @@ class DateraApi(object):
                                   "polling period")
                         raise
                     LOG.debug("Failed to login to portal, retrying")
-                    eventlet.sleep(2)
+                    time.sleep(2)
             device_path = attach_info['path']
             yield device_path
         finally:
@@ -922,7 +921,7 @@ class DateraApi(object):
     # ===========
 
     def _snap_poll_2_1(self, snap, tenant):
-        eventlet.sleep(datc.DEFAULT_SNAP_SLEEP)
+        time.sleep(datc.DEFAULT_SNAP_SLEEP)
         TIMEOUT = 20
         retry = 0
         poll = True
@@ -932,14 +931,14 @@ class DateraApi(object):
             if snap.op_state == 'available':
                 poll = False
             else:
-                eventlet.sleep(1)
+                time.sleep(1)
         if retry >= TIMEOUT:
             raise exception.VolumeDriverException(
                 message=_('Snapshot not ready.'))
 
     def _si_poll_2_1(self, volume, si, tenant):
         # Initial 4 second sleep required for some Datera versions
-        eventlet.sleep(datc.DEFAULT_SI_SLEEP)
+        time.sleep(datc.DEFAULT_SI_SLEEP)
         TIMEOUT = 10
         retry = 0
         poll = True
@@ -949,7 +948,7 @@ class DateraApi(object):
             if si.op_state == 'available':
                 poll = False
             else:
-                eventlet.sleep(1)
+                time.sleep(1)
         if retry >= TIMEOUT:
             raise exception.VolumeDriverException(
                 message=_('Resource not ready.'))

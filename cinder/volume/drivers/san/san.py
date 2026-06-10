@@ -20,8 +20,8 @@ controller on the SAN hardware. We expect to access it over SSH or some API.
 """
 
 import random
+import time
 
-from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -134,7 +134,7 @@ class SanDriver(driver.BaseVD):
                     except Exception as e:
                         LOG.error(e)
                         last_exception = e
-                        greenthread.sleep(random.randint(20, 500) / 100.0)
+                        time.sleep(random.randint(20, 500) / 100.0)
                 try:
                     raise processutils.ProcessExecutionError(
                         exit_code=last_exception.exit_code,

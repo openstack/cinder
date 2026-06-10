@@ -17,6 +17,7 @@
 
 from collections import defaultdict
 import json
+import time
 
 from eventlet import greenthread
 from oslo_config import cfg
@@ -331,7 +332,7 @@ def _delays(short_interval, long_interval, timeout):
         interval = long_interval if utils.timed_out(
             start_time, long_interval) else short_interval
         idle = max(interval - watch.elapsed(), 0)
-        greenthread.sleep(idle)
+        time.sleep(idle)
         i += 1
 
 

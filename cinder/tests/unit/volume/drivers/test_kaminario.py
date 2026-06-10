@@ -27,6 +27,7 @@ from cinder.objects import fields
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration
 from cinder.volume.drivers.kaminario import kaminario_common
 from cinder.volume.drivers.kaminario import kaminario_fc
@@ -135,7 +136,8 @@ class TestKaminarioCommon(test.TestCase):
         self.vol.volume_type.extra_specs = {'foo': None}
         self.snap = fake_snapshot.fake_snapshot_obj(self.context)
         self.snap.volume = self.vol
-        self.patch('eventlet.sleep')
+        self.mock_object(kaminario_common, 'time',
+                         test_utils.time_module_mock())
 
     def _setup_config(self):
         self.conf = mock.Mock(spec=configuration.Configuration)

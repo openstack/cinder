@@ -21,10 +21,10 @@ Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
 import random
 import ssl
+import time
 import urllib
 
 
-from eventlet import greenthread
 from eventlet import semaphore
 from lxml import etree
 from oslo_log import log as logging
@@ -653,7 +653,7 @@ class SSHUtil(object):
         while not stdout.channel.exit_status_ready():
             # period is 10 - 25 centiseconds
             period = random.randint(10, 25) / 100.0
-            greenthread.sleep(period)
+            time.sleep(period)
             wait_time += period
             if wait_time > timeout:
                 LOG.debug("Timeout exceeded while waiting for exit status.")

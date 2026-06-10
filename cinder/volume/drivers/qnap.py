@@ -24,7 +24,6 @@ import threading
 import time
 import urllib.parse
 
-import eventlet
 from lxml import etree as ET
 from oslo_concurrency import lockutils
 from oslo_config import cfg
@@ -359,7 +358,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
             try_times += 3
             if try_times > max_wait_sec or lun_naa:
                 break
-            eventlet.sleep(self.TIME_INTERVAL)
+            time.sleep(self.TIME_INTERVAL)
 
         LOG.debug('LUNNAA: %s', lun_naa)
         _metadata = self._get_volume_metadata(volume)
@@ -538,7 +537,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
             try_times += 3
             if try_times > max_wait_sec or lun_naa:
                 break
-            eventlet.sleep(self.TIME_INTERVAL)
+            time.sleep(self.TIME_INTERVAL)
 
         LOG.debug('LUNNAA: %s', lun_naa)
         if (volume['size'] > src_vref['size']):
@@ -590,7 +589,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
             try_times += 3
             if try_times > max_wait_sec or snapshot_id:
                 break
-            eventlet.sleep(self.TIME_INTERVAL)
+            time.sleep(self.TIME_INTERVAL)
 
         LOG.debug('created_snapshot: %s', created_snapshot)
         LOG.debug('snapshot_id: %s', snapshot_id)
@@ -651,7 +650,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
             try_times += 3
             if try_times > max_wait_sec or lun_naa:
                 break
-            eventlet.sleep(self.TIME_INTERVAL)
+            time.sleep(self.TIME_INTERVAL)
 
         if (volume['size'] > snapshot['volume_size']):
             self._extend_lun(volume, lun_naa)
@@ -751,7 +750,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 target_info = self.api_executor.get_target_info(target_index)
                 if target_info.find('targetIQN').text is not None:
                     break
-                eventlet.sleep(retrySleepTime)
+                time.sleep(retrySleepTime)
                 retrySleepTime = retrySleepTime + 2
                 retryCount = retryCount + 1
 
@@ -885,7 +884,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 try_times += 3
                 if try_times > max_wait_sec or target_lun_id != -999:
                     break
-                eventlet.sleep(self.TIME_INTERVAL)
+                time.sleep(self.TIME_INTERVAL)
 
             elif 'ES' in internal_model_name.upper():
                 if fw_version >= "1.1.2" and fw_version <= "1.1.3":
@@ -899,7 +898,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                     try_times += 3
                     if try_times > max_wait_sec or LUNNumber:
                         break
-                    eventlet.sleep(self.TIME_INTERVAL)
+                    time.sleep(self.TIME_INTERVAL)
                 elif "1.1.4" <= fw_version <= "2.1.9999":
                     LOG.debug('in ES FW after 1.1.4: get_one_lun_info')
                     ret = self.api_executor.get_one_lun_info(lun_index)
@@ -911,7 +910,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                     try_times += 3
                     if try_times > max_wait_sec or target_lun_id != -999:
                         break
-                    eventlet.sleep(self.TIME_INTERVAL)
+                    time.sleep(self.TIME_INTERVAL)
                 else:
                     break
             else:
@@ -2216,7 +2215,7 @@ class Util(object):
                 return True
             if ((time.time() - startTime) <= retryTime):
                 return False  # more than retry times
-            eventlet.sleep(sleepSeconds)
+            time.sleep(sleepSeconds)
             sleepSeconds = sleepSeconds + 2
             retryCount = retryCount + 1
         return False  # more than retryTime

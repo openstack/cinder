@@ -17,8 +17,6 @@
 
 from unittest import mock
 
-from eventlet import greenthread
-
 from cinder import context
 import cinder.db.api
 from cinder import exception
@@ -33,9 +31,10 @@ from cinder.volume import volume_types
 
 class InStorageMCSFcDriverTestCase(test.TestCase):
 
-    @mock.patch.object(greenthread, 'sleep')
-    def setUp(self, mock_sleep):
+    def setUp(self):
         super(InStorageMCSFcDriverTestCase, self).setUp()
+        self.mock_object(instorage_common, 'time',
+                         testutils.time_module_mock())
         self.fc_driver = fakes.FakeInStorageMCSFcDriver(
             configuration=conf.Configuration(None))
         self._def_flags = {'san_ip': 'hostname',

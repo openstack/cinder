@@ -18,8 +18,8 @@ import copy
 import math
 import os
 import string
+import time
 
-import eventlet
 from oslo_log import log as logging
 import packaging.version as dist_version  # pylint: disable=E0611
 
@@ -522,7 +522,7 @@ class DS8KCommonHelper(object):
         for tgt_lun in tgt_luns:
             tgt_lun.status = 'checking'
         while True:
-            eventlet.sleep(5)
+            time.sleep(5)
             for src_lun, tgt_lun in zip(src_luns, tgt_luns):
                 if tgt_lun.status == 'checking':
                     try:
@@ -565,7 +565,7 @@ class DS8KCommonHelper(object):
         finished = False
         try:
             while True:
-                eventlet.sleep(2)
+                time.sleep(2)
                 pairs = self.get_pprc_pairs(min_vol_id, max_vol_id)
                 pairs = [
                     p for p in pairs if p['source_volume']['name'] in vol_ids]

@@ -1105,7 +1105,10 @@ class DS8KProxyTest(test.TestCase):
         self.storage_info = mock.MagicMock()
         self.logger = mock.MagicMock()
         self.exception = mock.MagicMock()
-        self.patch('eventlet.sleep')
+        mock_time = testutils.time_module_mock()
+        self.mock_object(helper, 'time', mock_time)
+        self.mock_object(replication, 'time', mock_time)
+        self.mock_object(restclient, 'time', mock_time)
 
     def _create_volume(self, **kwargs):
         properties = {
@@ -1773,8 +1776,7 @@ class DS8KProxyTest(test.TestCase):
                          'target': (TEST_ECKD_POOL_ID, TEST_LCU_ID)}
         self.assertDictEqual(expected_pair, pool_lss_pair)
 
-    @mock.patch.object(eventlet, 'sleep')
-    def test_create_fb_replicated_volume(self, mock_sleep):
+    def test_create_fb_replicated_volume(self):
         """create FB volume when enable replication."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -1794,8 +1796,7 @@ class DS8KProxyTest(test.TestCase):
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_paths')
     @mock.patch.object(replication.MetroMirrorManager, 'create_pprc_path')
-    @mock.patch.object(eventlet, 'sleep')
-    def test_create_fb_replicated_vol_but_no_path_available(self, mock_sleep,
+    def test_create_fb_replicated_vol_but_no_path_available(self,
                                                             create_pprc_path,
                                                             get_pprc_paths):
         """create replicated volume but no pprc paths are available."""
@@ -1825,9 +1826,8 @@ class DS8KProxyTest(test.TestCase):
         self.assertTrue(create_pprc_path.called)
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_paths')
-    @mock.patch.object(eventlet, 'sleep')
     def test_create_fb_replicated_vol_and_verify_lss_in_path(
-            self, mock_sleep, get_pprc_paths):
+            self, get_pprc_paths):
         """create replicated volume should verify the LSS in pprc paths."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -1873,9 +1873,8 @@ class DS8KProxyTest(test.TestCase):
                          repl[TEST_TARGET_DS8K_IP]['vol_hex_id'][:2])
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_paths')
-    @mock.patch.object(eventlet, 'sleep')
     def test_create_fb_replicated_vol_when_paths_available(
-            self, mock_sleep, get_pprc_paths):
+            self, get_pprc_paths):
         """create replicated volume when multiple pprc paths are available."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -1921,9 +1920,8 @@ class DS8KProxyTest(test.TestCase):
                          repl[TEST_TARGET_DS8K_IP]['vol_hex_id'][:2])
 
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
-    @mock.patch.object(eventlet, 'sleep')
     def test_create_replicated_vol_but_lss_full_afterwards(
-            self, mock_sleep, create_lun):
+            self, create_lun):
         """create replicated volume but lss is full afterwards."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2054,10 +2052,9 @@ class DS8KProxyTest(test.TestCase):
                                     self.exception, self)
         eventlet.spawn.assert_called()
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     def test_wait_flashcopy_when_async_clone_volume(
-            self, mock_get_flashcopy, mock_sleep):
+            self, mock_get_flashcopy):
         """clone volume asynchronously when flashcopy failed."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2081,10 +2078,9 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual('error', tgt_vol.status)
         self.assertIsNotNone(tgt_vol.metadata.get('error_msg'))
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     def test_wait_flashcopy_when_async_clone_volume_2(
-            self, mock_get_flashcopy, mock_sleep):
+            self, mock_get_flashcopy):
         """clone volume asynchronously when flashcopy successed."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2104,9 +2100,8 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual('available', tgt_lun.status)
         self.assertEqual('success', tgt_vol.metadata['flashcopy'])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_create_cloned_volume(self, mock_get_flashcopy, mock_sleep):
+    def test_create_cloned_volume(self, mock_get_flashcopy):
         """clone the volume successfully."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2126,11 +2121,10 @@ class DS8KProxyTest(test.TestCase):
             TEST_VOLUME_ID,
             ast.literal_eval(volume_update['provider_location'])['vol_hex_id'])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     @mock.patch.object(helper.DS8KCommonHelper, 'change_lun')
     def test_create_cloned_volume2(self, mock_change_lun,
-                                   mock_get_flashcopy, mock_sleep):
+                                   mock_get_flashcopy):
         """clone from source volume to a bigger target volume."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2187,12 +2181,11 @@ class DS8KProxyTest(test.TestCase):
         self.assertRaises(restclient.APIException,
                           self.driver.create_cloned_volume, tgt_vol, src_vol)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     @mock.patch.object(helper.DS8KCommonHelper, 'lun_exists')
     @mock.patch.object(helper.DS8KCommonHelper, 'create_lun')
     def test_create_cloned_volume5(self, mock_create_lun, mock_lun_exists,
-                                   mock_get_flashcopy, mock_sleep):
+                                   mock_get_flashcopy):
         """clone a volume when target has volume ID but it is nonexistent."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2213,9 +2206,8 @@ class DS8KProxyTest(test.TestCase):
         self.driver.create_cloned_volume(tgt_vol, src_vol)
         self.assertTrue(mock_create_lun.called)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_create_volume_from_snapshot(self, mock_get_flashcopy, mock_sleep):
+    def test_create_volume_from_snapshot(self, mock_get_flashcopy):
         """create volume from snapshot."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2247,8 +2239,7 @@ class DS8KProxyTest(test.TestCase):
                                      provider_location=location)
         self.driver.extend_volume(volume, 2)
 
-    @mock.patch.object(eventlet, 'sleep')
-    def test_extend_replicated_volume(self, mock_sleep):
+    def test_extend_replicated_volume(self):
         """extend replicated volume."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2283,9 +2274,8 @@ class DS8KProxyTest(test.TestCase):
         self.assertRaises(exception.CinderException,
                           self.driver.extend_volume, volume, 2)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_create_snapshot(self, mock_get_flashcopy, mock_sleep):
+    def test_create_snapshot(self, mock_get_flashcopy):
         """test a successful creation of snapshot."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2302,9 +2292,8 @@ class DS8KProxyTest(test.TestCase):
         location = ast.literal_eval(snapshot_update['provider_location'])
         self.assertEqual(TEST_VOLUME_ID, location['vol_hex_id'])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_retype_from_thick_to_thin(self, mock_get_flashcopy, mock_sleep):
+    def test_retype_from_thick_to_thin(self, mock_get_flashcopy):
         """retype from thick-provision to thin-provision."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2328,9 +2317,8 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, volume, new_type, diff, host)
         self.assertTrue(retyped)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_retype_from_thin_to_thick(self, mock_get_flashcopy, mock_sleep):
+    def test_retype_from_thin_to_thick(self, mock_get_flashcopy):
         """retype from thin-provision to thick-provision."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2354,8 +2342,7 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, volume, new_type, diff, host)
         self.assertTrue(retyped)
 
-    @mock.patch.object(eventlet, 'sleep')
-    def test_retype_from_unreplicated_to_replicated(self, mock_sleep):
+    def test_retype_from_unreplicated_to_replicated(self):
         """retype from unreplicated to replicated."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2386,8 +2373,7 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, volume, new_type, diff, host)
         self.assertTrue(retyped)
 
-    @mock.patch.object(eventlet, 'sleep')
-    def test_retype_from_replicated_to_unreplicated(self, mock_sleep):
+    def test_retype_from_replicated_to_unreplicated(self):
         """retype from replicated to unreplicated."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2418,10 +2404,9 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, volume, new_type, diff, host)
         self.assertTrue(retyped)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_retype_from_thin_to_thick_and_replicated(self, mock_get_flashcopy,
-                                                      mock_sleep):
+    def test_retype_from_thin_to_thick_and_replicated(self,
+                                                      mock_get_flashcopy):
         """retype from thin-provision to thick-provision and replicated."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2448,10 +2433,8 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, volume, new_type, diff, host)
         self.assertTrue(retyped)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_retype_thin_replicated_vol_to_thick_vol(self, mock_get_flashcopy,
-                                                     mock_sleep):
+    def test_retype_thin_replicated_vol_to_thick_vol(self, mock_get_flashcopy):
         """retype from thin-provision and replicated to thick-provision."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2483,8 +2466,7 @@ class DS8KProxyTest(test.TestCase):
         self.assertTrue(retyped)
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    @mock.patch.object(eventlet, 'sleep')
-    def test_retype_replicated_volume_from_thin_to_thick(self, mock_sleep,
+    def test_retype_replicated_volume_from_thin_to_thick(self,
                                                          mock_get_flashcopy):
         """retype replicated volume from thin-provision to thick-provision."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
@@ -2518,9 +2500,8 @@ class DS8KProxyTest(test.TestCase):
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_lun_pool')
-    @mock.patch.object(eventlet, 'sleep')
     def test_retype_thin_vol_to_thick_vol_in_specific_area(
-            self, mock_sleep, mock_get_lun_pool, mock_get_flashcopy):
+            self, mock_get_lun_pool, mock_get_flashcopy):
         """retype thin volume to thick volume located in specific area."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -2553,9 +2534,8 @@ class DS8KProxyTest(test.TestCase):
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_lun_pool')
-    @mock.patch.object(eventlet, 'sleep')
     def test_retype_replicated_vol_to_vol_in_specific_area(
-            self, mock_sleep, mock_get_lun_pool, mock_get_flashcopy):
+            self, mock_get_lun_pool, mock_get_flashcopy):
         """retype replicated volume to a specific area."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -2784,8 +2764,7 @@ class DS8KProxyTest(test.TestCase):
         self.assertTrue(moved)
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    @mock.patch.object(eventlet, 'sleep')
-    def test_migrate_and_try_pools_in_opposite_rank(self, mock_sleep,
+    def test_migrate_and_try_pools_in_opposite_rank(self,
                                                     mock_get_flashcopy):
         """migrate volume and try pool in opposite rank."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3424,14 +3403,12 @@ class DS8KProxyTest(test.TestCase):
                           self.driver.update_group,
                           self.ctxt, group, [volume], [])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
     @mock.patch.object(helper.DS8KCommonHelper, 'lun_exists')
     def test_update_generic_group_when_enable_cg(self, mock_lun_exists,
                                                  mock_create_lun,
-                                                 mock_get_flashcopy,
-                                                 mock_sleep):
+                                                 mock_get_flashcopy):
         """update group, but volume is not in LSS which belongs to group."""
         self.configuration.lss_range_for_cg = '20-23'
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3458,14 +3435,12 @@ class DS8KProxyTest(test.TestCase):
         location = ast.literal_eval(add_volumes_update[0]['provider_location'])
         self.assertEqual('2200', location['vol_hex_id'])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
     @mock.patch.object(helper.DS8KCommonHelper, 'lun_exists')
     def test_update_generic_group_when_enable_cg2(self, mock_lun_exists,
                                                   mock_create_lun,
-                                                  mock_get_flashcopy,
-                                                  mock_sleep):
+                                                  mock_get_flashcopy):
         """add replicated volume into group."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.configuration.lss_range_for_cg = '20-23'
@@ -3515,11 +3490,10 @@ class DS8KProxyTest(test.TestCase):
                           self.driver.delete_group,
                           self.ctxt, group, [volume])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
     def test_create_consistency_group_snapshot_sucessfully(
-            self, mock_create_lun, mock_get_flashcopy, mock_sleep):
+            self, mock_create_lun, mock_get_flashcopy):
         """test a successful consistency group snapshot creation."""
         self.configuration.lss_range_for_cg = '20-23'
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3551,10 +3525,9 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual('available', snapshots_model_update[0]['status'])
         self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     def test_create_consistency_group_snapshot_not_in_lss_range_for_cg(
-            self, mock_get_flashcopy, mock_sleep):
+            self, mock_get_flashcopy):
         """test a successful consistency group snapshot creation."""
         self.configuration.lss_range_for_cg = '20-23'
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3644,11 +3617,10 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual(fields.GroupSnapshotStatus.ERROR_DELETING,
                          model_update['status'])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     def test_create_consisgroup_from_consisgroup(self, mock_get_flashcopy,
-                                                 mock_create_lun, mock_sleep):
+                                                 mock_create_lun):
         """test creation of consistency group from consistency group."""
         self.configuration.lss_range_for_cg = '20-23'
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3677,11 +3649,10 @@ class DS8KProxyTest(test.TestCase):
                          volumes_model_update[0]['metadata']['vol_hex_id'])
         self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, '_create_lun')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     def test_create_consisgroup_from_cgsnapshot(self, mock_get_flashcopy,
-                                                mock_create_lun, mock_sleep):
+                                                mock_create_lun):
         """test creation of consistency group from cgsnapshot."""
         self.configuration.lss_range_for_cg = '20-23'
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3717,10 +3688,8 @@ class DS8KProxyTest(test.TestCase):
             '2200', volumes_model_update[0]['metadata']['vol_hex_id'])
         self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_create_group_from_replication_group(self, mock_get_flashcopy,
-                                                 mock_sleep):
+    def test_create_group_from_replication_group(self, mock_get_flashcopy):
         """create group from replication group."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3754,9 +3723,8 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
-    def test_failover_host_successfully(self, mock_get_pprc_pairs, mock_sleep):
+    def test_failover_host_successfully(self, mock_get_pprc_pairs):
         """Failover host to valid secondary successfully."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3780,9 +3748,8 @@ class DS8KProxyTest(test.TestCase):
             self.ctxt, [volume], TEST_TARGET_DS8K_IP, [])
         self.assertEqual(TEST_TARGET_DS8K_IP, secondary_id)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
-    def test_failover_host_with_group(self, mock_get_pprc_pairs, mock_sleep):
+    def test_failover_host_with_group(self, mock_get_pprc_pairs):
         """Failover host with group."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3824,10 +3791,8 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
                          group_update['updates']['replication_status'])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
-    def test_failover_host_with_group_failed_over(self, mock_get_pprc_pairs,
-                                                  mock_sleep):
+    def test_failover_host_with_group_failed_over(self, mock_get_pprc_pairs):
         """Failover host with group that has been failed over."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -3947,9 +3912,8 @@ class DS8KProxyTest(test.TestCase):
         self.assertIsNone(secondary_id)
         self.assertEqual([], volume_update_list)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
-    def test_failback_host_successfully(self, mock_get_pprc_pairs, mock_sleep):
+    def test_failback_host_successfully(self, mock_get_pprc_pairs):
         """Failback host to primary successfully."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -4226,10 +4190,8 @@ class DS8KProxyTest(test.TestCase):
                           self.driver.disable_replication,
                           self.ctxt, group, [volume])
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
-    def test_failover_group_successfully(self, mock_get_pprc_pairs,
-                                         mock_sleep):
+    def test_failover_group_successfully(self, mock_get_pprc_pairs):
         """Failover group to valid secondary successfully."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -4387,12 +4349,10 @@ class DS8KProxyTest(test.TestCase):
         self.assertEqual({}, model_update)
         self.assertEqual([], volume_update_list)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
     @mock.patch.object(replication.MetroMirrorManager, 'do_pprc_failback')
     def test_start_group_pprc_failover(self, mock_do_pprc_failback,
-                                       mock_get_pprc_pairs,
-                                       mock_sleep):
+                                       mock_get_pprc_pairs):
         """group failover should not invoke do_pprc_failback."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -4426,9 +4386,8 @@ class DS8KProxyTest(test.TestCase):
                                          TEST_TARGET_DS8K_IP)
         self.assertFalse(mock_do_pprc_failback.called)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_pprc_pairs')
-    def test_start_group_pprc_failback(self, mock_get_pprc_pairs, mock_sleep):
+    def test_start_group_pprc_failback(self, mock_get_pprc_pairs):
         """Failback group should invoke pprc failback."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -4477,9 +4436,8 @@ class DS8KProxyTest(test.TestCase):
         exp_vol_name = helper.filter_alnum(vol_name)[:16]
         self.assertEqual(lun.ds_name, exp_vol_name)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_create_snapshot_with_tmpt(self, mock_get_flashcopy, mock_sleep):
+    def test_create_snapshot_with_tmpt(self, mock_get_flashcopy):
         """test a successful creation of snapshot."""
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
@@ -4498,8 +4456,7 @@ class DS8KProxyTest(test.TestCase):
         exp_snap_name = helper.filter_alnum(snapshot.name)[:16]
         self.assertIn(lun.ds_name, exp_snap_name)
 
-    @mock.patch.object(eventlet, 'sleep')
-    def test_create_fb_replicated_volume_with_tmpt(self, mock_sleep):
+    def test_create_fb_replicated_volume_with_tmpt(self):
         """create FB volume when enable replication."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -4513,10 +4470,8 @@ class DS8KProxyTest(test.TestCase):
         exp_repl_name = helper.filter_alnum(volume.name)[:16]
         self.assertEqual(lun.replica_ds_name, exp_repl_name)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_revert_to_snapshot_normal_vol(self, mock_get_flashcopy,
-                                           mock_sleep):
+    def test_revert_to_snapshot_normal_vol(self, mock_get_flashcopy):
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
         self.driver.setup(self.ctxt)
@@ -4531,10 +4486,8 @@ class DS8KProxyTest(test.TestCase):
 
         self.driver.revert_to_snapshot(self.ctxt, volume, snapshot)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_revert_to_snapshot_replication_vol(self, mock_get_flashcopy,
-                                                mock_sleep):
+    def test_revert_to_snapshot_replication_vol(self, mock_get_flashcopy):
         """test a successful creation of snapshot."""
         self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
@@ -4555,10 +4508,8 @@ class DS8KProxyTest(test.TestCase):
                           self.driver.revert_to_snapshot,
                           self.ctxt, volume, snapshot)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_revert_to_snapshot_tar_vol_is_in_fc(self, mock_get_flashcopy,
-                                                 mock_sleep):
+    def test_revert_to_snapshot_tar_vol_is_in_fc(self, mock_get_flashcopy):
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
         self.driver.setup(self.ctxt)
@@ -4575,10 +4526,8 @@ class DS8KProxyTest(test.TestCase):
                           self.driver.revert_to_snapshot,
                           self.ctxt, volume, snapshot)
 
-    @mock.patch.object(eventlet, 'sleep')
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
-    def test_revert_to_snapshot_with_diff_size(self, mock_get_flashcopy,
-                                               mock_sleep):
+    def test_revert_to_snapshot_with_diff_size(self, mock_get_flashcopy):
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
         self.driver.setup(self.ctxt)

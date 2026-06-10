@@ -20,7 +20,6 @@ import re
 import time
 import unicodedata
 
-from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -176,7 +175,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         # InStorage has the limitation that can not burst more than 3 new ssh
         # connections within 1 second. So slow down the initialization.
         # however, this maybe removed later.
-        greenthread.sleep(1)
+        time.sleep(1)
 
         # Update the instorage state
         self._update_instorage_state()
@@ -358,7 +357,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                     except Exception as e:
                         LOG.exception('Error has occurred')
                         last_exception = e
-                        greenthread.sleep(self.DEFAULT_GR_SLEEP)
+                        time.sleep(self.DEFAULT_GR_SLEEP)
                     try:
                         raise processutils.ProcessExecutionError(
                             exit_code=last_exception.exit_code,
@@ -2506,7 +2505,7 @@ class InStorageAssistant(object):
                           'attr': mapping_attrs})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            greenthread.sleep(self.WAIT_TIME)
+            time.sleep(self.WAIT_TIME)
 
         if not mapping_ready:
             msg = (_('Mapping %(id)s prepare failed to complete within the '

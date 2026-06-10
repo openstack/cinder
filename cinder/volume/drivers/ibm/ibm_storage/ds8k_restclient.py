@@ -16,9 +16,9 @@
 import abc
 import importlib
 import json
+import time
 import urllib
 
-import eventlet
 import requests
 from requests import exceptions as req_exception
 
@@ -215,7 +215,7 @@ class RESTScheduler(object):
                 {'username': self.user, 'password': self.passw},
                 timeout=60)
         except Exception:
-            eventlet.sleep(2)
+            time.sleep(2)
             response = self.send(
                 'POST', '/tokens',
                 {'username': self.user, 'password': self.passw},
@@ -304,7 +304,7 @@ class RESTScheduler(object):
                                 "(%(url)s).")
                               % {'err': response['server']['message'],
                                  'url': url}))
-                eventlet.sleep(2)
+                time.sleep(2)
             else:
                 return response
 

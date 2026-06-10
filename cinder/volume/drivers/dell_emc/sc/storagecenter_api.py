@@ -16,9 +16,9 @@
 import http.client as http_client
 import json
 import os.path
+import time
 import uuid
 
-import eventlet
 from oslo_log import log as logging
 from oslo_utils import excutils
 import requests
@@ -197,7 +197,7 @@ class HttpClient(object):
                         content = r.json()
                         if content.get('objectType') == 'AsyncTask':
                             url = self._get_async_url(content)
-                            eventlet.sleep(1)
+                            time.sleep(1)
                             continue
                     else:
                         LOG.debug('Async debug: r.content is None')
@@ -2358,7 +2358,7 @@ class SCApi(object):
                 return True
             else:
                 waitforreplaymarkerloops -= 1
-            eventlet.sleep(sleep)
+            time.sleep(sleep)
         return False
 
     def create_cloned_volume(self, volumename, scvolume, storage_profile,

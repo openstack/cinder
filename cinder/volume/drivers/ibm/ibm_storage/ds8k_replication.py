@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-import eventlet
+import time
+
 from oslo_log import log as logging
 from oslo_utils import excutils
 
@@ -259,7 +260,7 @@ class MetroMirrorManager(object):
         # check the state of the pprc path
         LOG.debug("Checking the state of the new PPRC path.")
         for retry in range(4):
-            eventlet.sleep(2)
+            time.sleep(2)
             if self._is_pprc_paths_healthy(pid, switch) == PPRC_PATH_HEALTHY:
                 break
             if retry == 3:

@@ -17,7 +17,6 @@ from unittest import mock
 import uuid
 
 import ddt
-import eventlet
 import requests
 from requests import models
 
@@ -25,6 +24,7 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder.volume.drivers.dell_emc.sc import storagecenter_api
 
 
@@ -5373,10 +5373,11 @@ class DellSCSanAPITestCase(test.TestCase):
                        'get')
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay')
-    @mock.patch.object(eventlet, 'sleep')
+    @mock.patch.object(storagecenter_api, 'time',
+                       new_callable=test_utils.time_module_mock)
     def test__wait_for_cmm_timeout(
             self,
-            mock_sleep,
+            mock_time,
             mock_find_replay,
             mock_get,
             mock_close_connection,
@@ -5390,7 +5391,7 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_find_replay.return_value = None
         ret = self.scapi._wait_for_cmm(cmm, scvolume, replayid)
         self.assertFalse(ret)
-        self.assertEqual(21, mock_sleep.call_count)
+        self.assertEqual(21, mock_time.sleep.call_count)
 
     @mock.patch.object(storagecenter_api.SCApi,
                        'create_volume')
