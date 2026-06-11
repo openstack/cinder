@@ -21,7 +21,7 @@ from cinder.i18n import _
 
 CONF = cfg.CONF
 
-# NOTE(ZhengMa): The order of the option is improtant, accelerators
+# NOTE(ZhengMa): The order of the option is important, accelerators
 # are looked by this list order
 # Be careful to edit it
 _ACCEL_PATH_PREFERENCE_ORDER_LIST = [
