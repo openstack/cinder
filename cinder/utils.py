@@ -802,7 +802,6 @@ def create_ordereddict(adict: dict) -> OrderedDict:
 
 class Semaphore(object):
     """Custom semaphore to workaround eventlet issues with multiprocessing."""
-    # TODO (eventlet-removal) : replace with threading.Semaphore implementation
     def __init__(self, limit):
         self.limit = limit
         self.semaphore = multiprocessing.Semaphore(limit)
