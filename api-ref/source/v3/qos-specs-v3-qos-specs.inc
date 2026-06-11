@@ -96,7 +96,7 @@ Response
 .. rest_parameters:: parameters.yaml
 
    - qos_associations: qos_associations
-   - type: qos_association_type
+   - association_type: qos_association_type
    - id: qos_association_id
    - name: qos_association_name
 
@@ -104,7 +104,7 @@ Response
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/qos/qos_show_response.json
+.. literalinclude:: ./samples/qos/qos-associations-response.json
    :language: javascript
 
 

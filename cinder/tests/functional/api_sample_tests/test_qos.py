@@ -42,8 +42,16 @@ class QOSSampleJsonTest(test_base.VolumesSampleBase):
 
     def test_qos_show_associations(self):
         res = jsonutils.loads(self.response.content)['qos_specs']
+        vol_type_body = jsonutils.dumps(
+            {'volume_type': {'name': 'reliability-type'}}
+        )
+        vol_type_resp = self._get_response('types', 'POST', vol_type_body)
+        vol_type = jsonutils.loads(vol_type_resp.content)['volume_type']
+        self._do_get(
+            'qos-specs/%s/associate?vol_type_id=%s' % (
+                res['id'], vol_type['id']))
         response = self._do_get('qos-specs/%s/associations' % res['id'])
-        self._verify_response('qos_show_response', {}, response, 200)
+        self._verify_response('qos-associations-response', {}, response, 200)
 
     def test_qos_disassociate_all(self):
         res = jsonutils.loads(self.response.content)['qos_specs']

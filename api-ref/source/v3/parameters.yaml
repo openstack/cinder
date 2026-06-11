@@ -2720,7 +2720,7 @@ provider_req_optional:  # optional request parameter (update)
   type: string
 qos_association_id:
   description: |
-    The Qos association ID.
+    The QoS association ID.
   in: body
   required: true
   type: string

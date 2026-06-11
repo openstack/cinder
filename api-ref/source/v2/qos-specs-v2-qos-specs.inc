@@ -22,7 +22,7 @@ Response codes
 
 .. rest_status_code:: success ../status.yaml
 
-   - 200
+   - 202
 
 
 Request
@@ -46,7 +46,7 @@ Response codes
 
 .. rest_status_code:: success ../status.yaml
 
-   - 200
+   - 202
 
 
 Request
@@ -97,10 +97,21 @@ Request
    - qos_id: qos_id
 
 
+Response
+--------
+
+.. rest_parameters:: parameters.yaml
+
+   - qos_associations: qos_associations
+   - association_type: qos_association_type
+   - id: qos_association_id
+   - name: qos_association_name
+
+
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/qos-show-response.json
+.. literalinclude:: ./samples/qos-associations-response.json
    :language: javascript
 
 
@@ -116,7 +127,7 @@ Response codes
 
 .. rest_status_code:: success ../status.yaml
 
-   - 200
+   - 202
 
 
 Request
@@ -126,7 +137,7 @@ Request
 
    - project_id: project_id_path
    - qos_id: qos_id
-   - vol_type_id: vol_type_id
+   - vol_type_id: vol_type_id_query
 
 
 Disassociate QoS specification from volume type
@@ -141,7 +152,7 @@ Response codes
 
 .. rest_status_code:: success ../status.yaml
 
-   - 200
+   - 202
 
 
 Request
@@ -151,7 +162,7 @@ Request
 
    - project_id: project_id_path
    - qos_id: qos_id
-   - vol_type_id: vol_type_id
+   - vol_type_id: vol_type_id_query
 
 
 Show QoS specification details
@@ -267,7 +278,7 @@ Request
 
    - project_id: project_id_path
    - qos_id: qos_id
-   - force: force
+   - force: force_del_qos
 
 
 Create QoS specification
