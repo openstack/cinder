@@ -22,7 +22,7 @@ repos:
       - id: remove-tabs
         exclude: '.*\.(svg)$'
   - repo: https://opendev.org/openstack/hacking
-    rev: 8.0.0
+    rev: 8.1.0
     hooks:
       - id: hacking
         additional_dependencies: ["flake8-import-order~=0.19.2"]
