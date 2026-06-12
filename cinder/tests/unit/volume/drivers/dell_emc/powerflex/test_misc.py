@@ -88,6 +88,19 @@ class TestMisc(powerflex.TestPowerFlexDriver):
                     'name': self.PROT_DOMAIN_NAME,
                     'id': self.PROT_DOMAIN_ID
                 },
+                'types/Domain/instances/getByName::t': '"mock-domain-id"',
+                'types/Domain/instances/getByName::{}'.
+                format("t"): '"mock-domain-id"',
+                'instances/ProtectionDomain::mock-domain-id': {
+                    'id': 'mock-domain-id',
+                    'name': 't'
+                },
+                'types/ProtectionDomain/instances/action/queryBySelectedIds': [
+                    {
+                        'id': self.PROT_DOMAIN_ID,
+                        'genType': 'EC'  # genType you want to simulate
+                    }
+                ]
             },
             self.RESPONSE_MODE.BadStatus: {
                 'types/Domain/instances/getByName::' +
@@ -344,3 +357,110 @@ class TestMisc(powerflex.TestPowerFlexDriver):
             self.assertEqual(130, stats['total_capacity_gb'])
             self.assertEqual(97, stats['free_capacity_gb'])
             self.assertEqual(137, stats['provisioned_capacity_gb'])
+
+    @mock.patch(
+        'cinder.volume.drivers.dell_emc.powerflex.utils.convert_bytes_to_gib')
+    @mock.patch('cinder.volume.drivers.dell_emc.powerflex.rest_client.'
+                'RestClient.execute_powerflex_post_request')
+    @mock.patch('cinder.volume.drivers.dell_emc.powerflex.'
+                'driver.PowerFlexDriver._get_client')
+    def test_get_ec_queryable_statistics(self,
+                                         mock_get_client,
+                                         mock_execute_post,
+                                         mock_convert_bytes_to_gib):
+        # Arrange
+        pool_id = 'pool123'
+        pool_name = 'TestPool'
+
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+        mock_client.execute_powerflex_post_request = mock_execute_post
+
+        mock_response = {
+            "metadata": {},
+            "links": [],
+            "fields": [],
+            "resources": [
+                {
+                    "metrics": [
+                        {"name": "physical_total", "values": [107374182400]},
+                        {"name": "physical_free", "values": [53687091200]},
+                        {"name": "logical_provisioned",
+                         "values": [214748364800]},
+                    ]
+                }
+            ]
+        }
+
+        mock_convert_bytes_to_gib.side_effect = lambda x: x // (1024 ** 3)
+        mock_execute_post.return_value = (
+            mock.Mock(status_code=200),
+            mock_response
+        )
+        # Act
+        total, free, provisioned = self.driver._get_ec_queryable_statistics(
+            pool_id, pool_name)
+        # Assert
+        self.assertEqual(total, 100)
+        self.assertEqual(free, 50)
+        self.assertEqual(provisioned, 200)
+
+    @mock.patch('cinder.volume.drivers.dell_emc.'
+                'powerflex.driver.PowerFlexDriver._get_client')
+    def test_extend_volume_non_replicated_ec_disabled(self, mock_get_client):
+        volume = mock.Mock()
+        volume.id = "vol-123"
+        volume.size = 8
+        volume.provider_id = "provider-123"
+        volume.is_replicated.return_value = False
+        new_size = 16
+        mock_client = mock.Mock()
+        mock_client.check_powerflex_ec_version.return_value = False
+        mock_get_client.return_value = mock_client
+        self.driver.extend_volume(volume, new_size)
+        mock_client.extend_volume.assert_called_once_with("provider-123",
+                                                          new_size)
+
+    @mock.patch('cinder.volume.drivers.dell_emc.'
+                'powerflex.driver.PowerFlexDriver._get_client')
+    def test_extend_volume_same_size_ec_enabled(self,
+                                                mock_get_client):
+        volume = mock.Mock()
+        volume.id = "vol-123"
+        volume.size = 8
+        volume.provider_id = "provider-123"
+        volume.is_replicated.return_value = False
+        new_size = 8
+        mock_client = mock.Mock()
+        mock_client.check_powerflex_ec_version.return_value = True
+        mock_get_client.return_value = mock_client
+        self.driver.extend_volume(volume, new_size)
+        mock_client.extend_volume.assert_not_called()
+
+    @mock.patch('cinder.volume.drivers.dell_emc.'
+                'powerflex.driver.PowerFlexDriver._get_client')
+    def test_extend_volume_replicated(self, mock_get_client):
+        volume = mock.Mock()
+        volume.id = "vol-123"
+        volume.size = 8
+        volume.provider_id = "provider-123"
+        volume.is_replicated.return_value = True
+        new_size = 16
+        local_client = mock.Mock()
+        secondary_client = mock.Mock()
+
+        def get_client_side_effect(secondary=False):
+            return secondary_client if secondary else local_client
+
+        mock_get_client.side_effect = get_client_side_effect
+        local_client.check_powerflex_ec_version.return_value = False
+        local_client.get_volumes_pair_attrs.return_value = (
+            "pair_id", "remote_pair_id", "vol_id", "remote_vol_id"
+        )
+
+        self.driver.extend_volume(volume, new_size)
+
+        secondary_client.extend_volume.assert_called_once_with(
+            "remote_vol_id", new_size)
+        local_client.extend_volume.assert_called_once_with(
+            "provider-123", new_size)

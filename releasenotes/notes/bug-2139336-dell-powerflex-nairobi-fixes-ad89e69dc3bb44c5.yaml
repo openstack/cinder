@@ -1,0 +1,28 @@
+---
+fixes:
+  - |
+    Dell PowerFlex Driver `Bug #2139336
+    <https://bugs.launchpad.net/cinder/+bug/2139336>`_: Fixed
+    PowerFlex 5.0 issues pertaining to driver
+    initialization, volume creation, snapshot operations,
+    source‑based provisioning, backup handling.
+  - |
+    PowerFlex 5.0 no longer requires volume sizes
+    to be in 8 GB multiples. Previous versions (< 5.0) had this
+    hard requirement, but it has been relaxed in v5.
+upgrade:
+  - |
+    PowerFlex 5.0 (EC generation) is not backward compatible with
+    PowerFlex 4.x (Mirroring generation). In-place upgrade from
+    v4.x to v5.0 is not supported.
+features:
+  - |
+    The PowerFlex driver now detects the system's generation type
+    (genType) to enable EC-specific optimizations. Valid values
+    are EC (Erasure Coding) and Mirroring. PowerFlex v4.x
+    systems do not return a genType field in API responses
+    and are based on Mirroring architecture; the driver
+    defaults to Mirroring for these systems. PowerFlex v5.0+
+    systems return genType explicitly. Note that in-place
+    upgrades from v4.x to v5.0 are not supported due to
+    architectural differences (Mirroring vs. EC).

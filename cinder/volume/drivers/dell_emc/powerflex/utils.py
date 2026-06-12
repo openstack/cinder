@@ -33,6 +33,10 @@ def convert_kb_to_gib(size):
     return int(math.floor(float(size) / units.Mi))
 
 
+def convert_bytes_to_gib(size):
+    return int(math.floor(float(size) / units.Gi))
+
+
 def id_to_base64(_id):
     # Base64 encode the id to get a volume name less than 32 characters due
     # to PowerFlex limitation.

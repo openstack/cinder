@@ -51,6 +51,8 @@ class TestReplication(powerflex.TestPowerFlexDriver):
                     {'id': self.PROT_DOMAIN_ID},
                 'instances/StoragePool::{}'.format(self.STORAGE_POOL_ID):
                     {'id': self.STORAGE_POOL_ID, 'zeroPaddingEnabled': True},
+                'types/ProtectionDomain/instances/action/queryBySelectedIds': [
+                    {'id': self.PROT_DOMAIN_ID, 'genType': 'EC'}]
             },
         }
 

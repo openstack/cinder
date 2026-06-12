@@ -35,7 +35,10 @@ class TestCreateVolume(powerflex.TestPowerFlexDriver):
         super(TestCreateVolume, self).setUp()
         ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
-        self.volume = fake_volume.fake_volume_obj(ctx)
+        self.volume = fake_volume.fake_volume_obj(
+            ctx,
+            expected_attrs=['metadata', 'admin_metadata',
+                            'volume_attachment', 'glance_metadata'])
         host = 'host@backend#{}:{}'.format(
             self.PROT_DOMAIN_NAME,
             self.STORAGE_POOL_NAME)

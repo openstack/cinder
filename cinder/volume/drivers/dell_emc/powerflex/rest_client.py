@@ -65,6 +65,8 @@ class RestClient(object):
         self.is_configured = False
         self.rest_api_connect_timeout = 30
         self.rest_api_read_timeout = 30
+        self.powerflex_gen_type = None
+        self.base_ec_url = None
 
     @staticmethod
     def _get_headers():
@@ -123,6 +125,11 @@ class RestClient(object):
                              "server_ip": self.rest_ip,
                              "server_port": self.rest_port
                          })
+        self.base_ec_url = ("https://%(server_ip)s:%(server_port)s/dtapi" %
+                            {
+                                "server_ip": self.rest_ip,
+                                "server_port": self.rest_port
+                            })
         LOG.info("REST server IP: %(ip)s, port: %(port)s, "
                  "username: %(user)s, rest connect timeout: "
                  "%(rest_api_connect_timeout)s, rest read timeout: "
@@ -242,6 +249,8 @@ class RestClient(object):
             "volumeSizeInKb": str(volume_size_kb),
             "compressionMethod": compression,
         }
+        if self.check_powerflex_ec_version():
+            params.pop('compressionMethod')
         r, response = self.execute_powerflex_post_request(url, params)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed to create volume: %s.") % response["message"])
@@ -249,9 +258,13 @@ class RestClient(object):
             raise exception.VolumeBackendAPIException(data=msg)
         return response["id"]
 
-    def snapshot_volume(self, volume_provider_id, snapshot_id):
+    def snapshot_volume(self, volume_provider_id, snapshot_id,
+                        from_source=False):
         url = "/instances/System/action/snapshotVolumes"
-
+        if self.check_powerflex_ec_version():
+            url = '/instances/System/action/createSnapshot'
+            if from_source:
+                url = '/instances/System/action/createThinClone'
         snap_name = flex_utils.id_to_base64(snapshot_id)
         params = {
             "snapshotDefs": [
@@ -524,12 +537,15 @@ class RestClient(object):
                         'message': msg}
         return r, response
 
-    def execute_powerflex_post_request(self, url, params=None, **url_params):
+    def execute_powerflex_post_request(self, url, params=None,
+                                       ec_request=False, **url_params):
         r = requests.Response
         try:
             if not params:
                 params = {}
             request = self.base_url + url % url_params
+            if ec_request:
+                request = self.base_ec_url + url % url_params
             timeout = (self.rest_api_connect_timeout,
                        self.rest_api_read_timeout)
             r = requests.post(request,
@@ -577,7 +593,8 @@ class RestClient(object):
         round_volume_capacity = (
             self.configuration.powerflex_round_volume_capacity
         )
-        if not round_volume_capacity and not new_size % 8 == 0:
+        if (not self.check_powerflex_ec_version()
+                and not round_volume_capacity and not new_size % 8 == 0):
             LOG.warning("PowerFlex only supports volumes with a granularity "
                         "of 8 GBs. The new volume size is: %d.",
                         new_size)
@@ -919,3 +936,35 @@ class RestClient(object):
     """
        END - Methods for NVMe-TCP support
     """
+
+    def init_powerflex_gen_type(self, domain_name):
+        """Initialize the PowerFlex generation type for the system.
+
+        Queries the protection domain to determine whether the PowerFlex
+        system is an EC (Erasure Coding) or Mirroring generation. The result
+        is stored in self.powerflex_gen_type and used by
+        check_powerflex_ec_version() to control behavior differences across
+        volume creation, extension, statistics gathering, and snapshot APIs.
+
+        :param domain_name: protection domain name
+        :return: generation type string (e.g., 'Mirroring' or 'EC')
+        """
+
+        domain_id = self._get_protection_domain_id(domain_name)
+        url = "/types/ProtectionDomain/instances/action/queryBySelectedIds"
+        params = {"ids": [domain_id]}
+        r, response = self.execute_powerflex_post_request(url, params)
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query gen type of powerflex with "
+                     "protection domain id %s.") % domain_id)
+            raise exception.VolumeBackendAPIException(data=msg)
+        if not response:
+            msg = (_("No protection domain data returned for "
+                     "domain id %s.") % domain_id)
+            raise exception.VolumeBackendAPIException(data=msg)
+        self.powerflex_gen_type = response[0].get('genType', 'Mirroring')
+        return self.powerflex_gen_type
+
+    def check_powerflex_ec_version(self):
+        return (self.powerflex_gen_type is not None and
+                self.powerflex_gen_type.lower() == "ec")
