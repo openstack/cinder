@@ -17,13 +17,7 @@
 from oslo_versionedobjects import fields
 
 
-BaseEnumField = fields.BaseEnumField
-Enum = fields.Enum
-Field = fields.Field
-FieldType = fields.FieldType
-
-
-class BaseCinderEnum(Enum):
+class BaseCinderEnum(fields.Enum):
     def __init__(self):
         super(BaseCinderEnum, self).__init__(valid_values=self.__class__.ALL)
 
@@ -41,7 +35,7 @@ class BackupStatus(BaseCinderEnum):
            RESTORING)
 
 
-class BackupStatusField(BaseEnumField):
+class BackupStatusField(fields.BaseEnumField):
     AUTO_TYPE = BackupStatus()
 
 
@@ -58,7 +52,7 @@ class ConsistencyGroupStatus(BaseCinderEnum):
            UPDATING, ERROR_DELETING)
 
 
-class ConsistencyGroupStatusField(BaseEnumField):
+class ConsistencyGroupStatusField(fields.BaseEnumField):
     AUTO_TYPE = ConsistencyGroupStatus()
 
 
@@ -76,7 +70,7 @@ class GroupStatus(BaseCinderEnum):
            UPDATING, IN_USE, ERROR_DELETING)
 
 
-class GroupStatusField(BaseEnumField):
+class GroupStatusField(fields.BaseEnumField):
     AUTO_TYPE = GroupStatus()
 
 
@@ -93,7 +87,7 @@ class GroupSnapshotStatus(BaseCinderEnum):
            UPDATING, ERROR_DELETING)
 
 
-class GroupSnapshotStatusField(BaseEnumField):
+class GroupSnapshotStatusField(fields.BaseEnumField):
     AUTO_TYPE = GroupSnapshotStatus()
 
 
@@ -112,7 +106,7 @@ class ReplicationStatus(BaseCinderEnum):
            FAILED_OVER, ENABLING, DISABLING)
 
 
-class ReplicationStatusField(BaseEnumField):
+class ReplicationStatusField(fields.BaseEnumField):
     AUTO_TYPE = ReplicationStatus()
 
 
@@ -132,7 +126,7 @@ class SnapshotStatus(BaseCinderEnum):
            UPDATING, ERROR_DELETING, UNMANAGING, BACKING_UP, RESTORING)
 
 
-class SnapshotStatusField(BaseEnumField):
+class SnapshotStatusField(fields.BaseEnumField):
     AUTO_TYPE = SnapshotStatus()
 
 
@@ -144,7 +138,7 @@ class QoSConsumerValues(BaseCinderEnum):
     ALL = (BACK_END, FRONT_END, BOTH)
 
 
-class QoSConsumerField(BaseEnumField):
+class QoSConsumerField(fields.BaseEnumField):
     AUTO_TYPE = QoSConsumerValues()
 
 
@@ -161,7 +155,7 @@ class VolumeAttachStatus(BaseCinderEnum):
            ERROR_DETACHING, RESERVED, DELETED)
 
 
-class VolumeAttachStatusField(BaseEnumField):
+class VolumeAttachStatusField(fields.BaseEnumField):
     AUTO_TYPE = VolumeAttachStatus()
 
 
@@ -197,7 +191,7 @@ class VolumeStatus(BaseCinderEnum):
            UPLOADING, RETYPING, EXTENDING)
 
 
-class VolumeStatusField(BaseEnumField):
+class VolumeStatusField(fields.BaseEnumField):
     AUTO_TYPE = VolumeStatus()
 
 
@@ -212,7 +206,7 @@ class VolumeMigrationStatus(BaseCinderEnum):
     ALL = (MIGRATING, ERROR, SUCCESS, COMPLETING, NONE, STARTING)
 
 
-class VolumeMigrationStatusField(BaseEnumField):
+class VolumeMigrationStatusField(fields.BaseEnumField):
     AUTO_TYPE = VolumeMigrationStatus()
 
 
