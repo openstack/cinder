@@ -223,6 +223,7 @@ cluster_active_backend_id_query:
   description: |
     Filter the cluster list result by the ID of the active backend.
   in: query
+  min_version: 3.26
   required: false
   type: string
 cluster_binary_query:
@@ -243,6 +244,7 @@ cluster_frozen_query:
   description: |
     Filter the cluster list result by whether it's frozen.
   in: query
+  min_version: 3.26
   required: false
   type: boolean
 cluster_is_up_query:
@@ -274,6 +276,7 @@ cluster_replication_status_query:
     Filter the cluster list result by replication status. One of: ``enabled``,
     ``disabled``.
   in: query
+  min_version: 3.26
   required: false
   type: string
 detail:
@@ -1014,9 +1017,9 @@ cluster_num_hosts:
   type: integer
 cluster_replication_status:
   description: |
-    The cluster replication status. Only included in responses if configured.
-    One of: ``enabled`` or ``disabled``.
+    The cluster replication status. One of: ``enabled`` or ``disabled``.
   in: body
+  min_version: 3.26
   required: false
   type: string
 cluster_state:
