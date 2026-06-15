@@ -17,40 +17,44 @@ cinder
     | code: https://opendev.org/openstack/cinder
     | docs: https://cinder.openstack.org
     | api-ref: https://docs.openstack.org/api-ref/block-storage
-    | Launchpad: https://launchpad.net/cinder
+    | Launchpad bug tracker: https://launchpad.net/cinder
 
 os-brick
     | Shared library for managing local volume attaches.
     | code: https://opendev.org/openstack/os-brick
     | docs: https://docs.openstack.org/os-brick
-    | Launchpad: https://launchpad.net/os-brick
+    | library API reference:
+      https://docs.openstack.org/os-brick/latest/reference/index.html
+    | Launchpad bug tracker: https://launchpad.net/os-brick
 
 python-cinderclient
     | Python client library for the OpenStack Block Storage API; includes
       a CLI shell.
     | code: https://opendev.org/openstack/python-cinderclient
     | docs: https://docs.openstack.org/python-cinderclient
-    | Launchpad: https://launchpad.net/python-cinderclient
+    | Launchpad bug tracker: https://launchpad.net/python-cinderclient
 
 python-brick-cinderclient-ext
     | Extends the python-cinderclient library so that it can handle local
-      volume attaches.
+      volume attachment.
     | code: https://opendev.org/openstack/python-brick-cinderclient-ext
     | docs: https://docs.openstack.org/python-brick-cinderclient-ext
-    | Launchpad: (doesn't have its own space, uses python-cinderclient's)
+    | Launchpad bug tracker: (doesn't have its own space, uses
+      `python-cinderclient's <https://launchpad.net/python-cinderclient>`_)
 
 rbd-iscsi-client
-    | Library that provides a REST client that talks to ceph-isci's
+    | Library that provides a REST client that talks to ceph-iscsi's
       rbd-target-api to export rbd images/volumes to an iSCSI initiator.
     | code: https://opendev.org/openstack/rbd-iscsi-client
     | docs: https://docs.openstack.org/rbd-iscsi-client
-    | Launchpad: https://launchpad.net/rbd-iscsi-client
+    | Launchpad bug tracker: https://launchpad.net/rbd-iscsi-client
 
 cinder-tempest-plugin
     | Contains additional Cinder tempest-based tests beyond those in the
-      main OpenStack Integration Test Suite (tempest).
+      main OpenStack Integration Test Suite (tempest).  The README file
+      in the repo explains how to use the plugin.
     | code: https://opendev.org/openstack/cinder-tempest-plugin
-    | Launchpad: https://launchpad.net/cinder-tempest-plugin
+    | Launchpad bug tracker: https://launchpad.net/cinder-tempest-plugin
 
 See the ``CONTRIBUTING.rst`` file in each code repository for more
 information about contributing to that specific deliverable.  Additionally,
@@ -64,7 +68,7 @@ Communication
 ~~~~~~~~~~~~~
 
 IRC
-    We use IRC *a lot*.  You will, too.  You can find infomation about what
+    We use IRC *a lot*.  You will, too.  You can find information about what
     IRC network OpenStack uses for communication (and tips for using IRC)
     in the `Setup IRC
     <https://docs.openstack.org/contributors/common/irc.html>`_
@@ -77,7 +81,7 @@ IRC
     answered: http://eavesdrop.openstack.org/irclogs/%23openstack-cinder/
 
 weekly meeting
-    Wednesdays at 14:00 UTC in the ``#openstack-meeting-alt`` IRC channel.
+    Wednesdays at 14:00 UTC in the ``#openstack-cinder`` IRC channel.
     Meetings are logged: http://eavesdrop.openstack.org/meetings/cinder/
 
     More information (including some pointers on meeting etiquette and an
@@ -89,10 +93,19 @@ weekly meeting
     Meetings wiki page:
     https://wiki.openstack.org/wiki/CinderMeetings
 
-    The last meeting of each month is held simultaneously in videoconference
+    The last meeting of each month is held simultaneously in video conference
     and IRC.  Connection information is posted on the meeting agenda.
 
     weekly bug squad meeting
+
+        .. note::
+           This meeting is currently inactive, but we are looking for a
+           volunteer to run it.  You won't be expected to triage all the
+           bugs yourself -- you'll get help from the cinder core team
+           (as long as you remind them about the meeting!).  Volunteer in
+           IRC in ``#openstack-cinder`` or during the regular weekly
+           meeting.
+
         This is a half-hour meeting on Wednesdays at 15:00 UTC (right after the
         Cinder weekly meeting) in the ``#openstack-cinder`` IRC channel.  At
         this meeting, led by the Cinder Bug Deputy, we discuss new bugs that
@@ -124,19 +137,24 @@ virtual meet-ups
     roughly one month before the feature freeze.  The exact dates of these are
     announced at the weekly meeting and on the mailing list.
 
-    cinder festival of XS reviews
-        This is a standing video meeting held the third Friday of each month
-        from 14:00-16:00 UTC in meetpad to review very small patches that
-        haven't yet been merged.  It's held in video so we can quickly discuss
-        issues and hand reviews back and forth.  It is not recorded.  Info
-        about the meeting is here:
-        http://eavesdrop.openstack.org/#Cinder_Festival_of_XS_Reviews
+    cinder festival of reviews
+        This is a standing video meeting held the on the first and third
+        Friday of each month from 14:00-16:00 UTC to review very smallish
+        patches that haven't yet been merged.  It's held in video so we can
+        quickly discuss issues and hand reviews back and forth.  It is not
+        recorded.  Info about the meeting (including how to connect) is here:
+        http://eavesdrop.openstack.org/#Cinder_Festival_of_Reviews
 
 physical meet-ups
     The Cinder project usually has a presence at the OpenDev/OpenStack
     Project Team Gathering that takes place at the beginning of each
     development cycle.  Planning happens on an etherpad whose URL is
     announced at the weekly meetings and on the mailing list.
+
+    (Since 2020 or so, the PTG has been a virtual meeting, but we haven't
+    given up hope that this event might return to real space.  But to be
+    completely honest, we currently don't have any physical meet-ups that
+    you can attend to meet your fellow community members.)
 
 Contacting the Core Team
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -160,16 +178,16 @@ meetings.
 Project Team Lead
 ~~~~~~~~~~~~~~~~~
 
-For each development cycle, Cinder project Active Technical Contributors (ATCs)
+For each development cycle, Cinder project Active Contributors (ACs)
 elect a Project Team Lead who is responsible for running the weekly meetings,
 midcycles, and Cinder sessions at the Project Team Gathering for that cycle
 (and who is also ultimately responsible for everything else the project does).
 
-* You automatically become an ATC by making a commit to one of the cinder
+* You automatically become an AC by making a commit to one of the cinder
   deliverables.  Other people who haven't made a commit, but have contributed
   to the project in other ways (for example, making good bug reports) may be
-  recognized as "extra-ATCs" and obtain voting privileges.  If you are such
-  a person, contact the current PTL before the "Extra-ATC freeze" indicated
+  recognized as "extra-ACs" and obtain voting privileges.  If you are such
+  a person, contact the current PTL before the "Extra-AC freeze" indicated
   on the current development cycle schedule (which you can find from the
   `OpenStack Releases homepage
   <https://releases.openstack.org/index.html>`_ .
@@ -285,6 +303,10 @@ cinder-core team can vote +2 (or -2) on a patch, or approve it.
    review theirs.  (A good way to learn your way around the codebase
    is to review other people's patches.)
 
+   Additionally, review activity on a patch is helpful to core reviewers,
+   both to indicate community interest in the patch, and to provide some
+   pre-screening of issues that a contributor can address right away.
+
    If you're thinking, "I'm new at this, how can I possibly provide
    a helpful review?", take a look at `How to Review Changes the
    OpenStack Way
@@ -343,6 +365,10 @@ people are unlikely to review a patch that is failing the CI system.
     * When you think a recheck is appropriate, make sure you follow the
       OpenStack community guidelines for `How to Handle Test Failures
       <https://docs.openstack.org/project-team-guide/testing.html#how-to-handle-test-failures>`_.
+    * If the build history indicates an intermittent failure that should
+      be looked at, file a bug in Launchpad, but try to be as specific as
+      possible about what you see.  A good example to follow is:
+      https://bugs.launchpad.net/cinder/+bug/1912031
 
 How long it may take for your review to get attention will depend on the
 current project priorities.  For example, the feature freeze is at the
@@ -358,3 +384,18 @@ from https://releases.openstack.org/
 
 You can see who's been doing what with Cinder recently in Stackalytics:
 https://www.stackalytics.io/report/activity?module=cinder-group
+
+Special Information for Driver Maintainers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Some community members have a particular interest in the drivers that cinder
+uses to communicate with storage backends.  In addition to the general
+contributor information above, here are a few links to cinder documentation
+that may be helpful:
+
+* :doc:`../drivers-all-about` - general information about cinder drivers
+* :doc:`drivers` - technical information about cinder drivers
+* :doc:`new_driver_checklist` - know what reviewers are looking for *before*
+  you submit a patch
+* :doc:`drivers_locking_examples` - using locks
+* :doc:`logging_guidelines` - how to write useful and safe log messages
