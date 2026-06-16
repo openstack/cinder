@@ -20,10 +20,10 @@ Testing for acs5000 san storage driver
 import copy
 import json
 import random
+import threading
 import time
 from unittest import mock
 
-from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import excutils
@@ -476,7 +476,8 @@ class CommandSimulator(object):
             self._sim_create_snapshot(**tmp_snap)
         self._volumes_list[vol_name]['status'] = 'Queued'
         self._volumes_list[vol_name]['clone_snap'] = snapshot
-        greenthread.spawn_n(self._clone_thread, vol_name)
+        threading.Thread(target=self._clone_thread,
+                         args=(vol_name,), daemon=True).start()
         return self._json_return()
 
     def _sim_delete_clone(self, **kwargs):
@@ -1574,8 +1575,8 @@ class Acs5000CommonDriverTestCase(test.TestCase):
             tgt_name: [('status', 'Erasing', 0.2)],
             src_name: [('status', 'Erasing', 0.2)],
         }
-        greenthread.spawn_n(self.sim._clone_thread,
-                            src_name, tgt_set)
+        threading.Thread(target=self.sim._clone_thread,
+                         args=(src_name, tgt_set), daemon=True).start()
         ret = self._driver._wait_volume_copy(src_name, tgt_name,
                                              'test_func', 'test_action')
         self.assertTrue(ret)
