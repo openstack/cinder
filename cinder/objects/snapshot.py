@@ -27,6 +27,11 @@ from cinder.volume import volume_types
 
 CONF = cfg.CONF
 
+__all__ = [
+    'Snapshot',
+    'SnapshotList',
+]
+
 
 @base.CinderObjectRegistry.register
 class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,

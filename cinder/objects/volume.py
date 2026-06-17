@@ -29,6 +29,11 @@ CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 
+__all__ = [
+    'Volume',
+    'VolumeList',
+]
+
 
 class MetadataObject(dict):
     # This is a wrapper class that simulates SQLAlchemy (.*)Metadata objects to

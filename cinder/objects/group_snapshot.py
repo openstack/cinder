@@ -20,6 +20,11 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 
+__all__ = [
+    'GroupSnapshot',
+    'GroupSnapshotList',
+]
+
 
 @base.CinderObjectRegistry.register
 class GroupSnapshot(base.CinderPersistentObject, base.CinderObject,

@@ -22,6 +22,11 @@ from cinder.objects import base
 from cinder.objects import fields as c_fields
 from cinder.volume import volume_utils
 
+__all__ = [
+    'Group',
+    'GroupList',
+]
+
 
 @base.CinderObjectRegistry.register
 class Group(base.CinderPersistentObject, base.CinderObject,

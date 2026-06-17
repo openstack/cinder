@@ -25,6 +25,10 @@ from cinder.objects import base
 from cinder import service
 from cinder.volume import rpcapi as vol_rpcapi
 
+__all__ = [
+    'CinderCleanableObject',
+]
+
 
 class CinderCleanableObject(base.CinderPersistentObject):
     """Base class for cleanable OVO resources.

@@ -33,6 +33,20 @@ from cinder import objects
 LOG = logging.getLogger('object')
 obj_make_list = base.obj_make_list
 
+__all__ = [
+    'obj_make_list',
+    'CinderObjectVersionsHistory',
+    'OBJ_VERSIONS',
+    'CinderObjectRegistry',
+    'CinderObject',
+    'CinderObjectDictCompat',
+    'CinderPersistentObject',
+    'CinderComparableObject',
+    'ObjectListBase',
+    'ClusteredObject',
+    'CinderObjectSerializer',
+]
+
 
 class CinderObjectVersionsHistory(dict):
     """Helper class that maintains objects version history.

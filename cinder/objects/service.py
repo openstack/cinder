@@ -28,6 +28,11 @@ from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
+__all__ = [
+    'Service',
+    'ServiceList',
+]
+
 
 @base.CinderObjectRegistry.register
 class Service(base.CinderPersistentObject, base.CinderObject,

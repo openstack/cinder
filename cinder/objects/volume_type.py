@@ -22,6 +22,11 @@ from cinder.objects import base
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
+__all__ = [
+    'VolumeType',
+    'VolumeTypeList',
+]
+
 
 @base.CinderObjectRegistry.register
 class VolumeType(base.CinderPersistentObject, base.CinderObject,

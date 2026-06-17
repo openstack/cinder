@@ -21,6 +21,11 @@ from cinder import objects
 from cinder.objects import base
 from cinder.objects import fields as c_fields
 
+__all__ = [
+    'ConsistencyGroup',
+    'ConsistencyGroupList',
+]
+
 
 @base.CinderObjectRegistry.register
 class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,

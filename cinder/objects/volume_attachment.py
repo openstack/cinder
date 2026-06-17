@@ -22,6 +22,11 @@ from cinder import objects
 from cinder.objects import base
 from cinder.objects import fields as c_fields
 
+__all__ = [
+    'VolumeAttachment',
+    'VolumeAttachmentList',
+]
+
 
 @base.CinderObjectRegistry.register
 class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,

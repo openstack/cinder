@@ -17,6 +17,10 @@ from oslo_versionedobjects import fields
 
 from cinder.objects import base
 
+__all__ = [
+    'CleanupRequest',
+]
+
 
 @base.CinderObjectRegistry.register
 class CleanupRequest(base.CinderObject, base.ClusteredObject):

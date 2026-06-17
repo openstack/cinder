@@ -20,6 +20,11 @@ from cinder import objects
 from cinder.objects import base
 from cinder.volume import group_types
 
+__all__ = [
+    'GroupType',
+    'GroupTypeList',
+]
+
 
 @base.CinderObjectRegistry.register
 class GroupType(base.CinderPersistentObject, base.CinderObject,
