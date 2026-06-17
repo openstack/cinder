@@ -52,7 +52,6 @@ def fake_execute(*cmd_parts, **kwargs):
     It optionally executes a preconfigued function to return expected data.
 
     """
-    global _fake_execute_repliers
 
     process_input = kwargs.get('process_input', None)
     check_exit_code = kwargs.get('check_exit_code', 0)

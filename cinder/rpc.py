@@ -248,7 +248,7 @@ class RPCAPI(object):
 
     @classmethod
     def determine_rpc_version_cap(cls):
-        global LAST_RPC_VERSIONS
+        global LAST_RPC_VERSIONS  # noqa: F824
         if cls.BINARY in LAST_RPC_VERSIONS:
             return LAST_RPC_VERSIONS[cls.BINARY]
 
@@ -266,7 +266,7 @@ class RPCAPI(object):
 
     @classmethod
     def determine_obj_version_cap(cls):
-        global LAST_OBJ_VERSIONS
+        global LAST_OBJ_VERSIONS  # noqa: F824
         if cls.BINARY in LAST_OBJ_VERSIONS:
             return LAST_OBJ_VERSIONS[cls.BINARY]
 
