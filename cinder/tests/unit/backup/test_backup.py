@@ -228,7 +228,7 @@ class BackupTestCase(BaseBackupTest):
                        'do_setup')
     @mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                        'check_for_setup_error')
-    @mock.patch.object(cinder.db.sqlalchemy.api, '_volume_type_get_by_name',
+    @mock.patch.object(cinder.db.api, '_volume_type_get_by_name',
                        v3_fakes.fake_volume_type_get)
     @mock.patch('cinder.context.get_admin_context')
     def test_init_host(self, mock_get_admin_context, mock_check, mock_setup,

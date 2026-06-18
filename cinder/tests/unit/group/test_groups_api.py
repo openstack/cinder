@@ -166,8 +166,8 @@ class GroupAPITestCase(test.TestCase):
     @mock.patch('cinder.group.api.API._cast_create_group')
     @mock.patch('cinder.group.api.API.update_quota')
     @mock.patch('cinder.db.api.group_type_get_by_name')
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get')
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_by_name')
+    @mock.patch('cinder.db.api._volume_type_get')
+    @mock.patch('cinder.db.api._volume_type_get_by_name')
     def test_create_with_uuid_format_volume_type_name(
             self, mock_vol_t_get_by_name, mock_vol_types_get_by_id,
             mock_group_type_get, mock_update_quota, mock_cast_create_group):

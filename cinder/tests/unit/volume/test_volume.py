@@ -1136,7 +1136,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         mock_clean.assert_called_once_with(volume.id, self.volume.driver)
 
     @mock.patch('cinder.utils.clean_volume_file_locks')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get',
+    @mock.patch('cinder.db.api.volume_get',
                 side_effect=exception.VolumeNotFound(
                     volume_id='12345678-1234-5678-1234-567812345678'))
     def test_delete_volume_not_found(self, mock_get_volume, mock_clean):
@@ -1735,7 +1735,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.volume.volume_utils.delete_encryption_key')
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask._setup_encryption_keys')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_encryption_metadata_get')
+    @mock.patch('cinder.db.api.volume_encryption_metadata_get')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.volume.driver.VolumeDriver._detach_volume')
     @mock.patch('cinder.volume.driver.VolumeDriver._attach_volume')
@@ -1835,7 +1835,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         mock_at.assert_called()
         mock_det.assert_called()
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_encryption_metadata_get')
+    @mock.patch('cinder.db.api.volume_encryption_metadata_get')
     def test_setup_encryption_keys(self, mock_enc_metadata_get):
         key_mgr = fake_keymgr.fake_api()
         self.mock_object(castellan.key_manager, 'API', return_value=key_mgr)

@@ -115,7 +115,7 @@ class SnapshotApiTest(test.TestCase):
     def setUp(self):
         super().setUp()
         self.mock_object(volume.api.API, 'get', fake_volume_get)
-        self.patch('cinder.db.sqlalchemy.api.volume_type_get',
+        self.patch('cinder.db.api.volume_type_get',
                    v3_fakes.fake_volume_type_get)
         self.patch('cinder.quota.QUOTAS.reserve')
         self.mock_object(scheduler_rpcapi.SchedulerAPI, 'create_snapshot')

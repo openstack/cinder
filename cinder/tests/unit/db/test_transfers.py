@@ -17,8 +17,8 @@
 
 from cinder import context
 from cinder.db import api as db
-from cinder.db.sqlalchemy import api as db_api
-from cinder.db.sqlalchemy import models
+from cinder.db import api as db_api
+from cinder.db import models
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test

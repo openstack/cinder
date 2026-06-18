@@ -276,7 +276,7 @@ class ClustersTestCase(test.TestCase):
         self._test_list(detailed=False, filters=filters, expected=expected,
                         version=mv.REPLICATION_CLUSTER)
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get',
+    @mock.patch('cinder.db.api.cluster_get',
                 side_effect=fake_db_api_cluster_get)
     def test_show(self, get_mock):
         req = FakeRequest()
@@ -301,9 +301,9 @@ class ClustersTestCase(test.TestCase):
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self.controller.show, req, 'name')
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_update',
+    @mock.patch('cinder.db.api.cluster_update',
                 side_effect=fake_db_api_cluster_update)
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get',
+    @mock.patch('cinder.db.api.cluster_get',
                 side_effect=fake_db_api_cluster_get)
     def test_enable(self, get_mock, update_mock):
         req = FakeRequest()
@@ -323,9 +323,9 @@ class ClustersTestCase(test.TestCase):
                                             {'disabled': False,
                                              'disabled_reason': None})
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_update',
+    @mock.patch('cinder.db.api.cluster_update',
                 side_effect=fake_db_api_cluster_update)
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get',
+    @mock.patch('cinder.db.api.cluster_get',
                 side_effect=fake_db_api_cluster_get)
     def test_disable(self, get_mock, update_mock):
         req = FakeRequest()

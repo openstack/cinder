@@ -31,7 +31,7 @@ import paramiko
 
 from cinder import context
 import cinder.db.api
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects

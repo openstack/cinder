@@ -399,9 +399,9 @@ class GroupManagerTestCase(test.TestCase):
                           add_volumes=fake.VOLUME_ID,
                           remove_volumes=fake.VOLUME2_ID)
 
-    @mock.patch('cinder.db.sqlalchemy.api.'
+    @mock.patch('cinder.db.api.'
                 'volume_glance_metadata_copy_to_volume')
-    @mock.patch('cinder.db.sqlalchemy.api.'
+    @mock.patch('cinder.db.api.'
                 'volume_glance_metadata_copy_from_volume_to_volume')
     @mock.patch.object(driver.VolumeDriver,
                        "create_group",

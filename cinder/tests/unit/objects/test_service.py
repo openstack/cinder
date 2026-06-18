@@ -29,7 +29,7 @@ from cinder.tests.unit import objects as test_objects
 @ddt.ddt
 class TestService(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    @mock.patch('cinder.db.api.service_get')
     def test_get_by_id(self, service_get):
         db_service = fake_service.fake_db_service()
         service_get.return_value = db_service
@@ -80,7 +80,7 @@ class TestService(test_objects.BaseObjectsTestCase):
                                                {'topic': 'foobar'}, True)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
-    @mock.patch('cinder.db.sqlalchemy.api.service_destroy')
+    @mock.patch('cinder.db.api.service_destroy')
     def test_destroy(self, service_destroy, utcnow_mock):
         service_destroy.return_value = {
             'deleted': True,
@@ -96,7 +96,7 @@ class TestService(test_objects.BaseObjectsTestCase):
             utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
             service.deleted_at)
 
-    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    @mock.patch('cinder.db.api.service_get')
     def test_refresh(self, service_get):
         db_service1 = fake_service.fake_db_service()
         db_service2 = db_service1.copy()
@@ -166,7 +166,7 @@ class TestService(test_objects.BaseObjectsTestCase):
         service_get_all.assert_called_once_with(self.context, binary=None,
                                                 disabled=None)
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get')
+    @mock.patch('cinder.db.api.cluster_get')
     def test_lazy_loading_cluster_field(self, cluster_get):
         cluster_orm = fake_cluster.fake_cluster_orm(name='mycluster')
         cluster_get.return_value = cluster_orm

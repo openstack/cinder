@@ -218,7 +218,7 @@ def fake_get_pools(ctxt, filters=None):
 @mock.patch('cinder.db.api.service_get', fake_db_api_service_get)
 @mock.patch('oslo_utils.timeutils.utcnow', fake_utcnow)
 @mock.patch(
-    'cinder.db.sqlalchemy.api.service_update', fake_db_api_service_update)
+    'cinder.db.api.service_update', fake_db_api_service_update)
 @mock.patch('cinder.policy.authorize', fake_policy_authorize)
 class ServicesTest(test.TestCase):
 

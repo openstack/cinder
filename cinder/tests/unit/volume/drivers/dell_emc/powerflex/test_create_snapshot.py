@@ -46,7 +46,7 @@ class TestCreateSnapShot(powerflex.TestPowerFlexDriver):
         self.snapshot = fake_snapshot.fake_snapshot_obj(
             ctx, **{'volume': self.fake_volume})
 
-        self.patch('cinder.db.sqlalchemy.api.volume_get',
+        self.patch('cinder.db.api.volume_get',
                    self.return_fake_volume)
 
         snap_vol_id = self.snapshot.volume_id

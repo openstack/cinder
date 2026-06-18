@@ -49,9 +49,9 @@ def app():
 
 def service_get(context, service_id, backend_match_level=None, host=None,
                 **filters):
-    """Replacement for db.sqlalchemy.api.service_get.
+    """Replacement for db.api.service_get.
 
-    We mock the db.sqlalchemy.api.service_get method to return something for a
+    We mock the db.api.service_get method to return something for a
     specific host, and raise an exception for anything else.
     We don't use the returned data (the code under test just use the call to
     check for existence of a host, so the content returned doesn't matter.
@@ -67,7 +67,7 @@ def service_get(context, service_id, backend_match_level=None, host=None,
 
 # Some of the tests check that volume types are correctly validated during a
 # volume manage operation.  This data structure represents an existing volume
-# type.  NOTE: cinder.db.sqlalchemy.volume_type_get() returns a dict describing
+# type.  NOTE: cinder.db.volume_type_get() returns a dict describing
 # a specific volume type; this dict always contains an 'extra_specs' key.
 fake_vt = {
     'id': fake.VOLUME_TYPE_ID,
@@ -191,7 +191,7 @@ def api_get_manageable_volumes(*args, **kwargs):
 
 
 @ddt.ddt
-@mock.patch('cinder.db.sqlalchemy.api.service_get', service_get)
+@mock.patch('cinder.db.api.service_get', service_get)
 @mock.patch('cinder.volume.volume_types.get_default_volume_type',
             vt_get_default_volume_type)
 @mock.patch('cinder.volume.volume_types.get_volume_type_by_name',

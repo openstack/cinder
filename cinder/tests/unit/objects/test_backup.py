@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 from oslo_utils import timeutils
 
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
@@ -62,7 +62,7 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         backup_get.assert_called_once_with(self.context, models.Backup,
                                            fake.USER_ID)
 
-    @mock.patch('cinder.db.sqlalchemy.api.model_query')
+    @mock.patch('cinder.db.api.model_query')
     def test_get_by_id_no_existing_id(self, model_query):
         query = mock.Mock()
         filter_by = mock.Mock()
@@ -105,7 +105,7 @@ class TestBackup(test_objects.BaseObjectsTestCase):
                                                 {'key1': 'value1'}, True)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
-    @mock.patch('cinder.db.sqlalchemy.api.backup_destroy')
+    @mock.patch('cinder.db.api.backup_destroy')
     def test_destroy(self, backup_destroy, utcnow_mock):
         backup_destroy.return_value = {
             'status': fields.BackupStatus.DELETED,
@@ -233,7 +233,7 @@ class TestBackup(test_objects.BaseObjectsTestCase):
                           objects.Backup.decode_record,
                           export_string)
 
-    @mock.patch('cinder.db.sqlalchemy.api.backup_get')
+    @mock.patch('cinder.db.api.backup_get')
     def test_refresh(self, backup_get):
         db_backup1 = fake_backup.copy()
         db_backup2 = db_backup1.copy()

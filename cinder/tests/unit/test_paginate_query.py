@@ -11,8 +11,8 @@
 #    under the License.
 from cinder.common import sqlalchemyutils
 from cinder import context
-from cinder.db.sqlalchemy import api as db_api
-from cinder.db.sqlalchemy import models
+from cinder.db import api as db_api
+from cinder.db import models
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 

@@ -76,8 +76,7 @@ from cinder.common import constants
 from cinder import context
 from cinder.db import api as db
 from cinder.db import migration as db_migration
-from cinder.db.sqlalchemy import api as db_api
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -222,7 +221,7 @@ class DbCommands(object):
         ctxt = context.get_admin_context()
 
         try:
-            db.purge_deleted_rows(ctxt, age_in_days)
+            db.purge_deleted_rows(ctxt, age_in_days=age_in_days)
         except db_exc.DBReferenceError:
             print(_("Purge command failed, check cinder-manage "
                     "logs for more details."))
@@ -381,7 +380,7 @@ class QuotaCommands(object):
         """
         self._check_sync(project_id, do_fix=True)
 
-    @db_api.main_context_manager.reader
+    @db.main_context_manager.reader
     def _get_quota_projects(self,
                             ctxt: context.RequestContext,
                             project_id: Optional[str]) -> list[str]:
@@ -390,9 +389,9 @@ class QuotaCommands(object):
             model = models.QuotaUsage
             # If the project does not exist
             if not ctxt.session.query(
-                db_api.sql.exists()
+                db.sql.exists()
                 .where(
-                    db_api.and_(
+                    db.and_(
                         model.project_id == project_id,
                         ~model.deleted,
                     ),
@@ -405,9 +404,7 @@ class QuotaCommands(object):
                 return []
             return [project_id]
 
-        projects = db_api.get_projects(ctxt,
-                                       models.QuotaUsage,
-                                       read_deleted="no")
+        projects = db.get_projects(ctxt, models.QuotaUsage, read_deleted="no")
         project_ids = [row.project_id for row in projects]
         return project_ids
 
@@ -419,9 +416,9 @@ class QuotaCommands(object):
 
         Returns a list of QuotaUsage instances for the specific project
         """
-        usages = db_api.model_query(
+        usages = db.model_query(
             ctxt,
-            db_api.models.QuotaUsage,
+            db.models.QuotaUsage,
             read_deleted="no",
         ).filter_by(project_id=project_id).with_for_update().all()
         return usages
@@ -432,7 +429,7 @@ class QuotaCommands(object):
                           usage_id: str) -> list:
         """Get reservations for a given project and usage id."""
         reservations = (
-            db_api.model_query(
+            db.model_query(
                 ctxt,
                 models.Reservation,
                 read_deleted="no",
@@ -514,7 +511,7 @@ class QuotaCommands(object):
         print('Action successfully completed')
         return discrepancy
 
-    @db_api.main_context_manager.writer
+    @db.main_context_manager.writer
     def _check_project_sync(self,
                             ctxt: context.RequestContext,
                             project: str,
@@ -543,7 +540,7 @@ class QuotaCommands(object):
         for usage in usages:
             resource_name = usage.resource
             # Get the correct value for this quota usage resource
-            updates = db_api._get_sync_updates(
+            updates = db._get_sync_updates(
                 ctxt,
                 project,
                 resources,

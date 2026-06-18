@@ -1520,7 +1520,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                        side_effect=exception.CinderException(
                            'Create volume failed.'))
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_type_get')
+    @mock.patch('cinder.db.api.volume_type_get')
     def test_create_consistencygroup_from_src_cg_create_volume_failed(
             self, mock_validate, mock_create, mock_vol_type_get):
         source_cg = utils.create_group(

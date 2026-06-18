@@ -23,7 +23,7 @@ from alembic import op
 from oslo_config import cfg
 import sqlalchemy as sa
 
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 
 # revision identifiers, used by Alembic.
 revision = '9c74c1c6971f'

@@ -49,9 +49,9 @@ class AttachmentManagerTestCase(test.TestCase):
                               'pools': {}}
 
     @ddt.data(False, True)
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get',
+    @mock.patch('cinder.db.api._volume_type_get',
                 v3_fakes.fake_volume_type_get)
-    @mock.patch('cinder.db.sqlalchemy.api.volume_type_qos_specs_get')
+    @mock.patch('cinder.db.api.volume_type_qos_specs_get')
     @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
     def test_attachment_update(self, enforce_mpath, get_extra_specs,
                                mock_type_get):

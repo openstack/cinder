@@ -44,7 +44,7 @@ from cinder.cmd import volume as cinder_volume
 from cinder.cmd import volume_usage_audit
 from cinder.common import constants
 from cinder import context
-from cinder.db.sqlalchemy import api as sqlalchemy_api
+from cinder.db import api as sqlalchemy_api
 from cinder import exception
 from cinder.objects import fields
 from cinder.tests.unit import fake_cluster
@@ -475,7 +475,7 @@ class TestCinderManageCmd(test.TestCase):
         age_in_days = int(time.time() / 86400) + 1
         self._test_purge_invalid_age_in_days(age_in_days)
 
-    @mock.patch('cinder.db.sqlalchemy.api.purge_deleted_rows')
+    @mock.patch('cinder.db.api.purge_deleted_rows')
     @mock.patch('cinder.context.get_admin_context')
     def test_purge_less_than_age_in_days_limit(self, get_admin_context,
                                                purge_deleted_rows):
@@ -541,7 +541,7 @@ class TestCinderManageCmd(test.TestCase):
             service_get_all.assert_called_once_with(mock.sentinel.ctxt)
             self.assertEqual(expected_out, fake_out.getvalue())
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     @mock.patch('cinder.context.get_admin_context')
     @mock.patch('cinder.rpc.get_client')
     @mock.patch('cinder.rpc.init')
@@ -577,7 +577,7 @@ class TestCinderManageCmd(test.TestCase):
             volume=volume_obj)
 
     @mock.patch('cinder.db.api.volume_destroy')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     @mock.patch('cinder.context.get_admin_context')
     @mock.patch('cinder.rpc.init')
     def test_volume_commands_delete_no_host(self, rpc_init, get_admin_context,
@@ -604,7 +604,7 @@ class TestCinderManageCmd(test.TestCase):
             self.assertEqual(expected_out, fake_out.getvalue())
 
     @mock.patch('cinder.db.api.volume_destroy')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     @mock.patch('cinder.context.get_admin_context')
     @mock.patch('cinder.rpc.init')
     def test_volume_commands_delete_volume_in_use(self, rpc_init,
@@ -899,7 +899,7 @@ class TestCinderManageCmd(test.TestCase):
                                             services_summary=True,
                                             read_deleted='no')
 
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get', auto_specs=True)
+    @mock.patch('cinder.db.api.cluster_get', auto_specs=True)
     @mock.patch('cinder.context.get_admin_context')
     def test_cluster_commands_remove_not_found(self, admin_ctxt_mock,
                                                cluster_get_mock):
@@ -912,9 +912,9 @@ class TestCinderManageCmd(test.TestCase):
                                                  binary='abinary',
                                                  get_services=False)
 
-    @mock.patch('cinder.db.sqlalchemy.api.service_destroy', auto_specs=True)
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_destroy', auto_specs=True)
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get', auto_specs=True)
+    @mock.patch('cinder.db.api.service_destroy', auto_specs=True)
+    @mock.patch('cinder.db.api.cluster_destroy', auto_specs=True)
+    @mock.patch('cinder.db.api.cluster_get', auto_specs=True)
     @mock.patch('cinder.context.get_admin_context')
     def test_cluster_commands_remove_fail_has_hosts(self, admin_ctxt_mock,
                                                     cluster_get_mock,
@@ -934,9 +934,9 @@ class TestCinderManageCmd(test.TestCase):
             admin_ctxt_mock.return_value.elevated.return_value, cluster.id)
         service_destroy_mock.assert_not_called()
 
-    @mock.patch('cinder.db.sqlalchemy.api.service_destroy', auto_specs=True)
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_destroy', auto_specs=True)
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get', auto_specs=True)
+    @mock.patch('cinder.db.api.service_destroy', auto_specs=True)
+    @mock.patch('cinder.db.api.cluster_destroy', auto_specs=True)
+    @mock.patch('cinder.db.api.cluster_get', auto_specs=True)
     @mock.patch('cinder.context.get_admin_context')
     def test_cluster_commands_remove_success_no_hosts(self, admin_ctxt_mock,
                                                       cluster_get_mock,
@@ -955,9 +955,9 @@ class TestCinderManageCmd(test.TestCase):
             admin_ctxt_mock.return_value.elevated.return_value, cluster.id)
         service_destroy_mock.assert_not_called()
 
-    @mock.patch('cinder.db.sqlalchemy.api.service_destroy', auto_specs=True)
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_destroy', auto_specs=True)
-    @mock.patch('cinder.db.sqlalchemy.api.cluster_get', auto_specs=True)
+    @mock.patch('cinder.db.api.service_destroy', auto_specs=True)
+    @mock.patch('cinder.db.api.cluster_destroy', auto_specs=True)
+    @mock.patch('cinder.db.api.cluster_get', auto_specs=True)
     @mock.patch('cinder.context.get_admin_context')
     def test_cluster_commands_remove_recursive(self, admin_ctxt_mock,
                                                cluster_get_mock,
@@ -979,9 +979,9 @@ class TestCinderManageCmd(test.TestCase):
             admin_ctxt_mock.return_value.elevated.return_value,
             cluster.services[0]['id'])
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_include_in_cluster',
+    @mock.patch('cinder.db.api.volume_include_in_cluster',
                 auto_specs=True, return_value=1)
-    @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_include_in_cluster',
+    @mock.patch('cinder.db.api.consistencygroup_include_in_cluster',
                 auto_specs=True, return_value=2)
     @mock.patch('cinder.context.get_admin_context')
     def test_cluster_commands_rename(self, admin_ctxt_mock,
@@ -1002,9 +1002,9 @@ class TestCinderManageCmd(test.TestCase):
             admin_ctxt_mock.return_value, new_cluster_name, partial,
             cluster_name=current_cluster_name)
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_include_in_cluster',
+    @mock.patch('cinder.db.api.volume_include_in_cluster',
                 auto_specs=True, return_value=0)
-    @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_include_in_cluster',
+    @mock.patch('cinder.db.api.consistencygroup_include_in_cluster',
                 auto_specs=True, return_value=0)
     @mock.patch('cinder.context.get_admin_context')
     def test_cluster_commands_rename_no_changes(self, admin_ctxt_mock,

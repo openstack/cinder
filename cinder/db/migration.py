@@ -25,7 +25,7 @@ from oslo_config import cfg
 from oslo_db import options
 from oslo_log import log as logging
 
-from cinder.db.sqlalchemy import api as db_api
+from cinder.db import api as db_api
 
 options.set_defaults(cfg.CONF)
 

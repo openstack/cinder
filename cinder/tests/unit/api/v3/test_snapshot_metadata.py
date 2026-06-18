@@ -114,7 +114,7 @@ class SnapshotMetadataTest(test.TestCase):
         super().setUp()
         self.volume_api = volume.api.API()
         self.mock_object(volume.api.API, 'get', fake_get)
-        self.patch('cinder.db.sqlalchemy.api.volume_type_get',
+        self.patch('cinder.db.api.volume_type_get',
                    v3_fakes.fake_volume_type_get)
         self.mock_object(scheduler_rpcapi.SchedulerAPI, 'create_snapshot')
         self.patch('cinder.db.api.snapshot_get', return_snapshot)
@@ -565,7 +565,7 @@ class SnapshotMetadataTest(test.TestCase):
                           self.controller.update, req, self.req_id, 'key1',
                           body=None)
 
-    @mock.patch('cinder.db.sqlalchemy.api._snapshot_get')
+    @mock.patch('cinder.db.api._snapshot_get')
     @mock.patch('cinder.db.api.snapshot_metadata_update', autospec=True)
     def test_update_item_empty_key(self, metadata_update, snapshot_get):
         snapshot_get.side_effect = return_snapshot

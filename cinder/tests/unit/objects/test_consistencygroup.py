@@ -63,7 +63,7 @@ fake_group = {
 
 class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_get',
+    @mock.patch('cinder.db.api.consistencygroup_get',
                 return_value=fake_consistencygroup)
     def test_get_by_id(self, consistencygroup_get):
         consistencygroup = objects.ConsistencyGroup.get_by_id(
@@ -72,7 +72,7 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
         consistencygroup_get.assert_called_once_with(
             self.context, fake.CONSISTENCY_GROUP_ID)
 
-    @mock.patch('cinder.db.sqlalchemy.api.model_query')
+    @mock.patch('cinder.db.api.model_query')
     def test_get_by_id_no_existing_id(self, model_query):
         model_query().filter_by().first.return_value = None
         self.assertRaises(exception.ConsistencyGroupNotFound,
@@ -179,7 +179,7 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
                                                           consistencygroup.id)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
-    @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_destroy')
+    @mock.patch('cinder.db.api.consistencygroup_destroy')
     def test_destroy(self, consistencygroup_destroy, utcnow_mock):
         consistencygroup_destroy.return_value = {
             'status': fields.ConsistencyGroupStatus.DELETED,
@@ -198,7 +198,7 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
             utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
             consistencygroup.deleted_at)
 
-    @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_get')
+    @mock.patch('cinder.db.api.consistencygroup_get')
     def test_refresh(self, consistencygroup_get):
         db_cg1 = fake_consistencygroup.copy()
         db_cg2 = db_cg1.copy()

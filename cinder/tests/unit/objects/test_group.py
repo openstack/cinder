@@ -39,7 +39,7 @@ fake_group = {
 @ddt.ddt
 class TestGroup(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.sqlalchemy.api.group_get',
+    @mock.patch('cinder.db.api.group_get',
                 return_value=fake_group)
     def test_get_by_id(self, group_get):
         group = objects.Group.get_by_id(
@@ -48,7 +48,7 @@ class TestGroup(test_objects.BaseObjectsTestCase):
         group_get.assert_called_once_with(
             self.context, fake.GROUP_ID)
 
-    @mock.patch('cinder.db.sqlalchemy.api.model_query')
+    @mock.patch('cinder.db.api.model_query')
     def test_get_by_id_no_existing_id(self, model_query):
         model_query().filter_by().first.return_value = None
         self.assertRaises(exception.GroupNotFound,
@@ -121,7 +121,7 @@ class TestGroup(test_objects.BaseObjectsTestCase):
         admin_context = group_destroy.call_args[0][0]
         self.assertTrue(admin_context.is_admin)
 
-    @mock.patch('cinder.db.sqlalchemy.api.group_get')
+    @mock.patch('cinder.db.api.group_get')
     def test_refresh(self, group_get):
         db_group1 = fake_group.copy()
         db_group2 = db_group1.copy()

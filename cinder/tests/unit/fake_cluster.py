@@ -16,7 +16,7 @@
 from oslo_utils import timeutils
 from oslo_versionedobjects import fields
 
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder import objects
 
 

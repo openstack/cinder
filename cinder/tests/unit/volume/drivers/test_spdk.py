@@ -611,7 +611,7 @@ class SpdkDriverTestCase(test.TestCase):
                                self.jsonrpcclient.call):
             self.driver.check_for_setup_error()
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_create_volume(self, volume_get):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):
@@ -627,7 +627,7 @@ class SpdkDriverTestCase(test.TestCase):
                              "-093643ed18f1_4294967299",
                              bdev)
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_delete_volume(self, volume_get):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):
@@ -675,7 +675,7 @@ class SpdkDriverTestCase(test.TestCase):
             bdev = self.driver._get_spdk_volume_name("lvs_test/clone0")
             self.assertEqual("3735a554-0dce-4d13-ba67-597d41186104", bdev)
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_create_snapshot(self, volume_get):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):
@@ -708,7 +708,7 @@ class SpdkDriverTestCase(test.TestCase):
                                                          snapshot.name)
             self.assertIsNone(snapshot)
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_create_cloned_volume(self, volume_get):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):
@@ -727,7 +727,7 @@ class SpdkDriverTestCase(test.TestCase):
             bdev = self.driver._get_spdk_volume_name("lvs_test/cloned_volume")
             self.assertEqual("3735a554-0dce-4d13-ba67-597d41186104", bdev)
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_copy_image_to_volume(self, volume_get):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):
@@ -742,7 +742,7 @@ class SpdkDriverTestCase(test.TestCase):
                                    self.jsonrpcclient.call):
                 self.driver.copy_image_to_volume(ctxt, db_volume, None, None)
 
-    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    @mock.patch('cinder.db.api.volume_get')
     def test_copy_volume_to_image(self, volume_get):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):

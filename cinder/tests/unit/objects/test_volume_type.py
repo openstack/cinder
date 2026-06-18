@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 import ddt
 from oslo_utils import timeutils
 
-from cinder.db.sqlalchemy import models
+from cinder.db import models
 from cinder import objects
 from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
@@ -29,7 +29,7 @@ from cinder.tests.unit import objects as test_objects
 @ddt.ddt
 class TestVolumeType(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
+    @mock.patch('cinder.db.api._volume_type_get_full')
     def test_get_by_id(self, volume_type_get):
         db_volume_type = fake_volume.fake_db_volume_type()
         volume_type_get.return_value = db_volume_type
@@ -37,7 +37,7 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
                                                    fake.VOLUME_TYPE_ID)
         self._compare(self, db_volume_type, volume_type)
 
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
+    @mock.patch('cinder.db.api._volume_type_get_full')
     def test_get_by_id_with_projects(self, volume_type_get):
         projects = [models.VolumeTypeProjects(project_id=fake.PROJECT_ID),
                     models.VolumeTypeProjects(project_id=fake.PROJECT2_ID)]
@@ -48,7 +48,7 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
         db_volume_type['projects'] = [p.project_id for p in projects]
         self._compare(self, db_volume_type, volume_type)
 
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
+    @mock.patch('cinder.db.api._volume_type_get_full')
     def test_get_by_id_with_string_projects(self, volume_type_get):
         projects = [fake.PROJECT_ID, fake.PROJECT2_ID]
         db_volume_type = fake_volume.fake_db_volume_type(projects=projects)
@@ -57,7 +57,7 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
                                                    fake.VOLUME_TYPE_ID)
         self._compare(self, db_volume_type, volume_type)
 
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
+    @mock.patch('cinder.db.api._volume_type_get_full')
     def test_get_by_id_null_spec(self, volume_type_get):
         db_volume_type = fake_volume.fake_db_volume_type(
             extra_specs={'foo': None})
@@ -106,9 +106,8 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
                                                    volume_type.description)
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
-    @mock.patch('cinder.db.sqlalchemy.api.volume_type_destroy')
-    @mock.patch('cinder.db.sqlalchemy.api.volume_type_get',
-                v3_fakes.fake_volume_type_get)
+    @mock.patch('cinder.db.api.volume_type_destroy')
+    @mock.patch('cinder.db.api.volume_type_get', v3_fakes.fake_volume_type_get)
     def test_destroy(self, volume_type_destroy, utcnow_mock):
         volume_type_destroy.return_value = {
             'deleted': True,
@@ -126,7 +125,7 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
             utcnow_mock.return_value.replace(tzinfo=ZoneInfo('UTC')),
             volume_type.deleted_at)
 
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
+    @mock.patch('cinder.db.api._volume_type_get_full')
     def test_refresh(self, volume_type_get):
         db_type1 = fake_volume.fake_db_volume_type()
         db_type2 = db_type1.copy()
@@ -149,7 +148,7 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
                                                     fake.VOLUME_TYPE_ID)])
 
     @mock.patch('cinder.objects.QualityOfServiceSpecs.get_by_id')
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get')
+    @mock.patch('cinder.db.api._volume_type_get')
     def test_lazy_loading_qos(self, get_mock, qos_get_mock):
         qos_get_mock.return_value = objects.QualityOfServiceSpecs(
             id=fake.QOS_SPEC_ID)
@@ -163,7 +162,7 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
         qos_get_mock.assert_called_once_with(self.context, fake.QOS_SPEC_ID)
 
     @mock.patch('cinder.db.api.volume_type_access_get_all')
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get')
+    @mock.patch('cinder.db.api._volume_type_get')
     def test_lazy_loading_projects(self, get_mock, get_projects_mock):
         vol_type = fake_volume.fake_db_volume_type(
             qos_specs_id=fake.QOS_SPEC_ID)
@@ -183,7 +182,7 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
         get_projects_mock.assert_called_once_with(self.context, vol_type['id'])
 
     @mock.patch('cinder.db.api.volume_type_extra_specs_get')
-    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get')
+    @mock.patch('cinder.db.api._volume_type_get')
     def test_lazy_loading_extra_specs(self, get_mock, get_specs_mock):
         get_specs_mock.return_value = {'key': 'value', 'key2': 'value2'}
         vol_type = fake_volume.fake_db_volume_type(

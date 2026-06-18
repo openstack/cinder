@@ -84,7 +84,7 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
             'host': 'dummy',
             'volume_type_id': fake.VOLUME_TYPE_ID
         }
-        self.patch('cinder.db.sqlalchemy.api.volume_type_get',
+        self.patch('cinder.db.api.volume_type_get',
                    v3_fakes.fake_volume_type_get)
 
     def test_copy_volume_to_image_status_available(self):
