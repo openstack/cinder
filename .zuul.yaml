@@ -14,6 +14,8 @@
         - cinder-mypy
         - cinder-tox-bandit-baseline:
             voting: false
+        - cinder-without-eventlet:
+            voting: false
         - openstack-tox-functional-py311:
             irrelevant-files: &functional-irrelevant-files
               - ^.*\.rst$
@@ -393,3 +395,11 @@
           $TEMPEST_CONFIG:
             volume:
               build_timeout: 900
+
+- job:
+    name: cinder-without-eventlet
+    parent: openstack-tox-py312
+    description: |
+      The regular openstack-tox job but with Eventlet disabled
+    vars:
+      tox_envlist: py312-threading
