@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #1883603
+    <https://bugs.launchpad.net/cinder/+bug/1883603>`_: Fixed
+    an issue where concurrent iSCSI terminate_connection calls on
+    multiattach volumes could race and skip the final unmap, leaving
+    stale LUN mappings on the array.

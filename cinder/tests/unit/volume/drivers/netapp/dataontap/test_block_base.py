@@ -21,6 +21,7 @@
 """Mock unit tests for the NetApp block storage library"""
 from concurrent.futures import ThreadPoolExecutor
 import copy
+import inspect
 import itertools
 from unittest import mock
 import uuid
@@ -636,6 +637,31 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.terminate_connection_iscsi(volume, fake.ISCSI_CONNECTOR)
 
         mock_unmap_lun.assert_not_called()
+
+    def test_terminate_connection_iscsi_is_synchronized(self):
+        source = inspect.getsource(
+            block_base.NetAppBlockStorageLibrary.terminate_connection_iscsi)
+        self.assertIn('netapp-terminate-iscsi-connection-{volume.id}', source)
+
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_unmap_lun')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_get_lun_attr')
+    def test_terminate_connection_iscsi_multiattach_then_last_attachment(
+            self, mock_get_lun_attr, mock_unmap_lun):
+        mock_get_lun_attr.return_value = {'Path': fake.PATH}
+        volume = copy.deepcopy(fake.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [
+            fake.test_iscsi_attachment,
+            fake.test_iscsi_attachment,
+        ]
+
+        self.library.terminate_connection_iscsi(volume, fake.ISCSI_CONNECTOR)
+        mock_unmap_lun.assert_not_called()
+
+        volume.volume_attachment = [fake.test_iscsi_attachment]
+        self.library.terminate_connection_iscsi(volume, fake.ISCSI_CONNECTOR)
+        mock_unmap_lun.assert_called_once_with(
+            fake.PATH, [fake.ISCSI_CONNECTOR['initiator']])
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_unmap_lun')
     @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_get_lun_attr')

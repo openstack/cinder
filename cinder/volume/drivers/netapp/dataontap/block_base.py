@@ -1098,6 +1098,7 @@ class NetAppBlockStorageLibrary(
         next(same_connector, False)
         return next(same_connector, False)
 
+    @coordination.synchronized('netapp-terminate-iscsi-connection-{volume.id}')
     def terminate_connection_iscsi(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance.
 
