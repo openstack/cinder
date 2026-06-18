@@ -617,7 +617,7 @@ def process_launcher() -> service.ProcessLauncher:
 _launcher = None
 
 
-def serve(server, workers=None):
+def serve(server, workers=1):
     global _launcher
     if _launcher:
         raise RuntimeError(_('serve() can only be called once'))
