@@ -49,3 +49,13 @@ releasenotes/notes/reno.cache
 
 # Files created by alembic
 cinder.db
+
+# agentic tools and files
+.tmp/
+.pi/
+.cursor/
+.cursorrules
+.claude/
+.vscode/
+.codex/
+CLAUDE.md
