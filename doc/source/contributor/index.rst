@@ -33,6 +33,7 @@ Getting Started
     agentic-coding
     commit-messages
     dependencies
+    logging_guidelines
     backporting
     releases
 

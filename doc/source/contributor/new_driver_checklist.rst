@@ -101,6 +101,8 @@ Review Checklist
     * Messages about a failure should include the snapshot or volume in
       question.
 
+    * See :doc:`logging_guidelines` for detailed guidance.
+
   * All exception messages that could be raised to users should be marked for
     translation with _()
 
