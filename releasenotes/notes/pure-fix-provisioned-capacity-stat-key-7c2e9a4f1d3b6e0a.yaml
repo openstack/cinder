@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Everpure driver: Fixed the backend reporting its provisioned capacity
+    under the ``provisioned_capacity`` key instead of the standardized,
+    scheduler-required ``provisioned_capacity_gb`` key. As a result the
+    scheduler never saw the value and silently fell back to
+    ``allocated_capacity_gb`` for thin-provisioning/over-subscription
+    decisions, and capacity-usage notifications were suppressed for Pure
+    backends because the pool failed the scheduler's required-keys check. The
+    driver now reports ``provisioned_capacity_gb``, restoring accurate
+    over-subscription accounting and capacity telemetry.
