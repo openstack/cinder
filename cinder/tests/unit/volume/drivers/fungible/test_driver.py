@@ -878,7 +878,7 @@ class FungibleDriverTest(unittest.TestCase):
                 fields.VolumeStatus.AVAILABLE)
 
     @mock.patch.object(volume.driver.BaseVD, '_detach_volume')
-    @mock.patch.object(image_utils, 'upload_volume')
+    @mock.patch.object(volume_utils, 'upload_volume')
     @mock.patch.object(volume.driver.BaseVD, '_attach_volume')
     @mock.patch.object(volume_utils, 'brick_get_connector_properties')
     def test_copy_volume_to_image(
