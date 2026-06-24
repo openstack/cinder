@@ -18,7 +18,6 @@
 from unittest import mock
 
 import ddt
-from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import units
@@ -83,7 +82,8 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
         self.driver._assistant.check_lcmapping_interval = 0
         self.mock_object(instorage_iscsi.InStorageMCSISCSIDriver,
                          'DEFAULT_GR_SLEEP', 0)
-        self.mock_object(greenthread, 'sleep')
+        self.mock_object(instorage_common, 'time',
+                         testutils.time_module_mock())
 
     def _set_flag(self, flag, value, configuration=None):
         if not configuration:

@@ -26,8 +26,8 @@ import random
 import re
 import string
 import sys
+import time
 
-import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
@@ -246,7 +246,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
     def delete_volume(self, volume):
         """Delete the specified volume."""
         backup_snap_name, backup_vol_name = self.is_volume_backup_clone(volume)
-        eventlet.sleep(DEFAULT_SLEEP)
+        time.sleep(DEFAULT_SLEEP)
 
         if self._replicated_type:
             group_id = self.APIExecutor_remote_array.get_group_id()
@@ -1268,7 +1268,7 @@ class NimbleISCSIDriver(NimbleBaseVolumeDriver, san.SanISCSIDriver):
             raise NimbleDriverException(_('No initiator group found for '
                                           'initiator %s') % initiator_name)
         self.APIExecutor.remove_acl(volume, initiator_group_name)
-        eventlet.sleep(DEFAULT_SLEEP)
+        time.sleep(DEFAULT_SLEEP)
 
     def _get_provider_location(self, volume_name):
         """Get volume iqn for initiator access."""
@@ -1474,7 +1474,7 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
                 initiator_name)
         LOG.debug("initiator_target_map %s", init_targ_map)
         self.APIExecutor.remove_acl(volume, initiator_group_name)
-        eventlet.sleep(DEFAULT_SLEEP)
+        time.sleep(DEFAULT_SLEEP)
         # FIXME to check for other volumes attached to the host and then
         # return the data. Bug https://bugs.launchpad.net/cinder/+bug/1617472
 
@@ -2123,7 +2123,7 @@ class NimbleRestAPIExecutor(object):
     def online_vol(self, volume_name, online_flag):
         volume_id = self.get_volume_id_by_name(volume_name)
         LOG.debug("volume_id %s", str(volume_id))
-        eventlet.sleep(DEFAULT_SLEEP)
+        time.sleep(DEFAULT_SLEEP)
         api = "volumes/" + str(volume_id)
         data = {'data': {"online": online_flag, 'force': True}}
         try:

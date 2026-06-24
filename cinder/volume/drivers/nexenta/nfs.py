@@ -16,8 +16,8 @@
 import hashlib
 import os
 import re
+import time
 
-from eventlet import greenthread
 from oslo_log import log as logging
 from oslo_utils import fileutils
 from oslo_utils import units
@@ -720,7 +720,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
                     'Mount attempt %(attempt)d failed: %(error)s. '
                     'Retrying mount ...',
                     {'attempt': attempt, 'error': e})
-                greenthread.sleep(1)
+                time.sleep(1)
 
     def _mount_subfolders(self):
         ctxt = context.get_admin_context()

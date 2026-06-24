@@ -19,7 +19,6 @@ import re
 import threading
 import time
 
-import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
@@ -535,7 +534,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                                                   'gno': gen_no,
                                                   'stime': time.time()})
                     self.snap_updates.remove(update)
-                eventlet.sleep(1)
+                time.sleep(1)
 
     @volume_utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -733,7 +732,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     def _check_for_status(self, obj, status):
         while obj.state != status:
             obj.refresh()
-            eventlet.sleep(1)
+            time.sleep(1)
 
     @volume_utils.trace
     def get_volume_stats(self, refresh=False):

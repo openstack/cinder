@@ -20,8 +20,8 @@ REST API client class for Hitachi HBSD Driver.
 from http import client as httpclient
 import socket
 import threading
+import time
 
-from eventlet import greenthread
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import timeutils
@@ -367,7 +367,7 @@ class RestApiClient():
             if retry:
                 watch.stop()
                 idle = max(interval - watch.elapsed(), 0)
-                greenthread.sleep(idle)
+                time.sleep(idle)
                 if not kwargs['no_relogin'] and response.is_auth_fail():
                     auth_data = self.get_my_session()
 

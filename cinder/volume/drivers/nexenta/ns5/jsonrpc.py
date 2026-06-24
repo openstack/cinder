@@ -16,9 +16,9 @@
 import hashlib
 import json
 import posixpath
+import time
 import urllib
 
-from eventlet import greenthread
 from oslo_log import log as logging
 import requests
 
@@ -613,4 +613,4 @@ class NefProxy(object):
         interval = int(self.backoff_factor * (2 ** (attempt - 1)))
         LOG.debug('Waiting for %(interval)s seconds',
                   {'interval': interval})
-        greenthread.sleep(interval)
+        time.sleep(interval)

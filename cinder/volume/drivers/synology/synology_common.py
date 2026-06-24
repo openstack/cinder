@@ -21,6 +21,7 @@ import math
 from os import urandom
 from random import randint
 import re
+import time
 import urllib
 
 from cryptography.hazmat.backends import default_backend
@@ -29,7 +30,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import modes
-import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -780,7 +780,7 @@ class SynoCommon(object):
                 status, locked = self._get_lun_status(volume_name)
                 if not locked:
                     break
-                eventlet.sleep(2)
+                time.sleep(2)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception('Failed to get lun status. [%s]',
@@ -798,7 +798,7 @@ class SynoCommon(object):
                 status, locked = self._get_snapshot_status(snapshot_uuid)
                 if not locked:
                     break
-                eventlet.sleep(2)
+                time.sleep(2)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception('Failed to get snapshot status. [%s]',

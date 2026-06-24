@@ -25,6 +25,7 @@ import uuid
 import requests
 
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 
@@ -1197,10 +1198,10 @@ class TestNefProxy(test.TestCase):
                                      path)
         self.assertEqual(expected, result)
 
-    @mock.patch('eventlet.greenthread.sleep')
-    def test_delay(self, sleep):
-        sleep.return_value = None
+    @mock.patch.object(jsonrpc, 'time',
+                       new_callable=test_utils.time_module_mock)
+    def test_delay(self, mock_time):
         for attempt in range(0, 10):
             expected = int(self.proxy.backoff_factor * (2 ** (attempt - 1)))
             self.assertIsNone(self.proxy.delay(attempt))
-            sleep.assert_called_with(expected)
+            mock_time.sleep.assert_called_with(expected)

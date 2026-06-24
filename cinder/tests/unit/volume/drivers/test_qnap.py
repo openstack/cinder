@@ -20,13 +20,13 @@ import urllib
 from ddt import data
 from ddt import ddt
 from ddt import unpack
-import eventlet
 from lxml import etree as ET
 from oslo_utils import units
 import requests
 
 from cinder import exception
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import qnap
@@ -1290,7 +1290,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
-        self.mock_object(eventlet, 'sleep')
+        self.mock_object(qnap, 'time',
+                         test_utils.time_module_mock())
         self.driver.do_setup('context')
         self.driver.create_volume(fake_volume)
 
@@ -1445,7 +1446,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 'http://1.2.3.4:8080',
                 'Pool1',
                 True))
-        self.mock_object(eventlet, 'sleep')
+        self.mock_object(qnap, 'time',
+                         test_utils.time_module_mock())
         self.driver.do_setup('context')
         self.driver.create_cloned_volume(fake_volume, fake_src_vref)
 
@@ -1510,7 +1512,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
-        self.mock_object(eventlet, 'sleep')
+        self.mock_object(qnap, 'time',
+                         test_utils.time_module_mock())
         self.driver.do_setup('context')
         self.driver.create_cloned_volume(fake_volume, fake_src_vref)
 
@@ -1545,7 +1548,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
-        self.mock_object(eventlet, 'sleep')
+        self.mock_object(qnap, 'time',
+                         test_utils.time_module_mock())
         self.driver.do_setup('context')
         self.driver.create_snapshot(snapshot)
 
@@ -1651,7 +1655,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
                 '1.2.3.4',
                 'Pool1',
                 True))
-        self.mock_object(eventlet, 'sleep')
+        self.mock_object(qnap, 'time',
+                         test_utils.time_module_mock())
         self.driver.do_setup('context')
         self.driver.create_volume_from_snapshot(fake_volume, fake_snapshot)
 
@@ -1869,7 +1874,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         self.driver.configuration.chap_username = ''
         self.driver.configuration.chap_password = ''
         self.driver.iscsi_port = 'fakeServicePort'
-        self.mock_object(eventlet, 'sleep')
+        self.mock_object(qnap, 'time',
+                         test_utils.time_module_mock())
         self.driver.do_setup('context')
 
         expected_properties = '%(host)s:%(port)s,1 %(name)s %(tgt_lun)s' % {
@@ -1924,7 +1930,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         self.driver.configuration.chap_username = ''
         self.driver.configuration.chap_password = ''
         self.driver.iscsi_port = 'fakeServicePort'
-        self.mock_object(eventlet, 'sleep')
+        self.mock_object(qnap, 'time',
+                         test_utils.time_module_mock())
         self.driver.do_setup('context')
 
         expected_properties = '%(host)s:%(port)s,1 %(name)s %(tgt_lun)s' % {
@@ -1980,7 +1987,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         self.driver.configuration.chap_username = ''
         self.driver.configuration.chap_password = ''
         self.driver.iscsi_port = 'fakeServicePort'
-        self.mock_object(eventlet, 'sleep')
+        self.mock_object(qnap, 'time',
+                         test_utils.time_module_mock())
         self.driver.do_setup('context')
 
         expected_properties = '%(host)s:%(port)s,1 %(name)s %(tgt_lun)s' % {
@@ -2038,7 +2046,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
         self.driver.configuration.chap_username = ''
         self.driver.configuration.chap_password = ''
         self.driver.iscsi_port = 'fakeServicePort'
-        self.mock_object(eventlet, 'sleep')
+        self.mock_object(qnap, 'time',
+                         test_utils.time_module_mock())
         self.driver.do_setup('context')
 
         expected_properties = '%(host)s:%(port)s,1 %(name)s %(tgt_lun)s' % {

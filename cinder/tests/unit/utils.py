@@ -16,6 +16,7 @@
 import datetime
 import functools
 import socket
+import time
 from unittest import mock
 import uuid
 import weakref
@@ -603,6 +604,33 @@ def time_format(at=None):
     # Need to handle either iso8601 or python UTC format
     date_string += ('Z' if tz in ['UTC', 'UTC+00:00'] else tz)
     return date_string
+
+
+def time_module_mock():
+    """Return a mock of the time module whose sleep() is a no-op mock.
+
+    Tests must not mock the global time.sleep: the unit tests run with
+    eventlet monkey patching applied, which makes the global time.sleep
+    the cooperative yield point for every greenthread in the process.
+    Replacing it with a mock causes background greenthreads that poll in
+    a "while ...: time.sleep(...)" loop (such as the oslo.messaging fake
+    driver's listener) to busy-spin without ever yielding, hanging the
+    test worker while the mock's call list grows until the process is
+    OOM killed.
+
+    Instead, replace the time module reference in the namespace of the
+    module under test, which leaves the global time.sleep untouched:
+
+        mock_time = test_utils.time_module_mock()
+        self.mock_object(driver_module, 'time', mock_time)
+        ...
+        mock_time.sleep.assert_called_with(5)
+
+    All other time module functions pass through to the real module.
+    """
+    mock_time = mock.Mock(wraps=time)
+    mock_time.sleep = mock.Mock(name='time.sleep')
+    return mock_time
 
 
 class InstanceTracker(object):

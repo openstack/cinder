@@ -21,8 +21,8 @@ It will be called by iSCSI driver
 import json
 import math
 import random
+import time
 
-from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -967,5 +967,5 @@ class Acs5000CommonDriver(san.SanDriver,
 
             if while_exit:
                 break
-            greenthread.sleep(interval)
+            time.sleep(interval)
         return ret

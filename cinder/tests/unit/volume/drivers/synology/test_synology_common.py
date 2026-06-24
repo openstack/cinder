@@ -34,6 +34,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.synology import synology_common as common
 
@@ -1007,8 +1008,9 @@ class SynoCommonTestCase(test.TestCase):
                           VOLUME['name'],
                           NEW_VOLUME['name'])
 
-    @mock.patch('eventlet.sleep')
-    def test__check_lun_status_normal(self, _patched_sleep):
+    @mock.patch.object(common, 'time',
+                       new_callable=test_utils.time_module_mock)
+    def test__check_lun_status_normal(self, _patched_time):
         self.common._get_lun_status = (
             mock.Mock(side_effect=[
                       ('normal', True),
@@ -1017,8 +1019,8 @@ class SynoCommonTestCase(test.TestCase):
                       common.SynoLUNNotExist(message='dont care')]))
 
         result = self.common._check_lun_status_normal(VOLUME['name'])
-        self.assertEqual(1, _patched_sleep.call_count)
-        self.assertEqual([mock.call(2)], _patched_sleep.call_args_list)
+        self.assertEqual(1, _patched_time.sleep.call_count)
+        self.assertEqual([mock.call(2)], _patched_time.sleep.call_args_list)
         self.common._get_lun_status.assert_called_with(VOLUME['name'])
         self.assertTrue(result)
 
@@ -1029,8 +1031,9 @@ class SynoCommonTestCase(test.TestCase):
                           self.common._check_lun_status_normal,
                           VOLUME['name'])
 
-    @mock.patch('eventlet.sleep')
-    def test__check_snapshot_status_healthy(self, _patched_sleep):
+    @mock.patch.object(common, 'time',
+                       new_callable=test_utils.time_module_mock)
+    def test__check_snapshot_status_healthy(self, _patched_time):
         self.common._get_snapshot_status = (
             mock.Mock(side_effect=[
                       ('Healthy', True),
@@ -1039,8 +1042,8 @@ class SynoCommonTestCase(test.TestCase):
                       common.SynoLUNNotExist(message='dont care')]))
 
         result = self.common._check_snapshot_status_healthy(DS_SNAPSHOT_UUID)
-        self.assertEqual(1, _patched_sleep.call_count)
-        self.assertEqual([mock.call(2)], _patched_sleep.call_args_list)
+        self.assertEqual(1, _patched_time.sleep.call_count)
+        self.assertEqual([mock.call(2)], _patched_time.sleep.call_args_list)
         self.common._get_snapshot_status.assert_called_with(DS_SNAPSHOT_UUID)
         self.assertTrue(result)
 

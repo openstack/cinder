@@ -23,7 +23,6 @@ import random
 import re
 import time
 
-import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
@@ -786,7 +785,7 @@ class AS13000Driver(san.SanISCSIDriver):
             for vol in volumes:
                 if volume_name == vol.get('name'):
                     return True
-            eventlet.sleep(1)
+            time.sleep(1)
         return False
 
     @volume_utils.trace

@@ -21,7 +21,6 @@ import time
 from unittest import mock
 
 import ddt
-import eventlet
 import requests
 
 from cinder import context
@@ -29,6 +28,7 @@ from cinder import exception
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration
 from cinder.volume.drivers.inspur.as13000 import as13000_driver
 from cinder.volume import volume_utils
@@ -1202,7 +1202,7 @@ class AS13000DriverTestCase(test.TestCase):
 
     def test__wait_volume_filled(self):
         # Need to mock sleep as it is called by @utils.retry
-        self.mock_object(time, 'sleep')
+        self.patch('tenacity.nap.sleep')
 
         expected = [{'name': 'fake_v1', 'lvmType': 1}]
         mock_gv = self.mock_object(self.as13000_san, '_get_volumes',
@@ -1212,7 +1212,7 @@ class AS13000DriverTestCase(test.TestCase):
 
     def test__wait_volume_filled_failed(self):
         # Need to mock sleep as it is called by @utils.retry
-        self.mock_object(time, 'sleep')
+        self.patch('tenacity.nap.sleep')
 
         expected = [{'name': 'fake_v1', 'lvmType': 2}]
         mock_gv = self.mock_object(self.as13000_san, '_get_volumes',
@@ -1245,8 +1245,8 @@ class AS13000DriverTestCase(test.TestCase):
         mock_tnd = self.mock_object(self.as13000_san,
                                     '_trans_name_down',
                                     mock.Mock(return_value='fake_name'))
-        mock_el = self.mock_object(eventlet, 'sleep',
-                                   mock.Mock(return_value=None))
+        mock_el = self.mock_object(as13000_driver, 'time',
+                                   test_utils.time_module_mock()).sleep
         if exist:
             mock_gv = self.mock_object(self.as13000_san, '_get_volumes',
                                        mock.Mock(return_value=[

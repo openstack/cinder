@@ -18,7 +18,6 @@
 import json
 from unittest import mock
 
-from eventlet import greenthread
 from oslo_utils import units
 
 from cinder import context
@@ -92,7 +91,9 @@ class InStorageMCSReplicationTestCase(test.TestCase):
         self.driver.check_for_setup_error()
         self._create_test_volume_types()
 
-        self.mock_object(greenthread, 'sleep')
+        mock_time = testutils.time_module_mock()
+        self.mock_object(instorage_common, 'time', mock_time)
+        self.mock_object(instorage_rep, 'time', mock_time)
 
     def _set_flag(self, flag, value):
         group = self.driver.configuration.config_group

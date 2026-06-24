@@ -24,7 +24,6 @@ import uuid
 from glob import glob
 from subprocess import run
 
-from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -2268,7 +2267,7 @@ class StorwizeHelpers(object):
                           'attr': mapping_attrs})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            greenthread.sleep(self.WAIT_TIME)
+            time.sleep(self.WAIT_TIME)
 
         if not mapping_ready:
             msg = (_('Mapping %(id)s prepare failed to complete within the '
@@ -4067,7 +4066,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     except Exception as e:
                         LOG.error('Error has occurred: %s', e)
                         last_exception = e
-                        greenthread.sleep(self.DEFAULT_GR_SLEEP)
+                        time.sleep(self.DEFAULT_GR_SLEEP)
                     try:
                         std_err = last_exception.stderr
                         if std_err is not None and not self._is_ascii(std_err):
