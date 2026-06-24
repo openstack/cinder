@@ -93,6 +93,7 @@ def common_mocks(f):
             inst.mock_rbd = mock_rbd
             inst.mock_rbd.ImageBusy = MockImageBusyException
             inst.mock_rbd.ImageNotFound = MockImageNotFoundException
+            inst.mock_rados.Error = Exception
             inst.mock_rados.ObjectNotFound = MockObjectNotFoundException
 
             inst.service.rbd = inst.mock_rbd
@@ -1633,6 +1634,7 @@ def common_meta_backup_mocks(f):
         def _common_inner_inner2(mock_rados, mock_rbd):
             inst.mock_rados = mock_rados
             inst.mock_rbd = mock_rbd
+            inst.mock_rados.Error = Exception
             inst.mock_rados.ObjectNotFound = MockObjectNotFoundException
             return f(inst, *args, **kwargs)
 
