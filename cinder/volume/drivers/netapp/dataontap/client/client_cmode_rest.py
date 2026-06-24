@@ -19,6 +19,7 @@ from time import time
 
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
@@ -35,6 +36,7 @@ ONTAP_SELECT_MODEL = 'FDvM300'
 ONTAP_C190 = 'C190'
 HTTP_ACCEPTED = 202
 DELETED_PREFIX = 'deleted_cinder_'
+CG_NAME_PREFIX = 'cg_cinder_'
 DEFAULT_TIMEOUT = 15
 REST_SYNC_TIMEOUT = 15
 
@@ -201,6 +203,11 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
                  {'generation': ontap_version[0], 'major': ontap_version[1],
                   'minor': minor})
 
+    # Methods that exist on the ZAPI client but must NOT be reached via the
+    # __getattr__ ZAPI fallback when running in REST mode.  These are CG-
+    # lifecycle primitives whose REST equivalent is create_cg_snapshot().
+    _ZAPI_CG_METHODS = frozenset({'_start_cg_snapshot', '_commit_cg_snapshot'})
+
     def __getattr__(self, name):
         """If method is not implemented for REST, try to call the ZAPI."""
         # Dunder method lookups are used by Python internals (copy, pickle,
@@ -209,6 +216,11 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         # NetAppDriverException).
         if name.startswith('__') and name.endswith('__'):
             raise AttributeError(name)
+
+        if name in self._ZAPI_CG_METHODS:
+            raise AttributeError(
+                _("Method %r must not be called via the ZAPI fallback in REST "
+                  "mode. Use create_cg_snapshot() instead.") % name)
 
         # Use object.__getattribute__ to avoid reentrant __getattr__ calls
         # (e.g. during copy.copy / copy.deepcopy which checks __setstate__).
@@ -696,30 +708,97 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
                           flexvol_name)
             return no_dedupe_response
 
-        if response["num_records"] != 1:
+        if response['num_records'] != 1:
             return no_dedupe_response
 
-        state = response["records"][0]["efficiency"]["state"]
-        compression = response["records"][0]["efficiency"]["compression"]
+        state = response['records'][0]['efficiency']['state']
+        compression = response['records'][0]['efficiency']['compression']
 
-        # TODO(nahimsouza): as soon as REST API supports the fields
-        # 'logical-data-size and 'logical-data-limit', we should include
-        # them in the query and set them correctly.
-        # NOTE(nahimsouza): these fields are only used by the client function
-        # `get_flexvol_dedupe_used_percent`, since the function is not
-        # implemented on REST yet, the below hard-coded fields are not
-        # affecting the driver in anyway.
+        # TODO(pulluri): remove the private CLI call below and fetch
+        # 'logical-data-size' and 'logical-data-limit' directly from the
+        # query above, once the public REST API supports these fields
+        # via /storage/volumes.
         logical_data_size = 0
         logical_data_limit = 1
 
-        dedupe_info = {
-            'compression': False if compression == "none" else True,
-            'dedupe': False if state == "disabled" else True,
+        try:
+            sis_query = {
+                'volume': flexvol_name,
+                'vserver': self.vserver,
+                'fields': 'logical-data-size,logical-data-limit',
+            }
+            sis_response = self.send_request(
+                '/private/cli/volume/efficiency', 'get',
+                query=sis_query, enable_tunneling=False)
+
+            if sis_response.get('num_records', 0) == 1:
+                record = sis_response['records'][0]
+                logical_data_size = int(
+                    record.get('logical_data_size', 0) or 0)
+                logical_data_limit = int(
+                    record.get('logical_data_limit', 1) or 1)
+
+        except netapp_api.NaApiError:
+            LOG.exception(
+                'Failed to get SIS logical data info for volume %s.',
+                flexvol_name)
+
+        return {
+            'compression': compression != 'none',
+            'dedupe': state != 'disabled',
             'logical-data-size': logical_data_size,
             'logical-data-limit': logical_data_limit,
         }
 
-        return dedupe_info
+    def get_flexvol_dedupe_used_percent(self, flexvol_name):
+        """Determine how close a flexvol is to its shared block limit."""
+        if not self.features.CLONE_SPLIT_STATUS:
+            return 0.0
+
+        dedupe_info = self.get_flexvol_dedupe_info(flexvol_name)
+        clone_split_info = self.get_clone_split_info(flexvol_name)
+
+        total_dedupe_blocks = (dedupe_info.get('logical-data-size', 0) +
+                               clone_split_info.get('unsplit-size', 0))
+        dedupe_used_percent = (100.0 * float(total_dedupe_blocks) /
+                               dedupe_info.get('logical-data-limit', 1))
+        return dedupe_used_percent
+
+    def get_clone_split_info(self, volume_name):
+        """Gets the status of unsplit file/LUN clones in a flexvol"""
+        no_clone_split_response = {
+            'unsplit-size': 0,
+            'unsplit-clone-count': 0,
+        }
+
+        query = {
+            'volume.name': volume_name,
+            'svm.name': self.vserver,
+        }
+
+        try:
+            response = self.send_request(
+                '/storage/file/clone/split-status', 'get',
+                query=query)
+        except netapp_api.NaApiError as e:
+            LOG.exception("Failed to get clone split info for volume "
+                          "%(volume_name)s on vserver %(svm_name)s. "
+                          "Error: %(error)s",
+                          {'volume_name': volume_name,
+                           'svm_name': self.vserver,
+                           'error': e})
+            return no_clone_split_response
+
+        if response.get('num_records', 0) == 0:
+            LOG.debug("No clone split data found for volume %s.", volume_name)
+            return no_clone_split_response
+
+        data = response['records'][0]
+        result = {
+            'unsplit-size': int(data.get('unsplit_size', 0)),
+            'unsplit-clone-count': int(data.get('pending_splits', 0)),
+        }
+        return result
 
     def get_lun_list(self):
         """Gets the list of LUNs on filer.
@@ -861,6 +940,35 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
             })
         return files
 
+    def get_file_usage(self, path, vserver):
+        """Gets the file unique bytes."""
+        LOG.debug('Getting file usage for %s', path)
+        query = {
+            'vserver': vserver,
+            'path': path,
+            'fields': 'unique_bytes',
+        }
+        try:
+            response = self.send_request(
+                '/private/cli/volume/file/show-disk-usage', 'get',
+                query=query)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.REST_CLI_NO_SUCH_FILE:
+                LOG.debug('File %s not found, returning 0.', path)
+                return '0'
+            else:
+                raise e
+        raw = response.get('unique_bytes', '0KB')
+        # The private/cli endpoint returns unique_bytes as a string with a KB
+        # suffix (e.g. "51408KB"). Strip the suffix and convert to bytes.
+        if isinstance(raw, str) and raw.upper().endswith('KB'):
+            unique_bytes = str(int(raw[:-2]) * 1024)
+        else:
+            unique_bytes = str(raw)
+        LOG.debug('file-usage for path %(path)s is %(bytes)s',
+                  {'path': path, 'bytes': unique_bytes})
+        return unique_bytes
+
     def get_volume_state(self, junction_path=None, name=None):
         """Returns volume state for a given name or junction path."""
 
@@ -889,6 +997,183 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         self.send_request(
             f'/storage/volumes/{volume["uuid"]}/snapshots'
             f'?name={snapshot_name}', 'delete')
+
+    def get_snapshot(self, volume_name, snapshot_name):
+        """Gets a single snapshot."""
+        volume = self._get_volume_by_args(vol_name=volume_name)
+        query = {
+            'name': snapshot_name,
+            'fields': 'name,volume,owners',
+        }
+        try:
+            response = self.send_request(
+                f'/storage/volumes/{volume["uuid"]}/snapshots',
+                'get', query=query)
+        except netapp_api.NaApiError as e:
+            msg = _('Could not read information for snapshot %(name)s. '
+                    'Code: %(code)s. Reason: %(reason)s')
+            msg_args = {
+                'name': snapshot_name,
+                'code': e.code,
+                'reason': e.message,
+            }
+            raise exception.VolumeBackendAPIException(data=msg % msg_args)
+
+        records = response.get('records', [])
+        if not records:
+            LOG.debug('Snapshot %(snap)s not found on volume %(vol)s.',
+                      {'snap': snapshot_name, 'vol': volume_name})
+            raise exception.SnapshotNotFound(snapshot_id=snapshot_name)
+        if len(records) > 1:
+            msg = _('Could not find unique snapshot %(snap)s on '
+                    'volume %(vol)s.')
+            msg_args = {'snap': snapshot_name, 'vol': volume_name}
+            raise exception.VolumeBackendAPIException(data=msg % msg_args)
+
+        snap_info = records[0]
+        owners = set(snap_info.get('owners', []) or [])
+        return {
+            'name': snap_info['name'],
+            'volume': snap_info['volume']['name'],
+            'busy': bool(owners),
+            'owners': owners,
+        }
+
+    @utils.retry(exception.SnapshotIsBusy)
+    def wait_for_busy_snapshot(self, flexvol, snapshot_name):
+        """Checks for and handles a busy snapshot.
+
+        If a snapshot is busy, for reasons other than cloning, an exception is
+        raised immediately. Otherwise, wait for a period of time for the clone
+        dependency to finish before giving up. If the snapshot is not busy then
+        no action is taken and the method exits.
+        """
+
+        snapshot = self.get_snapshot(flexvol, snapshot_name)
+        if not snapshot['busy']:
+            LOG.debug("Backing consistency group snapshot %s available for "
+                      "deletion.", snapshot_name)
+            return
+        else:
+            LOG.debug("Snapshot %(snap)s for vol %(vol)s is busy, waiting "
+                      "for volume clone dependency to clear.",
+                      {"snap": snapshot_name, "vol": flexvol})
+            raise exception.SnapshotIsBusy(snapshot_name=snapshot_name)
+
+    def rename_snapshot(self, volume, current_name, new_name):
+        """Renames a snapshot."""
+
+        volume_res = self._get_volume_by_args(vol_name=volume)
+        query = {
+            'name': current_name,
+            'fields': 'uuid',
+        }
+        response = self.send_request(
+            f'/storage/volumes/{volume_res["uuid"]}/snapshots',
+            'get', query=query)
+        records = response.get('records', [])
+        if not records:
+            LOG.debug('Snapshot %(snap)s not found on volume %(vol)s.',
+                      {'snap': current_name, 'vol': volume})
+            raise exception.SnapshotNotFound(snapshot_id=current_name)
+
+        snapshot_uuid = records[0]['uuid']
+        body = {'name': new_name}
+        self.send_request(
+            f'/storage/volumes/{volume_res["uuid"]}/snapshots/{snapshot_uuid}',
+            'patch', body=body)
+
+    def mark_snapshot_for_deletion(self, volume, snapshot_name):
+        """Mark snapshot for deletion by renaming snapshot.
+
+        On REST, snapshot PATCH is asynchronous and may fail if the snapshot
+        is still busy (e.g. space-efficient LUN clones take ~5 s to auto-split
+        on AFF). Use wait_on_accepted=False (fire-and-forget) so that the
+        rename request is submitted without blocking on the job result, and
+        suppress any exception so callers (like _create_consistent_group_
+        snapshot) do not fail – matching the ZAPI path which never raises.
+        """
+        try:
+            volume_res = self._get_volume_by_args(vol_name=volume)
+        except Exception:
+            LOG.exception('Could not look up volume %s for deferred '
+                          'deletion of snapshot %s; skipping rename.',
+                          volume, snapshot_name)
+            return
+
+        try:
+            query = {'name': snapshot_name, 'fields': 'uuid'}
+            response = self.send_request(
+                f'/storage/volumes/{volume_res["uuid"]}/snapshots',
+                'get', query=query)
+            records = response.get('records', [])
+            if not records:
+                LOG.warning('Snapshot %s not found; skipping rename for '
+                            'deferred deletion.', snapshot_name)
+                return
+            snapshot_uuid = records[0]['uuid']
+            body = {'name': DELETED_PREFIX + snapshot_name}
+            self.send_request(
+                f'/storage/volumes/{volume_res["uuid"]}'
+                f'/snapshots/{snapshot_uuid}',
+                'patch', body=body, wait_on_accepted=False)
+            LOG.debug('Submitted rename of snapshot %s to %s for deferred '
+                      'deletion (fire-and-forget).', snapshot_name,
+                      DELETED_PREFIX + snapshot_name)
+        except netapp_api.NaApiError:
+            LOG.warning('Could not rename snapshot %s for deferred deletion '
+                        '(snapshot may still be busy). It will be cleaned up '
+                        'when its dependents are removed.', snapshot_name)
+        except Exception:
+            LOG.exception('Unexpected error renaming snapshot %s for '
+                          'deferred deletion.', snapshot_name)
+
+    def get_snapshots_marked_for_deletion(self):
+        """Get a list of snapshots marked for deletion."""
+
+        query = {
+            'type': 'rw',
+            'style': 'flex*',  # Match both 'flexvol' and 'flexgroup'
+            'is_svm_root': 'false',
+            'error_state.is_inconsistent': 'false',
+            'state': 'online',
+            'svm.name': self.vserver,
+            'fields': 'name,uuid',
+        }
+        response = self.send_request('/storage/volumes/', 'get', query=query)
+        volumes = response.get('records', [])
+
+        snapshots = []
+        for volume in volumes:
+            snap_query = {
+                'name': DELETED_PREFIX + '*',
+                'fields': 'name,uuid,owners',
+            }
+            try:
+                snap_response = self.send_request(
+                    f'/storage/volumes/{volume["uuid"]}/snapshots',
+                    'get', query=snap_query)
+            except netapp_api.NaApiError:
+                LOG.exception('Could not get snapshots marked for deletion '
+                              'on volume %s; skipping.', volume['name'])
+                continue
+            for snapshot_info in snap_response.get('records', []):
+                # The ZAPI client filters busy snapshots out server-side via
+                # ``busy=false``; REST has no such filter, so skip any
+                # snapshot that currently has owners.
+                if snapshot_info.get('owners'):
+                    LOG.debug('Skipping snapshot %(name)s on volume %(vol)s; '
+                              'still has owners (busy).',
+                              {'name': snapshot_info['name'],
+                               'vol': volume['name']})
+                    continue
+                snapshots.append({
+                    'name': snapshot_info['name'],
+                    'instance_id': snapshot_info['uuid'],
+                    'volume_name': volume['name'],
+                })
+
+        return snapshots
 
     def get_operational_lif_addresses(self):
         """Gets the IP addresses of operational LIFs on the vserver."""
@@ -1403,6 +1688,13 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         self.send_request(f'/storage/luns/{lun["uuid"]}', 'patch', body=body)
 
+    def set_lun_qos_policy_group(self, path, qos_policy_group,
+                                 is_adaptive=False):
+        """Sets qos_policy_group on a LUN."""
+        self._validate_qos_policy_group(is_adaptive)
+        body = {'qos_policy.name': qos_policy_group}
+        self._lun_update_by_path(path, body)
+
     def _validate_qos_policy_group(self, is_adaptive, spec=None,
                                    qos_min_support=False):
         if is_adaptive and not self.features.ADAPTIVE_QOS:
@@ -1777,6 +2069,104 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
             body['overwrite_destination'] = True
 
         self.send_request('/storage/file/clone', 'post', body=body)
+
+    def create_cg_snapshot(self, volume_names, snapshot_name):
+        """Creates a consistency group snapshot across one or more FlexVols.
+
+        Uses ONTAP REST consistency-group API to create an ephemeral CG,
+        take a crash-consistent CG snapshot, then immediately delete the
+        CG. The snapshot persists on each FlexVol after CG deletion,
+        mirroring the ZAPI cg-start/cg-commit behaviour.
+        """
+        if not volume_names:
+            msg = _('Cannot create a consistency group snapshot with an '
+                    'empty list of FlexVols.')
+            raise na_utils.NetAppDriverException(msg)
+
+        # Pre-check: raise if any FlexVol already belongs to an existing CG.
+        for vol_name in volume_names:
+            query = {
+                'volumes.name': vol_name,
+                'svm.name': self.vserver,
+                'fields': 'name,uuid',
+            }
+            cg_response = self.send_request(
+                '/application/consistency-groups', 'get', query=query)
+            if cg_response.get('num_records', 0) > 0:
+                existing_cg = cg_response['records'][0]['name']
+                msg = _("FlexVol %(vol)s is already a member of "
+                        "consistency group %(cg)s. Cannot create a "
+                        "new consistency group snapshot.")
+                raise na_utils.NetAppDriverException(
+                    msg % {'vol': vol_name, 'cg': existing_cg})
+
+        timestamp = int(timeutils.utcnow().timestamp() * 1e6)
+        cg_name = CG_NAME_PREFIX + str(timestamp)
+        cg_body = {
+            'name': cg_name,
+            'svm': {'name': self.vserver},
+            'volumes': [
+                {'name': vol, 'provisioning_options': {'action': 'add'}}
+                for vol in volume_names
+            ],
+        }
+        try:
+            cg_response = self.send_request(
+                '/application/consistency-groups', 'post', body=cg_body)
+        except netapp_api.NaApiError as e:
+            msg = _('Could not create consistency group %(cg)s for '
+                    'snapshot %(snap)s. Code: %(code)s. Reason: %(reason)s.')
+            msg_args = {
+                'cg': cg_name,
+                'snap': snapshot_name,
+                'code': e.code,
+                'reason': e.message,
+            }
+            raise exception.VolumeBackendAPIException(data=msg % msg_args)
+
+        # Retrieve the new CG UUID.
+        query = {
+            'name': cg_name,
+            'svm.name': self.vserver,
+            'fields': 'name,uuid',
+        }
+        cg_list = self.send_request(
+            '/application/consistency-groups', 'get', query=query)
+        if not cg_list.get('records'):
+            msg = _('Could not find consistency group %s after creation.')
+            raise exception.VolumeBackendAPIException(data=msg % cg_name)
+        cg_uuid = cg_list['records'][0]['uuid']
+
+        primary_exc = None
+        try:
+            # Create the CG snapshot (synchronous — returns empty body).
+            snap_body = {
+                'name': snapshot_name,
+                'consistency_type': 'crash',
+            }
+            self.send_request(
+                f'/application/consistency-groups/{cg_uuid}/snapshots',
+                'post', body=snap_body)
+        except Exception as exc:
+            primary_exc = exc
+            LOG.exception('Failed to create CG snapshot %s.', snapshot_name)
+
+        try:
+            # Always delete the ephemeral CG; snapshot survives on each volume.
+            self.send_request(
+                f'/application/consistency-groups/{cg_uuid}', 'delete')
+        except Exception:
+            if primary_exc is not None:
+                # Don't let a cleanup failure mask the primary snapshot
+                # creation error; just log it.
+                LOG.exception('Failed to delete ephemeral consistency '
+                              'group %s after snapshot creation failure; '
+                              'it may need manual cleanup.', cg_uuid)
+            else:
+                raise
+
+        if primary_exc is not None:
+            raise primary_exc
 
     def clone_lun(self, volume, name, new_name, space_reserved='true',
                   qos_policy_group_name=None, src_block=0, dest_block=0,
@@ -2786,8 +3176,19 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         }
 
         result = self.send_request('/storage/file/copy', 'post', body=body,
-                                   enable_tunneling=False)
+                                   enable_tunneling=False,
+                                   wait_on_accepted=False)
         return result['job']['uuid']
+
+    def destroy_file_copy(self, job_uuid):
+        """Cancel/Destroy an in-progress file copy."""
+        body = {'action': 'cancel'}
+        try:
+            self.send_request(f'/cluster/jobs/{job_uuid}', 'patch',
+                              body=body, enable_tunneling=False)
+        except netapp_api.NaApiError as e:
+            msg = _('Could not cancel file copy for job uuid %s. %s')
+            raise na_utils.NetAppDriverException(msg % (job_uuid, e))
 
     def get_file_copy_status(self, job_uuid):
         """Get file copy job status from a given job's UUID."""

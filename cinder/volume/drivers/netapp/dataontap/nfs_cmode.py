@@ -35,6 +35,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder.objects import fields
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
@@ -1156,11 +1157,27 @@ class NetAppCmodeNfsDriver(
             # before issuing cancel.
             self.zapi_client.destroy_file_copy(job_uuid)
         except na_utils.NetAppDriverException:
-            dest_client = dot_utils.get_client_for_backend(dest_backend_name)
-            file_path = '%s/%s' % (dest_pool, file_name)
-            try:
-                dest_client.delete_file(file_path)
-            except Exception:
+            # The REST cancel only stops the job and leaves the partial file
+            # behind (unlike the ZAPI file-copy-destroy), and the cancel itself
+            # may fail; either way we delete the partial file below.
+            LOG.debug('Could not cancel file copy job %s; cleaning up the '
+                      'partially copied file directly.', job_uuid)
+
+        dest_client = dot_utils.get_client_for_backend(dest_backend_name)
+        file_path = '/vol/%s/%s' % (dest_pool, file_name)
+        try:
+            dest_client.delete_file(file_path)
+        except Exception as e:
+            # An already-absent partial file (ZAPI cancel removed it, or it was
+            # never created) surfaces as a "no such file" error, which is the
+            # desired end state; only warn on unexpected failures.
+            not_found = (isinstance(e, netapp_api.NaApiError) and e.code in (
+                netapp_api.REST_NO_SUCH_FILE, netapp_api.EAPINOTFOUND))
+            if not_found:
+                LOG.debug('Partial file %s already absent on destination '
+                          'volume in pool %s; nothing to clean up.',
+                          file_path, dest_pool)
+            else:
                 LOG.warning('Error cleaning up file %s in destination volume. '
                             'Verify if destination volume still exists in '
                             'pool %s and delete it manually to avoid unused '

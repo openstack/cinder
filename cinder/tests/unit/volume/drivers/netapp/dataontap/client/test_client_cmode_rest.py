@@ -16,6 +16,7 @@
 #    under the License.
 
 import copy
+import time
 from unittest import mock
 import uuid
 
@@ -748,30 +749,39 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
     def test_get_flexvol_dedupe_info(self):
 
-        api_response = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST
-        mock_send_request = self.mock_object(self.client,
-                                             'send_request',
-                                             return_value=api_response)
+        vol_response = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST
+        sis_response = fake_client.SIS_CLI_RESPONSE_REST
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[vol_response, sis_response])
 
         result = self.client.get_flexvol_dedupe_info(
             fake_client.VOLUME_NAMES[0])
 
-        query = {
+        vol_query = {
             'efficiency.volume_path': '/vol/%s' % fake_client.VOLUME_NAMES[0],
             'fields': 'efficiency.state,efficiency.compression'
         }
+        sis_query = {
+            'volume': fake_client.VOLUME_NAMES[0],
+            'vserver': fake_client.VSERVER_NAME,
+            'fields': 'logical-data-size,logical-data-limit',
+        }
 
-        mock_send_request.assert_called_once_with(
-            '/storage/volumes', 'get', query=query)
+        mock_send_request.assert_any_call(
+            '/storage/volumes', 'get', query=vol_query)
+        mock_send_request.assert_any_call(
+            '/private/cli/volume/efficiency', 'get',
+            query=sis_query, enable_tunneling=False)
         self.assertEqual(
-            fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA, result)
+            fake_client.VOLUME_DEDUPE_INFO_SSC_WITH_LOGICAL_DATA, result)
 
     def test_get_flexvol_dedupe_info_no_logical_data_values(self):
 
-        api_response = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST
-        self.mock_object(self.client,
-                         'send_request',
-                         return_value=api_response)
+        vol_response = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_REST
+        sis_response = fake_client.SIS_CLI_NO_DATA_RESPONSE_REST
+        self.mock_object(self.client, 'send_request',
+                         side_effect=[vol_response, sis_response])
 
         result = self.client.get_flexvol_dedupe_info(
             fake_client.VOLUME_NAMES[0])
@@ -789,6 +799,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         result = self.client.get_flexvol_dedupe_info(
             fake_client.VOLUME_NAMES[0])
 
+        # Returns no_dedupe_response immediately when num_records != 1
         self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA,
                          result)
 
@@ -1006,6 +1017,34 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                           self.client.get_file_sizes_by_dir,
                           volume['name'])
 
+    def test_get_file_usage(self):
+        query = {
+            'vserver': fake_client.FILE_USAGE_VSERVER,
+            'path': fake_client.FILE_USAGE_PATH,
+            'fields': 'unique_bytes',
+        }
+        self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.GET_FILE_USAGE_RESPONSE_REST)
+
+        result = self.client.get_file_usage(
+            fake_client.FILE_USAGE_PATH, fake_client.FILE_USAGE_VSERVER)
+
+        self.assertEqual(fake_client.FILE_USAGE_UNIQUE_BYTES, result)
+        self.client.send_request.assert_called_once_with(
+            '/private/cli/volume/file/show-disk-usage', 'get', query=query)
+
+    def test_get_file_usage_not_found(self):
+        """NaApiError (file not found on ONTAP) returns '0'."""
+        self.mock_object(
+            self.client, 'send_request',
+            side_effect=netapp_api.NaApiError(code='917806'))
+
+        result = self.client.get_file_usage(
+            fake_client.FILE_USAGE_PATH, fake_client.FILE_USAGE_VSERVER)
+
+        self.assertEqual('0', result)
+
     @ddt.data({'junction_path': '/fake/vol'},
               {'name': 'fake_volume'},
               {'junction_path': '/fake/vol', 'name': 'fake_volume'})
@@ -1044,6 +1083,224 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             f'/storage/volumes/{volume["uuid"]}/snapshots'
             f'?name={snap_name}', 'delete')
+
+    def test_get_snapshot_not_busy(self):
+        volume = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_REST
+        self.mock_object(
+            self.client, '_get_volume_by_args', return_value=volume)
+        api_response = fake_client.GET_SNAPSHOT_RESPONSE_NOT_BUSY_REST
+        self.mock_object(
+            self.client, 'send_request', return_value=api_response)
+        snap_name = fake.SNAPSHOT["name"]
+
+        snapshot = self.client.get_snapshot(volume["name"], snap_name)
+
+        self.client._get_volume_by_args.assert_called_once_with(
+            vol_name=volume["name"])
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{volume["uuid"]}/snapshots',
+            'get',
+            query={'name': snap_name, 'fields': 'name,volume,owners'})
+        self.assertEqual(snap_name, snapshot['name'])
+        self.assertEqual(volume["name"], snapshot['volume'])
+        self.assertFalse(snapshot['busy'])
+        self.assertEqual(set(), snapshot['owners'])
+
+    def test_get_snapshot_busy(self):
+        volume = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_REST
+        self.mock_object(
+            self.client, '_get_volume_by_args', return_value=volume)
+        api_response = fake_client.GET_SNAPSHOT_RESPONSE_BUSY_REST
+        self.mock_object(
+            self.client, 'send_request', return_value=api_response)
+        snap_name = fake.SNAPSHOT["name"]
+
+        snapshot = self.client.get_snapshot(volume["name"], snap_name)
+
+        self.assertTrue(snapshot['busy'])
+        self.assertEqual({"volume_clone"}, snapshot['owners'])
+
+    def test_get_snapshot_not_found(self):
+        volume = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_REST
+        self.mock_object(
+            self.client, '_get_volume_by_args', return_value=volume)
+        api_response = fake_client.GET_SNAPSHOT_RESPONSE_EMPTY_REST
+        self.mock_object(
+            self.client, 'send_request', return_value=api_response)
+
+        self.assertRaises(
+            exception.SnapshotNotFound,
+            self.client.get_snapshot,
+            volume["name"], fake.SNAPSHOT["name"])
+
+    def test_wait_for_busy_snapshot(self):
+        # Need to mock sleep as it is called by @utils.retry
+        self.mock_object(time, 'sleep')
+        not_busy = {
+            'name': fake.SNAPSHOT_NAME,
+            'volume': fake.FLEXVOL,
+            'busy': False,
+            'owners': set(),
+        }
+        mock_get_snapshot = self.mock_object(
+            self.client, 'get_snapshot', return_value=not_busy)
+
+        self.client.wait_for_busy_snapshot(fake.FLEXVOL, fake.SNAPSHOT_NAME)
+
+        mock_get_snapshot.assert_called_once_with(fake.FLEXVOL,
+                                                  fake.SNAPSHOT_NAME)
+
+    def test_wait_for_busy_snapshot_raise_exception(self):
+        # Need to mock sleep as it is called by @utils.retry
+        self.mock_object(time, 'sleep')
+        busy = {
+            'name': fake.SNAPSHOT_NAME,
+            'volume': fake.FLEXVOL,
+            'busy': True,
+            'owners': {'volume_clone'},
+        }
+        mock_get_snapshot = self.mock_object(
+            self.client, 'get_snapshot', return_value=busy)
+
+        self.assertRaises(exception.SnapshotIsBusy,
+                          self.client.wait_for_busy_snapshot,
+                          fake.FLEXVOL, fake.SNAPSHOT_NAME)
+
+        calls = [
+            mock.call(fake.FLEXVOL, fake.SNAPSHOT_NAME),
+            mock.call(fake.FLEXVOL, fake.SNAPSHOT_NAME),
+            mock.call(fake.FLEXVOL, fake.SNAPSHOT_NAME),
+        ]
+        mock_get_snapshot.assert_has_calls(calls)
+
+    def test_rename_snapshot(self):
+        volume = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_REST
+        self.mock_object(
+            self.client, '_get_volume_by_args', return_value=volume)
+        uuid_response = fake_client.GET_SNAPSHOT_UUID_RESPONSE_REST
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[uuid_response, None])
+        current_name = fake.SNAPSHOT['name']
+        new_name = 'deleted_cinder_' + current_name
+        snapshot_uuid = uuid_response['records'][0]['uuid']
+
+        self.client.rename_snapshot(
+            volume["name"], current_name, new_name)
+
+        self.client._get_volume_by_args.assert_called_once_with(
+            vol_name=volume["name"])
+        mock_send_request.assert_has_calls([
+            mock.call(
+                f'/storage/volumes/{volume["uuid"]}/snapshots',
+                'get', query={'name': current_name, 'fields': 'uuid'}),
+            mock.call(
+                f'/storage/volumes/{volume["uuid"]}/snapshots/'
+                f'{snapshot_uuid}',
+                'patch', body={'name': new_name}),
+        ])
+
+    def test_rename_snapshot_not_found(self):
+        volume = fake_client.VOLUME_GET_ITER_SSC_RESPONSE_STR_REST
+        self.mock_object(
+            self.client, '_get_volume_by_args', return_value=volume)
+        self.mock_object(
+            self.client, 'send_request',
+            return_value=fake_client.GET_SNAPSHOT_RESPONSE_EMPTY_REST)
+
+        self.assertRaises(
+            exception.SnapshotNotFound,
+            self.client.rename_snapshot,
+            volume["name"], fake.SNAPSHOT['name'], 'new_name')
+
+    def test_mark_snapshot_for_deletion(self):
+        snap_name = fake.SNAPSHOT['name']
+        fake_volume_rec = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        vol_uuid = fake_volume_rec['uuid']
+        snap_uuid = 'snap-uuid-1234'
+        snap_response = {
+            'records': [{'name': snap_name, 'uuid': snap_uuid}],
+        }
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         return_value=fake_volume_rec)
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[snap_response, None])
+
+        self.client.mark_snapshot_for_deletion(fake.FLEXVOL, snap_name)
+
+        mock_send_request.assert_any_call(
+            f'/storage/volumes/{vol_uuid}/snapshots',
+            'get', query={'name': snap_name, 'fields': 'uuid'})
+        mock_send_request.assert_any_call(
+            f'/storage/volumes/{vol_uuid}/snapshots/{snap_uuid}',
+            'patch',
+            body={'name': 'deleted_cinder_' + snap_name},
+            wait_on_accepted=False)
+
+    def test_get_snapshots_marked_for_deletion(self):
+        volumes_response = (
+            fake_client.SNAPSHOTS_MARKED_FOR_DELETION_VOLUMES_REST)
+        snapshots_response = fake_client.SNAPSHOTS_MARKED_FOR_DELETION_REST
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[volumes_response, snapshots_response])
+
+        result = self.client.get_snapshots_marked_for_deletion()
+
+        volume = volumes_response['records'][0]
+        mock_send_request.assert_has_calls([
+            mock.call('/storage/volumes/', 'get', query={
+                'type': 'rw',
+                'style': 'flex*',
+                'is_svm_root': 'false',
+                'error_state.is_inconsistent': 'false',
+                'state': 'online',
+                'svm.name': self.client.vserver,
+                'fields': 'name,uuid',
+            }),
+            mock.call(
+                f'/storage/volumes/{volume["uuid"]}/snapshots',
+                'get', query={
+                    'name': 'deleted_cinder_*',
+                    'fields': 'name,uuid,owners',
+                }),
+        ])
+        # Only the non-busy snapshot (no owners) is returned.
+        expected = [{
+            'name': 'deleted_cinder_' + fake.SNAPSHOT['name'],
+            'instance_id': 'aaaaaaaa-1111-2222-3333-444444444444',
+            'volume_name': volume['name'],
+        }]
+        self.assertEqual(expected, result)
+
+    def test_get_snapshots_marked_for_deletion_partial_failure(self):
+        """One volume's query failing should not abort the others."""
+        volumes_response = {
+            'records': [
+                {'name': 'vol1', 'uuid': 'uuid-1'},
+                {'name': 'vol2', 'uuid': 'uuid-2'},
+            ],
+            'num_records': 2,
+        }
+        snapshots_response = fake_client.SNAPSHOTS_MARKED_FOR_DELETION_REST
+        self.mock_object(
+            self.client, 'send_request',
+            side_effect=[
+                volumes_response,
+                netapp_api.NaApiError,
+                snapshots_response,
+            ])
+
+        result = self.client.get_snapshots_marked_for_deletion()
+
+        expected = [{
+            'name': 'deleted_cinder_' + fake.SNAPSHOT['name'],
+            'instance_id': 'aaaaaaaa-1111-2222-3333-444444444444',
+            'volume_name': 'vol2',
+        }]
+        self.assertEqual(expected, result)
 
     def test_get_operational_lif_addresses(self):
         expected_result = ['1.2.3.4', '99.98.97.96']
@@ -1794,6 +2051,51 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client._get_first_lun_by_path.assert_called_once_with(lun_path)
         self.client.send_request.assert_not_called()
 
+    @ddt.data(True, False)
+    def test_set_lun_qos_policy_group(self, is_adaptive):
+        lun_path = f'/vol/{fake_client.VOLUME_NAMES[0]}/cinder-lun'
+        body = {'qos_policy.name': fake.QOS_POLICY_GROUP_NAME}
+
+        self.client.features.ADAPTIVE_QOS = True
+        self.mock_object(self.client, '_validate_qos_policy_group')
+        self.mock_object(self.client, '_lun_update_by_path')
+
+        self.client.set_lun_qos_policy_group(
+            lun_path, fake.QOS_POLICY_GROUP_NAME, is_adaptive=is_adaptive)
+
+        self.client._validate_qos_policy_group.assert_called_once_with(
+            is_adaptive)
+        self.client._lun_update_by_path.assert_called_once_with(
+            lun_path, body)
+
+    def test_set_lun_qos_policy_group_adaptive_unsupported(self):
+        lun_path = f'/vol/{fake_client.VOLUME_NAMES[0]}/cinder-lun'
+
+        self.client.features.ADAPTIVE_QOS = False
+        self.mock_object(self.client, '_lun_update_by_path')
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client.set_lun_qos_policy_group,
+            lun_path, fake.QOS_POLICY_GROUP_NAME, is_adaptive=True)
+
+        self.client._lun_update_by_path.assert_not_called()
+
+    def test_set_lun_qos_policy_group_lun_not_found(self):
+        lun_path = f'/vol/{fake_client.VOLUME_NAMES[0]}/cinder-lun'
+
+        self.client.features.ADAPTIVE_QOS = True
+        self.mock_object(self.client, '_get_first_lun_by_path',
+                         return_value=None)
+        self.mock_object(self.client, 'send_request')
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.set_lun_qos_policy_group,
+            lun_path, fake.QOS_POLICY_GROUP_NAME)
+
+        self.client.send_request.assert_not_called()
+
     def test__validate_qos_policy_group_unsupported_qos(self):
         is_adaptive = True
         self.client.features.ADAPTIVE_QOS = False
@@ -2363,6 +2665,159 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             mock.call('/storage/file/clone', 'post', body=expected_body),
         ])
 
+    def test_get_clone_split_info(self):
+        fake_volume_name = fake.VOLUME_NAME
+        api_response = fake_client.CLONE_SPLIT_STATUS_RESPONSE_REST
+        expected_result = {
+            'unsplit-size': 316659348799488,
+            'unsplit-clone-count': 1234,
+        }
+
+        expected_query = {
+            'volume.name': fake_volume_name,
+            'svm.name': self.vserver,
+        }
+
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', return_value=api_response)
+
+        result = self.client.get_clone_split_info(fake_volume_name)
+
+        self.assertEqual(expected_result, result)
+        mock_send_request.assert_called_once_with(
+            '/storage/file/clone/split-status', 'get',
+            query=expected_query)
+
+    def test_get_clone_split_info_no_records(self):
+        fake_volume_name = fake.VOLUME_NAME
+        api_response = fake_client.CLONE_SPLIT_STATUS_NO_DATA_RESPONSE_REST
+        expected_result = {
+            'unsplit-size': 0,
+            'unsplit-clone-count': 0,
+        }
+
+        expected_query = {
+            'volume.name': fake_volume_name,
+            'svm.name': self.vserver,
+        }
+
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', return_value=api_response)
+
+        result = self.client.get_clone_split_info(fake_volume_name)
+
+        self.assertEqual(expected_result, result)
+        mock_send_request.assert_called_once_with(
+            '/storage/file/clone/split-status', 'get',
+            query=expected_query)
+
+    def test_get_clone_split_info_api_error(self):
+        fake_volume_name = fake.VOLUME_NAME
+        expected_result = {
+            'unsplit-size': 0,
+            'unsplit-clone-count': 0,
+        }
+
+        expected_query = {
+            'volume.name': fake_volume_name,
+            'svm.name': self.vserver,
+        }
+
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=netapp_api.NaApiError())
+
+        result = self.client.get_clone_split_info(fake_volume_name)
+
+        self.assertEqual(expected_result, result)
+        mock_send_request.assert_called_once_with(
+            '/storage/file/clone/split-status', 'get',
+            query=expected_query)
+
+    def test_get_flexvol_dedupe_used_percent(self):
+        """Normal path: returns calculated percentage."""
+        fake_volume_name = fake_client.VOLUME_NAMES[0]
+        # logical_data_size=211106232532992, logical_data_limit=703687441776640
+        dedupe_info = fake_client.VOLUME_DEDUPE_INFO_SSC_WITH_LOGICAL_DATA
+        clone_split_info = fake_client.VOLUME_CLONE_SPLIT_STATUS
+        # (211106232532992 + 316659348799488) / 703687441776640 * 100
+        expected_percent = (
+            100.0 *
+            float(dedupe_info['logical-data-size'] +
+                  clone_split_info['unsplit-size']) /
+            dedupe_info['logical-data-limit']
+        )
+
+        self.client.features.add_feature('CLONE_SPLIT_STATUS', supported=True)
+        self.mock_object(self.client, 'get_flexvol_dedupe_info',
+                         return_value=dedupe_info)
+        self.mock_object(self.client, 'get_clone_split_info',
+                         return_value=clone_split_info)
+
+        result = self.client.get_flexvol_dedupe_used_percent(fake_volume_name)
+
+        self.assertAlmostEqual(expected_percent, result)
+        self.client.get_flexvol_dedupe_info.assert_called_once_with(
+            fake_volume_name)
+        self.client.get_clone_split_info.assert_called_once_with(
+            fake_volume_name)
+
+    def test_get_flexvol_dedupe_used_percent_no_clone_split_feature(self):
+        """Returns 0.0 immediately when CLONE_SPLIT_STATUS is disabled."""
+        fake_volume_name = fake_client.VOLUME_NAMES[0]
+
+        self.client.features.add_feature('CLONE_SPLIT_STATUS',
+                                         supported=False)
+        mock_dedupe = self.mock_object(self.client, 'get_flexvol_dedupe_info')
+        mock_clone = self.mock_object(self.client, 'get_clone_split_info')
+
+        result = self.client.get_flexvol_dedupe_used_percent(fake_volume_name)
+
+        self.assertEqual(0.0, result)
+        mock_dedupe.assert_not_called()
+        mock_clone.assert_not_called()
+
+    def test_get_flexvol_dedupe_used_percent_zero_unsplit(self):
+        """Unsplit size is 0 (no pending clone splits)."""
+        fake_volume_name = fake_client.VOLUME_NAMES[0]
+        dedupe_info = fake_client.VOLUME_DEDUPE_INFO_SSC_WITH_LOGICAL_DATA
+        clone_split_info = {'unsplit-size': 0, 'unsplit-clone-count': 0}
+        expected_percent = (
+            100.0 * float(dedupe_info['logical-data-size']) /
+            dedupe_info['logical-data-limit']
+        )
+
+        self.client.features.add_feature('CLONE_SPLIT_STATUS', supported=True)
+        self.mock_object(self.client, 'get_flexvol_dedupe_info',
+                         return_value=dedupe_info)
+        self.mock_object(self.client, 'get_clone_split_info',
+                         return_value=clone_split_info)
+
+        result = self.client.get_flexvol_dedupe_used_percent(fake_volume_name)
+
+        self.assertAlmostEqual(expected_percent, result)
+
+    def test_get_flexvol_dedupe_used_percent_no_dedupe_data(self):
+        """Dedupe helper returns defaults (0/1): result is 0.0."""
+        fake_volume_name = fake_client.VOLUME_NAMES[0]
+        dedupe_info = fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA
+        # logical-data-size=0, logical-data-limit=1
+        clone_split_info = fake_client.VOLUME_CLONE_SPLIT_STATUS
+        expected_percent = (
+            100.0 *
+            float(0 + clone_split_info['unsplit-size']) / 1
+        )
+
+        self.client.features.add_feature('CLONE_SPLIT_STATUS', supported=True)
+        self.mock_object(self.client, 'get_flexvol_dedupe_info',
+                         return_value=dedupe_info)
+        self.mock_object(self.client, 'get_clone_split_info',
+                         return_value=clone_split_info)
+
+        result = self.client.get_flexvol_dedupe_used_percent(fake_volume_name)
+
+        self.assertAlmostEqual(expected_percent, result)
+
     def test_clone_lun(self):
         self.client.vserver = fake.VSERVER_NAME
 
@@ -2400,6 +2855,200 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_validate_policy.assert_called_once_with(False)
         mock_send_request.assert_called_once_with(
             '/storage/luns', 'post', body=expected_body)
+
+    def test_create_cg_snapshot_empty_volume_names(self):
+        """create_cg_snapshot raises if volume_names is empty."""
+        mock_send_request = self.mock_object(self.client, 'send_request')
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client.create_cg_snapshot,
+            [], fake.CG_SNAPSHOT_NAME)
+
+        mock_send_request.assert_not_called()
+
+    def test_create_cg_snapshot(self):
+        """create_cg_snapshot creates CG, snapshots it, then deletes CG."""
+        self.client.vserver = fake.VSERVER_NAME
+        vol_names = [fake_client.VOLUME_NAMES[0], fake_client.VOLUME_NAMES[1]]
+        snap_name = fake.CG_SNAPSHOT_NAME
+        fake_cg_name = (
+            client_cmode_rest.CG_NAME_PREFIX + '1234567890123456')
+        fake_cg_uuid = 'fake-cg-uuid-1234'
+
+        # Pre-check: no existing CG for either volume.
+        pre_check_response = {'num_records': 0, 'records': []}
+        # CG creation returns empty body.
+        cg_create_response = {}
+        # CG lookup returns the new CG UUID.
+        cg_lookup_response = {
+            'records': [{'name': fake_cg_name, 'uuid': fake_cg_uuid}],
+        }
+        # CG snapshot POST returns empty body.
+        snap_create_response = {}
+        # CG DELETE.
+        cg_delete_response = {}
+
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[
+                pre_check_response,   # GET CG for vol_names[0]
+                pre_check_response,   # GET CG for vol_names[1]
+                cg_create_response,   # POST /application/consistency-groups
+                cg_lookup_response,   # GET /application/consistency-groups
+                snap_create_response,  # POST .../snapshots
+                cg_delete_response,   # DELETE /application/consistency-groups
+            ])
+
+        with mock.patch.object(
+                client_cmode_rest, 'timeutils') as mock_timeutils:
+            mock_now = mock.Mock()
+            mock_now.timestamp.return_value = 1234567890.123456
+            mock_timeutils.utcnow.return_value = mock_now
+
+            self.client.create_cg_snapshot(vol_names, snap_name)
+
+        expected_cg_body = {
+            'name': fake_cg_name,
+            'svm': {'name': fake.VSERVER_NAME},
+            'volumes': [
+                {'name': v, 'provisioning_options': {'action': 'add'}}
+                for v in vol_names
+            ],
+        }
+        expected_snap_body = {
+            'name': snap_name,
+            'consistency_type': 'crash',
+        }
+        mock_send_request.assert_any_call(
+            '/application/consistency-groups', 'post', body=expected_cg_body)
+        mock_send_request.assert_any_call(
+            f'/application/consistency-groups/{fake_cg_uuid}/snapshots',
+            'post', body=expected_snap_body)
+        mock_send_request.assert_any_call(
+            f'/application/consistency-groups/{fake_cg_uuid}', 'delete')
+
+    def test_create_cg_snapshot_flexvol_already_in_cg(self):
+        """Pre-check raises if volume is in existing CG."""
+        self.client.vserver = fake.VSERVER_NAME
+        vol_names = [fake_client.VOLUME_NAMES[0]]
+        snap_name = fake.CG_SNAPSHOT_NAME
+        existing_cg_name = 'existing-cg'
+
+        pre_check_response = {
+            'num_records': 1,
+            'records': [{'name': existing_cg_name, 'uuid': 'existing-uuid'}],
+        }
+        self.mock_object(self.client, 'send_request',
+                         return_value=pre_check_response)
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client.create_cg_snapshot,
+            vol_names, snap_name)
+
+    def test_create_cg_snapshot_name_conflict(self):
+        """CG creation name conflict raises a clear, actionable error."""
+        self.client.vserver = fake.VSERVER_NAME
+        vol_names = [fake_client.VOLUME_NAMES[0]]
+        snap_name = fake.CG_SNAPSHOT_NAME
+
+        pre_check_response = {'num_records': 0, 'records': []}
+        conflict_error = netapp_api.NaApiError(code='9', message='conflict')
+
+        self.mock_object(
+            self.client, 'send_request',
+            side_effect=[
+                pre_check_response,  # GET CG for vol_names[0]
+                conflict_error,      # POST /application/consistency-groups
+            ])
+
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.client.create_cg_snapshot,
+            vol_names, snap_name)
+
+    def test_create_cg_snapshot_deletes_cg_on_snapshot_failure(self):
+        """The ephemeral CG is always deleted even if snapshot POST fails."""
+        self.client.vserver = fake.VSERVER_NAME
+        vol_names = [fake_client.VOLUME_NAMES[0]]
+        snap_name = fake.CG_SNAPSHOT_NAME
+        fake_cg_name = client_cmode_rest.CG_NAME_PREFIX + '5678567856785678'
+        fake_cg_uuid = 'fake-cg-uuid-5678'
+
+        pre_check_response = {'num_records': 0, 'records': []}
+        cg_create_response = {}
+        cg_lookup_response = {
+            'records': [{'name': fake_cg_name, 'uuid': fake_cg_uuid}],
+        }
+        cg_delete_response = {}
+
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            side_effect=[
+                pre_check_response,   # GET CG for vol
+                cg_create_response,   # POST CG
+                cg_lookup_response,   # GET CG UUID
+                netapp_api.NaApiError(  # POST snapshot fails
+                    code='999', message='snap failed'),
+                cg_delete_response,   # DELETE CG
+            ])
+
+        self.assertRaises(
+            netapp_api.NaApiError,
+            self.client.create_cg_snapshot,
+            vol_names, snap_name)
+
+        # Confirm DELETE was still called after the failure.
+        delete_calls = [
+            c for c in mock_send_request.call_args_list
+            if c[0][0] == f'/application/consistency-groups/{fake_cg_uuid}'
+            and c[0][1] == 'delete'
+        ]
+        self.assertEqual(1, len(delete_calls))
+
+    def test_create_cg_snapshot_preserves_primary_exc_on_cleanup_failure(self):
+        """The original snapshot-creation error must survive a cleanup
+
+        failure, not be masked by the CG DELETE exception.
+        """
+        self.client.vserver = fake.VSERVER_NAME
+        vol_names = [fake_client.VOLUME_NAMES[0]]
+        snap_name = fake.CG_SNAPSHOT_NAME
+        fake_cg_name = client_cmode_rest.CG_NAME_PREFIX + '9999999999999999'
+        fake_cg_uuid = 'fake-cg-uuid-9999'
+
+        pre_check_response = {'num_records': 0, 'records': []}
+        cg_create_response = {}
+        cg_lookup_response = {
+            'records': [{'name': fake_cg_name, 'uuid': fake_cg_uuid}],
+        }
+
+        self.mock_object(
+            self.client, 'send_request',
+            side_effect=[
+                pre_check_response,   # GET CG for vol
+                cg_create_response,   # POST CG
+                cg_lookup_response,   # GET CG UUID
+                netapp_api.NaApiError(  # POST snapshot fails
+                    code='111', message='snap failed'),
+                netapp_api.NaApiError(  # DELETE CG also fails
+                    code='222', message='delete failed'),
+            ])
+
+        try:
+            self.client.create_cg_snapshot(vol_names, snap_name)
+            self.fail('Expected NaApiError to be raised.')
+        except netapp_api.NaApiError as raised_exc:
+            # The primary (snapshot creation) error must be what
+            # propagates, not the cleanup (CG delete) error.
+            self.assertEqual('111', raised_exc.code)
+            self.assertEqual('snap failed', raised_exc.message)
+
+    @ddt.data('_start_cg_snapshot', '_commit_cg_snapshot')
+    def test_getattr_raises_for_cg_zapi_method(self, method_name):
+        """__getattr__ raises AttributeError for CG ZAPI primitives."""
+        self.assertRaises(AttributeError, getattr, self.client, method_name)
 
     @ddt.data(True, False)
     def test_destroy_lun(self, force=True):
@@ -3751,8 +4400,37 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             dest_file_name=dest_file_name)
 
         self.client.send_request.assert_called_once_with(
-            '/storage/file/copy', 'post', body=body, enable_tunneling=False)
+            '/storage/file/copy', 'post', body=body, enable_tunneling=False,
+            wait_on_accepted=False)
         self.assertEqual(response['job']['uuid'], result)
+
+    def test_destroy_file_copy(self):
+        job_uuid = fake_client.FAKE_UUID
+        body = {'action': 'cancel'}
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.destroy_file_copy(job_uuid)
+
+        self.client.send_request.assert_called_once_with(
+            f'/cluster/jobs/{job_uuid}', 'patch', body=body,
+            enable_tunneling=False)
+
+    def test_destroy_file_copy_exception(self):
+        job_uuid = fake_client.FAKE_UUID
+        body = {'action': 'cancel'}
+
+        self.mock_object(self.client, 'send_request',
+                         side_effect=self._mock_api_error())
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client.destroy_file_copy,
+            job_uuid)
+
+        self.client.send_request.assert_called_once_with(
+            f'/cluster/jobs/{job_uuid}', 'patch', body=body,
+            enable_tunneling=False)
 
     # TODO(rfluisa): Add ddt data with None values for possible api responses
     # to improve coverage.

@@ -991,6 +991,46 @@ CLONE_SPLIT_STATUS_NO_DATA_RESPONSE = etree.XML("""
   </results>
 """)
 
+CLONE_SPLIT_STATUS_RESPONSE_REST = {
+    'num_records': 1,
+    'records': [
+        {
+            'unsplit_size': 316659348799488,
+            'pending_splits': 1234,
+        }
+    ]
+}
+
+CLONE_SPLIT_STATUS_NO_DATA_RESPONSE_REST = {
+    'num_records': 0,
+    'records': []
+}
+
+SIS_CLI_RESPONSE_REST = {
+    'num_records': 1,
+    'records': [
+        {
+            'vserver': VOLUME_VSERVER_NAME,
+            'volume': VOLUME_NAMES[0],
+            'path': '/vol/%s' % VOLUME_NAMES[0],
+            'logical_data_size': 211106232532992,
+            'logical_data_limit': 703687441776640,
+        }
+    ]
+}
+
+SIS_CLI_NO_DATA_RESPONSE_REST = {
+    'num_records': 0,
+    'records': []
+}
+
+VOLUME_DEDUPE_INFO_SSC_WITH_LOGICAL_DATA = {
+    'compression': False,
+    'dedupe': False,
+    'logical-data-size': 211106232532992,
+    'logical-data-limit': 703687441776640,
+}
+
 VOLUME_GET_ITER_ENCRYPTION_SSC_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -1354,34 +1394,6 @@ SM_SOURCE_CG = 'fake_source_cg'
 SM_DESTINATION_CG = 'fake_destination_cg'
 IGROUP_NAME = 'openstack-d9b4194f-5f65-4952-fake-26c911f1e4b2'
 LUN_NAME_PATH = '/vol/volume-fake/lun-path-fake-1234'
-
-CLUSTER_PEER_GET_ITER_RESPONSE = etree.XML("""
-  <results status="passed">
-    <attributes-list>
-      <cluster-peer-info>
-        <active-addresses>
-          <remote-inet-address>%(addr1)s</remote-inet-address>
-          <remote-inet-address>%(addr2)s</remote-inet-address>
-        </active-addresses>
-        <availability>available</availability>
-        <cluster-name>%(cluster)s</cluster-name>
-        <cluster-uuid>fake_uuid</cluster-uuid>
-        <peer-addresses>
-          <remote-inet-address>%(addr1)s</remote-inet-address>
-        </peer-addresses>
-        <remote-cluster-name>%(remote_cluster)s</remote-cluster-name>
-        <serial-number>fake_serial_number</serial-number>
-        <timeout>60</timeout>
-      </cluster-peer-info>
-    </attributes-list>
-    <num-records>1</num-records>
-  </results>
-""" % {
-    'addr1': CLUSTER_ADDRESS_1,
-    'addr2': CLUSTER_ADDRESS_2,
-    'cluster': CLUSTER_NAME,
-    'remote_cluster': REMOTE_CLUSTER_NAME,
-})
 
 CLUSTER_PEER_POLICY_GET_RESPONSE = etree.XML("""
   <results status="passed">
@@ -3256,3 +3268,84 @@ GET_AGGREGATE_STORAGE_TYPES_EMPTY_RESPONSE_REST = {
     "records": [],
     "num_records": 0
 }
+
+GET_SNAPSHOT_RESPONSE_NOT_BUSY_REST = {
+    "records": [
+        {
+            "name": fake.SNAPSHOT['name'],
+            "volume": {
+                "name": VOLUME_NAMES[0],
+                "uuid": "2407b637-119c-11ec-a4fb",
+            },
+            "owners": [],
+        }
+    ],
+    "num_records": 1,
+}
+
+GET_SNAPSHOT_RESPONSE_BUSY_REST = {
+    "records": [
+        {
+            "name": fake.SNAPSHOT['name'],
+            "volume": {
+                "name": VOLUME_NAMES[0],
+                "uuid": "2407b637-119c-11ec-a4fb",
+            },
+            "owners": ["volume_clone"],
+        }
+    ],
+    "num_records": 1,
+}
+
+GET_SNAPSHOT_RESPONSE_EMPTY_REST = {
+    "records": [],
+    "num_records": 0,
+}
+
+GET_SNAPSHOT_UUID_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "f3b8e6c2-1111-2222-3333-444455556666",
+        }
+    ],
+    "num_records": 1,
+}
+
+SNAPSHOTS_MARKED_FOR_DELETION_VOLUMES_REST = {
+    "records": [
+        {
+            "name": VOLUME_NAMES[0],
+            "uuid": "2407b637-119c-11ec-a4fb-00a0b89c9a78",
+        }
+    ],
+    "num_records": 1,
+}
+
+SNAPSHOTS_MARKED_FOR_DELETION_REST = {
+    "records": [
+        {
+            "name": "deleted_cinder_" + fake.SNAPSHOT['name'],
+            "uuid": "aaaaaaaa-1111-2222-3333-444444444444",
+            "owners": [],
+        },
+        {
+            "name": "deleted_cinder_busy_snapshot",
+            "uuid": "bbbbbbbb-1111-2222-3333-444444444444",
+            "owners": ["volume_clone"],
+        },
+    ],
+    "num_records": 2,
+}
+
+FILE_USAGE_PATH = '/vol/fake_flexvol/fake_file.img'
+FILE_USAGE_VSERVER = 'fake_vserver'
+FILE_USAGE_UNIQUE_BYTES = '2048'
+FILE_USAGE_UNIQUE_BYTES_KB = '2KB'  # REST endpoint returns KB string
+
+GET_FILE_USAGE_RESPONSE_REST = {
+    'unique_bytes': FILE_USAGE_UNIQUE_BYTES_KB,
+    'path': FILE_USAGE_PATH,
+    'vserver': FILE_USAGE_VSERVER,
+}
+
+GET_FILE_USAGE_RESPONSE_EMPTY_REST = {}
