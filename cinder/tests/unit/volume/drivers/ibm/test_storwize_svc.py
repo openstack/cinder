@@ -3507,6 +3507,8 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
         super(StorwizeSVCISCSIDriverTestCase, self).setUp()
+        self.mock_object(storwize_svc_common.StorwizeSVCCommonDriver,
+                         '_check_volume_copy_ops')
         self.USESIM = True
         if self.USESIM:
             self.iscsi_driver = StorwizeSVCISCSIFakeDriver(
@@ -4233,6 +4235,8 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
         super(StorwizeSVCFcDriverTestCase, self).setUp()
+        self.mock_object(storwize_svc_common.StorwizeSVCCommonDriver,
+                         '_check_volume_copy_ops')
         self.USESIM = True
         if self.USESIM:
             self.fc_driver = StorwizeSVCFcFakeDriver(
@@ -5127,6 +5131,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
         super(StorwizeSVCCommonDriverTestCase, self).setUp()
+        self.mock_object(storwize_svc_common.StorwizeSVCCommonDriver,
+                         '_check_volume_copy_ops')
         self.USESIM = True
         if self.USESIM:
             self._def_flags = {'san_ip': 'hostname',
@@ -11759,6 +11765,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
         super(StorwizeSVCReplicationTestCase, self).setUp()
+        self.mock_object(storwize_svc_common.StorwizeSVCCommonDriver,
+                         '_check_volume_copy_ops')
 
         def _run_ssh_aux(cmd, check_exit_code=True, attempts=1):
             utils.check_ssh_injection(cmd)
