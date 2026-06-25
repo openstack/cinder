@@ -199,6 +199,22 @@ THIRTY_SEC = 30000
 TAG_NAMESPACE = "openstack-integration.purestorage.com"
 
 
+def _build_qos_patch(iops_limit, bandwidth_limit):
+    """Build the QoS object for a VolumePatch/VolumeGroupPatch request.
+
+    FlashArray REST API 2.52 (py-pure-client>=1.86.0) changed the ``*Patch``
+    models so that ``VolumePatch.qos`` and ``VolumeGroupPatch.qos`` take a
+    ``QosPatch`` whose ``iops_limit``/``bandwidth_limit`` are wrapped objects
+    (``QosIopsLimitPatch``/``QosBandwidthLimitPatch``) rather than a flat
+    ``Qos`` with integer limits.  The ``*Post`` models (VolumePost/
+    VolumeGroupPost) still take a flat ``Qos``, so those call sites are left
+    unchanged.
+    """
+    return flasharray.QosPatch(
+        iops_limit=flasharray.QosIopsLimitPatch(iops_limit),
+        bandwidth_limit=flasharray.QosBandwidthLimitPatch(bandwidth_limit))
+
+
 class PureDriverException(exception.VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")
 
@@ -382,25 +398,25 @@ class PureBaseVolumeDriver(san.SanDriver):
         if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
             array.patch_volumes(names=[vol_name],
                                 volume=flasharray.VolumePatch(
-                                    qos=flasharray.Qos(
+                                    qos=_build_qos_patch(
                                         iops_limit=MAX_IOPS,
                                         bandwidth_limit=MAX_BWS)))
         elif qos['maxIOPS'] == 0:
             array.patch_volumes(names=[vol_name],
                                 volume=flasharray.VolumePatch(
-                                    qos=flasharray.Qos(
+                                    qos=_build_qos_patch(
                                         iops_limit=MAX_IOPS,
                                         bandwidth_limit=qos['maxBWS'])))
         elif qos['maxBWS'] == 0:
             array.patch_volumes(names=[vol_name],
                                 volume=flasharray.VolumePatch(
-                                    qos=flasharray.Qos(
+                                    qos=_build_qos_patch(
                                         iops_limit=qos['maxIOPS'],
                                         bandwidth_limit=MAX_BWS)))
         else:
             array.patch_volumes(names=[vol_name],
                                 volume=flasharray.VolumePatch(
-                                    qos=flasharray.Qos(
+                                    qos=_build_qos_patch(
                                         iops_limit=qos['maxIOPS'],
                                         bandwidth_limit=qos['maxBWS'])))
         return
@@ -885,7 +901,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         else:
             current_array.patch_volumes(names=[vol_name],
                                         volume=flasharray.VolumePatch(
-                                            qos=flasharray.Qos(
+                                            qos=_build_qos_patch(
                                                 iops_limit=MAX_IOPS,
                                                 bandwidth_limit=MAX_BWS)))
 
@@ -2153,8 +2169,8 @@ class PureBaseVolumeDriver(san.SanDriver):
             current_array.patch_volumes(
                 names=[new_vol_name],
                 volume=flasharray.VolumePatch(
-                    qos=flasharray.Qos(iops_limit=MAX_IOPS,
-                                       bandwidth_limit=MAX_BWS)))
+                    qos=_build_qos_patch(iops_limit=MAX_IOPS,
+                                         bandwidth_limit=MAX_BWS)))
         # If we are managing to a volume type that is a volume group
         # make sure that the target volume group exists with the
         # correct QoS settings.
@@ -3136,7 +3152,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         else:
             current_array.patch_volumes(names=[vol_name],
                                         volume=flasharray.VolumePatch(
-                                            qos=flasharray.Qos(
+                                            qos=_build_qos_patch(
                                                 iops_limit=MAX_IOPS,
                                                 bandwidth_limit=MAX_BWS)))
 
@@ -3625,7 +3641,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                     res = source_array.patch_volume_groups(
                         names=[vgname],
                         volume_group=flasharray.VolumeGroupPatch(
-                            qos=flasharray.Qos(
+                            qos=_build_qos_patch(
                                 bandwidth_limit=vg_bws,
                                 iops_limit=vg_iops)))
                     if res.status_code == 400:

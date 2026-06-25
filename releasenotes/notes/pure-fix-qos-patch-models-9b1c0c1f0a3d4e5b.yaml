@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Everpure driver `bug #2158313
+    <https://bugs.launchpad.net/cinder/+bug/2158313>`_: Fixed
+    creating a volume from a snapshot, and
+    setting QoS limits, with newer ``py-pure-client`` releases.
+upgrade:
+  - |
+    The Everpure driver now requires ``py-pure-client>=1.89.0``.

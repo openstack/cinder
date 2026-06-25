@@ -5003,6 +5003,58 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertTrue(did_retype)
         self.assertIsNone(model_update)
 
+    @ddt.data(
+        # maxIOPS and maxBWS both set -> use both, untouched.
+        {"qos": {"maxIOPS": 100, "maxBWS": 1048576,
+                 "maxIOPS_per_GB": 0, "maxBWS_per_GB": 0},
+         "exp_iops": 100, "exp_bws": 1048576},
+        # maxIOPS unset -> falls back to MAX_IOPS.
+        {"qos": {"maxIOPS": 0, "maxBWS": 1048576,
+                 "maxIOPS_per_GB": 0, "maxBWS_per_GB": 0},
+         "exp_iops": MAX_IOPS, "exp_bws": 1048576},
+        # maxBWS unset -> falls back to MAX_BWS.
+        {"qos": {"maxIOPS": 100, "maxBWS": 0,
+                 "maxIOPS_per_GB": 0, "maxBWS_per_GB": 0},
+         "exp_iops": 100, "exp_bws": MAX_BWS},
+        # neither set -> both fall back to the maximums.
+        {"qos": {"maxIOPS": 0, "maxBWS": 0,
+                 "maxIOPS_per_GB": 0, "maxBWS_per_GB": 0},
+         "exp_iops": MAX_IOPS, "exp_bws": MAX_BWS},
+    )
+    # Patch the individual models so each gets a fresh, isolated mock.  The
+    # ``flasharray`` module is a process-wide Mock (see the module-level
+    # ``sys.modules['pypureclient']`` stub), so relying on it directly and
+    # resetting it counts calls from other tests in the same worker.
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumePatch")
+    @mock.patch(DRIVER_PATH + ".flasharray.QosPatch")
+    @mock.patch(DRIVER_PATH + ".flasharray.QosBandwidthLimitPatch")
+    @mock.patch(DRIVER_PATH + ".flasharray.QosIopsLimitPatch")
+    @mock.patch(DRIVER_PATH + ".flasharray.Qos")
+    def test_set_qos_uses_qos_patch_models(self, data, mock_qos,
+                                           mock_iops_patch, mock_bws_patch,
+                                           mock_qos_patch, mock_vol_patch):
+        qos = data["qos"]
+        exp_iops = data["exp_iops"]
+        exp_bws = data["exp_bws"]
+        _, vol_name = self.new_fake_vol()
+
+        self.driver.set_qos(self.array, vol_name, 1, qos)
+
+        # The wrapped limit models must be used with the expected values...
+        mock_iops_patch.assert_called_once_with(exp_iops)
+        mock_bws_patch.assert_called_once_with(exp_bws)
+        # ...wrapped inside a QosPatch (not a flat Qos)...
+        mock_qos_patch.assert_called_once_with(
+            iops_limit=mock_iops_patch.return_value,
+            bandwidth_limit=mock_bws_patch.return_value)
+        mock_qos.assert_not_called()
+        # ...and applied to the volume via a VolumePatch.
+        mock_vol_patch.assert_called_once_with(
+            qos=mock_qos_patch.return_value)
+        self.array.patch_volumes.assert_called_once_with(
+            names=[vol_name],
+            volume=mock_vol_patch.return_value)
+
 
 class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
 
