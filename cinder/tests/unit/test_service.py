@@ -17,6 +17,7 @@
 
 """Unit Tests for remote procedure calls using queue."""
 
+import unittest
 from unittest import mock
 
 import ddt
@@ -34,6 +35,7 @@ from cinder.objects import fields
 from cinder import rpc
 from cinder import service
 from cinder.tests.unit import test
+from cinder import utils
 
 
 test_service_opts = [
@@ -478,6 +480,11 @@ class ServiceTestCase(test.TestCase):
             self.assertEqual(value, getattr(cluster, key))
 
 
+@unittest.skipIf(
+    utils.concurrency_mode_threading(),
+    'oslo_service.wsgi.Server is incompatible with the threading backend; '
+    'when eventlet is disabled the API is deployed via an external WSGI '
+    'server rather than WSGIService.')
 class TestWSGIService(test.TestCase):
 
     @mock.patch('oslo_service.wsgi.Loader')
