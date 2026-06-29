@@ -4887,7 +4887,6 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                      name=vol_name,
                                                      qos={'maxIOPS': 100,
                                                           'maxBWS': 1048576,
-                                                          'maxBWS': 1048576,
                                                           'maxIOPS_per_GB': 0,
                                                           'maxBWS_per_GB': 0})
         mock_fa.return_value = mock_data
@@ -5332,6 +5331,48 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         multipath_connector["multipath"] = False
         self.driver.initialize_connection(vol, multipath_connector)
 
+    @mock.patch(ISCSI_DRIVER_OBJ + "._get_wwn")
+    @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
+    @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
+    def test_initialize_connection_with_dict_connection(self,
+                                                        mock_attachments,
+                                                        mock_get_iscsi_ports,
+                                                        mock_connection,
+                                                        mock_get_wwn):
+        """Test initialize_connection when _connect returns dictionary.
+
+        This tests the case where the volume is already connected and
+        _connect_host_to_vol returns a dictionary instead of pypureclient
+        objects.
+        """
+        vol, vol_name = self.new_fake_vol()
+        mock_attachments.return_value = "Data", None
+        mock_get_iscsi_ports.return_value = VALID_ISCSI_PORTS.items
+        mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
+
+        # Return a dictionary instead of pypureclient objects
+        # This simulates the "already connected" case
+        dict_connection = [
+            {
+                "host": {"name": PURE_HOST_NAME},
+                "host_group": {},
+                'protocol_endpoint': {},
+                "volume": {"name": vol_name, "id": fake.VOLUME_ID},
+                "lun": 1,
+                "nsid": 9753,
+            }
+        ]
+        mock_connection.return_value = dict_connection
+        result = deepcopy(ISCSI_CONNECTION_INFO)
+
+        real_result = self.driver.initialize_connection(vol,
+                                                        ISCSI_CONNECTOR)
+        self.assertDictEqual(result, real_result)
+        mock_get_iscsi_ports.assert_called_with(self.array)
+        mock_connection.assert_called_with(self.array, vol_name,
+                                           ISCSI_CONNECTOR, None, None)
+
     def test_get_target_iscsi_ports(self):
         self.array.get_controllers.return_value = CTRL_OBJ
         self.array.get_ports.return_value = VALID_ISCSI_PORTS
@@ -5678,6 +5719,45 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
             else VALID_AC_FC_PORTS.items
         actual_result = self.driver.initialize_connection(vol, FC_CONNECTOR)
         self.assertDictEqual(FC_CONNECTION_INFO_AC, actual_result)
+
+    @mock.patch(FC_DRIVER_OBJ + "._get_valid_ports")
+    @mock.patch(FC_DRIVER_OBJ + "._get_wwn")
+    @mock.patch(FC_DRIVER_OBJ + "._connect")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
+    def test_initialize_connection_with_dict_connection(self,
+                                                        mock_attachments,
+                                                        mock_connection,
+                                                        mock_get_wwn,
+                                                        mock_ports):
+        """Test initialize_connection when _connect returns dictionary.
+
+        This tests the case where the volume is already connected and
+        _connect returns a dictionary instead of pypureclient objects.
+        """
+        vol, vol_name = self.new_fake_vol()
+        mock_attachments.return_value = "Data", None
+        lookup_service = self.driver._lookup_service
+        (lookup_service.get_device_mapping_from_network.
+         return_value) = DEVICE_MAPPING
+        mock_get_wwn.return_value = '3624a93709714b5cb91634c470002b2c8'
+
+        # Return a dictionary instead of pypureclient objects
+        # This simulates the "already connected" case
+        dict_connection = [
+            {
+                "host": {"name": PURE_HOST_NAME},
+                "host_group": {},
+                'protocol_endpoint': {},
+                "volume": {"name": vol_name, "id": fake.VOLUME_ID},
+                "lun": 1,
+                "nsid": 9753,
+            }
+        ]
+        self.array.get_connections.return_value = dict_connection
+        mock_connection.return_value = dict_connection
+        mock_ports.return_value = VALID_FC_PORTS.items
+        actual_result = self.driver.initialize_connection(vol, FC_CONNECTOR)
+        self.assertDictEqual(FC_CONNECTION_INFO, actual_result)
 
     @mock.patch(DRIVER_PATH + ".flasharray.HostPatch")
     @mock.patch(DRIVER_PATH + ".flasharray.HostPost")
@@ -6524,6 +6604,108 @@ class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
         )
         multipath_connector["multipath"] = False
         self.driver.initialize_connection(vol, multipath_connector)
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
+    @mock.patch(NVME_DRIVER_OBJ + "._connect")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
+    def test_initialize_connection_with_dict_connection_lun(
+        self, mock_attachments, mock_get_nvme_ports, mock_connection,
+        mock_get_wwn, mock_get_nguid
+    ):
+        """Test initialize_connection when _connect returns dictionary (lun).
+
+        This tests the case where the volume is already connected and
+        _connect returns a dictionary instead of pypureclient objects.
+        Tests the lun path (Purity < 6.6.0).
+        """
+        vol, vol_name = self.new_fake_vol()
+        nvme_ports = ValidResponse(200, None, 4, [DotNotation(NVME_PORTS[x])
+                                                  for x in range(8)], {})
+        mock_get_nvme_ports.return_value = nvme_ports.items
+        mock_attachments.return_value = "Data", None
+        mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
+        mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
+
+        # Mock array version < 6.6.0 to use lun path
+        self.array.get_arrays.return_value = ValidResponse(
+            200, None, 1,
+            [DotNotation({'version': '6.5.0', 'id': 'primary-array-id'})], {}
+        )
+
+        # Return a dictionary instead of pypureclient objects
+        # This simulates the "already connected" case
+        dict_connection = [
+            {
+                "host": {"name": PURE_HOST_NAME},
+                "host_group": {},
+                'protocol_endpoint': {},
+                "volume": {"name": vol_name, "id": fake.VOLUME_ID},
+                "lun": 1,
+                "nsid": None,
+            }
+        ]
+        mock_connection.return_value = dict_connection
+        result = deepcopy(NVME_CONNECTION_INFO)
+        real_result = self.driver.initialize_connection(vol, NVME_CONNECTOR)
+        self.maxDiff = None
+        self.assertDictEqual(result, real_result)
+        mock_get_nvme_ports.assert_called_with(self.array)
+        mock_connection.assert_called_with(
+            self.array, vol_name, NVME_CONNECTOR
+        )
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
+    @mock.patch(NVME_DRIVER_OBJ + "._connect")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_attachments')
+    def test_initialize_connection_with_dict_connection_nsid(
+        self, mock_attachments, mock_get_nvme_ports, mock_connection,
+        mock_get_wwn, mock_get_nguid
+    ):
+        """Test initialize_connection when _connect returns dictionary (nsid).
+
+        This tests the case where the volume is already connected and
+        _connect returns a dictionary instead of pypureclient objects.
+        Tests the nsid path (Purity >= 6.6.0).
+        """
+        vol, vol_name = self.new_fake_vol()
+        nvme_ports = ValidResponse(200, None, 4, [DotNotation(NVME_PORTS[x])
+                                                  for x in range(8)], {})
+        mock_get_nvme_ports.return_value = nvme_ports.items
+        mock_attachments.return_value = "Data", None
+        mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
+        mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
+
+        # Mock array version >= 6.6.0 to use nsid path
+        self.array.get_arrays.return_value = ValidResponse(
+            200, None, 1,
+            [DotNotation({'version': '6.6.0', 'id': 'primary-array-id'})], {}
+        )
+
+        # Return a dictionary instead of pypureclient objects
+        # This simulates the "already connected" case
+        dict_connection = [
+            {
+                "host": {"name": PURE_HOST_NAME},
+                "host_group": {},
+                'protocol_endpoint': {},
+                "volume": {"name": vol_name, "id": fake.VOLUME_ID},
+                "lun": None,
+                "nsid": 9753,
+            }
+        ]
+        mock_connection.return_value = dict_connection
+        result = deepcopy(NVME_CONNECTION_INFO)
+        real_result = self.driver.initialize_connection(vol, NVME_CONNECTOR)
+        self.maxDiff = None
+        self.assertDictEqual(result, real_result)
+        mock_get_nvme_ports.assert_called_with(self.array)
+        mock_connection.assert_called_with(
+            self.array, vol_name, NVME_CONNECTOR
+        )
 
     def test_get_target_nvme_ports(self):
         ports = [{'name': 'CT0.ETH4',

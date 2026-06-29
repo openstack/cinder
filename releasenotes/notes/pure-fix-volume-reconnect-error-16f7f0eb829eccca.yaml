@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #2121464 <https://bugs.launchpad.net/cinder/+bug/2121464>`__:
+    Fixed Pure Storage driver raising an ``AttributeError`` when attaching a
+    volume to a host it was already connected to. The fix now covers all
+    supported protocols (iSCSI, Fibre Channel and NVMe).
