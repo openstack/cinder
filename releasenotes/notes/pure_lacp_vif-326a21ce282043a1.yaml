@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Everpure driver `bug #2143833 <https://bugs.launchpad.net/cinder/+bug/2143833>`_:
+    The Everpure driver now correctly retrieves both LACP bond and VIF
+    network interfaces. Previously, only LACP bond interfaces were
+    returned due to a filter logic issue.

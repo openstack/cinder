@@ -1507,6 +1507,23 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
              "san_ip": "1.2.3.4",
              "api_token": "abc123"}]
 
+    def test_get_valid_ports_network_interface_filter(self):
+        # Regression test for bug #2143833.  The network interface filter
+        # must request both the 'lacp_bond' and 'vif' subtypes in a single
+        # filter string.  The previous code used a Python ``or`` between two
+        # separate strings, which evaluates to the first operand only, so
+        # 'vif' interfaces were never retrieved.
+        self.array.get_controllers.return_value = CTRL_OBJ
+        self.array.get_ports.return_value = ValidResponse(
+            200, None, 0, [], {})
+        self.array.get_network_interfaces.return_value = ValidResponse(
+            200, None, 1, [DotNotation(INTERFACES[4])], {})
+
+        self.driver._get_valid_ports(self.array)
+
+        self.array.get_network_interfaces.assert_called_once_with(
+            filter="eth.subtype='lacp_bond' or eth.subtype='vif'")
+
     @mock.patch(BASE_DRIVER_OBJ + '._get_flasharray')
     @mock.patch(BASE_DRIVER_OBJ + '._generate_replication_retention')
     @mock.patch(BASE_DRIVER_OBJ + '._setup_replicated_pgroups')
