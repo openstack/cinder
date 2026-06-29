@@ -88,6 +88,9 @@
             voting: false
             irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-nfs-tempest-full:
+            required-projects:
+              - name: openstack/cinder-tempest-plugin
+                override-checkout: 2024.1-last
             irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-nfs-tempest-full-fips:
             voting: false
