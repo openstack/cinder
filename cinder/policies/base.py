@@ -237,8 +237,8 @@ SYSTEM_ADMIN_OR_PROJECT_MEMBER = XENA_SYSTEM_ADMIN_OR_PROJECT_MEMBER
 #    give us the full five Cinder personas.  After operators have made
 #    appropriate adjustments to user and group role assignments in Keystone,
 #    they will be able to use the new checkstrings by setting the
-#    'enforce_new_defaults' and 'enforce_scope' options to appropriate
-#    values in the [oslo_policy] section of their cinder configuration file.
+#    'enforce_new_defaults' option to appropriate values in the [oslo_policy]
+#    section of their cinder configuration file.
 #
 # 3. In Z, we let the Yoga policy configuration bake to allow operators
 #    to time to make the Keystone adjustments mentioned above before they

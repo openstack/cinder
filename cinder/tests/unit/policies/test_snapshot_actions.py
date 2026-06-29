@@ -68,11 +68,10 @@ class SnapshotActionsPolicyTest(base.BasePolicyTest):
         exception.SnapshotNotFound,
     ]
 
-    # Basic policy test is without enforcing scope (which cinder doesn't
-    # yet support) and deprecated rules enabled.
-    def setUp(self, enforce_scope=False, enforce_new_defaults=False,
+    # Basic policy test is with deprecated rules enabled.
+    def setUp(self, enforce_new_defaults=False,
               *args, **kwargs):
-        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+        super().setUp(enforce_new_defaults, *args, **kwargs)
         self.controller = snapshot_actions.SnapshotActionsController()
         self.admin_controller = admin_actions.SnapshotAdminController()
         self.api_path = '/v3/%s/snapshots' % (self.project_id)
@@ -174,7 +173,6 @@ class SnapshotActionsPolicySecureRbacTest(SnapshotActionsPolicyTest):
     ]
 
     def setUp(self, *args, **kwargs):
-        # Test secure RBAC by disabling deprecated policy rules (scope
-        # is still not enabled).
-        super().setUp(enforce_scope=False, enforce_new_defaults=True,
+        # Test secure RBAC by disabling deprecated policy rules.
+        super().setUp(enforce_new_defaults=True,
                       *args, **kwargs)

@@ -45,10 +45,10 @@ class MessagesPolicyTest(base.BasePolicyTest):
         'other_project_reader',
     ]
 
-    # Basic policy tests are without scope and deprecated rules enabled.
-    def setUp(self, enforce_scope=False, enforce_new_defaults=False,
+    # Basic policy tests are with deprecated rules enabled.
+    def setUp(self, enforce_new_defaults=False,
               *args, **kwargs):
-        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+        super().setUp(enforce_new_defaults, *args, **kwargs)
 
         self.ext_mgr = extensions.ExtensionManager()
         self.controller = messages.MessagesController(self.ext_mgr)
@@ -162,7 +162,6 @@ class MessagesPolicySecureRbacTest(MessagesPolicyTest):
     ]
 
     def setUp(self, *args, **kwargs):
-        # Test secure RBAC by disabling deprecated policy rules (scope
-        # is still not enabled).
-        super().setUp(enforce_scope=False, enforce_new_defaults=True,
+        # Test secure RBAC by disabling deprecated policy rules.
+        super().setUp(enforce_new_defaults=True,
                       *args, **kwargs)

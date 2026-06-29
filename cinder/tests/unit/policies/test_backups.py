@@ -79,9 +79,9 @@ class BackupsPolicyTest(base.BasePolicyTest):
         'other_project_reader',
     ]
 
-    def setUp(self, enforce_scope=False, enforce_new_defaults=False, *args,
+    def setUp(self, enforce_new_defaults=False, *args,
               **kwargs):
-        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+        super().setUp(enforce_new_defaults, *args, **kwargs)
 
         self.override_config('backup_use_same_host', True)
 
@@ -421,7 +421,6 @@ class BackupsPolicySecureRbacTest(BackupsPolicyTest):
     ]
 
     def setUp(self, *args, **kwargs):
-        # Test secure RBAC by disabling deprecated policy rules (scope
-        # is still not enabled).
-        super().setUp(enforce_scope=False, enforce_new_defaults=True,
+        # Test secure RBAC by disabling deprecated policy rules.
+        super().setUp(enforce_new_defaults=True,
                       *args, **kwargs)
