@@ -39,6 +39,7 @@ except ImportError:
 
 from cinder.common import constants
 from cinder import context
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -1369,26 +1370,35 @@ class PureBaseVolumeDriver(san.SanDriver):
     @pure_driver_debug_trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""
-        vol_name = self._get_vol_name(volume)
-        # None `connector` indicates force detach, then delete all even
-        # if the volume is multi-attached.
-        multiattach = (connector is not None and
-                       self._is_multiattach_to_host(volume.volume_attachment,
-                                                    connector["host"]))
-        if self._is_vol_in_pod(vol_name):
-            # Try to disconnect from each host, they may not be online though
-            # so if they fail don't cause a problem.
-            for array in self._uniform_active_cluster_target_arrays:
-                res = self._disconnect(array, volume, connector,
-                                       remove_remote_hosts=False,
-                                       is_multiattach=multiattach)
-                if not res:
-                    # Swallow any exception, just warn and continue
-                    LOG.warning("Disconnect on secondary array failed")
-        # Now disconnect from the current array
-        self._disconnect(self._get_current_array(), volume,
-                         connector, remove_remote_hosts=False,
-                         is_multiattach=multiattach)
+        # Use host-based locking when connector is provided, otherwise
+        # use volume-based locking for force detach scenarios
+        host = connector['host'] if connector else volume.id
+
+        @coordination.synchronized('pure-{host}')
+        def _do_terminate_connection(host):
+            vol_name = self._get_vol_name(volume)
+            # None `connector` indicates force detach, then delete all even
+            # if the volume is multi-attached.
+            multiattach = (connector is not None and
+                           self._is_multiattach_to_host(
+                               volume.volume_attachment,
+                               connector["host"]))
+            if self._is_vol_in_pod(vol_name):
+                # Try to disconnect from each host, they may not be online
+                # though so if they fail don't cause a problem.
+                for array in self._uniform_active_cluster_target_arrays:
+                    res = self._disconnect(array, volume, connector,
+                                           remove_remote_hosts=False,
+                                           is_multiattach=multiattach)
+                    if not res:
+                        # Swallow any exception, just warn and continue
+                        LOG.warning("Disconnect on secondary array failed")
+            # Now disconnect from the current array
+            self._disconnect(self._get_current_array(), volume,
+                             connector, remove_remote_hosts=False,
+                             is_multiattach=multiattach)
+
+        return _do_terminate_connection(host)
 
     @pure_driver_debug_trace
     def _disconnect_host(self, array, host_name, vol_name):
@@ -4074,6 +4084,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
         return hosts
 
     @pure_driver_debug_trace
+    @coordination.synchronized('pure-{connector[host]}')
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         pure_vol_name = self._get_vol_name(volume)
@@ -4352,6 +4363,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         return valid_ports
 
     @pure_driver_debug_trace
+    @coordination.synchronized('pure-{connector[host]}')
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         pure_vol_name = self._get_vol_name(volume)
@@ -4471,43 +4483,51 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     @pure_driver_debug_trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""
-        vol_name = self._get_vol_name(volume)
-        # None `connector` indicates force detach, then delete all even
-        # if the volume is multi-attached.
-        multiattach = (connector is not None and
-                       self._is_multiattach_to_host(volume.volume_attachment,
-                                                    connector["host"]))
-        unused_wwns = []
+        # Use host-based locking when connector is provided, otherwise
+        # use volume-based locking for force detach scenarios
+        host = connector['host'] if connector else volume.id
 
-        if self._is_vol_in_pod(vol_name):
-            # Try to disconnect from each host, they may not be online though
-            # so if they fail don't cause a problem.
-            for array in self._uniform_active_cluster_target_arrays:
-                no_more_connections = self._disconnect(
-                    array, volume, connector, remove_remote_hosts=True,
-                    is_multiattach=multiattach)
-                if no_more_connections:
-                    unused_wwns += self._get_array_wwns(array)
+        @coordination.synchronized('pure-{host}')
+        def _do_terminate_connection(host):
+            vol_name = self._get_vol_name(volume)
+            # None `connector` indicates force detach, then delete all even
+            # if the volume is multi-attached.
+            multiattach = (connector is not None and
+                           self._is_multiattach_to_host(
+                               volume.volume_attachment,
+                               connector["host"]))
+            unused_wwns = []
 
-        # Now disconnect from the current array, removing any left over
-        # remote hosts that we maybe couldn't reach.
-        current_array = self._get_current_array()
-        no_more_connections = self._disconnect(current_array,
-                                               volume, connector,
-                                               remove_remote_hosts=False,
-                                               is_multiattach=multiattach)
-        if no_more_connections:
-            unused_wwns += self._get_array_wwns(current_array)
+            if self._is_vol_in_pod(vol_name):
+                # Try to disconnect from each host, they may not be online
+                # though so if they fail don't cause a problem.
+                for array in self._uniform_active_cluster_target_arrays:
+                    no_more_connections = self._disconnect(
+                        array, volume, connector,
+                        remove_remote_hosts=True,
+                        is_multiattach=multiattach)
+                    if no_more_connections:
+                        unused_wwns += self._get_array_wwns(array)
 
-        properties = {"driver_volume_type": "fibre_channel", "data": {}}
-        if len(unused_wwns) > 0:
-            init_targ_map = self._build_initiator_target_map(unused_wwns,
-                                                             connector)
-            properties["data"] = {"target_wwn": unused_wwns,
-                                  "initiator_target_map": init_targ_map}
+            # Now disconnect from the current array, removing any left over
+            # remote hosts that we maybe couldn't reach.
+            current_array = self._get_current_array()
+            no_more_connections = self._disconnect(current_array,
+                                                   volume, connector,
+                                                   remove_remote_hosts=False,
+                                                   is_multiattach=multiattach)
+            if no_more_connections:
+                unused_wwns += self._get_array_wwns(current_array)
+            properties = {"driver_volume_type": "fibre_channel", "data": {}}
+            if len(unused_wwns) > 0:
+                init_targ_map = self._build_initiator_target_map(unused_wwns,
+                                                                 connector)
+                properties["data"] = {"target_wwn": unused_wwns,
+                                      "initiator_target_map": init_targ_map}
+            fczm_utils.remove_fc_zone(properties)
+            return properties
 
-        fczm_utils.remove_fc_zone(properties)
-        return properties
+        return _do_terminate_connection(host)
 
 
 @interface.volumedriver
@@ -4578,6 +4598,7 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         return hosts
 
     @pure_driver_debug_trace
+    @coordination.synchronized('pure-{connector[host]}')
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         pure_vol_name = self._get_vol_name(volume)

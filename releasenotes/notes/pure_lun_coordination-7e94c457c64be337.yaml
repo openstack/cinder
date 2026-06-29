@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    [Pure Storage] `bug #2138744
+    <https://bugs.launchpad.net/cinder/+bug/2138744>`_: Added
+    @coordination.synchronized to initialize and terminate
+    connections to serialize operations, preventing premature
+    LUN reuse.
