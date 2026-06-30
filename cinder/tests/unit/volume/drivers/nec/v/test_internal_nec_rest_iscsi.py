@@ -414,6 +414,12 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
         self.configuration.nec_v_rest_use_object_caching = False
         self.configuration.nec_v_rest_max_request_workers = (
             hbsd_rest_api._MAX_REQUEST_WORKERS)
+        self.configuration.nec_v_csv_delete_timeout = (
+            hbsd_rest_api._CSV_DELETE_TIMEOUT)
+        self.configuration.nec_v_vcp_delete_timeout = (
+            hbsd_rest_api._VCP_DELETE_TIMEOUT)
+        self.configuration.nec_v_vcp_delete_sleep_interval = (
+            hbsd_rest_api._VCP_DELETE_RETRY_INTERVAL)
 
         self.configuration.use_chap_auth = True
         self.configuration.chap_username = CONFIG_MAP['auth_user']

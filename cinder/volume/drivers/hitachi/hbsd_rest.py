@@ -16,8 +16,10 @@
 """REST interface module for Hitachi HBSD Driver."""
 
 from collections import defaultdict
+from itertools import count
 import json
 import re
+import time
 
 import futurist
 from oslo_config import cfg
@@ -227,6 +229,19 @@ REST_VOLUME_OPTS = [
         'hitachi_rest_max_request_workers',
         default=rest_api._MAX_REQUEST_WORKERS,
         help='The maximum number of workers for concurrent requests.'),
+    cfg.IntOpt(
+        'hitachi_csv_delete_timeout',
+        default=rest_api._CSV_DELETE_TIMEOUT,
+        help='Maximum wait time in seconds for deleting CSV via REST API.'),
+    cfg.IntOpt(
+        'hitachi_vcp_delete_timeout',
+        default=rest_api._VCP_DELETE_TIMEOUT,
+        help='Maximum wait time in seconds for VCP deletion.'),
+    cfg.IntOpt(
+        'hitachi_vcp_delete_sleep_interval',
+        default=rest_api._VCP_DELETE_RETRY_INTERVAL,
+        help='Sleep interval in seconds for VCP deletion.'),
+
 ]
 
 REST_PAIR_OPTS = [
@@ -441,8 +456,61 @@ class HBSDREST(common.HBSDCommon):
         body = {'label': name}
         self.client.modify_ldev(ldev, body)
 
+    def check_then_delete_vcp(self, ldev, parent_ldev, body):
+        def _is_ldev_gone_from_ss(ldev, parent_ldev):
+            sf_result = self.client.get_snapshotfamily(parent_ldev)
+            for r in (sf_result or []):
+                if (r['ldevId'] == ldev and
+                        r['parentLdevId'] == parent_ldev):
+                    return False, sf_result
+            return True, sf_result
+
+        #
+        start_time = timeutils.utcnow()
+        for round in count(1):
+            ldevs_gone, sf_result = \
+                _is_ldev_gone_from_ss(ldev, parent_ldev)
+            LOG.debug(
+                "ctdv. ldev=%d,pLDEV=%s,round=%d,sf_ldevList=%s,"
+                "ldevs_gone=%s",
+                ldev, parent_ldev, round, repr(sf_result), ldevs_gone)
+            if ldevs_gone:
+                break
+            if utils.timed_out(start_time,
+                               self.conf.hitachi_vcp_delete_timeout):
+                LOG.warning("ctdv. timeout waiting for ldev=%d,pLDEV=%s "
+                            "gone from snapshotfamily", ldev, parent_ldev)
+                return
+            else:
+                time.sleep(
+                    self.conf.hitachi_vcp_delete_sleep_interval)
+
+        #
+        lock_key = '%s-dtdv-managed-vcp-del-%s-%d' % (
+            self.driver_info['driver_file_prefix'],
+            self.conf.hitachi_storage_id,
+            parent_ldev)
+
+        @coordination.synchronized(lock_key)
+        def _delete_managed_vcp_ldev():
+            parent_info = self.get_ldev_info(['attributes', 'label'],
+                                             parent_ldev)
+            LOG.debug("ctdv. ldev=%d,pLDEV=%s,parent_info=%s,",
+                      ldev, parent_ldev, repr(parent_info))
+            if ((not parent_info['attributes'] or
+                 utils.VCP_VOL_ATTR not in parent_info['attributes']) and
+                (parent_info['label'] and
+                 parent_info['label'] == common.STR_MANAGED_VCP_LDEV_NAME)):
+                self.client.delete_ldev(
+                    parent_ldev, body,
+                    timeout_message=(MSG.LDEV_DELETION_WAIT_TIMEOUT,
+                                     {'ldev': parent_ldev}))
+
+        _delete_managed_vcp_ldev()
+
     def delete_ldev_from_storage(self, ldev):
         """Delete the specified LDEV from the storage."""
+        timeout_ldev = self.conf.hitachi_rest_timeout
         result = self.get_ldev_info(['emulationType',
                                      'dataReductionMode',
                                      'dataReductionStatus',
@@ -454,13 +522,16 @@ class HBSDREST(common.HBSDCommon):
         if result['dataReductionStatus'] in _DR_VOL_PATTERN.get(
                 result['dataReductionMode'], ()):
             body = {'isDataReductionDeleteForceExecute': True}
+            timeout_ldev = self.conf.hitachi_csv_delete_timeout
         else:
             body = None
         if result['emulationType'] == 'NOT DEFINED':
             self.output_log(MSG.LDEV_NOT_EXIST, ldev=ldev)
             return
+
+        LOG.debug("dlfs. del_ldev=%d,body=%s", ldev, repr(body))
         self.client.delete_ldev(
-            ldev, body,
+            ldev, body, timeout=timeout_ldev,
             timeout_message=(MSG.LDEV_DELETION_WAIT_TIMEOUT, {'ldev': ldev}))
 
         # If we have a managed parent that is no longer a parent,
@@ -469,15 +540,11 @@ class HBSDREST(common.HBSDCommon):
             parent_ldev = int(result['parentLdevId'])
             parent_info = self.get_ldev_info(['attributes', 'label'],
                                              parent_ldev)
-            if ((not parent_info['attributes'] or
-                utils.VCP_VOL_ATTR not in parent_info['attributes']) and
-                (parent_info['label'] and
+            LOG.debug("dlfs. ldev=%d,pLDEV=%d,parent_info=%s",
+                      ldev, parent_ldev, repr(parent_info))
+            if ((parent_info['label'] and
                  parent_info['label'] == common.STR_MANAGED_VCP_LDEV_NAME)):
-                LOG.debug("Deleting managed VCP LDEV %d.", parent_ldev)
-                self.client.delete_ldev(
-                    parent_ldev, body,
-                    timeout_message=(MSG.LDEV_DELETION_WAIT_TIMEOUT,
-                                     {'ldev': parent_ldev}))
+                self.check_then_delete_vcp(ldev, parent_ldev, body)
 
     def _get_snap_pool_id(self, pvol):
         return (
@@ -635,8 +702,12 @@ class HBSDREST(common.HBSDCommon):
                     "canCascade": True}
             self.client.add_snapshot(body)
         except exception.VolumeDriverException as ex:
-            if (utils.safe_get_err_code(ex.kwargs.get('errobj')) ==
-                    rest_api.INVALID_SNAPSHOT_POOL and
+            err_code = utils.safe_get_err_code(ex.kwargs.get('errobj'))
+            if err_code == rest_api.SVOL_COPY_IN_USE:
+                LOG.debug('SVOL_COPY_IN_USE: svol already in use, '
+                          'proceeding to convert existing pair. '
+                          '(pvol: %s, svol: %s)', pvol, svol)
+            elif (err_code == rest_api.INVALID_SNAPSHOT_POOL and
                     not self.conf.hitachi_snap_pool):
                 msg = self.output_log(
                     MSG.INVALID_PARAMETER,

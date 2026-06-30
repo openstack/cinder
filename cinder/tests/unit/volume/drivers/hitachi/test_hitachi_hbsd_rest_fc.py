@@ -414,6 +414,14 @@ GET_LDEV_RESULT_VCP_PARENT_NO_LABEL = {
     "label": None,
 }
 
+GET_LDEV_RESULT_VCP_PARENT_NO_CHILDREN = {
+    "numOfPorts": 0,
+}
+
+GET_LDEV_RESULT_VCP_PARENT_HAS_CHILDREN = {
+    "numOfPorts": 1,
+}
+
 GET_POOL_RESULT = {
     "availableVolumeCapacity": 480144,
     "totalPoolCapacity": 507780,
@@ -1659,9 +1667,10 @@ class HBSDRESTFCDriverTest(test.TestCase):
             FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
             FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
             FakeResponse(200, GET_LDEV_RESULT_DRS_MANAGED_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_VCP_PARENT_NO_CHILDREN),
             FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.delete_volume(TEST_VOLUME[0])
-        self.assertEqual(6, request.call_count)
+        self.assertEqual(7, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     def test_delete_volume_drs_unmanaged_last_vclone_with_parent(self,
@@ -1682,9 +1691,11 @@ class HBSDRESTFCDriverTest(test.TestCase):
             FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
             FakeResponse(200, GET_LDEV_RESULT_DRS_WITH_PARENT),
             FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+            FakeResponse(200, GET_LDEV_RESULT_VCP_MANAGED_PARENT),
+            FakeResponse(200, GET_LDEV_RESULT_VCP_PARENT_HAS_CHILDREN),
             FakeResponse(200, GET_LDEV_RESULT_VCP_MANAGED_PARENT)]
         self.driver.delete_volume(TEST_VOLUME[0])
-        self.assertEqual(5, request.call_count)
+        self.assertEqual(7, request.call_count)
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')

@@ -229,6 +229,12 @@ class VStorageRESTFCDriverTest(test.TestCase):
         self.configuration.nec_v_host_mode_options = []
         self.configuration.nec_v_rest_use_object_caching = False
         self.configuration.nec_v_rest_max_request_workers = 8
+        self.configuration.nec_v_csv_delete_timeout = (
+            hbsd_rest_api._CSV_DELETE_TIMEOUT)
+        self.configuration.nec_v_vcp_delete_timeout = (
+            hbsd_rest_api._VCP_DELETE_TIMEOUT)
+        self.configuration.nec_v_vcp_delete_sleep_interval = (
+            hbsd_rest_api._VCP_DELETE_RETRY_INTERVAL)
 
         self.configuration.nec_v_zoning_request = False
 

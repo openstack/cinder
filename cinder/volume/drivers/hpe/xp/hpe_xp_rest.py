@@ -206,6 +206,18 @@ REST_VOLUME_OPTS = [
         'hpexp_rest_max_request_workers',
         default=16,
         help='The maximum number of workers for concurrent requests.'),
+    cfg.IntOpt(
+        'hpexp_csv_delete_timeout',
+        default=hbsd_rest_api._CSV_DELETE_TIMEOUT,
+        help='Maximum wait time in seconds for deleting CSV via REST API.'),
+    cfg.IntOpt(
+        'hpexp_vcp_delete_timeout',
+        default=hbsd_rest_api._VCP_DELETE_TIMEOUT,
+        help='Maximum wait time in seconds for VCP deletion.'),
+    cfg.IntOpt(
+        'hpexp_vcp_delete_sleep_interval',
+        default=hbsd_rest_api._VCP_DELETE_RETRY_INTERVAL,
+        help='Sleep interval in seconds for VCP deletion.'),
 ]
 
 FC_VOLUME_OPTS = [
@@ -304,6 +316,12 @@ class HPEXPRESTFC(hbsd_rest_fc.HBSDRESTFC):
             self.conf.hpexp_rest_use_object_caching)
         self.conf.hitachi_rest_max_request_workers = (
             self.conf.hpexp_rest_max_request_workers)
+        self.conf.hitachi_csv_delete_timeout = (
+            self.conf.hpexp_csv_delete_timeout)
+        self.conf.hitachi_vcp_delete_timeout = (
+            self.conf.hpexp_vcp_delete_timeout)
+        self.conf.hitachi_vcp_delete_sleep_interval = (
+            self.conf.hpexp_vcp_delete_sleep_interval)
 
         # FC_VOLUME_OPTS
         self.conf.hitachi_zoning_request = self.conf.hpexp_zoning_request
@@ -385,3 +403,9 @@ class HPEXPRESTISCSI(hbsd_rest_iscsi.HBSDRESTISCSI):
             self.conf.hpexp_rest_use_object_caching)
         self.conf.hitachi_rest_max_request_workers = (
             self.conf.hpexp_rest_max_request_workers)
+        self.conf.hitachi_csv_delete_timeout = (
+            self.conf.hpexp_csv_delete_timeout)
+        self.conf.hitachi_vcp_delete_timeout = (
+            self.conf.hpexp_vcp_delete_timeout)
+        self.conf.hitachi_vcp_delete_sleep_interval = (
+            self.conf.hpexp_vcp_delete_sleep_interval)

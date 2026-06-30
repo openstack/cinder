@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Hitachi VSP driver: VCP-Volume deletion skipped/left behind if dependent
+    VC-Volume deletion times.
+    `bug #2158825 <https://bugs.launchpad.net/cinder/+bug/2158825>`
+    This issue may occur in a customer environment, but it has not been
+    observed at scale during normal development or QA testing. It is more
+    prominent in an environment where volumes are brought up and torn
+    down constantly, such as with Tempest CI testing.

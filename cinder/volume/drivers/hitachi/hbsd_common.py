@@ -800,7 +800,7 @@ class HBSDCommon():
             if (parent_ldev_info['label'] and
                     parent_ldev_info['label'] == STR_MANAGED_VCP_LDEV_NAME and
                     (utils.blocks_to_gb(parent_ldev_info) < new_size)):
-                LOG.debug("Will extend Managed VCP parent ldev %d to %d GB",
+                LOG.debug("Will extend managed VCP parent ldev %d to %d GB",
                           parent_ldev_id, new_size)
                 self.extend_ldev(parent_ldev_id,
                                  utils.blocks_to_gb(parent_ldev_info),

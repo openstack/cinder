@@ -508,6 +508,12 @@ class HPEXPRESTFCDriverTest(test.TestCase):
         self.configuration.hpexp_host_mode_options = []
         self.configuration.hpexp_rest_use_object_caching = False
         self.configuration.hpexp_rest_max_request_workers = 8
+        self.configuration.hpexp_csv_delete_timeout = (
+            hbsd_rest_api._CSV_DELETE_TIMEOUT)
+        self.configuration.hpexp_vcp_delete_timeout = (
+            hbsd_rest_api._VCP_DELETE_TIMEOUT)
+        self.configuration.hpexp_vcp_delete_sleep_interval = (
+            hbsd_rest_api._VCP_DELETE_RETRY_INTERVAL)
 
         self.configuration.hpexp_zoning_request = False
 
