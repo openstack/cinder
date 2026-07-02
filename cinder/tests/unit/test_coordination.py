@@ -31,7 +31,7 @@ class Locked(Exception):
 class MockToozLock(tooz.locking.Lock):
     active_locks = set()
 
-    def acquire(self, blocking=True):
+    def acquire(self, blocking=True, shared=False, timeout=None):
         if self.name not in self.active_locks:
             self.active_locks.add(self.name)
             return True
