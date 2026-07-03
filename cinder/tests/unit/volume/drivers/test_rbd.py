@@ -1990,6 +1990,98 @@ class RBDTestCase(test.TestCase):
         self.cfg.image_conversion_dir = '/var/run/cinder/tmp'
         self._copy_image(volume_busy=True)
 
+    @common_mocks
+    @mock.patch.object(tempfile, 'NamedTemporaryFile')
+    @mock.patch.object(image_utils, 'fetch_to_raw')
+    @mock.patch.object(image_utils, 'convert_image')
+    def test_copy_image_to_volume_deletes_during_creation(
+            self, mock_convert, mock_fetch, mock_tmp):
+        """Volume creation should delete and recreate, not use qemu-img."""
+        self.mock_object(self.driver, '_resize')
+
+        volume = self.volume_a
+
+        with mock.patch.object(self.driver, 'delete_volume') as mock_del:
+            self.driver.copy_image_to_volume(
+                None, volume, mock.MagicMock(), None)
+
+            # delete_volume is expected called during creation
+            mock_del.assert_called()
+            # convert_image should not called - reimage uses this
+            mock_convert.assert_not_called()
+
+    @common_mocks
+    @mock.patch.object(image_utils, 'fetch_to_raw')
+    @mock.patch.object(image_utils, 'convert_image')
+    def test_reimage_with_snapshots(self, mock_convert, mock_fetch):
+        """Snapshots should be preserved during reimage."""
+        self.mock_object(self.driver, '_resize')
+
+        volume = self.volume_a
+
+        with mock.patch.object(self.driver, 'delete_volume') as mock_del:
+            self.driver.copy_image_to_volume(
+                None, volume, mock.MagicMock(), None,
+                disable_sparse=True)
+
+            # reimage overwrites in place with qemu-img convert -n;
+            # and delete_volume that would destroy snapshots
+            # must not be called
+            mock_convert.assert_called_once_with(
+                mock.ANY, mock.ANY, 'raw',
+                run_as_root=True,
+                src_format='raw',
+                image_id=None,
+                data=None,
+                disable_sparse=True,
+                skip_create=True)
+            mock_del.assert_not_called()
+
+    @common_mocks
+    @mock.patch.object(tempfile, 'NamedTemporaryFile')
+    @mock.patch.object(image_utils, 'fetch_to_raw')
+    @mock.patch.object(image_utils, 'convert_image')
+    def test_reimage_builds_correct_rbd_uri(
+            self, mock_convert, mock_fetch, mock_tmp):
+        """Verify RBD URI format during reimage."""
+        self.mock_object(self.driver, '_resize')
+        mock_delete = self.mock_object(self.driver, 'delete_volume')
+
+        volume = self.volume_a
+
+        self.driver.copy_image_to_volume(
+            None, volume, mock.MagicMock(), None,
+            disable_sparse=True)
+
+        # verify delete_volume not called - reimage path
+        mock_delete.assert_not_called()
+
+        # Verify RBD URI components
+        rbd_uri = mock_convert.call_args[0][1]
+        self.assertIn('rbd:', rbd_uri)
+        self.assertIn(self.cfg.rbd_pool, rbd_uri)
+        self.assertIn(volume.name, rbd_uri)
+        self.assertIn(f'conf={self.cfg.rbd_ceph_conf}', rbd_uri)
+        self.assertIn(f'id={self.cfg.rbd_user}', rbd_uri)
+
+    @common_mocks
+    @mock.patch.object(tempfile, 'NamedTemporaryFile')
+    @mock.patch.object(image_utils, 'fetch_to_raw')
+    @mock.patch.object(image_utils, 'convert_image')
+    def test_copy_image_to_volume_calls_resize(
+            self, mock_convert, mock_fetch, mock_tmp):
+        """Verify _resize is called after image copy."""
+        mock_resize = self.mock_object(self.driver, '_resize')
+
+        volume = self.volume_a
+
+        self.driver.copy_image_to_volume(
+            None, volume, mock.MagicMock(), None,
+            disable_sparse=True)
+
+        # _resize should be called after convert
+        mock_resize.assert_called_once_with(volume)
+
     @ddt.data(True, False)
     @common_mocks
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver._supports_qos')

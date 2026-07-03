@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    RBD driver `bug #2160473
+    <https://bugs.launchpad.net/cinder/+bug/2160473>`_: Fixed
+    a silent snapshot deletion issue where rebuilding a
+    boot-from-volume instance deleted all volume snapshots from
+    the RBD backend while the Cinder database still showed them
+    as available.
+
+    The RBD driver's ``_copy_image_to_volume()`` method was calling
+    ``delete_volume()`` during reimage, which moved the volume to
+    RBD trash and automatically removed all associated snapshots
+    before recreating the volume via ``rbd import``. The fix uses
+    ``qemu-img convert -n`` for the reimage path, which overwrites
+    the existing volume data in place without deleting it, preserving
+    both snapshots and sparseness.

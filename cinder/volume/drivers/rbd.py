@@ -2039,28 +2039,48 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             if encrypted:
                 self._encrypt_image(context, volume, tmp_dir, tmp.name)
 
-            @utils.retry(exception.VolumeIsBusy,
-                         self.configuration.rados_connection_interval,
-                         self.configuration.rados_connection_retries)
-            def _delete_volume(volume: Volume) -> None:
-                self.delete_volume(volume)
+            if not disable_sparse:
+                # Only delete-and-recreate for volume creation.
+                @utils.retry(exception.VolumeIsBusy,
+                             self.configuration.rados_connection_interval,
+                             self.configuration.rados_connection_retries)
+                def _delete_volume(volume: Volume) -> None:
+                    self.delete_volume(volume)
 
-            _delete_volume(volume)
+                _delete_volume(volume)
 
-            chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
-            order = int(math.log(chunk_size, 2))
-            # keep using the command line import instead of librbd since it
-            # detects zeroes to preserve sparseness in the image
-            args = ['rbd', 'import',
-                    '--pool', self.configuration.rbd_pool,
-                    '--order', order,
-                    tmp.name, volume.name,
-                    '--new-format']
-            args.extend(self._ceph_args())
-            self._try_execute(*args)
+                chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
+                order = int(math.log(chunk_size, 2))
+                # keep using the command line import instead of librbd since it
+                # detects zeroes to preserve sparseness in the image
+                args = ['rbd', 'import',
+                        '--pool', self.configuration.rbd_pool,
+                        '--order', order,
+                        tmp.name, volume.name,
+                        '--new-format']
+                args.extend(self._ceph_args())
+                self._try_execute(*args)
+            # For reimage, overwrite existing volume to preserve snapshots.
+            else:
+                # use qemu-img with -n flag to overwrite existing volume
+                rbd_volume = (
+                    f'rbd:{self.configuration.rbd_pool}/'
+                    f'{volume.name}:'
+                    f'conf={self.configuration.rbd_ceph_conf}'
+                )
+                if self.configuration.rbd_user:
+                    rbd_volume += f':id={self.configuration.rbd_user}'
+
+                image_utils.convert_image(tmp.name, rbd_volume, 'raw',
+                                          run_as_root=True,
+                                          src_format='raw',
+                                          image_id=image_id,
+                                          data=None,
+                                          disable_sparse=disable_sparse,
+                                          skip_create=True)
         self._resize(volume)
-        # We may need to re-enable replication because we have deleted the
-        # original image and created a new one using the command line import.
+        # We may need to re-enable replication features
+        # after volume data modification.
         try:
             self._setup_volume(volume)
         except Exception:

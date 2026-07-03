@@ -308,7 +308,8 @@ def _get_qemu_convert_cmd(src: str,
                           passphrase_file: Optional[str] = None,
                           compress: bool = False,
                           src_passphrase_file: Optional[str] = None,
-                          disable_sparse: bool = False) -> list[str]:
+                          disable_sparse: bool = False,
+                          skip_create: bool = False) -> list[str]:
     if src_passphrase_file is not None:
         if passphrase_file is None:
             message = _("Can't create unencrypted volume %(format)s "
@@ -338,6 +339,9 @@ def _get_qemu_convert_cmd(src: str,
 
     if prefix:
         cmd = list(prefix) + cmd
+
+    if skip_create:
+        cmd += ('-n',)
 
     if cache_mode:
         cmd += ('-t', cache_mode)
@@ -422,7 +426,8 @@ def _convert_image(
         compress: bool = False,
         src_passphrase_file: Optional[str] = None,
         disable_sparse: bool = False,
-        src_img_info: Optional[imageutils.QemuImgInfo] = None) -> None:
+        src_img_info: Optional[imageutils.QemuImgInfo] = None,
+        skip_create: bool = False) -> None:
     """Convert image to other format.
 
     NOTE: If the qemu-img convert command fails and this function raises an
@@ -474,7 +479,8 @@ def _convert_image(
                                 passphrase_file=passphrase_file,
                                 compress=compress,
                                 src_passphrase_file=src_passphrase_file,
-                                disable_sparse=disable_sparse)
+                                disable_sparse=disable_sparse,
+                                skip_create=skip_create)
 
     _ensure_exists(dest)
 
@@ -555,7 +561,8 @@ def convert_image(source: str,
                   src_passphrase_file: Optional[str] = None,
                   image_id: Optional[str] = None,
                   data: Optional[imageutils.QemuImgInfo] = None,
-                  disable_sparse: bool = False) -> None:
+                  disable_sparse: bool = False,
+                  skip_create: bool = False) -> None:
     """Convert image to other format.
 
     NOTE: If the qemu-img convert command fails and this function raises an
@@ -596,7 +603,8 @@ def convert_image(source: str,
                        compress=compress,
                        src_passphrase_file=src_passphrase_file,
                        disable_sparse=disable_sparse,
-                       src_img_info=data)
+                       src_img_info=data,
+                       skip_create=skip_create)
 
 
 def resize_image(source: str,

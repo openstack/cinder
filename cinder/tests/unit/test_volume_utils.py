@@ -1197,8 +1197,12 @@ class VolumeUtilsTestCase(test.TestCase):
             expected,
             volume_utils.get_volume_image_metadata(fake.IMAGE_ID, image_meta))
 
-    @ddt.data(True, False)
-    def test_copy_image_to_volume(self, is_encrypted):
+    @ddt.data({'is_encrypted': False, 'disable_sparse': False},
+              {'is_encrypted': False, 'disable_sparse': True},
+              {'is_encrypted': True, 'disable_sparse': False},
+              {'is_encrypted': True, 'disable_sparse': True})
+    @ddt.unpack
+    def test_copy_image_to_volume(self, is_encrypted, disable_sparse):
         ctxt = context.get_admin_context()
         fake_driver = mock.MagicMock()
         key = fake.ENCRYPTION_KEY_ID if is_encrypted else None
@@ -1211,15 +1215,16 @@ class VolumeUtilsTestCase(test.TestCase):
 
         volume_utils.copy_image_to_volume(fake_driver, ctxt, volume,
                                           image_meta, image_location,
-                                          fake_image_service)
+                                          fake_image_service,
+                                          disable_sparse=disable_sparse)
         if is_encrypted:
             fake_driver.copy_image_to_encrypted_volume.assert_called_once_with(
                 ctxt, volume, fake_image_service, image_id,
-                disable_sparse=False)
+                disable_sparse=disable_sparse)
         else:
             fake_driver.copy_image_to_volume.assert_called_once_with(
                 ctxt, volume, fake_image_service, image_id,
-                disable_sparse=False)
+                disable_sparse=disable_sparse)
 
     @ddt.data({'cipher': 'aes-xts-plain64',
                'provider': 'luks'},
