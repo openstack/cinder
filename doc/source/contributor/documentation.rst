@@ -154,7 +154,6 @@ you could address:
 * https://bugs.launchpad.net/cinder/+bugs?field.tag=doc
 * https://bugs.launchpad.net/python-cinderclient/+bugs?field.tag=doc
 * https://bugs.launchpad.net/os-brick/+bugs?field.tag=doc
-* https://bugs.launchpad.net/cinderlib/+bugs?field.tag=doc
 
 .. note::
    If you don't see a bug listed, you can also try the tag 'docs' or

@@ -29,7 +29,6 @@ The Code Repositories
 ---------------------
 
 * https://opendev.org/openstack/cinder
-* https://opendev.org/openstack/cinderlib
 * https://opendev.org/openstack/os-brick
 * https://opendev.org/openstack/python-cinderclient
 * https://opendev.org/openstack/python-brick-cinderclient-ext
@@ -64,7 +63,7 @@ Releases from **master** for *cinder* follow the 'cycle-with-rc' release model.
   the end of the cycle and optional development milestone betas published on
   a per-project need.
 
-Releases from **master** for *os-brick, cinderlib, and the clients* follow
+Releases from **master** for *os-brick and the clients* follow
 the 'cycle-with-intermediary' release model.
 
 * The 'cycle-with-intermediary' model describes projects that produce multiple
@@ -73,10 +72,6 @@ the 'cycle-with-intermediary' release model.
 * os-brick has a deliverable type of 'library'
 * python-cinderclient and python-brick-cinderclient-ext have a deliverable
   type of 'client-library'
-* cinderlib has a deliverable type of 'trailing'
-
-  * The final cinderlib release for a cycle must occur no later than 3 months
-    after the coordinated OpenStack release of cinder.
 
 Releases from **master** for *cinder-tempest-plugin* follow the
 'cycle-automatic' scheme.

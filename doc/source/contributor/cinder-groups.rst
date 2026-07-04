@@ -23,7 +23,7 @@ Cinder-related groups in Launchpad
      - an "open" team, people self-nominate
      - https://launchpad.net/~cinder-bugs
    * - "Cinder Drivers" team
-     - Maintains the Launchpad space for Cinder, os-brick, cinderlib,
+     - Maintains the Launchpad space for Cinder, os-brick,
        python-cinderclient, and cinder-tempest-plugin
      - Anyone who is interested in doing some work, has a Launchpad
        account, and is approved by the current members

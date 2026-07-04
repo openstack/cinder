@@ -39,13 +39,6 @@ python-brick-cinderclient-ext
     | docs: https://docs.openstack.org/python-brick-cinderclient-ext
     | Launchpad: (doesn't have its own space, uses python-cinderclient's)
 
-cinderlib
-    | Library that allows direct usage of Cinder backend drivers without
-      cinder services.
-    | code: https://opendev.org/openstack/cinderlib
-    | docs: https://docs.openstack.org/cinderlib
-    | Launchpad: https://launchpad.net/cinderlib
-
 rbd-iscsi-client
     | Library that provides a REST client that talks to ceph-isci's
       rbd-target-api to export rbd images/volumes to an iSCSI initiator.
@@ -271,7 +264,6 @@ the Launchpad space for the affected deliverable:
 * python-cinderclient: https://bugs.launchpad.net/python-cinderclient
 * python-brick-cinderclient-ext: same as for python-cinderclient, but tag
   the bug with 'brick-cinderclient-ext'
-* cinderlib: https://bugs.launchpad.net/cinderlib
 * cinder-tempest-plugin: https://bugs.launchpad.net/cinder-tempest-plugin
 
 Getting Your Patch Merged
