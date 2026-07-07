@@ -29,9 +29,12 @@ Getting Started
     :maxdepth: 2
 
     contributing
+    repo-overview
+    agentic-coding
+    commit-messages
+    dependencies
     backporting
     releases
-    documentation
 
 Writing Release Notes
 ---------------------
@@ -107,7 +110,6 @@ Other Resources
    launchpad
    gerrit
    zuul
-   releasenotes
 
    Module Reference <api/modules>
 
