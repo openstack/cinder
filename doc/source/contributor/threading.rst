@@ -1,6 +1,27 @@
 Threading model
 ===============
 
+.. warning::
+   **This document is out of date and requires revision.**  Beginning around
+   the Flamingo release, OpenStack has begun transitioning away from
+   eventlet in favor of adding support for running services with native
+   threading.
+
+   Cinder is basically following the `Nova strategy
+   <https://docs.openstack.org/nova/latest/reference/threading.html#native-threading>`_
+   of using ``futurist.ThreadPoolExecutors`` to run concurrent tasks while
+   the ``oslo.service`` and ``oslo.messaging`` libraries can be configured
+   to use native threads to execute their tasks.
+
+   References:
+
+   * `Mailing list discussion
+     <https://lists.openstack.org/archives/list/openstack-discuss@lists.openstack.org/thread/YO5CZDVAJ6QSF734ALWSGNOQDDAIOXKI/?sort=date>`_
+     (started November 2023)
+   * `Eventlet removal community goal
+     <https://governance.openstack.org/tc/goals/selected/remove-eventlet.html>`_
+     (merged July 2024)
+
 All OpenStack services use *green thread* model of threading, implemented
 through using the Python `eventlet <http://eventlet.net/>`_ and
 `greenlet <http://greenlet.readthedocs.io/en/latest/>`_ libraries.
