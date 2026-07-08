@@ -1,0 +1,42 @@
+---
+features:
+  - |
+    [Pure Storage] Implemented the generic volume group (Tiramisu)
+    replication actions ``enable_replication``, ``disable_replication`` and
+    ``failover_replication``. The driver already advertised the
+    ``consistent_group_replication_enabled`` capability but did not implement
+    these group actions, so calling them previously failed. Asynchronous,
+    synchronous (ActiveCluster) and trisync replication types are supported
+    for replicated groups. For async and trisync groups, failover promotes
+    the latest replicated snapshot of the group's protection group on the
+    secondary array. For sync groups, the group lives in a stretched
+    ActiveCluster pod served by both arrays, so failover and failback only
+    update status without moving data.
+
+    Unlike a backend-wide ``failover_host``, failing a group over does not
+    move the rest of the backend, so the driver records the array now
+    serving each volume in that volume's ``replication_driver_data`` and
+    routes subsequent operations on those volumes accordingly. Volumes
+    outside the group continue to be served by the primary array. Failing
+    the group back clears the recording.
+upgrade:
+  - |
+    [Pure Storage] Consistency groups using a synchronously replicated
+    volume type are now created inside the ActiveCluster pod rather than
+    being rejected. Existing groups are unaffected.
+issues:
+  - |
+    [Pure Storage] While a replicated group is failed over, cloning a volume
+    in that group, creating a volume from one of its snapshots, and retyping
+    one of its volumes are rejected. These operations would place the new
+    volume on the secondary array, outside the backend's replication
+    topology, where it could not be configured correctly. Fail the group
+    back before performing them.
+  - |
+    [Pure Storage] While an asynchronously replicated group is failed over,
+    group-level operations that act on the array protection group itself -
+    deleting the group, adding or removing volumes, and creating group
+    snapshots - are not supported, because the protection group only exists
+    on the original primary array. Volume-level operations on the group's
+    volumes, including attach, detach, extend, snapshot and delete, work as
+    normal. This limitation is shared with backend-wide ``failover_host``.
