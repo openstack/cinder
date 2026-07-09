@@ -34,14 +34,20 @@ of a **supported** driver.  These are drivers that:
   * this must be done for every Cinder commit, and the results must be
     reported to the OpenStack Gerrit code review interface
   * for details, see `Driver Testing <https://wiki.openstack.org/wiki/Cinder/tested-3rdParty-drivers>`_
+* *(Beginning with the Indri release)* meet the basic Cinder driver
+  security requirements and keep their entry in the driver security
+  disclosure matrix up to date
 
-In summary, there are two important aspects to a driver being considered
+In summary, there are three important aspects to a driver being considered
 as **supported**:
 
 * the code meets the Cinder driver specifications (so you know it
   should integrate properly with Cinder)
 * the driver code is continually tested against changes to Cinder (so
   you know that the code actually does integrate properly with Cinder)
+* the driver code meets the basic Cinder driver security requirements
+  and the driver maintainers demonstrate a commitment to quickly addressing
+  security-related issues
 
 The second point is particularly important because changes to Cinder
 can impact the drivers in two ways:
@@ -87,7 +93,7 @@ accepted into the Cinder project.
 Driver Compliance
 -----------------
 
-The current policy for CI compliance is:
+The current policy for driver compliance is:
 
 * CIs must report on every patch, whether the code change is in their own
   driver code or not
@@ -95,17 +101,25 @@ The current policy for CI compliance is:
 * The CI comments must be properly formatted to show up in the CI summary in
   Gerrit
 
+* *(Beginning with the Indri release)* meet the basic Cinder driver
+  security requirements and respond in a timely fashion to security-related
+  issues reported against the driver
+
 Non-compliant drivers will be tagged as unsupported if:
 
 * No CI success reporting occurs within a two week span
 * The CI is found to not be testing the expected driver (CI runs using the
   default LVM driver, etc.)
+* Driver security issues are not responded to in a timely manner
 * Other issues are found but failed to be addressed in a timely manner
 
-CI results are reviewed on a regular basis and if found non-compliant, a
-driver patch is submitted flagging it as 'unsupported'.  This can occur
-at any time during the development cycle.  A driver can be returned to
-'supported' status as soon as the CI problem is corrected.
+CI results and Launchpad security-related issues filed against drivers
+are reviewed on a regular basis and if found non-compliant, a
+driver patch is submitted flagging the driver as 'unsupported'.  This
+can occur at any time during the development cycle, and the commit message
+on the patch will indicate the reason(s) for revoking 'supported' status.
+A driver can be returned to 'supported' status as soon as the problem is
+corrected.
 
 We do a final compliance check around the third milestone of each release.
 If a driver is marked as 'unsupported', vendors have until the time of
