@@ -445,7 +445,14 @@ class HPE3PARCommon(object):
     def client_logout(self):
         if self.client is not None:
             LOG.debug("Disconnect from 3PAR REST and SSH %s", self.uuid)
-            self.client.logout()
+            try:
+                self.client.logout()
+            except hpeexceptions.HTTPConflict as ex:
+                if "resource in use" in str(ex).lower():
+                    LOG.warning("3PAR session logout returned resource in "
+                                "use; ignoring session cleanup conflict.")
+                else:
+                    raise
 
     def _create_replication_client(self, remote_array):
         try:
