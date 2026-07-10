@@ -30,6 +30,7 @@ from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
+import urllib3
 
 from cinder.common import constants
 from cinder import context
@@ -674,7 +675,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         with warnings.catch_warnings():
             warnings.simplefilter(
                 "ignore",
-                requests.packages.urllib3.exceptions.InsecureRequestWarning)
+                urllib3.exceptions.InsecureRequestWarning)
             req = requests.post(url,
                                 data=json.dumps(payload),
                                 auth=(endpoint['login'], endpoint['passwd']),

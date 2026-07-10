@@ -17,6 +17,7 @@ import json
 
 from oslo_log import log as logging
 import requests
+import urllib3
 
 from cinder import exception
 from cinder.i18n import _
@@ -38,10 +39,8 @@ class RestCommon(object):
         self.init_http_head()
 
         LOG.warning("Suppressing requests library SSL Warnings")
-        requests.packages.urllib3.disable_warnings(
-            requests.packages.urllib3.exceptions.InsecureRequestWarning)
-        requests.packages.urllib3.disable_warnings(
-            requests.packages.urllib3.exceptions.InsecurePlatformWarning)
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        urllib3.disable_warnings(urllib3.exceptions.InsecurePlatformWarning)
 
     def init_http_head(self):
         self.session = requests.Session()

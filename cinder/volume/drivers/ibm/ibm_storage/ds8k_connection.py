@@ -19,9 +19,9 @@ import re
 import ssl
 
 from oslo_log import log as logging
-from requests.packages.urllib3 import connection
-from requests.packages.urllib3 import connectionpool
-from requests.packages.urllib3 import poolmanager
+from urllib3 import connection
+from urllib3 import connectionpool
+from urllib3 import poolmanager
 
 from cinder.i18n import _
 

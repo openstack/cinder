@@ -17,6 +17,7 @@ import time
 
 from oslo_log import log as logging
 import requests
+import urllib3
 
 from cinder import exception
 from cinder.i18n import _
@@ -70,7 +71,7 @@ class TatlinAccessAPI:
         LOG.debug('SSL verification %s', self.session.verify)
         self.session.verify = self.verify
         if not self.verify:
-            requests.packages.urllib3.disable_warnings()
+            urllib3.disable_warnings()
 
         # Here 'address' will be only IPv4.
         response = self.session.post('https://%s:%d/auth/login'

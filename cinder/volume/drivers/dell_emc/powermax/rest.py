@@ -23,8 +23,7 @@ from oslo_service import loopingcall
 import requests
 import requests.auth
 import requests.exceptions as r_exc
-# pylint: disable=E0401
-import requests.packages.urllib3.util.retry as requests_retry
+from urllib3.util import retry as requests_retry
 
 from cinder import exception
 from cinder.i18n import _

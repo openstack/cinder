@@ -1134,7 +1134,7 @@ class TestNefProxy(test.TestCase):
         self.assertRaises(jsonrpc.NefException, jsonrpc.NefProxy,
                           proto, cfg.nas_share_path, cfg)
 
-    @mock.patch('requests.packages.urllib3.disable_warnings')
+    @mock.patch('urllib3.disable_warnings')
     def test___init___no_ssl_cert_verify(self, disable_warnings):
         proto = 'nfs'
         cfg = copy.copy(self.cfg)
