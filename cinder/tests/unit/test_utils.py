@@ -289,6 +289,12 @@ class TpoolWrapTestCase(test.TestCase):
         # In threading mode the object must be returned unchanged.
         self.assertIs(obj, utils.tpool_wrap(obj))
 
+    @mock.patch('cinder.utils.concurrency_mode_threading', return_value=True)
+    def test_tpool_wrap_threading_ignores_autowrap(self, mock_threading):
+        obj = mock.Mock()
+        # In threading mode autowrap has no effect either.
+        self.assertIs(obj, utils.tpool_wrap(obj, (dict,)))
+
     @mock.patch('cinder.utils.tpool.Proxy')
     @mock.patch('cinder.utils.concurrency_mode_threading', return_value=False)
     def test_tpool_wrap_eventlet_returns_proxy(

@@ -25,7 +25,6 @@ we should look at maybe pushing this up to Oslo
 
 import contextlib
 import errno
-import io
 import math
 import os
 import re
@@ -37,7 +36,6 @@ from typing import ContextManager, Generator, Optional
 import cryptography
 from cursive import exception as cursive_exception
 from cursive import signature_utils
-from eventlet import tpool
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -636,11 +634,7 @@ def resize_image(source: str,
     utils.execute(*cmd, run_as_root=run_as_root)
 
 
-def _verify_image(img_file: io.RawIOBase, verifier) -> None:
-    # This methods must be called from a native thread, as the file I/O may
-    # not yield to other greenthread in some cases, and since the update and
-    # verify operations are CPU bound there would not be any yielding either,
-    # which could lead to thread starvation.
+def _verify_image(img_file: typing.BinaryIO, verifier) -> None:
     while True:
         chunk = img_file.read(1024)
         if not chunk:
@@ -692,7 +686,7 @@ def verify_glance_image_signature(context: context.RequestContext,
         with fileutils.remove_path_on_error(path):
             with open(path, "rb") as tem_file:
                 try:
-                    tpool.execute(_verify_image, tem_file, verifier)
+                    utils.tpool_wrap(_verify_image)(tem_file, verifier)
                     LOG.info('Image signature verification succeeded '
                              'for image: %s', image_id)
                     return True
@@ -728,7 +722,7 @@ def fetch(context: context.RequestContext,
         with open(path, "wb") as image_file:
             try:
                 image_service.download(context, image_id,
-                                       tpool.Proxy(image_file))
+                                       utils.tpool_wrap(image_file))
             except IOError as e:
                 if e.errno == errno.ENOSPC:
                     params = {'path': os.path.dirname(path),
@@ -1187,14 +1181,14 @@ def upload_volume(context: context.RequestContext,
                       image_id, volume_format, image_meta['disk_format'])
             if volume_fd is not None:
                 image_service.update(context, image_id, {},
-                                     tpool.Proxy(volume_fd),
+                                     utils.tpool_wrap(volume_fd),
                                      store_id=store_id,
                                      base_image_ref=base_image_ref)
             else:
                 with chown_if_needed(volume_path):
                     with open(volume_path, 'rb') as image_file:
                         image_service.update(context, image_id, {},
-                                             tpool.Proxy(image_file),
+                                             utils.tpool_wrap(image_file),
                                              store_id=store_id,
                                              base_image_ref=base_image_ref)
             return
@@ -1240,7 +1234,7 @@ def upload_volume(context: context.RequestContext,
             accel.compress_img(run_as_root=run_as_root)
         with open(tmp, 'rb') as image_file:
             image_service.update(context, image_id, {},
-                                 tpool.Proxy(image_file),
+                                 utils.tpool_wrap(image_file),
                                  store_id=store_id,
                                  base_image_ref=base_image_ref)
 
