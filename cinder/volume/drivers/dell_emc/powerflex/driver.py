@@ -16,6 +16,7 @@
 Driver for Dell EMC PowerFlex (formerly named Dell EMC VxFlex OS).
 """
 
+import hashlib
 import http.client as http_client
 import math
 from operator import xor
@@ -58,6 +59,8 @@ LOG = logging.getLogger(__name__)
 
 
 PROVISIONING_KEY = "provisioning:type"
+
+MAX_POWERFLEX_HOST_NAME_LENGTH = 31
 REPLICATION_CG_KEY = "powerflex:replication_cg"
 QOS_IOPS_LIMIT_KEY = "maxIOPS"
 QOS_BANDWIDTH_LIMIT = "maxBWS"
@@ -2293,10 +2296,7 @@ class PowerFlexNVMeDriver(PowerFlexBaseDriver):
         """
         host_id = self._get_client().query_host_by_nqn(nqn)
         if not host_id:
-            host_name = self._powerflex_host_name(
-                connector,
-                self.storage_protocol
-            )
+            host_name = self._truncate_host_name(connector["host"])
             LOG.debug("Create PowerFlex host %(host_name)s. "
                       "nqn: %(nqn)s.",
                       {
@@ -2322,17 +2322,31 @@ class PowerFlexNVMeDriver(PowerFlexBaseDriver):
                            system_id[-10:])
 
     @staticmethod
-    def _powerflex_host_name(connector, protocol):
-        """Generate PowerFlex host name for connector.
+    def _truncate_host_name(host_name):
+        """Ensure PowerFlex host name fits within 31-character limit.
 
-        :param connector: connection properties
-        :param protocol: storage protocol (scaleio or NVMe-TCP)
-        :return: unique host name
+        Uses MD5 hash suffix to preserve uniqueness.
+        Deterministic — same input always produces same output.
+
+        :param host_name: original host name
+        :return: host name truncated to MAX_POWERFLEX_HOST_NAME_LENGTH
         """
+        if len(host_name) <= MAX_POWERFLEX_HOST_NAME_LENGTH:
+            return host_name
 
-        return ("%(host)s-%(protocol)s" %
-                {"host": connector["host"],
-                 "protocol": protocol, })
+        name_hash = hashlib.md5(
+            host_name.encode('utf-8'),
+            usedforsecurity=False
+        ).hexdigest()[:8]
+        available = MAX_POWERFLEX_HOST_NAME_LENGTH - len(name_hash) - 1
+        truncated = host_name[:available] + "-" + name_hash
+
+        LOG.info(
+            "Truncated PowerFlex host name: '%s' -> '%s' "
+            "(limit: %d chars)",
+            host_name, truncated, MAX_POWERFLEX_HOST_NAME_LENGTH
+        )
+        return truncated
 
     def _terminate_connection(self, volume_or_snap, connector):
         """Terminate connection to nvme volume or snapshot.

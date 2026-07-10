@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Dell PowerFlex Driver `Bug #2160063
+    <https://bugs.launchpad.net/cinder/+bug/2160063>`_: Fixed
+    NVMe-TCP volume attachment failure when host name exceeds
+    31 characters. PowerFlex has a 31-character limit for host
+    names. The driver now truncates long host names using an
+    MD5 hash suffix to preserve uniqueness while staying within
+    the limit.
