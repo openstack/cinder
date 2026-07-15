@@ -221,6 +221,20 @@ def qemu_img_info(
     return info
 
 
+def get_image_format(path: str,
+                     allow_qcow2_backing_file: Optional[bool] = False
+                     ) -> Optional[str]:
+    """Inspect image file and return its format if safe.
+
+    :param path: Path to the image file to inspect
+    :param allow_qcow2_backing_file: Allow qcow2 images with backing files
+    :returns: Format name ('raw', 'qcow2', etc.) if safe, None if unsafe
+    """
+    return cinder.privsep.format_inspector.get_format_if_safe(
+        path=path,
+        allow_qcow2_backing_file=allow_qcow2_backing_file)
+
+
 def get_qemu_img_version() -> Optional[list[int]]:
     """The qemu-img version will be cached until the process is restarted."""
 
