@@ -1651,6 +1651,39 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client._create_qos_policy_group.assert_not_called()
         self.client._modify_qos_policy_group.assert_not_called()
 
+    @ddt.data(
+        (9, 8, 0),
+        (9, 13, 1),
+        (9, 17, 1),
+    )
+    def test_node_metrics_feature_supported(self, version):
+        self.mock_object(self.client, '_init_ssh_client')
+        self.mock_object(
+            self.client, '_get_cluster_nodes_info',
+            return_value=fake.HYBRID_SYSTEM_NODES_INFO)
+        self.mock_object(self.client, 'get_ontap_version',
+                         return_value=version)
+
+        self.client._init_features()
+
+        self.assertTrue(bool(self.client.features.NODE_METRICS))
+
+    @ddt.data(
+        (9, 6, 0),
+        (9, 7, 1),
+    )
+    def test_node_metrics_feature_unsupported(self, version):
+        self.mock_object(self.client, '_init_ssh_client')
+        self.mock_object(
+            self.client, '_get_cluster_nodes_info',
+            return_value=fake.HYBRID_SYSTEM_NODES_INFO)
+        self.mock_object(self.client, 'get_ontap_version',
+                         return_value=version)
+
+        self.client._init_features()
+
+        self.assertFalse(bool(self.client.features.NODE_METRICS))
+
     @ddt.data(True, False)
     def test_provision_qos_policy_group_qos_policy_create(self, is_adaptive):
         policy_info = fake.QOS_POLICY_GROUP_INFO

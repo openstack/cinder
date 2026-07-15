@@ -156,6 +156,11 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         ontap_9_14 = ontap_version >= (9, 14)
 
         nodes_info = self._get_cluster_nodes_info()
+        # Cache node name -> UUID so metrics lookups skip an extra REST call.
+        self._node_uuid_cache = {
+            node['name']: node['uuid']
+            for node in nodes_info if node.get('uuid')
+        }
         for node in nodes_info:
             qos_min_block = False
             qos_min_nfs = False
@@ -178,6 +183,9 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         self.features.add_feature('USER_CAPABILITY_LIST',
                                   supported=ontap_9_0)
         self.features.add_feature('SYSTEM_METRICS', supported=ontap_9_0)
+        # REST node-metrics utilization (processor_utilization) needs 9.8+;
+        # older releases fall back to the counter-based calculation.
+        self.features.add_feature('NODE_METRICS', supported=ontap_9_8)
         self.features.add_feature('CLONE_SPLIT_STATUS', supported=ontap_9_0)
         self.features.add_feature('FAST_CLONE_DELETE', supported=ontap_9_0)
         self.features.add_feature('SYSTEM_CONSTITUENT_METRICS',
@@ -421,6 +429,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         """Return a list of models of the nodes in the cluster."""
         query_args = {'fields': 'model,'
                                 'name,'
+                                'uuid,'
                                 'is_all_flash_optimized,'
                                 'is_all_flash_select_optimized'}
 
@@ -444,6 +453,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
                 node = {
                     'model': node_model,
                     'name': node_name,
+                    'uuid': record.get('uuid'),
                     'is_all_flash':
                         record['is_all_flash_optimized'],
                     'is_all_flash_select':
@@ -1421,6 +1431,104 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
                 return None
             else:
                 raise e
+
+    def _get_node_uuid(self, node_name):
+        """Resolve a cluster node name to its UUID.
+
+        The mapping is cached at client initialization, but a node that was
+        added after init (or not present in the cache) is resolved on demand.
+        Returns None if the UUID cannot be determined.
+        """
+        # Callers may pass an empty name when an aggregate has no home
+        # node (for example a storage availability zone on ASA r2).
+        # Return None so pool-stats collection can fall back to the
+        # default utilization instead of failing the stats update.
+        if not node_name:
+            return None
+
+        node_uuid = getattr(self, '_node_uuid_cache', {}).get(node_name)
+        if node_uuid:
+            return node_uuid
+
+        query_args = {'name': node_name, 'fields': 'uuid'}
+        try:
+            response = self.send_request('/cluster/nodes', 'get',
+                                         query=query_args,
+                                         enable_tunneling=False)
+        except netapp_api.NaApiError:
+            LOG.exception('Failed to resolve UUID for node %s.', node_name)
+            return None
+
+        records = response.get('records', [])
+        if not records:
+            return None
+
+        node_uuid = records[0].get('uuid')
+        if node_uuid:
+            self._node_uuid_cache[node_name] = node_uuid
+        return node_uuid
+
+    def get_node_utilization_from_metrics(self, node_name):
+        """Return the node's latest processor_utilization, or None.
+
+        None means the value is unavailable (bad permissions, node down, or
+        missing/stale metrics); callers apply the default utilization.
+        """
+        node_uuid = self._get_node_uuid(node_name)
+        if not node_uuid:
+            LOG.warning('Could not resolve UUID for node %s; node '
+                        'utilization metrics are unavailable.', node_name)
+            return None
+
+        # interval=1h + order_by desc + max_records=1 selects the latest
+        # (15-second) sample.
+        query_args = {
+            'interval': '1h',
+            'fields': 'timestamp,duration,status,processor_utilization',
+            'order_by': 'timestamp desc',
+            'max_records': 1,
+            'return_records': 'true',
+        }
+        action_url = '/cluster/nodes/%s/metrics' % node_uuid
+        try:
+            # Call invoke_successfully directly so get_records pagination does
+            # not override max_records and fetch the whole interval.
+            _, response = self.connection.invoke_successfully(
+                action_url, 'get', query=query_args, enable_tunneling=False)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.REST_UNAUTHORIZED:
+                LOG.warning('Could not fetch Node utilization metrics '
+                            'due to unauthorized exception; falling back '
+                            'to default utilization for node %s', node_name)
+            elif e.code == netapp_api.REST_API_NOT_FOUND:
+                LOG.warning('Node utilization metrics are not available for '
+                            'node %s.', node_name)
+            else:
+                LOG.exception('Failed to get utilization metrics for node %s.',
+                              node_name)
+            return None
+
+        records = response.get('records', [])
+        if not records:
+            LOG.warning('No utilization metrics returned for node %s.',
+                        node_name)
+            return None
+
+        record = records[0]
+        status = record.get('status')
+        if status and status != 'ok':
+            LOG.warning('Utilization metrics for node %s are not in a valid '
+                        'state (status=%s); using the default utilization.',
+                        node_name, status)
+            return None
+
+        utilization = record.get('processor_utilization')
+        if utilization is None:
+            LOG.warning('Utilization metrics for node %s did not include '
+                        'processor_utilization.', node_name)
+            return None
+
+        return float(utilization)
 
     def provision_qos_policy_group(self, qos_policy_group_info,
                                    qos_min_support):

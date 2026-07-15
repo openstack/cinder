@@ -349,6 +349,22 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         self.zapi_client.get_flexvol.assert_called_once_with(
             flexvol_name=fake_client.VOLUME_NAMES[0])
 
+    def test_get_ssc_flexvol_info_flexgroup_all_aggrs_stored(self):
+        # FlexGroup: netapp_aggregate must be the full aggregate list,
+        # not just the first element, so the perf library can resolve
+        # all constituent nodes for utilization averaging.
+        fake_fg_info = copy.deepcopy(fake_client.VOLUME_INFO_SSC_FLEXGROUP)
+        fake_fg_info['aggregate'] = ['aggr1', 'aggr2']
+        self.mock_object(self.ssc_library.zapi_client,
+                         'get_flexvol',
+                         return_value=fake_fg_info)
+
+        result = self.ssc_library._get_ssc_flexvol_info(
+            fake_client.VOLUME_NAMES[0])
+
+        self.assertEqual(['aggr1', 'aggr2'], result['netapp_aggregate'])
+        self.assertEqual('true', result['netapp_is_flexgroup'])
+
     @ddt.data([], ['netapp_dedup'], ['netapp_compression'])
     def test_get_ssc_dedupe_info(self, invalid_extra_specs):
         self.ssc_library.invalid_extra_specs = invalid_extra_specs

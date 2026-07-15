@@ -187,4 +187,5 @@ def create_configuration():
 def create_configuration_cmode():
     config = create_configuration()
     config.append_config_values(na_opts.netapp_cluster_opts)
+    config.append_config_values(na_opts.netapp_san_opts)
     return config

@@ -97,6 +97,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         config.netapp_server_port = '443'
         config.netapp_vserver = 'openstack'
         config.netapp_api_trace_pattern = 'fake_regex'
+        config.netapp_use_metrics_based_utilization = False
         return config
 
     @ddt.data(fake.AFF_SYSTEM_NODES_INFO,
@@ -1970,8 +1971,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
     @ddt.data(
         # Performance metrics require cluster-scoped credentials.
         (False, False),
-        # Performance metrics are not supported on the disaggregated platform.
-        (True, True),
+        (False, True),
     )
     @ddt.unpack
     def test_get_pool_stats_no_perf_update(self, cluster_credentials,

@@ -150,7 +150,9 @@ class NetAppNVMeStorageLibrary(
 
         # Performance monitoring library.
         self.perf_library = perf_cmode.PerformanceCmodeLibrary(
-            self.client)
+            self.client,
+            use_metrics_based_utilization=(
+                self.configuration.netapp_use_metrics_based_utilization))
 
     def _update_ssc(self):
         """Refresh the storage service catalog with the latest set of pools."""
@@ -544,8 +546,7 @@ class NetAppNVMeStorageLibrary(
 
         # Utilization and performance metrics require cluster-scoped
         # credentials
-        if (self.using_cluster_credentials
-                and not self.configuration.netapp_disaggregated_platform):
+        if self.using_cluster_credentials:
             # Get up-to-date node utilization metrics just once
             now = timeutils.utcnow().timestamp()
             perf_expiry = (
@@ -558,13 +559,16 @@ class NetAppNVMeStorageLibrary(
             else:
                 LOG.debug("Using the previous perf stats from last update.")
 
-            # Get up-to-date aggregate capacities just once
-            aggregates = self.ssc_library.get_ssc_aggregates()
-            LOG.debug("Getting aggregate capacities.")
-            aggr_capacities = self.client.get_aggregate_capacities(
-                aggregates)
-            LOG.debug("Aggregate capacities successfully fetched: %s",
-                      aggr_capacities)
+            if not self.configuration.netapp_disaggregated_platform:
+                # Get up-to-date aggregate capacities just once
+                aggregates = self.ssc_library.get_ssc_aggregates()
+                LOG.debug("Getting aggregate capacities.")
+                aggr_capacities = self.client.get_aggregate_capacities(
+                    aggregates)
+                LOG.debug("Aggregate capacities successfully fetched: %s",
+                          aggr_capacities)
+            else:
+                aggr_capacities = {}
         else:
             aggr_capacities = {}
 
@@ -684,9 +688,9 @@ class NetAppNVMeStorageLibrary(
                 dedupe_used)
 
             aggregate_name = ssc_vol_info.get('netapp_aggregate')
-            aggr_capacity = aggr_capacities.get(aggregate_name, {})
-            pool['netapp_aggregate_used_percent'] = aggr_capacity.get(
-                'percent-used', 0)
+            pool['netapp_aggregate_used_percent'] = (
+                na_utils.get_aggregate_used_percent(
+                    aggregate_name, aggr_capacities))
 
             # Add utilization data
             utilization = self.perf_library.get_node_utilization_for_pool(

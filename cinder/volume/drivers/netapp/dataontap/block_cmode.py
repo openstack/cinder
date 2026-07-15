@@ -141,7 +141,9 @@ class NetAppBlockStorageCmodeLibrary(
 
         # Performance monitoring library
         self.perf_library = perf_cmode.PerformanceCmodeLibrary(
-            self.zapi_client)
+            self.zapi_client,
+            use_metrics_based_utilization=(
+                self.configuration.netapp_use_metrics_based_utilization))
 
     def _update_zapi_client(self, backend_name):
         """Set cDOT API client for the specified config backend stanza name."""
@@ -708,10 +710,7 @@ class NetAppBlockStorageCmodeLibrary(
 
         # Utilization and performance metrics require cluster-scoped
         # credentials
-        # Performance metrics are skipped for disaggregated for now.
-        # TODO(jayaanan): Add support for performance metrics for ASA r2
-        if (self.using_cluster_credentials
-                and not self.configuration.netapp_disaggregated_platform):
+        if self.using_cluster_credentials:
             # Update the saved cluster performance data only after the set
             # time has passed.This prevents running slow real-time performance
             # checks every time stats are collected. The time of the last
@@ -728,13 +727,16 @@ class NetAppBlockStorageCmodeLibrary(
             else:
                 LOG.debug("Using the previous perf stats from last update.")
 
-            # Get up-to-date aggregate capacities just once
-            aggregates = self.ssc_library.get_ssc_aggregates()
-            LOG.debug("Getting aggregate capacities.")
-            aggr_capacities = self.zapi_client.get_aggregate_capacities(
-                aggregates)
-            LOG.debug("Aggregate capacities successfully fetched: %s",
-                      aggr_capacities)
+            if not self.configuration.netapp_disaggregated_platform:
+                # Get up-to-date aggregate capacities just once
+                aggregates = self.ssc_library.get_ssc_aggregates()
+                LOG.debug("Getting aggregate capacities.")
+                aggr_capacities = self.zapi_client.get_aggregate_capacities(
+                    aggregates)
+                LOG.debug("Aggregate capacities successfully fetched: %s",
+                          aggr_capacities)
+            else:
+                aggr_capacities = {}
         else:
             aggr_capacities = {}
 
@@ -849,9 +851,9 @@ class NetAppBlockStorageCmodeLibrary(
                 dedupe_used)
 
             aggregate_name = ssc_vol_info.get('netapp_aggregate')
-            aggr_capacity = aggr_capacities.get(aggregate_name, {})
-            pool['netapp_aggregate_used_percent'] = aggr_capacity.get(
-                'percent-used', 0)
+            pool['netapp_aggregate_used_percent'] = (
+                na_utils.get_aggregate_used_percent(
+                    aggregate_name, aggr_capacities))
 
             # Add utilization data
             utilization = self.perf_library.get_node_utilization_for_pool(

@@ -224,6 +224,23 @@ def round_down(value, precision='0.00'):
         decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))
 
 
+def get_aggregate_used_percent(aggregate_name, aggr_capacities):
+    """Get the aggregate used-percent for a pool's SSC aggregate(s).
+
+    :param aggregate_name: a single aggregate name, a list of aggregate
+        names for a FlexGroup (averaged across all of them), or None.
+    :param aggr_capacities: dict mapping aggregate name to capacity info.
+    """
+    if isinstance(aggregate_name, list):
+        if not aggregate_name:
+            return 0
+        values = [aggr_capacities.get(aggr, {}).get('percent-used', 0)
+                  for aggr in aggregate_name]
+        return sum(values) / len(values)
+
+    return aggr_capacities.get(aggregate_name, {}).get('percent-used', 0)
+
+
 def log_extra_spec_warnings(extra_specs):
     for spec in (set(extra_specs.keys() if extra_specs else []) &
                  set(OBSOLETE_SSC_SPECS.keys())):
