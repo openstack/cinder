@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Quobyte driver: adds thin provisioning support for Quobyte volumes.
