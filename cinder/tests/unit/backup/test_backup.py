@@ -2100,7 +2100,8 @@ class BackupAPITestCase(BaseBackupTest):
 
     @mock.patch.object(objects, 'BackupList')
     def test_get_all_true_value_all_tenants_non_admin(self, mock_backuplist):
-        ctxt = context.RequestContext(uuid.uuid4(), uuid.uuid4())
+        ctxt = context.RequestContext(uuid.uuid4(), uuid.uuid4(),
+                                      roles=['member', 'reader'])
         result = self.api.get_all(ctxt, {'all_tenants': '1',
                                          'key': 'value'})
         self.assertFalse(mock_backuplist.get_all.called)

@@ -75,7 +75,8 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.patch('cinder.db.api._volume_type_encryption_get',
                    return_volume_type_encryption_metadata)
 
-        self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
+        self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                           roles=['member', 'reader'])
         self.volume_id = self._create_volume(self.ctxt)
         self.addCleanup(db.volume_destroy, self.ctxt.elevated(),
                         self.volume_id)
@@ -177,7 +178,8 @@ class VolumeEncryptionMetadataTest(test.TestCase):
 
     def test_retrieve_key_admin(self):
         ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                      is_admin=True)
+                                      is_admin=True,
+                                      roles=['admin', 'member', 'reader'])
 
         req = webob.Request.blank('/v3/%s/volumes/%s/encryption/'
                                   'encryption_key_id' % (

@@ -40,7 +40,8 @@ class VolumeTransferTestCase(test.TestCase):
     def setUp(self):
         super(VolumeTransferTestCase, self).setUp()
         self.ctxt = context.RequestContext(user_id=fake.USER_ID,
-                                           project_id=fake.PROJECT_ID)
+                                           project_id=fake.PROJECT_ID,
+                                           roles=['member', 'reader'])
         self.updated_at = timeutils.utcnow()
 
     def test_transfer_volume_create_delete(self):
@@ -298,7 +299,8 @@ class VolumeTransferTestCase(test.TestCase):
         self.assertEqual(1, len(ts), 'Unexpected number of transfers.')
 
         nctxt = context.RequestContext(user_id=fake.USER2_ID,
-                                       project_id=fake.PROJECT2_ID)
+                                       project_id=fake.PROJECT2_ID,
+                                       roles=['member', 'reader'])
         utils.create_volume(nctxt, updated_at=self.updated_at)
         self.assertRaises(exception.TransferNotFound,
                           tx_api.get,

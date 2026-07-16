@@ -88,7 +88,8 @@ class BaseVolumeTest(test.TestCase):
 
         self.flags(host='fake')
 
-        self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                           roles=['admin', 'member', 'reader'])
         # This will be cleaned up by the NestedTempfile fixture in base class
         self.tmp_path = self.useFixture(fixtures.TempDir()).path
 
@@ -292,7 +293,8 @@ class VolumeApiTest(BaseVolumeTest):
             mv.get_prior_version(mv.SUPPORT_COUNT_INFO))
         req.api_version_request = mv.get_api_version(
             mv.get_prior_version(mv.SUPPORT_COUNT_INFO))
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                      roles=['admin', 'member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._get_volumes(req, is_detail=is_detail)
         self.assertNotIn('count', res_dict)
@@ -323,7 +325,8 @@ class VolumeApiTest(BaseVolumeTest):
             "/v3/%s?with_count=%s&limit=1" % (method, display_param))
         req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False,
+                                      roles=['member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._get_volumes(req, is_detail=is_detail)
         self.assertEqual(1, len(res_dict['volumes']))
@@ -337,7 +340,8 @@ class VolumeApiTest(BaseVolumeTest):
             "/v3/%s?with_count=%s" % (method, display_param))
         req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False,
+                                      roles=['member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._get_volumes(req, is_detail=is_detail)
         self.assertEqual(2, len(res_dict['volumes']))
@@ -351,7 +355,8 @@ class VolumeApiTest(BaseVolumeTest):
             "/v3/%s?with_count=%s&all_tenants=1" % (method, display_param))
         req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                      roles=['admin', 'member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._get_volumes(req, is_detail=is_detail)
         self.assertEqual(3, len(res_dict['volumes']))
@@ -371,7 +376,8 @@ class VolumeApiTest(BaseVolumeTest):
         req = fakes.HTTPRequest.blank(
             "/v3/volumes/detail?all_tenants=1"
             "&metadata=%7B%27key_X%27%3A+%27value_X%27%7D")
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False,
+                                      roles=['member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._get_volumes(req, is_detail=True)
         self.assertEqual(1, len(res_dict['volumes']))
@@ -388,7 +394,8 @@ class VolumeApiTest(BaseVolumeTest):
             "/v3/volumes/detail?all_tenants=1"
             "&sort=bootable:asc&with_count=True&limit=5"
             "&marker=" + fake.VOLUME_ID)
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False,
+                                      roles=['member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._get_volumes(req, is_detail=True)
         self.assertEqual(2, len(res_dict['volumes']))

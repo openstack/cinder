@@ -47,7 +47,8 @@ class SchedulerHintsTestCase(test.TestCase):
                 'cinder.api.contrib.select_extensions'],
             osapi_volume_ext_list=['Scheduler_hints'])
         self.user_ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True,
+            roles=['member', 'reader'])
         self.app = fakes.wsgi_app(fake_auth_context=self.user_ctxt)
         self.admin_ctxt = context.get_admin_context()
         cinder.db.api.volume_type_create(

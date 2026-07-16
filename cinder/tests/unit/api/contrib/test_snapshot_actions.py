@@ -47,7 +47,8 @@ class SnapshotActionsTest(test.TestCase):
     def setUp(self):
         super(SnapshotActionsTest, self).setUp()
         self.user_ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True,
+            roles=['member', 'reader'])
         self.controller = snapshot_actions.SnapshotActionsController()
 
     @mock.patch('cinder.db.api.snapshot_update', autospec=True)

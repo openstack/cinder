@@ -30,7 +30,6 @@ import socket
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_middleware import cors
-from oslo_policy import opts as policy_opts
 from oslo_utils import netutils
 
 
@@ -255,6 +254,3 @@ def set_external_library_defaults():
     # setup.cfg.
 
     set_middleware_defaults()
-    policy_opts.set_defaults(CONF,
-                             enforce_scope=False,
-                             enforce_new_defaults=False)

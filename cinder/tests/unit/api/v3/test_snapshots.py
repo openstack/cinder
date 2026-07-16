@@ -120,7 +120,8 @@ class SnapshotApiTest(test.TestCase):
         self.patch('cinder.quota.QUOTAS.reserve')
         self.mock_object(scheduler_rpcapi.SchedulerAPI, 'create_snapshot')
         self.controller = snapshots.SnapshotsController()
-        self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                          roles=['admin', 'member', 'reader'])
 
     @ddt.data(mv.GROUP_SNAPSHOTS,
               mv.get_prior_version(mv.GROUP_SNAPSHOTS),
@@ -235,13 +236,16 @@ class SnapshotApiTest(test.TestCase):
         volume2 = test_utils.create_volume(self.ctx,
                                            project=fake.PROJECT2_ID)
         test_utils.create_snapshot(
-            context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True),
+            context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                   roles=['admin', 'member', 'reader']),
             volume1.id)
         test_utils.create_snapshot(
-            context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True),
+            context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                   roles=['admin', 'member', 'reader']),
             volume1.id)
         test_utils.create_snapshot(
-            context.RequestContext(fake.USER_ID, fake.PROJECT2_ID, True),
+            context.RequestContext(fake.USER_ID, fake.PROJECT2_ID, True,
+                                   roles=['admin', 'member', 'reader']),
             volume2.id)
 
     @ddt.data('snapshots', 'snapshots/detail')
@@ -254,7 +258,8 @@ class SnapshotApiTest(test.TestCase):
             mv.get_prior_version(mv.SUPPORT_COUNT_INFO))
         req.api_version_request = mv.get_api_version(
             mv.get_prior_version(mv.SUPPORT_COUNT_INFO))
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                      roles=['admin', 'member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._items(req, is_detail=is_detail)
         self.assertNotIn('count', res_dict)
@@ -283,7 +288,8 @@ class SnapshotApiTest(test.TestCase):
             "/v3/%s?with_count=%s&limit=1" % (method, display_param))
         req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False,
+                                      roles=['member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._items(req, is_detail=is_detail)
         self.assertEqual(1, len(res_dict['snapshots']))
@@ -297,7 +303,8 @@ class SnapshotApiTest(test.TestCase):
             "/v3/%s?with_count=%s" % (method, display_param))
         req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False,
+                                      roles=['member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._items(req, is_detail=is_detail)
         self.assertEqual(2, len(res_dict['snapshots']))
@@ -311,7 +318,8 @@ class SnapshotApiTest(test.TestCase):
             "/v3/%s?with_count=%s&all_tenants=1" % (method, display_param))
         req.headers = mv.get_mv_header(mv.SUPPORT_COUNT_INFO)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_COUNT_INFO)
-        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                      roles=['admin', 'member', 'reader'])
         req.environ['cinder.context'] = ctxt
         res_dict = self.controller._items(req, is_detail=is_detail)
         self.assertEqual(3, len(res_dict['snapshots']))
@@ -508,7 +516,8 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
         super().setUp()
         self.mock_object(scheduler_rpcapi.SchedulerAPI, 'create_snapshot')
         self.controller = snapshots.SnapshotsController()
-        self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                          roles=['admin', 'member', 'reader'])
 
     def test_snapshot_create(self):
         volume = test_utils.create_volume(self.ctx, volume_type_id=None)
@@ -888,7 +897,8 @@ class SnapshotApiTestNoMicroversion(test.TestCase):
             'display_description': 'Default description',
             'expected_attrs': ['metadata']
         }
-        ctx = context.RequestContext(fake.PROJECT_ID, fake.USER_ID, True)
+        ctx = context.RequestContext(fake.PROJECT_ID, fake.USER_ID, True,
+                                     roles=['admin', 'member', 'reader'])
         snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
         fake_volume_obj = fake_volume.fake_volume_obj(ctx)
         snapshot_get_by_id.return_value = snapshot_obj

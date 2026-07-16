@@ -57,7 +57,8 @@ def fake_db_volume_get(*args, **kwargs):
 
 
 def fake_volume_api_get(*args, **kwargs):
-    ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+    ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True,
+                                 roles=['admin', 'member', 'reader'])
     db_volume = fake_db_volume_get(volume_id=kwargs.get('volume_id'))
     return fake_volume.fake_volume_obj(ctx, **db_volume)
 
@@ -114,7 +115,8 @@ class VolumeImageMetadataTest(test.TestCase):
         self.controller = (volume_image_metadata.
                            VolumeImageMetadataController())
         self.user_ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True,
+            roles=['member', 'reader'])
 
     def _make_request(self, url):
         req = webob.Request.blank(url)

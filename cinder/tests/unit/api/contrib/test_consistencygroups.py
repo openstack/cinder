@@ -46,9 +46,11 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.cg_api = cinder.group.API()
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                            auth_token=True,
-                                           is_admin=True)
+                                           is_admin=True,
+                                           roles=['admin', 'member', 'reader'])
         self.user_ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True,
+            roles=['member', 'reader'])
         self.admin_ctxt = context.get_admin_context()
         db.volume_type_create(self.admin_ctxt,
                               v3_fakes.fake_default_type_get(
@@ -283,7 +285,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup2 = self._create_consistencygroup()
         common_ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                              auth_token=True,
-                                             is_admin=False)
+                                             is_admin=False,
+                                             roles=['member', 'reader'])
         consistencygroup3 = self._create_consistencygroup(ctxt=common_ctxt)
         url = ('/v3/%s/consistencygroups?'
                'all_tenants=True&id=%s') % (fake.PROJECT_ID,

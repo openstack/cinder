@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    The ``[oslo_policy] enforce_scope`` and ``[oslo_policy]
+    enforce_new_defaults`` configuration options now default to ``True``.
+    This means the RBAC new defaults are enabled by default. Operators who
+    still rely on the deprecated old defaults should explicitly set
+    ``enforce_new_defaults = False`` in the ``[oslo_policy]`` section of
+    ``cinder.conf`` before upgrading and plan their migration to the new
+    RBAC defaults. See the `Policy Personas and Permissions
+    <https://docs.openstack.org/cinder/latest/configuration/block-storage/policy-personas.html>`_
+    documentation for details.

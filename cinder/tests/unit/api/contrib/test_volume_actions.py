@@ -55,7 +55,8 @@ class VolumeActionsTest(test.TestCase):
     def setUp(self):
         super(VolumeActionsTest, self).setUp()
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                              is_admin=False)
+                                              is_admin=False,
+                                              roles=['member', 'reader'])
         self.controller = volume_actions.VolumeActionsController()
         self.api_patchers = {}
         for _meth in self._methods:
@@ -515,7 +516,8 @@ class VolumeRetypeActionsTest(test.TestCase):
         super(VolumeRetypeActionsTest, self).setUp()
 
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                              is_admin=False)
+                                              is_admin=False,
+                                              roles=['member', 'reader'])
         self.flags(transport_url='fake:/')
 
         self.retype_mocks = {}
@@ -807,7 +809,8 @@ class VolumeImageActionsTest(test.TestCase):
         super(VolumeImageActionsTest, self).setUp()
         self.controller = volume_actions.VolumeActionsController()
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
-                                              is_admin=False)
+                                              is_admin=False,
+                                              roles=['member', 'reader'])
         self.maxDiff = 2000
 
     def _get_os_volume_upload_image(self):

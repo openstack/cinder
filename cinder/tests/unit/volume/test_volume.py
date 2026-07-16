@@ -109,7 +109,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.expected_status = 'available'
         self.service_id = 1
         self.user_context = context.RequestContext(user_id=fake.USER_ID,
-                                                   project_id=fake.PROJECT_ID)
+                                                   project_id=fake.PROJECT_ID,
+                                                   roles=['member', 'reader'])
         elevated = context.get_admin_context()
         db.volume_type_create(elevated,
                               v3_fakes.fake_default_type_get(
