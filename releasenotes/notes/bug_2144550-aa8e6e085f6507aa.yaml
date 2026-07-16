@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #2144550 <https://bugs.launchpad.net/cinder/+bug/2144550>`_: Fixed
+    a bug that could cause image creation from volumes to fail due to
+    incorrect handling of the volume metadata passed to Glance.

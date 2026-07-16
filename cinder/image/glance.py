@@ -643,9 +643,12 @@ class GlanceImageService(object):
 
         # NOTE(tsekiyama): From the Image API v2, custom properties must
         # be stored in image_meta directly, instead of the 'properties' key.
-        properties = image_meta.get('properties')
-        if properties:
-            image_meta.update(properties)
+        # NOTE(al3jandro) ensure key deletion even when properties={}
+        # (LP#2144550)
+        if 'properties' in image_meta:
+            properties = image_meta['properties']
+            if properties:
+                image_meta.update(properties)
             del image_meta['properties']
 
         return image_meta
@@ -670,7 +673,7 @@ class GlanceImageService(object):
                 getattr(image, 'visibility', 'private') == 'public'):
             return True
 
-        properties = image.properties
+        properties = getattr(image, 'properties', {})
 
         if context.project_id and ('owner_id' in properties):
             return str(properties['owner_id']) == str(context.project_id)

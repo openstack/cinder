@@ -25,6 +25,7 @@ from oslo_utils import units
 
 from cinder import db
 from cinder import exception
+from cinder.image import image_utils
 from cinder.message import message_field
 from cinder import objects
 from cinder.objects import fields
@@ -852,3 +853,28 @@ class CopyVolumeToImagePrivateFunctionsTestCase(
         # correct key_id
         self.assertEqual(image_meta['cinder_encryption_key_id'],
                          sent_to_glance['cinder_encryption_key_id'])
+
+    @mock.patch('cinder.volume.api.API.get_volume_image_metadata',
+                return_value={'image_id': 'base-image-id',
+                              'signature_verified': 'False'})
+    def test_filter_reserved_namespaces_metadata(self, mock_get_img_meta):
+        # testing the fix for LP#2144550
+        image_meta = {
+            'container_format': 'bare',
+            'disk_format': 'raw',
+        }
+
+        volume_api = cinder.volume.api.API()
+        volume_api._merge_volume_image_meta(None, None, image_meta)
+
+        self.assertIn('properties', image_meta)
+        self.assertIn('signature_verified', image_meta.get('properties'))
+
+        filtered = image_utils.filter_out_reserved_namespaces_metadata(
+            image_meta)
+        self.assertEqual({}, filtered.get('properties'))
+
+        translate = cinder.image.glance.GlanceImageService._translate_to_glance
+        sent_to_glance = translate(filtered)
+
+        self.assertNotIn('properties', sent_to_glance)
