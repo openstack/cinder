@@ -44,12 +44,9 @@ all_users = [
 
 
 class BasePolicyTest(test.TestCase):
-    def setUp(self, enforce_scope, enforce_new_defaults, *args, **kwargs):
+    def setUp(self, enforce_new_defaults, *args, **kwargs):
         super().setUp(*args, **kwargs)
-        self.enforce_scope = enforce_scope
         self.enforce_new_defaults = enforce_new_defaults
-        self.override_config('enforce_scope',
-                             enforce_scope, 'oslo_policy')
         self.override_config('enforce_new_defaults',
                              enforce_new_defaults, 'oslo_policy')
         self.policy = self.useFixture(fixtures.PolicyFixture())

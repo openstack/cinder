@@ -42,9 +42,9 @@ class GroupTypesPolicyTest(base.BasePolicyTest):
         'other_project_reader',
     ]
 
-    def setUp(self, enforce_scope=False, enforce_new_defaults=False, *args,
+    def setUp(self, enforce_new_defaults=False, *args,
               **kwargs):
-        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+        super().setUp(enforce_new_defaults, *args, **kwargs)
         self.controller = group_types.GroupTypesController()
         self.api_path = '/v3/%s/group_types' % (self.project_id)
         self.api_version = mv.GROUP_TYPE

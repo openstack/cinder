@@ -49,11 +49,10 @@ class LimitsPolicyTest(base.BasePolicyTest):
 
     unauthorized_exceptions = []
 
-    # Basic policy test is without enforcing scope (which cinder doesn't
-    # yet support) and deprecated rules enabled.
-    def setUp(self, enforce_scope=False, enforce_new_defaults=False,
+    # Basic policy test is with and deprecated rules enabled.
+    def setUp(self, enforce_new_defaults=False,
               *args, **kwargs):
-        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+        super().setUp(enforce_new_defaults, *args, **kwargs)
         self.limits_controller = limits.LimitsController()
         self.used_limits_controller = used_limits.UsedLimitsController()
         self.api_path = '/v3/%s/limits' % (self.project_id)
@@ -112,7 +111,6 @@ class LimitsPolicySecureRbacTest(LimitsPolicyTest):
     ]
 
     def setUp(self, *args, **kwargs):
-        # Test secure RBAC by disabling deprecated policy rules (scope
-        # is still not enabled).
-        super().setUp(enforce_scope=False, enforce_new_defaults=True,
+        # Test secure RBAC by disabling deprecated policy rules.
+        super().setUp(enforce_new_defaults=True,
                       *args, **kwargs)

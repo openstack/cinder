@@ -71,11 +71,10 @@ class VolumeTypeAccessFieldPolicyTest(base.BasePolicyTest):
     # note: authorize is called with fatal=False, so everyone is a winner!
     everyone = authorized_users
 
-    # Basic policy test is without enforcing scope (which cinder doesn't
-    # yet support) and deprecated rules enabled.
-    def setUp(self, enforce_scope=False, enforce_new_defaults=False,
+    # Basic policy test is with deprecated rules enabled.
+    def setUp(self, enforce_new_defaults=False,
               *args, **kwargs):
-        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+        super().setUp(enforce_new_defaults, *args, **kwargs)
         self.controller = vta.VolumeTypeActionController()
         self.rule_name = vta_policies.TYPE_ACCESS_POLICY
         self.api_version = mv.BASE_VERSION
@@ -174,9 +173,8 @@ class VolumeTypeAccessFieldPolicySecureRbacTest(
     everyone = authorized_users + unauthorized_users
 
     def setUp(self, *args, **kwargs):
-        # Test secure RBAC by disabling deprecated policy rules (scope
-        # is still not enabled).
-        super().setUp(enforce_scope=False, enforce_new_defaults=True,
+        # Test secure RBAC by disabling deprecated policy rules.
+        super().setUp(enforce_new_defaults=True,
                       *args, **kwargs)
 
 
@@ -199,11 +197,10 @@ class VolumeTypeAccessListProjectsPolicyTest(base.BasePolicyTest):
         'other_project_reader',
     ]
 
-    # Basic policy test is without enforcing scope (which cinder doesn't
-    # yet support) and deprecated rules enabled.
-    def setUp(self, enforce_scope=False, enforce_new_defaults=False,
+    # Basic policy test is with deprecated rules enabled.
+    def setUp(self, enforce_new_defaults=False,
               *args, **kwargs):
-        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+        super().setUp(enforce_new_defaults, *args, **kwargs)
         self.controller = vta.VolumeTypeAccessController()
         self.volume_type = objects.VolumeType(
             self.project_admin_context,
@@ -240,7 +237,6 @@ class VolumeTypeAccessListProjectsPolicySecureRbacTest(
         VolumeTypeAccessListProjectsPolicyTest):
 
     def setUp(self, *args, **kwargs):
-        # Test secure RBAC by disabling deprecated policy rules (scope
-        # is still not enabled).
-        super().setUp(enforce_scope=False, enforce_new_defaults=True,
+        # Test secure RBAC by disabling deprecated policy rules.
+        super().setUp(enforce_new_defaults=True,
                       *args, **kwargs)

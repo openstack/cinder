@@ -52,11 +52,10 @@ class VolumeTypePolicyTest(base.BasePolicyTest):
 
     unauthorized_exceptions = []
 
-    # Basic policy test is without enforcing scope (which cinder doesn't
-    # yet support) and deprecated rules enabled.
-    def setUp(self, enforce_scope=False, enforce_new_defaults=False,
+    # Basic policy test is with deprecated rules enabled.
+    def setUp(self, enforce_new_defaults=False,
               *args, **kwargs):
-        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+        super().setUp(enforce_new_defaults, *args, **kwargs)
         self.controller = types.VolumeTypesController()
         self.api_path = '/v3/%s/types' % (self.project_id)
         self.api_version = mv.BASE_VERSION
@@ -156,9 +155,8 @@ class VolumeTypePolicySecureRbacTest(VolumeTypePolicyTest):
     unauthorized_exceptions = []
 
     def setUp(self, *args, **kwargs):
-        # Test secure RBAC by disabling deprecated policy rules (scope
-        # is still not enabled).
-        super().setUp(enforce_scope=False, enforce_new_defaults=True,
+        # Test secure RBAC by disabling deprecated policy rules.
+        super().setUp(enforce_new_defaults=True,
                       *args, **kwargs)
 
 
