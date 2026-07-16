@@ -141,8 +141,19 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         active_vol = self.get_active_image_from_info(volume)
         volume_dir = self._local_volume_dir(volume)
         path_to_vol = os.path.join(volume_dir, active_vol)
+
+        vol_format = None
+        admin_metadata = None
+        # admin context is required for admin_metadata
+        with volume.obj_as_admin():
+            admin_metadata = volume.admin_metadata
+
+        if admin_metadata and 'format' in admin_metadata:
+            vol_format = admin_metadata['format']
+
         info = self._qemu_img_info(path_to_vol,
-                                   volume['name'])
+                                   volume['name'],
+                                   img_format=vol_format)
 
         data = {'export': volume.provider_location,
                 'name': active_vol}
@@ -581,13 +592,14 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
 
         self._delete(base_volume_path)
 
-    def _qemu_img_info(self, path, volume_name):
+    def _qemu_img_info(self, path, volume_name, img_format=None):
         return super(NfsDriver, self)._qemu_img_info_base(
             path,
             volume_name,
             self.configuration.nfs_mount_point_base,
             force_share=True,
-            run_as_root=True)
+            run_as_root=True,
+            img_format=img_format)
 
     def _check_snapshot_support(self, setup_checking=False):
         """Ensure snapshot support is enabled in config."""
