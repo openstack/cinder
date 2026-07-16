@@ -111,13 +111,6 @@ Milestone-1
 Between Milestone-1 and Milestone-2
 ===================================
 
-#. cinderlib is a "trailing" deliverable type on a "cycle-with-intermediary"
-   release model.  That means that its release for the *previous* cycle hasn't
-   happened yet.  The release must happen no later than 3 months after the
-   main release, which will put it roughly one week before Milestone-2 (check
-   the current release schedule for the exact deadline).  Example patch:
-   https://review.opendev.org/c/openstack/releases/+/742503
-
 #. Review stable backports and release status.
 
 #. The Cinder Spec Freeze usually occurs sometime within this window.

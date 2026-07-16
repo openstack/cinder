@@ -72,7 +72,7 @@ Review Checklist
 
   * Driver reports all options it uses in get_driver_options() method
 
-    * This is necessary for cinderlib/emberCSI use of the driver
+    * This is mainly used to generate driver documentation.
     * The response should include any common config options (see above)
       in addition to driver-specific options
     * See https://review.opendev.org/c/openstack/cinder/+/770807/ for

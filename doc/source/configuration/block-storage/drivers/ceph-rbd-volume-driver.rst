@@ -35,8 +35,8 @@ public or private clouds.
    Pacific, Octopus, Nautilus, and Mimic.
 
    Additionally, it is expected that the version of the Ceph client
-   available to Cinder or any of its associated libraries (os-brick,
-   cinderlib) is aligned with the Ceph server version.  Mixing server
+   available to Cinder or any of its associated libraries (os-brick)
+   is aligned with the Ceph server version.  Mixing server
    and client versions is *unsupported* and may lead to anomalous behavior.
 
 RADOS
