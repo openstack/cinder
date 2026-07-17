@@ -20,9 +20,7 @@
 Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
 import random
-import ssl
 import time
-import urllib
 
 
 from eventlet import semaphore
@@ -86,6 +84,8 @@ class NaServer(object):
         self._certificate_file = certificate_file
         self._ca_certificate_file = ca_certificate_file
         self._certificate_host_validation = certificate_host_validation
+        self._timeout = None
+        self._session = None
         self._refresh_conn = True
         self._ssl_cert_path = ssl_cert_path
 
@@ -195,25 +195,22 @@ class NaServer(object):
         """Invoke the API on the server."""
         if not na_element or not isinstance(na_element, NaElement):
             raise ValueError('NaElement must be supplied to invoke API')
-        request, request_element = self._create_request(na_element,
-                                                        enable_tunneling)
-        if not hasattr(self, '_opener') or not self._opener \
-                or self._refresh_conn:
-            self._build_opener()
+        request_data, request_element = self._create_request(
+            na_element, enable_tunneling)
+        if not self._session or self._refresh_conn:
+            self._build_session()
         try:
-            if hasattr(self, '_timeout'):
-                response = self._opener.open(request, timeout=self._timeout)
-            else:
-                response = self._opener.open(request)
-        except urllib.error.HTTPError as e:
-            raise NaApiError(e.code, e.msg)
+            response = self._session.post(
+                self._get_url(), data=request_data,
+                timeout=self._timeout)
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            raise NaApiError(e.response.status_code, e.response.reason)
         except Exception:
             LOG.exception("Error communicating with NetApp filer.")
             raise NaApiError('Unexpected error')
 
-        response_xml = response.read()
-        response_element = self._get_result(response_xml)
-
+        response_element = self._get_result(response.content)
         return response_element
 
     def invoke_successfully(self, na_element, enable_tunneling=False):
@@ -255,10 +252,7 @@ class NaServer(object):
             self._enable_tunnel_request(netapp_elem)
         netapp_elem.add_child_elem(na_element)
         request_d = netapp_elem.to_string()
-        request = urllib.request.Request(
-            self._get_url(), data=request_d,
-            headers={'Content-Type': 'text/xml', 'charset': 'utf-8'})
-        return request, netapp_elem
+        return request_d, netapp_elem
 
     def _enable_tunnel_request(self, netapp_elem):
         """Enables vserver or vfiler tunneling."""
@@ -302,42 +296,33 @@ class NaServer(object):
         return '%s://%s:%s/%s' % (self._protocol, host, self._port,
                                   self._url)
 
-    def _build_opener(self):
+    def _build_session(self):
+        """Builds a requests.Session with auth and retry logic."""
+        self._session = requests.Session()
+
+        max_retries = Retry(total=5, connect=5, read=2, backoff_factor=1)
+        adapter = HTTPAdapter(max_retries=max_retries)
+        self._session.mount('%s://' % self._protocol, adapter)
+        self._session.headers.update(
+            {'Content-Type': 'text/xml', 'charset': 'utf-8'})
+
         if self._private_key_file and self._certificate_file:
-            auth_handler = self._create_certificate_auth_handler()
+            self._session.cert = (self._certificate_file,
+                                  self._private_key_file)
+            if self._certificate_host_validation and self._ca_certificate_file:
+                self._session.verify = self._ca_certificate_file
+            else:
+                self._session.verify = bool(
+                    self._certificate_host_validation)
         else:
-            auth_handler = self._create_basic_auth_handler()
+            self._session.auth = auth.HTTPBasicAuth(
+                self._username, self._password)
+            if isinstance(self._ssl_cert_path, str):
+                self._session.verify = self._ssl_cert_path
+            else:
+                self._session.verify = False
 
-        # Create an SSL context based on _ssl_cert_path
-        if isinstance(self._ssl_cert_path, str):  # with cert path
-            ssl_context = (
-                ssl.create_default_context(cafile=self._ssl_cert_path))
-        else:  # Disable SSL verification
-            ssl_context = ssl._create_unverified_context()
-
-        https_handler = urllib.request.HTTPSHandler(context=ssl_context)
-        opener = urllib.request.build_opener(auth_handler, https_handler)
-        self._opener = opener
-
-    def _create_basic_auth_handler(self):
-        password_man = urllib.request.HTTPPasswordMgrWithDefaultRealm()
-        password_man.add_password(None, self._get_url(), self._username,
-                                  self._password)
-        auth_handler = urllib.request.HTTPBasicAuthHandler(password_man)
-        return auth_handler
-
-    def _create_certificate_auth_handler(self):
-        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        if not self._certificate_host_validation:
-            context.check_hostname = False
-            context.verify_mode = ssl.CERT_NONE
-        if self._certificate_file and self._private_key_file:
-            context.load_cert_chain(certfile=self._certificate_file,
-                                    keyfile=self._private_key_file)
-            if self._ca_certificate_file:
-                context.load_verify_locations(cafile=self._ca_certificate_file)
-        auth_handler = urllib.request.HTTPSHandler(context=context)
-        return auth_handler
+        self._refresh_conn = False
 
     def __str__(self):
         return "server: %s" % self._host

@@ -14,7 +14,6 @@
 #    under the License.
 
 from unittest import mock
-import urllib
 
 from lxml import etree
 
@@ -103,7 +102,6 @@ FAKE_RESULT_API_ERRNO_VALID.add_attr('errno', '14956')
 FAKE_RESULT_SUCCESS = netapp_api.NaElement('result')
 FAKE_RESULT_SUCCESS.add_attr('status', 'passed')
 
-FAKE_HTTP_OPENER = urllib.request.build_opener()
 INITIATOR_IQN = 'iqn.2015-06.com.netapp:fake_iqn'
 USER_NAME = 'fake_user'
 PASSWORD = 'passw0rd'
@@ -2536,6 +2534,10 @@ FAKE_HEADERS = {'header': 'fake_header'}
 FAKE_BODY = {'body': 'fake_body'}
 FAKE_HTTP_QUERY = {'type': 'fake_type'}
 FAKE_FORMATTED_HTTP_QUERY = '?type=fake_type'
+FAKE_CERT_FILE = 'fake_cert.pem'
+FAKE_KEY_FILE = 'fake_key.pem'
+FAKE_CA_CERT_FILE = 'fake_ca_cert.crt'
+FAKE_SSL_CERT_PATH = '/path/to/ca.crt'
 
 JOB_RESPONSE_REST = {
     "job": {
