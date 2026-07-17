@@ -936,8 +936,8 @@ class HBSDREPLICATION(rest.HBSDREST):
         if self.driver_info.get('driver_dir_name'):
             capacity_saving = extra_specs.get(
                 self.driver_info['driver_dir_name'] + ':capacity_saving')
-        is_data_reduction_force_copy = (
-            capacity_saving == 'deduplication_compression')
+        is_data_reduction_force_copy = utils.is_data_reduction_enabled(
+            capacity_saving)
         svol = None
         pvol, svol = self._create_rep_ldev(volume, extra_specs, rep_type, pvol)
         try:
@@ -1456,8 +1456,8 @@ class HBSDREPLICATION(rest.HBSDREST):
         extra_specs = self.rep_primary.get_volume_extra_specs(volume)
         capacity_saving = extra_specs.get(
             self.driver_info['driver_dir_name'] + ':capacity_saving')
-        is_data_reduction_force_copy = (
-            capacity_saving == 'deduplication_compression')
+        is_data_reduction_force_copy = utils.is_data_reduction_enabled(
+            capacity_saving)
         if self.conf.hitachi_mirror_storage_id:
             rep_type = self.driver_info['mirror_attr']
         else:

@@ -99,6 +99,7 @@ EXTRA_SPEC_CSV = 'capacity_saving'
 CSV_DEFAULT = ''
 CSV_DISABLE = 'disable'
 CSV_DEDUP_COMP = 'deduplication_compression'
+CSV_COMP = 'compression'
 
 DRS_TRUE = '<is> True'
 DRS_FALSE = '<is> False'
@@ -1102,6 +1103,11 @@ def is_block_capacity_gb_aligned(block_capacity):
     return block_capacity % GIGABYTE_PER_BLOCK_SIZE == 0
 
 
+def is_data_reduction_enabled(capacity_saving):
+    return (capacity_saving == CSV_DEDUP_COMP or
+            capacity_saving == CSV_COMP)
+
+
 class DriverContext(object):
     def __init__(self, driver_info, conf, storage_id):
         self.driver_info = driver_info
@@ -1170,10 +1176,11 @@ def get_csv_and_drs(ctx: DriverContext, extra_specs, specs_only=False):
     # drs must be True or False after the above.
     # After the above:
     #  If drs is true:
-    #   CSV must be "deduplication_compression"
+    #   CSV must be "deduplication_compression" or "compression".
     #  If drs is false:
-    #   CSV must be "disable", "deduplication_compression", or "".
-    valid_csv = {CSV_DEDUP_COMP}
+    #   CSV must be "disable", "deduplication_compression",
+    #     "compression", or "".
+    valid_csv = {CSV_DEDUP_COMP, CSV_COMP}
     if not drs:
         valid_csv.add(CSV_DISABLE)
         valid_csv.add(CSV_DEFAULT)

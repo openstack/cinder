@@ -18,6 +18,7 @@
 import json
 from unittest import mock
 
+import ddt
 from oslo_config import cfg
 import requests
 
@@ -608,6 +609,7 @@ class FakeResponse():
         return self.data
 
 
+@ddt.ddt
 class HBSDMIRRORFCDriverTest(test.TestCase):
     """Unit test class for HBSD MIRROR interface fibre channel module."""
 
@@ -1923,12 +1925,13 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         actual = (True, {'provider_location': '1'})
         self.assertTupleEqual(actual, ret)
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(hbsd_rest.HBSDREST, "_copy_ldev_by_shadow_image")
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_migrate_volume_diff_pool_drs(
-            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            self, csv, get_volume_type_qos_specs, get_volume_type_extra_specs,
             request, copy_ldev_by_shadow_image):
         """Test migrate_volume for a DRS volume to a different pool.
 
@@ -1939,7 +1942,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         """
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         get_volume_type_extra_specs.return_value = {
-            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:capacity_saving': csv,
             'hbsd:drs': '<is> True',
         }
         copy_ldev_by_shadow_image.return_value = 1
@@ -1978,12 +1981,13 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         actual = (True, {'provider_location': '1'})
         self.assertTupleEqual(actual, ret)
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(hbsd_rest.HBSDREST, "_copy_ldev_by_shadow_image")
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_retype_diff_pool_drs(
-            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            self, csv, get_volume_type_qos_specs, get_volume_type_extra_specs,
             request, copy_ldev_by_shadow_image):
         """Test migrate_volume for a DRS volume migrating to a different pool.
 
@@ -1992,7 +1996,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         """
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         get_volume_type_extra_specs.return_value = {
-            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:capacity_saving': csv,
             'hbsd:drs': '<is> True',
         }
         copy_ldev_by_shadow_image.return_value = 1
@@ -2263,15 +2267,16 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         )
         self.assertTupleEqual(actual, ret)
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_rep_ldev_and_pair_deduplication_compression(
-            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            self, csv, get_volume_type_qos_specs, get_volume_type_extra_specs,
             request):
         get_volume_type_extra_specs.return_value = {
             'hbsd:topology': 'active_active_mirror_volume',
-            'hbsd:capacity_saving': 'deduplication_compression'}
+            'hbsd:capacity_saving': csv}
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         self.snapshot_count = 0
 

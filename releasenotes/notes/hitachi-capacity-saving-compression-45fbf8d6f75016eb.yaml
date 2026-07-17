@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    This patch adds the ability to use compression-only for the capacity
+    saving value, either through the hbsd:capacity_saving extra spec, or
+    using the hitachi_drs_default_csv setting for DRS volumes.
+    These values can be retyped back and forth, and the volumes successfully
+    deleted regardless of which setting is currently active.
