@@ -1466,6 +1466,17 @@ class LimitOperationsTestCase(test.TestCase):
         mock_semaphore.assert_called_once_with(max_operations)
         self.assertEqual(mock_semaphore.return_value, res)
 
+    @test.testtools.skipUnless(utils.concurrency_mode_threading(),
+                               'test for threading mode only')
+    @mock.patch('cinder.utils.Semaphore')
+    def test_semaphore_factory_with_limit_threading(self, mock_semaphore):
+        """In threading mode, always use Semaphore not eventlet.Semaphore."""
+        max_operations = 15
+        # Even with 1 process, threading mode uses Semaphore class
+        res = utils.semaphore_factory(max_operations, 1)
+        mock_semaphore.assert_called_once_with(max_operations)
+        self.assertEqual(mock_semaphore.return_value, res)
+
     @mock.patch('cinder.utils.Semaphore')
     def test_semaphore_factory_with_limit_and_workers(self, mock_semaphore):
         max_operations = 15
@@ -1487,6 +1498,24 @@ class LimitOperationsTestCase(test.TestCase):
 
         with res:
             mock_exec.assert_called_once_with(mocked_semaphore.__enter__)
+            mocked_semaphore.__exit__.assert_not_called()
+        mocked_semaphore.__exit__.assert_called_once_with(None, None, None)
+
+    @test.testtools.skipUnless(utils.concurrency_mode_threading(),
+                               'test for threading mode only')
+    @mock.patch('multiprocessing.Semaphore')
+    def test_semaphore_threading(self, mock_semaphore):
+        limit = 15
+        res = utils.Semaphore(limit)
+        self.assertEqual(limit, res.limit)
+
+        mocked_semaphore = mock_semaphore.return_value
+        self.assertEqual(mocked_semaphore, res.semaphore)
+        mock_semaphore.assert_called_once_with(limit)
+
+        with res:
+            # verify that __enter__ gets called without wrapping
+            mocked_semaphore.__enter__.assert_called_once_with()
             mocked_semaphore.__exit__.assert_not_called()
         mocked_semaphore.__exit__.assert_called_once_with(None, None, None)
 
