@@ -2145,6 +2145,7 @@ class FJCommonTestCase(test.TestCase):
 
         self.assertEqual(FAKE_CLI_ENCLOUSER_STATUS, cli_enclosure_status)
 
+    @mock.patch('time.sleep', new=mock.MagicMock())
     @mock.patch.object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus')
     def test_exec_eternus_cli_success_with_retry(self,
                                                  mock_exec_cli_with_eternus):
@@ -2167,6 +2168,7 @@ class FJCommonTestCase(test.TestCase):
         self.assertIn(retry_msg, cm.output)
         self.assertEqual(FAKE_STOP_COPY_SESSION, cli_return)
 
+    @mock.patch('time.sleep', new=mock.MagicMock())
     @mock.patch.object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus')
     def test_exec_eternus_cli_authentication_fail(self,
                                                   mock_exec_cli_with_eternus):
@@ -2190,6 +2192,7 @@ class FJCommonTestCase(test.TestCase):
         self.assertIn(authentication_fail_msg, cm.output)
         self.assertEqual(FAKE_STOP_COPY_SESSION, cli_return)
 
+    @mock.patch('time.sleep', new=mock.MagicMock())
     @mock.patch.object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus')
     @mock.patch.object(dx_common, 'LOG')
     def test_exec_eternus_cli_retry_exceed(self, mock_log,
