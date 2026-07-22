@@ -6303,7 +6303,7 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
             'total_capacity_gb': TOTAL_CAPACITY,
             'free_capacity_gb': TOTAL_CAPACITY - USED_SPACE,
             'reserved_percentage': reserved_percentage,
-            'provisioned_capacity': PROVISIONED_CAPACITY,
+            'provisioned_capacity_gb': PROVISIONED_CAPACITY,
             'max_over_subscription_ratio': TOTAL_REDUCTION,
             'filter_function': filter_function,
             'goodness_function': goodness_function,

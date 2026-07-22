@@ -1537,7 +1537,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         data['total_capacity_gb'] = total_capacity
         data['free_capacity_gb'] = free_space
         data['reserved_percentage'] = self.configuration.reserved_percentage
-        data['provisioned_capacity'] = provisioned_space
+        data['provisioned_capacity_gb'] = provisioned_space
         data['max_over_subscription_ratio'] = thin_provisioning
 
         # Add the filtering/goodness functions
