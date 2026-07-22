@@ -2776,7 +2776,7 @@ class VolumeManager(manager.CleanableManager,
                   "to instability."
 
         @timeutils.time_it(
-            LOG, log_level=logging.WARN, message=slowmsg,
+            LOG, log_level=logging.WARNING, message=slowmsg,
             min_duration=CONF.backend_stats_polling_interval / 2)
         def get_stats():
             return self.driver.get_volume_stats(refresh=True)
