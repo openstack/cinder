@@ -469,7 +469,14 @@ class HPE3PARCommon(object):
 
     def _destroy_replication_client(self, client):
         if client is not None:
-            client.logout()
+            try:
+                client.logout()
+            except hpeexceptions.HTTPConflict as ex:
+                if "resource in use" in str(ex).lower():
+                    LOG.warning("3PAR session logout returned resource in "
+                                "use; ignoring session cleanup conflict.")
+                else:
+                    raise
 
     def do_setup(self, context, timeout=None, stats=None, array_id=None):
         if hpe3parclient is None:
