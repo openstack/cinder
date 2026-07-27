@@ -109,6 +109,49 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
     def _mock_api_error(self, code='fake'):
         return mock.Mock(side_effect=netapp_api.NaApiError(code=code))
 
+    def test_init_zapi_fallback_enabled_by_default(self):
+        connection_info = copy.deepcopy(CONNECTION_INFO)
+        connection_info['is_disaggregated'] = False
+
+        with mock.patch.object(client_cmode_rest.RestClient,
+                               'get_ontap_version',
+                               return_value=(9, 11, 1)):
+            client = client_cmode_rest.RestClient(**connection_info)
+
+        self.assertTrue(client.zapi_fallback_enabled)
+        self.assertIsInstance(client.zapi_client, client_cmode.Client)
+
+    def test_init_zapi_fallback_disabled(self):
+        connection_info = copy.deepcopy(CONNECTION_INFO)
+        connection_info['is_disaggregated'] = False
+        connection_info['zapi_fallback_enabled'] = False
+
+        with mock.patch.object(client_cmode_rest.RestClient,
+                               'get_ontap_version',
+                               return_value=(9, 11, 1)):
+            client = client_cmode_rest.RestClient(**connection_info)
+
+        self.assertFalse(client.zapi_fallback_enabled)
+        self.assertNotIn('zapi_client', client.__dict__)
+
+    def test_getattr_fallback_disabled_raises(self):
+        self.client.zapi_fallback_enabled = False
+
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          getattr, self.client, 'fake_unsupported_method')
+
+    def test_getattr_dunder_raises_attribute_error(self):
+        self.assertRaises(AttributeError, getattr, self.client, '__setstate__')
+
+    def test_getattr_fallback_enabled(self):
+        self.client.zapi_fallback_enabled = True
+        fake_zapi_client = mock.Mock()
+        self.client.zapi_client = fake_zapi_client
+
+        self.client.fake_method()
+
+        fake_zapi_client.fake_method.assert_called_once_with()
+
     def test_send_request(self):
         expected = 'fake_response'
         mock_get_records = self.mock_object(

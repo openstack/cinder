@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Added a new configuration option ``netapp_allow_zapi_fallback`` for the
+    NetApp ONTAP REST driver. It controls whether the REST client is
+    allowed to silently fall back to the legacy ZAPI client for calls
+    that are not yet implemented over REST.
+
+    Defaults to ``True`` to preserve existing behavior. When set to
+    ``False``, any call that would otherwise fall back to ZAPI instead
+    raises an explicit ``NetAppDriverException``, making unimplemented
+    REST calls visible instead of silent, which is useful for tracking
+    and closing remaining ZAPI-to-REST parity gaps.
