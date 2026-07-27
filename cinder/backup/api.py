@@ -329,7 +329,7 @@ class API(base.Base):
                 {'status': fields.SnapshotStatus.BACKING_UP})
         else:
             self.db.volume_update(context, volume_id,
-                                  {'status': 'backing-up',
+                                  {'status': fields.VolumeStatus.BACKING_UP,
                                    'previous_status': previous_status})
 
         kwargs = {
