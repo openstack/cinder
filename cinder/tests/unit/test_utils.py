@@ -1459,6 +1459,8 @@ class LimitOperationsTestCase(test.TestCase):
         mock_suppress.assert_called_once_with()
         self.assertEqual(mock_suppress.return_value, res)
 
+    @test.testtools.skipIf(utils.concurrency_mode_threading(),
+                           'eventlet.Semaphore not used in threading mode')
     @mock.patch('eventlet.Semaphore')
     def test_semaphore_factory_with_limit(self, mock_semaphore):
         max_operations = 15
@@ -1485,6 +1487,8 @@ class LimitOperationsTestCase(test.TestCase):
         mock_semaphore.assert_called_once_with(max_operations)
         self.assertEqual(mock_semaphore.return_value, res)
 
+    @test.testtools.skipIf(utils.concurrency_mode_threading(),
+                           'eventlet.tpool.execute not used in threading mode')
     @mock.patch('multiprocessing.Semaphore')
     @mock.patch('eventlet.tpool.execute')
     def test_semaphore(self, mock_exec, mock_semaphore):
