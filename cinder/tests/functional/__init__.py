@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder import monkey_patch; monkey_patch.patch()  # noqa: E702
 from cinder import objects
 
 # NOTE(e0ne): Make sure we have all of the objects loaded. We do this
