@@ -415,6 +415,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         # when this snapshot was created.
         img_info = self._qemu_img_info(forward_path, snapshot.volume.name)
         path_to_snap_img = os.path.join(vol_path, img_info.backing_file)
+        snap_backing_file_img_info = self._qemu_img_info(path_to_snap_img,
+                                                         snapshot.volume.name)
 
         path_to_new_vol = self._local_path_volume(volume)
         path_to_cached_vol = self._local_volume_from_snap_cache_path(snapshot)
@@ -431,7 +433,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             image_utils.convert_image(path_to_snap_img,
                                       path_to_new_vol,
                                       out_format,
-                                      run_as_root=self._execute_as_root)
+                                      run_as_root=self._execute_as_root,
+                                      data=snap_backing_file_img_info)
         else:
             # create the volume via volume cache
             if not os.access(path_to_cached_vol, os.F_OK):
@@ -440,7 +443,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                 image_utils.convert_image(path_to_snap_img,
                                           path_to_cached_vol,
                                           out_format,
-                                          run_as_root=self._execute_as_root)
+                                          run_as_root=self._execute_as_root,
+                                          data=snap_backing_file_img_info)
                 if self.configuration.quobyte_overlay_volumes:
                     # NOTE(kaisers): Create a parent symlink to track the
                     # existence of the parent
