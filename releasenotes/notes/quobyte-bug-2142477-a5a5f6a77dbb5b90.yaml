@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Quobyte driver `bug #2142477
+    <https://bugs.launchpad.net/cinder/+bug/2142477>`_: Fixed missing meta data
+    setting when creating a volume from a snapshot.

@@ -372,6 +372,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                                         volume,
                                         volume.size)
 
+        self._set_volume_format_metadata(volume)
+
         return {'provider_location': volume.provider_location}
 
     @utils.synchronized('quobyte', external=False)
@@ -615,6 +617,19 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             self.get_active_image_from_info(volume))
         image_utils.resize_image(active_path, size_gb)
 
+    def _set_volume_format_metadata(self, volume):
+        if self.configuration.quobyte_qcow2_volumes:
+            volume_format = 'qcow2'
+        else:
+            volume_format = 'raw'
+
+        # It is required to store the volume format so the generic Snapshots
+        # implementation can revert to the volume's original format on snapshot
+        # deletion
+        volume.admin_metadata['format'] = volume_format
+        with volume.obj_as_admin():
+            volume.save()
+
     def _do_create_volume(self, volume):
         """Create a volume on given Quobyte volume.
 
@@ -631,12 +646,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
             else:
                 self._create_regular_file(volume_path, volume_size)
 
-        # It is required to store the volume format so the generic Snapshots
-        # implementation can revert to the volume's original format on snapshot
-        # deletion
-        volume.admin_metadata['format'] = self.format
-        with volume.obj_as_admin():
-            volume.save()
+        self._set_volume_format_metadata(volume)
 
         self._set_rw_permissions_for_all(volume_path)
 

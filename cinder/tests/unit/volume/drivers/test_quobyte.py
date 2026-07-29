@@ -876,6 +876,7 @@ class QuobyteDriverTestCase(test.TestCase):
         drv._do_create_volume(volume)
         drv._create_sparsed_file.assert_called_once_with(mock.ANY, mock.ANY)
         drv._set_rw_permissions_for_all.assert_called_once_with(mock.ANY)
+        self.assertEqual('raw', volume.admin_metadata['format'])
         mock_volume_save.assert_called_once()
 
     def test_create_nonsparsed_volume(self):
@@ -892,6 +893,7 @@ class QuobyteDriverTestCase(test.TestCase):
         drv._do_create_volume(volume)
         drv._create_regular_file.assert_called_once_with(mock.ANY, mock.ANY)
         drv._set_rw_permissions_for_all.assert_called_once_with(mock.ANY)
+        self.assertEqual('raw', volume.admin_metadata['format'])
         mock_volume_save.assert_called_once()
 
         self._configuration.quobyte_sparsed_volumes = old_value
@@ -920,6 +922,7 @@ class QuobyteDriverTestCase(test.TestCase):
                         mock.call('chmod', 'ugo+rw', path,
                                   run_as_root=self._driver._execute_as_root)]
         drv._execute.assert_has_calls(assert_calls)
+        self.assertEqual('qcow2', volume.admin_metadata['format'])
         mock_volume_save.assert_called_once()
 
         self._configuration.quobyte_qcow2_volumes = old_value
@@ -1562,6 +1565,7 @@ class QuobyteDriverTestCase(test.TestCase):
         snap_ref.volume = src_volume
 
         new_volume = self._simple_volume(size=snap_ref.volume_size)
+        mock_volume_save = self.mock_object(new_volume, 'save')
 
         drv._ensure_shares_mounted = mock.Mock()
         drv._find_share = mock.Mock(return_value=self.TEST_QUOBYTE_VOLUME)
@@ -1574,6 +1578,7 @@ class QuobyteDriverTestCase(test.TestCase):
             drv._find_share.assert_called_once_with(new_volume)
             (drv._copy_volume_from_snapshot.
              assert_called_once_with(snap_ref, new_volume, new_volume['size']))
+            mock_volume_save.assert_called_once()
         else:
             self.assertRaises(exception.InvalidSnapshot,
                               drv.create_volume_from_snapshot,
