@@ -1263,6 +1263,24 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
             'vvs-test',
             {'ioMaxLimit': 1000, 'bwMaxLimitKB': 50000})
 
+    def test_qos_r6_10_6_0_uses_deprecated_qos(self):
+        """Ensure R6 10.6.0 restores R5 deprecated QOS settings."""
+
+        conf = self.setup_configuration()
+        common = hpecommon.HPE3PARCommon(conf)
+        mock_client = mock.Mock()
+        common.client = mock_client
+        common.API_VERSION = hpecommon.API_VERSION_10_6_0
+
+        common._set_qos_rule(self.QOS_SPECS, 'vvs-test')
+
+        mock_client.createQoSRules.assert_called_once_with(
+            'vvs-test',
+            {'ioMinGoal': 100, 'ioMaxLimit': 1000,
+             'bwMinGoalKB': 25000, 'bwMaxLimitKB': 50000,
+             'latencyGoal': 25,
+             'priority': 1})
+
     def test_qos_alletra_mp_invalid_without_max_limits(self):
         """Alletra MP QOS requires at least one max limit.
 

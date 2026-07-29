@@ -82,6 +82,7 @@ SRSTATLD_API_VERSION = 30201200
 REMOTE_COPY_API_VERSION = 30202290
 API_VERSION_2023 = 100000000
 API_VERSION_2025 = 100500000
+API_VERSION_10_6_0 = 100600000
 
 hpe3par_opts = [
     cfg.StrOpt('hpe3par_api_url',
@@ -317,11 +318,12 @@ class HPE3PARCommon(object):
         4.0.26 - Added comment for cloned volumes. Bug #2062524
         4.0.27 - Skip license check for new WSAPI (of 2025). Bug #2119709
         4.0.28 - Improved QOS handling for Alletra MP. Bug #2143385
+        4.0.29 - Restore R5 deprecated QOS settings for R6 10.6.0
 
 
     """
 
-    VERSION = "4.0.28"
+    VERSION = "4.0.29"
 
     stats = {}
 
@@ -2022,14 +2024,16 @@ class HPE3PARCommon(object):
         else:
             return default
 
-    def _is_alletra_mp(self):
-        """Check if the backend is AlletraMP based on WSAPI version.
+    def _is_alletra_mp_r5_qos_version(self):
+        """Check if the API version falls in the Alletra MP R5 QOS range.
 
-        AlletraMP uses WSAPI version >= 100500000 (API_VERSION_2025).
+        Alletra MP R5 deprecated ioMinGoal, bwMinGoalKB, latencyGoal,
+        and priority. They are supported again in R6 10.6.0.
 
-        :returns: True if AlletraMP, False otherwise
+        :returns: True if max-only QOS handling is required, False otherwise
         """
-        return self.API_VERSION >= API_VERSION_2025
+        return (API_VERSION_2025 <= self.API_VERSION <
+                API_VERSION_10_6_0)
 
     def _get_qos_by_volume_type(self, volume_type):
         qos = {}
@@ -2072,14 +2076,14 @@ class HPE3PARCommon(object):
         latency = self._get_qos_value(qos, 'latency')
         priority = self._get_qos_value(qos, 'priority', 'normal')
 
-        # Check if backend is AlletraMP
-        is_alletra_mp = self._is_alletra_mp()
+        is_alletra_mp_r5_qos_version = (
+            self._is_alletra_mp_r5_qos_version())
 
         qosRule = {}
 
         # For Alletra MP, ioMinGoal, bwMinGoalKB, latencyGoal, and priority
         # are deprecated. Only use max limits.
-        if is_alletra_mp:
+        if is_alletra_mp_r5_qos_version:
             # For Alletra MP, at least one of maxIOPS or maxBWS must be
             # provided.
             if max_io is None and max_bw is None:
