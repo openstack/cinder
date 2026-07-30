@@ -39,6 +39,7 @@ import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import volume_utils
 
@@ -986,12 +987,14 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(4, num_paths)
 
+    @mock.patch.object(dot_utils, 'warn_insecure_netapp_transport_options')
     @mock.patch.object(na_utils, 'check_flags')
-    def test_do_setup_san_configured(self, mock_check_flags):
+    def test_do_setup_san_configured(self, mock_check_flags, mock_warn):
         self.library.configuration.netapp_lun_ostype = 'windows'
         self.library.configuration.netapp_host_type = 'solaris'
         self.library.configuration.netapp_lun_space_reservation = 'disabled'
         self.library.do_setup(mock.Mock())
+        mock_warn.assert_called_once_with(self.library.configuration)
         self.assertTrue(mock_check_flags.called)
         self.assertEqual('windows', self.library.lun_ostype)
         self.assertEqual('solaris', self.library.host_type)

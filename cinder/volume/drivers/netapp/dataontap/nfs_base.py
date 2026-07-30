@@ -44,6 +44,7 @@ import cinder.privsep.path
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
+from cinder.volume.drivers.netapp.dataontap.utils import utils as cmode_utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
@@ -93,6 +94,8 @@ class NetAppNfsDriver(driver.ManageableVD,
     def do_setup(self, context):
         super(NetAppNfsDriver, self).do_setup(context)
         self._context = context
+        cmode_utils.warn_insecure_netapp_transport_options(
+            self.configuration)
         if self.configuration.netapp_private_key_file or\
                 self.configuration.netapp_certificate_file:
             na_utils.check_flags(self.REQUIRED_FLAGS_CERT,

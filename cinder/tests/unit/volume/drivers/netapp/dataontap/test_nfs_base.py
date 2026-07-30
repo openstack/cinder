@@ -35,6 +35,7 @@ from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
+from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers import remotefs
@@ -71,10 +72,12 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.zapi_client = self.driver.zapi_client
 
     @mock.patch.object(nfs.NfsDriver, 'do_setup')
+    @mock.patch.object(dot_utils, 'warn_insecure_netapp_transport_options')
     @mock.patch.object(na_utils, 'check_flags')
-    def test_do_setup(self, mock_check_flags, mock_super_do_setup):
+    def test_do_setup(self, mock_check_flags, mock_warn, mock_super_do_setup):
         self.driver.do_setup(mock.Mock())
 
+        mock_warn.assert_called_once_with(self.driver.configuration)
         self.assertTrue(mock_check_flags.called)
         self.assertTrue(mock_super_do_setup.called)
 

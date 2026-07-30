@@ -66,7 +66,7 @@ netapp_connection_opts = [
 
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',
-               default='http',
+               default='https',
                choices=['http', 'https'],
                help=('The transport protocol used when communicating with '
                      'the storage system or proxy server.')),
@@ -74,10 +74,23 @@ netapp_transport_opts = [
                help=("The path to a CA_BUNDLE file or directory with "
                      "certificates of trusted CA. If set to a directory, it "
                      "must have been processed using the c_rehash utility "
-                     "supplied with OpenSSL. If not informed, it will use the "
-                     "Mozilla's carefully curated collection of Root "
-                     "Certificates for validating the trustworthiness of SSL "
-                     "certificates. Only applies with new REST client.")), ]
+                     "supplied with OpenSSL. When provided, this path is "
+                     "used as the trust anchor for HTTPS certificate "
+                     "verification. If not informed, the Mozilla Root "
+                     "Certificates are used by default. Applies to both "
+                     "REST and legacy ZAPI clients when using username and "
+                     "password authentication; with certificate "
+                     "authentication the trust anchor is "
+                     "netapp_ca_certificate_file instead.")),
+    cfg.BoolOpt('netapp_ssl_cert_verify',
+                default=True,
+                help=('If set to False, the SSL certificate of the storage '
+                      'system will not be verified. This is useful when the '
+                      'storage system uses a self-signed certificate. '
+                      'WARNING: disabling certificate verification is a '
+                      'security risk and should only be used in trusted '
+                      'network environments. Applies to both the REST and '
+                      'legacy ZAPI clients.')), ]
 
 netapp_basicauth_opts = [
     cfg.StrOpt('netapp_login',

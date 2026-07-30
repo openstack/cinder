@@ -37,6 +37,22 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
+def warn_insecure_netapp_transport_options(config):
+    """Log warnings for insecure NetApp transport configuration."""
+    backend = config.config_group or 'DEFAULT'
+    if config.netapp_transport_type == 'http':
+        LOG.warning('netapp_transport_type is set to http for backend '
+                    '%(backend)s. This is an insecure transport and is not '
+                    'recommended for production.',
+                    {'backend': backend})
+    if config.netapp_ssl_cert_verify is False:
+        LOG.warning('netapp_ssl_cert_verify is set to False for backend '
+                    '%(backend)s. SSL certificate verification is disabled '
+                    'and should only be used in trusted network '
+                    'environments.',
+                    {'backend': backend})
+
+
 def get_backend_configuration(backend_name):
     """Get a cDOT configuration object for a specific backend."""
 
@@ -85,6 +101,7 @@ def get_client_for_backend(backend_name, vserver_name=None, force_rest=False):
         client = client_cmode.Client(
             transport_type=config.netapp_transport_type,
             ssl_cert_path=config.netapp_ssl_cert_path,
+            ssl_cert_verify=config.netapp_ssl_cert_verify,
             username=config.netapp_login,
             password=config.netapp_password,
             hostname=config.netapp_server_hostname,
@@ -103,6 +120,7 @@ def get_client_for_backend(backend_name, vserver_name=None, force_rest=False):
             client = client_cmode_rest_asar2.RestClientASAr2(
                 transport_type=config.netapp_transport_type,
                 ssl_cert_path=config.netapp_ssl_cert_path,
+                ssl_cert_verify=config.netapp_ssl_cert_verify,
                 username=config.netapp_login,
                 password=config.netapp_password,
                 hostname=config.netapp_server_hostname,
@@ -121,6 +139,7 @@ def get_client_for_backend(backend_name, vserver_name=None, force_rest=False):
             client = client_cmode_rest.RestClient(
                 transport_type=config.netapp_transport_type,
                 ssl_cert_path=config.netapp_ssl_cert_path,
+                ssl_cert_verify=config.netapp_ssl_cert_verify,
                 username=config.netapp_login,
                 password=config.netapp_password,
                 hostname=config.netapp_server_hostname,

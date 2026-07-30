@@ -1,0 +1,33 @@
+---
+security:
+  - |
+    NetApp ONTAP client defaults now use HTTPS transport by default for both
+    REST and legacy ZAPI paths.
+
+    TLS verification behavior is explicitly controlled through
+    ``netapp_ssl_cert_verify`` and ``netapp_ssl_cert_path`` with the following
+    precedence:
+
+    * ``netapp_ssl_cert_verify = false``: certificate verification is disabled.
+    * ``netapp_ssl_cert_verify = true`` and ``netapp_ssl_cert_path`` set:
+      verify against the provided CA/certificate bundle path.
+    * ``netapp_ssl_cert_verify = true`` and no ``netapp_ssl_cert_path``:
+      verify against system default CA roots.
+
+    The help text for ``netapp_ssl_cert_path`` is clarified to reflect that it
+    applies to both REST and legacy ZAPI clients. This change addresses
+    transport/verification hardening aligned with LP#2157914.
+upgrade:
+  - |
+    NetApp ONTAP drivers now default to HTTPS with certificate verification
+    enabled. After upgrading, existing backends using self-signed ONTAP
+    certificates must either set ``netapp_ssl_cert_path`` to a trusted CA
+    bundle or temporarily set ``netapp_ssl_cert_verify = false`` (not
+    recommended for production). When ONTAP certificates expire, provisioning
+    will fail until the trust material is renewed or
+    ``netapp_ssl_cert_verify = false`` is explicitly configured as a known
+    security trade-off.
+
+    Backends that set ``netapp_server_port = 80`` while relying on the
+    previous implicit HTTP default must also set
+    ``netapp_transport_type = http`` or move to port 443 with HTTPS.

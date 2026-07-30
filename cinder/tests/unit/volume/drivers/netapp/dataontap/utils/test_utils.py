@@ -107,7 +107,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                 hostname='fake_hostname', password='fake_password',
                 username='fake_user', transport_type='https', port=8866,
                 trace=mock.ANY, vserver=None, api_trace_pattern="fake_regex",
-                ssl_cert_path='fake_ca',
+                ssl_cert_path='fake_ca', ssl_cert_verify=True,
                 private_key_file='fake_private_key.pem',
                 certificate_file='fake_cert.pem',
                 ca_certificate_file='fake_ca_cert.crt',
@@ -119,6 +119,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                 username='fake_user', transport_type='https', port=8866,
                 trace=mock.ANY, vserver=None, api_trace_pattern="fake_regex",
                 ssl_cert_path='fake_ca', async_rest_timeout=60,
+                ssl_cert_verify=True,
                 private_key_file='fake_private_key.pem',
                 certificate_file='fake_cert.pem',
                 ca_certificate_file='fake_ca_cert.crt',
@@ -142,6 +143,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                 username='fake_user', transport_type='https', port=8866,
                 trace=mock.ANY, vserver='fake_vserver',
                 api_trace_pattern="fake_regex", ssl_cert_path='fake_ca',
+                ssl_cert_verify=True,
                 private_key_file='fake_private_key.pem',
                 certificate_file='fake_cert.pem',
                 ca_certificate_file='fake_ca_cert.crt',
@@ -153,7 +155,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                 username='fake_user', transport_type='https', port=8866,
                 trace=mock.ANY, vserver='fake_vserver',
                 api_trace_pattern="fake_regex", ssl_cert_path='fake_ca',
-                async_rest_timeout = 60,
+                async_rest_timeout=60, ssl_cert_verify=True,
                 private_key_file='fake_private_key.pem',
                 certificate_file='fake_cert.pem',
                 ca_certificate_file='fake_ca_cert.crt',
@@ -265,3 +267,46 @@ class NetAppDataOntapUtilsTestCase(test.TestCase):
             exception.InvalidConfigurationValue,
             utils.get_cluster_to_pool_map,
             mock_client)
+
+
+class NetAppTransportWarningTestCase(test.TestCase):
+
+    def setUp(self):
+        super(NetAppTransportWarningTestCase, self).setUp()
+        self.mock_object(utils, 'LOG')
+
+    def test_warn_insecure_netapp_transport_options_http(self):
+        config = mock.Mock()
+        config.config_group = 'backend1'
+        config.netapp_transport_type = 'http'
+        config.netapp_ssl_cert_verify = True
+
+        utils.warn_insecure_netapp_transport_options(config)
+
+        utils.LOG.warning.assert_called_once()
+        warning_msg, warning_data = utils.LOG.warning.call_args[0]
+        self.assertIn('netapp_transport_type is set to http', warning_msg)
+        self.assertEqual('backend1', warning_data['backend'])
+
+    def test_warn_insecure_netapp_transport_options_ssl_verify_false(self):
+        config = mock.Mock()
+        config.config_group = 'backend1'
+        config.netapp_transport_type = 'https'
+        config.netapp_ssl_cert_verify = False
+
+        utils.warn_insecure_netapp_transport_options(config)
+
+        utils.LOG.warning.assert_called_once()
+        warning_msg, warning_data = utils.LOG.warning.call_args[0]
+        self.assertIn('netapp_ssl_cert_verify is set to False', warning_msg)
+        self.assertEqual('backend1', warning_data['backend'])
+
+    def test_warn_insecure_netapp_transport_options_secure_config(self):
+        config = mock.Mock()
+        config.config_group = 'backend1'
+        config.netapp_transport_type = 'https'
+        config.netapp_ssl_cert_verify = True
+
+        utils.warn_insecure_netapp_transport_options(config)
+
+        utils.LOG.warning.assert_not_called()

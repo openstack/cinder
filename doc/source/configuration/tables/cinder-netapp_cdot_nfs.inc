@@ -30,11 +30,15 @@
      - (Integer) The TCP port to use for communication with the storage system or proxy server. If not specified, Data ONTAP drivers will use 80 for HTTP and 443 for HTTPS.
    * - ``netapp_snapmirror_quiesce_timeout`` = ``3600``
      - (Integer) The maximum time in seconds to wait for existing SnapMirror transfers to complete before aborting during a failover.
+   * - ``netapp_ssl_cert_path`` = ``None``
+     - (String) The path to a CA_BUNDLE file or directory with certificates of trusted CA. If set to a directory, it must have been processed using the c_rehash utility supplied with OpenSSL. When provided, this path is used as the trust anchor for HTTPS certificate verification. If not informed, the Mozilla Root Certificates are used by default. Applies to both REST and legacy ZAPI clients when using username and password authentication; with certificate authentication the trust anchor is netapp_ca_certificate_file instead.
+   * - ``netapp_ssl_cert_verify`` = ``True``
+     - (Boolean) If set to False, the SSL certificate of the storage system will not be verified.
    * - ``netapp_storage_family`` = ``ontap_cluster``
      - (String) The storage family type used on the storage system; the only valid value is ontap_cluster for using clustered Data ONTAP.
    * - ``netapp_storage_protocol`` = ``None``
      - (String) The storage protocol to be used on the data path with the storage system.
-   * - ``netapp_transport_type`` = ``http``
+   * - ``netapp_transport_type`` = ``https``
      - (String) The transport protocol used when communicating with the storage system or proxy server.
    * - ``netapp_vserver`` = ``None``
      - (String) This option specifies the virtual storage server (Vserver) name on the storage cluster on which provisioning of block storage volumes should occur.
