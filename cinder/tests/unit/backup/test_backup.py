@@ -44,6 +44,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import known_issues as issues
 from cinder.tests.unit import test
 from cinder.tests.unit import utils
+from cinder import utils as cinder_utils
 from cinder.volume import rpcapi as volume_rpcapi
 
 
@@ -222,6 +223,9 @@ class BaseBackupTest(test.TestCase):
 class BackupTestCase(BaseBackupTest):
     """Test Case for backups."""
 
+    # TODO: add threading-mode equivalent to test_init_host
+    @test.testtools.skipIf(cinder_utils.concurrency_mode_threading(),
+                           '_add_to_threadpool unavailable in threading')
     @mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                        'set_initialized')
     @mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
@@ -1990,6 +1994,8 @@ class BackupTestCase(BaseBackupTest):
         self.assertFalse(backup.has_dependent_backups)
 
     @test.testtools.skipIf(issues.TPOOL_KILLALL_ISSUE, 'tpool.killall bug')
+    @test.testtools.skipIf(cinder_utils.concurrency_mode_threading(),
+                           'tpool not used in threading mode')
     def test_default_tpool_size(self):
         """Test we can set custom tpool size."""
         tpool._nthreads = 20
@@ -2001,6 +2007,8 @@ class BackupTestCase(BaseBackupTest):
         self.assertListEqual([], tpool._threads)
 
     @test.testtools.skipIf(issues.TPOOL_KILLALL_ISSUE, 'tpool.killall bug')
+    @test.testtools.skipIf(cinder_utils.concurrency_mode_threading(),
+                           'tpool not used in threading mode')
     def test_tpool_size(self):
         """Test we can set custom tpool size."""
         self.assertNotEqual(100, tpool._nthreads)
