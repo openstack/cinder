@@ -245,7 +245,7 @@ class SchedulerDependentManager(ThreadPoolManager):
 
 class SizedThreadPoolManager(SchedulerDependentManager):
     def __init__(self, *args, **kwargs):
-        self._tpe: Optional[futurist.GreenPoolExecutor |
+        self._tpe: Optional[futurist.GreenThreadPoolExecutor |
                             futurist.ThreadPoolExecutor] = None
 
         super(SizedThreadPoolManager, self).__init__(*args, **kwargs)
