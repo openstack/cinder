@@ -795,10 +795,16 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         index = len(backup_list) - 1
         while index >= 0:
             backup1 = backup_list[index]
+            # Skipping all-zero chunks is only safe for the base backup,
+            # applied first to a target that still reads as zero.  Once it
+            # has written data, an incremental layered on top must write its
+            # zero regions too, or a range that changed from data to zero
+            # would keep the base's stale data.
+            is_base = not backup1.parent_id
             index = index - 1
             metadata = self._read_metadata(backup1)
             restore_func(backup1, volume_id, metadata, volume_file,
-                         volume_is_new, backup)
+                         volume_is_new and is_base, backup)
 
             volume_meta = metadata.get('volume_meta', None)
             try:

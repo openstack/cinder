@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    `Bug #2162961 <https://bugs.launchpad.net/cinder/+bug/2162961>`_: Fixed
+    data corruption when restoring an incremental backup chain to a newly
+    created volume with the chunked backup drivers (Swift, S3, Google Cloud
+    Storage, POSIX/NFS).  Only the base backup may skip writing all-zero
+    chunks; applying that optimisation to the incrementals layered on top
+    left the base backup's stale data wherever a region had changed from
+    data to zero.  Incrementals are now always written in full.
