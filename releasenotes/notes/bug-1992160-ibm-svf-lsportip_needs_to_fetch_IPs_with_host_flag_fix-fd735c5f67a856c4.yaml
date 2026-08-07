@@ -1,0 +1,8 @@
+fixes:
+  - |
+    IBM Spectrum Virtualize family driver: `Bug #1992160
+    <https://bugs.launchpad.net/cinder/+bug/1992160>`_:
+    Fixed an issue where the driver was collecting all
+    node IP addresses during initialization. The driver
+    now only records IPs for nodes with the host flag
+    set to ``yes``.

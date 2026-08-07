@@ -1273,17 +1273,18 @@ class StorwizeHelpers(object):
         else:
             lsportip_resp = self.ssh.lsportip()
             for ip_data in lsportip_resp:
-                try:
-                    state = ip_data['state']
-                    if ip_data['node_id'] in storage_nodes and (
-                            state == 'configured' or state == 'online'):
-                        node = storage_nodes[ip_data['node_id']]
-                        if len(ip_data['IP_address']):
-                            node['ipv4'].append(ip_data['IP_address'])
-                        if len(ip_data['IP_address_6']):
-                            node['ipv6'].append(ip_data['IP_address_6'])
-                except KeyError:
-                    self.handle_keyerror('lsportip', ip_data)
+                if ip_data['host'] == 'yes':
+                    try:
+                        state = ip_data['state']
+                        if ip_data['node_id'] in storage_nodes and (
+                                state == 'configured' or state == 'online'):
+                            node = storage_nodes[ip_data['node_id']]
+                            if len(ip_data['IP_address']):
+                                node['ipv4'].append(ip_data['IP_address'])
+                            if len(ip_data['IP_address_6']):
+                                node['ipv6'].append(ip_data['IP_address_6'])
+                    except KeyError:
+                        self.handle_keyerror('lsportip', ip_data)
 
     def add_fc_wwpns(self, storage_nodes, code_level):
         """Add FC WWPNs to system node information."""
