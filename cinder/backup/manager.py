@@ -610,10 +610,7 @@ class BackupManager(manager.SchedulerDependentManager):
             # Handle the num_dependent_backups of parent backup when child
             # backup has created successfully.
             if backup.parent_id:
-                parent_backup = objects.Backup.get_by_id(context,
-                                                         backup.parent_id)
-                parent_backup.num_dependent_backups += 1
-                parent_backup.save()
+                self.db.backup_add_dependent(context, backup.parent_id)
         LOG.info('Create backup %s. backup: %s.', completion_msg, backup.id)
         self._notify_about_backup_usage(context, backup, "create.end")
 
@@ -950,11 +947,7 @@ class BackupManager(manager.SchedulerDependentManager):
         # If this backup is incremental backup, handle the
         # num_dependent_backups of parent backup
         if backup.parent_id:
-            parent_backup = objects.Backup.get_by_id(context,
-                                                     backup.parent_id)
-            if parent_backup.has_dependent_backups:
-                parent_backup.num_dependent_backups -= 1
-                parent_backup.save()
+            self.db.backup_remove_dependent(context, backup.parent_id)
         # Commit the reservations
         if reservations:
             QUOTAS.commit(context, reservations,

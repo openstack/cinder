@@ -1708,6 +1708,34 @@ class BackupTestCase(BaseBackupTest):
         backup.save()
         self.backup_mgr.delete_backup(self.ctxt, backup)
 
+    def test_finish_backup_counts_dependent(self):
+        """Completing an incremental backup counts it on its parent."""
+        vol_id = self._create_volume_db_entry(size=1)
+        parent = self._create_backup_db_entry(volume_id=vol_id)
+        child = self._create_backup_db_entry(volume_id=vol_id,
+                                             parent_id=parent.id)
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+
+        self.backup_mgr._finish_backup(self.ctxt, child, vol, {})
+
+        parent.refresh()
+        self.assertEqual(1, parent.num_dependent_backups)
+
+    def test_delete_backup_uncounts_dependent(self):
+        """Deleting an incremental backup uncounts it on its parent."""
+        vol_id = self._create_volume_db_entry(size=1)
+        parent = self._create_backup_db_entry(volume_id=vol_id)
+        child = self._create_backup_db_entry(
+            status=fields.BackupStatus.DELETING, volume_id=vol_id,
+            parent_id=parent.id,
+            service='cinder.tests.unit.backup.fake_service.FakeBackupService')
+        db.backup_add_dependent(self.ctxt, parent.id)
+
+        self.backup_mgr.delete_backup(self.ctxt, child)
+
+        parent.refresh()
+        self.assertEqual(0, parent.num_dependent_backups)
+
     def test_delete_backup(self):
         """Test normal backup deletion."""
         vol_id = self._create_volume_db_entry(size=1)

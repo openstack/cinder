@@ -1040,7 +1040,7 @@ class Backup(BASE, CinderBase):
     object_count = sa.Column(sa.Integer)
     temp_volume_id = sa.Column(sa.String(36))
     temp_snapshot_id = sa.Column(sa.String(36))
-    num_dependent_backups = sa.Column(sa.Integer)
+    num_dependent_backups = sa.Column(sa.Integer, default=0)
     snapshot_id = sa.Column(sa.String(36))
     data_timestamp = sa.Column(sa.DateTime)
     restore_volume_id = sa.Column(sa.String(36))
