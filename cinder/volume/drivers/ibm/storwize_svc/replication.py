@@ -108,7 +108,7 @@ class StorwizeSVCReplicationGlobalMirror(StorwizeSVCReplication):
                                                  str(vref['size']),
                                                  'gb', pool, opts)
             except exception.VolumeBackendAPIException as excp:
-                if "CMMVC6035E" in excp.msg:
+                if storwize_const.ERR_OBJECT_ALREADY_EXISTS in excp.msg:
                     LOG.info('Target Volume: %(vol)s already exists',
                              {'vol': target_vol_name})
 
@@ -192,7 +192,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
                                                   src_change_pool,
                                                   src_change_opts)
             except exception.VolumeBackendAPIException as excp:
-                if "CMMVC6035E" in excp.msg:
+                if storwize_const.ERR_OBJECT_ALREADY_EXISTS in excp.msg:
                     msg = ('Source change volume: %s already exists'
                            % source_change_vol_name)
                     LOG.info(msg)
@@ -209,7 +209,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
                                                  target_pool,
                                                  target_opts)
             except exception.VolumeBackendAPIException as excp:
-                if "CMMVC6035E" in excp.msg:
+                if storwize_const.ERR_OBJECT_ALREADY_EXISTS in excp.msg:
                     msg = ('Target Volume: %s already exists'
                            % target_vol_name)
                     LOG.info(msg)
@@ -236,7 +236,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
                                                  target_change_pool,
                                                  target_change_opts)
             except exception.VolumeBackendAPIException as excp:
-                if "CMMVC6035E" in excp.msg:
+                if storwize_const.ERR_OBJECT_ALREADY_EXISTS in excp.msg:
                     msg = ('Target Change Volume: %s already exists'
                            % target_change_vol_name)
                     LOG.info(msg)

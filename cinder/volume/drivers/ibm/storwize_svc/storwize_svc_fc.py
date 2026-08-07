@@ -46,6 +46,7 @@ from cinder import interface
 from cinder.volume import configuration
 from cinder.volume.drivers.ibm.storwize_svc import (
     storwize_svc_common as storwize_common)
+from cinder.volume.drivers.ibm.storwize_svc import storwize_const
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
@@ -196,7 +197,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
                 backend_helper.create_host(connector, site=host_site,
                                            portset=opts['storwize_portset']))
         except exception.VolumeBackendAPIException as excp:
-            if "CMMVC6035E" in excp.msg:
+            if storwize_const.ERR_OBJECT_ALREADY_EXISTS in excp.msg:
                 msg = (_('Host already exists for connector '
                          '%(conn)s'), {'conn': connector})
                 LOG.info(msg)
