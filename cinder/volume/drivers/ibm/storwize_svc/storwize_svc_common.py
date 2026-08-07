@@ -1254,6 +1254,9 @@ class StorwizeHelpers(object):
         if code_level >= storwize_const.SVC_CODE_LEVEL_8420:
             portset_name = portset if portset else 'portset0'
             lsip_resp = self.ssh.lsip(portset=portset_name)
+            if not lsip_resp:
+                raise exception.InvalidInput(
+                    reason=_('No nodes found in the given portset'))
             # For every node_id there is one IP address in a particular
             # portset_name. Hence storing that one IP address of the
             # corresponding node_id in storage_node list.
