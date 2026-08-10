@@ -6579,6 +6579,52 @@ def backup_create(context, values):
     return _backup_get(context, values['id'])
 
 
+def _backup_adjust_dependents(context, backup_id, delta):
+    """Add delta to a backup's num_dependent_backups in a single statement.
+
+    Done in the DB so concurrent dependents don't lose each other's updates.
+    A decrement that would take the counter negative is skipped.
+    """
+    # The model now defaults this column to 0, but that only applies at
+    # insert time: rows written before then still hold NULL, and NULL + 1
+    # would be NULL. Coalesce so the arithmetic counts from zero either way.
+    # TODO(sdodsley): a follow-up can backfill the remaining NULLs with
+    # UPDATE backups SET num_dependent_backups = 0 WHERE
+    # num_dependent_backups IS NULL, after which this coalesce can go. That
+    # is a data change only, so no schema migration is needed.
+    counter = sa.func.coalesce(models.Backup.num_dependent_backups, 0)
+    query = model_query(context, models.Backup).filter_by(id=backup_id)
+    if delta < 0:
+        query = query.filter(counter >= -delta)
+    query.update({'num_dependent_backups': counter + delta},
+                 synchronize_session=False)
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
+def backup_add_dependent(context, backup_id):
+    """Count a newly created dependent against its parent backup.
+
+    A single statement narrows the race but does not close it: on
+    MySQL/Galera concurrent dependents can still collide as a deadlock or a
+    write conflict, and losing that update is the very thing this guards
+    against, so retry it.
+    """
+    _backup_adjust_dependents(context, backup_id, 1)
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
+def backup_remove_dependent(context, backup_id):
+    """Discount a deleted dependent from its parent backup.
+
+    See backup_add_dependent for why this retries.
+    """
+    _backup_adjust_dependents(context, backup_id, -1)
+
+
 @handle_db_data_error
 @require_context
 @main_context_manager.writer

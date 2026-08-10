@@ -1,0 +1,16 @@
+---
+fixes:
+  - |
+    `Bug #2163042 <https://bugs.launchpad.net/cinder/+bug/2163042>`_: Fixed
+    incremental backups sharing a parent losing count of each other when
+    created or deleted concurrently, which could leave the parent backup
+    permanently undeletable. The dependent counter is now updated in the
+    database.
+upgrade:
+  - |
+    The fix for `Bug #2163042
+    <https://bugs.launchpad.net/cinder/+bug/2163042>`_ stops the dependent
+    backup counter (``num_dependent_backups``) from drifting, but does not
+    repair values that have already drifted. A backup that wrongly reports
+    dependent backups, and so cannot be deleted, will continue to do so
+    until its row is corrected in the database.
