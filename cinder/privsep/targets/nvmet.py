@@ -24,6 +24,7 @@ It also:
 - Presents the CFSNotFound exception as a NotFound exception which is easier to
   consume.
 """
+import inspect
 import os
 
 import nvmet
@@ -222,7 +223,15 @@ class Port(nvmet.Port):
 
     @classmethod
     def setup(cls, root, n, err_func=None):
-        privsep_setup(cls.__name__, serialize(root), n, err_func)
+        # nvmetcli removed the ``root`` parameter from ``Port.setup`` in its
+        # commit 3bb9795d.  ``nvmet`` is not version-pinned in Cinder's
+        # requirements, so support both signatures: forward ``root`` only when
+        # the installed library still accepts it, otherwise passing it would
+        # collide with ``err_func``.
+        if 'root' in inspect.signature(nvmet.Port.setup).parameters:
+            privsep_setup(cls.__name__, serialize(root), n, err_func)
+        else:
+            privsep_setup(cls.__name__, n, err_func)
 
     def add_subsystem(self, nqn):
         do_privsep_call(serialize(self), 'add_subsystem', nqn)

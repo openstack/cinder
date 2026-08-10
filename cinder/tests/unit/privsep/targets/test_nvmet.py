@@ -353,9 +353,26 @@ class TestNvmetClasses(test.TestCase):
         self.assertEqual('portid', port.portid)
         self.assertEqual('lookup', port.mode)
 
+    @mock.patch.object(nvmet.inspect, 'signature')
     @mock.patch.object(nvmet, 'serialize')
     @mock.patch.object(nvmet, 'privsep_setup')
-    def test_port_setup(self, mock_setup, mock_serialize):
+    def test_port_setup_new_nvmet(self, mock_setup, mock_serialize, mock_sig):
+        # nvmetcli >= 3bb9795d: Port.setup(n, err_func), no root, so root is
+        # not forwarded.
+        mock_sig.return_value.parameters = {'n': None, 'err_func': None}
+        nvmet.Port.setup(mock.sentinel.root, mock.sentinel.n,
+                         mock.sentinel.err_func)
+        mock_serialize.assert_not_called()
+        mock_setup.assert_called_once_with('Port', mock.sentinel.n,
+                                           mock.sentinel.err_func)
+
+    @mock.patch.object(nvmet.inspect, 'signature')
+    @mock.patch.object(nvmet, 'serialize')
+    @mock.patch.object(nvmet, 'privsep_setup')
+    def test_port_setup_old_nvmet(self, mock_setup, mock_serialize, mock_sig):
+        # older nvmetcli: Port.setup(root, n, err_func), so root is forwarded.
+        mock_sig.return_value.parameters = {'root': None, 'n': None,
+                                            'err_func': None}
         nvmet.Port.setup(mock.sentinel.root, mock.sentinel.n,
                          mock.sentinel.err_func)
         mock_serialize.assert_called_once_with(mock.sentinel.root)
@@ -363,13 +380,15 @@ class TestNvmetClasses(test.TestCase):
                                            mock.sentinel.n,
                                            mock.sentinel.err_func)
 
+    @mock.patch.object(nvmet.inspect, 'signature')
     @mock.patch.object(nvmet, 'serialize')
     @mock.patch.object(nvmet, 'privsep_setup')
-    def test_port_setup_no_err_func(self, mock_setup, mock_serialize):
+    def test_port_setup_no_err_func(self, mock_setup, mock_serialize,
+                                    mock_sig):
+        mock_sig.return_value.parameters = {'n': None, 'err_func': None}
         nvmet.Port.setup(mock.sentinel.root, mock.sentinel.n)
-        mock_serialize.assert_called_once_with(mock.sentinel.root)
-        mock_setup.assert_called_once_with('Port', mock_serialize.return_value,
-                                           mock.sentinel.n, None)
+        mock_serialize.assert_not_called()
+        mock_setup.assert_called_once_with('Port', mock.sentinel.n, None)
 
     @mock.patch.object(nvmet, 'serialize')
     @mock.patch.object(nvmet, 'do_privsep_call')

@@ -15,6 +15,13 @@
 FAKE the nvmet library if it's not installed.
 This must be imported before cinder/volume/targets/nvmet.py and
 cinder/privsep/targets/nvmet.py
+
+The mocked library is nvmetcli's ``nvmet`` Python bindings.  It is not
+published on PyPI and is not in global-requirements; it must be installed
+from source (devstack installs it from
+https://git.infradead.org/?p=users/hch/nvmetcli.git).  Because CI images
+do not ship it, the mock below unconditionally shadows it in sys.modules so
+the unit tests can load and run without the real library present.
 """
 
 import sys
@@ -25,7 +32,8 @@ from cinder import exception
 mock_nvmet_lib = mock.Mock(name='nvmet',
                            Root=type('Root', (mock.Mock, ), {}),
                            Subsystem=type('Subsystem', (mock.Mock, ), {}),
-                           Port=type('Port', (mock.Mock, ), {}),
+                           Port=type('Port', (mock.Mock, ),
+                                     {'setup': mock.Mock()}),
                            Namespace=type('Namespace', (mock.Mock, ),
                                           {'MAX_NSID': 8192}),
                            Host=type('Host', (mock.Mock, ), {}),

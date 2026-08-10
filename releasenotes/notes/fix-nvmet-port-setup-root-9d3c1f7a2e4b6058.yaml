@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    LVM driver with the ``nvmet`` target helper: fixed volume export failing
+    with ``TypeError: Port.setup() got multiple values for argument
+    'err_func'`` against recent ``nvmetcli`` changes.  The ``nvmet`` library
+    removed the ``root`` argument from ``Port.setup()``; since ``nvmet`` is not
+    version-pinned, Cinder now detects the installed library's signature and
+    only forwards ``root`` when it is still accepted, working with both older
+    and newer ``nvmetcli``.
