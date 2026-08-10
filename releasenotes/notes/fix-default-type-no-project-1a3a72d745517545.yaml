@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #2081283 <https://bugs.launchpad.net/cinder/+bug/2081283>`_: Fixed
+    unset operation for default volume type when project doesn't exist.

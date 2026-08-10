@@ -16,6 +16,7 @@
 """The resource filters api."""
 from http import HTTPStatus
 
+from oslo_log import log as logging
 from webob import exc
 
 from cinder.api import api_utils as utils
@@ -29,6 +30,8 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.policies import default_types as policy
+
+LOG = logging.getLogger(__name__)
 
 
 class DefaultTypesController(wsgi.Controller):
@@ -99,9 +102,12 @@ class DefaultTypesController(wsgi.Controller):
 
         context = req.environ['cinder.context']
 
-        project_id = id
-        utils.validate_project_and_authorize(context, project_id,
-                                             policy.DELETE_POLICY)
+        try:
+            utils.validate_project_and_authorize(context, id,
+                                                 policy.DELETE_POLICY)
+        except exc.HTTPNotFound as ex:
+            # If project is deleted, unset the default type anyway
+            LOG.info(str(ex))
         db.project_default_volume_type_unset(context, id)
 
 
