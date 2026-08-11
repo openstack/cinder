@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    LightOS driver: retyping a
+    volume between two volume types that name different LightOS projects
+    left the source volume behind on the backend. The driver resolved a
+    volume's project from the ``lightos:project_name`` extra spec of its
+    volume type on every call, but Cinder keeps the destination volume type
+    on the database record it uses to delete the source volume, so the
+    delete was addressed to the destination project and failed. A volume's
+    project and LightOS UUID are now recorded in its ``provider_id`` when it
+    is created, and travel with the record that addresses it. Volumes created
+    before this fix are stamped automatically when the volume service starts;
+    until then they keep resolving their project from their volume type.
