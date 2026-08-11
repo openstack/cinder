@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    LightOS driver: retyping a volume between two volume types that differ
+    only in ``lightos:qos_policy`` now applies the new QoS policy to the
+    volume in place. Previously the LightOS driver implemented no ``retype``,
+    so every retype fell back to a host-assisted migration that copied the
+    whole volume to a new one. A retype that changes where a volume lives on
+    the cluster -- its project, replica count or compression -- still
+    migrates, as does one that removes a QoS policy.

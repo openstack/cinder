@@ -42,6 +42,7 @@ from cinder.volume import driver
 LOG = logging.getLogger(__name__)
 ENABLE_TRACE = True
 LIGHTOS_DEFAULT_PROJECT_NAME = "default"
+LIGHTOS_QOS_POLICY_SPEC = "lightos:qos_policy"
 
 lightos_opts = [
     cfg.ListOpt('lightos_api_address',
@@ -203,6 +204,16 @@ class LightOSConnection(object):
                                   'UUID': kwargs.get('volume_uuid'),
                                   'size': kwargs.get('size'),
                               }),
+
+            'set_volume_qos_policy': ('PUT',
+                                      '/api/v2/projects/%s/volumes/%s' % (
+                                          kwargs.get("project_name"),
+                                          kwargs.get("volume_uuid")),
+                                      {
+                                          'UUID': kwargs.get('volume_uuid'),
+                                          'qosPolicyUUID': kwargs.get(
+                                              'qos_policy'),
+                                      }),
 
             # snapshots operations
             'create_snapshot': ('POST',
@@ -730,7 +741,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         compression = self._parse_extra_spec(type_compression,
                                              default_compression)
         num_replicas = str(specs.get('lightos:num_replicas', num_replicas))
-        qos_policy = specs.get('lightos:qos_policy', None)
+        qos_policy = specs.get(LIGHTOS_QOS_POLICY_SPEC, None)
         project_name = specs.get(
             'lightos:project_name',
             LIGHTOS_DEFAULT_PROJECT_NAME)
@@ -1026,6 +1037,87 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                  'provider_id': self._create_provider_id_string(project_name)})
 
         return volume_updates, None
+
+    @staticmethod
+    def _changed_specs(specs):
+        """Reduce a volume type diff section to the specs that differ."""
+        return {key: values for key, values in (specs or {}).items()
+                if values[0] != values[1]}
+
+    def _set_lightos_qos_policy(self, project_name, lightos_uuid, qos_policy):
+        status_code, resp = self.cluster.send_cmd(
+            cmd='set_volume_qos_policy',
+            project_name=project_name,
+            timeout=self.logical_op_timeout,
+            volume_uuid=lightos_uuid,
+            qos_policy=qos_policy)
+        if status_code != httpstatus.OK:
+            msg = ('Failed to set QoS policy %(policy)s on LightOS volume'
+                   ' %(uuid)s project %(project)s status %(code)s'
+                   ' response %(resp)s' % dict(
+                       policy=qos_policy, uuid=lightos_uuid,
+                       project=project_name, code=status_code, resp=resp))
+            raise exception.VolumeBackendAPIException(message=msg)
+
+        state = self._wait_for_volume_available(
+            project_name, timeout=self.logical_op_timeout,
+            vol_uuid=lightos_uuid)
+        if state not in ('Available', 'Migrating'):
+            msg = ('LightOS volume %(uuid)s project %(project)s is %(state)s'
+                   ' after setting QoS policy %(policy)s' % dict(
+                       uuid=lightos_uuid, project=project_name, state=state,
+                       policy=qos_policy))
+            raise exception.VolumeBackendAPIException(message=msg)
+
+    def retype(self, context, volume, new_type, diff, host):
+        """Apply a new volume type to a volume where the data can stay put.
+
+        A QoS policy is a property of the volume, so it is changed in place.
+        Everything else describes how the volume is laid out on the cluster,
+        and returning False leaves the volume manager to migrate the volume.
+
+        :param context: the request context
+        :param volume: the volume to retype
+        :param new_type: the volume type to retype to
+        :param diff: the difference between the two volume types
+        :param host: the backend to retype onto
+        :returns: True when the new type has been applied in place
+        """
+        diff = diff or {}
+        if (self._changed_specs(diff.get('qos_specs'))
+                or self._changed_specs(diff.get('encryption'))):
+            return False
+
+        changed = self._changed_specs(diff.get('extra_specs'))
+        if not changed:
+            return True
+
+        # Specs are compared textually: one that is semantically unchanged
+        # but spelled differently (an explicit default project vs none)
+        # falls back to migration. Safe, at worst slower.
+        placement_specs = sorted(set(changed) - {LIGHTOS_QOS_POLICY_SPEC})
+        if placement_specs:
+            LOG.debug("LIGHTOS falling back to standard retype of volume"
+                      " %s: an in-place retype is available only when the"
+                      " change is limited to the QoS policy, but %s changed",
+                      volume.id, placement_specs)
+            return False
+
+        qos_policy = changed[LIGHTOS_QOS_POLICY_SPEC][1]
+        if not qos_policy:
+            # The volume would have to fall back to its project's default
+            # policy, which the volume update API does not express.
+            LOG.debug("LIGHTOS cannot drop the QoS policy of volume %s in"
+                      " place", volume.id)
+            return False
+
+        project_name = self._get_lightos_project_name(volume)
+        lightos_uuid = self._get_lightos_uuid(project_name, volume)
+        self._set_lightos_qos_policy(project_name, lightos_uuid, qos_policy)
+        LOG.info("LIGHTOS set QoS policy %s on volume %s project %s",
+                 qos_policy, volume.id, project_name)
+
+        return True
 
     def get_vol_by_id(self, volume):
         LOG.warning('UNIMPLEMENTED: get vol by id')
