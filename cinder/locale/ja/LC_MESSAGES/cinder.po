@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2026-02-28 02:52+0000\n"
+"POT-Creation-Date: 2026-08-10 21:22+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -63,18 +63,6 @@ msgstr ""
 #, python-format
 msgid "%(exception)s: %(explanation)s"
 msgstr "%(exception)s: %(explanation)s"
-
-#, python-format
-msgid ""
-"%(fun)s: Failed with unexpected CLI output.\n"
-" Command: %(cmd)s\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"%(fun)s: 予期しない CLI 出力により失敗しました。\n"
-"コマンド: %(cmd)s\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
 
 #, python-format
 msgid "%(host)-25s\t%(availability_zone)-15s"
@@ -200,10 +188,6 @@ msgid "%s is not set."
 msgstr "%s が設定されていません。"
 
 #, python-format
-msgid "%s must be a valid raw or qcow2 image."
-msgstr "%s は有効な raw または qcow2 イメージでなければなりません。"
-
-#, python-format
 msgid "%s must be an absolute path."
 msgstr "%s は絶対パスである必要があります。"
 
@@ -214,14 +198,6 @@ msgstr "%s が設定されていません。"
 #, python-format
 msgid "'%(key)s = %(value)s'"
 msgstr "'%(key)s = %(value)s'"
-
-#, python-format
-msgid ""
-"'%(prot)s' is invalid for flashsystem_connection_protocol in config file. "
-"valid value(s) are %(enabled)s."
-msgstr ""
-"設定ファイルの flashsystem_connection_protocol で '%(prot)s' は無効です。有効"
-"な値は %(enabled)s です。"
 
 msgid "'active' must be present when writing snap_info."
 msgstr "snap_info の書き込み時には 'active' が存在しなければなりません。"
@@ -348,11 +324,6 @@ msgid ""
 msgstr ""
 "スイッチへのゾーンおよび  cfgs の適用が失敗しました (エラーコード "
 "=%(err_code)s エラーメッセージ =%(err_msg)s。"
-
-#, python-format
-msgid "Array does not exist or is offline. Current status of array is %s."
-msgstr ""
-"アレイが存在しないかオフラインになっています。現在のアレイの状態は %s です。"
 
 msgid "Associate host to hostgroup error."
 msgstr "ホストグループへのホストの関連付けのエラー。"
@@ -492,18 +463,6 @@ msgstr "BrocadeファイバーチャネルゾーニングHTTPエラー:%(reason)
 
 msgid "CHAP secret should be 12-16 bytes."
 msgstr "CHAP 秘密は 12 バイトから 16 バイトである必要があります。"
-
-#, python-format
-msgid ""
-"CLI Exception output:\n"
-" command: %(cmd)s\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"CLI 例外出力:\n"
-"コマンド: %(cmd)s\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
 
 #, python-format
 msgid ""
@@ -1093,9 +1052,6 @@ msgstr ""
 "ボリューム %(vol)s で一意のスナップショット %(snap)s を見つけることができませ"
 "んでした。"
 
-msgid "Could not get system name."
-msgstr "システム名を取得できませんでした。"
-
 #, python-format
 msgid ""
 "Could not read information for snapshot %(name)s. Code: %(code)s. Reason: "
@@ -1359,10 +1315,6 @@ msgstr ""
 
 msgid "Detach volume from instance and then try again."
 msgstr "ボリュームをインスタンスから切り離して、再試行してください。"
-
-#, python-format
-msgid "Did not find expected column in %(fun)s: %(hdr)s."
-msgstr "予期された列が %(fun)s で見つかりませんでした: %(hdr)s"
 
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
@@ -2861,14 +2813,6 @@ msgid "If nofmtdisk is set to True, rsize must also be set to -1."
 msgstr ""
 "nofmtdisk が True に設定される場合、rsize も -1 に設定しなければなりません。"
 
-#, python-format
-msgid ""
-"Illegal value '%(prot)s' specified for flashsystem_connection_protocol: "
-"valid value(s) are %(enabled)s."
-msgstr ""
-"正しくない値 '%(prot)s' が flashsystem_connection_protocol に指定されていま"
-"す。有効な値は %(enabled)s です。"
-
 msgid ""
 "Illegal value specified for storwize_svc_vol_grainsize: set to either 32, "
 "64, 128, or 256."
@@ -3585,9 +3529,6 @@ msgstr "増分バックアップを実行するために使用可能なバック
 msgid "No cloned LUN named %s found on the filer"
 msgstr "複製された %s という名前の LUN はファイラーで見つかりません"
 
-msgid "No config node found."
-msgstr "設定ノードが見つかりません。"
-
 #, python-format
 msgid "No element by given name %s."
 msgstr "指定された名前 %s の要素はありません。"
@@ -3614,9 +3555,6 @@ msgstr "イニシエーター %s のイニシエーターグループが見つ�
 msgid "No interface found on cluster for ip %s"
 msgstr "ip %s のクラスター上にインターフェースが見つかりませんでした"
 
-msgid "No ip address found."
-msgstr "IP アドレスが見つかりません。"
-
 msgid "No mounted NFS shares found"
 msgstr "マウントされた NFS 共有が見つかりません"
 
@@ -3625,10 +3563,6 @@ msgstr "マウントされた Virtuozzo Storage 共有が見つかりません"
 
 msgid "No mounted shares found"
 msgstr "マウントされた共有が見つかりません"
-
-#, python-format
-msgid "No node found in I/O group %(gid)s for volume %(vol)s."
-msgstr "ボリューム %(vol)s の入出力グループ %(gid)s でノードが見つかりません。"
 
 msgid ""
 "No pools are available for provisioning volumes. Ensure that the "
@@ -3665,10 +3599,6 @@ msgstr "バックアップバージョン %s をリストアすることがで�
 
 msgid "No valid ports."
 msgstr "有効なポートがありません。"
-
-#, python-format
-msgid "No vdisk with the ID specified by ref %s."
-msgstr "参照 %s によって指定された ID を持つ vdisk がありません。"
 
 #, python-format
 msgid "No vdisk with the UID specified by ref %s."
@@ -4339,10 +4269,6 @@ msgstr "LUN コピー開始のエラー。"
 msgid "State"
 msgstr "状態"
 
-#, python-format
-msgid "State of node is wrong. Current state is %s."
-msgstr "ノードの状態が誤っています。現在の状態は %s です。"
-
 msgid "Status"
 msgstr "ステータス"
 
@@ -4880,9 +4806,6 @@ msgstr "ボリュームをマッピングできません"
 
 msgid "Unable to map volume."
 msgstr "ボリュームのマッピングができません。"
-
-msgid "Unable to parse attributes."
-msgstr "属性を解析できません。"
 
 msgid ""
 "Unable to re-use a host that is not managed by Cinder with "
@@ -5564,23 +5487,6 @@ msgstr ""
 "[%(group)s]  無効な %(protocol)s ポート %(port)s が io_port_list に指定されま"
 "した。"
 
-#, python-format
-msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."
-msgstr "_create_and_copy_vdisk_data: vdisk %s の属性を取得できませんでした。"
-
-msgid "_create_host failed to return the host name."
-msgstr "_create_host でホスト名を返すことができませんでした。"
-
-msgid ""
-"_create_host: Can not translate host name. Host name is not unicode or "
-"string."
-msgstr ""
-"_create_host: ホスト名を変換できません。ホスト名は Unicode でもバイト文字列で"
-"もありません。"
-
-msgid "_create_host: No connector ports."
-msgstr "_create_host: コネクターポートがありません。"
-
 msgid "_create_local_cloned_volume, Replication Service not found."
 msgstr ""
 "_create_local_cloned_volume、レプリケーションサービスが見つかりません。"
@@ -5596,17 +5502,6 @@ msgstr ""
 "名: %(sourcevolumename)s、ソースボリュームインスタンス: %(source_volume)s、"
 "ターゲットボリュームインスタンス: %(target_volume)s、戻りコード: %(rc)lu、エ"
 "ラー: %(errordesc)s。"
-
-#, python-format
-msgid ""
-"_create_vdisk %(name)s - did not find success message in CLI output.\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"_create_vdisk %(name)s - 成功メッセージが CLI 出力内に見つかりませんでし"
-"た。\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
 
 msgid "_delete_copysession, Cannot find Replication Service"
 msgstr ""
@@ -5763,20 +5658,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"_get_hdr_dic: attribute headers and values do not match.\n"
-" Headers: %(header)s\n"
-" Values: %(row)s."
-msgstr ""
-"_get_hdr_dic: 属性のヘッダーと値が適合していません。\n"
-" ヘッダー: %(header)s\n"
-" 値: %(row)s。"
-
-msgid "_get_host_from_connector failed to return the host name for connector."
-msgstr ""
-"_get_host_from_connector がコネクターのホスト名を返すことができませんでした。"
-
-#, python-format
-msgid ""
 "_get_mapdata_fc, getting host-affinity from aglist/vol_instance failed, "
 "affinitygroup: %(ag)s, ReferenceNames, cannot connect to ETERNUS."
 msgstr ""
@@ -5841,21 +5722,6 @@ msgstr "_get_unmanaged_replay: ボリューム ID %s が見つかりません。
 msgid "_get_unmanaged_replay: Must specify source-name."
 msgstr "_get_unmanaged_replay: ソース名を指定する必要があります。"
 
-msgid ""
-"_get_vdisk_map_properties: Could not get FC connection information for the "
-"host-volume connection. Is the host configured properly for FC connections?"
-msgstr ""
-"_get_vdisk_map_properties: ホストとボリュームの接続について FC 接続情報を取得"
-"できませんでした。ホストが FC 接続用に正しく構成されていますか。"
-
-#, python-format
-msgid ""
-"_get_vdisk_map_properties: No node found in I/O group %(gid)s for volume "
-"%(vol)s."
-msgstr ""
-"_get_vdisk_map_properties: ボリューム %(vol)s の入出力グループ %(gid)s でノー"
-"ドが見つかりませんでした。"
-
 #, python-format
 msgid ""
 "_map_lun, vol_instance.path:%(vol)s, volumename: %(volumename)s, volume_uid: "
@@ -5891,9 +5757,6 @@ msgid ""
 msgstr ""
 "_unmap_lun、vol_instance.path: %(volume)s、AssociatorNames: "
 "CIM_ProtocolControllerForUnit を ETERNUS に接続できません。"
-
-msgid "_update_volume_stats: Could not get storage pool data."
-msgstr "_update_volume_stats: ストレージプールデータを取得できませんでした。"
 
 #, python-format
 msgid ""
@@ -5970,19 +5833,6 @@ msgstr "割り当てられた cgsnapshot"
 msgid "cgsnapshots changed"
 msgstr "変更された cgsnapshot"
 
-msgid ""
-"check_for_setup_error: Password or SSH private key is required for "
-"authentication: set either san_password or san_private_key option."
-msgstr ""
-"check_for_setup_error: 認証にはパスワードまたは SSH 秘密鍵が必要です: "
-"san_password または san_private_key オプションを設定してください。"
-
-msgid "check_for_setup_error: Unable to determine system id."
-msgstr "check_for_setup_error: システム ID を判別できません。"
-
-msgid "check_for_setup_error: Unable to determine system name."
-msgstr "check_for_setup_error: システム名を判別できません。"
-
 msgid "check_hypermetro_exist error."
 msgstr "check_hypermetro_exist エラー。"
 
@@ -6056,14 +5906,6 @@ msgstr ""
 "create_snapshot、ボリューム名: %(s_volumename)s、ETERNUS でソースボリュームが"
 "見つかりません。"
 
-#, python-format
-msgid ""
-"create_snapshot: Volume status must be \"available\" or \"in-use\" for "
-"snapshot. The invalid status is %s."
-msgstr ""
-"create_snapshot: スナップショットのボリュームの状態は「使用可能」または「使用"
-"中」でなければなりません。無効な状態は %s です。"
-
 msgid "create_snapshot: get source volume failed."
 msgstr "create_snapshot: ソースボリュームの取得に失敗しました。"
 
@@ -6083,14 +5925,6 @@ msgstr ""
 msgid "create_volume_from_snapshot: Snapshot %(name)s does not exist."
 msgstr ""
 "create_volume_from_snapshot: スナップショット %(name)s は存在しません。"
-
-#, python-format
-msgid ""
-"create_volume_from_snapshot: Snapshot status must be \"available\" for "
-"creating volume. The invalid status is: %s."
-msgstr ""
-"create_volume_from_snapshot: ボリュームを作成するには、スナップショットの状態"
-"が「使用可能」でなければなりません。無効な状態は %s です。"
 
 #, python-format
 msgid ""
@@ -6268,10 +6102,6 @@ msgstr ""
 "見つかりませんでした。"
 
 #, python-format
-msgid "initialize_connection: vdisk %s is not defined."
-msgstr "initialize_connection: vdisk %s が定義されていません。"
-
-#, python-format
 msgid "invalid user '%s'"
 msgstr "ユーザー '%s' は無効です"
 
@@ -6347,9 +6177,6 @@ msgstr "読み取り専用が見つかりません。"
 #, python-format
 msgid "obj missing quotes %s"
 msgstr "obj に引用符 %s がありません"
-
-msgid "open_access_enabled is not off."
-msgstr "open_access_enabled がオフになっていません。"
 
 #, python-format
 msgid "pool [%s] is not writable"
@@ -6520,10 +6347,6 @@ msgstr "UUID が見つかりません。"
 
 msgid "valid iqn needed for show_target"
 msgstr "show_target に必要とされる有効な iqn"
-
-#, python-format
-msgid "vdisk %s is not defined."
-msgstr "vdisk %s が定義されていません。"
 
 msgid "volume assigned"
 msgstr "割り当てられたボリューム"
