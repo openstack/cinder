@@ -16,7 +16,7 @@
 
 import re
 
-from eventlet import greenthread
+from cinder import utils
 
 _fake_execute_repliers = []
 _fake_execute_log = []
@@ -83,5 +83,5 @@ def fake_execute(*cmd_parts, **kwargs):
                               check_exit_code=check_exit_code)
 
     # Replicate the sleep call in the real function
-    greenthread.sleep(0)
+    utils.cooperative_yield()
     return reply

@@ -44,18 +44,18 @@ If a code path takes a long time to execute and does not contain any methods
 that trigger an eventlet context switch, the long-running thread will block
 any pending threads.
 
-This scenario can be avoided by adding calls to the eventlet sleep method
-in the long-running code path. The sleep call will trigger a context switch
-if there are pending threads, and using an argument of 0 will avoid introducing
-delays in the case that there is only a single green thread::
+This scenario can be avoided by adding a call to
+``cinder.utils.cooperative_yield()`` in the long-running code path. In eventlet
+mode this triggers a context switch by calling ``time.sleep(0)``; in native
+threading mode it is a no-op because real OS threads yield preemptively::
 
-    from eventlet import greenthread
+    from cinder import utils
     ...
-    greenthread.sleep(0)
+    utils.cooperative_yield()
 
-In current code, time.sleep(0) does the same thing as greenthread.sleep(0) if
-time module is patched through eventlet.monkey_patch(). To be explicit, we
-recommend contributors use ``greenthread.sleep()`` instead of ``time.sleep()``.
+Do not call ``time.sleep(0)`` or ``eventlet.sleep(0)`` directly — the C339
+hacking check will flag it.  Use ``cooperative_yield()`` so that the yield is
+automatically skipped when running with native threads.
 
 MySQL access and eventlet
 -------------------------

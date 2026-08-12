@@ -40,6 +40,7 @@ import shutil
 import stat
 import sys
 import tempfile
+import time
 import typing
 from typing import Any, Callable, Iterable, Iterator
 from typing import Optional, Type, Union
@@ -72,6 +73,12 @@ def concurrency_mode_threading() -> bool:
     """Return True when running with native threads instead of eventlet."""
     from cinder import monkey_patch
     return not monkey_patch.is_patched()
+
+
+def cooperative_yield() -> None:
+    # TODO(auniyal) Remove cooperative_yield calls after dropping Eventlet.
+    if not concurrency_mode_threading():
+        time.sleep(0)  # noqa: C339
 
 
 def tpool_wrap(obj: Any, autowrap: tuple[Type[Any], ...] = ()) -> Any:
