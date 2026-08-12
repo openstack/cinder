@@ -1674,12 +1674,57 @@ class HPE3PARCommon(object):
 
         return self.stats
 
-    def _update_volume_stats(self,
-                             filter_function=None,
-                             goodness_function=None):
+    def _get_cpg_capacity_stats(self, cpg_name):
+        """Return capacity statistics for a single CPG.
+
+        Encapsulates the per-CPG capacity math (total/free/provisioned
+        capacity, volume count and utilization) so it can be reused and
+        tested independently of the rest of _update_volume_stats.
+        """
         # const to convert MiB to GB
         const = 0.0009765625
 
+        cpg = self.client.getCPG(cpg_name)
+
+        if 'numTDVVs' in cpg:
+            total_volumes = int(
+                cpg['numFPVVs'] + cpg['numTPVVs'] + cpg['numTDVVs']
+            )
+        else:
+            total_volumes = int(
+                cpg['numFPVVs'] + cpg['numTPVVs']
+            )
+
+        if 'limitMiB' not in cpg['SDGrowth']:
+            # cpg usable free space
+            cpg_avail_space = (
+                self.client.getCPGAvailableSpace(cpg_name))
+            total_capacity = int(
+                (cpg_avail_space['usableFreeMiB'] +
+                 cpg['totalSpaceMiB']) * const)
+            free_capacity = int(cpg_avail_space['usableFreeMiB'] * const)
+        else:
+            total_capacity = int(cpg['SDGrowth']['limitMiB'] * const)
+            free_capacity = int(
+                (total_capacity - (cpg['SDUsage']['usedMiB'] +
+                 cpg['UsrUsage']['usedMiB']) * const))
+
+        provisioned_capacity = int(cpg['totalSpaceMiB'] * const)
+        capacity_utilization = (
+            (float(total_capacity - free_capacity) /
+             float(total_capacity)) * 100)
+
+        return {
+            'total_volumes': total_volumes,
+            'total_capacity': total_capacity,
+            'provisioned_capacity': provisioned_capacity,
+            'free_capacity': free_capacity,
+            'capacity_utilization': capacity_utilization,
+        }
+
+    def _update_volume_stats(self,
+                             filter_function=None,
+                             goodness_function=None):
         # storage_protocol and volume_backend_name are
         # set in the child classes
 
@@ -1727,7 +1772,6 @@ class HPE3PARCommon(object):
                     QUEUE_LENGTH: None,
                     AVG_BUSY_PERC: None
                 }
-                cpg = self.client.getCPG(cpg_name)
                 if (self.API_VERSION >= SRSTATLD_API_VERSION and sr_support):
                     interval = 'daily'
                     history = '7d'
@@ -1741,35 +1785,14 @@ class HPE3PARCommon(object):
                                     "for cpg: '%(cpg_name)s' "
                                     "Reason: '%(reason)s'",
                                     {'cpg_name': cpg_name, 'reason': ex})
-                if 'numTDVVs' in cpg:
-                    total_volumes = int(
-                        cpg['numFPVVs'] + cpg['numTPVVs'] + cpg['numTDVVs']
-                    )
-                else:
-                    total_volumes = int(
-                        cpg['numFPVVs'] + cpg['numTPVVs']
-                    )
-
-                if 'limitMiB' not in cpg['SDGrowth']:
-                    # cpg usable free space
-                    cpg_avail_space = (
-                        self.client.getCPGAvailableSpace(cpg_name))
-                    # total_capacity is the best we can do for a limitless cpg
-                    total_capacity = int(
-                        (cpg['SDUsage']['usedMiB'] +
-                         cpg['UsrUsage']['usedMiB'] +
-                         cpg_avail_space['usableFreeMiB']) * const)
-                else:
-                    total_capacity = int(cpg['SDGrowth']['limitMiB'] * const)
-
-                provisioned_capacity = int((cpg['UsrUsage']['totalMiB'] +
-                                            cpg['SAUsage']['totalMiB'] +
-                                            cpg['SDUsage']['totalMiB']) *
-                                           const)
-                free_capacity = total_capacity - provisioned_capacity
-                capacity_utilization = (
-                    (float(total_capacity - free_capacity) /
-                     float(total_capacity)) * 100)
+                capacity_stats = self._get_cpg_capacity_stats(cpg_name)
+                total_volumes = capacity_stats['total_volumes']
+                total_capacity = capacity_stats['total_capacity']
+                provisioned_capacity = capacity_stats[
+                    'provisioned_capacity']
+                free_capacity = capacity_stats['free_capacity']
+                capacity_utilization = capacity_stats[
+                    'capacity_utilization']
 
             except hpeexceptions.HTTPNotFound:
                 err = (_("CPG (%s) doesn't exist on array")
