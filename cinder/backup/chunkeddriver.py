@@ -25,8 +25,8 @@ import abc
 import hashlib
 import json
 import os
+import time
 
-import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import loopingcall
@@ -38,6 +38,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
+from cinder import utils
 from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
@@ -125,7 +126,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
             if result:
                 # NOTE(geguileo): Compression/Decompression starves
                 # greenthreads so we use a native thread instead.
-                return eventlet.tpool.Proxy(result)
+                return utils.tpool_wrap(result)
         except ImportError:
             pass
 
@@ -154,12 +155,12 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
     def _get_object_writer(self, container, object_name, extra_metadata=None):
         """Return writer proxy-wrapped to execute methods in native thread."""
         writer = self.get_object_writer(container, object_name, extra_metadata)
-        return eventlet.tpool.Proxy(writer)
+        return utils.tpool_wrap(writer)
 
     def _get_object_reader(self, container, object_name, extra_metadata=None):
         """Return reader proxy-wrapped to execute methods in native thread."""
         reader = self.get_object_reader(container, object_name, extra_metadata)
-        return eventlet.tpool.Proxy(reader)
+        return utils.tpool_wrap(reader)
 
     # To create your own "chunked" backup driver, implement the following
     # abstract methods.
@@ -396,8 +397,8 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
                 container, object_name, extra_metadata=extra_metadata
         ) as writer:
             writer.write(output_data)
-        md5 = eventlet.tpool.execute(
-            hashlib.md5, data, usedforsecurity=False).hexdigest()
+        md5 = utils.tpool_wrap(hashlib.md5)(
+            data, usedforsecurity=False).hexdigest()
         obj[object_name]['md5'] = md5
         LOG.debug('backup MD5 for %(object_name)s: %(md5)s',
                   {'object_name': object_name, 'md5': md5})
@@ -406,8 +407,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         object_meta['list'] = object_list
         object_meta['id'] = object_id
 
-        LOG.debug('Calling eventlet.sleep(0)')
-        eventlet.sleep(0)
+        time.sleep(0)
 
     def _prepare_output_data(self, data):
         if self.compressor is None:
@@ -594,7 +594,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
                 break
 
             # Calculate new shas with the datablock.
-            shalist = eventlet.tpool.execute(self._calculate_sha, data)
+            shalist = utils.tpool_wrap(self._calculate_sha)(data)
             sha256_list.extend(shalist)
 
             # If parent_backup is not None, that means an incremental
@@ -746,7 +746,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
             # Restoring a backup to a volume can take some time. Yield so other
             # threads can run, allowing for among other things the service
             # status to be updated
-            eventlet.sleep(0)
+            time.sleep(0)
         LOG.debug('v1 volume backup restore of %s finished.',
                   backup_id)
 
@@ -843,6 +843,6 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
                           })
                 # Deleting a backup's objects can take some time.
                 # Yield so other threads can run
-                eventlet.sleep(0)
+                time.sleep(0)
 
         LOG.debug('delete %s finished.', backup['id'])

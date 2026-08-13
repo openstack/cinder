@@ -36,7 +36,6 @@ import os
 import typing
 
 from castellan import key_manager
-from eventlet import tpool
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
@@ -114,7 +113,7 @@ SERVICE_PGRP = os.getpgrp()
 # writes/reads and the compression/decompression calls.
 # (https://github.com/eventlet/eventlet/issues/432)
 
-class BackupManager(manager.SchedulerDependentManager):
+class BackupManager(manager.SizedThreadPoolManager):
     """Manages backup of block storage devices."""
 
     RPC_API_VERSION = backup_rpcapi.BackupAPI.RPC_API_VERSION
@@ -127,7 +126,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
         super(BackupManager, self).__init__(*args, **kwargs)
         self.is_initialized = False
-        self._set_tpool_size(CONF.backup_native_threads_pool_size)
+        self._init_pool(CONF.backup_native_threads_pool_size)
         self._process_number = kwargs.get('process_number', 1)
         self._semaphore = kwargs.get('semaphore', contextlib.suppress())
         self.driver_name = CONF.backup_driver
@@ -519,16 +518,17 @@ class BackupManager(manager.SchedulerDependentManager):
                     if backup_device.secure_enabled:
                         with open(device_path, 'rb') as device_file:
                             updates = backup_service.backup(
-                                backup, tpool.Proxy(device_file))
+                                backup, utils.tpool_wrap(device_file))
                     else:
                         with utils.temporary_chown(device_path):
                             with open(device_path, 'rb') as device_file:
                                 updates = backup_service.backup(
-                                    backup, tpool.Proxy(device_file))
+                                    backup,
+                                    utils.tpool_wrap(device_file))
                 # device_path is already file-like so no need to open it
                 else:
-                    updates = backup_service.backup(backup,
-                                                    tpool.Proxy(device_path))
+                    updates = backup_service.backup(
+                        backup, utils.tpool_wrap(device_path))
             except Exception:
                 with excutils.save_and_reraise_exception():
                     if not message_created:
@@ -789,19 +789,21 @@ class BackupManager(manager.SchedulerDependentManager):
                     not os.path.isdir(device_path)):
                 if secure_enabled:
                     with open(device_path, 'wb') as device_file:
-                        backup_service.restore(backup, volume.id,
-                                               tpool.Proxy(device_file),
-                                               volume_is_new)
+                        backup_service.restore(
+                            backup, volume.id,
+                            utils.tpool_wrap(device_file),
+                            volume_is_new)
                 else:
                     with utils.temporary_chown(device_path):
                         with open(device_path, 'wb') as device_file:
-                            backup_service.restore(backup, volume.id,
-                                                   tpool.Proxy(device_file),
-                                                   volume_is_new)
+                            backup_service.restore(
+                                backup, volume.id,
+                                utils.tpool_wrap(device_file),
+                                volume_is_new)
             # device_path is already file-like so no need to open it
             else:
                 backup_service.restore(backup, volume.id,
-                                       tpool.Proxy(device_path),
+                                       utils.tpool_wrap(device_path),
                                        volume_is_new)
         except exception.BackupRestoreCancel:
             raise

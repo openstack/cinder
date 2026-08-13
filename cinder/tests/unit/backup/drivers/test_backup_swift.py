@@ -25,7 +25,6 @@ from unittest import mock
 import zlib
 
 import ddt
-from eventlet import tpool
 from oslo_config import cfg
 from swiftclient import client as swift
 import zstd
@@ -41,6 +40,7 @@ from cinder.tests.unit.backup import fake_swift_client
 from cinder.tests.unit.backup import fake_swift_client2
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
+from cinder import utils as cinder_utils
 
 
 CONF = cfg.CONF
@@ -1003,15 +1003,14 @@ class BackupSwiftTestCase(test.TestCase):
         self.assertIsNone(compressor)
         compressor = service._get_compressor('zlib')
         self.assertEqual(zlib, compressor)
-        self.assertIsInstance(compressor, tpool.Proxy)
         compressor = service._get_compressor('bz2')
         self.assertEqual(bz2, compressor)
-        self.assertIsInstance(compressor, tpool.Proxy)
         compressor = service._get_compressor('zstd')
         self.assertEqual(zstd, compressor)
-        self.assertIsInstance(compressor, tpool.Proxy)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
 
+    @test.testtools.skipIf(cinder_utils.concurrency_mode_threading(),
+                           'test not relevant for non-eventlet mode')
     def test_prepare_output_data_effective_compression(self):
         """Test compression works on a native thread."""
         # Use dictionary to share data between threads

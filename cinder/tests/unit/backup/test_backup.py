@@ -20,7 +20,6 @@ from unittest import mock
 import uuid
 
 import ddt
-from eventlet import tpool
 from os_brick.initiator.connectors import fake as fake_connectors
 from oslo_config import cfg
 from oslo_db import exception as db_exc
@@ -41,7 +40,6 @@ from cinder import quota
 from cinder.tests import fake_driver
 from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
-from cinder.tests.unit import known_issues as issues
 from cinder.tests.unit import test
 from cinder.tests.unit import utils
 from cinder import utils as cinder_utils
@@ -310,7 +308,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertTrue(self.volume_mocks['detach_volume'].called)
 
     @mock.patch('cinder.objects.backup.BackupList.get_all_by_host')
-    @mock.patch('cinder.manager.ThreadPoolManager._add_to_threadpool')
+    @mock.patch('cinder.manager.SizedThreadPoolManager._add_to_threadpool')
     def test_init_host_with_service_inithost_offload(self,
                                                      mock_add_threadpool,
                                                      mock_get_all_by_host):
@@ -333,14 +331,14 @@ class BackupTestCase(BaseBackupTest):
 
     @mock.patch('cinder.keymgr.migration.migrate_fixed_key')
     @mock.patch('cinder.objects.BackupList.get_all_by_host')
-    @mock.patch('cinder.manager.ThreadPoolManager._add_to_threadpool')
+    @mock.patch('cinder.manager.SizedThreadPoolManager._add_to_threadpool')
     def test_init_host_key_migration(self,
-                                     mock_add_threadpool,
+                                     mock_stpm_add_to_threadpool,
                                      mock_get_all_by_host,
                                      mock_migrate_fixed_key):
 
         self.backup_mgr.init_host()
-        mock_add_threadpool.assert_called_once_with(
+        mock_stpm_add_to_threadpool.assert_called_once_with(
             mock_migrate_fixed_key,
             backups=mock_get_all_by_host())
 
@@ -2021,32 +2019,22 @@ class BackupTestCase(BaseBackupTest):
         backup = self._create_backup_db_entry(volume_id=vol_id)
         self.assertFalse(backup.has_dependent_backups)
 
-    @test.testtools.skipIf(issues.TPOOL_KILLALL_ISSUE, 'tpool.killall bug')
-    @test.testtools.skipIf(cinder_utils.concurrency_mode_threading(),
-                           'tpool not used in threading mode')
     def test_default_tpool_size(self):
-        """Test we can set custom tpool size."""
-        tpool._nthreads = 20
-        self.assertListEqual([], tpool._threads)
+        """Test we are using the cinder default thread pool size."""
+        cinder_default = CONF.backup_native_threads_pool_size
+        self.assertEqual(60, cinder_default)
 
         self.backup_mgr = importutils.import_object(CONF.backup_manager)
+        self.assertEqual(cinder_default, self.backup_mgr._tpe._max_workers)
 
-        self.assertEqual(60, tpool._nthreads)
-        self.assertListEqual([], tpool._threads)
-
-    @test.testtools.skipIf(issues.TPOOL_KILLALL_ISSUE, 'tpool.killall bug')
-    @test.testtools.skipIf(cinder_utils.concurrency_mode_threading(),
-                           'tpool not used in threading mode')
     def test_tpool_size(self):
-        """Test we can set custom tpool size."""
-        self.assertNotEqual(100, tpool._nthreads)
-        self.assertListEqual([], tpool._threads)
+        """Test we can set a custom thread pool size."""
+        # the default in futurist for ThreadPoolExecutor is 5*number-of-cores,
+        # so use a non-multiple-of-5 to override the config value
+        self.override_config('backup_native_threads_pool_size', 99)
 
-        self.override_config('backup_native_threads_pool_size', 100)
         self.backup_mgr = importutils.import_object(CONF.backup_manager)
-
-        self.assertEqual(100, tpool._nthreads)
-        self.assertListEqual([], tpool._threads)
+        self.assertEqual(99, self.backup_mgr._tpe._max_workers)
 
     @mock.patch('cinder.backup.manager.BackupManager._run_restore')
     def test_backup_max_operations_restore(self, mock_restore):

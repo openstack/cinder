@@ -26,7 +26,6 @@ from unittest import mock
 import zlib
 
 import ddt
-from eventlet import tpool
 from os_brick import exception as brick_exception
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_config import cfg
@@ -40,6 +39,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
+from cinder import utils as cinder_utils
 
 CONF = cfg.CONF
 
@@ -725,8 +725,9 @@ class BackupNFSTestCase(test.TestCase):
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
-        self.assertNotEqual(threading.current_thread(),
-                            self.thread_dict['thread'])
+        if not cinder_utils.concurrency_mode_threading():
+            self.assertNotEqual(threading.current_thread(),
+                                self.thread_dict['thread'])
 
     def test_restore_zlib(self):
         self.thread_original_method = zlib.decompress
@@ -751,8 +752,9 @@ class BackupNFSTestCase(test.TestCase):
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
-        self.assertNotEqual(threading.current_thread(),
-                            self.thread_dict['thread'])
+        if not cinder_utils.concurrency_mode_threading():
+            self.assertNotEqual(threading.current_thread(),
+                                self.thread_dict['thread'])
 
     def test_restore_zstd(self):
         self.thread_original_method = zstd.decompress
@@ -777,8 +779,9 @@ class BackupNFSTestCase(test.TestCase):
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
-        self.assertNotEqual(threading.current_thread(),
-                            self.thread_dict['thread'])
+        if not cinder_utils.concurrency_mode_threading():
+            self.assertNotEqual(threading.current_thread(),
+                                self.thread_dict['thread'])
 
     def test_restore_abort_delta(self):
         volume_id = fake.VOLUME_ID
@@ -907,19 +910,18 @@ class BackupNFSTestCase(test.TestCase):
         self.assertIsNone(compressor)
         compressor = service._get_compressor('zlib')
         self.assertEqual(compressor, zlib)
-        self.assertIsInstance(compressor, tpool.Proxy)
         compressor = service._get_compressor('bz2')
         self.assertEqual(compressor, bz2)
-        self.assertIsInstance(compressor, tpool.Proxy)
         compressor = service._get_compressor('zstd')
         self.assertEqual(zstd, compressor)
-        self.assertIsInstance(compressor, tpool.Proxy)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
 
     def create_buffer(self, size):
         # Set up buffer of zeroed bytes
         return bytearray(size)
 
+    @test.testtools.skipIf(cinder_utils.concurrency_mode_threading(),
+                           'test not relevant for non-eventlet mode')
     def test_prepare_output_data_effective_compression(self):
         """Test compression works on a native thread."""
         self.thread_original_method = zlib.compress
