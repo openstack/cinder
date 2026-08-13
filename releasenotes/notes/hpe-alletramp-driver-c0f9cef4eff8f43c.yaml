@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    New Cinder volume driver for HPE Alletra MP.
+    The new driver supports iSCSI, FC and NVMe TCP.

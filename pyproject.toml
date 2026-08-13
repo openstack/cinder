@@ -92,6 +92,7 @@ all = [
     "rbd-iscsi-client>=0.1.8", # Apache-2.0
     "python-linstor>=1.7.0", # LGPLv3
     "psutil>=5.7.2", # BSD
+    "hpe-storage-flowkit-py>=0.9.3", # Apache-2.0
 ]
 datacore = [
     "websocket-client>=1.3.2", # LGPLv2+
@@ -141,6 +142,9 @@ linstor = [
 ]
 quobyte = [
     "psutil>=5.7.2", # BSD
+]
+hpe_alletramp = [
+    "hpe-storage-flowkit-py>=0.9.3", # Apache-2.0
 ]
 
 [tool.setuptools]
