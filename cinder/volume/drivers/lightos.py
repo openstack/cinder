@@ -28,7 +28,6 @@ from oslo_utils import importutils
 from oslo_utils import netutils
 from oslo_utils import units
 import requests
-import urllib3
 
 from cinder.common import constants
 from cinder import coordination
@@ -43,8 +42,6 @@ from cinder.volume import driver
 LOG = logging.getLogger(__name__)
 ENABLE_TRACE = True
 LIGHTOS_DEFAULT_PROJECT_NAME = "default"
-
-urllib3.disable_warnings()
 
 lightos_opts = [
     cfg.ListOpt('lightos_api_address',
