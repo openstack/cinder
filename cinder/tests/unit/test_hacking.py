@@ -315,3 +315,16 @@ class HackingTestCase(test.TestCase):
     def test_no_third_party_mock(self, err_count, line):
         self.assertEqual(err_count, len(list(checks.no_third_party_mock(
             line))))
+
+    def test_check_cooperative_yield(self):
+        code = """
+                   time.sleep(0)
+               """
+        errors = [(1, 0, 'C339')]
+        self._assert_has_errors(
+            code, checks.check_cooperative_yield, expected_errors=errors)
+
+        code = """
+                    time.sleep(1)
+               """
+        self._assert_has_no_errors(code, checks.check_cooperative_yield)

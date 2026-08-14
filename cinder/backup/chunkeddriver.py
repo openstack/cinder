@@ -25,7 +25,6 @@ import abc
 import hashlib
 import json
 import os
-import time
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -407,7 +406,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         object_meta['list'] = object_list
         object_meta['id'] = object_id
 
-        time.sleep(0)
+        utils.cooperative_yield()
 
     def _prepare_output_data(self, data):
         if self.compressor is None:
@@ -746,7 +745,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
             # Restoring a backup to a volume can take some time. Yield so other
             # threads can run, allowing for among other things the service
             # status to be updated
-            time.sleep(0)
+            utils.cooperative_yield()
         LOG.debug('v1 volume backup restore of %s finished.',
                   backup_id)
 
@@ -843,6 +842,6 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
                           })
                 # Deleting a backup's objects can take some time.
                 # Yield so other threads can run
-                time.sleep(0)
+                utils.cooperative_yield()
 
         LOG.debug('delete %s finished.', backup['id'])

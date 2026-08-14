@@ -23,6 +23,8 @@ Cinder Specific Commandments
 - [C337] Ensure the standard library mock modules is used and not the third
   party mock library that was needed for Python 2 support.
 - [C338] Log.warn is deprecated. Enforce use of LOG.warning.
+- [C339] Don't use time.sleep(0) to trigger eventlet yielding.
+  Use cinder.utils.cooperative_yield() instead.
 
 General
 -------

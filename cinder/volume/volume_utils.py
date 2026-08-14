@@ -554,7 +554,7 @@ def _transfer_data(src: IO, dest: IO,
                   {'chunk': chunk + 1, 'chunks': chunks, 'rate': rate})
 
         # yield to any other pending operations
-        time.sleep(0)
+        utils.cooperative_yield()
 
     tpool.execute(dest.flush)
 

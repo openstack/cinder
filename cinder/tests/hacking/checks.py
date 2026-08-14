@@ -47,6 +47,7 @@ underscore_import_check_multi = re.compile(r"(.)*i18n\s+import(.)* _, (.)*")
 custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
 no_print_statements = re.compile(r"\s*print\s*\(.+\).*")
 dict_constructor_with_list_copy_re = re.compile(r".*\bdict\((\[)?(\(|\[)")
+eventlet_yield_re = re.compile(r".*time\.sleep\(0\).*")
 
 logging_instance = re.compile(
     r"(.)*LOG\.(warning|info|debug|error|exception)\(")
@@ -382,4 +383,20 @@ def no_log_warn(logical_line):
 
     msg = ("C338: LOG.warn is deprecated, please use LOG.warning!")
     if "LOG.warn(" in logical_line:
+        yield (0, msg)
+
+
+@core.flake8ext
+def check_cooperative_yield(logical_line, filename):
+    """Check for use of time.sleep(0) triggering eventlet yield
+
+    C339
+    """
+    msg = (
+        "C339: Use cinder.utils.cooperative_yield() instead of "
+        "time.sleep(0) to trigger an eventlet context switch")
+
+    match = re.match(eventlet_yield_re, logical_line)
+
+    if match:
         yield (0, msg)
