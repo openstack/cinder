@@ -978,7 +978,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake.VOLUME_ID, share)
         self.driver.zapi_client.clone_file.assert_called_once_with(
             fake.FLEXVOL, fake.FLEXVOL, 'fake_clone', fake.VSERVER_NAME,
-            is_snapshot=is_snapshot)
+            is_snapshot=is_snapshot, source_snapshot=None)
 
     def test__clone_backing_file_for_volume(self):
         self.driver.zapi_client.get_if_info_by_ip = mock.Mock(
@@ -993,7 +993,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         self.assertIsNone(retval)
         self.driver.zapi_client.clone_file.assert_called_once_with(
-            'nfsvol', 'vol', 'clone', None, is_snapshot=True)
+            'nfsvol', 'vol', 'clone', None, is_snapshot=True,
+            source_snapshot=None)
 
     def test_copy_from_img_service_copyoffload_nonexistent_binary_path(self):
         self.mock_object(nfs_cmode.LOG, 'debug')

@@ -2039,6 +2039,43 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         }
         self.send_request('/storage/luns/', 'patch', query=query, body=body)
 
+    def _clone_via_private_cli(self, vserver, volume, src_path, dest_path,
+                               source_snapshot, is_backup=False,
+                               overwrite_destination=False, no_reserve=None,
+                               qos_policy_group_name=None,
+                               qos_policy_group_is_adaptive=False):
+        """Clones a file/LUN via the private CLI endpoint.
+
+        Used as a fallback when snapshot_directory_access_enabled is False
+        on the FlexVol, since the .snapshot/ path is then inaccessible and
+        the REST clone APIs cannot resolve the source snapshot directly.
+        """
+        LOG.debug('Cloning - volume %(vol)s, src '
+                  '%(src)s, dest %(dest)s, snapshot-name %(snap)s',
+                  {'vol': volume, 'src': src_path, 'dest': dest_path,
+                   'snap': source_snapshot})
+        cli_body = {
+            'vserver': vserver,
+            'volume': volume,
+            'source-path': src_path,
+            'destination-path': dest_path,
+            'snapshot-name': source_snapshot,
+        }
+        if is_backup:
+            cli_body['is-backup'] = True
+        if overwrite_destination:
+            cli_body['overwrite-destination'] = True
+        if no_reserve:
+            cli_body['no-reserve'] = True
+        if qos_policy_group_name:
+            if qos_policy_group_is_adaptive:
+                cli_body['qos-adaptive-policy-group'] = (
+                    qos_policy_group_name)
+            else:
+                cli_body['qos-policy-group'] = qos_policy_group_name
+        return self.send_request(
+            '/private/cli/volume/file/clone', 'post', body=cli_body)
+
     def clone_file(self, flex_vol, src_path, dest_path, vserver,
                    dest_exists=False, source_snapshot=None, is_snapshot=False):
         """Clones file on vserver."""
@@ -2068,7 +2105,24 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         if dest_exists:
             body['overwrite_destination'] = True
 
-        self.send_request('/storage/file/clone', 'post', body=body)
+        if source_snapshot:
+            snap_dir_access = self.get_volume_snapshot_dir_access(flex_vol)
+            if snap_dir_access:
+                body['source_path'] = (
+                    f'.snapshot/{source_snapshot}/{src_path}')
+                self.send_request('/storage/file/clone', 'post', body=body)
+            else:
+                # snapshot_directory_access_enabled is False on this FlexVol;
+                # the .snapshot/ path is inaccessible.  Fall back to the
+                # private CLI endpoint which resolves the snapshot by name
+                # internally without requiring .snapshot/ visibility.
+                self._clone_via_private_cli(
+                    vserver, flex_vol, src_path, dest_path, source_snapshot,
+                    is_backup=body.get('is_backup', False),
+                    overwrite_destination=body.get(
+                        'overwrite_destination', False))
+        else:
+            self.send_request('/storage/file/clone', 'post', body=body)
 
     def create_cg_snapshot(self, volume_names, snapshot_name):
         """Creates a consistency group snapshot across one or more FlexVols.
@@ -2168,6 +2222,21 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
         if primary_exc is not None:
             raise primary_exc
 
+    def _clone_lun_via_private_cli(self, volume, name, new_name,
+                                   source_snapshot, space_reserved='true',
+                                   qos_policy_group_name=None,
+                                   qos_policy_group_is_adaptive=False):
+        """Clones a LUN via the private CLI endpoint.
+
+        Used as a fallback when snapshot_directory_access_enabled is False
+        on the FlexVol.
+        """
+        self._clone_via_private_cli(
+            self.vserver, volume, name, new_name, source_snapshot,
+            no_reserve=(space_reserved != 'true'),
+            qos_policy_group_name=qos_policy_group_name,
+            qos_policy_group_is_adaptive=qos_policy_group_is_adaptive)
+
     def clone_lun(self, volume, name, new_name, space_reserved='true',
                   qos_policy_group_name=None, src_block=0, dest_block=0,
                   block_count=0, source_snapshot=None, is_snapshot=False,
@@ -2192,7 +2261,19 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         source_path = f'/vol/{volume}'
         if source_snapshot:
-            source_path += f'/.snapshot/{source_snapshot}'
+            snap_dir_access = self.get_volume_snapshot_dir_access(volume)
+            if snap_dir_access:
+                source_path += f'/.snapshot/{source_snapshot}'
+            else:
+                # snapshot_directory_access_enabled is False; fall back to
+                # the private CLI endpoint which resolves the snapshot by
+                # name without relying on .snapshot/ path visibility.
+                self._clone_lun_via_private_cli(
+                    volume, name, new_name, source_snapshot,
+                    space_reserved=space_reserved,
+                    qos_policy_group_name=qos_policy_group_name,
+                    qos_policy_group_is_adaptive=qos_policy_group_is_adaptive)
+                return
         source_path += f'/{name}'
         body = {
             'svm': {
@@ -2226,6 +2307,24 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
             query['allow_delete_while_mapped'] = 'true'
 
         self.send_request('/storage/luns/', 'delete', query=query)
+
+    def get_volume_snapshot_dir_access(self, volume_name):
+        """Returns True if snapshot directory access is enabled on a FlexVol.
+
+        The snapshot_directory_access_enabled FlexVol attribute controls
+        whether the .snapshot directory is visible and accessible on the
+        volume. When False, paths like .snapshot/<snap>/<file> are not
+        reachable and the private CLI endpoint must be used instead.
+        """
+        try:
+            volume = self._get_volume_by_args(
+                vol_name=volume_name,
+                fields='snapshot_directory_access_enabled')
+            return volume.get('snapshot_directory_access_enabled', False)
+        except exception.VolumeBackendAPIException:
+            LOG.warning('Could not retrieve snapshot_directory_access_enabled '
+                        'for volume %s; assuming False.', volume_name)
+            return False
 
     def get_flexvol_capacity(self, flexvol_path=None, flexvol_name=None):
         """Gets total capacity and free capacity, in bytes, of the flexvol."""

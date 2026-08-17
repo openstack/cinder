@@ -2856,6 +2856,231 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_send_request.assert_called_once_with(
             '/storage/luns', 'post', body=expected_body)
 
+    def test_clone_file_with_source_snapshot_dir_access_enabled(self):
+        """clone_file uses .snapshot/ path when dir access is enabled."""
+        fake_volume = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        snap_name = fake.SNAPSHOT_NAME
+        src_file = fake.NFS_FILE_PATH
+
+        expected_body = {
+            'volume': {
+                'uuid': fake_volume['uuid'],
+                'name': fake_volume['name'],
+            },
+            'source_path': f'.snapshot/{snap_name}/{src_file}',
+            'destination_path': fake.SNAPSHOT_NAME,
+        }
+
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_get_volume_by_args',
+                         return_value=fake_volume)
+        self.mock_object(self.client, 'get_volume_snapshot_dir_access',
+                         return_value=True)
+
+        self.client.clone_file(
+            fake_volume['name'], src_file, fake.SNAPSHOT_NAME,
+            fake.VSERVER_NAME, source_snapshot=snap_name)
+
+        mock_send_request.assert_called_once_with(
+            '/storage/file/clone', 'post', body=expected_body)
+
+    def test_clone_file_with_source_snapshot_dir_access_disabled(self):
+        """clone_file uses private CLI when dir access is disabled."""
+        fake_volume = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        snap_name = fake.SNAPSHOT_NAME
+        src_file = fake.NFS_FILE_PATH
+        dest_file = 'dest_' + src_file
+
+        expected_cli_body = {
+            'vserver': fake.VSERVER_NAME,
+            'volume': fake_volume['name'],
+            'source-path': src_file,
+            'destination-path': dest_file,
+            'snapshot-name': snap_name,
+        }
+
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_get_volume_by_args',
+                         return_value=fake_volume)
+        self.mock_object(self.client, 'get_volume_snapshot_dir_access',
+                         return_value=False)
+
+        self.client.clone_file(
+            fake_volume['name'], src_file, dest_file,
+            fake.VSERVER_NAME, source_snapshot=snap_name)
+
+        mock_send_request.assert_called_once_with(
+            '/private/cli/volume/file/clone', 'post', body=expected_cli_body)
+
+    def test_clone_file_with_dir_access_disabled_is_backup_and_overwrite(
+            self):
+        """Private CLI fallback must carry is_backup/overwrite_destination."""
+        fake_volume = fake_client.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        snap_name = fake.SNAPSHOT_NAME
+        src_file = fake.NFS_FILE_PATH
+        dest_file = 'dest_' + src_file
+        self.client.features.BACKUP_CLONE_PARAM = True
+
+        expected_cli_body = {
+            'vserver': fake.VSERVER_NAME,
+            'volume': fake_volume['name'],
+            'source-path': src_file,
+            'destination-path': dest_file,
+            'snapshot-name': snap_name,
+            'is-backup': True,
+            'overwrite-destination': True,
+        }
+
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_get_volume_by_args',
+                         return_value=fake_volume)
+        self.mock_object(self.client, 'get_volume_snapshot_dir_access',
+                         return_value=False)
+
+        self.client.clone_file(
+            fake_volume['name'], src_file, dest_file,
+            fake.VSERVER_NAME, source_snapshot=snap_name,
+            is_snapshot=True, dest_exists=True)
+
+        mock_send_request.assert_called_once_with(
+            '/private/cli/volume/file/clone', 'post', body=expected_cli_body)
+
+    def test_clone_lun_with_source_snapshot_dir_access_enabled(self):
+        """clone_lun uses .snapshot/ path in source when dir access enabled."""
+        self.client.vserver = fake.VSERVER_NAME
+        snap_name = fake.SNAPSHOT_NAME
+
+        expected_source_path = (
+            f'/vol/{fake.VOLUME_NAME}/.snapshot/{snap_name}/{fake.LUN_NAME}')
+        expected_body = {
+            'svm': {'name': fake.VSERVER_NAME},
+            'name': f'/vol/{fake.VOLUME_NAME}/{fake.SNAPSHOT_NAME}',
+            'clone': {'source': {'name': expected_source_path}},
+            'space': {'guarantee': {'requested': True}},
+        }
+
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_validate_qos_policy_group')
+        self.mock_object(self.client, 'get_volume_snapshot_dir_access',
+                         return_value=True)
+
+        self.client.clone_lun(
+            volume=fake.VOLUME_NAME, name=fake.LUN_NAME,
+            new_name=fake.SNAPSHOT_NAME,
+            source_snapshot=snap_name)
+
+        mock_send_request.assert_called_once_with(
+            '/storage/luns', 'post', body=expected_body)
+
+    def test_clone_lun_with_source_snapshot_dir_access_disabled(self):
+        """clone_lun uses private CLI when snapshot dir access is disabled."""
+        self.client.vserver = fake.VSERVER_NAME
+        snap_name = fake.SNAPSHOT_NAME
+
+        expected_cli_body = {
+            'vserver': fake.VSERVER_NAME,
+            'volume': fake.VOLUME_NAME,
+            'source-path': fake.LUN_NAME,
+            'destination-path': fake.SNAPSHOT_NAME,
+            'snapshot-name': snap_name,
+        }
+
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_validate_qos_policy_group')
+        self.mock_object(self.client, 'get_volume_snapshot_dir_access',
+                         return_value=False)
+
+        self.client.clone_lun(
+            volume=fake.VOLUME_NAME, name=fake.LUN_NAME,
+            new_name=fake.SNAPSHOT_NAME,
+            source_snapshot=snap_name)
+
+        mock_send_request.assert_called_once_with(
+            '/private/cli/volume/file/clone', 'post', body=expected_cli_body)
+
+    def test_clone_lun_with_dir_access_disabled_space_reserved_and_qos(self):
+        """Private CLI fallback must carry space_reserved/qos policy."""
+        self.client.vserver = fake.VSERVER_NAME
+        snap_name = fake.SNAPSHOT_NAME
+
+        expected_cli_body = {
+            'vserver': fake.VSERVER_NAME,
+            'volume': fake.VOLUME_NAME,
+            'source-path': fake.LUN_NAME,
+            'destination-path': fake.SNAPSHOT_NAME,
+            'snapshot-name': snap_name,
+            'no-reserve': True,
+            'qos-policy-group': fake.QOS_POLICY_GROUP_NAME,
+        }
+
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_validate_qos_policy_group')
+        self.mock_object(self.client, 'get_volume_snapshot_dir_access',
+                         return_value=False)
+
+        self.client.clone_lun(
+            volume=fake.VOLUME_NAME, name=fake.LUN_NAME,
+            new_name=fake.SNAPSHOT_NAME,
+            space_reserved='false',
+            qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME,
+            source_snapshot=snap_name)
+
+        mock_send_request.assert_called_once_with(
+            '/private/cli/volume/file/clone', 'post', body=expected_cli_body)
+
+    def test_get_volume_snapshot_dir_access_enabled(self):
+        vol_response = {
+            'name': fake_client.VOLUME_NAME,
+            'snapshot_directory_access_enabled': True,
+        }
+        self.mock_object(self.client, '_get_volume_by_args',
+                         return_value=vol_response)
+
+        result = self.client.get_volume_snapshot_dir_access(
+            fake_client.VOLUME_NAME)
+
+        self.assertTrue(result)
+        self.client._get_volume_by_args.assert_called_once_with(
+            vol_name=fake_client.VOLUME_NAME,
+            fields='snapshot_directory_access_enabled')
+
+    def test_get_volume_snapshot_dir_access_disabled(self):
+        vol_response = {
+            'name': fake_client.VOLUME_NAME,
+            'snapshot_directory_access_enabled': False,
+        }
+        self.mock_object(self.client, '_get_volume_by_args',
+                         return_value=vol_response)
+
+        result = self.client.get_volume_snapshot_dir_access(
+            fake_client.VOLUME_NAME)
+
+        self.assertFalse(result)
+
+    def test_get_volume_snapshot_dir_access_not_found_returns_false(self):
+        """When volume lookup fails, fall back to the private CLI clone."""
+        self.mock_object(
+            self.client, '_get_volume_by_args',
+            side_effect=exception.VolumeBackendAPIException(data='not found'))
+
+        result = self.client.get_volume_snapshot_dir_access(
+            fake_client.VOLUME_NAME)
+
+        self.assertFalse(result)
+
+    def test_get_volume_snapshot_dir_access_field_missing_returns_false(self):
+        """When the field is absent, assume the safer (disabled) default."""
+        vol_response = {
+            'name': fake_client.VOLUME_NAME,
+        }
+        self.mock_object(self.client, '_get_volume_by_args',
+                         return_value=vol_response)
+
+        result = self.client.get_volume_snapshot_dir_access(
+            fake_client.VOLUME_NAME)
+
+        self.assertFalse(result)
+
     def test_create_cg_snapshot_empty_volume_names(self):
         """create_cg_snapshot raises if volume_names is empty."""
         mock_send_request = self.mock_object(self.client, 'send_request')
