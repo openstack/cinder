@@ -281,6 +281,47 @@ class GenericUtilsTestCase(test.TestCase):
         mock_normcase.assert_has_calls([mock.call(path_a), mock.call(path_b)])
 
 
+class TpoolWrapTestCase(test.TestCase):
+
+    @mock.patch('cinder.utils.concurrency_mode_threading', return_value=True)
+    def test_tpool_wrap_threading_returns_same_object(self, mock_threading):
+        obj = mock.Mock()
+        # In threading mode the object must be returned unchanged.
+        self.assertIs(obj, utils.tpool_wrap(obj))
+
+    @mock.patch('cinder.utils.tpool.Proxy')
+    @mock.patch('cinder.utils.concurrency_mode_threading', return_value=False)
+    def test_tpool_wrap_eventlet_returns_proxy(
+            self, mock_threading, mock_tpool_proxy):
+        class fakeProxy(object):
+            pass
+
+        mock_tpool_proxy.return_value = fakeProxy()
+        obj = mock.Mock()
+        wrapped = utils.tpool_wrap(obj)
+        # In eventlet mode we must get back a tpool.Proxy,
+        # not the object itself.
+        self.assertIsInstance(wrapped, fakeProxy)
+        self.assertIsNot(obj, wrapped)
+
+    @mock.patch('cinder.utils.tpool.Proxy')
+    @mock.patch('cinder.utils.concurrency_mode_threading', return_value=False)
+    def test_tpool_wrap_eventlet_autowrap(
+            self, mock_threading, mock_tpool_proxy):
+        obj = mock.Mock()
+        autowrap = (dict,)
+        wrapped = utils.tpool_wrap(obj, autowrap)
+        # The autowrap argument must be forwarded to tpool.Proxy unchanged.
+        mock_tpool_proxy.assert_called_once_with(obj, autowrap)
+        self.assertIs(mock_tpool_proxy.return_value, wrapped)
+
+        # When autowrap is not supplied
+        obj2 = mock.Mock()
+        utils.tpool_wrap(obj2)
+        mock_tpool_proxy.assert_called_with(obj2, ())
+        self.assertEqual(2, mock_tpool_proxy.call_count)
+
+
 class TemporaryChownTestCase(test.TestCase):
     @mock.patch('os.stat')
     @mock.patch('os.getuid', return_value=1234)
