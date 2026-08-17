@@ -1003,6 +1003,12 @@ class BackupCephTestCase(test.TestCase):
                     self.assertTrue(mock_discard_bytes.called)
                     self.assertTrue(mock_discard_bytes.called)
 
+        self.mock_rbd.Image.assert_called_once_with(
+            mock.ANY,  # ioctx
+            f"{fake.VOLUME_NAME}.backup.{fake.BACKUP_ID}",
+            snapshot=None,
+            read_only=True)
+
         self.assertTrue(self.service.rbd.Image.return_value.read.called)
         self.assertNotEqual(threading.current_thread(), thread_dict['thread'])
 
