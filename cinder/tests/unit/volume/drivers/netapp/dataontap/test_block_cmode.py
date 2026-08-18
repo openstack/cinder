@@ -1988,21 +1988,15 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                 last_perf_update) > self.library.
                 configuration.netapp_pef_pool_interval):
             mock_log.debug.assert_not_called()  # Before running code
-            mock_log.debug("Updating perf cache for cluster.")
             self.library.perf_library.update_performance_cache(
                 fake_utils.SSC.keys())
             self.library.last_perf_update = (
                 mock_utcnow.return_value.timestamp())
-            mock_log.debug("Successfully updated perf cache for cluster.")
 
         # Assertions
         (self.library.perf_library.update_performance_cache.
          assert_called_once_with(fake_utils.SSC.keys()))
         self.assertEqual(self.library.last_perf_update, 1401)
-        # Check logging calls
-        mock_log.debug.assert_any_call("Updating perf cache for cluster.")
-        mock_log.debug.assert_any_call(
-            "Successfully updated perf cache for cluster.")
 
     def test_get_disaggregated_capacity_basic(self):
         """Aggregates present, all capacities present."""
