@@ -1,0 +1,24 @@
+---
+upgrade:
+  - |
+    Lightbits driver: the driver no longer calls
+    ``urllib3.disable_warnings()`` when its module is imported. That call
+    suppressed **all** urllib3 warnings for the entire ``cinder-volume``
+    process, affecting every configured backend and not just Lightbits, and it
+    took effect even in deployments with no Lightbits backend configured.
+
+    Deployments that run the Lightbits driver with
+    ``driver_ssl_cert_verify = False`` will now see
+    ``InsecureRequestWarning`` messages that were previously hidden. To
+    suppress them, set the existing ``suppress_requests_ssl_warnings`` option,
+    which is the supported, operator-controlled way to do this. The
+    recommended alternative is to enable ``driver_ssl_cert_verify`` and
+    configure a trusted CA bundle.
+security:
+  - |
+    Lightbits driver: an import-scope ``urllib3.disable_warnings()`` call was
+    removed. Because it ran at import time with no warning category argument,
+    it silently disabled every urllib3 warning process-wide -- including TLS
+    warnings raised by other backends sharing the same ``cinder-volume``
+    process -- and overrode the operator's ``suppress_requests_ssl_warnings``
+    setting.
