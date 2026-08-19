@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    KIOXIA KumoScale driver: the driver no longer calls
+    ``urllib3.disable_warnings()`` at import. Deployments running it will now
+    see ``InsecureRequestWarning`` messages that were previously hidden; the
+    driver's requests have always been unverified
+    (``cert_reqs=ssl.CERT_NONE``), the warnings were just being discarded. Set
+    ``suppress_requests_ssl_warnings`` to quiet them.
+security:
+  - |
+    KIOXIA KumoScale driver: an import-scope ``urllib3.disable_warnings()``
+    call was removed. With no warning category it disabled every urllib3
+    warning process-wide, including TLS warnings from other backends sharing
+    the ``cinder-volume`` process, in deployments with no KumoScale backend
+    configured, and it overrode ``suppress_requests_ssl_warnings``.
