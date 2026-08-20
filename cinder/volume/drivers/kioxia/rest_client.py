@@ -21,7 +21,6 @@ import urllib3
 
 from cinder.volume.drivers.kioxia import entities
 
-urllib3.disable_warnings()
 RUN_COMMAND_TRIALS = 20
 RUN_COMMAND_SLEEP = 0.5
 
