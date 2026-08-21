@@ -73,6 +73,13 @@ class NetAppApiServerTests(test.TestCase):
             else:
                 mock_trace.assert_not_called()
 
+    def test__init__defaults_https_and_ssl_cert_verify(self):
+        """NaServer defaults to HTTPS transport and ssl_cert_verify=True."""
+        server = netapp_api.NaServer('host')
+        self.assertEqual(netapp_api.NaServer.TRANSPORT_TYPE_HTTPS,
+                         server._protocol)
+        self.assertTrue(server._ssl_cert_verify)
+
     @ddt.data(None, 'ftp')
     def test_set_transport_type_value_error(self, transport_type):
         """Tests setting an invalid transport type"""
@@ -195,20 +202,24 @@ class NetAppApiServerTests(test.TestCase):
         mock_invoke.assert_called_with(zapi_fakes.FAKE_XML_STR)
 
     @ddt.data(
-        # (host_validation, ca_cert_file, expected_verify)
-        (False, None, False),
-        (True, None, True),
-        (True, zapi_fakes.FAKE_CA_CERT_FILE, zapi_fakes.FAKE_CA_CERT_FILE),
-        (False, zapi_fakes.FAKE_CA_CERT_FILE, False),
+        # (host_validation, ca_cert_file, ssl_cert_verify, expected_verify)
+        (False, None, True, False),
+        (True, None, True, True),
+        (True, zapi_fakes.FAKE_CA_CERT_FILE, True,
+         zapi_fakes.FAKE_CA_CERT_FILE),
+        (False, zapi_fakes.FAKE_CA_CERT_FILE, True, False),
+        (True, zapi_fakes.FAKE_CA_CERT_FILE, False, False),
     )
     @ddt.unpack
     def test_build_session_with_certificate_auth(
-            self, host_validation, ca_cert_file, expected_verify):
+            self, host_validation, ca_cert_file, ssl_cert_verify,
+            expected_verify):
         """Tests _build_session cert/verify for all self-signed cert paths."""
         self.root._private_key_file = zapi_fakes.FAKE_KEY_FILE
         self.root._certificate_file = zapi_fakes.FAKE_CERT_FILE
         self.root._certificate_host_validation = host_validation
         self.root._ca_certificate_file = ca_cert_file
+        self.root._ssl_cert_verify = ssl_cert_verify
         mock_session = self.mock_object(requests, 'Session')
         mock_session.return_value.headers = {}
 
@@ -221,14 +232,17 @@ class NetAppApiServerTests(test.TestCase):
         self.assertFalse(self.root._refresh_conn)
 
     @ddt.data(
-        (None, False),
-        (zapi_fakes.FAKE_SSL_CERT_PATH, zapi_fakes.FAKE_SSL_CERT_PATH),
+        (None, True, True),
+        (None, False, False),
+        (zapi_fakes.FAKE_SSL_CERT_PATH, True, zapi_fakes.FAKE_SSL_CERT_PATH),
+        (zapi_fakes.FAKE_SSL_CERT_PATH, False, False),
     )
     @ddt.unpack
     def test_build_session_with_basic_auth(
-            self, ssl_cert_path, expected_verify):
-        """Tests _build_session with basic auth; verify follows ssl_cert"""
+            self, ssl_cert_path, ssl_cert_verify, expected_verify):
+        """Tests _build_session with basic auth; verify follows options."""
         self.root._ssl_cert_path = ssl_cert_path
+        self.root._ssl_cert_verify = ssl_cert_verify
         mock_session = self.mock_object(requests, 'Session')
         mock_session.return_value.headers = {}
 
@@ -247,12 +261,17 @@ class NetAppApiServerTests(test.TestCase):
 
     @ddt.data(
         (requests.HTTPError(response=mock.Mock(status_code=401,
-                                               reason='Unauthorized')), False),
-        (Exception, True),
+                                               reason='Unauthorized')),
+         0, 0, 'message', 'Unauthorized'),
+        (requests.exceptions.SSLError('cert verify failed'), 1, 0,
+         'message', 'TLS verification failed'),
+        (Exception, 0, 1, 'code', 'Unexpected error'),
     )
     @ddt.unpack
-    def test_send_http_request_error(self, side_effect, check_log):
-        """Tests handling of HTTPError and unknown exceptions."""
+    def test_send_http_request_error(self, side_effect, error_log_calls,
+                                     exception_log_calls, error_field,
+                                     expected_reason):
+        """Tests handling of HTTPError, SSLError, and unknown exceptions."""
         na_element = zapi_fakes.FAKE_NA_ELEMENT
         self.mock_object(self.root, '_create_request',
                          return_value=(b'<xml/>', zapi_fakes.FAKE_NA_ELEMENT))
@@ -261,10 +280,11 @@ class NetAppApiServerTests(test.TestCase):
         self.mock_object(self.root, '_build_session')
         self.mock_object(self.root._session, 'post', side_effect=side_effect)
 
-        self.assertRaises(netapp_api.NaApiError, self.root.send_http_request,
-                          na_element)
-        if check_log:
-            self.assertEqual(1, mock_log.exception.call_count)
+        exc = self.assertRaises(netapp_api.NaApiError,
+                                self.root.send_http_request, na_element)
+        self.assertEqual(expected_reason, getattr(exc, error_field))
+        self.assertEqual(error_log_calls, mock_log.error.call_count)
+        self.assertEqual(exception_log_calls, mock_log.exception.call_count)
 
     def test_send_http_request_valid(self):
         """Tests the method send_http_request with valid parameters"""
@@ -286,7 +306,7 @@ class NetAppApiServerTests(test.TestCase):
         port = '80'
         root = netapp_api.NaServer(host, port=port)
 
-        protocol = root.TRANSPORT_TYPE_HTTP
+        protocol = root._protocol
         url = root.URL_FILER
 
         if netutils.is_valid_ipv6(host):
@@ -616,15 +636,28 @@ class NetAppRestApiServerTests(test.TestCase):
         self.rest_client = netapp_api.RestNaServer('127.0.0.1')
         super(NetAppRestApiServerTests, self).setUp()
 
-    @ddt.data(None, 'my_cert')
-    def test__init__ssl_verify(self, ssl_cert_path):
-        client = netapp_api.RestNaServer('127.0.0.1',
-                                         ssl_cert_path=ssl_cert_path)
+    def test__init__defaults_https_and_ssl_cert_verify(self):
+        """RestNaServer defaults to HTTPS and ssl_cert_verify=True."""
+        client = netapp_api.RestNaServer('127.0.0.1')
+        self.assertEqual(netapp_api.RestNaServer.TRANSPORT_TYPE_HTTPS,
+                         client._protocol)
+        self.assertTrue(client._ssl_verify)
 
-        if ssl_cert_path:
-            self.assertEqual(ssl_cert_path, client._ssl_verify)
-        else:
-            self.assertTrue(client._ssl_verify)
+    @ddt.data(
+        (None, True, True),
+        (None, False, False),
+        ('my_cert', True, 'my_cert'),
+        ('my_cert', False, False),
+    )
+    @ddt.unpack
+    def test__init__ssl_verify(self, ssl_cert_path, ssl_cert_verify,
+                               expected_verify):
+        client = netapp_api.RestNaServer(
+            '127.0.0.1',
+            ssl_cert_path=ssl_cert_path,
+            ssl_cert_verify=ssl_cert_verify)
+
+        self.assertEqual(expected_verify, client._ssl_verify)
 
     @ddt.data(None, 'ftp')
     def test_set_transport_type_value_error(self, transport_type):
@@ -730,6 +763,24 @@ class NetAppRestApiServerTests(test.TestCase):
         self.assertRaises(raised, self.rest_client.send_http_request,
                           'get', zapi_fakes.FAKE_ACTION_ENDPOINT,
                           zapi_fakes.FAKE_BODY, zapi_fakes.FAKE_HEADERS)
+
+    def test_send_http_request_ssl_error(self):
+        mock_log = self.mock_object(netapp_api, 'LOG')
+        self.mock_object(self.rest_client, '_build_session')
+        self.rest_client._session = mock.Mock()
+        self.mock_object(
+            self.rest_client, '_get_request_method', mock.Mock(
+                return_value=mock.Mock(
+                    side_effect=requests.exceptions.SSLError(
+                        'cert verify failed'))))
+
+        exc = self.assertRaises(
+            netapp_api.NaApiError, self.rest_client.send_http_request,
+            'get', zapi_fakes.FAKE_ACTION_ENDPOINT,
+            zapi_fakes.FAKE_BODY, zapi_fakes.FAKE_HEADERS)
+
+        self.assertEqual('TLS verification failed', exc.message)
+        mock_log.error.assert_called_once()
 
     @ddt.data(
         {
@@ -951,19 +1002,22 @@ class NetAppRestApiServerTests(test.TestCase):
         self.assertEqual(expected.__dict__, res.__dict__)
 
     @ddt.data(
-        # (ca_cert_file, session_verify, expected_verify)
-        (None, False, False),
-        (None, True, True),
-        (zapi_fakes.FAKE_CA_CERT_FILE, True, zapi_fakes.FAKE_CA_CERT_FILE),
-        (zapi_fakes.FAKE_CA_CERT_FILE, False, False),
+        # (ca_cert_file, session_verify, ssl_verify, expected_verify)
+        (None, False, True, False),
+        (None, True, True, True),
+        (zapi_fakes.FAKE_CA_CERT_FILE, True, True,
+         zapi_fakes.FAKE_CA_CERT_FILE),
+        (zapi_fakes.FAKE_CA_CERT_FILE, False, True, False),
+        (zapi_fakes.FAKE_CA_CERT_FILE, True, False, False),
     )
     @ddt.unpack
     def test__create_certificate_auth_handler(
-            self, ca_cert_file, session_verify, expected_verify):
+            self, ca_cert_file, session_verify, ssl_verify, expected_verify):
         """Tests all self-signed cert paths."""
         self.rest_client._private_key_file = zapi_fakes.FAKE_KEY_FILE
         self.rest_client._certificate_file = zapi_fakes.FAKE_CERT_FILE
         self.rest_client._ca_certificate_file = ca_cert_file
+        self.rest_client._ssl_verify = ssl_verify
         self.rest_client._session = mock.Mock()
         self.rest_client._session.verify = session_verify
         cert = (self.rest_client._certificate_file,

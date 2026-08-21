@@ -86,8 +86,9 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
                        'cluster_user_supported')
     @mock.patch.object(capabilities.CapabilitiesLibrary,
                        'check_api_permissions')
+    @mock.patch.object(dot_utils, 'warn_insecure_netapp_transport_options')
     @mock.patch.object(na_utils, 'check_flags')
-    def test_do_setup_san_unconfigured(self, mock_check_flags,
+    def test_do_setup_san_unconfigured(self, mock_check_flags, mock_warn,
                                        mock_check_api_permissions,
                                        mock_cluster_user_supported):
         self.library.configuration.netapp_namespace_ostype = None
@@ -100,6 +101,7 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
 
         self.library.do_setup(mock.Mock())
 
+        mock_warn.assert_called_once_with(self.library.configuration)
         self.assertTrue(mock_check_flags.called)
         mock_check_api_permissions.assert_called_once_with()
         mock_cluster_user_supported.assert_called_once_with()

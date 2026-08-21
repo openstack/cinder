@@ -68,8 +68,9 @@ class NaServer(object):
     NETAPP_NS = 'http://www.netapp.com/filer/admin'
 
     def __init__(self, host, server_type=SERVER_TYPE_FILER,
-                 transport_type=TRANSPORT_TYPE_HTTP,
-                 ssl_cert_path=None, username=None, password=None, port=None,
+                 transport_type=TRANSPORT_TYPE_HTTPS,
+                 ssl_cert_path=None, ssl_cert_verify=True,
+                 username=None, password=None, port=None,
                  api_trace_pattern=None,
                  private_key_file=None, certificate_file=None,
                  ca_certificate_file=None, certificate_host_validation=None):
@@ -88,6 +89,7 @@ class NaServer(object):
         self._session = None
         self._refresh_conn = True
         self._ssl_cert_path = ssl_cert_path
+        self._ssl_cert_verify = ssl_cert_verify
 
         if api_trace_pattern is not None:
             na_utils.setup_api_trace_pattern(api_trace_pattern)
@@ -206,6 +208,13 @@ class NaServer(object):
             response.raise_for_status()
         except requests.HTTPError as e:
             raise NaApiError(e.response.status_code, e.response.reason)
+        except requests.exceptions.SSLError as e:
+            LOG.error("TLS verification failed for NetApp server %(host)s: "
+                      "%(err)s. Set netapp_ssl_cert_path to the CA bundle "
+                      "for this system, or netapp_ssl_cert_verify=False to "
+                      "disable verification (not recommended).",
+                      {'host': self._host, 'err': e})
+            raise NaApiError(message='TLS verification failed')
         except Exception:
             LOG.exception("Error communicating with NetApp filer.")
             raise NaApiError('Unexpected error')
@@ -309,7 +318,10 @@ class NaServer(object):
         if self._private_key_file and self._certificate_file:
             self._session.cert = (self._certificate_file,
                                   self._private_key_file)
-            if self._certificate_host_validation and self._ca_certificate_file:
+            if not self._ssl_cert_verify:
+                self._session.verify = False
+            elif (self._certificate_host_validation and
+                  self._ca_certificate_file):
                 self._session.verify = self._ca_certificate_file
             else:
                 self._session.verify = bool(
@@ -317,10 +329,13 @@ class NaServer(object):
         else:
             self._session.auth = auth.HTTPBasicAuth(
                 self._username, self._password)
-            if isinstance(self._ssl_cert_path, str):
+            if not self._ssl_cert_verify:
+                self._session.verify = False
+            elif isinstance(self._ssl_cert_path, str):
                 self._session.verify = self._ssl_cert_path
             else:
-                self._session.verify = False
+                # Keep legacy client verification semantics aligned with REST.
+                self._session.verify = True
 
         self._refresh_conn = False
 
@@ -669,8 +684,9 @@ class RestNaServer(object):
         TRANSPORT_TYPE_HTTPS: HTTPS_PORT
     }
 
-    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
-                 ssl_cert_path=None, username=None, password=None, port=None,
+    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTPS,
+                 ssl_cert_path=None, ssl_cert_verify=True,
+                 username=None, password=None, port=None,
                  api_trace_pattern=None,
                  private_key_file=None, certificate_file=None,
                  ca_certificate_file=None, certificate_host_validation=None):
@@ -687,7 +703,9 @@ class RestNaServer(object):
         if api_trace_pattern is not None:
             na_utils.setup_api_trace_pattern(api_trace_pattern)
 
-        if ssl_cert_path is not None:
+        if not ssl_cert_verify:
+            self._ssl_verify = False
+        elif ssl_cert_path is not None:
             self._ssl_verify = ssl_cert_path
         else:
             # Note(felipe_rodrigues): it will verify with the Mozila CA roots,
@@ -837,16 +855,17 @@ class RestNaServer(object):
 
     def _create_certificate_auth_handler(self):
         """Creates and returns a certificate auth handler."""
+        cert = (self._certificate_file, self._private_key_file)
+        if not self._ssl_verify:
+            return cert, False
         self._certificate_host_validation = self._session.verify
         if self._certificate_file and self._private_key_file \
                 and self._ca_certificate_file:
-            self._session.cert = (self._certificate_file,
-                                  self._private_key_file)
+            self._session.cert = cert
             if self._certificate_host_validation:
                 self._session.verify = self._ca_certificate_file
         elif self._certificate_file and self._private_key_file:
-            self._session.cert = (self._certificate_file,
-                                  self._private_key_file)
+            self._session.cert = cert
         return self._session.cert, self._session.verify
 
     @volume_utils.trace_api(
@@ -870,6 +889,13 @@ class RestNaServer(object):
                 response = request_method(url, data=data)
         except requests.HTTPError as e:
             raise NaApiError(e.errno, e.strerror)
+        except requests.exceptions.SSLError as e:
+            LOG.error("TLS verification failed for NetApp server %(host)s: "
+                      "%(err)s. Set netapp_ssl_cert_path to the CA bundle "
+                      "for this system, or netapp_ssl_cert_verify=False to "
+                      "disable verification (not recommended).",
+                      {'host': self._host, 'err': e})
+            raise NaApiError(message='TLS verification failed')
         except Exception as e:
             raise NaApiError(message=e)
 
