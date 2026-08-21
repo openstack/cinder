@@ -703,15 +703,18 @@ class DataMotionMixin(object):
     def quiesce_then_abort(self, src_backend_name, dest_backend_name,
                            src_flexvol_name, dest_flexvol_name):
         """Quiesce a SnapMirror and wait with retries before aborting."""
+        source_backend_config = config_utils.get_backend_configuration(
+            src_backend_name)
+        src_vserver = source_backend_config.netapp_vserver
+
+        force_rest = self.is_consistent_replication_enabled(
+            source_backend_config)
         dest_backend_config = config_utils.get_backend_configuration(
             dest_backend_name)
         dest_vserver = dest_backend_config.netapp_vserver
         dest_client = config_utils.get_client_for_backend(
-            dest_backend_name, vserver_name=dest_vserver)
-
-        source_backend_config = config_utils.get_backend_configuration(
-            src_backend_name)
-        src_vserver = source_backend_config.netapp_vserver
+            dest_backend_name, vserver_name=dest_vserver,
+            force_rest=force_rest)
 
         # 1. Attempt to quiesce, then abort
         dest_client.quiesce_snapmirror(src_vserver,
@@ -753,15 +756,18 @@ class DataMotionMixin(object):
         3. Break SnapMirror
         4. Mount the destination volume so it is given a junction path
         """
+        source_backend_config = config_utils.get_backend_configuration(
+            src_backend_name)
+        src_vserver = source_backend_config.netapp_vserver
+
+        force_rest = self.is_consistent_replication_enabled(
+            source_backend_config)
         dest_backend_config = config_utils.get_backend_configuration(
             dest_backend_name)
         dest_vserver = dest_backend_config.netapp_vserver
         dest_client = config_utils.get_client_for_backend(
-            dest_backend_name, vserver_name=dest_vserver)
-
-        source_backend_config = config_utils.get_backend_configuration(
-            src_backend_name)
-        src_vserver = source_backend_config.netapp_vserver
+            dest_backend_name, vserver_name=dest_vserver,
+            force_rest=force_rest)
 
         # 1. Attempt to quiesce, then abort
         self.quiesce_then_abort(src_backend_name, dest_backend_name,

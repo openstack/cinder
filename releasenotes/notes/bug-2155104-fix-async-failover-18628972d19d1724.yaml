@@ -1,0 +1,24 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver: Fixed a bug where SnapMirror quiesce, abort, and
+    break operations incorrectly used the legacy ZAPI client when
+    ``netapp_consistent_replication`` is enabled.
+
+    When ``netapp_consistent_replication`` is set to ``True``, the driver
+    manages replication through ONTAP Consistency Groups (CGs), which are
+    only supported via the REST API. Other code paths in the driver that
+    operate on CG-based SnapMirror relationships (such as creation,
+    failover, and resync) already enforce REST by passing ``force_rest=True``
+    when obtaining the API client. However, the ``quiesce_then_abort`` and
+    ``break_snapmirror`` methods were missing this enforcement and fell back
+    to the ZAPI client.
+
+    As a result, customers using ``netapp_consistent_replication`` would
+    encounter errors during replication failover or failback, because ONTAP
+    rejects ZAPI-based quiesce, abort, and break calls against CG SnapMirror
+    relationships. The fix passes ``force_rest`` based on the value of
+    ``netapp_consistent_replication``, ensuring these operations use the REST
+    client when CG replication is active and ZAPI otherwise, preserving
+    backward compatibility.
+

@@ -60,8 +60,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.mock_dest_client = mock.Mock()
         self.config = fakes.get_fake_cmode_config(self.src_backend)
         self.mock_object(utils, 'get_backend_configuration',
-                         side_effect=[self.mock_dest_config,
-                                      self.mock_src_config])
+                         side_effect=self._mock_get_backend_configuration)
         self.mock_object(utils, 'get_client_for_backend',
                          side_effect=[self.mock_dest_client,
                                       self.mock_src_client])
@@ -81,6 +80,15 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             lambda cg_name: f'/cg/{cg_name}', create=True)
         self.cg_path_patcher.start()
         self.addCleanup(self.cg_path_patcher.stop)
+
+    def _mock_get_backend_configuration(self, backend_name):
+        if backend_name in (self.src_backend,
+                            dataontap_fakes.BACKEND_NAME):
+            return self.mock_src_config
+        if backend_name in (self.dest_backend,
+                            dataontap_fakes.DEST_BACKEND_NAME):
+            return self.mock_dest_config
+        raise ValueError('Unexpected backend name: %s' % backend_name)
 
     def _setup_mock_config(self):
         self.mock_src_config = configuration.Configuration(
@@ -774,6 +782,27 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             self.src_vserver, self.src_flexvol_name,
             self.dest_vserver, self.dest_flexvol_name)
 
+    @ddt.data(True, False)
+    def test_quiesce_then_abort_force_rest_client(self, consistent_rep):
+        CONF.set_override('netapp_consistent_replication',
+                          consistent_rep,
+                          group=self.src_backend)
+        mock_dest_client = mock.Mock()
+        mock_dest_client.get_snapmirrors.return_value = [
+            {'relationship-status': 'quiesced'}]
+        self.mock_object(utils, 'get_client_for_backend',
+                         return_value=mock_dest_client)
+
+        self.dm_mixin.quiesce_then_abort(self.src_backend,
+                                         self.dest_backend,
+                                         self.src_flexvol_name,
+                                         self.dest_flexvol_name)
+
+        utils.get_client_for_backend.assert_called_once_with(
+            self.dest_backend,
+            vserver_name=self.dest_vserver,
+            force_rest=consistent_rep)
+
     def test_break_snapmirror(self):
         self.mock_object(self.dm_mixin, 'quiesce_then_abort')
         self.dm_mixin.configuration = self.config
@@ -807,6 +836,35 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             self.dest_vserver, self.dest_flexvol_name)
         self.mock_dest_client.mount_flexvol.assert_called_once_with(
             self.dest_flexvol_name)
+
+    @ddt.data(True, False)
+    def test_break_snapmirror_force_rest_client(self, consistent_replication):
+        CONF.set_override('netapp_consistent_replication',
+                          consistent_replication,
+                          group=self.src_backend)
+        mock_dest_client = mock.Mock()
+        mock_dest_client.get_snapmirrors.return_value = [
+            {'relationship-status': 'quiesced'}]
+        self.mock_object(utils, 'get_client_for_backend',
+                         return_value=mock_dest_client)
+        self.dm_mixin.configuration = self.config
+
+        self.dm_mixin.break_snapmirror(self.src_backend,
+                                       self.dest_backend,
+                                       self.src_flexvol_name,
+                                       self.dest_flexvol_name)
+
+        utils.get_client_for_backend.assert_has_calls([
+            mock.call(self.dest_backend,
+                      vserver_name=self.dest_vserver,
+                      force_rest=consistent_replication),
+            mock.call(self.dest_backend,
+                      vserver_name=self.dest_vserver,
+                      force_rest=consistent_replication),
+        ])
+        mock_dest_client.break_snapmirror.assert_called_once_with(
+            self.src_vserver, self.src_flexvol_name,
+            self.dest_vserver, self.dest_flexvol_name)
 
     def test_resync_snapmirror(self):
         self.dm_mixin.resync_snapmirror(self.src_backend,
