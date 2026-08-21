@@ -14,7 +14,9 @@
         - cinder-mypy
         - cinder-tox-bandit-baseline:
             voting: false
-        - cinder-without-eventlet:
+        - cinder-tox-py312-threading:
+            voting: false
+        - cinder-tox-py313-threading:
             voting: false
         - openstack-tox-functional-py311:
             irrelevant-files: &functional-irrelevant-files
@@ -27,10 +29,13 @@
               - ^reno.yaml$
         - openstack-tox-functional-py313:
             irrelevant-files: *functional-irrelevant-files
+        - cinder-tox-functional-py313-threading:
+            voting: false
+            irrelevant-files: *functional-irrelevant-files
         # Python 3.14 testing is optional but encouraged in Hibiscus
         - openstack-tox-functional-py314:
-            irrelevant-files: *functional-irrelevant-files
             voting: false
+            irrelevant-files: *functional-irrelevant-files
         - cinder-rally-task:
             voting: false
             irrelevant-files: *functional-irrelevant-files
@@ -194,6 +199,32 @@
         'SYSTEMD_ENV_VARS["c-sch"]': OS_CINDER_DISABLE_EVENTLET_PATCHING=true
         'SYSTEMD_ENV_VARS["c-vol"]': OS_CINDER_DISABLE_EVENTLET_PATCHING=true
         'SYSTEMD_ENV_VARS["c-bak"]': OS_CINDER_DISABLE_EVENTLET_PATCHING=true
+
+- job:
+    name: cinder-tox-py313-threading
+    parent: openstack-tox-py313
+    description: |
+      Run Cinder unit tests with native threading instead of eventlet.
+      Tests the eventlet removal migration by setting
+      OS_CINDER_DISABLE_EVENTLET_PATCHING=true.
+      This job is non-voting while we work through threading compatibility
+      issues as part of the OpenStack-wide eventlet removal goal.
+    timeout: 3600
+    vars:
+      tox_envlist: py313-threading
+
+- job:
+    name: cinder-tox-functional-py313-threading
+    parent: openstack-tox-functional-py313
+    description: |
+      Run Cinder functional tests with native threading instead of eventlet.
+      Tests the eventlet removal migration by setting
+      OS_CINDER_DISABLE_EVENTLET_PATCHING=true.
+      This job is non-voting while we work through threading compatibility
+      issues as part of the OpenStack-wide eventlet removal goal.
+    timeout: 3600
+    vars:
+      tox_envlist: functional-py313-threading
 
 - job:
     name: cinder-rally-task
@@ -417,9 +448,14 @@
               build_timeout: 900
 
 - job:
-    name: cinder-without-eventlet
+    name: cinder-tox-py312-threading
     parent: openstack-tox-py312
     description: |
-      The regular openstack-tox job but with Eventlet disabled
+      Run Cinder unit tests with native threading instead of eventlet.
+      Tests the eventlet removal migration by setting
+      OS_CINDER_DISABLE_EVENTLET_PATCHING=true.
+      This job is non-voting while we work through threading compatibility
+      issues as part of the OpenStack-wide eventlet removal goal.
+    timeout: 3600
     vars:
       tox_envlist: py312-threading
