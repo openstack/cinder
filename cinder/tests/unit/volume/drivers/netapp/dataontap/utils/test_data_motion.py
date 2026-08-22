@@ -1868,6 +1868,99 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             dest_client, 'volume'
         )
 
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_create_snapmirror_for_cg_cg_expand_in_progress(
+            self, mock_get_backend_configuration, mock_get_client_for_backend):
+
+        src_backend = 'src_backend'
+        dst_backend = 'dst_backend'
+        src_vserver = 'source_vserver'
+        dst_vserver = 'dest_vserver'
+        src_cg = 'cg_src'
+        dst_cg = 'cg_dst'
+        policy = 'AutomatedFailOver'
+
+        mock_get_backend_configuration.side_effect = [
+            self.mock_dest_config,
+            self.mock_src_config,
+        ]
+
+        dest_client = mock.Mock()
+        dest_client.get_snapmirrors.return_value = [
+            {'mirror-state': 'broken-off'}]
+        dest_client.resume_snapmirror.side_effect = netapp_api.NaApiError(
+            code=netapp_api.REST_CG_EXPAND_IN_PROGRESS,
+            message='Expand operation in progress, wait for the operation '
+                    'to complete.')
+        mock_get_client_for_backend.return_value = dest_client
+
+        mock_info_log = self.mock_object(data_motion.LOG, 'info')
+        mock_exception_log = self.mock_object(data_motion.LOG, 'exception')
+
+        self.dm_mixin.create_snapmirror_for_cg(
+            src_backend_name=src_backend,
+            dest_backend_name=dst_backend,
+            src_cg_name=src_cg,
+            dest_cg_name=dst_cg,
+            storage_object_type='volume',
+            storage_object_names=['vol1', 'vol2'],
+            replication_policy=policy,
+        )
+
+        dest_client.resume_snapmirror.assert_called_once_with(
+            src_vserver, '/cg/' + src_cg, dst_vserver, '/cg/' + dst_cg)
+        mock_exception_log.assert_not_called()
+        mock_info_log.assert_called_once()
+        _, info_payload = mock_info_log.call_args[0]
+        self.assertEqual(src_cg, info_payload['src_cg'])
+        self.assertEqual(dst_cg, info_payload['dest_cg'])
+
+    @mock.patch.object(data_motion.config_utils,
+                       'get_client_for_backend')
+    @mock.patch.object(data_motion.config_utils,
+                       'get_backend_configuration')
+    def test_create_snapmirror_for_cg_repair_exception(
+            self, mock_get_backend_configuration, mock_get_client_for_backend):
+
+        src_backend = 'src_backend'
+        dst_backend = 'dst_backend'
+        src_vserver = 'source_vserver'
+        dst_vserver = 'dest_vserver'
+        src_cg = 'cg_src'
+        dst_cg = 'cg_dst'
+        policy = 'AutomatedFailOver'
+
+        mock_get_backend_configuration.side_effect = [
+            self.mock_dest_config,
+            self.mock_src_config,
+        ]
+
+        dest_client = mock.Mock()
+        dest_client.get_snapmirrors.return_value = [
+            {'mirror-state': 'broken-off'}]
+        dest_client.resume_snapmirror.side_effect = netapp_api.NaApiError(
+            code='12345', message='SnapMirror repair failed.')
+        mock_get_client_for_backend.return_value = dest_client
+
+        mock_exception_log = self.mock_object(data_motion.LOG, 'exception')
+
+        self.dm_mixin.create_snapmirror_for_cg(
+            src_backend_name=src_backend,
+            dest_backend_name=dst_backend,
+            src_cg_name=src_cg,
+            dest_cg_name=dst_cg,
+            storage_object_type='volume',
+            storage_object_names=['vol1', 'vol2'],
+            replication_policy=policy,
+        )
+
+        dest_client.resume_snapmirror.assert_called_once_with(
+            src_vserver, '/cg/' + src_cg, dst_vserver, '/cg/' + dst_cg)
+        mock_exception_log.assert_called_once()
+
     @mock.patch.object(data_motion.DataMotionMixin,
                        'create_snapmirror_for_cg')
     @mock.patch.object(
