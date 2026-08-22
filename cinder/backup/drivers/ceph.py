@@ -52,7 +52,6 @@ import textwrap
 import time
 from typing import Dict, List, Optional, Tuple
 
-import eventlet
 from os_brick.initiator import linuxrbd
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -132,8 +131,8 @@ class VolumeMetadataBackup(object):
 
     @property
     def exists(self) -> bool:
-        meta_obj = eventlet.tpool.Proxy(rados.Object(self._client.ioctx,
-                                                     self.name))
+        meta_obj = utils.tpool_wrap(
+            rados.Object(self._client.ioctx, self.name))
         return self._exists(meta_obj)
 
     def _exists(self, obj) -> bool:
@@ -150,8 +149,8 @@ class VolumeMetadataBackup(object):
         This should only be called once per backup. Raises
         VolumeMetadataBackupExists if the object already exists.
         """
-        meta_obj = eventlet.tpool.Proxy(rados.Object(self._client.ioctx,
-                                                     self.name))
+        meta_obj = utils.tpool_wrap(
+            rados.Object(self._client.ioctx, self.name))
         if self._exists(meta_obj):
             msg = _("Metadata backup object '%s' already exists") % self.name
             raise exception.VolumeMetadataBackupExists(msg)
@@ -163,8 +162,8 @@ class VolumeMetadataBackup(object):
 
         Returns None if the object does not exist.
         """
-        meta_obj = eventlet.tpool.Proxy(rados.Object(self._client.ioctx,
-                                                     self.name))
+        meta_obj = utils.tpool_wrap(
+            rados.Object(self._client.ioctx, self.name))
         if not self._exists(meta_obj):
             LOG.debug("Metadata backup object %s does not exist", self.name)
             return None
@@ -172,8 +171,8 @@ class VolumeMetadataBackup(object):
         return meta_obj.read().decode('utf-8')
 
     def remove_if_exists(self) -> None:
-        meta_obj = eventlet.tpool.Proxy(rados.Object(self._client.ioctx,
-                                                     self.name))
+        meta_obj = utils.tpool_wrap(
+            rados.Object(self._client.ioctx, self.name))
         try:
             meta_obj.remove()
         except rados.ObjectNotFound:
@@ -337,9 +336,9 @@ class CephBackupDriver(driver.BackupDriver):
                           pool: Optional[str] = None) -> Tuple['rados.Rados',
                                                                'rados.Ioctx']:
         """Establish connection to the backup Ceph cluster."""
-        client = eventlet.tpool.Proxy(self.rados.Rados(
-                                      rados_id=self._ceph_backup_user,
-                                      conffile=self._ceph_backup_conf))
+        client = utils.tpool_wrap(
+            self.rados.Rados(rados_id=self._ceph_backup_user,
+                             conffile=self._ceph_backup_conf))
         try:
             client.connect()
             pool_to_open = pool or self._ceph_backup_pool
@@ -410,11 +409,11 @@ class CephBackupDriver(driver.BackupDriver):
                 limit = 2 * units.Gi - 1
                 chunks = int(length / limit)
                 for chunk in range(0, chunks):
-                    eventlet.tpool.Proxy(volume.rbd_image).discard(
+                    utils.tpool_wrap(volume.rbd_image).discard(
                         offset + chunk * limit, limit)
                 rem = int(length % limit)
                 if rem:
-                    eventlet.tpool.Proxy(volume.rbd_image).discard(
+                    utils.tpool_wrap(volume.rbd_image).discard(
                         offset + chunks * limit, rem)
             else:
                 zeroes = bytearray(self.chunk_size)
@@ -496,7 +495,7 @@ class CephBackupDriver(driver.BackupDriver):
         """
         LOG.debug("Creating base image '%s'", name)
         old_format, features = self._get_rbd_support()
-        eventlet.tpool.Proxy(self.rbd.RBD()).create(
+        utils.tpool_wrap(self.rbd.RBD()).create(
             ioctx=rados_client.ioctx,
             name=name,
             size=size,
@@ -520,8 +519,8 @@ class CephBackupDriver(driver.BackupDriver):
         Returns tuple(deleted_snap_name, num_of_remaining_snaps).
         """
         remaining_snaps = 0
-        base_rbd = eventlet.tpool.Proxy(self.rbd.Image(rados_client.ioctx,
-                                                       base_name))
+        base_rbd = utils.tpool_wrap(
+            self.rbd.Image(rados_client.ioctx, base_name))
         try:
             snap_name = self._get_backup_snap_name(base_rbd, base_name,
                                                    backup_id)
@@ -572,8 +571,8 @@ class CephBackupDriver(driver.BackupDriver):
                       "backup base image of volume %(volume)s.",
                       {'basename': base_name, 'volume': volume_id})
 
-        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
-                                  backup.container)) as client:
+        with utils.tpool_wrap(
+                rbd_driver.RADOSClient(self, backup.container)) as client:
             rbd_exists, base_name = \
                 self._rbd_image_exists(base_name, volume_id, client,
                                        try_diff_format=try_diff_format)
@@ -598,7 +597,7 @@ class CephBackupDriver(driver.BackupDriver):
                          {'basename': base_name, 'volume': volume_id})
                 # Delete base if no more snapshots
                 try:
-                    eventlet.tpool.Proxy(self.rbd.RBD()).remove(
+                    utils.tpool_wrap(self.rbd.RBD()).remove(
                         client.ioctx, base_name)
                 except self.rbd.ImageBusy:
                     # Allow a retry if the image is busy
@@ -626,13 +625,13 @@ class CephBackupDriver(driver.BackupDriver):
             # Since we have deleted the base image we can delete the source
             # volume backup snapshot.
             src_name = volume_id
-            if src_name in eventlet.tpool.Proxy(
+            if src_name in utils.tpool_wrap(
                     self.rbd.RBD()).list(client.ioctx):
                 LOG.debug("Deleting source volume snapshot '%(snapshot)s' "
                           "for backup %(basename)s.",
                           {'snapshot': snap, 'basename': base_name})
-                src_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
-                                                              src_name))
+                src_rbd = utils.tpool_wrap(
+                    self.rbd.Image(client.ioctx, src_name))
                 try:
                     src_rbd.remove_snap(snap)
                 finally:
@@ -726,7 +725,7 @@ class CephBackupDriver(driver.BackupDriver):
             client: 'rados.Rados',
             try_diff_format: Optional[bool] = False) -> Tuple[bool, str]:
         """Return tuple (exists, name)."""
-        rbds = eventlet.tpool.Proxy(self.rbd.RBD()).list(client.ioctx)
+        rbds = utils.tpool_wrap(self.rbd.RBD()).list(client.ioctx)
         if name not in rbds:
             LOG.debug("Image '%s' not found - trying diff format name", name)
             if try_diff_format:
@@ -744,8 +743,8 @@ class CephBackupDriver(driver.BackupDriver):
                      snap_name: str,
                      client: 'rados.Rados') -> bool:
         """Return True if snapshot exists in base image."""
-        base_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
-                                        base_name, read_only=True))
+        base_rbd = utils.tpool_wrap(
+            self.rbd.Image(client.ioctx, base_name, read_only=True))
         try:
             snaps = base_rbd.list_snaps()
 
@@ -765,8 +764,8 @@ class CephBackupDriver(driver.BackupDriver):
                          base_name: str,
                          length: int) -> Tuple[Optional[str], bool]:
         """Create the base_image for a full RBD backup."""
-        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
-                                  container)) as client:
+        with utils.tpool_wrap(
+                rbd_driver.RADOSClient(self, container)) as client:
             self._create_base_image(base_name, length, client)
         # Now we just need to return from_snap=None and image_created=True, if
         # there is some exception in making backup snapshot, will clean up the
@@ -792,10 +791,10 @@ class CephBackupDriver(driver.BackupDriver):
                    'incr': last_incr,
                    })
 
-        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
-                                  container)) as client:
+        with utils.tpool_wrap(
+                rbd_driver.RADOSClient(self, container)) as client:
             try:
-                base_rbd = eventlet.tpool.Proxy(
+                base_rbd = utils.tpool_wrap(
                     self.rbd.Image(client.ioctx, base_name, read_only=True))
             except rbd.ImageNotFound:
                 msg = (_(
@@ -828,7 +827,7 @@ class CephBackupDriver(driver.BackupDriver):
         rbd_user = volume_file.rbd_user
         rbd_pool = volume_file.rbd_pool
         rbd_conf = volume_file.rbd_conf
-        source_rbd_image = eventlet.tpool.Proxy(volume_file.rbd_image)
+        source_rbd_image = utils.tpool_wrap(volume_file.rbd_image)
         volume_id = backup.volume_id
         base_name = self._get_backup_base_name(volume_id, backup=backup)
         snaps_to_keep = CONF.backup_ceph_max_snapshots
@@ -1001,14 +1000,14 @@ class CephBackupDriver(driver.BackupDriver):
         else:
             backup_name = self._get_backup_base_name(volume_id, backup=backup)
 
-        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
-                                  backup.container)) as client:
+        with utils.tpool_wrap(
+                rbd_driver.RADOSClient(self, backup.container)) as client:
             # First create base backup image
             old_format, features = self._get_rbd_support()
             LOG.debug("Creating backup base image='%(name)s' for volume "
                       "%(volume)s.",
                       {'name': backup_name, 'volume': volume_id})
-            eventlet.tpool.Proxy(self.rbd.RBD()).create(
+            utils.tpool_wrap(self.rbd.RBD()).create(
                 ioctx=client.ioctx,
                 name=backup_name,
                 size=length,
@@ -1018,8 +1017,8 @@ class CephBackupDriver(driver.BackupDriver):
                 stripe_count=self.rbd_stripe_count)
 
             LOG.debug("Copying data from volume %s.", volume_id)
-            dest_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
-                                            backup_name))
+            dest_rbd = utils.tpool_wrap(
+                self.rbd.Image(client.ioctx, backup_name))
             meta_io_proxy = None
             try:
                 rbd_meta = linuxrbd.RBDImageMetadata(dest_rbd,
@@ -1027,7 +1026,7 @@ class CephBackupDriver(driver.BackupDriver):
                                                      self._ceph_backup_user,
                                                      self._ceph_backup_conf)
                 rbd_fd = linuxrbd.RBDVolumeIOWrapper(rbd_meta)
-                meta_io_proxy = eventlet.tpool.Proxy(rbd_fd)
+                meta_io_proxy = utils.tpool_wrap(rbd_fd)
                 self._transfer_data(src_volume, src_name, meta_io_proxy,
                                     backup_name, length)
             finally:
@@ -1133,8 +1132,9 @@ class CephBackupDriver(driver.BackupDriver):
 
         LOG.debug("Backing up metadata for volume %s.", backup.volume_id)
         try:
-            with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
-                                      backup.container)) as client:
+            with utils.tpool_wrap(
+                rbd_driver.RADOSClient(self, backup.container)
+            ) as client:
                 vol_meta_backup = VolumeMetadataBackup(client, backup.id)
                 vol_meta_backup.set(json_meta)
         except exception.VolumeMetadataBackupExists as e:
@@ -1221,8 +1221,8 @@ class CephBackupDriver(driver.BackupDriver):
         :param src_snap: A string, the name of the restore point snapshot,
         optional, used for incremental backups or RBD backup.
         """
-        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
-                                  backup.container)) as client:
+        with utils.tpool_wrap(
+                rbd_driver.RADOSClient(self, backup.container)) as client:
             # In case of snapshot_id, the old base name format is used:
             # volume-<vol-uuid>.backup.base
             # Otherwise, the new base name format is used:
@@ -1237,10 +1237,11 @@ class CephBackupDriver(driver.BackupDriver):
             try:
                 # Retrieve backup volume
                 _src = src_snap
-                src_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
-                                                              backup_name,
-                                                              snapshot=_src,
-                                                              read_only=True))
+                src_rbd = utils.tpool_wrap(
+                    self.rbd.Image(client.ioctx,
+                                   backup_name,
+                                   snapshot=_src,
+                                   read_only=True))
             except rbd.ImageNotFound:
                 # Check for another base name as a fallback mechanism, in case
                 # the backup image is not found under the expected name.
@@ -1265,11 +1266,11 @@ class CephBackupDriver(driver.BackupDriver):
                         'next_name': backup_name})
                 LOG.info(msg)
 
-                src_rbd = eventlet.tpool.Proxy(self.rbd.Image(
-                                               client.ioctx,
-                                               backup_name,
-                                               snapshot=_src,
-                                               read_only=True))
+                src_rbd = utils.tpool_wrap(
+                    self.rbd.Image(client.ioctx,
+                                   backup_name,
+                                   snapshot=_src,
+                                   read_only=True))
 
             try:
                 rbd_meta = linuxrbd.RBDImageMetadata(src_rbd,
@@ -1277,7 +1278,7 @@ class CephBackupDriver(driver.BackupDriver):
                                                      self._ceph_backup_user,
                                                      self._ceph_backup_conf)
                 rbd_fd = linuxrbd.RBDVolumeIOWrapper(rbd_meta)
-                self._transfer_data(eventlet.tpool.Proxy(rbd_fd), backup_name,
+                self._transfer_data(utils.tpool_wrap(rbd_fd), backup_name,
                                     dest_file, dest_name, length,
                                     discard_zeros=volume_is_new)
             finally:
@@ -1295,12 +1296,11 @@ class CephBackupDriver(driver.BackupDriver):
         backup_base = self._get_backup_base_name(backup.volume_id,
                                                  backup=backup)
 
-        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
-                                  backup.container)) as client:
+        with utils.tpool_wrap(
+                rbd_driver.RADOSClient(self, backup.container)) as client:
             adjust_size = 0
-            base_image = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
-                                              backup_base,
-                                              read_only=True))
+            base_image = utils.tpool_wrap(
+                self.rbd.Image(client.ioctx, backup_base, read_only=True))
             try:
                 if restore_length != base_image.size():
                     adjust_size = restore_length
@@ -1357,10 +1357,11 @@ class CephBackupDriver(driver.BackupDriver):
         base has no snapshots/restore points), None is returned. Otherwise, the
         restore point associated with backup_id is returned.
         """
-        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
-                                  self._ceph_backup_pool)) as client:
-            base_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
-                                            base_name, read_only=True))
+        with utils.tpool_wrap(
+            rbd_driver.RADOSClient(
+                self, self._ceph_backup_pool)) as client:
+            base_rbd = utils.tpool_wrap(
+                self.rbd.Image(client.ioctx, base_name, read_only=True))
             try:
                 restore_point = self._get_backup_snap_name(base_rbd, base_name,
                                                            backup_id)
@@ -1468,8 +1469,8 @@ class CephBackupDriver(driver.BackupDriver):
         else:
             base_name = self._get_backup_base_name(backup.volume_id)
 
-        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(
-                                  self, backup.container)) as client:
+        with utils.tpool_wrap(
+                rbd_driver.RADOSClient(self, backup.container)) as client:
             diff_allowed, restore_point = \
                 self._diff_restore_allowed(base_name, backup, volume,
                                            volume_file, client)
@@ -1501,7 +1502,7 @@ class CephBackupDriver(driver.BackupDriver):
         otherwise do nothing.
         """
         try:
-            with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self)) as client:
+            with utils.tpool_wrap(rbd_driver.RADOSClient(self)) as client:
                 meta_bak = VolumeMetadataBackup(client, backup.id)
                 meta = meta_bak.get()
                 if meta is not None:
@@ -1571,8 +1572,8 @@ class CephBackupDriver(driver.BackupDriver):
             has_pool = False
 
         if has_pool:
-            with eventlet.tpool.Proxy(rbd_driver.RADOSClient(
-                                      self, backup.container)) as client:
+            with utils.tpool_wrap(
+                    rbd_driver.RADOSClient(self, backup.container)) as client:
                 VolumeMetadataBackup(client, backup.id).remove_if_exists()
 
         if delete_failed:
