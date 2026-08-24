@@ -779,7 +779,7 @@ class Client(client_base.Client, metaclass=volume_utils.TraceWrapperMetaclass):
         """Cancel/Destroy a in-progress file copy."""
         api_args = {
             'job-uuid': job_uuid,
-            'file-index': 0
+            'file-index': '0'
         }
         try:
             self.connection.send_request('file-copy-destroy', api_args,

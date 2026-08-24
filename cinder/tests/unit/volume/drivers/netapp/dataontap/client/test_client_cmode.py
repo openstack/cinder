@@ -4437,7 +4437,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
         result = self.client.destroy_file_copy(fake.JOB_UUID)
         api_args = {
             'job-uuid': fake.JOB_UUID,
-            'file-index': 0
+            'file-index': '0'
         }
         mock_send_request.assert_called_once_with('file-copy-destroy',
                                                   api_args,
@@ -4453,7 +4453,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                           fake.JOB_UUID)
         api_args = {
             'job-uuid': fake.JOB_UUID,
-            'file-index': 0
+            'file-index': '0'
         }
         mock_send_request.assert_called_once_with('file-copy-destroy',
                                                   api_args,
