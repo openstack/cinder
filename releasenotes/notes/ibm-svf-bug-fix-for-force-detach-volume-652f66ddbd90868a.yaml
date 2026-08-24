@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    IBM SVF bug fixes for force detach volume
+    https://bugs.launchpad.net/cinder/+bug/2054317:Fixed
+    Issue in terminate_connection and in
+    _get_map_info_from_connector while getting host
+    information from connector when it is None
+    during volume detach operation

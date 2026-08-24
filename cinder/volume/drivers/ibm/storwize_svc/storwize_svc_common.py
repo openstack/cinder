@@ -5724,7 +5724,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         backend_helper.initialize_host_info()
 
         info = {}
-        if 'host' in connector:
+        if connector and 'host' in connector:
             # get host according to FC protocol
             connector = connector.copy()
             if not iscsi:

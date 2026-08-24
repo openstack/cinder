@@ -420,14 +420,17 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         # is down, then the connector will not have a host property,
         # In this case construct the lock without the host property
         # so that all the fake connectors to an SVC are serialized
-        host = connector['host'] if 'host' in connector else ""
+        LOG.debug('enter: terminate_connection: volume %(vol)s with'
+                  ' connector %(conn)s. kwargs %(k)s',
+                  {'vol': volume, 'conn': connector, 'k': kwargs})
+        host = connector.get('host', '') if connector else ""
         attachment_count = 0
         if hasattr(volume, 'multiattach') and volume.multiattach:
             try:
                 attachment_list = volume.volume_attachment
                 for attachment in attachment_list:
                     if (attachment.attach_status == "attached" and
-                       attachment.attached_host == host):
+                       (attachment.attached_host == host or host == "")):
                         attachment_count += 1
             except AttributeError:
                 pass

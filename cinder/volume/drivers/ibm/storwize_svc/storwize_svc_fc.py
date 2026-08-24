@@ -331,14 +331,17 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         # is down, then the connector will not have a host property,
         # In this case construct the lock without the host property
         # so that all the fake connectors to an SVC are serialized
-        host = connector['host'] if 'host' in connector else ""
+        LOG.debug('enter: terminate_connection: volume %(vol)s with '
+                  'connector %(conn)s. kwargs %(k)s',
+                  {'vol': volume, 'conn': connector, 'k': kwargs})
+        host = connector.get('host', '') if connector else ""
         attachment_count = 0
         if hasattr(volume, 'multiattach') and volume.multiattach:
             try:
                 attachment_list = volume.volume_attachment
                 for attachment in attachment_list:
                     if (attachment.attach_status == "attached" and
-                       attachment.attached_host == host):
+                       (attachment.attached_host == host or host == "")):
                         attachment_count += 1
             except AttributeError:
                 pass
@@ -386,7 +389,7 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
                 LOG.info("Need to remove FC Zone, building initiator "
                          "target map.")
                 # Build info data structure for zone removing
-                if 'wwpns' in connector and host_name:
+                if connector and 'wwpns' in connector and host_name:
                     target_wwpns = []
                     # Returning all target_wwpns in storage_nodes, since
                     # we cannot determine which wwpns are logged in during
