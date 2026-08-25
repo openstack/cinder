@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The boto3 library is no longer directly required by cinder. The library
+    and its dependencies should be installed when s3 backup driver is used.

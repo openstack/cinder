@@ -70,11 +70,6 @@ import io
 import itertools as it
 import socket
 
-import boto3
-from botocore.config import Config
-from botocore import exceptions as boto_exc
-from botocore.vendored.requests.packages.urllib3 import exceptions as \
-    urrlib_exc
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
@@ -83,6 +78,15 @@ from cinder.backup import chunkeddriver
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+
+try:
+    import boto3
+    from botocore.config import Config
+    from botocore import exceptions as boto_exc
+    from botocore.vendored.requests.packages.urllib3 import exceptions as \
+        urrlib_exc
+except ImportError:
+    boto3 = None
 
 LOG = logging.getLogger(__name__)
 
@@ -169,6 +173,10 @@ class S3BackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within S3."""
 
     def __init__(self, context):
+        if boto3 is None:
+            msg = _('boto3 python library not found')
+            raise exception.BackupDriverException(reason=msg)
+
         chunk_size_bytes = CONF.backup_s3_object_size
         sha_block_size_bytes = CONF.backup_s3_block_size
         backup_bucket = CONF.backup_s3_store_bucket
