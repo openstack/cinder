@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import errno
 import fnmatch
 import os
@@ -23,10 +24,6 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import fileutils
-try:
-    import psutil
-except ImportError:
-    psutil = None
 
 from cinder import compute
 from cinder import coordination
@@ -38,7 +35,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.2'
+VERSION = '1.2.1'
 
 LOG = logging.getLogger(__name__)
 
@@ -79,6 +76,9 @@ volume_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
+
+_PartitionInfo = collections.namedtuple(
+    'PartitionInfo', ['device', 'mountpoint', 'fstype'])
 
 
 @interface.volumedriver
@@ -122,6 +122,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.14 - Fixes regression from encryption being added in parent class
         1.1.15 - Handle file formats correctly in copy_image_to_volume
         1.2    - Fix stat reporting which adds thin provisioning
+        1.2.1  - Drops the psutil requirement by parsing /proc/mounts
 
     """
 
@@ -279,10 +280,6 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                             "setting will be ignored.")
 
     def check_for_setup_error(self):
-        if psutil is None:
-            msg = _("The python 'psutil' module is required by this driver.")
-            LOG.error(msg)
-            raise exception.VolumeDriverException(msg)
         if not self.configuration.quobyte_volume_url:
             msg = (_("There's no Quobyte volume configured (%s). Example:"
                      " quobyte://<DIR host>/<volume name>") %
@@ -736,14 +733,26 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
     def read_proc_mount():  # pragma: no cover
         return open('/proc/mounts')
 
+    @classmethod
+    def disk_partitions(cls, all=True):
+        """Returns (device, mountpoint, fstype) entries from /proc/mounts.
+
+        Avoids a psutil dependency. ``all`` is accepted for call-site
+        compatibility but has no effect.
+        """
+        partitions = []
+        with cls.read_proc_mount() as proc_mount:
+            for line in proc_mount:
+                fields = line.split()
+                device, mountpoint, fstype = (
+                    cls._unescape_proc_mount_field(f) for f in fields[:3])
+                partitions.append(_PartitionInfo(device, mountpoint, fstype))
+        return partitions
+
     def _mount_quobyte(self, quobyte_volume, mount_path, ensure=False):
         """Mount Quobyte volume to mount path."""
-        mounted = False
-        with QuobyteDriver.read_proc_mount() as proc_mount:
-            for line in proc_mount:
-                if line.split()[1] == mount_path:
-                    mounted = True
-                    break
+        mounted = any(p.mountpoint == mount_path
+                      for p in self.disk_partitions(all=True))
 
         if mounted:
             try:
@@ -802,41 +811,47 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         self._stats['thick_provisioning_support'] = (
             not self._stats['thin_provisioning_support'])
 
+    @staticmethod
+    def _unescape_proc_mount_field(field):
+        """Unescape the octal sequences used in /proc/mounts fields.
+
+        The kernel escapes space, tab, newline and backslash in the
+        device and mount point fields of /proc/mounts.
+        """
+        return (field.replace(r'\040', ' ').replace(r'\011', '\t')
+                .replace(r'\012', '\n').replace(r'\134', '\\'))
+
     def _validate_volume(self, mount_path):
         """Runs a number of tests on the expect Quobyte mount"""
-        partitions = psutil.disk_partitions(all=True)
-        for p in partitions:
-            if mount_path == p.mountpoint:
-                if (p.device.startswith("quobyte@") or
-                        (p.fstype == "fuse.quobyte")):
-                    try:
-                        statresult = os.stat(mount_path)
-                        if statresult.st_size == 0:
-                            # client looks healthy
-                            if not os.access(mount_path,
-                                             os.W_OK | os.X_OK):
-                                LOG.warning("Volume is not writable. "
-                                            "Please broaden the file"
-                                            " permissions."
-                                            " Mount: %s",
-                                            mount_path)
-                            return  # we're happy here
-                        else:
-                            msg = (_("The mount %(mount_path)s is not a "
-                                     "valid Quobyte volume. Stale mount?")
-                                   % {'mount_path': mount_path})
-                        raise exception.VolumeDriverException(msg)
-                    except Exception as exc:
-                        msg = (_("The mount %(mount_path)s is not a valid"
-                                 " Quobyte volume. Error: %(exc)s . "
-                                 " Possibly a Quobyte client crash?")
-                               % {'mount_path': mount_path, 'exc': exc})
-                        raise exception.VolumeDriverException(msg)
-                else:
+        for p in self.disk_partitions(all=True):
+            if mount_path != p.mountpoint:
+                continue
+            if p.device.startswith("quobyte@") or p.fstype == "fuse.quobyte":
+                try:
+                    statresult = os.stat(mount_path)
+                except OSError as exc:
                     msg = (_("The mount %(mount_path)s is not a valid"
-                             " Quobyte volume according to partition list.")
-                           % {'mount_path': mount_path})
+                             " Quobyte volume. Error: %(exc)s . "
+                             " Possibly a Quobyte client crash?")
+                           % {'mount_path': mount_path, 'exc': exc})
                     raise exception.VolumeDriverException(msg)
+                if statresult.st_size == 0:
+                    if not os.access(mount_path, os.W_OK | os.X_OK):
+                        LOG.warning("Volume is not writable. "
+                                    "Please broaden the file"
+                                    " permissions."
+                                    " Mount: %s",
+                                    mount_path)
+                    return
+                msg = (_("The mount %(mount_path)s is not a "
+                         "valid Quobyte volume. Stale mount?")
+                       % {'mount_path': mount_path})
+                raise exception.VolumeDriverException(msg)
+            else:
+                msg = (_("The mount %(mount_path)s is not a valid"
+                         " Quobyte volume according to partition list.")
+                       % {'mount_path': mount_path})
+                raise exception.VolumeDriverException(msg)
         msg = (_("No matching Quobyte mount entry for %(mount_path)s"
                  " could be found for validation in partition list.")
                % {'mount_path': mount_path})

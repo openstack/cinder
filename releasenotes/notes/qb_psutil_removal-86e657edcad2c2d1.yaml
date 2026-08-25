@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Quobyte driver: Drops the psutil dependency for the Quobyte driver.
