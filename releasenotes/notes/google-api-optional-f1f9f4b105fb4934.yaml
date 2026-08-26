@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Now the ``google-api-python-client`` library is an optional dependency. It
+    should be additionally installed when the GCS volume backup driver is used.
