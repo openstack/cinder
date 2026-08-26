@@ -17,6 +17,7 @@
 This driver requires Purity version 6.1.0 or higher.
 """
 
+import contextlib
 import functools
 import ipaddress
 import math
@@ -1318,6 +1319,47 @@ class PureBaseVolumeDriver(san.SanDriver):
                       a.attached_host == host_name]
         return len(attachment) > 1
 
+    @staticmethod
+    def _get_connection_lock_names(volume, connector):
+        """Return the lock names a connection change must hold.
+
+        ``initialize_connection`` locks on ``pure-<connector host>``, so a
+        detach has to take that same lock to exclude a concurrent attach on
+        the host whose Purity host object it is about to modify.
+
+        A force detach has no connector, and disconnects the volume from
+        every host it is attached to.  Keying the lock on the volume in that
+        case excludes nothing, because no other operation uses that name, so
+        we take the lock for each attached host instead.  Force detach is
+        used when things are already going wrong, which makes it the case
+        most likely to run alongside other work on those hosts.
+
+        Attachments are not filtered by ``attach_status``: an attachment
+        that is still in progress is exactly what we need to exclude.  With
+        nothing attached there is no host operation to race with, and the
+        volume is a sufficient key.
+        """
+        if connector:
+            return ['pure-%s' % connector['host']]
+
+        hosts = {attachment.attached_host
+                 for attachment in (volume.volume_attachment or [])
+                 if attachment.attached_host}
+        if not hosts:
+            return ['pure-%s' % volume.id]
+
+        # Sorted so that concurrent detaches spanning several hosts always
+        # acquire the locks in the same order and cannot deadlock.
+        return sorted('pure-%s' % host for host in hosts)
+
+    @contextlib.contextmanager
+    def _connection_lock(self, volume, connector):
+        """Hold every host lock a connection change on this volume needs."""
+        with contextlib.ExitStack() as stack:
+            for name in self._get_connection_lock_names(volume, connector):
+                stack.enter_context(coordination.COORDINATOR.get_lock(name))
+            yield
+
     @pure_driver_debug_trace
     def _disconnect(self, array, volume, connector, remove_remote_hosts=True,
                     is_multiattach=False):
@@ -1370,12 +1412,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     @pure_driver_debug_trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""
-        # Use host-based locking when connector is provided, otherwise
-        # use volume-based locking for force detach scenarios
-        host = connector['host'] if connector else volume.id
-
-        @coordination.synchronized('pure-{host}')
-        def _do_terminate_connection(host):
+        with self._connection_lock(volume, connector):
             vol_name = self._get_vol_name(volume)
             # None `connector` indicates force detach, then delete all even
             # if the volume is multi-attached.
@@ -1397,8 +1434,6 @@ class PureBaseVolumeDriver(san.SanDriver):
             self._disconnect(self._get_current_array(), volume,
                              connector, remove_remote_hosts=False,
                              is_multiattach=multiattach)
-
-        return _do_terminate_connection(host)
 
     @pure_driver_debug_trace
     def _disconnect_host(self, array, host_name, vol_name):
@@ -4484,12 +4519,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     @pure_driver_debug_trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""
-        # Use host-based locking when connector is provided, otherwise
-        # use volume-based locking for force detach scenarios
-        host = connector['host'] if connector else volume.id
-
-        @coordination.synchronized('pure-{host}')
-        def _do_terminate_connection(host):
+        with self._connection_lock(volume, connector):
             vol_name = self._get_vol_name(volume)
             # None `connector` indicates force detach, then delete all even
             # if the volume is multi-attached.
@@ -4527,8 +4557,6 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                                       "initiator_target_map": init_targ_map}
             fczm_utils.remove_fc_zone(properties)
             return properties
-
-        return _do_terminate_connection(host)
 
 
 @interface.volumedriver

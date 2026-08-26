@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    Everpure driver `bug #2165077
+    <https://bugs.launchpad.net/cinder/+bug/2165077>`_: A force detach,
+    where ``terminate_connection`` is called without a connector, took its
+    coordination lock on the volume rather than on a host. No other
+    operation uses that lock name, so a force detach was not serialized
+    against concurrent attach or detach operations on the hosts whose
+    Purity host objects it was modifying. Because a force detach
+    disconnects the volume from every host it is attached to, the driver
+    now takes the host lock for each of those hosts, matching the lock
+    ``initialize_connection`` already uses. When the volume has no
+    attachment records the volume lock is still used, as there is no host
+    operation that could be raced.
