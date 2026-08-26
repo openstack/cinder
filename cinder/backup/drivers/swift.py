@@ -49,8 +49,12 @@ import socket
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
-from swiftclient import client as swift
-from swiftclient import exceptions as swift_exc
+
+try:
+    from swiftclient import client as swift
+    from swiftclient import exceptions as swift_exc
+except ImportError:
+    swift = swift_exc = None
 
 from cinder.backup import chunkeddriver
 from cinder import exception
@@ -173,6 +177,10 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
             backup_default_container,
             enable_progress_timer,
         )
+
+        if swift is None:
+            msg = _('python-swiftclient not found')
+            raise exception.BackupDriverException(reason=msg)
 
         # Do not intialize the instance created when the backup service
         # starts up. The context will be missing information to do things
