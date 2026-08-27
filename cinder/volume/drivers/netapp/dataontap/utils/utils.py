@@ -134,7 +134,8 @@ def get_client_for_backend(backend_name, vserver_name=None, force_rest=False):
                 trace=volume_utils.TRACE_API,
                 api_trace_pattern=config.netapp_api_trace_pattern,
                 async_rest_timeout=config.netapp_async_rest_timeout,
-                is_disaggregated=is_disaggregated)
+                is_disaggregated=is_disaggregated,
+                zapi_fallback_enabled=config.netapp_allow_zapi_fallback)
         else:
             client = client_cmode_rest.RestClient(
                 transport_type=config.netapp_transport_type,
@@ -152,7 +153,8 @@ def get_client_for_backend(backend_name, vserver_name=None, force_rest=False):
                 vserver=vserver_name or config.netapp_vserver,
                 trace=volume_utils.TRACE_API,
                 api_trace_pattern=config.netapp_api_trace_pattern,
-                async_rest_timeout=config.netapp_async_rest_timeout)
+                async_rest_timeout=config.netapp_async_rest_timeout,
+                zapi_fallback_enabled=config.netapp_allow_zapi_fallback)
     return client
 
 

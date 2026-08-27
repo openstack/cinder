@@ -125,9 +125,11 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
         self.ssh_client = self._init_ssh_client(host, username, password)
 
-        # NOTE(nahimsouza): ZAPI Client is needed to implement the fallback
-        # when a REST method is not supported.
-        if not is_disaggregated:
+        self.zapi_fallback_enabled = kwargs.get('zapi_fallback_enabled',
+                                                True)
+        if self.zapi_fallback_enabled and not is_disaggregated:
+            # NOTE(nahimsouza): ZAPI Client is needed to implement the
+            # fallback when a REST method is not supported.
             self.zapi_client = client_cmode.Client(**kwargs)
 
         self._init_features()
@@ -201,6 +203,29 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
     def __getattr__(self, name):
         """If method is not implemented for REST, try to call the ZAPI."""
+        # Dunder method lookups are used by Python internals (copy, pickle,
+        # hasattr, etc.) and must raise AttributeError so they behave
+        # correctly (e.g. hasattr only suppresses AttributeError, not
+        # NetAppDriverException).
+        if name.startswith('__') and name.endswith('__'):
+            raise AttributeError(name)
+
+        # Use object.__getattribute__ to avoid reentrant __getattr__ calls
+        # (e.g. during copy.copy / copy.deepcopy which checks __setstate__).
+        try:
+            zapi_fallback_enabled = object.__getattribute__(
+                self, 'zapi_fallback_enabled')
+        except AttributeError:
+            zapi_fallback_enabled = True
+
+        if not zapi_fallback_enabled:
+            msg = _(
+                'The %(name)s call is not supported for REST and the ZAPI '
+                'fallback is disabled. Set "netapp_allow_zapi_fallback" '
+                'to "true" to allow fallback.')
+            LOG.warning(msg, {'name': name})
+            raise na_utils.NetAppDriverException(msg % {'name': name})
+
         LOG.debug("The %s call is not supported for REST, falling back to "
                   "ZAPI.", name)
         # Don't use self.zapi_client to avoid reentrant call to __getattr__()

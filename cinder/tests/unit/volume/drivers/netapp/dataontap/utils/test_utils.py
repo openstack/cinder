@@ -123,7 +123,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                 private_key_file='fake_private_key.pem',
                 certificate_file='fake_cert.pem',
                 ca_certificate_file='fake_ca_cert.crt',
-                certificate_host_validation=False)
+                certificate_host_validation=False,
+                zapi_fallback_enabled=True)
             self.mock_cmode_client.assert_not_called()
 
     @ddt.data(True, False)
@@ -159,7 +160,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                 private_key_file='fake_private_key.pem',
                 certificate_file='fake_cert.pem',
                 ca_certificate_file='fake_ca_cert.crt',
-                certificate_host_validation=False)
+                certificate_host_validation=False,
+                zapi_fallback_enabled=True)
             self.mock_cmode_client.assert_not_called()
 
 

@@ -58,6 +58,11 @@ netapp_connection_opts = [
                       'relies on ZAPI calls. If set to False, the new REST '
                       'client is used, which runs REST calls if supported, '
                       'otherwise falls back to the equivalent ZAPI call.')),
+    cfg.BoolOpt('netapp_allow_zapi_fallback',
+                default=True,
+                help=('This option allows the ONTAP REST client methods to '
+                      'fallback to ZAPI when a REST method is not '
+                      'implemented.')),
     cfg.IntOpt('netapp_async_rest_timeout',
                min=60,
                default=60,  # One minute
