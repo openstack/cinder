@@ -437,7 +437,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         and setup replication between the newly created volume
         and the secondary volume.
         """
-        project_name = self._get_lightos_project_name(volume)
+        project_name = self._get_volume_type_project_name(volume)
         # Create an intermediate snapshot
         snapshot_name = self._interm_snapshotname(volume)
         src_volume_name = self._lightos_volname(src_vref)
@@ -454,8 +454,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
         # Create a volume from the intermediate snapshot
         try:
-            self._create_volume(volume,
-                                src_snapshot_lightos_name=snapshot_name)
+            model_update = self._create_volume(
+                volume, src_snapshot_lightos_name=snapshot_name)
         except Exception as e:
             LOG.error("Failed to create volume %s from intermediate "
                       " snapshot %s. Trying to clean up.",
@@ -471,6 +471,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                             " volume %s. Trying to clean up.",
                             snapshot_name, src_volume_name)
                 raise e
+
+        return model_update
 
     def create_export(self, context, volume, vg=None):
         """Irrelevant for lightos volumes.
@@ -581,17 +583,69 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         lightos_volname = CONF.volume_name_template % volid
         return lightos_volname
 
+    @staticmethod
+    def _create_provider_id_string(project_name, lightos_uuid=None):
+        """Build the provider_id addressing a volume on the cluster.
+
+        The UUID is optional. A provider_id carrying only a project still
+        addresses the volume, the UUID is then resolved by name.
+        """
+        if not lightos_uuid:
+            return project_name
+
+        return "%s %s" % (project_name, lightos_uuid)
+
+    @staticmethod
+    def _parse_provider_id(provider_id):
+        """Return the (project, LightOS UUID) recorded in provider_id."""
+        if not provider_id:
+            return None, None
+
+        fields = provider_id.split(' ')
+        if len(fields) == 1:
+            return fields[0], None
+        elif len(fields) == 2:
+            return fields[0], fields[1]
+
+        LOG.warning("Ignoring malformed LightOS provider_id %s", provider_id)
+
+        return None, None
+
+    def _get_volume_type_project_name(self, volume):
+        """Return the project requested by the volume type of this volume.
+
+        An untyped volume resolves to the default project. A volume whose
+        type cannot be read raises: the caller decides whether a guess is
+        acceptable.
+        """
+        if not volume.get('volume_type_id'):
+            return LIGHTOS_DEFAULT_PROJECT_NAME
+
+        return volume.volume_type.extra_specs.get(
+            'lightos:project_name', LIGHTOS_DEFAULT_PROJECT_NAME)
+
     def _get_lightos_project_name(self, volume):
+        """Return the LightOS project this volume lives in.
+
+        Recorded in provider_id when the volume is created. The volume type
+        is only a fallback for volumes created before that - it is mutable
+        and goes stale on retype.
+        """
+        project_name, _ = self._parse_provider_id(volume.get('provider_id'))
+        if project_name:
+            return project_name
+
         try:
-            extra_specs = volume.volume_type.extra_specs
-            project_name = extra_specs.get(
-                'lightos:project_name',
-                LIGHTOS_DEFAULT_PROJECT_NAME)
+            project_name = self._get_volume_type_project_name(volume)
         except Exception:
-            LOG.debug(
-                "LIGHTOS volume %s has no lightos:project_name",
-                volume)
-            project_name = LIGHTOS_DEFAULT_PROJECT_NAME
+            LOG.warning("Could not read the volume type of LIGHTOS volume"
+                        " %s, assuming project %s",
+                        volume['id'], LIGHTOS_DEFAULT_PROJECT_NAME)
+            return LIGHTOS_DEFAULT_PROJECT_NAME
+
+        LOG.debug("LIGHTOS volume %s has no project recorded in its"
+                  " provider_id, falling back to %s from its volume type",
+                  volume['id'], project_name)
 
         return project_name
 
@@ -705,6 +759,14 @@ class LightOSVolumeDriver(driver.VolumeDriver):
             qos_policy=qos_policy)
 
     def _get_lightos_uuid(self, project_name, volume):
+        """Return the LightOS UUID of a volume, by name if not recorded."""
+        _, lightos_uuid = self._parse_provider_id(volume.get('provider_id'))
+        if lightos_uuid:
+            return lightos_uuid
+
+        return self._lookup_lightos_uuid(project_name, volume)
+
+    def _lookup_lightos_uuid(self, project_name, volume):
         lightos_name = self._lightos_volname(volume)
         timeout = self.logical_op_timeout
 
@@ -739,7 +801,11 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
     def _create_volume(self, volume, src_snapshot_lightos_name):
         lightos_name = self._lightos_volname(volume)
-        project_name = self._get_lightos_project_name(volume)
+        # The volume type says where to create the volume. Do not trust an
+        # inherited provider_id: Cinder copies it onto the temporary volume
+        # it creates for a migration, where it still names the source
+        # project.
+        project_name = self._get_volume_type_project_name(volume)
         lightos_uuid = '<UNKNOWN>'
         vol_state = 'UNKNOWN'
 
@@ -774,7 +840,11 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                     lightos_name,
                     lightos_uuid,
                     project_name)
-                return
+                # Record where the volume lives, so later operations do not
+                # have to derive the project from the volume type or look the
+                # UUID up by name.
+                return {'provider_id': self._create_provider_id_string(
+                    project_name, lightos_uuid)}
 
             # if volume was created in failed state we should clean it up
             LOG.warning(
@@ -879,6 +949,15 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                     project_name=project_name,
                     timeout=self. logical_op_timeout,
                     volume_uuid=lightos_uuid))
+            # We address the volume by its recorded project and UUID, so a
+            # NOT_FOUND means it is already gone. Log it: if the address
+            # was wrong, this is the only trace of a volume left behind.
+            if status_code == httpstatus.NOT_FOUND:
+                LOG.warning(
+                    "delete_volume: no LightOS volume with UUID %s in"
+                    " project %s, treating it as already deleted",
+                    lightos_uuid, project_name)
+                break
             if status_code == httpstatus.OK:
                 break
 
@@ -916,6 +995,37 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                    ' %(uuid)s project %(project_name)s' % (
                        dict(uuid=lightos_uuid, project_name=project_name)))
             raise exception.VolumeBackendAPIException(message=msg)
+
+    def update_provider_info(self, volumes, snapshots):
+        """Stamp provider_id on volumes created before we recorded it.
+
+        Runs before the volume service accepts requests, and a deployment can
+        hold tens of thousands of volumes, so this does not talk to the
+        cluster: the project is taken from the volume type. The UUID is left
+        out and resolved by name when something needs it.
+
+        :param volumes: List of Cinder volumes to check for updates
+        :param snapshots: List of Cinder snapshots to check for updates
+        :returns: tuple (volume_updates, snapshot_updates)
+        """
+        volume_updates = []
+        for volume in volumes:
+            if self._parse_provider_id(volume.get('provider_id'))[0]:
+                continue
+
+            try:
+                project_name = self._get_volume_type_project_name(volume)
+            except Exception:
+                # Leave the volume unstamped rather than fail to start.
+                LOG.exception("Could not stamp provider_id on volume %s",
+                              volume['id'])
+                continue
+
+            volume_updates.append(
+                {'id': volume['id'],
+                 'provider_id': self._create_provider_id_string(project_name)})
+
+        return volume_updates, None
 
     def get_vol_by_id(self, volume):
         LOG.warning('UNIMPLEMENTED: get vol by id')
