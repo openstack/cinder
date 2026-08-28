@@ -26,7 +26,7 @@ Supported operations
 - Create volume from snapshot
 - Create volume from volume (clone)
 - Active active deployment support
-- Volume retype (host assisted)
+- Volume retype (in place for a QoS policy change, host assisted otherwise)
 - Multi Tenancy support
 
 Lightbits OpenStack Driver Components
@@ -135,6 +135,12 @@ Example:
 .. code-block:: bash
 
    openstack volume type create LightbitsWithQos --property volume_backend_name=<backend_name> --property=lightos:qos_policy=<uuid>
+
+Retyping a volume between two volume types that differ only in
+``lightos:qos_policy`` applies the new policy to the volume in place,
+without a data migration. A retype that changes anything else --
+project, replica count, or compression -- or that removes the policy,
+falls back to the regular host-assisted migration.
 
 NVNe/TCP and Asymmetric Namespace Access (ANA)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

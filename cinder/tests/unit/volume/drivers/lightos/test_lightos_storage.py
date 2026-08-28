@@ -34,6 +34,7 @@ from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import lightos
 from cinder.volume import manager as volume_manager
+from cinder.volume import volume_types
 
 
 FAKE_LIGHTOS_CLUSTER_NODES: Dict[str, List] = {
@@ -182,6 +183,8 @@ class DBMock(object):
 
         if kwargs.get("ip_acl", None):
             volume["IPAcl"] = {'values': kwargs.get('ip_acl')}
+        if kwargs.get("qos_policy", None):
+            volume["qosPolicyUUID"] = kwargs["qos_policy"]
         volume["ETag"] = get_vol_etag(volume)
         return httpstatus.OK, volume
 
@@ -359,6 +362,11 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
                 return self.db.update_volume_by_uuid(kwargs["project_name"],
                                                      kwargs["volume_uuid"],
                                                      size=size)
+            elif cmd == "set_volume_qos_policy":
+                return self.db.update_volume_by_uuid(
+                    kwargs["project_name"],
+                    kwargs["volume_uuid"],
+                    qos_policy=kwargs.get("qos_policy", None))
             elif cmd == "create_snapshot":
                 snapshot = {
                     "project_name": kwargs.get("project_name", None),
@@ -1272,6 +1280,184 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
         db.volume_destroy(self.ctxt, updated_new.id)
+
+    GOLD_QOS = '11111111-1111-1111-1111-111111111111'
+    SILVER_QOS = '22222222-2222-2222-2222-222222222222'
+
+    def _qos_retype_setup(self, new_specs, old_specs=None):
+        """Create a volume of one type and diff it against another."""
+        self.driver.do_setup(None)
+
+        old_type = test_utils.create_volume_type(
+            self.ctxt, self, name='gold',
+            extra_specs=old_specs if old_specs is not None else {
+                'lightos:qos_policy': self.GOLD_QOS})
+        new_type = test_utils.create_volume_type(
+            self.ctxt, self, name='silver', extra_specs=new_specs)
+
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=old_type.id)
+        self.driver.create_volume(volume)
+
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, old_type.id, new_type.id)
+        new_type_ref = volume_types.get_volume_type(self.ctxt, new_type.id)
+        return volume, new_type_ref, diff
+
+    def _lightos_volume(self, project_name='default'):
+        volumes = self.db.get_project(project_name)['volumes']
+        self.assertEqual(1, len(volumes), 'expected exactly one volume')
+        return volumes[0]
+
+    def test_retype_qos_policy_only_is_applied_in_place(self):
+        """A QoS-only retype must not create a second volume."""
+        volume, new_type, diff = self._qos_retype_setup(
+            {'lightos:qos_policy': self.SILVER_QOS})
+        before = self._lightos_volume()
+        self.assertEqual(self.GOLD_QOS, before['qosPolicyUUID'])
+
+        retyped = self.driver.retype(self.ctxt, volume, new_type, diff, None)
+
+        self.assertIs(True, retyped)
+        after = self._lightos_volume()
+        self.assertEqual(self.SILVER_QOS, after['qosPolicyUUID'])
+        # Same LightOS volume: no migration, so no data was copied.
+        self.assertEqual(before['UUID'], after['UUID'])
+
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_retype_preserves_a_live_acl(self):
+        """The QoS update must not disturb the ACL of an attached volume.
+
+        This is why set_volume_qos_policy is its own command instead of an
+        extension of update_volume, which also carries the ACL.
+        """
+        volume, new_type, diff = self._qos_retype_setup(
+            {'lightos:qos_policy': self.SILVER_QOS})
+        before = self._lightos_volume()
+        before['acl'] = {'values': [FAKE_CLIENT_HOSTNQN]}
+        before['IPAcl'] = {'values': FAKE_HOST_IPS}
+
+        self.assertIs(
+            True, self.driver.retype(self.ctxt, volume, new_type, diff, None))
+
+        after = self._lightos_volume()
+        self.assertEqual(self.SILVER_QOS, after['qosPolicyUUID'])
+        self.assertEqual({'values': [FAKE_CLIENT_HOSTNQN]}, after['acl'])
+        self.assertEqual({'values': FAKE_HOST_IPS}, after['IPAcl'])
+
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_retype_between_identical_types_is_a_noop(self):
+        """Nothing to change, and nothing sent to the cluster."""
+        volume, new_type, diff = self._qos_retype_setup(
+            {'lightos:qos_policy': self.GOLD_QOS})
+
+        def fail_on_any_cluster_call(cmd, **kwargs):
+            self.fail('retype issued %s' % cmd)
+
+        self.driver.cluster.send_cmd = fail_on_any_cluster_call
+        self.assertIs(
+            True, self.driver.retype(self.ctxt, volume, new_type, diff, None))
+
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_retype_falls_back_when_the_project_changes(self):
+        """A project change needs the volume moved, so hand it back."""
+        volume, new_type, diff = self._qos_retype_setup(
+            {'lightos:qos_policy': self.SILVER_QOS,
+             'lightos:project_name': 'fox'})
+
+        self.assertIs(
+            False, self.driver.retype(self.ctxt, volume, new_type, diff, None))
+        # Untouched: the manager migrates it instead.
+        self.assertEqual(self.GOLD_QOS,
+                         self._lightos_volume()['qosPolicyUUID'])
+
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_retype_falls_back_when_replica_count_changes(self):
+        volume, new_type, diff = self._qos_retype_setup(
+            {'lightos:qos_policy': self.SILVER_QOS,
+             'lightos:num_replicas': '2'})
+
+        self.assertIs(
+            False, self.driver.retype(self.ctxt, volume, new_type, diff, None))
+        self.assertEqual(self.GOLD_QOS,
+                         self._lightos_volume()['qosPolicyUUID'])
+
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_retype_falls_back_when_compression_changes(self):
+        volume, new_type, diff = self._qos_retype_setup(
+            {'lightos:qos_policy': self.SILVER_QOS, 'compression': 'True'})
+
+        self.assertIs(
+            False, self.driver.retype(self.ctxt, volume, new_type, diff, None))
+
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_retype_falls_back_when_dropping_the_qos_policy(self):
+        """Removing a policy is not expressible as a volume update."""
+        volume, new_type, diff = self._qos_retype_setup({})
+
+        self.assertIs(
+            False, self.driver.retype(self.ctxt, volume, new_type, diff, None))
+        self.assertEqual(self.GOLD_QOS,
+                         self._lightos_volume()['qosPolicyUUID'])
+
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_retype_adds_a_qos_policy_to_a_volume_without_one(self):
+        volume, new_type, diff = self._qos_retype_setup(
+            {'lightos:qos_policy': self.SILVER_QOS}, old_specs={})
+        self.assertIsNone(self._lightos_volume()['qosPolicyUUID'])
+
+        self.assertIs(
+            True, self.driver.retype(self.ctxt, volume, new_type, diff, None))
+        self.assertEqual(self.SILVER_QOS,
+                         self._lightos_volume()['qosPolicyUUID'])
+
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_retype_falls_back_when_cinder_qos_specs_change(self):
+        """Cinder's own QoS specs are not the LightOS policy."""
+        volume, new_type, diff = self._qos_retype_setup(
+            {'lightos:qos_policy': self.SILVER_QOS})
+        diff['qos_specs'] = {'total_iops_sec': ('100', '50')}
+
+        self.assertIs(
+            False, self.driver.retype(self.ctxt, volume, new_type, diff, None))
+
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_retype_raises_when_the_cluster_rejects_the_policy(self):
+        """A failure is loud; the manager then migrates instead."""
+        volume, new_type, diff = self._qos_retype_setup(
+            {'lightos:qos_policy': self.SILVER_QOS})
+        cluster_send_cmd = deepcopy(self.driver.cluster.send_cmd)
+
+        def send_cmd_mock(cmd, **kwargs):
+            if cmd == 'set_volume_qos_policy':
+                return (httpstatus.BAD_REQUEST, None)
+            return cluster_send_cmd(cmd, **kwargs)
+
+        self.driver.cluster.send_cmd = send_cmd_mock
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.retype,
+                          self.ctxt, volume, new_type, diff, None)
+
+        self.driver.cluster.send_cmd = cluster_send_cmd
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
 
     def test_get_volume_stats(self):
         """Test that lightos_client succeed."""
