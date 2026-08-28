@@ -199,6 +199,27 @@ REST_VOLUME_OPTS = [
         'nec_v_host_mode_options',
         default=[],
         help='Host mode option for host group or iSCSI target'),
+    cfg.BoolOpt(
+        'nec_v_rest_use_object_caching',
+        default=True,
+        help='Set True to enable object caching of certain REST objects '
+             'for better performance.'),
+    cfg.IntOpt(
+        'nec_v_rest_max_request_workers',
+        default=hbsd_rest_api._MAX_REQUEST_WORKERS,
+        help='The maximum number of workers for concurrent requests.'),
+    cfg.IntOpt(
+        'nec_v_csv_delete_timeout',
+        default=hbsd_rest_api._CSV_DELETE_TIMEOUT,
+        help='Maximum wait time in seconds for deleting CSV via REST API.'),
+    cfg.IntOpt(
+        'nec_v_vcp_delete_timeout',
+        default=hbsd_rest_api._VCP_DELETE_TIMEOUT,
+        help='Maximum wait time in seconds for VCP deletion.'),
+    cfg.IntOpt(
+        'nec_v_vcp_delete_sleep_interval',
+        default=hbsd_rest_api._VCP_DELETE_RETRY_INTERVAL,
+        help='Sleep interval in seconds for VCP deletion.'),
 ]
 
 FC_VOLUME_OPTS = [
@@ -280,6 +301,12 @@ def update_conf(conf):
         conf.nec_v_rest_use_object_caching)
     conf.hitachi_rest_max_request_workers = (
         conf.nec_v_rest_max_request_workers)
+    conf.hitachi_csv_delete_timeout = (
+        conf.nec_v_csv_delete_timeout)
+    conf.hitachi_vcp_delete_timeout = (
+        conf.nec_v_vcp_delete_timeout)
+    conf.hitachi_vcp_delete_sleep_interval = (
+        conf.nec_v_vcp_delete_sleep_interval)
 
     return conf
 
