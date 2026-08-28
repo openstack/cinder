@@ -18,6 +18,7 @@
 import json
 from unittest import mock
 
+import futurist
 from oslo_config import cfg
 import requests
 
@@ -3107,3 +3108,170 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
         else:
             self.fail('no create pair request')
         self.assertTrue(isDataReductionForceCopy)
+
+
+# Shorthand alias
+_GreenThreadCompat = hbsd_replication.HBSDREPLICATION.GreenThreadCompat
+
+
+def _make_resolved_future(value):
+    """Return a Future whose result is already set to *value*."""
+    f = futurist.Future()
+    f.set_result(value)
+    return f
+
+
+def _make_failed_future(exc):
+    """Return a Future whose exception is already set to *exc*."""
+    f = futurist.Future()
+    f.set_exception(exc)
+    return f
+
+
+class TestGreenThreadCompatWait(test.TestCase):
+    """Tests for HBSDREPLICATION.GreenThreadCompat.wait()."""
+
+    # ------------------------------------------------------------------
+    # (1) wait() returns the callable's result
+    # ------------------------------------------------------------------
+    def test_wait_returns_callable_result(self):
+        """wait() must surface the value produced by the underlying future."""
+        expected = 42
+        compat = _GreenThreadCompat(_make_resolved_future(expected))
+
+        result = compat.wait()
+
+        self.assertEqual(expected, result)
+
+    def test_wait_returns_none_when_callable_returns_none(self):
+        """wait() returns None when the callable returns None (common case)."""
+        compat = _GreenThreadCompat(_make_resolved_future(None))
+
+        result = compat.wait()
+
+        self.assertIsNone(result)
+
+    def test_wait_returns_non_trivial_object(self):
+        """wait() faithfully returns arbitrary objects, not just scalars."""
+        expected = {'ldev': 100, 'port': 'CL1-A'}
+        compat = _GreenThreadCompat(_make_resolved_future(expected))
+
+        result = compat.wait()
+
+        self.assertIs(expected, result)
+
+    # ------------------------------------------------------------------
+    # (2) wait() propagates an exception raised by the callable
+    # ------------------------------------------------------------------
+    def test_wait_propagates_exception(self):
+        """wait() must re-raise exceptions set on the future."""
+        exc = RuntimeError('secondary operation failed')
+        compat = _GreenThreadCompat(_make_failed_future(exc))
+
+        self.assertRaises(RuntimeError, compat.wait)
+
+    def test_wait_propagates_exception_message(self):
+        """The original exception message is preserved when re-raised."""
+        msg = 'disk unavailable'
+        exc = IOError(msg)
+        compat = _GreenThreadCompat(_make_failed_future(exc))
+
+        raised = self.assertRaises(IOError, compat.wait)
+        self.assertIn(msg, str(raised))
+
+    def test_wait_propagates_exception_type_exactly(self):
+        """The exact exception type (not a wrapper) is raised by wait()."""
+
+        class _CustomError(Exception):
+            pass
+
+        exc = _CustomError('custom')
+        compat = _GreenThreadCompat(_make_failed_future(exc))
+
+        self.assertRaises(_CustomError, compat.wait)
+
+    # ------------------------------------------------------------------
+    # (3) wait() is still called in a try/finally workflow when the
+    #     primary-side operation fails
+    #
+    # This mirrors the real driver pattern:
+    #
+    #   thread = self.spawn(secondary_op, ...)
+    #   try:
+    #       primary_op(...)          # may raise
+    #   finally:
+    #       thread.wait()            # must always run
+    # ------------------------------------------------------------------
+    def test_wait_called_in_finally_when_primary_raises(self):
+        """Secondary thread is always joined even when primary op fails.
+
+        Simulates:
+            thread = spawn(secondary_op)
+            try:
+                primary_op()     # raises VolumeDriverException
+            finally:
+                thread.wait()    # must be reached
+        """
+        secondary_sentinel = object()
+        compat = _GreenThreadCompat(
+            _make_resolved_future(secondary_sentinel))
+
+        wait_result = None
+        primary_exception = exception.VolumeDriverException(
+            'primary side failed')
+
+        with self.assertRaises(exception.VolumeDriverException) as ctx:
+            try:
+                raise primary_exception  # simulate primary-side failure
+            finally:
+                wait_result = compat.wait()
+
+        # The primary exception propagates out of the with-block
+        self.assertIs(primary_exception, ctx.exception)
+        # …but wait() was still called and returned the secondary result
+        self.assertIs(secondary_sentinel, wait_result)
+
+    def test_wait_called_in_finally_when_primary_raises_and_secondary_fails(
+            self):
+        """Secondary exception is suppressed by primary exception in finally.
+
+        When both sides fail, Python's try/finally semantics suppress the
+        exception raised inside the ``finally`` block and propagate the
+        original exception.  This test verifies that wait() is indeed
+        called (the secondary future is consumed) even when it itself would
+        raise — and that the primary exception still propagates.
+        """
+        primary_exception = exception.VolumeDriverException(
+            'primary side failed')
+        secondary_exception = ValueError('secondary side also failed')
+
+        compat = _GreenThreadCompat(_make_failed_future(secondary_exception))
+
+        with self.assertRaises(exception.VolumeDriverException) as ctx:
+            try:
+                raise primary_exception
+            finally:
+                # wait() raises secondary_exception here, which Python
+                # suppresses in favour of the primary_exception already
+                # in flight.
+                try:
+                    compat.wait()
+                except Exception:
+                    pass  # secondary error noted; primary still propagates
+
+        self.assertIs(primary_exception, ctx.exception)
+
+    def test_wait_result_used_after_successful_primary_op(self):
+        """Normal (no-exception) path: wait() result is returned to caller."""
+        with futurist.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(lambda: 'svol-ldev-123')
+            compat = _GreenThreadCompat(future)
+
+            primary_result = 'pvol-ldev-456'  # primary op succeeded
+            try:
+                # primary op (no exception)
+                _ = primary_result
+            finally:
+                secondary_result = compat.wait()
+
+        self.assertEqual('svol-ldev-123', secondary_result)

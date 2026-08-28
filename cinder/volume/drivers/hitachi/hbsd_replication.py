@@ -19,7 +19,6 @@ from collections import defaultdict
 import json
 import time
 
-from eventlet import greenthread
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -645,7 +644,7 @@ class HBSDREPLICATION(rest.HBSDREST):
         pool_id = self.rep_secondary.storage_info['pool_id'][0]
         ldev_range = self.rep_secondary.storage_info['ldev_range']
         qos_specs = utils.get_qos_specs_from_volume(volume)
-        thread = greenthread.spawn(
+        thread = self.spawn(
             self.rep_secondary.create_ldev, volume.size, extra_specs,
             pool_id, ldev_range, qos_specs=qos_specs)
         if pvol is None:
@@ -675,7 +674,7 @@ class HBSDREPLICATION(rest.HBSDREST):
                 else:
                     instance.delete_ldev(vol)
             self.raise_error(msg)
-        thread = greenthread.spawn(
+        thread = self.spawn(
             self.rep_secondary.modify_ldev_name,
             svol, volume['id'].replace("-", ""))
         try:
@@ -942,7 +941,7 @@ class HBSDREPLICATION(rest.HBSDREST):
         svol = None
         pvol, svol = self._create_rep_ldev(volume, extra_specs, rep_type, pvol)
         try:
-            thread = greenthread.spawn(
+            thread = self.spawn(
                 self.rep_secondary.initialize_pair_connection, svol)
             try:
                 self.rep_primary.initialize_pair_connection(pvol)
@@ -1210,7 +1209,7 @@ class HBSDREPLICATION(rest.HBSDREST):
         # Delete LDEVs if they are valid.
         thread = None
         if not svol_is_invalid:
-            thread = greenthread.spawn(
+            thread = self.spawn(
                 self.rep_secondary.delete_volume, volume)
         try:
             if not pvol_is_invalid:
@@ -1236,8 +1235,8 @@ class HBSDREPLICATION(rest.HBSDREST):
                 self.driver_info['mirror_attr'],
                 pair_info['svol_info'][0]['rep_type'] !=
                 self.driver_info['mirror_attr'])
-            th = greenthread.spawn(self.rep_secondary.delete_ldev,
-                                   pair_info['svol_info'][0]['ldev'])
+            th = self.spawn(self.rep_secondary.delete_ldev,
+                            pair_info['svol_info'][0]['ldev'])
             try:
                 self.rep_primary.delete_ldev(ldev)
             finally:
@@ -1496,7 +1495,7 @@ class HBSDREPLICATION(rest.HBSDREST):
         self._delete_rep_pair(
             ldev, pair_info['svol_info'][0]['ldev'],
             rep_type == self.driver_info['mirror_attr'], delete_journal=False)
-        thread = greenthread.spawn(
+        thread = self.spawn(
             self.rep_secondary.extend_volume, volume, new_size)
         try:
             self.rep_primary.extend_volume(volume, new_size)
@@ -1588,7 +1587,7 @@ class HBSDREPLICATION(rest.HBSDREST):
         if self._has_rep_pair(ldev):
             if self.conf.hitachi_mirror_storage_id:
                 self._require_rep_secondary()
-                th = greenthread.spawn(
+                th = self.spawn(
                     self.rep_secondary.discard_zero_page, volume)
                 try:
                     self.rep_primary.discard_zero_page(volume)
@@ -1992,3 +1991,15 @@ class HBSDREPLICATION(rest.HBSDREST):
             volumes, secondary_id)
         self.failover_completed(secondary_id)
         return backend_id, volumes_update, groups_update
+
+    class GreenThreadCompat:
+        def __init__(self, future):
+            self._future = future
+
+        def wait(self):
+            return self._future.result()
+
+    def spawn(self, fn, *args, **kwargs):
+        return HBSDREPLICATION.GreenThreadCompat(
+            self.request_thread_pool_executor.submit(fn, *args, **kwargs)
+        )

@@ -16,10 +16,10 @@
 """REST interface module for Hitachi HBSD Driver."""
 
 from collections import defaultdict
-import concurrent.futures
 import json
 import re
 
+import futurist
 from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log as logging
@@ -316,7 +316,7 @@ class HBSDREST(common.HBSDCommon):
         self.client = None
 
         self.request_thread_pool_executor = \
-            concurrent.futures.ThreadPoolExecutor(
+            futurist.ThreadPoolExecutor(
                 max_workers=self.conf.safe_get(
                     self.driver_info['param_prefix'] +
                     '_rest_max_request_workers'))
@@ -335,7 +335,7 @@ class HBSDREST(common.HBSDCommon):
     def __del__(self):
         """Shut down the driver."""
         self.request_thread_pool_executor.shutdown(wait=False,
-                                                   cancel_futures=True)
+                                                   cancel_futures=False)
 
     def do_setup(self, context):
         if hasattr(
