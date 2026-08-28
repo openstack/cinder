@@ -28,6 +28,7 @@ from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
 
+from cinder import coordination
 from cinder import exception
 from cinder.objects import fields
 from cinder.objects import SnapshotList
@@ -97,6 +98,7 @@ _MAX_CTG_COUNT_EXCEEDED_ADD_SNAPSHOT = ('2E10', '2302')
 _MAX_PAIR_COUNT_IN_CTG_EXCEEDED_ADD_SNAPSHOT = ('2E13', '9900')
 
 _PAIR_TARGET_NAME_BODY_DEFAULT = 'pair00'
+_MIGRATION_TARGET_NAME_BODY = 'migration-shadow-image'
 
 _DR_VOL_PATTERN = {
     'disabled': ('REHYDRATING',),
@@ -1671,11 +1673,223 @@ class HBSDREST(common.HBSDCommon):
         msg = self.output_log(MSG.MAP_PAIR_TARGET_FAILED, ldev=ldev)
         self.raise_error(msg)
 
+    @coordination.synchronized(
+        '{self.driver_info[driver_file_prefix]}-si-migration-'
+        '{self.conf.hitachi_storage_id}-{port}')
+    def _create_migrate_hostgrp_then_add_ldevs(self, pvol, svol, port):
+        """Create migration host group and add PVOL/SVOL LUNs under a lock."""
+        # create host group "HBSD-migration-shadow-image"
+        migration_host_grp_name = (self.driver_info['target_prefix'] +
+                                   _MIGRATION_TARGET_NAME_BODY)
+        gid = None
+        try:
+            gid = self.client.add_host_grp(
+                {'portId': port, 'hostGroupName': migration_host_grp_name},
+                no_log=True)
+        except exception.VolumeDriverException:
+            # Host group may be a leftover from a previously failed migration.
+            # Find and reuse it.
+            host_grp_list = self.client.get_host_grps({'portId': port})
+            gid = next(
+                (hg['hostGroupNumber'] for hg in host_grp_list
+                 if hg['hostGroupName'] == migration_host_grp_name),
+                None)
+            if gid is None:
+                self.output_log(MSG.CREATE_HOST_GROUP_FAILED, port=port)
+                raise
+            LOG.debug('reusing existing migration hostgrp. '
+                      'port: %r, gid: %r', port, gid)
+        # add PVOL/SVOL to host group
+        try:
+            self._run_add_lun(pvol, port, gid)
+        except exception.VolumeDriverException:
+            self.output_log(
+                MSG.MAP_LDEV_FAILED, ldev=pvol, port=port, id=gid, lun=None)
+            raise
+        try:
+            self._run_add_lun(svol, port, gid)
+        except exception.VolumeDriverException:
+            self.output_log(
+                MSG.MAP_LDEV_FAILED, ldev=svol, port=port, id=gid, lun=None)
+            self.client.delete_lun(port, gid, pvol)
+            raise
+        #
+        LOG.debug('created hostgrp/lun. port: %r,gid: %r,pvol: %r,svol: %r',
+                  port, gid, pvol, svol)
+        return gid
+
+    @coordination.synchronized(
+        '{self.driver_info[driver_file_prefix]}-si-migration-'
+        '{self.conf.hitachi_storage_id}-{port}')
+    def _del_migrate_ldevs_then_destroy_hostgrp(self, pvol, svol, port, gid):
+        """Remove PVOL/SVOL LUNs and delete migration host group"""
+        LOG.debug('will del hostgrp/ldevs. port=%r,gid=%r,pvol=%r,svol=%r',
+                  port, gid, pvol, svol)
+        # Remove PVOL and SVOL from host group
+        for ldev in (pvol, svol):
+            lun = self._find_lun(ldev, port, gid)
+            if lun is not None:
+                self.client.delete_lun(port, gid, lun)
+        # Delete host group.
+        self.delete_target_from_storage(port, gid)
+        LOG.debug('del hostgrp/ldevs done. port=%r,gid=%r,pvol=%r,svol=%r',
+                  port, gid, pvol, svol)
+
+    def _cleanup_after_shadow_image_migrate(
+            self, pvol, svol, port, gid,
+            copy_group_name, pvol_device_group_name,
+            svol_device_group_name, copy_pair_name,
+            delete_svol):
+        """Delete SI copy pair, migration host group, and SVOL."""
+        # Step 1: delete ShadowImage copy pair
+        try:
+            LOG.debug('csim. will delete SI copy pair. copy_group_name: %r, '
+                      'pvol_device_group_name: %r, '
+                      'svol_device_group_name: %r, copy_pair_name: %r',
+                      copy_group_name, pvol_device_group_name,
+                      svol_device_group_name, copy_pair_name)
+            self.client.delete_local_clone_copypair(
+                copy_group_name, pvol_device_group_name,
+                svol_device_group_name, copy_pair_name)
+        except exception.VolumeDriverException:
+            self.output_log(MSG.DELETE_PAIR_FAILED, pvol=pvol, svol=svol)
+
+        # Step 2: remove PVOL/SVOL LUNs from migration host group, then
+        #         delete the host group
+        try:
+            LOG.debug('csim. del hostgrp and remove LDEVs.'
+                      ' port: %r, gid: %r, pvol: %r, svol: %r',
+                      port, gid, pvol, svol)
+            self._del_migrate_ldevs_then_destroy_hostgrp(pvol,
+                                                         svol, port, gid)
+        except exception.VolumeDriverException:
+            self.output_log(
+                MSG.DELETE_TARGET_FAILED, port=port, id=gid)
+
+        # Step 3: delete SVOL if needed
+        if delete_svol:
+            try:
+                LOG.debug('csim. will delete SVOL. svol: %r', svol)
+                self.delete_ldev(svol)
+            except exception.VolumeDriverException:
+                self.output_log(MSG.DELETE_LDEV_FAILED, ldev=svol)
+
+    def _wait_si_copy_pair_status(self, copy_group_name,
+                                  pvol_device_group_name,
+                                  svol_device_group_name,
+                                  copy_pair_name, svol, **kwargs):
+        """Wait until the ShadowImage pair finish."""
+        interval = kwargs.pop(
+            'interval', self.conf.hitachi_copy_check_interval)
+        timeout = kwargs.pop(
+            'timeout', self.conf.hitachi_state_transition_timeout)
+        success = PSUS
+        failure = PSUE
+
+        def _wait_for_si_pair_status(start_time, success, failure, timeout):
+            """Raise LoopingCallDone when pair reaches target status."""
+            if not isinstance(success, set):
+                success = set([success])
+            result = self.client.get_local_clone_copypair(
+                copy_group_name, pvol_device_group_name,
+                svol_device_group_name, copy_pair_name)
+            LOG.debug('wfsps. result: %r', result)
+            current = _STATUS_TABLE.get(result.get('pvolStatus'), UNKN)
+            if current == failure:
+                raise loopingcall.LoopingCallDone(False)
+            if current in success:
+                raise loopingcall.LoopingCallDone()
+            if utils.timed_out(start_time, timeout):
+                raise loopingcall.LoopingCallDone(False)
+
+        loop = loopingcall.FixedIntervalLoopingCall(
+            _wait_for_si_pair_status, timeutils.utcnow(),
+            success, failure, timeout)
+        if not loop.start(interval=interval).wait():
+            msg = self.output_log(
+                MSG.PAIR_STATUS_WAIT_TIMEOUT, svol=svol)
+            self.raise_error(msg)
+
+    def _copy_ldev_by_shadow_image(self, pvol, volume, extra_specs,
+                                   new_pool_id, ldev_range, qos_specs):
+        """Copy an LDEV to a new pool using a ShadowImage pair."""
+        # step 1: create a new LDEV as SVOL in the new pool
+        svol = self.create_ldev(
+            volume.size, extra_specs, new_pool_id, ldev_range,
+            qos_specs=qos_specs)
+        port = self._get_pair_ports()[0]
+        LOG.debug('clbsi. port=%r, pvol=%r, svol=%r, newPool=%r,extraSpecs=%r',
+                  port, pvol, svol, new_pool_id, extra_specs)
+        # step 2: create "migration host group" then add PVOL/SVOL into it
+        gid = self._create_migrate_hostgrp_then_add_ldevs(pvol, svol, port)
+
+        try:
+            # step 3: create ShadowImage with PVOL and SVOL
+            copy_group_name = '%(prefix)s-SI-%(pvol)d' % {
+                'prefix': self.driver_info['driver_prefix'],
+                'pvol': pvol,
+            }
+            copy_pair_name = '%(prefix)s-%(pvol)d-%(svol)d' % {
+                'prefix': self.driver_info['driver_prefix'],
+                'pvol': pvol,
+                'svol': svol,
+            }
+            pvol_device_group_name = copy_group_name + 'P_'
+            svol_device_group_name = copy_group_name + 'S_'
+            body = {
+                "copyGroupName": copy_group_name,
+                "copyPairName": copy_pair_name,
+                "replicationType": "SI",
+                "pvolLdevId": pvol,
+                "svolLdevId": svol,
+                "pvolDeviceGroupName": pvol_device_group_name,
+                "svolDeviceGroupName": svol_device_group_name,
+                "isNewGroupCreation": True,
+                "pvolMuNumber": 0,
+                "copyPace": 15,
+                "autoSplit": True,
+                "quickMode": True,
+                "isDataReductionForceCopy": True,
+            }
+            LOG.debug('clbsi. Will create copypair. body: %r', body)
+            self.client.add_local_clone_copypair(body)
+            # step 4: wait finish
+            LOG.debug('clbsi. created copypair, wait finish. body: %r', body)
+            self._wait_si_copy_pair_status(
+                copy_group_name, pvol_device_group_name,
+                svol_device_group_name, copy_pair_name,
+                svol)
+        except Exception:
+            self.output_log(
+                MSG.MIGRATE_SI_FAILED, pvol=repr(pvol), svol=repr(svol),
+                pool=repr(new_pool_id), port=repr(port))
+            with excutils.save_and_reraise_exception():
+                self._cleanup_after_shadow_image_migrate(
+                    pvol, svol, port, gid,
+                    copy_group_name, pvol_device_group_name,
+                    svol_device_group_name, copy_pair_name,
+                    delete_svol=True)
+
+        # step 5: destroy copy pair
+        # step 6: del PVOL/SVOL from "migration host group" then del hostGroup
+        LOG.debug('clbsi. will clearup. body: %r', body)
+        self._cleanup_after_shadow_image_migrate(
+            pvol, svol, port, gid,
+            copy_group_name, pvol_device_group_name,
+            svol_device_group_name, copy_pair_name,
+            delete_svol=False)
+
+        # step 7: return svol
+        return svol
+
     def migrate_volume(self, volume, host, new_type=None):
         """Migrate the specified volume."""
         attachments = volume.volume_attachment
         if attachments:
             return False, None
+
+        LOG.debug('migvol. volume=%r; host=%r; new_type=%r',
+                  volume, host, new_type)
 
         pvol = self.get_ldev(volume)
         if pvol is None:
@@ -1684,6 +1898,7 @@ class HBSDREST(common.HBSDCommon):
             self.raise_error(msg)
 
         pair_info = self.get_pair_info(pvol)
+        LOG.debug('migvol.pair_info: %r', pair_info)
         if pair_info:
             if pair_info['pvol'] == pvol:
                 svols = []
@@ -1720,15 +1935,18 @@ class HBSDREST(common.HBSDCommon):
         old_storage_id = self.conf.hitachi_storage_id
         new_storage_id = (
             host['capabilities']['location_info'].get('storage_id'))
+        pvol_ldev_info = self.get_ldev_info(['poolId', 'attributes'], pvol)
+        old_pool_id = None
         if new_type is None:
-            old_pool_id = self.get_ldev_info(['poolId'], pvol)['poolId']
+            old_pool_id = pvol_ldev_info['poolId']
         new_pool_id = host['capabilities']['location_info'].get('pool_id')
 
         if old_storage_id != new_storage_id:
             return False, None
 
         ldev_range = host['capabilities']['location_info'].get('ldev_range')
-        if (new_type or old_pool_id != new_pool_id or
+        if (new_type or
+                (old_pool_id is not None and old_pool_id != new_pool_id) or
                 (ldev_range and
                  (pvol < ldev_range[0] or ldev_range[1] < pvol))):
             extra_specs = self.get_volume_extra_specs(volume)
@@ -1741,12 +1959,28 @@ class HBSDREST(common.HBSDCommon):
                 'snap_pool_id')
             ldev_range = host['capabilities']['location_info'].get(
                 'ldev_range')
-            svol = self.copy_on_storage(
-                pvol, volume.size, extra_specs, new_pool_id,
-                snap_pool_id, ldev_range,
-                is_snapshot=False, sync=True, qos_specs=qos_specs)
+            LOG.debug('migvol. extra_specs=%r; pvol_ldev_info=%r',
+                      extra_specs, pvol_ldev_info)
+            pvol_is_drs = utils.is_vclone(
+                extra_specs, pvol_ldev_info,
+                pvol_ldev_info['poolId'],
+                pvol_ldev_info['poolId'],
+                self.driver_info['driver_dir_name'])
+            svol = None
+            LOG.debug('migvol. pvol_is_drs=%r; old_pool_id=%r; new_pool_id=%r',
+                      pvol_is_drs, old_pool_id, new_pool_id)
+            if pvol_is_drs and \
+               (old_pool_id is not None and old_pool_id != new_pool_id):
+                svol = self._copy_ldev_by_shadow_image(
+                    pvol, volume, extra_specs, new_pool_id,
+                    ldev_range, qos_specs)
+            else:
+                svol = self.copy_on_storage(
+                    pvol, volume.size, extra_specs, new_pool_id,
+                    snap_pool_id, ldev_range,
+                    is_snapshot=False, sync=True, qos_specs=qos_specs)
             self.modify_ldev_name(svol, volume['id'].replace("-", ""))
-
+            LOG.debug('migvol. svol=%r, volume_id=%r', svol, volume['id'])
             try:
                 self.delete_ldev(pvol)
             except exception.VolumeDriverException:
@@ -1890,6 +2124,10 @@ class HBSDREST(common.HBSDCommon):
             self.raise_error(msg)
 
     def create_target_name(self, connector):
+        if ('ip' in connector and
+                connector['ip'] == _MIGRATION_TARGET_NAME_BODY):
+            return (self.driver_info['target_prefix'] +
+                    _MIGRATION_TARGET_NAME_BODY)
         if ('ip' in connector and connector['ip']
                 == self._PAIR_TARGET_NAME_BODY):
             return self._PAIR_TARGET_NAME

@@ -496,8 +496,7 @@ class HBSDCommon():
             new_size, extra_specs, pool_id, ldev_range, qos_specs=qos_specs)
         try:
             self.create_pair_on_storage(
-                pvol, svol, snap_pool_id,
-                is_snapshot=is_snapshot,
+                pvol, svol, snap_pool_id, is_snapshot=is_snapshot,
                 snapshot_retention_period=snapshot_retention_period)
             if sync or is_rep:
                 self.wait_copy_completion(pvol, svol)

@@ -820,6 +820,13 @@ class HBSDMsg(enum.Enum):
         'msg': 'Failed to ss2vclone. p-vol=%(pvol)s,s-vol=%(svol)s',
         'suffix': ERROR_SUFFIX,
     }
+    MIGRATE_SI_FAILED = {
+        'msg_id': 775,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to migrate through ShadowImage.'
+               'p-vol=%(pvol)s,s-vol=%(svol)s,pool=%(pool)s,port=%(port)s',
+        'suffix': ERROR_SUFFIX,
+    }
     INVALID_SNAPSHOT_RETENTION_VALUE = {
         'msg_id': 774,
         'loglevel': base_logging.ERROR,
@@ -1064,6 +1071,30 @@ def blocks_to_gb(ldev_info, key='blockCapacity', default=0):
 def is_block_capacity_gb_aligned(block_capacity):
     """Check if block capacity is aligned to gigabyte boundary."""
     return block_capacity % GIGABYTE_PER_BLOCK_SIZE == 0
+
+
+def is_vclone(extra_specs, ldev_info, pool_id, snap_pool_id, driver_dir_name):
+    """Check if a snapshot created from these parameters will be vClone"""
+    capacity_saving_key = driver_dir_name + ':capacity_saving'
+    drs_key = driver_dir_name + ':drs'
+
+    # Check pool ID consistency:
+    # pvol and svol must be in the same pool as snap_pool_id
+    pvol_pool_id = ldev_info.get('poolId')
+    if pvol_pool_id is not None:
+        pvol_pool_id = int(pvol_pool_id)
+
+    if (extra_specs.get(capacity_saving_key) ==
+            'deduplication_compression' and
+            extra_specs.get(drs_key) == '<is> True' and
+            ldev_info.get('attributes') and
+            DRS_VOL_ATTR in ldev_info['attributes'] and
+            pvol_pool_id == snap_pool_id and
+            pool_id == snap_pool_id):
+        # if "DRS" and "clone", it means "vClone"
+        return True
+
+    return False
 
 
 DICT = '_dict'
