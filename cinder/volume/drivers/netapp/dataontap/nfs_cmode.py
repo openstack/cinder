@@ -336,7 +336,8 @@ class NetAppCmodeNfsDriver(
         """Clone backing file for Cinder volume."""
         (vserver, exp_volume) = self._get_vserver_and_exp_vol(volume_id, share)
         self.zapi_client.clone_file(exp_volume, volume_name, clone_name,
-                                    vserver, is_snapshot=is_snapshot)
+                                    vserver, is_snapshot=is_snapshot,
+                                    source_snapshot=source_snapshot)
 
     def _get_vserver_and_exp_vol(self, volume_id=None, share=None):
         """Gets the vserver and export volume for share."""

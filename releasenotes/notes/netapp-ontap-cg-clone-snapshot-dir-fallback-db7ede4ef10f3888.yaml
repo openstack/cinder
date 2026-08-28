@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver `bug #2163623
+    <https://bugs.launchpad.net/cinder/+bug/2163623>`_: Fixed consistency
+    group snapshot clones with the REST API client sourcing from the live
+    file instead of the snapshot, or failing outright when
+    ``snapshot_directory_access_enabled`` is ``False`` on the FlexVol. The
+    private-CLI fallback used in that case now also preserves the
+    backup-clone, overwrite, space-reservation, and QoS policy settings
+    that were previously dropped when falling back.
