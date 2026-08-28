@@ -1,0 +1,27 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: Several storage management operations are now
+    handled natively by the driver's REST API client instead of falling
+    back to the older management API. This improves compatibility for
+    deployments configured to use the REST API client exclusively
+    (``netapp_use_legacy_client=False``). The following operations are
+    now supported natively over REST:
+
+    * Canceling an in-progress file copy during error cleanup.
+    * Assigning a QoS policy to an existing LUN, including when managing
+      an existing LUN into Cinder.
+    * Looking up, renaming, and cleaning up stale snapshots as part of
+      routine snapshot housekeeping.
+    * Creating crash-consistent snapshots across a group of volumes.
+    * Reporting per-file space usage, used to decide which cached
+      images can be safely removed.
+    * Reporting clone-split progress and deduplication space savings
+      for a volume.
+
+    Reporting per-file space usage and deduplication space savings relies
+    on the private CLI passthrough endpoints ``/private/cli/volume/file/
+    show-disk-usage`` and ``/private/cli/volume/efficiency``, since no
+    public REST equivalents exist yet.
+
+

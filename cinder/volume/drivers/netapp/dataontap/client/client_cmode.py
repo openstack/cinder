@@ -2388,58 +2388,6 @@ class Client(client_base.Client, metaclass=volume_utils.TraceWrapperMetaclass):
 
         self.connection.send_request('cluster-peer-create', api_args)
 
-    def get_cluster_peers(self, remote_cluster_name=None):
-        """Gets one or more cluster peer relationships."""
-
-        api_args = {}
-        if remote_cluster_name:
-            api_args['query'] = {
-                'cluster-peer-info': {
-                    'remote-cluster-name': remote_cluster_name,
-                }
-            }
-
-        result = self.send_iter_request('cluster-peer-get-iter', api_args)
-        if not self._has_records(result):
-            return []
-
-        cluster_peers = []
-
-        for cluster_peer_info in result.get_child_by_name(
-                'attributes-list').get_children():
-
-            cluster_peer = {
-                'active-addresses': [],
-                'peer-addresses': []
-            }
-
-            active_addresses = cluster_peer_info.get_child_by_name(
-                'active-addresses') or netapp_api.NaElement('none')
-            for address in active_addresses.get_children():
-                cluster_peer['active-addresses'].append(address.get_content())
-
-            peer_addresses = cluster_peer_info.get_child_by_name(
-                'peer-addresses') or netapp_api.NaElement('none')
-            for address in peer_addresses.get_children():
-                cluster_peer['peer-addresses'].append(address.get_content())
-
-            cluster_peer['availability'] = cluster_peer_info.get_child_content(
-                'availability')
-            cluster_peer['cluster-name'] = cluster_peer_info.get_child_content(
-                'cluster-name')
-            cluster_peer['cluster-uuid'] = cluster_peer_info.get_child_content(
-                'cluster-uuid')
-            cluster_peer['remote-cluster-name'] = (
-                cluster_peer_info.get_child_content('remote-cluster-name'))
-            cluster_peer['serial-number'] = (
-                cluster_peer_info.get_child_content('serial-number'))
-            cluster_peer['timeout'] = cluster_peer_info.get_child_content(
-                'timeout')
-
-            cluster_peers.append(cluster_peer)
-
-        return cluster_peers
-
     def delete_cluster_peer(self, cluster_name):
         """Deletes a cluster peer relationship."""
 

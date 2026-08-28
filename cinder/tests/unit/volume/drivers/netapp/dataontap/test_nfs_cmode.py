@@ -2150,6 +2150,69 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake.JOB_UUID, fake.VOLUME_NAME, fake.DEST_POOL_NAME,
             dest_backend_name=fake.DEST_BACKEND_NAME)
 
+    def test_cancel_file_copy(self):
+        mock_destroy = self.mock_object(
+            self.driver.zapi_client, 'destroy_file_copy')
+        dest_client = mock.Mock()
+        mock_get_client = self.mock_object(
+            dot_utils, 'get_client_for_backend', return_value=dest_client)
+
+        self.driver._cancel_file_copy(
+            fake.JOB_UUID, fake.VOLUME_NAME, fake.DEST_POOL_NAME,
+            dest_backend_name=fake.DEST_BACKEND_NAME)
+
+        mock_destroy.assert_called_once_with(fake.JOB_UUID)
+        mock_get_client.assert_called_once_with(fake.DEST_BACKEND_NAME)
+        dest_client.delete_file.assert_called_once_with(
+            '/vol/%s/%s' % (fake.DEST_POOL_NAME, fake.VOLUME_NAME))
+
+    def test_cancel_file_copy_destroy_error(self):
+        mock_destroy = self.mock_object(
+            self.driver.zapi_client, 'destroy_file_copy',
+            side_effect=na_utils.NetAppDriverException)
+        dest_client = mock.Mock()
+        mock_get_client = self.mock_object(
+            dot_utils, 'get_client_for_backend', return_value=dest_client)
+
+        self.driver._cancel_file_copy(
+            fake.JOB_UUID, fake.VOLUME_NAME, fake.DEST_POOL_NAME,
+            dest_backend_name=fake.DEST_BACKEND_NAME)
+
+        mock_destroy.assert_called_once_with(fake.JOB_UUID)
+        mock_get_client.assert_called_once_with(fake.DEST_BACKEND_NAME)
+        dest_client.delete_file.assert_called_once_with(
+            '/vol/%s/%s' % (fake.DEST_POOL_NAME, fake.VOLUME_NAME))
+
+    @ddt.data(netapp_api.REST_NO_SUCH_FILE, netapp_api.EAPINOTFOUND)
+    def test_cancel_file_copy_file_already_absent(self, not_found_code):
+        self.mock_object(self.driver.zapi_client, 'destroy_file_copy')
+        dest_client = mock.Mock()
+        dest_client.delete_file.side_effect = netapp_api.NaApiError(
+            code=not_found_code)
+        self.mock_object(
+            dot_utils, 'get_client_for_backend', return_value=dest_client)
+
+        self.driver._cancel_file_copy(
+            fake.JOB_UUID, fake.VOLUME_NAME, fake.DEST_POOL_NAME,
+            dest_backend_name=fake.DEST_BACKEND_NAME)
+
+        dest_client.delete_file.assert_called_once_with(
+            '/vol/%s/%s' % (fake.DEST_POOL_NAME, fake.VOLUME_NAME))
+
+    def test_cancel_file_copy_delete_error(self):
+        self.mock_object(self.driver.zapi_client, 'destroy_file_copy')
+        dest_client = mock.Mock()
+        dest_client.delete_file.side_effect = Exception
+        self.mock_object(
+            dot_utils, 'get_client_for_backend', return_value=dest_client)
+
+        self.driver._cancel_file_copy(
+            fake.JOB_UUID, fake.VOLUME_NAME, fake.DEST_POOL_NAME,
+            dest_backend_name=fake.DEST_BACKEND_NAME)
+
+        dest_client.delete_file.assert_called_once_with(
+            '/vol/%s/%s' % (fake.DEST_POOL_NAME, fake.VOLUME_NAME))
+
     def test_migrate_volume_to_vserver(self):
         self.driver.backend_name = fake.BACKEND_NAME
         mock_copy_file = self.mock_object(self.driver, '_copy_file')
