@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Hitachi: Add ability to create temporarily immutable snapshots (snapshot
+    retention) on an hourly granularity . This feature can be enabled on a
+    per-Volume (extra specs) or per-Snapshot (properties) basis. Snapshots with
+    a non-expired retention period cannot be deleted.

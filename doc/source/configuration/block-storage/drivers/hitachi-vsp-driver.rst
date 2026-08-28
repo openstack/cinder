@@ -113,6 +113,7 @@ Hitachi block storage driver also supports the following additional features:
 * Port scheduler
 * Port assignment using extra spec
 * Configuring Quality of Service (QoS) settings
+* Immutable snapshots
 
 .. note::
 
@@ -311,13 +312,6 @@ You can then create GAD volumes as follows:
    $ openstack volume create --type <volume type name> --size <size>
 
 .. note::
-
-   * In this case, the following restrictions apply:
-
-     * You cannot create a volume for which the deduplication and compression
-       function is enabled, or creating a volume will be failed with the error
-       ``MSGID0753-E: Failed to create a volume in a GAD environment because
-       deduplication is enabled for the volume type.``.
 
    * Note the following if the configuration is "P-VOL registered to a VSM":
 
@@ -851,6 +845,153 @@ completed on the storage system.
    * When deleting a volume that has been cloned using Thin Image Advanced and
      vClone (DRS volumes + same pool), the vClone parent volume cannot be deleted
      until all children have been deleted.
+
+Immutable Snapshots (Snapshot Retention)
+---------------------------------------------
+
+By using Immutable Snapshots, you can guarantee that a snapshot cannot be
+deleted for a set number of hours.
+
+Immutable Snapshots can be configured in one of two ways:
+
+* With an extra specification on the volume to create a snapshot for.
+
+  This method uses an extra spec on the volume to create a snapshot for. The
+  value will be used for all snapshots created for this volume. Changing or
+  removing this extra spec will not change the retention period of existing
+  snapshots.
+
+  The extra specification must be named hbsd:snapshot_retention.
+  The valid range for this setting is 0 - 12288. 0 is the same as no retention.
+
+  This method is overridden by snapshot properties if both are provided.
+
+* With a property set while creating the snapshot itself.
+
+  This method uses a property while creating a snapshot to specify the
+  retention period. Changing or removing this property will have no effect on
+  the snapshot once it is created.
+
+  The property must be named hbsd:snapshot_retention.
+  The valid range for this setting is 0 - 12288. 0 is the same as no retention.
+
+  This method overrides an extra spec if both are provided.
+
+.. note::
+
+   * Attempting to delete a snapshot that is still in its retention period will
+     fail. Other operations can still be performed as normal.
+
+**System requirements for Immutable Snapshots (Snapshot Retention)**
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+**Storage firmware versions**
+
++-----------------+------------------------+
+| Storage model   | Firmware version       |
++=================+========================+
+| VSP E590,       | 93-03-22 or later      |
+| E790            |                        |
++-----------------+------------------------+
+| VSP E990        | 93-01-01 or later      |
++-----------------+------------------------+
+| VSP E1090,      | 93-06-2x or later      |
+| E1090H          |                        |
++-----------------+------------------------+
+| VSP 5100,       | 90-04-01 or later      |
+| 5500,           |                        |
+| 5100H,          |                        |
+| 5500H           |                        |
++-----------------+------------------------+
+| VSP One B24,    | A3-04-20 or later      |
+| B26,            |                        |
+| B28             |                        |
++-----------------+------------------------+
+| VSP One Block   | A0-05-21 or later      |
+| High End        |                        |
++-----------------+------------------------+
+
+**Configuring Snapshot Retention with Extra Specs**
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+Create a volume type that contains the immutable snapshot extra spec,
+and then associate it with a volume to create snapshots for.
+
+The following example describes the procedure for configuring the
+immutable snapshot extra spec.
+
+**Procedure**
+
+1. Create the volume type
+
+.. code-block:: console
+
+    $ openstack volume type create [--consumer back-end] \
+    --property hbsd:snapshot_retention=<retention-value-in-hours> \
+    <name-of-the-volume-type>
+
+2. Associate the type with a volume.
+
+   a. During volume creation:
+
+.. code-block:: console
+
+    $ openstack volume create --type <type> --size <size> <name>
+
+\
+   b. By retyping:
+
+.. code-block:: console
+
+    $ openstack volume set --type <name-of-the-volume-type> <name>
+
+3. Create a snapshot for the volume.
+
+.. code-block:: console
+
+    $ openstack volume snapshot create [--size <size>] --source \
+    <volume-name> <snapshot-name>
+
+The following is an example of running the commands.
+
+.. code-block:: console
+
+    $ openstack volume type create --consumer back-end \
+    --property hbsd:snapshot_retention=96 test_retention
+
+    $ openstack volume create --size 1 --type test_retention test_volume
+
+    $ openstack volume snapshot create --source test_volume test_snapshot
+
+\
+
+**Configuring Snapshot Retention with Snapshot Properties**
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+Create a snapshot for an existing volume by using a property to set the
+retention.
+
+The following example describes the procedure for creating the snapshot
+with retention.
+
+**Procedure**
+
+1. Create a snapshot for the volume.
+
+.. code-block:: console
+
+    $ openstack volume snapshot create [--size <size>] --source\
+    <volume-name> --property hbsd:snapshot_retention=<value-in-hours>\
+    <snapshot-name>
+
+The following is an example of running the command.
+
+.. code-block:: console
+
+    $ openstack volume snapshot create --source test_volume --property\
+    hbsd:snapshot_retention=96 test_snapshot
+
+\
 
 Port scheduler
 --------------
