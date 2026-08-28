@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver `bug #2164909
+    <https://bugs.launchpad.net/cinder/+bug/2164909>`_: Fixed
+    canceling an in-progress file copy always failing on the ZAPI
+    client, which prevented the copy job from being properly stopped
+    on the storage controller.
