@@ -105,19 +105,23 @@ _MIGRATION_TARGET_NAME_BODY = 'migration-shadow-image'
 _DR_VOL_PATTERN = {
     'disabled': ('REHYDRATING',),
     'compression_deduplication': ('ENABLED',),
+    'compression': ('ENABLED',),
     None: ('DELETING',),
 }
 _DISABLE_ABLE_DR_STATUS = {
     'disabled': ('DISABLED', 'ENABLING', 'REHYDRATING'),
     'compression_deduplication': ('ENABLED', 'ENABLING'),
+    'compression': ('ENABLED', 'ENABLING'),
 }
 _DEDUPCOMP_ABLE_DR_STATUS = {
     'disabled': ('DISABLED', 'ENABLING'),
     'compression_deduplication': ('ENABLED', 'ENABLING'),
+    'compression': ('ENABLED', 'ENABLING'),
 }
 _CAPACITY_SAVING_DR_MODE = {
     'disable': 'disabled',
     'deduplication_compression': 'compression_deduplication',
+    'compression': 'compression',
     '': 'disabled',
     None: 'disabled',
 }
@@ -2057,7 +2061,8 @@ class HBSDREST(common.HBSDCommon):
             if is_drs:
                 return False
             return dr_status in _DISABLE_ABLE_DR_STATUS.get(dr_mode, ())
-        elif new_dr_mode == 'compression_deduplication':
+        elif (new_dr_mode == 'compression_deduplication' or
+              new_dr_mode == 'compression'):
             return dr_status in _DEDUPCOMP_ABLE_DR_STATUS.get(dr_mode, ())
         return False
 

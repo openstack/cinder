@@ -742,9 +742,9 @@ For details,
 see `Capacity saving function: data deduplication and compression`_
 in the `Provisioning Guide`_.
 
-**Enabling deduplication and compression**
+**Enabling deduplication and/or compression**
 
-To use the deduplication and compression on the storage models, your storage
+To use the deduplication and/or compression on the storage models, your storage
 administrator must first enable the deduplication and compression for the DP
 pool.
 
@@ -758,11 +758,11 @@ management in the
    * Do not set a subscription limit (virtualVolumeCapacityRate) for the DP
      pool.
 
-Creating a volume with deduplication and compression enabled
-<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+Creating a volume with deduplication and/or compression enabled
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-To create a volume with the deduplication and compression setting enabled,
-enable deduplication and compression for the relevant volume type.
+To create a volume with the deduplication and/or compression setting enabled,
+enable deduplication and/or compression for the relevant volume type.
 
 **Procedure**
 
@@ -770,12 +770,16 @@ enable deduplication and compression for the relevant volume type.
 ``deduplication_compression`` for ``hbsd:capacity_saving`` in the extra specs
 for the volume type.
 
-2. When creating a volume of the volume type created in the previous step,
-you can create a volume with the deduplication and compression function
+2. To enable the compression only setting, specify the value
+``compression`` for ``hbsd:capacity_saving`` in the extra specs for the volume
+type.
+
+3. When creating a volume of the volume types created in the previous steps,
+you can create a volume with the deduplication and/or compression function
 enabled.
 
-Deleting a volume with deduplication and compression enabled
-<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+Deleting a volume with deduplication and/or compression enabled
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 The cinder delete command finishes when the storage system starts the LDEV
 deletion process. The LDEV cannot be reused until the LDEV deletion process is
@@ -790,9 +794,11 @@ reduction and data sharing.
 DRS volumes are required for VSP One Block series storage
 when performing Clone operations.
 
-DRS volumes may not have the DRS or deduplication and
-compression configuration modified or removed through
-retyping.
+DRS volumes may not have the ``hbsd:drs`` extra spec
+removed through retyping (or vice-versa), and the
+``hbsd:capacity_saving`` value for a DRS volume
+may switch between ``deduplication_compression`` and
+``compression``, but may not be removed or disabled.
 
 For details,
 see `Capacity saving function: data deduplication and compression`_
@@ -818,7 +824,7 @@ Creating a volume with DRS enabled
 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 To create a volume with the DRS setting enabled,
-enable deduplication and compression and DRS for the relevant volume type.
+enable deduplication and/or compression and DRS for the relevant volume type.
 
 **Procedure**
 
@@ -826,11 +832,15 @@ enable deduplication and compression and DRS for the relevant volume type.
 ``deduplication_compression`` for ``hbsd:capacity_saving`` in the extra specs
 for the volume type.
 
-2. To enable the DRS setting, speciy the value ``<is> True`` for ``hbsd:drs``
+2. To enable the compression only setting, specify the value
+``compression`` for ``hbsd:capacity_saving`` in the extra specs
+for the volume type.
+
+3. To enable the DRS setting, speciy the value ``<is> True`` for ``hbsd:drs``
 in the extra specs for the volume type.
 
-3. When creating a volume of the volume type created in the previous steps,
-you can create a volume with the deduplication and compression function and
+4. When creating a volume of the volume types created in the previous steps,
+you can create a volume with the deduplication and/or compression function and
 DRS function enabled.
 
 Automatic DRS volume creation
@@ -839,8 +849,7 @@ Automatic DRS volume creation
 You can configure DRS to be automatically used on a backend by setting
 the configuration value ``hitachi_use_drs_volumes`` to ``True``. If set to
 ``True``, the ``hitachi_drs_default_csv`` setting will determine the capacity
-saving value (currently, the only supported value is
-``deduplication_compression``).
+saving value (``deduplication_compression`` or ``compression``).
 
 This setting is overridden by the ``hbsd:drs`` extra spec, which may be set
 to ``<is> False`` to create a non-DRS volume. The ``hbsd:capacity_saving``
@@ -850,8 +859,8 @@ capacity saving when using DRS.
 Setting ``hitachi_use_drs_volumes`` to ``True`` is recommended when working
 with VSP One Block storage arrays.
 
-Deleting a volume with deduplication and compression enabled
-<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+Deleting a volume with deduplication and/or compression enabled
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 The cinder delete command finishes when the storage system starts the LDEV
 deletion process. The LDEV cannot be reused until the LDEV deletion process is

@@ -18,6 +18,7 @@
 import json
 from unittest import mock
 
+import ddt
 import futurist
 from oslo_config import cfg
 import requests
@@ -690,6 +691,7 @@ class FakeResponse():
         return self.data
 
 
+@ddt.ddt
 class HBSDREPLICATIONFCDriverTest(test.TestCase):
     """Unit test class for HBSD REPLICATION interface fibre channel module."""
 
@@ -1372,16 +1374,17 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
         body = request.call_args_list[16][1]['json']
         self.assertTrue(body['parameters']['enhancedExpansion'])
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     def test_extend_pair_volume_capacity_saving_dedup_compression(
-            self, get_volume_type_extra_specs, get_volume_type_qos_specs,
+            self, csv, get_volume_type_extra_specs, get_volume_type_qos_specs,
             request):
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         get_volume_type_extra_specs.return_value = {
             'replication_enabled': '<is> True',
-            'hbsd:capacity_saving': 'deduplication_compression'}
+            'hbsd:capacity_saving': csv}
         self.ldev_count = 0
 
         def _request_side_effect(
@@ -2036,12 +2039,13 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
                    'replication_status': fields.ReplicationStatus.DISABLED})
         self.assertTupleEqual(actual, ret)
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(hbsd_rest.HBSDREST, "_copy_ldev_by_shadow_image")
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_migrate_volume_diff_pool_drs(
-            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            self, csv, get_volume_type_qos_specs, get_volume_type_extra_specs,
             request, copy_ldev_by_shadow_image):
         """Test migrate_volume for a DRS volume to a different pool.
 
@@ -2052,7 +2056,7 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
         """
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         get_volume_type_extra_specs.return_value = {
-            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:capacity_saving': csv,
             'hbsd:drs': '<is> True',
         }
         copy_ldev_by_shadow_image.return_value = 1
@@ -2094,12 +2098,13 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
                    'replication_status': fields.ReplicationStatus.DISABLED})
         self.assertTupleEqual(actual, ret)
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(hbsd_rest.HBSDREST, "_copy_ldev_by_shadow_image")
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_retype_diff_pool_drs(
-            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            self, csv, get_volume_type_qos_specs, get_volume_type_extra_specs,
             request, copy_ldev_by_shadow_image):
         """Test migrate_volume for a DRS volume migrating to a different pool.
 
@@ -2108,7 +2113,7 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
         """
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         get_volume_type_extra_specs.return_value = {
-            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:capacity_saving': csv,
             'hbsd:drs': '<is> True',
         }
         copy_ldev_by_shadow_image.return_value = 1
@@ -3136,17 +3141,18 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
                           TEST_GROUP[0],
                           add_volumes=[TEST_VOLUME[3]])
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
     def test_update_group_has_rep_pair_true(
-            self, is_group_a_cg_snapshot_type,
+            self, csv, is_group_a_cg_snapshot_type,
             get_volume_type_extra_specs, get_volume_type, request):
         self.driver.common._active_backend_id = 'test'
         get_volume_type_extra_specs.return_value = {
             'replication_enabled': '<is> True',
-            'hbsd:capacity_saving': 'deduplication_compression'}
+            'hbsd:capacity_saving': csv}
         get_volume_type.return_value = {}
         request.return_value = FakeResponse(200, GET_LDEV_RESULT_REP)
         is_group_a_cg_snapshot_type.return_value = False
@@ -3157,12 +3163,13 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
                           add_volumes=[TEST_VOLUME[5]])
         self.assertEqual(1, request.call_count)
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(objects.Volume, 'is_replicated')
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_create_rep_ldev_and_pair_capacity_saving_dedup_compression(
-            self, get_volume_type_qos_specs, is_replicated,
+            self, csv, get_volume_type_qos_specs, is_replicated,
             get_volume_type_extra_specs, request):
         self.driver.common.rep_primary._stats = {}
         self.driver.common.rep_primary._stats['pools'] = [
@@ -3173,7 +3180,7 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
         is_replicated.return_value = True
         get_volume_type_extra_specs.return_value = {
             'replication_enabled': '<is> True',
-            'hbsd:capacity_saving': 'deduplication_compression'}
+            'hbsd:capacity_saving': csv}
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         self.snapshot_count = 0
 

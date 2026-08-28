@@ -1179,9 +1179,10 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
             self.driver.unmanage_snapshot,
             TEST_SNAPSHOT[0])
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
-    def test_retype(self, get_volume_type_qos_specs, request):
+    def test_retype(self, csv, get_volume_type_qos_specs, request):
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
@@ -1193,12 +1194,12 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
                 },
             },
         }
-        extra_specs = {'hbsd:capacity_saving': 'deduplication_compression'}
+        extra_specs = {'hbsd:capacity_saving': csv}
         new_type = fake_volume.fake_volume_type_obj(
             CTXT, id='00000000-0000-0000-0000-{0:012d}'.format(0),
             extra_specs=extra_specs)
         old_specs = {'hbsd:capacity_saving': 'disable'}
-        new_specs = {'hbsd:capacity_saving': 'deduplication_compression'}
+        new_specs = {'hbsd:capacity_saving': csv}
         old_type_ref = volume_types.create(self.ctxt, 'old', old_specs)
         new_type_ref = volume_types.create(self.ctxt, 'new', new_specs)
         diff = volume_types.volume_types_diff(self.ctxt, old_type_ref['id'],
@@ -1224,12 +1225,13 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         actual = (True, None)
         self.assertTupleEqual(actual, ret)
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(hbsd_rest.HBSDREST, "_copy_ldev_by_shadow_image")
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_migrate_volume_diff_pool_drs(
-            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            self, csv, get_volume_type_qos_specs, get_volume_type_extra_specs,
             request, copy_ldev_by_shadow_image):
         """Test migrate_volume for a DRS volume to a different pool.
 
@@ -1240,7 +1242,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         """
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         get_volume_type_extra_specs.return_value = {
-            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:capacity_saving': csv,
             'hbsd:drs': '<is> True',
         }
         copy_ldev_by_shadow_image.return_value = 1
@@ -1276,12 +1278,13 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         actual = (True, {'provider_location': '1'})
         self.assertTupleEqual(actual, ret)
 
+    @ddt.data('deduplication_compression', 'compression')
     @mock.patch.object(hbsd_rest.HBSDREST, "_copy_ldev_by_shadow_image")
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     @mock.patch.object(volume_types, 'get_volume_type_qos_specs')
     def test_retype_diff_pool_drs(
-            self, get_volume_type_qos_specs, get_volume_type_extra_specs,
+            self, csv, get_volume_type_qos_specs, get_volume_type_extra_specs,
             request, copy_ldev_by_shadow_image):
         """Test migrate_volume for a DRS volume migrating to a different pool.
 
@@ -1290,7 +1293,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         """
         get_volume_type_qos_specs.return_value = {'qos_specs': None}
         get_volume_type_extra_specs.return_value = {
-            'hbsd:capacity_saving': 'deduplication_compression',
+            'hbsd:capacity_saving': csv,
             'hbsd:drs': '<is> True',
         }
         copy_ldev_by_shadow_image.return_value = 1
