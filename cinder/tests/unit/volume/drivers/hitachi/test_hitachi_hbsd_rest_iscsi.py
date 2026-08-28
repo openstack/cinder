@@ -17,6 +17,7 @@
 
 from unittest import mock
 
+import ddt
 from oslo_config import cfg
 import requests
 
@@ -322,6 +323,7 @@ class FakeResponse():
         return self.data
 
 
+@ddt.ddt
 class HBSDRESTISCSIDriverTest(test.TestCase):
     """Unit test class for HBSD REST interface iSCSI module."""
 
@@ -963,10 +965,13 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.assertEqual(1, get_volume_type_qos_specs.call_count)
         self.assertEqual(8, request.call_count)
 
+    @ddt.data(False, True)
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     def test_initialize_connection(
-            self, get_volume_type_extra_specs, request):
+            self, unmap_support, get_volume_type_extra_specs, request):
+        self.override_config('hitachi_report_discard_support', unmap_support,
+                             group=conf.SHARED_CONF_GROUP)
         extra_specs = {"hbsd:target_ports": "CL1-A"}
         get_volume_type_extra_specs.return_value = extra_specs
         request.side_effect = [FakeResponse(200, GET_HOST_ISCSIS_RESULT),
@@ -988,6 +993,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.assertEqual(
             CONFIG_MAP['auth_password'], ret['data']['auth_password'])
         self.assertEqual(1, ret['data']['target_lun'])
+        self.assertEqual(unmap_support, ret['data']['discard'])
         self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(3, request.call_count)
 

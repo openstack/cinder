@@ -2057,12 +2057,16 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual(9, request.call_count)
         self.assertIn('virtual-clone', request.call_args_list[7][0][1])
 
+    @ddt.data(False, True)
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
     def test_initialize_connection(
-            self, get_volume_type_extra_specs, request, add_fc_zone):
+            self, unmap_support,
+            get_volume_type_extra_specs, request, add_fc_zone):
         self.override_config('hitachi_zoning_request', True,
+                             group=conf.SHARED_CONF_GROUP)
+        self.override_config('hitachi_report_discard_support', unmap_support,
                              group=conf.SHARED_CONF_GROUP)
         self.driver.common._lookup_service = FakeLookupService()
         extra_specs = {"hbsd:target_ports": "CL1-A"}
@@ -2074,6 +2078,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
         self.assertEqual([CONFIG_MAP['target_wwn']], ret['data']['target_wwn'])
         self.assertEqual(1, ret['data']['target_lun'])
+        self.assertEqual(unmap_support, ret['data']['discard'])
         self.assertEqual(1, get_volume_type_extra_specs.call_count)
         self.assertEqual(2, request.call_count)
         self.assertEqual(1, add_fc_zone.call_count)

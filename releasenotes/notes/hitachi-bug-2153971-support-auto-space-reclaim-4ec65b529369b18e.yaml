@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Hitachi VSP driver: Fix to correctly support auto space
+    reclamation.
+    `bug #2153971 <https://bugs.launchpad.net/cinder/+bug/2153971>`

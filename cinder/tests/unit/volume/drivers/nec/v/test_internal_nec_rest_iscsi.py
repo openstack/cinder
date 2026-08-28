@@ -366,6 +366,7 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
         self.configuration.nec_v_copy_check_interval = 3
         self.configuration.nec_v_async_copy_check_interval = 10
         self.configuration.nec_v_manage_drs_volumes = False
+        self.configuration.nec_v_report_discard_support = False
 
         self.configuration.san_login = CONFIG_MAP['user_id']
         self.configuration.san_password = CONFIG_MAP['user_pass']
