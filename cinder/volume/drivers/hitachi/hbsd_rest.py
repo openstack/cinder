@@ -283,7 +283,7 @@ def _check_ldev_manageability(self, ldev_info, ldev, existing_ref):
 
 def _check_ldev_size(self, ldev_info, ldev, existing_ref):
     """Hitachi storage calculates volume sizes in a block unit, 512 bytes."""
-    if ldev_info['blockCapacity'] % utils.GIGABYTE_PER_BLOCK_SIZE:
+    if not utils.is_block_capacity_gb_aligned(ldev_info['blockCapacity']):
         msg = self.output_log(MSG.INVALID_LDEV_SIZE_FOR_MANAGE, ldev=ldev)
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref, reason=msg)
@@ -1222,7 +1222,7 @@ class HBSDREST(common.HBSDCommon):
         ldev_info = self.get_ldev_info(
             _CHECK_LDEV_SIZE_KEYS, ldev)
         _check_ldev_size(self, ldev_info, ldev, existing_ref)
-        return ldev_info['blockCapacity'] / utils.GIGABYTE_PER_BLOCK_SIZE
+        return utils.blocks_to_gb(ldev_info)
 
     def _get_pool_id(self, pool_list, pool_name_or_id):
         """Get the pool id from specified name."""

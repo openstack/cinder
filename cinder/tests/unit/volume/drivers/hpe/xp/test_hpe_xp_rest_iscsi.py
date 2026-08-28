@@ -444,6 +444,8 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
                                FakeResponse(200, GET_HOST_ISCSIS_RESULT),
                                FakeResponse(200, GET_HOST_GROUP_RESULT)]
         self.driver.do_setup(None)
+        # Add driver_dir_name to prevent KeyError in _is_vclone
+        self.driver.common.driver_info['driver_dir_name'] = 'hbsd'
         self.driver.check_for_setup_error()
         self.driver.local_path(None)
         self.driver.create_export(None, None, None)

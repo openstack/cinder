@@ -549,6 +549,8 @@ class HPEXPRESTFCDriverTest(test.TestCase):
                                FakeResponse(200, GET_HOST_WWNS_RESULT)]
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
+        # Add driver_dir_name to prevent KeyError in _is_vclone
+        self.driver.common.driver_info['driver_dir_name'] = 'hbsd'
         self.driver.local_path(None)
         self.driver.create_export(None, None, None)
         self.driver.ensure_export(None, None)

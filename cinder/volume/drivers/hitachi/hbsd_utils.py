@@ -1049,6 +1049,17 @@ def get_qos_specs_from_volume_type_and_size(volume_type, size):
     return qos
 
 
+def blocks_to_gb(ldev_info, key='blockCapacity', default=0):
+    """Convert blockCapacity from blocks to gigabytes."""
+    block_capacity = ldev_info.get(key, default)
+    return int(block_capacity / GIGABYTE_PER_BLOCK_SIZE)
+
+
+def is_block_capacity_gb_aligned(block_capacity):
+    """Check if block capacity is aligned to gigabyte boundary."""
+    return block_capacity % GIGABYTE_PER_BLOCK_SIZE == 0
+
+
 DICT = '_dict'
 CONF = '_conf'
 OPTS = '_opts'
