@@ -357,6 +357,8 @@ class HPEXPRESTISCSIDriverTest(test.TestCase):
         self.configuration.hpexp_copy_check_interval = 3
         self.configuration.hpexp_async_copy_check_interval = 10
         self.configuration.hpexp_manage_drs_volumes = False
+        self.configuration.hpexp_use_drs_volumes = False
+        self.configuration.hpexp_drs_default_csv = 'deduplication_compression'
         self.configuration.hpexp_report_discard_support = False
 
         self.configuration.san_login = CONFIG_MAP['user_id']

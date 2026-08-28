@@ -28,6 +28,7 @@ import requests
 
 from cinder import coordination
 from cinder import exception
+from cinder.i18n import _
 from cinder import utils as cinder_utils
 from cinder.volume import volume_types
 
@@ -86,6 +87,25 @@ QOS_DYNAMIC_KEYS = [_QOS_DYNAMIC_KEY_UPPER_IOPS_PER_GB]
 # This map maps a dynamic value to the expected normal QoS value to use after
 # the dynamic conversion.
 QOS_DYNAMIC_KEY_MAP = {_QOS_DYNAMIC_KEY_UPPER_IOPS_PER_GB: _QOS_KEY_UPPER_IOPS}
+
+DRIVER_INFO_DRIVER_DIR_NAME = 'driver_dir_name'
+DRIVER_INFO_DRIVER_PREFIX = 'driver_prefix'
+
+EXTRA_SPEC_SEPARATOR = ':'
+
+EXTRA_SPEC_DRS = 'drs'
+EXTRA_SPEC_CSV = 'capacity_saving'
+
+CSV_DEFAULT = ''
+CSV_DISABLE = 'disable'
+CSV_DEDUP_COMP = 'deduplication_compression'
+
+DRS_TRUE = '<is> True'
+DRS_FALSE = '<is> False'
+DRS_MODE = {
+    DRS_TRUE: True,
+    DRS_FALSE: False,
+}
 
 
 @enum.unique
@@ -833,6 +853,15 @@ class HBSDMsg(enum.Enum):
         'msg': 'Invalid value for snapshot retention. retention=%(retention)s',
         'suffix': ERROR_SUFFIX,
     }
+    INVALID_EXTRA_SPEC_KEY_2 = {
+        'msg_id': 775,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to create or update a volume. '
+               'An invalid value is specified for the extra spec keys '
+               '"%(key)s" & "%(key2)s" of the volume type. (values: '
+               '%(value)s, %(value2)s)',
+        'suffix': ERROR_SUFFIX,
+    }
 
     def __init__(self, error_info):
         """Initialize Enum attributes."""
@@ -1073,10 +1102,16 @@ def is_block_capacity_gb_aligned(block_capacity):
     return block_capacity % GIGABYTE_PER_BLOCK_SIZE == 0
 
 
-def is_vclone(extra_specs, ldev_info, pool_id, snap_pool_id, driver_dir_name):
+class DriverContext(object):
+    def __init__(self, driver_info, conf, storage_id):
+        self.driver_info = driver_info
+        self.conf = conf
+        self.storage_id = storage_id
+
+
+def is_vclone(extra_specs, ldev_info, pool_id, snap_pool_id,
+              ctx: DriverContext):
     """Check if a snapshot created from these parameters will be vClone"""
-    capacity_saving_key = driver_dir_name + ':capacity_saving'
-    drs_key = driver_dir_name + ':drs'
 
     # Check pool ID consistency:
     # pvol and svol must be in the same pool as snap_pool_id
@@ -1084,9 +1119,8 @@ def is_vclone(extra_specs, ldev_info, pool_id, snap_pool_id, driver_dir_name):
     if pvol_pool_id is not None:
         pvol_pool_id = int(pvol_pool_id)
 
-    if (extra_specs.get(capacity_saving_key) ==
-            'deduplication_compression' and
-            extra_specs.get(drs_key) == '<is> True' and
+    _, drs = get_csv_and_drs(ctx, extra_specs)
+    if (drs is True and
             ldev_info.get('attributes') and
             DRS_VOL_ATTR in ldev_info['attributes'] and
             pvol_pool_id == snap_pool_id and
@@ -1095,6 +1129,81 @@ def is_vclone(extra_specs, ldev_info, pool_id, snap_pool_id, driver_dir_name):
         return True
 
     return False
+
+
+def get_csv_and_drs(ctx: DriverContext, extra_specs, specs_only=False):
+
+    # Get default settings.
+    # These may be overwritten if extra specs are also present.
+    drs = False
+    csv = CSV_DEFAULT
+
+    # If we're not querying specs only, set the configuration defaults.
+    if not specs_only:
+        drs = ctx.conf.hitachi_use_drs_volumes
+    if drs and not specs_only:
+        csv = ctx.conf.hitachi_drs_default_csv
+
+    if ctx.driver_info.get(DRIVER_INFO_DRIVER_DIR_NAME):
+        # Update our DRS flag if we have an extra spec.
+        drs_spec_name = format_extra_spec(ctx.driver_info, EXTRA_SPEC_DRS)
+        if drs_spec_name in extra_specs:
+            drs_spec = extra_specs.get(drs_spec_name)
+            drs = DRS_MODE.get(drs_spec, None)
+
+        # Update our CSV setting if we have an extra spec.
+        # In addition, if we don't have an extra spec here, but we
+        # DO have a DRS extra spec, set the default CSV.
+        csv_spec_name = format_extra_spec(ctx.driver_info, EXTRA_SPEC_CSV)
+        if csv_spec_name in extra_specs:
+            csv = extra_specs.get(csv_spec_name)
+        elif drs and not specs_only:
+            # If we're DRS and we have not specified a CSV value,
+            # use the default from the configuration.
+            csv = ctx.conf.hitachi_drs_default_csv
+        else:
+            # In case an extra spec removed our DRS flag conf setting, we need
+            # to reset CSV as that above setting value only applies if we have
+            # DRS.
+            csv = CSV_DEFAULT
+
+    # drs must be True or False after the above.
+    # After the above:
+    #  If drs is true:
+    #   CSV must be "deduplication_compression"
+    #  If drs is false:
+    #   CSV must be "disable", "deduplication_compression", or "".
+    valid_csv = {CSV_DEDUP_COMP}
+    if not drs:
+        valid_csv.add(CSV_DISABLE)
+        valid_csv.add(CSV_DEFAULT)
+    if (drs not in (True, False) or (csv not in valid_csv)):
+        msg = output_log(
+            MSG.INVALID_EXTRA_SPEC_KEY_2,
+            storage_id=ctx.storage_id,
+            key=format_extra_spec(ctx.driver_info, EXTRA_SPEC_DRS),
+            key2=format_extra_spec(ctx.driver_info, EXTRA_SPEC_CSV),
+            value=drs,
+            value2=csv)
+        raise_error(ctx.driver_info, msg)
+
+    return (csv, drs)
+
+
+def format_extra_spec(driver_info, name):
+    return (driver_info.get(DRIVER_INFO_DRIVER_DIR_NAME, '') +
+            EXTRA_SPEC_SEPARATOR + name)
+
+
+def raise_error(driver_info, msg):
+    """Raise a VolumeDriverException by driver error message."""
+    message = _(
+        '%(prefix)s error occurred. %(msg)s' % {
+            'prefix': driver_info[DRIVER_INFO_DRIVER_PREFIX],
+            'msg': msg,
+        }
+    )
+    raise exception.VolumeDriverException(message)
 
 
 DICT = '_dict'

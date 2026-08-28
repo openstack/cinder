@@ -119,7 +119,7 @@ _CAPACITY_SAVING_DR_MODE = {
     '': 'disabled',
     None: 'disabled',
 }
-_DRS_MODE = common.DRS_MODE
+_DRS_MODE = utils.DRS_MODE
 
 REST_VOLUME_OPTS = [
     cfg.BoolOpt(
@@ -391,25 +391,12 @@ class HBSDREST(common.HBSDCommon):
         # this method behavior.
         pass
 
-    def _set_dr_mode(self, body, capacity_saving):
-        dr_mode = _CAPACITY_SAVING_DR_MODE.get(capacity_saving)
-        if not dr_mode:
-            msg = self.output_log(
-                MSG.INVALID_EXTRA_SPEC_KEY,
-                key=self.driver_info['driver_dir_name'] + ':capacity_saving',
-                value=capacity_saving)
-            self.raise_error(msg)
-        body['dataReductionMode'] = dr_mode
+    def _get_driver_context(self):
+        return utils.DriverContext(self.driver_info, self.conf,
+                                   self.storage_id)
 
-    def _set_drs_mode(self, body, drs):
-        drs_mode = _DRS_MODE.get(drs, False)
-        if not drs_mode:
-            msg = self.output_log(
-                MSG.INVALID_EXTRA_SPEC_KEY,
-                key=self.driver_info['driver_dir_name'] + ':drs',
-                value=drs)
-            self.raise_error(msg)
-        body['isDataReductionSharedVolumeEnabled'] = drs_mode
+    def _get_csv_and_drs(self, extra_specs):
+        return utils.get_csv_and_drs(self._get_driver_context(), extra_specs)
 
     def _create_ldev_on_storage(self, size, extra_specs, pool_id, ldev_range):
         """Create an LDEV on the storage system."""
@@ -418,19 +405,11 @@ class HBSDREST(common.HBSDCommon):
             'poolId': pool_id,
             'isParallelExecutionEnabled': True,
         }
-        capacity_saving = None
-        drs = None
-        has_drs = False
-        if self.driver_info.get('driver_dir_name'):
-            capacity_saving = extra_specs.get(
-                self.driver_info['driver_dir_name'] + ':capacity_saving')
-            drs_spec_name = self.driver_info['driver_dir_name'] + ':drs'
-            has_drs = drs_spec_name in extra_specs
-            drs = extra_specs.get(drs_spec_name)
-        if capacity_saving:
-            self._set_dr_mode(body, capacity_saving)
-        if has_drs:
-            self._set_drs_mode(body, drs)
+        csv, drs = self._get_csv_and_drs(extra_specs)
+        if csv:
+            body['dataReductionMode'] = _CAPACITY_SAVING_DR_MODE.get(csv)
+        if drs:
+            body['isDataReductionSharedVolumeEnabled'] = drs
         if self.storage_info['ldev_range']:
             min_ldev, max_ldev = self.storage_info['ldev_range'][:2]
             body['startLdevId'] = min_ldev
@@ -1965,7 +1944,7 @@ class HBSDREST(common.HBSDCommon):
                 extra_specs, pvol_ldev_info,
                 pvol_ldev_info['poolId'],
                 pvol_ldev_info['poolId'],
-                self.driver_info['driver_dir_name'])
+                self._get_driver_context())
             svol = None
             LOG.debug('migvol. pvol_is_drs=%r; old_pool_id=%r; new_pool_id=%r',
                       pvol_is_drs, old_pool_id, new_pool_id)
@@ -2042,14 +2021,14 @@ class HBSDREST(common.HBSDCommon):
         new_drs = None
         allowed_extra_specs = []
         if self.driver_info.get('driver_dir_name'):
-            extra_specs_capacity_saving = (
-                self.driver_info['driver_dir_name'] + ':capacity_saving')
+            extra_specs_capacity_saving = utils.format_extra_spec(
+                self.driver_info, utils.EXTRA_SPEC_CSV)
             new_capacity_saving = (
                 new_type['extra_specs'].get(extra_specs_capacity_saving))
             allowed_extra_specs.append(extra_specs_capacity_saving)
 
-            extra_specs_drs = (
-                self.driver_info['driver_dir_name'] + ':drs')
+            extra_specs_drs = utils.format_extra_spec(self.driver_info,
+                                                      utils.EXTRA_SPEC_DRS)
             new_drs = (
                 new_type['extra_specs'].get(extra_specs_drs))
 

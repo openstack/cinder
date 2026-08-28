@@ -90,6 +90,17 @@ COMMON_VOLUME_OPTS = [
         help='If true, the driver will create a driver managed vClone parent '
              'for each non-cloned DRS volume it creates.'),
     cfg.BoolOpt(
+        'nec_v_use_drs_volumes',
+        default=False,
+        help='If True, the driver will always create DRS volumes unless '
+             'specifically told not to via extra specs.'),
+    cfg.StrOpt(
+        'nec_v_drs_default_csv',
+        default='deduplication_compression',
+        help='The default capacity saving value to use when '
+             'nec_v_use_drs_volumes is enabled and no extra spec has been '
+             'specified.'),
+    cfg.BoolOpt(
         'nec_v_report_discard_support',
         default=False,
         help='Set True to announce auto unmap/discard support.'),
@@ -223,6 +234,8 @@ def update_conf(conf):
         conf.nec_v_async_copy_check_interval)
     conf.hitachi_manage_drs_volumes = (
         conf.nec_v_manage_drs_volumes)
+    conf.hitachi_use_drs_volumes = conf.nec_v_use_drs_volumes
+    conf.hitachi_drs_default_csv = conf.nec_v_drs_default_csv
     conf.hitachi_report_discard_support = conf.nec_v_report_discard_support
 
     # REST_VOLUME_OPTS

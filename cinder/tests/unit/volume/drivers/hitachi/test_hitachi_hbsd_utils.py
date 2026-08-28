@@ -16,6 +16,7 @@
 
 import ddt
 
+from cinder import exception
 from cinder.tests.unit import test
 from cinder.volume.drivers.hitachi import hbsd_utils
 
@@ -51,7 +52,7 @@ SEARCHER_ALL_VALID_NAMES = [SEARCHER_MYGROUP_NAME]
 
 @ddt.ddt
 class HBSDGroupSearcherTest(test.TestCase):
-    """Unit test class for HBSD utils."""
+    """Unit test class for HBSD utils group searcher."""
 
     def setUp(self):
         """Set up the test environment."""
@@ -518,3 +519,316 @@ class HBSDGroupSearcherTest(test.TestCase):
         self.assertTrue(
             cache._generate_group_name_key("PORT3", "NAME") in
             cache._group_name_cache)
+
+
+@ddt.ddt
+class HBSDUtilsTest(test.TestCase):
+    """Unit test class for HBSD utils."""
+
+    def setUp(self):
+        """Set up the test environment."""
+
+        super(HBSDUtilsTest, self).setUp()
+
+    def tearDown(self):
+        super(HBSDUtilsTest, self).tearDown()
+
+    def _init_driver_context(self, driver_name, drs_setting, drs_csv_setting):
+
+        class MockConf(object):
+            def __init__(self, drs_setting, drs_csv_setting):
+                self.hitachi_use_drs_volumes = drs_setting
+                self.hitachi_drs_default_csv = drs_csv_setting
+
+        driver_info = {'driver_prefix': 'HBSD'}
+        if driver_name is not None:
+            driver_info['driver_dir_name'] = driver_name
+
+        conf = MockConf(drs_setting, drs_csv_setting)
+
+        return hbsd_utils.DriverContext(driver_info, conf, "ABCDEF123456")
+
+    def _init_drs_csv_extra_specs(self, drs_extra_spec, csv_extra_spec):
+        extra_specs = {}
+        if drs_extra_spec is not None:
+            extra_specs['hbsd:drs'] = drs_extra_spec
+        if csv_extra_spec is not None:
+            extra_specs['hbsd:capacity_saving'] = csv_extra_spec
+        return extra_specs
+
+    @ddt.data((("", False), False, "deduplication_compression", None, None,
+               "hbsd"),
+              (("", False), False, "deduplication_compression", "<is> False",
+               None, "hbsd"),
+              (("", False), True, "deduplication_compression", "<is> False",
+               None, "hbsd"),
+              (("", False), False, "disable", None, None, "hbsd"),
+              (("", False), False, "disable", "<is> False", None, "hbsd"),
+              (("", False), False, "", None, None, "hbsd"),
+              (("", False), False, "", "<is> False", None, "hbsd"),
+              (("", False), False, "invalid", None, None, "hbsd"),
+              (("", False), False, "invalid", "<is> False", None, "hbsd"),
+              (("", False), True, "disable", "<is> False", None, "hbsd"),
+              (("", False), True, "", "<is> False", None, "hbsd"),
+              (("", False), True, "invalid", "<is> False", None, "hbsd"),
+              (("", False), "invalid", "deduplication_compression",
+               "<is> False", None, "hbsd"),
+              (("", False), False, "deduplication_compression", "<is> False",
+               "deduplication_compression", None),
+              (("", False), False, "deduplication_compression", "<is> True",
+               "deduplication_compression", None),
+              (("", False), False, "deduplication_compression", "invalid",
+               "invalid", None),
+              (("deduplication_compression", False), False,
+               "deduplication_compression", None, "deduplication_compression",
+               "hbsd"),
+              (("deduplication_compression", False), False,
+               "deduplication_compression", "<is> False",
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), True,
+               "deduplication_compression", "<is> False",
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), False, "disable", None,
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), False, "disable",
+               "<is> False", "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), False, "", None,
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), False, "", "<is> False",
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), False, "invalid", None,
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), False, "invalid",
+               "<is> False", "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), True, "disable",
+               "<is> False", "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), True, "", "<is> False",
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), True, "invalid",
+               "<is> False", "deduplication_compression", "hbsd"),
+              (("deduplication_compression", False), "invalid",
+               "deduplication_compression", "<is> False",
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), False,
+               "deduplication_compression", "<is> True", None, "hbsd"),
+              (("deduplication_compression", True), False,
+               "deduplication_compression", "<is> True",
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), True,
+               "deduplication_compression", None, None, "hbsd"),
+              (("deduplication_compression", True), True,
+               "deduplication_compression", None, "deduplication_compression",
+               "hbsd"),
+              (("deduplication_compression", True), True,
+               "deduplication_compression", "<is> True", None, "hbsd"),
+              (("deduplication_compression", True), True,
+               "deduplication_compression", "<is> True",
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), False, "disable",
+               "<is> True", "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), False, "", "<is> True",
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), False, "invalid",
+               "<is> True", "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), True, "disable", None,
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), True, "disable",
+               "<is> True", "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), True, "", None,
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), True, "", "<is> True",
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), True, "invalid", None,
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), True, "invalid",
+               "<is> True", "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), "invalid",
+               "deduplication_compression", "<is> True", None, "hbsd"),
+              (("deduplication_compression", True), "invalid",
+               "deduplication_compression", "<is> True",
+               "deduplication_compression", "hbsd"),
+              (("deduplication_compression", True), True,
+               "deduplication_compression", "<is> False", "disable", None),
+              (("deduplication_compression", True), True,
+               "deduplication_compression", "<is> True", "disable", None),
+              (("deduplication_compression", True), True,
+               "deduplication_compression", "invalid", "invalid", None),
+              (("disable", False), False, "deduplication_compression", None,
+               "disable", "hbsd"),
+              (("disable", False), False, "deduplication_compression",
+               "<is> False", "disable", "hbsd"),
+              (("disable", False), True, "deduplication_compression",
+               "<is> False", "disable", "hbsd"),
+              (("disable", False), False, "disable", None, "disable", "hbsd"),
+              (("disable", False), False, "disable", "<is> False", "disable",
+               "hbsd"),
+              (("disable", False), False, "", None, "disable", "hbsd"),
+              (("disable", False), False, "", "<is> False", "disable", "hbsd"),
+              (("disable", False), False, "invalid", None, "disable", "hbsd"),
+              (("disable", False), False, "invalid", "<is> False", "disable",
+               "hbsd"),
+              (("disable", False), True, "disable", "<is> False", "disable",
+               "hbsd"),
+              (("disable", False), True, "", "<is> False", "disable", "hbsd"),
+              (("disable", False), True, "invalid", "<is> False", "disable",
+               "hbsd"),
+              (("disable", False), "invalid", "deduplication_compression",
+               "<is> False", "disable", "hbsd"))
+    @ddt.unpack
+    def test_get_csv_and_drs(self, expected, drs_setting, drs_csv_setting,
+                             drs_extra_spec, csv_extra_spec, driver_name):
+
+        ctx = self._init_driver_context(driver_name, drs_setting,
+                                        drs_csv_setting)
+        extra_specs = self._init_drs_csv_extra_specs(drs_extra_spec,
+                                                     csv_extra_spec)
+        self.assertEqual(expected,
+                         hbsd_utils.get_csv_and_drs(ctx, extra_specs))
+
+    @ddt.data((False, "deduplication_compression", None, "invalid", "hbsd"),
+              (False, "deduplication_compression", "<is> False", "invalid",
+               "hbsd"),
+              (False, "deduplication_compression", "<is> True", "disable",
+               "hbsd"),
+              (False, "deduplication_compression", "<is> True", "invalid",
+               "hbsd"),
+              (False, "deduplication_compression", "invalid", None, "hbsd"),
+              (False, "deduplication_compression", "invalid", "disable",
+               "hbsd"),
+              (False, "deduplication_compression", "invalid",
+               "deduplication_compression", "hbsd"),
+              (False, "deduplication_compression", "invalid", "invalid",
+               "hbsd"),
+              (True, "deduplication_compression", None, "disable", "hbsd"),
+              (True, "deduplication_compression", None, "invalid", "hbsd"),
+              (True, "deduplication_compression", "<is> False", "invalid",
+               "hbsd"),
+              (True, "deduplication_compression", "<is> True", "disable",
+               "hbsd"),
+              (True, "deduplication_compression", "<is> True", "invalid",
+               "hbsd"),
+              (True, "deduplication_compression", "invalid", None, "hbsd"),
+              (True, "deduplication_compression", "invalid", "disable",
+               "hbsd"),
+              (True, "deduplication_compression", "invalid",
+               "deduplication_compression", "hbsd"),
+              (True, "deduplication_compression", "invalid", "invalid",
+               "hbsd"),
+              (False, "disable", None, "invalid", "hbsd"),
+              (False, "disable", "<is> False", "invalid", "hbsd"),
+              (False, "disable", "<is> True", None, "hbsd"),
+              (False, "disable", "<is> True", "disable", "hbsd"),
+              (False, "disable", "<is> True", "invalid", "hbsd"),
+              (False, "disable", "invalid", None, "hbsd"),
+              (False, "disable", "invalid", "disable", "hbsd"),
+              (False, "disable", "invalid", "deduplication_compression",
+               "hbsd"),
+              (False, "disable", "invalid", "invalid", "hbsd"),
+              (False, "", None, "invalid", "hbsd"),
+              (False, "", "<is> False", "invalid", "hbsd"),
+              (False, "", "<is> True", None, "hbsd"),
+              (False, "", "<is> True", "disable", "hbsd"),
+              (False, "", "<is> True", "invalid", "hbsd"),
+              (False, "", "invalid", None, "hbsd"),
+              (False, "", "invalid", "disable", "hbsd"),
+              (False, "", "invalid", "deduplication_compression", "hbsd"),
+              (False, "", "invalid", "invalid", "hbsd"),
+              (False, "invalid", None, "invalid", "hbsd"),
+              (False, "invalid", "<is> False", "invalid", "hbsd"),
+              (False, "invalid", "<is> True", None, "hbsd"),
+              (False, "invalid", "<is> True", "disable", "hbsd"),
+              (False, "invalid", "<is> True", "invalid", "hbsd"),
+              (False, "invalid", "invalid", None, "hbsd"),
+              (False, "invalid", "invalid", "disable", "hbsd"),
+              (False, "invalid", "invalid", "deduplication_compression",
+               "hbsd"),
+              (False, "invalid", "invalid", "invalid", "hbsd"),
+              (True, "disable", None, None, "hbsd"),
+              (True, "disable", None, "disable", "hbsd"),
+              (True, "disable", None, "invalid", "hbsd"),
+              (True, "disable", "<is> False", "invalid", "hbsd"),
+              (True, "disable", "<is> True", None, "hbsd"),
+              (True, "disable", "<is> True", "disable", "hbsd"),
+              (True, "disable", "<is> True", "invalid", "hbsd"),
+              (True, "disable", "invalid", None, "hbsd"),
+              (True, "disable", "invalid", "disable", "hbsd"),
+              (True, "disable", "invalid", "deduplication_compression",
+               "hbsd"),
+              (True, "disable", "invalid", "invalid", "hbsd"),
+              (True, "", None, None, "hbsd"),
+              (True, "", None, "disable", "hbsd"),
+              (True, "", None, "invalid", "hbsd"),
+              (True, "", "<is> False", "invalid", "hbsd"),
+              (True, "", "<is> True", None, "hbsd"),
+              (True, "", "<is> True", "disable", "hbsd"),
+              (True, "", "<is> True", "invalid", "hbsd"),
+              (True, "", "invalid", None, "hbsd"),
+              (True, "", "invalid", "disable", "hbsd"),
+              (True, "", "invalid", "deduplication_compression", "hbsd"),
+              (True, "", "invalid", "invalid", "hbsd"),
+              (True, "invalid", None, None, "hbsd"),
+              (True, "invalid", None, "disable", "hbsd"),
+              (True, "invalid", None, "invalid", "hbsd"),
+              (True, "invalid", "<is> False", "invalid", "hbsd"),
+              (True, "invalid", "<is> True", None, "hbsd"),
+              (True, "invalid", "<is> True", "disable", "hbsd"),
+              (True, "invalid", "<is> True", "invalid", "hbsd"),
+              (True, "invalid", "invalid", None, "hbsd"),
+              (True, "invalid", "invalid", "disable", "hbsd"),
+              (True, "invalid", "invalid", "deduplication_compression",
+               "hbsd"),
+              (True, "invalid", "invalid", "invalid", "hbsd"),
+              ("invalid", "deduplication_compression", None, None, "hbsd"),
+              ("invalid", "deduplication_compression", None, "disable",
+               "hbsd"),
+              ("invalid", "deduplication_compression", None,
+               "deduplication_compression", "hbsd"),
+              ("invalid", "deduplication_compression", None, "invalid",
+               "hbsd"),
+              ("invalid", "deduplication_compression", "<is> False", "invalid",
+               "hbsd"),
+              ("invalid", "deduplication_compression", "<is> True", "disable",
+               "hbsd"),
+              ("invalid", "deduplication_compression", "<is> True", "invalid",
+               "hbsd"),
+              ("invalid", "deduplication_compression", "invalid", None,
+               "hbsd"),
+              ("invalid", "deduplication_compression", "invalid", "disable",
+               "hbsd"),
+              ("invalid", "deduplication_compression", "invalid",
+               "deduplication_compression", "hbsd"),
+              ("invalid", "deduplication_compression", "invalid", "invalid",
+               "hbsd"))
+    @ddt.unpack
+    def test_get_csv_and_drs_negative(self, drs_setting, drs_csv_setting,
+                                      drs_extra_spec, csv_extra_spec,
+                                      driver_name):
+        ctx = self._init_driver_context(driver_name, drs_setting,
+                                        drs_csv_setting)
+        extra_specs = self._init_drs_csv_extra_specs(drs_extra_spec,
+                                                     csv_extra_spec)
+        self.assertRaises(exception.VolumeDriverException,
+                          hbsd_utils.get_csv_and_drs,
+                          ctx, extra_specs)
+
+    @ddt.data((("", False), True, "deduplication_compression", None, "",
+              "hbsd"),
+              (("", False), True, "deduplication_compression", "<is> False",
+               "", "hbsd"),
+              (("disable", False), "invalid", "invalid", "<is> False",
+               "disable", "hbsd"),
+              (("deduplication_compression", True), "invalid",
+               "invalid", "<is> True", "deduplication_compression", "hbsd"))
+    @ddt.unpack
+    def test_get_csv_and_drs_specs_only(self, expected, drs_setting,
+                                        drs_csv_setting,
+                                        drs_extra_spec, csv_extra_spec,
+                                        driver_name):
+
+        ctx = self._init_driver_context(driver_name, drs_setting,
+                                        drs_csv_setting)
+        extra_specs = self._init_drs_csv_extra_specs(drs_extra_spec,
+                                                     csv_extra_spec)
+        self.assertEqual(expected,
+                         hbsd_utils.get_csv_and_drs(ctx, extra_specs,
+                                                    specs_only=True))

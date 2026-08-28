@@ -55,11 +55,6 @@ NO_SNAPSHOT_RETENTION = 0
 
 _UUID_PATTERN = re.compile(r'^[\da-f]{32}$')
 
-DRS_MODE = {
-    '<is> True': True,
-    '<is> False': False,
-}
-
 _INHERITED_VOLUME_OPTS = [
     'volume_backend_name',
     'volume_driver',
@@ -136,9 +131,22 @@ COMMON_VOLUME_OPTS = [
              'a copy pair deletion or data restoration.'),
     cfg.BoolOpt(
         'hitachi_manage_drs_volumes',
-        default=False,
+        default=True,
         help='If true, the driver will create a driver managed vClone parent '
-             'for each non-cloned DRS volume it creates.'),
+             'for each non-cloned DRS volume it creates. It is recommended '
+             'to keep this value True to avoid issues with volume expansion '
+             'while using DRS volumes.'),
+    cfg.BoolOpt(
+        'hitachi_use_drs_volumes',
+        default=False,
+        help='If True, the driver will always create DRS volumes unless '
+             'specifically told not to via extra specs.'),
+    cfg.StrOpt(
+        'hitachi_drs_default_csv',
+        default='deduplication_compression',
+        help='The default capacity saving value to use when '
+             'hitachi_use_drs_volumes is enabled and no extra spec has been '
+             'specified.'),
     cfg.BoolOpt(
         'hitachi_report_discard_support',
         default=False,
@@ -315,32 +323,33 @@ class HBSDCommon():
     def is_managed_drs_volume(self, extra_specs):
 
         is_managed_drs = False
-        if (self.conf.hitachi_manage_drs_volumes and
-                self.driver_info.get('driver_dir_name')):
-
-            extra_specs_drs = (self.driver_info['driver_dir_name'] +
-                               ':drs')
-            drs = extra_specs.get(extra_specs_drs)
-
-            is_managed_drs = DRS_MODE.get(drs, False)
+        if (self.conf.hitachi_manage_drs_volumes):
+            _, drs = self._get_csv_and_drs(extra_specs)
+            is_managed_drs = drs
 
         return is_managed_drs
+
+    def _get_driver_context(self):
+        return utils.DriverContext(self.driver_info, self.conf,
+                                   self.storage_id)
+
+    def _get_csv_and_drs(self, extra_specs):
+        return utils.get_csv_and_drs(self._get_driver_context(), extra_specs)
 
     def get_drs_parent_extra_specs(self, extra_specs):
         """Build subset of extra specs for a DRS vClone parent."""
 
         extra_specs_parent = {}
 
-        extra_specs_drs = (self.driver_info['driver_dir_name'] +
-                           ':drs')
-        drs = extra_specs.get(extra_specs_drs)
+        csv, drs = self._get_csv_and_drs(extra_specs)
 
-        extra_specs_csv = (self.driver_info['driver_dir_name'] +
-                           ':capacity_saving')
-        capacity_saving = extra_specs.get(extra_specs_csv)
-
-        extra_specs_parent[extra_specs_drs] = drs
-        extra_specs_parent[extra_specs_csv] = capacity_saving
+        extra_specs_parent[
+            utils.format_extra_spec(self.driver_info,
+                                    utils.EXTRA_SPEC_DRS)] = (utils.DRS_TRUE if
+                                                              drs else
+                                                              utils.DRS_FALSE)
+        extra_specs_parent[utils.format_extra_spec(self.driver_info,
+                                                   utils.EXTRA_SPEC_CSV)] = csv
 
         LOG.debug("Managed parent extra specs: %s", extra_specs_parent)
 
@@ -401,30 +410,6 @@ class HBSDCommon():
         """Wait until copy is completed."""
         raise NotImplementedError()
 
-    def _is_vclone(self, extra_specs, ldev_info, pool_id, snap_pool_id):
-        """Check if a snapshot created from these parameters will be vClone"""
-        capacity_saving_key = (self.driver_info['driver_dir_name'] +
-                               ':capacity_saving')
-        drs_key = self.driver_info['driver_dir_name'] + ':drs'
-
-        # Check pool ID consistency:
-        # pvol and svol must be in the same pool as snap_pool_id
-        pvol_pool_id = ldev_info.get('poolId')
-        if pvol_pool_id is not None:
-            pvol_pool_id = int(pvol_pool_id)
-
-        if (extra_specs.get(capacity_saving_key) ==
-                'deduplication_compression' and
-                extra_specs.get(drs_key) == '<is> True' and
-                ldev_info.get('attributes') and
-                utils.DRS_VOL_ATTR in ldev_info['attributes'] and
-                pvol_pool_id == snap_pool_id and
-                pool_id == snap_pool_id):
-            # if "DRS" and "clone", it means "vClone"
-            return True
-
-        return False
-
     def _extend_ldevs_for_ss(self, svol, ldev_info, curr_size, new_size):
         if new_size == curr_size:
             return
@@ -484,8 +469,9 @@ class HBSDCommon():
                     extra_specs, meta_data)
 
         new_size = size
-        if not is_snapshot and self._is_vclone(
-                extra_specs, ldev_info, pool_id, snap_pool_id):
+        if not is_snapshot and utils.is_vclone(
+                extra_specs, ldev_info, pool_id, snap_pool_id,
+                self._get_driver_context()):
             new_size = utils.blocks_to_gb(ldev_info)
         LOG.debug("pvol=%d, is_snapshot=%s, extra_specs=%s, "
                   "pvol_ldev_info=%s, new_size=%d, size=%d, "
@@ -1546,14 +1532,7 @@ class HBSDCommon():
             self.raise_error(msg)
 
     def raise_error(self, msg):
-        """Raise a VolumeDriverException by driver error message."""
-        message = _(
-            '%(prefix)s error occurred. %(msg)s' % {
-                'prefix': self.driver_info['driver_prefix'],
-                'msg': msg,
-            }
-        )
-        raise exception.VolumeDriverException(message)
+        utils.raise_error(self.driver_info, msg)
 
     def raise_busy(self):
         """Raise a VolumeDriverException by driver busy message."""
