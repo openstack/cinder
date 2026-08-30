@@ -202,5 +202,4 @@ class QualityOfServiceSpecsList(base.ObjectListBase, base.CinderObject):
     @classmethod
     def get_all(cls, context, *args, **kwargs):
         specs = db.qos_specs_get_all(context, *args, **kwargs)
-        return base.obj_make_list(context, cls(context),
-                                  objects.QualityOfServiceSpecs, specs)
+        return base.obj_make_list(context, cls(context), specs)

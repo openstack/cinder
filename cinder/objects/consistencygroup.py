@@ -72,14 +72,12 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         if 'cgsnapshots' in expected_attrs:
             cgsnapshots = base.obj_make_list(
                 context, objects.CGSnapshotList(context),
-                objects.CGSnapshot,
                 db_consistencygroup['cgsnapshots'])
             consistencygroup.cgsnapshots = cgsnapshots
 
         if 'volumes' in expected_attrs:
             volumes = base.obj_make_list(
                 context, objects.VolumeList(context),
-                objects.Volume,
                 db_consistencygroup['volumes'])
             consistencygroup.volumes = volumes
 
@@ -234,9 +232,7 @@ class ConsistencyGroupList(base.ObjectListBase, base.CinderObject):
         consistencygroups = db.consistencygroup_get_all(
             context, filters=filters, marker=marker, limit=limit,
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
-        return base.obj_make_list(context, cls(context),
-                                  objects.ConsistencyGroup,
-                                  consistencygroups)
+        return base.obj_make_list(context, cls(context), consistencygroups)
 
     @classmethod
     def get_all_by_project(cls, context, project_id, filters=None, marker=None,
@@ -245,6 +241,4 @@ class ConsistencyGroupList(base.ObjectListBase, base.CinderObject):
         consistencygroups = db.consistencygroup_get_all_by_project(
             context, project_id, filters=filters, marker=marker, limit=limit,
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
-        return base.obj_make_list(context, cls(context),
-                                  objects.ConsistencyGroup,
-                                  consistencygroups)
+        return base.obj_make_list(context, cls(context), consistencygroups)

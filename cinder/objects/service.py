@@ -227,18 +227,15 @@ class ServiceList(base.ObjectListBase, base.CinderObject):
     @classmethod
     def get_all(cls, context, filters=None):
         services = db.service_get_all(context, **(filters or {}))
-        return base.obj_make_list(context, cls(context), objects.Service,
-                                  services)
+        return base.obj_make_list(context, cls(context), services)
 
     @classmethod
     def get_all_by_topic(cls, context, topic, disabled=None):
         services = db.service_get_all(context, topic=topic, disabled=disabled)
-        return base.obj_make_list(context, cls(context), objects.Service,
-                                  services)
+        return base.obj_make_list(context, cls(context), services)
 
     @classmethod
     def get_all_by_binary(cls, context, binary, disabled=None):
         services = db.service_get_all(context, binary=binary,
                                       disabled=disabled)
-        return base.obj_make_list(context, cls(context), objects.Service,
-                                  services)
+        return base.obj_make_list(context, cls(context), services)

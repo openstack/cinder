@@ -157,20 +157,16 @@ class CGSnapshotList(base.ObjectListBase, base.CinderObject):
     @classmethod
     def get_all(cls, context, filters=None):
         cgsnapshots = db.cgsnapshot_get_all(context, filters)
-        return base.obj_make_list(context, cls(context), objects.CGSnapshot,
-                                  cgsnapshots)
+        return base.obj_make_list(context, cls(context), cgsnapshots)
 
     @classmethod
     def get_all_by_project(cls, context, project_id, filters=None):
         cgsnapshots = db.cgsnapshot_get_all_by_project(context, project_id,
                                                        filters)
-        return base.obj_make_list(context, cls(context), objects.CGSnapshot,
-                                  cgsnapshots)
+        return base.obj_make_list(context, cls(context), cgsnapshots)
 
     @classmethod
     def get_all_by_group(cls, context, group_id, filters=None):
         cgsnapshots = db.cgsnapshot_get_all_by_group(context, group_id,
                                                      filters)
-        return base.obj_make_list(context, cls(context),
-                                  objects.CGSnapshot,
-                                  cgsnapshots)
+        return base.obj_make_list(context, cls(context), cgsnapshots)

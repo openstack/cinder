@@ -76,21 +76,18 @@ class Group(base.CinderPersistentObject, base.CinderObject,
         if 'volumes' in expected_attrs:
             volumes = base.obj_make_list(
                 context, objects.VolumeList(context),
-                objects.Volume,
                 db_group['volumes'])
             group.volumes = volumes
 
         if 'volume_types' in expected_attrs:
             volume_types = base.obj_make_list(
                 context, objects.VolumeTypeList(context),
-                objects.VolumeType,
                 db_group['volume_types'])
             group.volume_types = volume_types
 
         if 'group_snapshots' in expected_attrs:
             group_snapshots = base.obj_make_list(
                 context, objects.GroupSnapshotList(context),
-                objects.GroupSnapshot,
                 db_group['group_snapshots'])
             group.group_snapshots = group_snapshots
 
@@ -196,9 +193,7 @@ class GroupList(base.ObjectListBase, base.CinderObject):
         groups = db.group_get_all(
             context, filters=filters, marker=marker, limit=limit,
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
-        return base.obj_make_list(context, cls(context),
-                                  objects.Group,
-                                  groups)
+        return base.obj_make_list(context, cls(context), groups)
 
     @classmethod
     def get_all_by_project(cls, context, project_id, filters=None, marker=None,
@@ -207,9 +202,7 @@ class GroupList(base.ObjectListBase, base.CinderObject):
         groups = db.group_get_all_by_project(
             context, project_id, filters=filters, marker=marker, limit=limit,
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
-        return base.obj_make_list(context, cls(context),
-                                  objects.Group,
-                                  groups)
+        return base.obj_make_list(context, cls(context), groups)
 
     @classmethod
     def get_all_replicated(cls, context, filters=None, marker=None, limit=None,
@@ -217,12 +210,9 @@ class GroupList(base.ObjectListBase, base.CinderObject):
         groups = db.group_get_all(
             context, filters=filters, marker=marker, limit=limit,
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
-        grp_obj_list = base.obj_make_list(context, cls(context),
-                                          objects.Group,
-                                          groups)
+        grp_obj_list = base.obj_make_list(context, cls(context), groups)
 
-        out_groups = [grp for grp in grp_obj_list
-                      if grp.is_replicated]
+        out_groups = [grp for grp in grp_obj_list if grp.is_replicated]
 
         return out_groups
 

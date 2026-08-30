@@ -74,7 +74,6 @@ class GroupSnapshot(base.CinderPersistentObject, base.CinderObject,
         if 'snapshots' in expected_attrs:
             snapshots = base.obj_make_list(
                 context, objects.SnapshotsList(context),
-                objects.Snapshots,
                 db_group_snapshots['snapshots'])
             group_snapshot.snapshots = snapshots
 
@@ -151,8 +150,7 @@ class GroupSnapshotList(base.ObjectListBase, base.CinderObject):
                                                     offset=offset,
                                                     sort_keys=sort_keys,
                                                     sort_dirs=sort_dirs)
-        return base.obj_make_list(context, cls(context), objects.GroupSnapshot,
-                                  group_snapshots)
+        return base.obj_make_list(context, cls(context), group_snapshots)
 
     @classmethod
     def get_all_by_project(cls, context, project_id, filters=None, marker=None,
@@ -162,8 +160,7 @@ class GroupSnapshotList(base.ObjectListBase, base.CinderObject):
             context, project_id, filters=filters, marker=marker,
             limit=limit, offset=offset, sort_keys=sort_keys,
             sort_dirs=sort_dirs)
-        return base.obj_make_list(context, cls(context), objects.GroupSnapshot,
-                                  group_snapshots)
+        return base.obj_make_list(context, cls(context), group_snapshots)
 
     @classmethod
     def get_all_by_group(cls, context, group_id, filters=None, marker=None,
@@ -172,5 +169,4 @@ class GroupSnapshotList(base.ObjectListBase, base.CinderObject):
         group_snapshots = db.group_snapshot_get_all_by_group(
             context, group_id, filters=filters, marker=marker, limit=limit,
             offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
-        return base.obj_make_list(context, cls(context), objects.GroupSnapshot,
-                                  group_snapshots)
+        return base.obj_make_list(context, cls(context), group_snapshots)

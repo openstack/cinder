@@ -304,14 +304,14 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
         snapshots = db.snapshot_get_all(context, filters, marker, limit,
                                         sort_keys, sort_dirs, offset)
         expected_attrs = Snapshot._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Snapshot,
+        return base.obj_make_list(context, cls(context),
                                   snapshots, expected_attrs=expected_attrs)
 
     @classmethod
     def get_by_host(cls, context, host, filters=None):
         snapshots = db.snapshot_get_all_by_host(context, host, filters)
         expected_attrs = Snapshot._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Snapshot,
+        return base.obj_make_list(context, cls(context),
                                   snapshots, expected_attrs=expected_attrs)
 
     @classmethod
@@ -322,28 +322,28 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
             context, project_id, search_opts, marker, limit, sort_keys,
             sort_dirs, offset)
         expected_attrs = Snapshot._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Snapshot,
+        return base.obj_make_list(context, cls(context),
                                   snapshots, expected_attrs=expected_attrs)
 
     @classmethod
     def get_all_for_volume(cls, context, volume_id):
         snapshots = db.snapshot_get_all_for_volume(context, volume_id)
         expected_attrs = Snapshot._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Snapshot,
+        return base.obj_make_list(context, cls(context),
                                   snapshots, expected_attrs=expected_attrs)
 
     @classmethod
     def get_all_active_by_window(cls, context, begin, end):
         snapshots = db.snapshot_get_all_active_by_window(context, begin, end)
         expected_attrs = Snapshot._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Snapshot,
+        return base.obj_make_list(context, cls(context),
                                   snapshots, expected_attrs=expected_attrs)
 
     @classmethod
     def get_all_for_cgsnapshot(cls, context, cgsnapshot_id):
         snapshots = db.snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id)
         expected_attrs = Snapshot._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Snapshot,
+        return base.obj_make_list(context, cls(context),
                                   snapshots, expected_attrs=expected_attrs)
 
     @classmethod
@@ -351,7 +351,7 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
         snapshots = db.snapshot_get_all_for_group_snapshot(
             context, group_snapshot_id)
         expected_attrs = Snapshot._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Snapshot,
+        return base.obj_make_list(context, cls(context),
                                   snapshots, expected_attrs=expected_attrs)
 
     @classmethod

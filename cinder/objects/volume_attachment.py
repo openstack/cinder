@@ -208,26 +208,21 @@ class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
     def get_all_by_volume_id(cls, context, volume_id):
         attachments = db.volume_attachment_get_all_by_volume_id(context,
                                                                 volume_id)
-        return base.obj_make_list(context,
-                                  cls(context),
-                                  objects.VolumeAttachment,
-                                  attachments)
+        return base.obj_make_list(context, cls(context), attachments)
 
     @classmethod
     def get_all_by_host(cls, context, host, search_opts=None):
         attachments = db.volume_attachment_get_all_by_host(context,
                                                            host,
                                                            search_opts)
-        return base.obj_make_list(context, cls(context),
-                                  objects.VolumeAttachment, attachments)
+        return base.obj_make_list(context, cls(context), attachments)
 
     @classmethod
     def get_all_by_instance_uuid(cls, context,
                                  instance_uuid, search_opts=None):
         attachments = db.volume_attachment_get_all_by_instance_uuid(
             context, instance_uuid, search_opts)
-        return base.obj_make_list(context, cls(context),
-                                  objects.VolumeAttachment, attachments)
+        return base.obj_make_list(context, cls(context), attachments)
 
     @classmethod
     def get_all(cls, context, search_opts=None,
@@ -236,8 +231,7 @@ class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
         attachments = db.volume_attachment_get_all(
             context, search_opts, marker, limit, offset, sort_keys,
             sort_direction)
-        return base.obj_make_list(context, cls(context),
-                                  objects.VolumeAttachment, attachments)
+        return base.obj_make_list(context, cls(context), attachments)
 
     @classmethod
     def get_all_by_project(cls, context, project_id, search_opts=None,
@@ -246,5 +240,4 @@ class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
         attachments = db.volume_attachment_get_all_by_project(
             context, project_id, search_opts, marker, limit, offset, sort_keys,
             sort_direction)
-        return base.obj_make_list(context, cls(context),
-                                  objects.VolumeAttachment, attachments)
+        return base.obj_make_list(context, cls(context), attachments)
