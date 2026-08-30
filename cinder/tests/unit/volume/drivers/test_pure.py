@@ -23,6 +23,7 @@ import ddt
 from oslo_utils import units
 
 from cinder import context
+from cinder import coordination
 from cinder import exception
 from cinder.objects import fields
 from cinder.objects import volume_attachment
@@ -2770,6 +2771,82 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             return_value = ValidResponse(200, None, 1, [], {})
         self.driver.terminate_connection(vol, None)
         self.array.delete_connections.assert_not_called()
+
+    @staticmethod
+    def _fake_attachments(*hosts):
+        attachments = volume_attachment.VolumeAttachmentList()
+        attachments.objects = [
+            volume_attachment.VolumeAttachment(
+                attach_status=fields.VolumeAttachStatus.ATTACHED,
+                attached_host=host)
+            for host in hosts]
+        return attachments
+
+    def test_get_connection_lock_names_with_connector(self):
+        vol, _ = self.new_fake_vol()
+
+        self.assertEqual(
+            ['pure-%s' % ISCSI_CONNECTOR['host']],
+            self.driver._get_connection_lock_names(vol, ISCSI_CONNECTOR))
+
+    def test_get_connection_lock_names_force_detach_no_attachments(self):
+        vol, _ = self.new_fake_vol()
+
+        # Nothing is attached, so no host operation can be raced and the
+        # volume is a sufficient key.
+        self.assertEqual(['pure-%s' % vol.id],
+                         self.driver._get_connection_lock_names(vol, None))
+
+    def test_get_connection_lock_names_force_detach_locks_every_host(self):
+        vol, _ = self.new_fake_vol()
+        vol.volume_attachment = self._fake_attachments('h2', 'h1')
+
+        # A force detach disconnects the volume from every attached host, so
+        # it must exclude connection changes on all of them, in a stable
+        # order so that concurrent detaches cannot deadlock.
+        self.assertEqual(['pure-h1', 'pure-h2'],
+                         self.driver._get_connection_lock_names(vol, None))
+
+    def test_get_connection_lock_names_force_detach_dedupes_hosts(self):
+        vol, _ = self.new_fake_vol()
+        vol.volume_attachment = self._fake_attachments('h1', 'h1')
+
+        self.assertEqual(['pure-h1'],
+                         self.driver._get_connection_lock_names(vol, None))
+
+    def test_get_connection_lock_names_force_detach_skips_empty_hosts(self):
+        vol, _ = self.new_fake_vol()
+        vol.volume_attachment = self._fake_attachments('h1', None)
+
+        self.assertEqual(['pure-h1'],
+                         self.driver._get_connection_lock_names(vol, None))
+
+    @mock.patch(BASE_DRIVER_OBJ + "._get_host", autospec=True)
+    @mock.patch.object(coordination.COORDINATOR, 'get_lock')
+    def test_terminate_connection_locks_connector_host(self, mock_get_lock,
+                                                       mock_host):
+        vol, _ = self.new_fake_vol()
+        mock_host.return_value = []
+        self.array.get_connections.\
+            return_value = ValidResponse(200, None, 1, [], {})
+
+        self.driver.terminate_connection(vol, ISCSI_CONNECTOR)
+
+        mock_get_lock.assert_called_once_with(
+            'pure-%s' % ISCSI_CONNECTOR['host'])
+
+    @mock.patch.object(coordination.COORDINATOR, 'get_lock')
+    def test_terminate_connection_force_detach_locks_each_host(
+            self, mock_get_lock):
+        vol, _ = self.new_fake_vol()
+        vol.volume_attachment = self._fake_attachments('h2', 'h1')
+        self.array.get_connections.\
+            return_value = ValidResponse(200, None, 1, [], {})
+
+        self.driver.terminate_connection(vol, None)
+
+        self.assertEqual([mock.call('pure-h1'), mock.call('pure-h2')],
+                         mock_get_lock.call_args_list)
 
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePatch")
     @mock.patch.object(volume_types, 'get_volume_type')
