@@ -2927,6 +2927,25 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                              [expected_name])
         self.assertEqual({'status': 'available'}, model_update)
 
+    @mock.patch(BASE_DRIVER_OBJ + "._group_potential_repl_types")
+    def test_create_consistencygroup_sync_replicated(self,
+                                                     mock_get_repl_types):
+        # A sync-replicated group is created inside the ActiveCluster pod and
+        # relies on the stretched pod for replication, so none of the async
+        # schedule/target setup should run.
+        cgroup = fake_group.fake_group_obj(mock.MagicMock())
+        mock_get_repl_types.return_value = {'sync'}
+
+        model_update = self.driver.create_consistencygroup(
+            None, cgroup, pure.REPLICATION_TYPE_SYNC)
+
+        expected_name = "cinder-pod::consisgroup-" + cgroup.id + "-cinder"
+        self.array.post_protection_groups.assert_called_with(
+            names=[expected_name])
+        self.array.post_protection_groups_targets.assert_not_called()
+        self.array.patch_protection_groups.assert_not_called()
+        self.assertEqual({'status': 'available'}, model_update)
+
     @mock.patch('cinder.volume.group_types.get_group_type_specs')
     @mock.patch(BASE_DRIVER_OBJ + ".create_volume_from_snapshot")
     @mock.patch(BASE_DRIVER_OBJ + ".create_consistencygroup")
@@ -6343,6 +6362,7 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
         self.assertFalse(self.array.get_protection_groups.called)
 
 
+@ddt.ddt
 class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
     def setUp(self):
         super(PureVolumeGroupsTestCase, self).setUp()
@@ -6562,6 +6582,591 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
             group_snapshot,
             snapshots
         )
+
+    def test_enable_replication_not_replicated(self):
+        group = mock.MagicMock()
+        group.is_replicated = False
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.enable_replication,
+            self.ctxt, group, []
+        )
+
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_enable_replication(self, mock_get_pgroup_name):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_get_pgroup_name.return_value = 'pgroup'
+        self.array.patch_protection_groups.return_value = ValidResponse(
+            200, None, 1, [], {})
+
+        model_update, volume_update = self.driver.enable_replication(
+            self.ctxt, group, [])
+
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ENABLED},
+            model_update)
+        self.assertIsNone(volume_update)
+        self.array.patch_protection_groups.assert_called_once_with(
+            names=['pgroup'],
+            protection_group=mock.ANY)
+
+    @mock.patch(DRIVER_PATH + ".LOG")
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_enable_replication_error(self, mock_get_pgroup_name, mock_log):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_get_pgroup_name.return_value = 'pgroup'
+        self.array.patch_protection_groups.return_value = ErrorResponse(
+            400, [DotNotation({'message': 'does not exist'})], {})
+
+        model_update, volume_update = self.driver.enable_replication(
+            self.ctxt, group, [])
+
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ERROR},
+            model_update)
+        self.assertIsNone(volume_update)
+
+    def test_disable_replication_not_replicated(self):
+        group = mock.MagicMock()
+        group.is_replicated = False
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.disable_replication,
+            self.ctxt, group, []
+        )
+
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_disable_replication(self, mock_get_pgroup_name):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_get_pgroup_name.return_value = 'pgroup'
+        self.array.patch_protection_groups.return_value = ValidResponse(
+            200, None, 1, [], {})
+
+        model_update, volume_update = self.driver.disable_replication(
+            self.ctxt, group, [])
+
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.DISABLED},
+            model_update)
+        self.assertIsNone(volume_update)
+        self.array.patch_protection_groups.assert_called_once_with(
+            names=['pgroup'],
+            protection_group=mock.ANY)
+
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_disable_replication_error(self, mock_get_pgroup_name):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_get_pgroup_name.return_value = 'pgroup'
+        self.array.patch_protection_groups.return_value = ErrorResponse(
+            400, [DotNotation({'message': 'does not exist'})], {})
+
+        model_update, volume_update = self.driver.disable_replication(
+            self.ctxt, group, [])
+
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ERROR},
+            model_update)
+        self.assertIsNone(volume_update)
+
+    @ddt.data([],
+              None,
+              [DotNotation({'code': 42})])
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_enable_replication_error_without_detail(self, errors,
+                                                     mock_get_pgroup_name):
+        """A failure with no usable error detail must not raise. (bug)
+
+        Reporting the failure previously indexed errors[0].message
+        unconditionally, so an empty/absent errors list or an error
+        without a message masked the real backend failure with an
+        IndexError or AttributeError.
+        """
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_get_pgroup_name.return_value = 'pgroup'
+        self.array.patch_protection_groups.return_value = ErrorResponse(
+            400, errors, {})
+
+        model_update, volume_update = self.driver.enable_replication(
+            self.ctxt, group, [])
+
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ERROR},
+            model_update)
+        self.assertIsNone(volume_update)
+
+    def test_get_error_details(self):
+        self.assertEqual(
+            'does not exist',
+            pure._get_error_details(ErrorResponse(
+                400, [DotNotation({'message': 'does not exist'})], {})))
+        self.assertEqual(
+            'first, second',
+            pure._get_error_details(ErrorResponse(
+                400, [DotNotation({'message': 'first'}),
+                      DotNotation({'message': 'second'})], {})))
+
+    @ddt.data([], None, [DotNotation({'code': 42})])
+    def test_get_error_details_without_message(self, errors):
+        self.assertEqual(
+            'no error detail returned (status code: 400)',
+            pure._get_error_details(ErrorResponse(400, errors, {})))
+
+    def test_failover_replication_not_replicated(self):
+        group = mock.MagicMock()
+        group.is_replicated = False
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.failover_replication,
+            self.ctxt, group, []
+        )
+
+    @mock.patch(BASE_DRIVER_OBJ + '._group_potential_repl_types')
+    @mock.patch(BASE_DRIVER_OBJ + '._async_failover_host')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_latest_replicated_pg_snap')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_secondary')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_failover_replication(self, mock_get_pgroup_name,
+                                  mock_get_secondary, mock_get_snap,
+                                  mock_async_failover, mock_repl_types):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_repl_types.return_value = {'async'}
+        volume, _ = self.new_fake_vol()
+        mock_get_pgroup_name.return_value = 'pgroup'
+        secondary = mock.MagicMock()
+        mock_get_secondary.return_value = secondary
+        mock_get_snap.return_value = mock.MagicMock()
+        mock_async_failover.return_value = [{
+            'volume_id': volume.id,
+            'updates': {
+                'replication_status': fields.ReplicationStatus.FAILED_OVER}}]
+
+        model_update, volume_update = self.driver.failover_replication(
+            self.ctxt, group, [volume], secondary_backend_id='secondary-id')
+
+        mock_get_secondary.assert_called_once_with('secondary-id')
+        mock_async_failover.assert_called_once_with(
+            [volume], secondary, mock_get_snap.return_value)
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+            model_update)
+        self.assertEqual(
+            [{'id': volume.id,
+              'replication_driver_data': secondary.backend_id,
+              'replication_status': fields.ReplicationStatus.FAILED_OVER}],
+            volume_update)
+
+    @mock.patch(BASE_DRIVER_OBJ + '._group_potential_repl_types')
+    @mock.patch(BASE_DRIVER_OBJ + '._async_failover_host')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_latest_replicated_pg_snap')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_secondary')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_failover_replication_error(self, mock_get_pgroup_name,
+                                        mock_get_secondary, mock_get_snap,
+                                        mock_async_failover, mock_repl_types):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_repl_types.return_value = {'async'}
+        volume, _ = self.new_fake_vol()
+        mock_get_pgroup_name.return_value = 'pgroup'
+        mock_get_secondary.return_value = mock.MagicMock()
+        mock_get_snap.return_value = mock.MagicMock()
+        # Volume left behind on the source array is reported as errored.
+        mock_async_failover.return_value = [{
+            'volume_id': volume.id,
+            'updates': {'status': 'error'}}]
+
+        model_update, volume_update = self.driver.failover_replication(
+            self.ctxt, group, [volume], secondary_backend_id='secondary-id')
+
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ERROR},
+            model_update)
+        self.assertEqual(
+            [{'id': volume.id,
+              'status': 'error',
+              'replication_status': fields.ReplicationStatus.ERROR}],
+            volume_update)
+
+    @mock.patch(BASE_DRIVER_OBJ + '._group_potential_repl_types')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_failover_replication_failback(self, mock_get_pgroup_name,
+                                           mock_repl_types):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_repl_types.return_value = {'async'}
+        volume, _ = self.new_fake_vol()
+        mock_get_pgroup_name.return_value = 'pgroup'
+        self.array.patch_protection_groups.return_value = ValidResponse(
+            200, None, 1, [], {})
+
+        model_update, volume_update = self.driver.failover_replication(
+            self.ctxt, group, [volume], secondary_backend_id='default')
+
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ENABLED},
+            model_update)
+        self.assertEqual(
+            [{'id': volume.id,
+              'status': 'error',
+              'replication_driver_data': None,
+              'replication_status': fields.ReplicationStatus.ENABLED}],
+            volume_update)
+        self.array.patch_protection_groups.assert_called_once_with(
+            names=['pgroup'],
+            protection_group=mock.ANY)
+
+    @mock.patch(BASE_DRIVER_OBJ + '._group_potential_repl_types')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_failover_replication_failback_error(self, mock_get_pgroup_name,
+                                                 mock_repl_types):
+        """A failed schedule re-enable must not be reported as ENABLED."""
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_repl_types.return_value = {'async'}
+        volume, _ = self.new_fake_vol()
+        mock_get_pgroup_name.return_value = 'pgroup'
+        self.array.patch_protection_groups.return_value = ErrorResponse(
+            400, [DotNotation({'message': 'does not exist'})], {})
+
+        model_update, volume_update = self.driver.failover_replication(
+            self.ctxt, group, [volume], secondary_backend_id='default')
+
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ERROR},
+            model_update)
+        self.assertEqual(
+            [{'id': volume.id,
+              'status': 'error',
+              'replication_driver_data': None,
+              'replication_status': fields.ReplicationStatus.ERROR}],
+            volume_update)
+
+    @mock.patch(BASE_DRIVER_OBJ + '._group_potential_repl_types')
+    @mock.patch(BASE_DRIVER_OBJ + '._async_failover_host')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_latest_replicated_pg_snap')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_failover_replication_no_secondary_id(self, mock_get_pgroup_name,
+                                                  mock_get_snap,
+                                                  mock_async_failover,
+                                                  mock_repl_types):
+        """secondary_backend_id is optional, so auto-discover an async target.
+
+        A trisync deployment configures one sync and one async replication
+        device, and it is the async leg that holds the replicated snapshots
+        of the group's protection group.
+        """
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_repl_types.return_value = {'trisync'}
+        volume, _ = self.new_fake_vol()
+        mock_get_pgroup_name.return_value = 'pgroup'
+        sync_target = mock.MagicMock()
+        sync_target.replication_type = 'sync'
+        async_target = mock.MagicMock()
+        async_target.replication_type = 'async'
+        self.driver._replication_target_arrays = [sync_target, async_target]
+        mock_get_snap.return_value = mock.MagicMock()
+        mock_async_failover.return_value = [{
+            'volume_id': volume.id,
+            'updates': {
+                'replication_status': fields.ReplicationStatus.FAILED_OVER}}]
+
+        model_update, volume_update = self.driver.failover_replication(
+            self.ctxt, group, [volume])
+
+        mock_async_failover.assert_called_once_with(
+            [volume], async_target, mock_get_snap.return_value)
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+            model_update)
+
+    @mock.patch(BASE_DRIVER_OBJ + '._group_potential_repl_types')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_failover_replication_no_secondary_id_no_target(
+            self, mock_get_pgroup_name, mock_repl_types):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_repl_types.return_value = {'async'}
+        volume, _ = self.new_fake_vol()
+        mock_get_pgroup_name.return_value = 'pgroup'
+        sync_target = mock.MagicMock()
+        sync_target.replication_type = 'sync'
+        self.driver._replication_target_arrays = [sync_target]
+
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver.failover_replication,
+            self.ctxt, group, [volume]
+        )
+
+    @mock.patch(BASE_DRIVER_OBJ + '._group_potential_repl_types')
+    @mock.patch(BASE_DRIVER_OBJ + '._async_failover_host')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_latest_replicated_pg_snap')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_secondary')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    def test_failover_replication_leaves_backend_state_alone(
+            self, mock_get_pgroup_name, mock_get_secondary, mock_get_snap,
+            mock_async_failover, mock_repl_types):
+        """Group failover is group scoped, not backend scoped. (Tiramisu)
+
+        Unlike failover_host() it must not promote the secondary to be the
+        driver's current array, or volumes outside the group would silently
+        be redirected to it.
+        """
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_repl_types.return_value = {'async'}
+        volume, _ = self.new_fake_vol()
+        mock_get_pgroup_name.return_value = 'pgroup'
+        secondary = mock.MagicMock()
+        mock_get_secondary.return_value = secondary
+        mock_get_snap.return_value = mock.MagicMock()
+        mock_async_failover.return_value = [{
+            'volume_id': volume.id,
+            'updates': {
+                'replication_status': fields.ReplicationStatus.FAILED_OVER}}]
+        targets = list(self.driver._replication_target_arrays)
+
+        with mock.patch.object(self.driver, '_swap_replication_state') as swap:
+            self.driver.failover_replication(
+                self.ctxt, group, [volume],
+                secondary_backend_id='secondary-id')
+
+        swap.assert_not_called()
+        self.assertEqual(self.array, self.driver._get_current_array())
+        self.assertIsNone(self.driver._active_backend_id)
+        self.assertEqual(targets, self.driver._replication_target_arrays)
+
+    @mock.patch(BASE_DRIVER_OBJ + '._sync_failover_host')
+    @mock.patch(BASE_DRIVER_OBJ + '._find_sync_failover_target')
+    @mock.patch(BASE_DRIVER_OBJ + '._group_potential_repl_types')
+    def test_failover_replication_sync(self, mock_repl_types,
+                                       mock_find_sync_target,
+                                       mock_sync_failover):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_repl_types.return_value = {'sync'}
+        volume, _ = self.new_fake_vol()
+        secondary = mock.MagicMock()
+        mock_find_sync_target.return_value = secondary
+        mock_sync_failover.return_value = [{
+            'volume_id': volume.id,
+            'updates': {
+                'replication_status': fields.ReplicationStatus.FAILED_OVER}}]
+
+        model_update, volume_update = self.driver.failover_replication(
+            self.ctxt, group, [volume], secondary_backend_id='secondary-id')
+
+        mock_find_sync_target.assert_called_once_with()
+        mock_sync_failover.assert_called_once_with([volume], secondary)
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.FAILED_OVER},
+            model_update)
+        self.assertEqual(
+            [{'id': volume.id,
+              'replication_driver_data': secondary.backend_id,
+              'replication_status': fields.ReplicationStatus.FAILED_OVER}],
+            volume_update)
+
+    @mock.patch(BASE_DRIVER_OBJ + '._find_sync_failover_target')
+    @mock.patch(BASE_DRIVER_OBJ + '._group_potential_repl_types')
+    def test_failover_replication_sync_no_target(self, mock_repl_types,
+                                                 mock_find_sync_target):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_repl_types.return_value = {'sync'}
+        volume, _ = self.new_fake_vol()
+        mock_find_sync_target.return_value = None
+
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver.failover_replication,
+            self.ctxt, group, [volume], secondary_backend_id='secondary-id'
+        )
+
+    @mock.patch(BASE_DRIVER_OBJ + '._get_pgroup_name')
+    @mock.patch(BASE_DRIVER_OBJ + '._group_potential_repl_types')
+    def test_failover_replication_sync_failback(self, mock_repl_types,
+                                                mock_get_pgroup_name):
+        group = mock.MagicMock()
+        group.is_replicated = True
+        mock_repl_types.return_value = {'sync'}
+        volume, _ = self.new_fake_vol()
+
+        model_update, volume_update = self.driver.failover_replication(
+            self.ctxt, group, [volume], secondary_backend_id='default')
+
+        # ActiveCluster failback is a status-only change, no array operation.
+        self.assertEqual(
+            {'replication_status': fields.ReplicationStatus.ENABLED},
+            model_update)
+        self.assertEqual(
+            [{'id': volume.id,
+              'replication_driver_data': None,
+              'replication_status': fields.ReplicationStatus.ENABLED}],
+            volume_update)
+        self.array.patch_protection_groups.assert_not_called()
+
+
+@ddt.ddt
+class PureGroupFailoverRoutingTestCase(PureBaseSharedDriverTestCase):
+    """Volumes in a group failed over on its own must follow the group.
+
+    Group (Tiramisu) failover deliberately leaves the driver's current array
+    alone, so the array serving each failed over volume is recorded in
+    replication_driver_data and resolved per volume instead.
+    """
+
+    def setUp(self):
+        super(PureGroupFailoverRoutingTestCase, self).setUp()
+        self.ctxt = context.get_admin_context()
+        self.array.backend_id = 'primary'
+        self.secondary = mock.MagicMock()
+        self.secondary.backend_id = 'secondary'
+        self.driver._replication_target_arrays = [self.secondary]
+
+    def _failed_over_vol(self, backend_id='secondary'):
+        vol, vol_name = self.new_fake_vol()
+        vol.replication_driver_data = backend_id
+        return vol, vol_name
+
+    def test_get_array_for_volume_not_failed_over(self):
+        vol, _ = self.new_fake_vol()
+        vol.replication_driver_data = None
+        self.assertEqual(self.array, self.driver._get_array_for_volume(vol))
+
+    def test_get_array_for_volume_on_current_array(self):
+        vol, _ = self._failed_over_vol(backend_id='primary')
+        self.assertEqual(self.array, self.driver._get_array_for_volume(vol))
+
+    def test_get_array_for_volume_failed_over(self):
+        vol, _ = self._failed_over_vol()
+        self.assertEqual(self.secondary,
+                         self.driver._get_array_for_volume(vol))
+
+    @mock.patch(DRIVER_PATH + ".LOG")
+    def test_get_array_for_volume_unknown_backend(self, mock_log):
+        """A stale backend_id must warn and fall back, not blow up."""
+        vol, _ = self._failed_over_vol(backend_id='removed-from-config')
+        self.assertEqual(self.array, self.driver._get_array_for_volume(vol))
+        mock_log.warning.assert_called()
+
+    def test_get_current_array_without_volume_is_unchanged(self):
+        self.driver._is_active_cluster_enabled = False
+        self.assertEqual(
+            self.array,
+            pure.PureBaseVolumeDriver._get_current_array(self.driver))
+
+    def test_get_current_array_with_volume_resolves(self):
+        self.driver._is_active_cluster_enabled = False
+        vol, _ = self._failed_over_vol()
+        # setUp mocks _get_current_array on the instance, so go to the class
+        # to exercise the real implementation.
+        self.assertEqual(
+            self.secondary,
+            pure.PureBaseVolumeDriver._get_current_array(self.driver,
+                                                         volume=vol))
+
+    # Operations that must follow the volume to the secondary array. The
+    # base class mocks _get_current_array, so assert the call site asks for
+    # the volume rather than the backend-wide array.
+    def test_delete_volume_resolves_array_for_volume(self):
+        vol, _ = self._failed_over_vol()
+        self.driver.delete_volume(vol)
+        self.driver._get_current_array.assert_called_with(volume=vol)
+
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumePatch")
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    def test_extend_volume_resolves_array_for_volume(self, mock_get_type,
+                                                     mock_fa):
+        vol, _ = self._failed_over_vol()
+        mock_get_type.return_value = vol.volume_type
+        self.driver.extend_volume(vol, 3)
+        self.driver._get_current_array.assert_called_with(volume=vol)
+
+    def _assert_routed_for(self, vol):
+        called = self.driver._get_current_array.call_args.kwargs['volume']
+        self.assertEqual(vol.id, called.id)
+        self.assertEqual(vol.replication_driver_data,
+                         called.replication_driver_data)
+
+    def test_create_snapshot_resolves_array_for_volume(self):
+        vol, _ = self._failed_over_vol()
+        snap = fake_snapshot.fake_snapshot_obj(mock.MagicMock(), volume=vol)
+        self.driver.create_snapshot(snap)
+        self._assert_routed_for(vol)
+
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumeSnapshotPatch")
+    def test_delete_snapshot_resolves_array_for_volume(self, mock_snap_patch):
+        vol, _ = self._failed_over_vol()
+        snap = fake_snapshot.fake_snapshot_obj(mock.MagicMock(), volume=vol)
+        self.driver.delete_snapshot(snap)
+        self._assert_routed_for(vol)
+
+    @mock.patch(BASE_DRIVER_OBJ + "._disconnect")
+    def test_terminate_connection_resolves_array_for_volume(self,
+                                                            mock_disconnect):
+        vol, _ = self._failed_over_vol()
+        self.driver.terminate_connection(vol, ISCSI_CONNECTOR)
+        self.driver._get_current_array.assert_called_with(volume=vol)
+
+    # Operations that cannot be honoured against a failed over volume.
+    def test_retype_rejected_while_failed_over(self):
+        vol, _ = self._failed_over_vol()
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver.retype,
+            self.ctxt, vol, {'id': fake.VOLUME_TYPE_ID}, None, None)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_cloned_volume_rejected_while_failed_over(
+            self, mock_get_volume_type):
+        src, _ = self._failed_over_vol()
+        vol, _ = self.new_fake_vol(set_provider_id=False)
+        mock_get_volume_type.return_value = vol.volume_type
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver.create_cloned_volume, vol, src)
+        self.array.post_volumes.assert_not_called()
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_volume_from_snapshot_rejected_while_failed_over(
+            self, mock_get_volume_type):
+        src, _ = self._failed_over_vol()
+        snap = fake_snapshot.fake_snapshot_obj(mock.MagicMock(), volume=src)
+        vol, _ = self.new_fake_vol(set_provider_id=False)
+        mock_get_volume_type.return_value = vol.volume_type
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver.create_volume_from_snapshot, vol, snap)
+        self.array.post_volumes.assert_not_called()
+
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
+    @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
+    @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_clone_allowed_when_not_failed_over(self, mock_get_volume_type,
+                                                mock_get_replication_type,
+                                                mock_add_to_group, mock_fa):
+        src, _ = self.new_fake_vol()
+        src.replication_driver_data = None
+        vol, _ = self.new_fake_vol(set_provider_id=False)
+        mock_get_volume_type.return_value = vol.volume_type
+        mock_get_replication_type.return_value = None
+        self.mock_object(self.driver, '_get_volume_type_extra_spec',
+                         return_value={})
+        self.driver.create_cloned_volume(vol, src)
+        self.array.post_volumes.assert_called()
 
 
 class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):

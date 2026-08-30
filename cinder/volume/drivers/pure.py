@@ -216,6 +216,26 @@ def _build_qos_patch(iops_limit, bandwidth_limit):
         bandwidth_limit=flasharray.QosBandwidthLimitPatch(bandwidth_limit))
 
 
+def _get_error_details(res):
+    """Safely extract the error detail from a REST response.
+
+    A failed call normally comes back with an ``errors`` list of objects
+    carrying a ``message``, but that is not guaranteed: the list can be
+    empty or absent, and its entries may not carry a message. Reporting an
+    error must never itself raise and mask the backend failure, so fall
+    back to the status code when there is nothing better to say.
+    """
+    messages = []
+    for error in getattr(res, 'errors', None) or []:
+        message = getattr(error, 'message', None)
+        if message:
+            messages.append(str(message))
+    if not messages:
+        return _("no error detail returned (status code: %(code)s)") % {
+            'code': getattr(res, 'status_code', 'unknown')}
+    return ", ".join(messages)
+
+
 class PureDriverException(exception.VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")
 
@@ -782,7 +802,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         LOG.debug("Reverting from snapshot %(snap)s to volume "
                   "%(vol)s", {'vol': vol_name, 'snap': snap_name})
 
-        current_array = self._get_current_array()
+        current_array = self._get_current_array(volume=volume)
 
         current_array.post_volumes(names=[snap_name], overwrite=True,
                                    volume=flasharray.VolumePost(
@@ -855,6 +875,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         else:
             snap_name = self._get_snap_name(snapshot)
 
+        # The source snapshot lives on whichever array serves its volume, so
+        # a group failover would place the new volume on the secondary.
+        self._reject_if_group_failed_over(
+            getattr(snapshot, 'volume', None),
+            _("Creating a volume from a snapshot"))
         current_array = self._get_current_array()
         ctxt = context.get_admin_context()
         type_id = volume.get('volume_type_id')
@@ -1151,6 +1176,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         # Check which backend the source volume is on. In case of failover
         # the source volume may be on the secondary array.
+        self._reject_if_group_failed_over(src_vref, _("Cloning a volume"))
         current_array = self._get_current_array()
         current_array.post_volumes(volume=flasharray.VolumePost(
             source=flasharray.Reference(name=src_name)), names=[vol_name])
@@ -1182,7 +1208,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     def delete_volume(self, volume):
         """Disconnect all hosts and delete the volume"""
         vol_name = self._get_vol_name(volume)
-        current_array = self._get_current_array()
+        current_array = self._get_current_array(volume=volume)
         # Do a pass over remaining connections on the current array, if
         # we can try and remove any remote connections too.
         con_data = current_array.get_connections(
@@ -1240,7 +1266,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Creates a snapshot."""
 
         # Get current array in case we have failed over via replication.
-        current_array = self._get_current_array()
+        current_array = self._get_current_array(volume=snapshot.volume)
         vol_name, snap_suff = self._get_snap_name(snapshot).split(".")
         volume_snapshot = flasharray.VolumeSnapshotPost(suffix=snap_suff)
         current_array.post_volume_snapshots(source_names=[vol_name],
@@ -1265,7 +1291,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Deletes a snapshot."""
 
         # Get current array in case we have failed over via replication.
-        current_array = self._get_current_array()
+        current_array = self._get_current_array(volume=snapshot.volume)
 
         snap_name = self._get_snap_name(snapshot)
         volume_snap = flasharray.VolumeSnapshotPatch(destroyed=True)
@@ -1329,7 +1355,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         Returns True if it was the hosts last connection.
         """
         vol_name = self._get_vol_name(volume)
-        self._tag_volume(volume_name=vol_name)
+        self._tag_volume(volume_name=vol_name, array=array)
         LOG.debug("Volume instance tags deleted")
         if connector is None:
             # If no connector was provided it is a force-detach, remove all
@@ -1393,8 +1419,8 @@ class PureBaseVolumeDriver(san.SanDriver):
                     if not res:
                         # Swallow any exception, just warn and continue
                         LOG.warning("Disconnect on secondary array failed")
-            # Now disconnect from the current array
-            self._disconnect(self._get_current_array(), volume,
+            # Now disconnect from the array currently serving this volume
+            self._disconnect(self._get_current_array(volume=volume), volume,
                              connector, remove_remote_hosts=False,
                              is_multiattach=multiattach)
 
@@ -1651,7 +1677,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Extend volume to new_size."""
 
         # Get current array in case we have failed over via replication.
-        current_array = self._get_current_array()
+        current_array = self._get_current_array(volume=volume)
 
         vol_name = self._get_vol_name(volume)
         new_size = new_size_gb * units.Gi
@@ -1684,7 +1710,11 @@ class PureBaseVolumeDriver(san.SanDriver):
                   {'group_name': group_name})
         current_array.post_protection_groups(
             names=[group_name])
-        if grp_type:
+        # Synchronously replicated groups are created inside the ActiveCluster
+        # pod (the pod prefix is already part of group_name), so the stretched
+        # pod provides replication and no async schedule/target setup is
+        # required. Only async and trisync groups need the schedule below.
+        if grp_type in [REPLICATION_TYPE_ASYNC, REPLICATION_TYPE_TRISYNC]:
             current_array.patch_protection_groups(
                 names=[group_name],
                 protection_group=flasharray.ProtectionGroup(
@@ -2004,12 +2034,12 @@ class PureBaseVolumeDriver(san.SanDriver):
                     repl_type = self._get_replication_type_from_vol_type(
                         vol_type)
                     if repl_type not in [REPLICATION_TYPE_ASYNC,
+                                         REPLICATION_TYPE_SYNC,
                                          REPLICATION_TYPE_TRISYNC]:
                         # Unsupported configuration
                         LOG.error("Unable to create group: create consistent "
-                                  "replication group with non-replicated or "
-                                  "sync replicated volume type is not "
-                                  "supported.")
+                                  "replication group with a non-replicated "
+                                  "volume type is not supported.")
                         model_update = {'status': fields.GroupStatus.ERROR}
                         return model_update
                     if not cgr_type:
@@ -2025,6 +2055,240 @@ class PureBaseVolumeDriver(san.SanDriver):
         # If it wasn't a consistency group request ignore it and we'll rely on
         # the generic group implementation.
         raise NotImplementedError()
+
+    @pure_driver_debug_trace
+    def enable_replication(self, context, group, volumes):
+        """Enable replication for a group. (Tiramisu)
+
+        A replicated group is backed by a replication-enabled protection
+        group on the array, so enabling replication simply (re)enables the
+        replication schedule on that protection group.
+
+        :param group: the group object
+        :param volumes: the list of volume objects in the group
+        :returns: model_update, None
+        """
+        if not group.is_replicated:
+            raise NotImplementedError()
+
+        current_array = self._get_current_array()
+        pgroup_name = self._get_pgroup_name(group)
+        model_update = {
+            'replication_status': fields.ReplicationStatus.ENABLED}
+        res = current_array.patch_protection_groups(
+            names=[pgroup_name],
+            protection_group=flasharray.ProtectionGroup(
+                replication_schedule=flasharray.ReplicationSchedule(
+                    enabled=True)))
+        if res.status_code != 200:
+            model_update = {
+                'replication_status': fields.ReplicationStatus.ERROR}
+            LOG.error("Failed to enable replication for group %(group)s: "
+                      "%(err)s",
+                      {"group": group.id, "err": _get_error_details(res)})
+        return model_update, None
+
+    @pure_driver_debug_trace
+    def disable_replication(self, context, group, volumes):
+        """Disable replication for a group. (Tiramisu)
+
+        Disables the replication schedule on the group's protection group
+        while leaving the protection group and its members in place.
+
+        :param group: the group object
+        :param volumes: the list of volume objects in the group
+        :returns: model_update, None
+        """
+        if not group.is_replicated:
+            raise NotImplementedError()
+
+        current_array = self._get_current_array()
+        pgroup_name = self._get_pgroup_name(group)
+        model_update = {
+            'replication_status': fields.ReplicationStatus.DISABLED}
+        res = current_array.patch_protection_groups(
+            names=[pgroup_name],
+            protection_group=flasharray.ProtectionGroup(
+                replication_schedule=flasharray.ReplicationSchedule(
+                    enabled=False)))
+        if res.status_code != 200:
+            model_update = {
+                'replication_status': fields.ReplicationStatus.ERROR}
+            LOG.error("Failed to disable replication for group %(group)s: "
+                      "%(err)s",
+                      {"group": group.id, "err": _get_error_details(res)})
+        return model_update, None
+
+    @pure_driver_debug_trace
+    def failover_replication(self, context, group, volumes,
+                             secondary_backend_id=None):
+        """Failover replication for a group. (Tiramisu)
+
+        Async and trisync groups fail over by promoting the latest replicated
+        snapshot of the group's protection group on the secondary array. As
+        async replication is not bi-directional, a subsequent failback
+        ("default") leaves the stale volumes on the original primary in an
+        error state pending an admin resync.
+
+        Synchronously replicated (ActiveCluster) groups live in a stretched
+        pod that is served by both arrays simultaneously, so failover and
+        failback only update volume/group status - no data is moved.
+
+        This action is strictly group scoped: unlike failover_host() it does
+        not call failover_completed(), so _swap_replication_state() never
+        runs and the driver's current array, active_backend_id and
+        replication target lists are all left untouched. The two helpers
+        reused below only read from the secondary array and only act on the
+        volumes belonging to this group, so volumes outside the group - and
+        the backend as a whole - are unaffected.
+
+        Because the driver's current array does not move, the array now
+        serving each failed over volume is recorded in that volume's
+        replication_driver_data and resolved per volume by
+        _get_array_for_volume(). Failing back clears it again.
+
+        :param group: the group object
+        :param volumes: the list of volume objects in the group
+        :param secondary_backend_id: the backend_id of the secondary array,
+                                      or "default" to fail back
+        :returns: model_update, volume_model_updates
+        """
+        if not group.is_replicated:
+            raise NotImplementedError()
+
+        is_sync = REPLICATION_TYPE_SYNC in self._group_potential_repl_types(
+            group)
+        pgroup_name = self._get_pgroup_name(group)
+        current_array = self._get_current_array()
+
+        if secondary_backend_id == "default":
+            if is_sync:
+                # ActiveCluster is bi-directional, so failback is simply a
+                # status change back to enabled. Clearing
+                # replication_driver_data routes the volumes back to the
+                # driver's current array.
+                model_update = {
+                    'replication_status': fields.ReplicationStatus.ENABLED}
+                volume_updates = [
+                    {'id': vol.id,
+                     'replication_driver_data': None,
+                     'replication_status': fields.ReplicationStatus.ENABLED}
+                    for vol in volumes]
+                return model_update, volume_updates
+            # Re-enable replication on the source protection group. The
+            # volumes on the original primary are stale because async
+            # replication is not bi-directional, so they are reported as
+            # errored pending an admin resync.
+            res = current_array.patch_protection_groups(
+                names=[pgroup_name],
+                protection_group=flasharray.ProtectionGroup(
+                    replication_schedule=flasharray.ReplicationSchedule(
+                        enabled=True)))
+            if res.status_code == 200:
+                repl_status = fields.ReplicationStatus.ENABLED
+            else:
+                # The schedule was not re-enabled, so the group is not
+                # replicating again - do not report it as enabled.
+                repl_status = fields.ReplicationStatus.ERROR
+                LOG.error("Failed to re-enable replication for group "
+                          "%(group)s on failback: %(err)s",
+                          {"group": group.id, "err": _get_error_details(res)})
+            model_update = {'replication_status': repl_status}
+            # Clearing replication_driver_data routes the volumes back to the
+            # driver's current array, which is where the (stale) originals
+            # live.
+            volume_updates = [
+                {'id': vol.id,
+                 'status': 'error',
+                 'replication_driver_data': None,
+                 'replication_status': repl_status}
+                for vol in volumes]
+            return model_update, volume_updates
+
+        if is_sync:
+            # ActiveCluster volumes already exist and are live on the
+            # secondary array via the stretched pod, so failover only needs to
+            # update status - the same logic used for host failover.
+            if secondary_backend_id:
+                LOG.debug("Ignoring secondary_backend_id %(id)s for "
+                          "ActiveCluster group %(group)s: the peer array is "
+                          "determined by the stretched pod, so the failover "
+                          "target cannot be chosen by the operator.",
+                          {"id": secondary_backend_id, "group": group.id})
+            secondary_array = self._find_sync_failover_target()
+            if not secondary_array:
+                raise PureDriverException(
+                    reason=_("Unable to find viable ActiveCluster secondary "
+                             "array for group failover."))
+            host_updates = self._sync_failover_host(volumes, secondary_array)
+        else:
+            # Determine which secondary array to fail over to.
+            if secondary_backend_id:
+                secondary_array = self._get_secondary(secondary_backend_id)
+            else:
+                # Auto-discover an async target. In a trisync deployment the
+                # two configured replication devices are typed "sync" and
+                # "async" (there is no "trisync" device), and it is the async
+                # leg that holds the replicated snapshots of the group's
+                # protection group, so that is the one to promote. TRISYNC is
+                # accepted here purely defensively, as "type" is free-form
+                # configuration text.
+                secondary_array = None
+                for array in self._replication_target_arrays:
+                    if array.replication_type in [REPLICATION_TYPE_ASYNC,
+                                                  REPLICATION_TYPE_TRISYNC]:
+                        secondary_array = array
+                        break
+            if not secondary_array:
+                raise PureDriverException(
+                    reason=_("Unable to find viable secondary array for group "
+                             "failover from configured targets: "
+                             "%(targets)s.") %
+                    {"targets": str(self._replication_target_arrays)})
+
+            pg_snap = self._get_latest_replicated_pg_snap(
+                secondary_array,
+                current_array.array_name,
+                pgroup_name)
+            if not pg_snap:
+                raise PureDriverException(
+                    reason=_("Unable to find viable pg snapshot to use for "
+                             "group failover on secondary array: %(id)s.") %
+                    {"id": secondary_array.backend_id})
+
+            # Promote the group's volumes from the latest replicated
+            # protection group snapshot.
+            host_updates = self._async_failover_host(
+                volumes, secondary_array, pg_snap)
+
+        # Translate the host-failover style updates into the group-replication
+        # update format expected by the volume manager.
+        #
+        # Volumes that failed over successfully are now served by the
+        # secondary array, so record it in replication_driver_data. The
+        # driver's current array is deliberately left alone - see the note in
+        # the docstring above - so this is what routes subsequent operations
+        # on these volumes to the right array, via _get_array_for_volume().
+        # Volumes left behind on the source are errored and keep pointing at
+        # the current array, where they still are.
+        group_status = fields.ReplicationStatus.FAILED_OVER
+        volume_updates = []
+        for update in host_updates:
+            updates = update['updates']
+            if updates.get('status') == 'error':
+                volume_updates.append({
+                    'id': update['volume_id'],
+                    'status': 'error',
+                    'replication_status': fields.ReplicationStatus.ERROR})
+                group_status = fields.ReplicationStatus.ERROR
+            else:
+                volume_updates.append({
+                    'id': update['volume_id'],
+                    'replication_driver_data': secondary_array.backend_id,
+                    'replication_status':
+                        fields.ReplicationStatus.FAILED_OVER})
+        model_update = {'replication_status': group_status}
+        return model_update, volume_updates
 
     def delete_group(self, ctxt, group, volumes):
         """Deletes a group.
@@ -2969,6 +3233,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
 
         qos = None
+        # Retyping reconfigures replication for the volume, which only makes
+        # sense against the array that replicates it. A group failover moves
+        # the volume to a secondary that is not a replication source, so the
+        # group has to be failed back before the type can be changed.
+        self._reject_if_group_failed_over(volume, _("Retyping a volume"))
         # TODO: Can remove this once new_type is a VolumeType OVO
         new_type = volume_type.VolumeType.get_by_name_or_id(context,
                                                             new_type['id'])
@@ -3891,18 +4160,77 @@ class PureBaseVolumeDriver(san.SanDriver):
                 })
         return model_updates
 
-    def _get_wwn(self, pure_vol_name):
+    def _get_wwn(self, pure_vol_name, array=None):
         """Return the WWN based on the volume's serial number
 
         The WWN is composed of the constant '36', the OUI for Pure, followed
         by '0', and finally the serial number.
+
+        :param array: array serving the volume, for volumes in a group that
+                      has been failed over. Defaults to the current array.
         """
-        array = self._get_current_array()
+        array = array or self._get_current_array()
         volume_info = list(array.get_volumes(names=[pure_vol_name]).items)[0]
         wwn = '3624a9370' + volume_info.serial
         return wwn.lower()
 
-    def _get_current_array(self, init=False):
+    def _get_array_for_volume(self, volume):
+        """Return the array currently serving a single volume.
+
+        Group (Tiramisu) replication fails a single group over without
+        moving the rest of the backend, so unlike failover_host() the driver
+        cannot simply swap its current array - that would drag every other
+        volume on the backend along with it. Instead failover_replication()
+        records the serving array's backend_id in each group volume's
+        replication_driver_data, and this resolves it back to an array.
+
+        Volumes that have never been through a group failover carry no
+        replication_driver_data and stay on the driver's current array.
+        """
+        backend_id = volume.get('replication_driver_data') if volume else None
+        if not backend_id or backend_id == self._array.backend_id:
+            return self._array
+        for array in self._replication_target_arrays:
+            if array.backend_id == backend_id:
+                return array
+        # The recorded array is no longer a configured replication target,
+        # which most likely means replication_device has been changed since
+        # the group was failed over. There is nothing better to do than use
+        # the current array, but the operation may well fail.
+        LOG.warning("Volume %(vol)s is recorded as failed over to backend "
+                    "%(backend)s, but that is not a configured replication "
+                    "target. Falling back to the current array.",
+                    {"vol": volume.get('id'), "backend": backend_id})
+        return self._array
+
+    def _reject_if_group_failed_over(self, volume, operation):
+        """Refuse operations that cannot be honoured on a failed over volume.
+
+        Creating a new volume from a source that a group failover has moved
+        to a secondary array would place the new volume on that array, where
+        it sits outside the backend's replication topology and cannot be
+        set up correctly. Refuse rather than silently create an unreplicated
+        volume in the wrong place - the group can be failed back first.
+        """
+        backend_id = volume.get('replication_driver_data') if volume else None
+        if backend_id:
+            raise PureDriverException(
+                reason=_("%(operation)s is not supported while the group "
+                         "containing volume %(vol)s is failed over to "
+                         "%(backend)s. Fail the group back first.") %
+                {"operation": operation,
+                 "vol": volume.get('id'),
+                 "backend": backend_id})
+
+    def _get_current_array(self, init=False, volume=None):
+        """Return the array to issue commands against.
+
+        :param init: skip the ActiveCluster pod health check during setup
+        :param volume: resolve the array serving this specific volume, for
+                       operations on a volume that may belong to a group
+                       that has been failed over independently of the
+                       backend. See _get_array_for_volume().
+        """
         if (not init and
                 self._is_active_cluster_enabled and
                 not self._failed_over_primary_array):
@@ -3930,6 +4258,9 @@ class PureBaseVolumeDriver(san.SanDriver):
                             {"msg": res.errors[0].message})
                 raise PureDriverException(
                     reason=_("No functional arrays available"))
+
+        if volume is not None:
+            return self._get_array_for_volume(volume)
 
         return self._array
 
@@ -3970,8 +4301,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         return ports
 
     @pure_driver_debug_trace
-    def _untag_volume(self, volume_name):
-        array = self._get_current_array()
+    def _untag_volume(self, volume_name, array=None):
+        array = array or self._get_current_array()
         array.delete_volumes_tags(namespaces=[TAG_NAMESPACE],
                                   resource_names=[volume_name])
 
@@ -3984,6 +4315,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         project=_PROJECT_SENTINEL,
         namespace: str = TAG_NAMESPACE,
         data_store: str = "Direct Access",
+        array=None,
     ):
         """Attach a batch of tags to a volume.
 
@@ -3998,8 +4330,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         Only include VolType if vol_type is explicitly provided.
         Passing vol_type=None will set the tag's value to None;
         omitting vol_type entirely leaves VolType unchanged.
+
+        :param array: array serving the volume, for volumes in a group that
+                      has been failed over. Defaults to the current array.
         """
-        array = self._get_current_array()
+        array = array or self._get_current_array()
         pairs = []
 
         # Handle instance taif instance is not _instance_sentinel:
@@ -4049,7 +4384,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     the underlying storage connectivity with the FlashArray.
     """
 
-    VERSION = "22.0.iscsi"
+    VERSION = "23.0.iscsi"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -4089,7 +4424,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         pure_vol_name = self._get_vol_name(volume)
-        target_arrays = [self._get_current_array()]
+        target_arrays = [self._get_current_array(volume=volume)]
         if (self._is_vol_in_pod(pure_vol_name) and
                 self._is_active_cluster_enabled and
                 not self._failed_over_primary_array):
@@ -4099,11 +4434,13 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             tags = self._tag_volume(volume_name=pure_vol_name,
                                     vol_type=vol_type,
                                     instance=instance_id,
-                                    project=volume.project_id)
+                                    project=volume.project_id,
+                                    array=target_arrays[0])
         else:
             tags = self._tag_volume(volume_name=pure_vol_name,
                                     vol_type=vol_type,
-                                    project=volume.project_id)
+                                    project=volume.project_id,
+                                    array=target_arrays[0])
         LOG.debug("Volume tags added: %s", tags)
 
         chap_username = None
@@ -4127,7 +4464,8 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             })
 
         properties = self._build_connection_properties(targets)
-        properties["data"]["wwn"] = self._get_wwn(pure_vol_name)
+        properties["data"]["wwn"] = self._get_wwn(pure_vol_name,
+                                                  target_arrays[0])
 
         if self.configuration.use_chap_auth:
             properties["data"]["auth_method"] = "CHAP"
@@ -4313,7 +4651,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     supports the Cinder Fibre Channel Zone Manager.
     """
 
-    VERSION = "22.0.fc"
+    VERSION = "23.0.fc"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -4368,7 +4706,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         pure_vol_name = self._get_vol_name(volume)
-        target_arrays = [self._get_current_array()]
+        target_arrays = [self._get_current_array(volume=volume)]
         if (self._is_vol_in_pod(pure_vol_name) and
                 self._is_active_cluster_enabled and
                 not self._failed_over_primary_array):
@@ -4378,11 +4716,13 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
             tags = self._tag_volume(volume_name=pure_vol_name,
                                     vol_type=vol_type,
                                     instance=instance_id,
-                                    project=volume.project_id)
+                                    project=volume.project_id,
+                                    array=target_arrays[0])
         else:
             tags = self._tag_volume(volume_name=pure_vol_name,
                                     vol_type=vol_type,
-                                    project=volume.project_id)
+                                    project=volume.project_id,
+                                    array=target_arrays[0])
         LOG.debug("Volume tags added: %s", tags)
 
         target_luns = []
@@ -4416,7 +4756,8 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                 "addressing_mode": brick_constants.SCSI_ADDRESSING_SAM2,
             }
         }
-        properties["data"]["wwn"] = self._get_wwn(pure_vol_name)
+        properties["data"]["wwn"] = self._get_wwn(pure_vol_name,
+                                                  target_arrays[0])
 
         fczm_utils.add_fc_zone(properties)
         return properties
@@ -4510,9 +4851,9 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                     if no_more_connections:
                         unused_wwns += self._get_array_wwns(array)
 
-            # Now disconnect from the current array, removing any left over
-            # remote hosts that we maybe couldn't reach.
-            current_array = self._get_current_array()
+            # Now disconnect from the array serving this volume, removing any
+            # left over remote hosts that we maybe couldn't reach.
+            current_array = self._get_current_array(volume=volume)
             no_more_connections = self._disconnect(current_array,
                                                    volume, connector,
                                                    remove_remote_hosts=False,
@@ -4540,7 +4881,7 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
     FlashArray.
     """
 
-    VERSION = "22.0.nvme"
+    VERSION = "23.0.nvme"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -4553,7 +4894,7 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
             self.transport_type = "tcp"
             self._storage_protocol = constants.NVMEOF_TCP
 
-    def _get_nguid(self, pure_vol_name):
+    def _get_nguid(self, pure_vol_name, array=None):
         """Return the NGUID based on the volume's serial number
 
         The NGUID is constructed from the volume serial number and
@@ -4563,8 +4904,11 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
         // octets 1 - 7:         first 7 octets of volume serial number
         // octets 8 - 10:        3 octet OUI (24a937)
         // octets 11 - 15:       last 5 octets of volume serial number
+
+        :param array: array serving the volume, for volumes in a group that
+                      has been failed over. Defaults to the current array.
         """
-        array = self._get_current_array()
+        array = array or self._get_current_array()
         volume_info = list(array.get_volumes(names=[pure_vol_name]).items)[0]
         nguid = ("00" + volume_info.serial[0:14] +
                  "24a937" + volume_info.serial[-10:])
@@ -4603,7 +4947,7 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         pure_vol_name = self._get_vol_name(volume)
-        target_arrays = [self._get_current_array()]
+        target_arrays = [self._get_current_array(volume=volume)]
         if (
             self._is_vol_in_pod(pure_vol_name)
             and self._is_active_cluster_enabled and
@@ -4615,11 +4959,13 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
             tags = self._tag_volume(volume_name=pure_vol_name,
                                     vol_type=vol_type,
                                     instance=instance_id,
-                                    project=volume.project_id)
+                                    project=volume.project_id,
+                                    array=target_arrays[0])
         else:
             tags = self._tag_volume(volume_name=pure_vol_name,
                                     vol_type=vol_type,
-                                    project=volume.project_id)
+                                    project=volume.project_id,
+                                    array=target_arrays[0])
         LOG.debug("Volume tags added: %s", tags)
 
         targets = []
@@ -4649,7 +4995,8 @@ class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
             )
         properties = self._build_connection_properties(targets)
 
-        properties["data"]["volume_nguid"] = self._get_nguid(pure_vol_name)
+        properties["data"]["volume_nguid"] = self._get_nguid(
+            pure_vol_name, target_arrays[0])
 
         return properties
 
