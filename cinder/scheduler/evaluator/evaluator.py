@@ -234,7 +234,7 @@ def _def_parser():
     alphas = pyparsing.alphas
     Combine = pyparsing.Combine
     nums = pyparsing.nums
-    quoted_string = pyparsing.quotedString
+    quoted_string = pyparsing.quoted_string
 
     one_of = pyparsing.one_of
     OpAssoc = pyparsing.OpAssoc
