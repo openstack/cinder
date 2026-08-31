@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver `bug #2165892
+    <https://bugs.launchpad.net/cinder/+bug/2165892>`_: Fixed
+    ``clone_image()`` on the NFS driver unconditionally calling the
+    ZAPI-only ``get_ontapi_version()`` method, even when the deprecated
+    ``netapp_copyoffload_tool_path`` option was not set. On a REST-only
+    backend with ``netapp_allow_zapi_fallback`` disabled, this call
+    raised an uncaught ``NetAppDriverException``, causing image-backed
+    volume creation to fail. The call is now only made when
+    ``netapp_copyoffload_tool_path`` is configured.

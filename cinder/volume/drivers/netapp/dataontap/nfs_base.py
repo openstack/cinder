@@ -680,7 +680,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         post_clone = False
 
         extra_specs = na_utils.get_volume_extra_specs(volume)
-        major, minor = self.zapi_client.get_ontapi_version()
+        major, minor = None, None
         col_path = self.configuration.netapp_copyoffload_tool_path
 
         if col_path:
@@ -688,6 +688,7 @@ class NetAppNfsDriver(driver.ManageableVD,
                    'is deprecated and will be removed soon. Please, do not '
                    'set it.')
             versionutils.report_deprecated_feature(LOG, msg)
+            major, minor = self.zapi_client.get_ontapi_version()
         try:
             cache_result = self._find_image_in_cache(image_id)
             if cache_result:
