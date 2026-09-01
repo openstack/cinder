@@ -1398,6 +1398,42 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv.clone_image(context, volume, image_location, image_meta,
                         image_service)
 
+    def test_clone_image_rest_only_zapi_fallback_disabled(self):
+        # Regression test for a bug where clone_image() unconditionally
+        # called self.zapi_client.get_ontapi_version() even when the
+        # deprecated netapp_copyoffload_tool_path option was unset, which
+        # crashes on REST-only backends with netapp_allow_zapi_fallback
+        # set to False (get_ontapi_version is a ZAPI-only call).
+        drv = self.driver
+        context = object()
+        volume = {'id': 'vol_id', 'name': 'name',
+                  'host': 'openstack@nfscmode#192.128.1.1:/mnt_point'}
+        image_service = object()
+        image_location = 'img-loc'
+        image_id = 'image_id'
+        image_meta = {'id': image_id}
+        drv.configuration.netapp_copyoffload_tool_path = None
+        drv.zapi_client = mock.Mock()
+        drv.zapi_client.get_ontapi_version = mock.Mock(
+            side_effect=na_utils.NetAppDriverException(
+                'The get_ontapi_version call is not supported for REST '
+                'and the ZAPI fallback is disabled.'))
+        nfs_base.NetAppNfsDriver._find_image_in_cache = mock.Mock(
+            return_value=[])
+        nfs_base.NetAppNfsDriver._direct_nfs_clone = mock.Mock(
+            return_value=True)
+        nfs_base.NetAppNfsDriver._post_clone_image = mock.Mock(
+            return_value=True)
+        drv._do_qos_for_volume = mock.Mock()
+        drv._is_flexgroup = mock.Mock(return_value=False)
+        drv._is_flexgroup_clone_file_supported = mock.Mock(return_value=True)
+
+        model, cloned = drv.clone_image(
+            context, volume, image_location, image_meta, image_service)
+
+        drv.zapi_client.get_ontapi_version.assert_not_called()
+        self.assertTrue(cloned)
+
     def test_clone_image_flexgroup(self):
         self.driver._is_flexgroup = mock.Mock(return_value=True)
         mock_clone_file = self.mock_object(
