@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver `bug #2164566
+    <https://bugs.launchpad.net/cinder/+bug/2164566>`_: Fixed on-demand
+    retype and migrate from an ONTAP backend to a non-NetApp backend.
+    The driver now falls back to host-assisted copy instead of connecting
+    to hostname ``none`` and leaving the volume stuck in ``retyping``.
