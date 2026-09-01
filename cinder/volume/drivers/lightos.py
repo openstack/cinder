@@ -58,6 +58,7 @@ lightos_opts = [
                      ' are used for HTTP.'),
     cfg.StrOpt('lightos_jwt',
                default=None,
+               secret=True,
                help='JWT to be used for volume and snapshot operations with'
                     ' the LightOS cluster.'
                     ' Do not set this parameter if the cluster is installed'
@@ -103,6 +104,27 @@ STOP_LIGHTOS_CMD_FOR_RETURN_STATUS_LIST = (httpstatus.OK,
                                            httpstatus.UNAUTHORIZED,
                                            httpstatus.FORBIDDEN,
                                            httpstatus.NOT_FOUND)
+
+
+def _obfuscate_credential(value, keep=4):
+    """Obfuscate a credential header value for logging.
+
+    Preserves any auth-scheme prefix ('Bearer ') and keeps only the last
+    `keep` characters of the secret. The suffix is kept rather than the
+    prefix because a JWT starts with constant base64 header material
+    ('eyJ...'): leading characters expose bytes without distinguishing one
+    token from another, while the trailing signature is unique enough to
+    correlate a logged request with the configured token. Secrets too short
+    for that to be safe are redacted entirely, as is any keep <= 0 --
+    without that guard secret[-0:] would be the whole secret.
+    """
+    scheme, sep, secret = value.partition(' ')
+    if not sep:
+        scheme, secret = '', value
+    prefix = scheme + ' ' if scheme else ''
+    if keep <= 0 or len(secret) <= max(2 * keep, 8):
+        return prefix + '<redacted>'
+    return prefix + '****' + secret[-keep:]
 
 
 class LightOSConnection(object):
@@ -298,8 +320,20 @@ class LightOSConnection(object):
 
     def pretty_print_req(self, req, timeout):
         request = req.method + ' ' + req.url
-        header = ', '.join('"{}: {}"'.format(k, v)
-                           for k, v in req.headers.items())
+        headers = []
+        for k, v in req.headers.items():
+            if k.lower() in ('authorization', 'proxy-authorization'):
+                try:
+                    v = _obfuscate_credential(v)
+                except Exception:
+                    # This runs on the request path, so a logging failure
+                    # would abort the volume operation. Header values are
+                    # not guaranteed to be str (requests permits bytes, and
+                    # injects Proxy-Authorization itself). Degrade to more
+                    # redaction, never to a raw credential.
+                    v = '<redacted>'
+            headers.append('"{}: {}"'.format(k, v))
+        header = ', '.join(headers)
         LOG.debug('Req: %s Headers: %s Body: %s Timeout: %s',
                   request,
                   header,

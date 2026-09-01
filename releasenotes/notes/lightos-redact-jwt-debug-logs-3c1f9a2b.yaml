@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    The Lightbits driver no longer writes the configured JWT to debug
+    logs. Authorization headers are redacted before logging and the
+    ``lightos_jwt`` option is marked secret, excluding it from
+    configuration dumps as well.
