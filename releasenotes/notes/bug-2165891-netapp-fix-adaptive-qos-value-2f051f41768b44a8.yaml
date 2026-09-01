@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver `bug #2165891
+    <https://bugs.launchpad.net/cinder/+bug/2165891>`_: Fixed a
+    ``ValueError`` raised when creating or managing a volume with an
+    adaptive QoS specification (``expectedIOPSperGiB``/``peakIOPSperGiB``)
+    on a REST-only backend. ``_sanitize_qos_spec_value()`` failed to
+    strip the ``/GB`` suffix from adaptive QoS values (e.g.
+    ``128IOPS/GB``), causing ``int()`` conversion to fail and the volume
+    to go to ``error`` status.

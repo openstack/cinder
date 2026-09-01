@@ -1526,7 +1526,11 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
 
     def _sanitize_qos_spec_value(self, value):
         value = value.lower()
-        value = value.replace('iops', '').replace('b/s', '')
+        # Adaptive QoS specs (expected_iops/peak_iops) are formatted as
+        # e.g. '128IOPS/GB'; the '/GB' suffix must also be stripped or
+        # int() raises ValueError.
+        value = value.replace('iops', '').replace('b/s', '').replace(
+            '/gb', '')
         value = int(value)
         return value
 

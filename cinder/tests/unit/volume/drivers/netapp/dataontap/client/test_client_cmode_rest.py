@@ -1761,7 +1761,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(expected_args, result)
 
-    @ddt.data('100IOPS', '100iops', '100B/s', '100b/s')
+    @ddt.data('100IOPS', '100iops', '100B/s', '100b/s', '100IOPS/GB',
+              '100iops/gb')
     def test__sanitize_qos_spec_value(self, value):
         result = self.client._sanitize_qos_spec_value(value)
 
