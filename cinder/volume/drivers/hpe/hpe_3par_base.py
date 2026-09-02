@@ -626,6 +626,51 @@ class HPE3PARDriverBase(driver.ManageableVD,
               "bandwidth rate."),
             "integer")
 
+        capacity_qos_specs = [
+            ("read_iops_sec_per_gb", "Read IOPS per GB QoS.",
+             "Sets the read IOPS rate limit per GB of volume capacity."),
+            ("write_iops_sec_per_gb", "Write IOPS per GB QoS.",
+             "Sets the write IOPS rate limit per GB of volume capacity."),
+            ("total_iops_sec_per_gb", "Total IOPS per GB QoS.",
+             "Sets the read/write IOPS rate limit per GB of volume "
+             "capacity."),
+            ("read_bytes_sec_per_gb", "Read bandwidth per GB QoS.",
+             "Sets the read bandwidth rate limit per GB of volume "
+             "capacity."),
+            ("write_bytes_sec_per_gb", "Write bandwidth per GB QoS.",
+             "Sets the write bandwidth rate limit per GB of volume "
+             "capacity."),
+            ("total_bytes_sec_per_gb", "Total bandwidth per GB QoS.",
+             "Sets the read/write bandwidth rate limit per GB of volume "
+             "capacity."),
+            ("read_iops_sec_per_gb_min", "Minimum read IOPS per GB QoS.",
+             "Sets the read IOPS minimum goal per GB of volume capacity."),
+            ("write_iops_sec_per_gb_min", "Minimum write IOPS per GB QoS.",
+             "Sets the write IOPS minimum goal per GB of volume capacity."),
+            ("total_iops_sec_per_gb_min", "Minimum total IOPS per GB QoS.",
+             "Sets the read/write IOPS minimum goal per GB of volume "
+             "capacity."),
+            ("read_bytes_sec_per_gb_min",
+             "Minimum read bandwidth per GB QoS.",
+             "Sets the read bandwidth minimum goal per GB of volume "
+             "capacity."),
+            ("write_bytes_sec_per_gb_min",
+             "Minimum write bandwidth per GB QoS.",
+             "Sets the write bandwidth minimum goal per GB of volume "
+             "capacity."),
+            ("total_bytes_sec_per_gb_min",
+             "Minimum total bandwidth per GB QoS.",
+             "Sets the read/write bandwidth minimum goal per GB of volume "
+             "capacity."),
+        ]
+        for qos_key, title, description in capacity_qos_specs:
+            self._set_property(
+                properties,
+                "HPE:3PAR:%s" % qos_key,
+                title,
+                _(description),
+                "integer")
+
         self._set_property(
             properties,
             "HPE:3PAR:latency",

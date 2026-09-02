@@ -319,11 +319,12 @@ class HPE3PARCommon(object):
         4.0.27 - Skip license check for new WSAPI (of 2025). Bug #2119709
         4.0.28 - Improved QOS handling for Alletra MP. Bug #2143385
         4.0.29 - Restore R5 deprecated QOS settings for R6 10.6.0
+        4.0.30 - Added capacity based QoS support for Alletra MP R6
 
 
     """
 
-    VERSION = "4.0.29"
+    VERSION = "4.0.30"
 
     stats = {}
 
@@ -373,8 +374,30 @@ class HPE3PARCommon(object):
                             '9 - OpenVMS',
                             '10 - HPUX',
                             '11 - WindowsServer']
+    QOS_IO_DIRECTION_READ = 1
+    QOS_IO_DIRECTION_WRITE = 2
+    QOS_IO_DIRECTION_READ_WRITE = 3
+    qos_per_gb_key_map = {
+        'read_iops_sec_per_gb': ('ioMaxLimit', QOS_IO_DIRECTION_READ),
+        'write_iops_sec_per_gb': ('ioMaxLimit', QOS_IO_DIRECTION_WRITE),
+        'total_iops_sec_per_gb': ('ioMaxLimit',
+                      QOS_IO_DIRECTION_READ_WRITE),
+        'read_bytes_sec_per_gb': ('bwMaxLimitKB', QOS_IO_DIRECTION_READ),
+        'write_bytes_sec_per_gb': ('bwMaxLimitKB', QOS_IO_DIRECTION_WRITE),
+        'total_bytes_sec_per_gb': ('bwMaxLimitKB',
+                       QOS_IO_DIRECTION_READ_WRITE),
+        'read_iops_sec_per_gb_min': ('ioMinGoal', QOS_IO_DIRECTION_READ),
+        'write_iops_sec_per_gb_min': ('ioMinGoal', QOS_IO_DIRECTION_WRITE),
+        'total_iops_sec_per_gb_min': ('ioMinGoal',
+                          QOS_IO_DIRECTION_READ_WRITE),
+        'read_bytes_sec_per_gb_min': ('bwMinGoalKB', QOS_IO_DIRECTION_READ),
+        'write_bytes_sec_per_gb_min': ('bwMinGoalKB',
+                           QOS_IO_DIRECTION_WRITE),
+        'total_bytes_sec_per_gb_min': ('bwMinGoalKB',
+                           QOS_IO_DIRECTION_READ_WRITE),
+    }
     hpe_qos_keys = ['minIOPS', 'maxIOPS', 'minBWS', 'maxBWS', 'latency',
-                    'priority']
+                    'priority'] + list(qos_per_gb_key_map)
     qos_priority_level = {'low': 1, 'normal': 2, 'high': 3}
     hpe3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs',
                           'flash_cache', 'compression', 'group_replication',
@@ -2018,11 +2041,120 @@ class HPE3PARCommon(object):
                 value = False
         return value
 
+    def _is_alletra_mp(self):
+        """Check if the backend is Alletra MP based on WSAPI version.
+
+        Alletra MP uses WSAPI version >= 100500000.
+
+        :returns: True if Alletra MP, False otherwise
+        """
+        return self.API_VERSION >= API_VERSION_2025
+
     def _get_qos_value(self, qos, key, default=None):
         if key in qos:
             return qos[key]
         else:
             return default
+
+    def _is_qos_value_set(self, value):
+        return value is not None and value != ''
+
+    def _get_valid_qos_int(self, key, value):
+        if not self._is_qos_value_set(value):
+            return None
+
+        try:
+            int_value = int(value)
+        except (TypeError, ValueError):
+            err = _("QoS parameter %(key)s must be an integer.") % {
+                'key': key}
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        if int_value <= 0:
+            err = _("QoS parameter %(key)s must be greater than zero.") % {
+                'key': key}
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+        return int_value
+
+    def _get_valid_qos_float(self, key, value):
+        if not self._is_qos_value_set(value):
+            return None
+
+        try:
+            float_value = float(value)
+        except (TypeError, ValueError):
+            err = _("QoS parameter %(key)s must be a number.") % {
+                'key': key}
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        if not math.isfinite(float_value):
+            err = _("QoS parameter %(key)s must be a finite number.") % {
+                'key': key}
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        if float_value <= 0:
+            err = _("QoS parameter %(key)s must be greater than zero.") % {
+                'key': key}
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+        return float_value
+
+    def _get_valid_qos_priority(self, value):
+        try:
+            priority = self.qos_priority_level[value.lower()]
+        except AttributeError:
+            err = _("QoS parameter priority must be a string.")
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+        except KeyError:
+            err = _("QoS parameter priority must be one of: %(values)s.") % {
+                'values': ', '.join(sorted(self.qos_priority_level))}
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        return priority
+
+    def _has_capacity_qos_values(self, qos):
+        return any(self._is_qos_value_set(self._get_qos_value(qos, key))
+                   for key in self.qos_per_gb_key_map)
+
+    def _get_capacity_qos_value(self, payload_key, value):
+        if payload_key in ('bwMinGoalKB', 'bwMaxLimitKB'):
+            return int(math.ceil(
+                self._get_valid_qos_int(payload_key, value) / units.Ki))
+        return self._get_valid_qos_int(payload_key, value)
+
+    def _add_capacity_qos_values(self, qos, qosRule):
+        io_direction = None
+
+        for key, mapping in self.qos_per_gb_key_map.items():
+            payload_key, key_direction = mapping
+            value = self._get_qos_value(qos, key)
+            if not self._is_qos_value_set(value):
+                continue
+
+            if io_direction is None:
+                io_direction = key_direction
+            elif io_direction != key_direction:
+                err = _(
+                    "Capacity based QoS values in a single Alletra MP QoS "
+                    "rule must use the same I/O direction.")
+                LOG.error(err)
+                raise exception.InvalidInput(reason=err)
+
+            qosRule[payload_key] = self._get_capacity_qos_value(
+                payload_key, value)
+
+        if io_direction is None:
+            return False
+
+        qosRule['perGB'] = True
+        qosRule['ioDirection'] = io_direction
+        return True
 
     def _is_alletra_mp_r5_qos_version(self):
         """Check if the API version falls in the Alletra MP R5 QOS range.
@@ -2035,10 +2167,62 @@ class HPE3PARCommon(object):
         return (API_VERSION_2025 <= self.API_VERSION <
                 API_VERSION_10_6_0)
 
+    def _is_alletra_mp_r6_or_later(self):
+        return self.API_VERSION >= API_VERSION_10_6_0
+
+    def _normalize_extra_spec_key(self, key):
+        """Turn extra-spec keys into a simple, consistent name."""
+        canonical_tail_keys = {
+            self.EXTRA_SPEC_REP_MODE.lower(): self.EXTRA_SPEC_REP_MODE,
+            self.EXTRA_SPEC_REP_SYNC_PERIOD.lower():
+                self.EXTRA_SPEC_REP_SYNC_PERIOD,
+            'replication:policy': 'replication:policy',
+        }
+        canonical_last_keys = {
+            item.lower(): item for item in self.hpe3par_valid_keys
+        }
+        canonical_last_keys.update({
+            item.lower(): item for item in self.hpe_qos_keys
+        })
+        canonical_last_keys.update({
+            'replication_enabled': 'replication_enabled',
+            'replication_policy': 'replication_policy',
+            'consistent_group_snapshot_enabled':
+                'consistent_group_snapshot_enabled',
+        })
+
+        normalized_key = key.lower()
+        if ':' not in key:
+            return canonical_last_keys.get(normalized_key, key)
+
+        tail_key = ':'.join(normalized_key.split(':')[-2:])
+        if tail_key in canonical_tail_keys:
+            return canonical_tail_keys[tail_key]
+
+        last_key = normalized_key.split(':')[-1]
+        if last_key in canonical_last_keys:
+            return canonical_last_keys[last_key]
+
+        return key
+
+    def _get_normalized_extra_specs(self, volume_type):
+        """Build a clean extra-spec dictionary for the volume type."""
+        specs = volume_type.get('extra_specs') or {}
+        normalized_specs = {}
+
+        for key, value in specs.items():
+            normalized_key = self._normalize_extra_spec_key(key)
+            if (normalized_key == 'provisioning' and
+                    isinstance(value, str)):
+                value = value.lower()
+            normalized_specs[normalized_key] = value
+
+        return normalized_specs
+
     def _get_qos_by_volume_type(self, volume_type):
         qos = {}
         qos_specs_id = volume_type.get('qos_specs_id')
-        specs = volume_type.get('extra_specs')
+        specs = self._get_normalized_extra_specs(volume_type)
 
         # NOTE(kmartin): We prefer the qos_specs association
         # and override any existing extra-specs settings
@@ -2050,20 +2234,15 @@ class HPE3PARCommon(object):
             kvs = specs
 
         for key, value in kvs.items():
-            if 'qos:' in key:
-                fields = key.split(':')
-                key = fields[1]
+            key = self._normalize_extra_spec_key(key)
             if key in self.hpe_qos_keys:
                 qos[key] = value
         return qos
 
     def _get_keys_by_volume_type(self, volume_type):
         hpe3par_keys = {}
-        specs = volume_type.get('extra_specs')
+        specs = self._get_normalized_extra_specs(volume_type)
         for key, value in specs.items():
-            if ':' in key:
-                fields = key.split(':')
-                key = fields[1]
             if key in self.hpe3par_valid_keys:
                 hpe3par_keys[key] = value
         return hpe3par_keys
@@ -2074,68 +2253,112 @@ class HPE3PARCommon(object):
         min_bw = self._get_qos_value(qos, 'minBWS')
         max_bw = self._get_qos_value(qos, 'maxBWS')
         latency = self._get_qos_value(qos, 'latency')
-        priority = self._get_qos_value(qos, 'priority', 'normal')
+        priority = self._get_qos_value(qos, 'priority')
 
-        is_alletra_mp_r5_qos_version = (
-            self._is_alletra_mp_r5_qos_version())
+        # Check if backend is AlletraMP
+        is_alletra_mp = self._is_alletra_mp()
+
+        has_capacity_qos = self._has_capacity_qos_values(qos)
+        if has_capacity_qos and not self._is_alletra_mp_r6_or_later():
+            err = _(
+                "Capacity based QoS parameters are supported only on "
+                "HPE Alletra MP version 10.6.0.x or later.")
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
 
         qosRule = {}
+        if has_capacity_qos:
+            self._add_capacity_qos_values(qos, qosRule)
 
-        # For Alletra MP, ioMinGoal, bwMinGoalKB, latencyGoal, and priority
-        # are deprecated. Only use max limits.
-        if is_alletra_mp_r5_qos_version:
-            # For Alletra MP, at least one of maxIOPS or maxBWS must be
-            # provided.
-            if max_io is None and max_bw is None:
-                err = _(
-                    "For Alletra MP, at least one of maxIOPS or maxBWS "
-                    "QOS parameters must be provided.")
-                LOG.error(err)
-                raise exception.InvalidInput(reason=err)
-            # Alletra MP: Only set max limits, min goals are deprecated
-            if max_io:
-                qosRule['ioMaxLimit'] = int(max_io)
-            if max_bw:
-                # Alletra MP expects bandwidth in kB/s
-                qosRule['bwMaxLimitKB'] = int(max_bw) * units.k
-            if min_io:
-                LOG.warning(
-                    "minIOPS QOS parameter is deprecated for "
-                    "Alletra MP and will be ignored.")
-            if min_bw:
-                LOG.warning(
-                    "minBWS QOS parameter is deprecated for "
-                    "Alletra MP and will be ignored.")
-            if latency:
-                LOG.warning("latency QOS parameter is deprecated for "
-                            "Alletra MP and will be ignored.")
-            if priority:
-                LOG.warning("priority QOS parameter is deprecated for "
-                            "Alletra MP and will be ignored.")
+        # Legacy QoS keys use absolute min/max limits. Capacity QoS uses
+        # per-GB keys and cannot be mixed with these absolute limits in the
+        # same array QoS rule.
+        has_legacy_limit = any(self._is_qos_value_set(value) for value in (
+            min_io, max_io, min_bw, max_bw))
+
+        if has_capacity_qos and has_legacy_limit:
+            err = _(
+                "Capacity based QoS parameters cannot be combined with "
+                "minIOPS, maxIOPS, minBWS, or maxBWS in the same QoS rule.")
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        # Alletra MP R5 accepts only max IOPS/BWS limits. R6 and later also
+        # accept min IOPS/BWS goals, latency, priority, plus the
+        # capacity-based per-GB QoS keys.
+        if is_alletra_mp:
+            is_r6_or_later = self._is_alletra_mp_r6_or_later()
+            # Max limits are valid across supported Alletra MP releases.
+            if self._is_qos_value_set(max_io):
+                qosRule['ioMaxLimit'] = self._get_valid_qos_int(
+                    'maxIOPS', max_io)
+            if self._is_qos_value_set(max_bw):
+                qosRule['bwMaxLimitKB'] = (
+                    self._get_valid_qos_int('maxBWS', max_bw) * units.k)
+
+            # Min goals are restored for R6+, but must still be ignored for
+            # earlier Alletra MP releases where the array deprecated them.
+            if self._is_qos_value_set(min_io):
+                if is_r6_or_later:
+                    qosRule['ioMinGoal'] = self._get_valid_qos_int(
+                        'minIOPS', min_io)
+                else:
+                    LOG.warning(
+                        "minIOPS QoS parameter is deprecated for "
+                        "Alletra MP and will be ignored.")
+            if self._is_qos_value_set(min_bw):
+                if is_r6_or_later:
+                    qosRule['bwMinGoalKB'] = (
+                        self._get_valid_qos_int('minBWS', min_bw) * units.k)
+                else:
+                    LOG.warning(
+                        "minBWS QoS parameter is deprecated for "
+                        "Alletra MP and will be ignored.")
+            if self._is_qos_value_set(latency):
+                if is_r6_or_later:
+                    latency = self._get_valid_qos_float('latency', latency)
+                    if latency >= 1:
+                        qosRule['latencyGoal'] = int(latency)
+                    else:
+                        qosRule['latencyGoaluSecs'] = int(latency * 1000)
+                else:
+                    LOG.warning("latency QoS parameter is deprecated for "
+                                "Alletra MP and will be ignored.")
+            if self._is_qos_value_set(priority):
+                if is_r6_or_later:
+                    qosRule['priority'] = self._get_valid_qos_priority(
+                        priority)
+                else:
+                    LOG.warning("priority QoS parameter is deprecated for "
+                                "Alletra MP and will be ignored.")
         else:
-            # 3PAR/Primera/Alletra 9k: Use traditional QoS parameters
-            if min_io:
-                qosRule['ioMinGoal'] = int(min_io)
-                if max_io is None:
-                    qosRule['ioMaxLimit'] = int(min_io)
-            if max_io:
-                qosRule['ioMaxLimit'] = int(max_io)
-                if min_io is None:
-                    qosRule['ioMinGoal'] = int(max_io)
-            if min_bw:
+            # 3PAR/Primera/Alletra 9k: Use traditional QOS parameters
+            if self._is_qos_value_set(min_io):
+                min_io = self._get_valid_qos_int('minIOPS', min_io)
+                qosRule['ioMinGoal'] = min_io
+                if not self._is_qos_value_set(max_io):
+                    qosRule['ioMaxLimit'] = min_io
+            if self._is_qos_value_set(max_io):
+                max_io = self._get_valid_qos_int('maxIOPS', max_io)
+                qosRule['ioMaxLimit'] = max_io
+                if not self._is_qos_value_set(min_io):
+                    qosRule['ioMinGoal'] = max_io
+            if self._is_qos_value_set(min_bw):
+                min_bw = self._get_valid_qos_int('minBWS', min_bw)
                 # 3PAR/Primera/Alletra 9k expect bandwidth in kB/s
-                qosRule['bwMinGoalKB'] = int(min_bw) * units.k
-                if max_bw is None:
-                    qosRule['bwMaxLimitKB'] = int(min_bw) * units.k
-            if max_bw:
-                qosRule['bwMaxLimitKB'] = int(max_bw) * units.k
-                if min_bw is None:
-                    qosRule['bwMinGoalKB'] = int(max_bw) * units.k
-            if latency:
+                qosRule['bwMinGoalKB'] = min_bw * units.k
+                if not self._is_qos_value_set(max_bw):
+                    qosRule['bwMaxLimitKB'] = min_bw * units.k
+            if self._is_qos_value_set(max_bw):
+                max_bw = self._get_valid_qos_int('maxBWS', max_bw)
+                qosRule['bwMaxLimitKB'] = max_bw * units.k
+                if not self._is_qos_value_set(min_bw):
+                    qosRule['bwMinGoalKB'] = max_bw * units.k
+            if self._is_qos_value_set(latency):
                 # latency could be values like 2, 5, etc or
                 # small values like 0.1, 0.02, etc.
                 # we are converting to float so that 0.1 doesn't become 0
-                latency = float(latency)
+                latency = self._get_valid_qos_float('latency', latency)
                 if latency >= 1:
                     # by default, latency in millisecs
                     qosRule['latencyGoal'] = int(latency)
@@ -2144,9 +2367,20 @@ class HPE3PARCommon(object):
                     # convert latency to microsecs
                     qosRule['latencyGoaluSecs'] = int(latency * 1000)
             if priority:
-                qosRule['priority'] = (
-                    self.qos_priority_level.get(priority.lower()))
+                qosRule['priority'] = self._get_valid_qos_priority(priority)
 
+        # Extra hardening: if no effective QoS settings were resolved, there
+        # is nothing to create/modify on the array. Skip issuing an empty QoS
+        # rule (which the array would reject).
+        if not qosRule:
+            LOG.debug("No effective QoS settings for vvset %(vvs)s; "
+                      "skipping.", {'vvs': vvs_name})
+            return
+
+        qosRule['name'] = vvs_name
+        qosRule['type'] = 1
+
+        LOG.debug("qosRule %(qosRule)s", {'qosRule': qosRule})
         try:
             self.client.createQoSRules(vvs_name, qosRule)
         except Exception:

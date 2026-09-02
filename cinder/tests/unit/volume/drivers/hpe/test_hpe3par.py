@@ -155,6 +155,11 @@ class HPE3PARBaseDriver(test.TestCase):
     QOS_SPECS = {'maxIOPS': '1000', 'maxBWS': '50',
                  'minIOPS': '100', 'minBWS': '25',
                  'latency': '25', 'priority': 'low'}
+    CAPACITY_QOS_SPECS = {'read_iops_sec_per_gb': '1000',
+                          'read_bytes_sec_per_gb': '1048576',
+                          'read_iops_sec_per_gb_min': '100',
+                          'read_bytes_sec_per_gb_min': '524288',
+                          'latency': '0.1', 'priority': 'high'}
     VVS_NAME = "myvvs"
     FAKE_ISCSI_PORT = {'portPos': {'node': 8, 'slot': 1, 'cardPort': 1},
                        'protocol': 2,
@@ -1280,6 +1285,75 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
              'bwMinGoalKB': 25000, 'bwMaxLimitKB': 50000,
              'latencyGoal': 25,
              'priority': 1})
+
+    def test_qos_r6_10_6_0_uses_capacity_based_qos(self):
+        """Ensure R6 10.6.0 supports capacity based QOS settings."""
+
+        conf = self.setup_configuration()
+        common = hpecommon.HPE3PARCommon(conf)
+        mock_client = mock.Mock()
+        common.client = mock_client
+        common.API_VERSION = hpecommon.API_VERSION_10_6_0
+
+        common._set_qos_rule(self.CAPACITY_QOS_SPECS, 'vvs-test')
+
+        mock_client.createQoSRules.assert_called_once_with(
+            'vvs-test',
+            {'ioMaxLimit': 1000, 'bwMaxLimitKB': 1024,
+             'ioMinGoal': 100, 'bwMinGoalKB': 512,
+             'perGB': True, 'ioDirection': 1,
+             'latencyGoaluSecs': 100,
+             'priority': 3})
+
+    def test_qos_capacity_based_qos_rejected_before_r6(self):
+        """Ensure capacity based QOS is rejected before R6 10.6.0."""
+
+        conf = self.setup_configuration()
+        common = hpecommon.HPE3PARCommon(conf)
+        mock_client = mock.Mock()
+        common.client = mock_client
+        common.API_VERSION = hpecommon.API_VERSION_2025
+
+        self.assertRaises(exception.InvalidInput,
+                          common._set_qos_rule,
+                          self.CAPACITY_QOS_SPECS,
+                          'vvs-test')
+
+        mock_client.createQoSRules.assert_not_called()
+
+    def test_qos_capacity_based_qos_rejects_legacy_limits(self):
+        """Ensure capacity based QOS cannot mix with absolute limits."""
+
+        conf = self.setup_configuration()
+        common = hpecommon.HPE3PARCommon(conf)
+        mock_client = mock.Mock()
+        common.client = mock_client
+        common.API_VERSION = hpecommon.API_VERSION_10_6_0
+        qos = dict(self.CAPACITY_QOS_SPECS)
+        qos['maxIOPS'] = '2000'
+
+        self.assertRaises(exception.InvalidInput,
+                          common._set_qos_rule,
+                          qos,
+                          'vvs-test')
+
+        mock_client.createQoSRules.assert_not_called()
+
+    def test_get_qos_by_volume_type_accepts_capacity_qos_prefix(self):
+        """Ensure HPE-prefixed capacity based QOS keys are recognized."""
+
+        conf = self.setup_configuration()
+        common = hpecommon.HPE3PARCommon(conf)
+        volume_type = {
+            'qos_specs_id': None,
+            'extra_specs': {
+                'HPE:3PAR:read_iops_sec_per_gb': '1000',
+                'HPE:3PAR:read_bytes_sec_per_gb_min': '524288'}}
+
+        self.assertEqual(
+            {'read_iops_sec_per_gb': '1000',
+             'read_bytes_sec_per_gb_min': '524288'},
+            common._get_qos_by_volume_type(volume_type))
 
     def test_qos_alletra_mp_invalid_without_max_limits(self):
         """Alletra MP QOS requires at least one max limit.
