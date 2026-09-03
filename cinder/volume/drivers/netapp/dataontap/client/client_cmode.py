@@ -341,21 +341,18 @@ class Client(client_base.Client, metaclass=volume_utils.TraceWrapperMetaclass):
 
     def get_iscsi_target_details(self):
         """Gets the iSCSI target portal details."""
-        iscsi_if_iter = netapp_api.NaElement('iscsi-interface-get-iter')
-        result = self.connection.invoke_successfully(iscsi_if_iter, True)
+        result = self.send_iter_request('iscsi-interface-get-iter')
         tgt_list = []
-        num_records = result.get_child_content('num-records')
-        if num_records and int(num_records) >= 1:
-            attr_list = result.get_child_by_name('attributes-list')
-            iscsi_if_list = attr_list.get_children()
-            for iscsi_if in iscsi_if_list:
-                d = dict()
-                d['address'] = iscsi_if.get_child_content('ip-address')
-                d['port'] = iscsi_if.get_child_content('ip-port')
-                d['tpgroup-tag'] = iscsi_if.get_child_content('tpgroup-tag')
-                d['interface-enabled'] = iscsi_if.get_child_content(
-                    'is-interface-enabled')
-                tgt_list.append(d)
+        attr_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        for iscsi_if in attr_list.get_children():
+            d = dict()
+            d['address'] = iscsi_if.get_child_content('ip-address')
+            d['port'] = iscsi_if.get_child_content('ip-port')
+            d['tpgroup-tag'] = iscsi_if.get_child_content('tpgroup-tag')
+            d['interface-enabled'] = iscsi_if.get_child_content(
+                'is-interface-enabled')
+            tgt_list.append(d)
         return tgt_list
 
     def set_iscsi_chap_authentication(self, iqn, username, password):
