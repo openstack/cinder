@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #2139068 <https://bugs.launchpad.net/cinder/+bug/2139068>`_: Fixed
+    an issue where ``volume.delete.end`` notifications were not sent when
+    volumes were deleted as part of a group deletion process. This ensures
+    delete notifications are properly emitted for every volume removed during
+    group deletion.

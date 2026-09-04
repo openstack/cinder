@@ -504,21 +504,24 @@ class GroupManagerTestCase(test.TestCase):
                          self.notifier.notifications)
 
         self.volume.delete_group(self.context, group2)
-
-        if len(self.notifier.notifications) > 9:
-            self.assertFalse(self.notifier.notifications[10],
+        if len(self.notifier.notifications) > 10:
+            self.assertFalse(self.notifier.notifications[11],
                              self.notifier.notifications)
-        self.assertEqual(9, len(self.notifier.notifications),
+        self.assertEqual(10, len(self.notifier.notifications),
                          self.notifier.notifications)
 
         msg = self.notifier.notifications[6]
         self.assertEqual('group.delete.start', msg['event_type'])
         expected['status'] = fields.GroupStatus.AVAILABLE
         self.assertDictEqual(expected, msg['payload'])
+        msg = self.notifier.notifications[7]
+        self.assertEqual('volume.delete.start', msg['event_type'])
         msg = self.notifier.notifications[8]
         self.assertEqual('group.delete.end', msg['event_type'])
         expected['status'] = fields.GroupStatus.DELETED
         self.assertDictEqual(expected, msg['payload'])
+        msg = self.notifier.notifications[9]
+        self.assertEqual('volume.delete.end', msg['event_type'])
 
         grp2 = objects.Group.get_by_id(
             context.get_admin_context(read_deleted='yes'), group2.id)
