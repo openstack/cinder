@@ -107,6 +107,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             config.append_config_values(na_opts.netapp_san_opts)
             config.append_config_values(na_opts.netapp_replication_opts)
             config.netapp_snapmirror_quiesce_timeout = 10
+            config.netapp_server_hostname = '127.0.0.1'
 
         CONF.set_override('netapp_vserver', self.src_vserver,
                           group=self.src_backend)
@@ -1681,6 +1682,31 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.mock_dest_client.get_cluster_name.assert_not_called()
         mock_migrate_volume_to_pool.assert_not_called()
         mock_migrate_volume_to_vserver.assert_not_called()
+        self.assertFalse(migrated)
+        self.assertEqual({}, updates)
+
+    @ddt.data(False, True)
+    def test_migrate_volume_ontap_assisted_non_netapp_dest(self,
+                                                           missing_config):
+        ctxt = mock.Mock()
+        vol_fields = {'id': dataontap_fakes.VOLUME_ID,
+                      'host': dataontap_fakes.HOST_STRING}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+        fake_dest_host = {'host': dataontap_fakes.DEST_HOST_STRING}
+        self.dm_mixin.using_cluster_credentials = True
+        if missing_config:
+            utils.get_backend_configuration.side_effect = (
+                exception.ConfigNotFound(message='missing dest backend'))
+        else:
+            self.mock_dest_config.netapp_server_hostname = None
+        self.dm_mixin._migrate_volume_to_pool = mock.Mock()
+        self.dm_mixin._migrate_volume_to_vserver = mock.Mock()
+
+        migrated, updates = self.dm_mixin.migrate_volume_ontap_assisted(
+            fake_vol, fake_dest_host, dataontap_fakes.BACKEND_NAME,
+            dataontap_fakes.DEST_VSERVER_NAME)
+
+        utils.get_client_for_backend.assert_not_called()
         self.assertFalse(migrated)
         self.assertEqual({}, updates)
 

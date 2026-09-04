@@ -1754,8 +1754,23 @@ class DataMotionMixin(object):
                          'back to host assisted migration.')
                 return False, {}
 
-            dest_backend_config = config_utils.get_backend_configuration(
-                dest_backend_name)
+            # Non-ONTAP dest (no hostname) or missing dest stanza: fall back.
+            try:
+                dest_backend_config = config_utils.get_backend_configuration(
+                    dest_backend_name)
+            except exception.ConfigNotFound:
+                LOG.info('Destination backend %s is not configured on this '
+                         'host. Falling back to host assisted migration.',
+                         dest_backend_name)
+                return False, {}
+
+            if not dest_backend_config.netapp_server_hostname:
+                LOG.info('Destination backend %s is not a NetApp ONTAP '
+                         'backend (netapp_server_hostname is not set). '
+                         'Falling back to host assisted migration.',
+                         dest_backend_name)
+                return False, {}
+
             dest_vserver = dest_backend_config.netapp_vserver
             dest_client = config_utils.get_client_for_backend(
                 dest_backend_name)
