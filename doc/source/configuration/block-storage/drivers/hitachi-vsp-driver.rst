@@ -124,6 +124,14 @@ Hitachi block storage driver also supports the following additional features:
 Configuration
 ~~~~~~~~~~~~~
 
+.. warning::
+
+   It is highly recommended to use different port configurations for the
+   CSI (OpenShift) plugin and the HBSD driver, and setting the
+   ``hitachi_group_create`` configuration element to True. Not doing so
+   may result in long-running searches that slow down deployment time,
+   and can even lead to timeouts.
+
 Set up Hitachi storage
 ----------------------
 
@@ -1006,15 +1014,15 @@ with retention.
 
 .. code-block:: console
 
-    $ openstack volume snapshot create [--size <size>] --source\
-    <volume-name> --property hbsd:snapshot_retention=<value-in-hours>\
+    $ openstack volume snapshot create [--size <size>] --source \
+    <volume-name> --property hbsd:snapshot_retention=<value-in-hours> \
     <snapshot-name>
 
 The following is an example of running the command.
 
 .. code-block:: console
 
-    $ openstack volume snapshot create --source test_volume --property\
+    $ openstack volume snapshot create --source test_volume --property \
     hbsd:snapshot_retention=96 test_snapshot
 
 \
