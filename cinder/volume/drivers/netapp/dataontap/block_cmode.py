@@ -87,6 +87,10 @@ class NetAppBlockStorageCmodeLibrary(
                 self.configuration) else False)
         self.last_perf_update = 0
         self.last_dedupe_update = 0
+        # Hardcoded False for Hibiscus; this is not a config option.
+        # Cross-pool lun-copy works but is inefficient, so it will be
+        # re-enabled after optimizations in Indri.
+        self.clone_across_pools = False
 
     def do_setup(self, context):
         super(NetAppBlockStorageCmodeLibrary, self).do_setup(context)
@@ -331,10 +335,10 @@ class NetAppBlockStorageCmodeLibrary(
                                  clone_lun))
 
     def _clone_source_to_destination(self, source, destination_volume):
-        """Enhanced clone with cross-pool optimization support.
+        """Clone a LUN, with optional cross-pool lun-copy.
 
-        This override adds boundary detection for cross-pool
-        cloning when the clone_across_pools capability is enabled.
+        Cross-pool lun-copy runs only when clone_across_pools is True.
+        That flag is hardcoded False in Hibiscus (not a config option).
         """
         source_name = source['name']
         destination_name = destination_volume['name']
@@ -351,7 +355,7 @@ class NetAppBlockStorageCmodeLibrary(
         dest_lun_path = '/vol/%s/%s' % (dest_pool, destination_name)
 
         # Check if this is a cross-pool clone
-        if src_pool != dest_pool:
+        if src_pool != dest_pool and self.clone_across_pools:
             LOG.info("Cross-pool clone requested: %(src)s "
                      "(pool: %(src_pool)s) -> %(dst)s (pool: %(dst_pool)s)",
                      {'src': src_lun_path, 'src_pool': src_pool,
@@ -679,8 +683,7 @@ class NetAppBlockStorageCmodeLibrary(
         # Used for service state report
         data['replication_enabled'] = self.replication_enabled
 
-        # Enable cross-pool cloning for image volume cache optimization
-        data['clone_across_pools'] = True
+        data['clone_across_pools'] = self.clone_across_pools
 
         # Surface disaggregated\-platform flag at the backend level
         data['netapp_disaggregated_platform'] = (
@@ -751,7 +754,7 @@ class NetAppBlockStorageCmodeLibrary(
                 self.configuration.safe_get('netapp_disaggregated_platform')
             )
             pool['reserved_percentage'] = self.reserved_percentage
-            pool['clone_across_pools'] = True
+            pool['clone_across_pools'] = self.clone_across_pools
             pool['max_over_subscription_ratio'] = (
                 self.max_over_subscription_ratio)
             if self.configuration.netapp_disaggregated_platform:
