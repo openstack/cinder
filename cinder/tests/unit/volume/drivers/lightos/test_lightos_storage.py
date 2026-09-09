@@ -271,6 +271,9 @@ class DBMock(object):
         return (httpstatus.OK, snap) if snap else (httpstatus.NOT_FOUND, None)
 
 
+FAKE_JWT = 'eyJhbGciOiJSUzI1NiJ9.' + 'q' * 400 + '.sigSUFFIX1234'
+
+
 class LightOSStorageVolumeDriverTest(test.TestCase):
 
     def setUp(self):
@@ -1538,3 +1541,85 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         # Cleanup
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
+
+    def _pretty_print_req_log(self, headers):
+        # Goes through the driver's connection object. pretty_print_req
+        # touches no instance state today, but the tests should not depend
+        # on that remaining true.
+        req = mock.Mock(
+            method='GET',
+            url='https://10.10.10.71:443/api/v2/clusterinfo',
+            headers=headers,
+            body=None)
+        with mock.patch.object(lightos, 'LOG') as mock_log:
+            self.driver.cluster.pretty_print_req(req, 30)
+        return ' '.join(str(arg) for arg in mock_log.debug.call_args[0])
+
+    def test_pretty_print_req_does_not_log_the_jwt(self):
+        logged = self._pretty_print_req_log(
+            {'Accept': 'application/json',
+             'Authorization': 'Bearer ' + FAKE_JWT})
+        self.assertNotIn(FAKE_JWT, logged)
+        self.assertIn('Bearer ****1234', logged)
+        self.assertIn('Accept: application/json', logged)
+
+    def test_pretty_print_req_redacts_authorization_case_insensitively(self):
+        logged = self._pretty_print_req_log(
+            {'authorization': 'Bearer ' + FAKE_JWT})
+        self.assertNotIn(FAKE_JWT, logged)
+        self.assertIn('****1234', logged)
+
+    def test_pretty_print_req_bytes_value_does_not_raise(self):
+        logged = self._pretty_print_req_log(
+            {'Accept': 'application/json',
+             'Authorization': b'Bearer ' + FAKE_JWT.encode()})
+        self.assertIn('<redacted>', logged)
+        self.assertNotIn(FAKE_JWT, logged)
+        # formatting of the rest of the request still completed
+        self.assertIn('Accept: application/json', logged)
+
+    def test_pretty_print_req_none_value_does_not_raise(self):
+        logged = self._pretty_print_req_log(
+            {'Accept': 'application/json', 'Authorization': None})
+        self.assertIn('<redacted>', logged)
+        self.assertIn('Accept: application/json', logged)
+
+    def test_pretty_print_req_redacts_proxy_authorization(self):
+        logged = self._pretty_print_req_log(
+            {'Proxy-Authorization': 'Bearer ' + FAKE_JWT})
+        self.assertNotIn(FAKE_JWT, logged)
+        self.assertIn('Bearer ****1234', logged)
+
+
+class LightOSObfuscateCredentialTest(test.TestCase):
+
+    def test_keeps_scheme_and_suffix_only(self):
+        token = 'eyJhbGciOiJSUzI1NiJ9.' + 'a' * 40 + '.signature9876'
+        result = lightos._obfuscate_credential('Bearer ' + token)
+        self.assertEqual('Bearer ****9876', result)
+        self.assertNotIn(token, result)
+
+    def test_no_scheme(self):
+        self.assertEqual('****cdef',
+                         lightos._obfuscate_credential('0123456789abcdef'))
+
+    def test_short_secret_is_fully_redacted(self):
+        self.assertEqual('Bearer <redacted>',
+                         lightos._obfuscate_credential('Bearer short123'))
+
+    def test_keep_is_configurable(self):
+        self.assertEqual(
+            'Bearer ****def',
+            lightos._obfuscate_credential('Bearer 0123456789abcdef', keep=3))
+        self.assertEqual(
+            'Bearer ****f',
+            lightos._obfuscate_credential('Bearer 0123456789abcdef', keep=1))
+
+    def test_keep_zero_or_negative_redacts_entirely(self):
+        # secret[-0:] is the whole secret, so keep=0 must not reach it.
+        secret = '0123456789abcdef' * 4
+        for keep in (0, -1):
+            result = lightos._obfuscate_credential('Bearer ' + secret,
+                                                   keep=keep)
+            self.assertEqual('Bearer <redacted>', result)
+            self.assertNotIn(secret, result)
