@@ -5399,6 +5399,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     # minimum code level constants
     VOLUMEGROUP_CODE_LEVEL = (8, 5, 1, 0)
     TEMP_VOLUMEGROUP_CODE_LEVEL = (8, 6, 2, 0)
+    EXTEND_CODE_LEVEL = (8, 4, 2, 0)
 
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
@@ -6963,6 +6964,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                         new_iothrottling_value,
                                         empty_qos,
                                         update_vdisk_qos):
+        self.driver._state['code_level'] = self.EXTEND_CODE_LEVEL
         volume = self._create_volume()
         if empty_qos:
             self.driver.extend_volume(volume, '13')
@@ -6974,9 +6976,6 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             snap = self._generate_snap_info(volume.id)
             self.driver.create_snapshot(snap)
             self._assert_vol_exists(snap['name'], True)
-            self.assertRaises(exception.VolumeDriverException,
-                              self.driver.extend_volume, volume, '16')
-            self.driver.delete_snapshot(snap)
 
         with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
@@ -6998,6 +6997,124 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             else:
                 self.assertFalse(update_vdisk_qos.called)
 
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'update_vdisk_qos')
+    def test_storwize_svc_extend_volume_with_snapshot_and_qos(
+            self, update_vdisk_qos):
+        """Test extending a volume with QoS and existing snapshot."""
+        self.driver._state['code_level'] = self.EXTEND_CODE_LEVEL
+        # Create volume
+        volume = self._create_volume()
+
+        # Create snapshot
+        snap = self._generate_snap_info(volume.id)
+        self.driver.create_snapshot(snap)
+        self._assert_vol_exists(snap['name'], True)
+
+        # Mock QoS parameters with iops_per_gb for extend operation
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
+                               '_get_vdisk_params') as get_vdisk_params:
+            fake_opts_qos = self._get_default_opts()
+            fake_opts_qos['qos'] = {'IOThrottling': 1000,
+                                    'IOThrottling_unit': 'iops_per_gb'}
+            get_vdisk_params.return_value = fake_opts_qos
+
+            # Extend volume with snapshot present - should succeed
+            self.driver.extend_volume(volume, '20')
+
+            # Verify volume was extended
+            attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+            vol_size = int(attrs['capacity']) / units.Gi
+            self.assertAlmostEqual(vol_size, 20)
+
+            # Verify QoS was updated (for iops_per_gb, QoS scales with size)
+            self.assertTrue(update_vdisk_qos.called)
+            # Note: The actual call passes '20' (string) not 20.0 (float)
+            update_vdisk_qos.assert_called_with(volume['name'],
+                                                fake_opts_qos['qos'],
+                                                '20')
+
+        # Verify snapshot still exists
+        self._assert_vol_exists(snap['name'], True)
+
+        # Cleanup
+        self.driver.delete_snapshot(snap)
+        self.driver.delete_volume(volume)
+
+    def test_storwize_svc_extend_volume_with_multiple_snapshots(self):
+        """Test extending volume with multiple snapshots."""
+        self.driver._state['code_level'] = self.EXTEND_CODE_LEVEL
+        volume = self._create_volume()
+
+        # Create multiple snapshots
+        snaps = []
+        for i in range(3):
+            snap = self._generate_snap_info(volume.id)
+            self.driver.create_snapshot(snap)
+            snaps.append(snap)
+
+        # Extend volume - should succeed
+        self.driver.extend_volume(volume, '20')
+
+        # Verify volume was extended
+        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+        vol_size = int(attrs['capacity']) / units.Gi
+        self.assertAlmostEqual(vol_size, 20)
+
+        # Verify all snapshots still exist
+        for snap in snaps:
+            self._assert_vol_exists(snap['name'], True)
+
+        # Cleanup
+        for snap in snaps:
+            self.driver.delete_snapshot(snap)
+        self.driver.delete_volume(volume)
+
+    def test_storwize_svc_extend_volume_old_version_with_snapshot_fails(self):
+        """Test that old SVC versions still prevent extend with snapshots."""
+        # Mock old code level (< 7.2.0.0)
+        self.driver._state['code_level'] = (8, 4, 1, 0)
+
+        volume = self._create_volume()
+        snap = self._generate_snap_info(volume.id)
+        self.driver.create_snapshot(snap)
+
+        # Should raise exception on old versions
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.extend_volume, volume, '16')
+
+        # Cleanup
+        self.driver.delete_snapshot(snap)
+        self.driver.delete_volume(volume)
+
+        # Restore code level
+        self.driver._state['code_level'] = (8, 4, 2, 0)
+
+    def test_storwize_svc_extend_volume_new_version_with_snapshot_succeeds(
+            self):
+        """Test that new SVC versions allow extend with snapshots."""
+        # Ensure code level is >= 7.2.0.0
+        self.driver._state['code_level'] = (8, 5, 0, 0)
+
+        volume = self._create_volume()
+        snap = self._generate_snap_info(volume.id)
+        self.driver.create_snapshot(snap)
+
+        # Should succeed on new versions
+        self.driver.extend_volume(volume, '16')
+
+        # Verify volume was extended
+        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+        vol_size = int(attrs['capacity']) / units.Gi
+        self.assertAlmostEqual(vol_size, 16)
+
+        # Verify snapshot still exists
+        self._assert_vol_exists(snap['name'], True)
+
+        # Cleanup
+        self.driver.delete_snapshot(snap)
+        self.driver.delete_volume(volume)
+        self.driver.delete_snapshot(snap)
         self.driver.delete_volume(volume)
 
     @mock.patch.object(storwize_rep.StorwizeSVCReplicationGlobalMirror,
@@ -9739,8 +9856,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                        volume_type_id=hyper_type.id)
         with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
               'convert_volume_to_hyperswap')) as convert_volume_to_hyperswap, \
-             (mock.patch.object(storwize_svc_common.StorwizeHelpers,
-              'ensure_vdisk_no_fc_mappings')) as ensure_vdisk_no_fc_mappings:
+            (mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'ensure_vdisk_no_fc_mappings')) \
+                as ensure_vdisk_no_fc_mappings:
             self.driver.create_volume_from_snapshot(vol2, snap)
             ensure_vdisk_no_fc_mappings.assert_called()
             convert_volume_to_hyperswap.assert_called()
@@ -10615,8 +10733,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
               'convert_volume_to_hyperswap')) as convert_volume_to_hyperswap, \
-             (mock.patch.object(storwize_svc_common.StorwizeHelpers,
-              'ensure_vdisk_no_fc_mappings')) as ensure_vdisk_no_fc_mappings:
+            (mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'ensure_vdisk_no_fc_mappings')) \
+                as ensure_vdisk_no_fc_mappings:
 
             # Create cg from source cg
             model_update, volumes_model_update = (
@@ -10741,8 +10860,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
               'convert_volume_to_hyperswap')) as convert_volume_to_hyperswap, \
-             (mock.patch.object(storwize_svc_common.StorwizeHelpers,
-              'ensure_vdisk_no_fc_mappings')) as ensure_vdisk_no_fc_mappings:
+            (mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'ensure_vdisk_no_fc_mappings')) \
+                as ensure_vdisk_no_fc_mappings:
 
             # Create cg from source cg
             model_update, volumes_model_update = (

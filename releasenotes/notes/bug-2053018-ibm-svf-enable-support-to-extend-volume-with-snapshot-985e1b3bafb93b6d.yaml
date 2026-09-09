@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize family driver: `Bug #2053018
+    <https://bugs.launchpad.net/cinder/+bug/2053018>`_:
+    Enabled support to extend a volume that has existing snapshots.
+    Previously, the driver incorrectly prevented volume extension when
+    snapshots existed, even though the underlying IBM Spectrum Virtualize
+    support this operation.

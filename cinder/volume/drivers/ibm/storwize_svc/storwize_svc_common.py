@@ -4539,6 +4539,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._extend_volume_op(volume, new_size)
 
     def _extend_volume_op(self, volume, new_size, old_size=None):
+        """Extend a volume to a new size.
+
+        Starting from storage system code level 7.2.0.0, IBM Storwize family
+        supports extending volumes with existing snapshots. For older versions,
+        the original behavior is maintained for compatibility.
+        """
         LOG.debug('enter: _extend_volume_op: volume %s', volume['id'])
         if self._state['code_level'] < storwize_const.SVC_CODE_LEVEL_7700:
             force_unmap = False
@@ -4549,14 +4555,32 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         tgt_vol, rel_info = self._helpers.get_target_volume_information(
             volume)
 
-        ret = self._helpers.ensure_vdisk_no_fc_mappings(volume_name,
-                                                        allow_snaps=False,
-                                                        rel_info=rel_info)
-        if not ret:
-            msg = (_('_extend_volume_op: Extending a volume with snapshots is '
-                     'not supported.'))
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+        # Check if storage system supports extending volumes with snapshots
+        if self._state['code_level'] < storwize_const.SVC_CODE_LEVEL_8420:
+            # For older versions, maintain original behavior
+            ret = self._helpers.ensure_vdisk_no_fc_mappings(
+                volume_name,
+                allow_snaps=False,
+                rel_info=rel_info
+            )
+            if not ret:
+                msg = (_('_extend_volume_op: Extending a volume with snapshots '
+                         'is not supported on storage system code level %(level)s. '
+                         'Minimum required version is %(min)s. Please delete '
+                         'snapshots before extending the volume.') %
+                       {'level': '.'.join(map(str, self._state['code_level'])),
+                        'min': '.'.join(map(str, storwize_const.SVC_CODE_LEVEL_8420))})
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+        else:
+            # For newer versions, check for snapshots and log if present
+            fc_mappings = self._helpers._get_vdisk_fc_mappings(volume_name)
+            if fc_mappings:
+                LOG.info('Extending volume %(vol)s which has %(count)d snapshot(s). '
+                         'Storage system code level %(level)s supports this operation.',
+                         {'vol': volume['id'],
+                          'count': len(fc_mappings),
+                          'level': '.'.join(map(str, self._state['code_level']))})
 
         if old_size is None:
             old_size = volume.size
