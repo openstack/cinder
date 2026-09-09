@@ -18,6 +18,7 @@ from unittest import mock
 from unittest.mock import patch
 
 import ddt
+from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import context
@@ -33,6 +34,9 @@ from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp.dataontap.utils import utils as dot_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import volume_utils
+
+# Arbitrary fixed timestamp used when the clock is mocked.
+FAKE_NOW = 1000000
 
 
 @ddt.ddt
@@ -1411,3 +1415,171 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.assertEqual(0, result)
         (self.client.get_storage_units_by_svm.
          assert_called_once_with(vserver='fake_svm'))
+
+    def _mock_pool_stats_dependencies(self):
+        """Mock everything _get_pool_stats needs besides the perf cache."""
+        self.library.using_cluster_credentials = True
+        self.override_config('netapp_disaggregated_platform', False)
+        self.library.ssc_library.get_ssc.return_value = (
+            fake.FAKE_CMODE_POOL_MAP)
+        self.library.ssc_library.get_ssc_aggregates.return_value = ['aggr1']
+        self.client.get_aggregate_capacities.return_value = {}
+        self.client.get_flexvol_capacity.return_value = {
+            'size-total': 100 * units.Gi,
+            'size-available': 50 * units.Gi,
+        }
+        self.client.get_namespace_sizes_by_volume.return_value = []
+        self.client.get_flexvol_dedupe_used_percent.return_value = 25.5
+        self.library.perf_library.get_node_utilization_for_pool.return_value \
+            = 42.0
+
+    @ddt.data(
+        # The cache was never updated, so it is refreshed on the first call.
+        (0, True),
+        # Only 100s elapsed since the last update, less than the 300s expiry.
+        (FAKE_NOW - 100, False),
+        # 301s elapsed since the last update, so the cache has expired.
+        (FAKE_NOW - 301, True),
+    )
+    @ddt.unpack
+    def test_get_pool_stats_perf_cache_expiry(self, last_perf_update,
+                                              expect_refresh):
+        self._mock_pool_stats_dependencies()
+        self.override_config('netapp_performance_cache_expiry_duration', 300)
+        self.library.last_perf_update = last_perf_update
+        update_cache = self.library.perf_library.update_performance_cache
+
+        with mock.patch.object(timeutils, 'utcnow') as mock_utcnow:
+            mock_utcnow.return_value.timestamp.return_value = FAKE_NOW
+            pools = self.library._get_pool_stats()
+
+        self.assertEqual(len(fake.FAKE_CMODE_POOL_MAP), len(pools))
+        if expect_refresh:
+            # The cache is refreshed once for the cluster, not once per pool.
+            update_cache.assert_called_once_with(fake.FAKE_CMODE_POOL_MAP)
+            self.assertEqual(FAKE_NOW, self.library.last_perf_update)
+        else:
+            update_cache.assert_not_called()
+            self.assertEqual(last_perf_update, self.library.last_perf_update)
+
+    @ddt.data(
+        # Performance metrics require cluster-scoped credentials.
+        (False, False),
+        # Performance metrics are not supported on the disaggregated platform.
+        (True, True),
+    )
+    @ddt.unpack
+    def test_get_pool_stats_no_perf_update(self, cluster_credentials,
+                                           disaggregated_platform):
+        self._mock_pool_stats_dependencies()
+        self.library.using_cluster_credentials = cluster_credentials
+        self.override_config('netapp_disaggregated_platform',
+                             disaggregated_platform)
+        self.client.get_storage_availability_zones.return_value = []
+        self.client.get_namespace_sizes_by_svm.return_value = []
+        self.mock_object(self.library, '_get_disaggregated_capacity',
+                         return_value={'size-total': 100 * units.Gi,
+                                       'size-available': 50 * units.Gi})
+        self.library.last_perf_update = 0
+
+        self.library._get_pool_stats()
+
+        (self.library.perf_library.update_performance_cache.
+         assert_not_called())
+        self.assertEqual(0, self.library.last_perf_update)
+
+    @ddt.data(
+        {
+            'using_cluster_credentials': True,
+            'last_dedupe_age': 4000,
+            'expected_dedupe': 25.5,
+            'expected_call_count': 1,
+        },
+        {
+            'using_cluster_credentials': True,
+            'last_dedupe_age': 1000,
+            'expected_dedupe': 15.0,
+            'expected_call_count': 0,
+        },
+        {
+            'using_cluster_credentials': False,
+            'last_dedupe_age': 4000,
+            'expected_dedupe': 0.0,
+            'expected_call_count': 0,
+        },
+    )
+    @ddt.unpack
+    def test_dedupe_calculation(self, using_cluster_credentials,
+                                last_dedupe_age, expected_dedupe,
+                                expected_call_count):
+        self.library.using_cluster_credentials = using_cluster_credentials
+        self.library.configuration.netapp_disaggregated_platform = False
+        self.library.configuration.netapp_dedupe_cache_expiry_duration = 3600
+        self.library.last_dedupe_update = (
+            timeutils.utcnow().timestamp() - last_dedupe_age)
+
+        self.library.client.get_flexvol_dedupe_used_percent = mock.Mock(
+            return_value=25.5)
+        self.library.client.get_flexvol_capacity = mock.Mock(return_value={
+            'size-total': 100 * units.Gi,
+            'size-available': 50 * units.Gi
+        })
+        self.library.client.get_namespace_sizes_by_volume = mock.Mock(
+            return_value=[])
+        self.library.perf_library.get_node_utilization_for_pool = mock.Mock(
+            return_value=42.0)
+
+        self.library._stats = {'pools': [{'pool_name': 'pool1',
+                                          'netapp_dedupe_used_percent': 15.0}
+                                         ]}
+        self.library.ssc_library.get_ssc = mock.Mock(return_value={
+            'pool1': self.library._stats['pools'][0]})
+
+        pools = self.library._get_pool_stats()
+
+        self.assertIsInstance(pools, list)
+        self.assertGreater(len(pools), 0)
+        self.assertEqual(expected_dedupe,
+                         pools[0]['netapp_dedupe_used_percent'])
+        self.assertEqual(
+            expected_call_count,
+            self.library.client.get_flexvol_dedupe_used_percent.call_count)
+
+    def test_skips_dedupe_calculation_for_disaggregated_platform(self):
+        self.library.using_cluster_credentials = True
+        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.ssc_library.get_ssc = mock.Mock(return_value={
+            'pool1': {'pool_name': 'pool1'}
+        })
+        self.library.client.get_vserver_aggregates = mock.Mock(
+            return_value=['aggr1'])
+        self.library.client.get_aggregate_capacities = mock.Mock(
+            return_value={
+                'aggr1': {
+                    'size-total': 100 * units.Gi,
+                    'size-available': 50 * units.Gi
+                }
+            })
+        self.library.client.get_storage_availability_zones = mock.Mock(
+            return_value=[])
+        self.library.client.get_namespace_sizes_by_svm = mock.Mock(
+            return_value=[])
+        self.library.client.get_flexvol_dedupe_used_percent = mock.Mock()
+
+        self.library.perf_library.get_node_utilization_for_pool = mock.Mock(
+            return_value=42.0)
+        self.library._stats = {
+            'pools': [
+                {
+                    'pool_name': 'pool1',
+                    'netapp_dedupe_used_percent': 0.0
+                }
+            ]
+        }
+
+        pools = self.library._get_pool_stats()
+
+        self.assertIsInstance(pools, list)
+        self.assertGreater(len(pools), 0)
+        self.assertEqual(pools[0]['netapp_dedupe_used_percent'], 0.0)
+        self.library.client.get_flexvol_dedupe_used_percent.assert_not_called()
