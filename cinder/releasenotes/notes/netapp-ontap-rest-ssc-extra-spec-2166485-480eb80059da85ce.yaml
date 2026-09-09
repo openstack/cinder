@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver: Fixed a missing comma in the REST client
+    ``SSC_API_MAP`` that caused ``netapp_flexvol_encryption`` to be
+    concatenated with the following entry, silently dropping the
+    ``netapp_flexvol_encryption`` SSC extra spec. The extra spec is now
+    handled as intended. See
+    `bug 2166485 <https://bugs.launchpad.net/cinder/bug/2166485>`_.

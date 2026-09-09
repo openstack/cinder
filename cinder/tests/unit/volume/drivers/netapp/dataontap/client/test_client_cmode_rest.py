@@ -3321,6 +3321,19 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                           self.client.get_flexvol_capacity,
                           flexvol_path='fake_path')
 
+    def test_ssc_api_map_storage_volumes_extra_specs(self):
+        # A missing comma between the string literals would make Python
+        # implicitly concatenate them into 'netapp_flexvol_encryptionnetapp_'
+        # 'dedup', silently dropping the netapp_flexvol_encryption extra spec.
+        # Assert each spec is a distinct element and the concatenation is gone.
+        specs = client_cmode_rest.SSC_API_MAP['/storage/volumes']
+
+        self.assertIn('netapp_flexvol_encryption', specs)
+        self.assertIn('netapp_dedup', specs)
+        self.assertIn('netapp_compression', specs)
+        self.assertNotIn('netapp_flexvol_encryptionnetapp_dedup', specs)
+        self.assertEqual(3, len(specs))
+
     def test_check_api_permissions(self):
 
         mock_log = self.mock_object(client_cmode_rest.LOG, 'warning')
