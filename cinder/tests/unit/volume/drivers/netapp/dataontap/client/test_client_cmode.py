@@ -380,12 +380,15 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_get_iscsi_target_details_no_targets(self):
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">
-                            <num-records>1</num-records>
-                            <attributes-list></attributes-list>
+                            <num-records>0</num-records>
                           </results>"""))
-        self.connection.invoke_successfully.return_value = response
+        mock_send_iter_request = self.mock_object(
+            self.client, 'send_iter_request', return_value=response)
+
         target_list = self.client.get_iscsi_target_details()
 
+        mock_send_iter_request.assert_called_once_with(
+            'iscsi-interface-get-iter')
         self.assertEqual([], target_list)
 
     def test_get_iscsi_target_details(self):
@@ -407,11 +410,64 @@ class NetAppCmodeClientTestCase(test.TestCase):
                               </iscsi-interface-list-entry-info>
                             </attributes-list>
                           </results>""" % expected_target))
-        self.connection.invoke_successfully.return_value = response
+        mock_send_iter_request = self.mock_object(
+            self.client, 'send_iter_request', return_value=response)
 
         target_list = self.client.get_iscsi_target_details()
 
+        mock_send_iter_request.assert_called_once_with(
+            'iscsi-interface-get-iter')
         self.assertEqual([expected_target], target_list)
+
+    def test_get_iscsi_target_details_with_multiple_pages(self):
+        target_1 = {
+            "address": "127.0.0.1",
+            "port": "1337",
+            "interface-enabled": "true",
+            "tpgroup-tag": "7777",
+        }
+        target_2 = {
+            "address": "127.0.0.2",
+            "port": "1338",
+            "interface-enabled": "true",
+            "tpgroup-tag": "7778",
+        }
+        subs = {
+            'address': target_1['address'],
+            'port': target_1['port'],
+            'interface-enabled': target_1['interface-enabled'],
+            'tpgroup-tag': target_1['tpgroup-tag'],
+            'address2': target_2['address'],
+            'port2': target_2['port'],
+            'interface-enabled2': target_2['interface-enabled'],
+            'tpgroup-tag2': target_2['tpgroup-tag'],
+        }
+        response = netapp_api.NaElement(
+            etree.XML("""<results status="passed">
+                            <num-records>2</num-records>
+                            <attributes-list>
+                              <iscsi-interface-list-entry-info>
+                                <ip-address>%(address)s</ip-address>
+                                <ip-port>%(port)s</ip-port>
+            <is-interface-enabled>%(interface-enabled)s</is-interface-enabled>
+                                <tpgroup-tag>%(tpgroup-tag)s</tpgroup-tag>
+                              </iscsi-interface-list-entry-info>
+                              <iscsi-interface-list-entry-info>
+                                <ip-address>%(address2)s</ip-address>
+                                <ip-port>%(port2)s</ip-port>
+            <is-interface-enabled>%(interface-enabled2)s</is-interface-enabled>
+                                <tpgroup-tag>%(tpgroup-tag2)s</tpgroup-tag>
+                              </iscsi-interface-list-entry-info>
+                            </attributes-list>
+                          </results>""" % subs))
+        mock_send_iter_request = self.mock_object(
+            self.client, 'send_iter_request', return_value=response)
+
+        target_list = self.client.get_iscsi_target_details()
+
+        mock_send_iter_request.assert_called_once_with(
+            'iscsi-interface-get-iter')
+        self.assertEqual([target_1, target_2], target_list)
 
     def test_get_iscsi_service_details_with_no_iscsi_service(self):
         response = netapp_api.NaElement(

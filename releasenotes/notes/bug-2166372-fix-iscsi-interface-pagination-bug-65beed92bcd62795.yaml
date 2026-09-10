@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver `bug #2166372
+    <https://bugs.launchpad.net/cinder/+bug/2166372>`_: Fixed
+    ``get_iscsi_target_details`` on the ZAPI client only returning the
+    first page of iSCSI network interfaces (LIFs) from ONTAP and
+    silently dropping the rest. The request now paginates through all
+    ``iscsi-interface-get-iter`` results.
