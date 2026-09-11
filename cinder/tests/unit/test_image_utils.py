@@ -30,16 +30,21 @@ from cinder.volume import throttling
 
 
 class TestQemuImgInfo(test.TestCase):
+
+    @mock.patch.object(image_utils.processutils, "ProcessLimits")
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
     @mock.patch('cinder.image.image_utils.os.path.abspath')
     @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
     def test_qemu_img_info(self, mock_exec, mock_info,
-                           mock_abspath, mock_detect):
+                           mock_abspath, mock_detect, mock_limits):
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
+
+        self.flags(image_introspection_cpu_limit=1)
+        self.flags(image_introspection_address_space_limit=2)
 
         mock_abspath.return_value = test_path
         mock_exec.return_value = (mock_out, mock_err)
@@ -49,19 +54,23 @@ class TestQemuImgInfo(test.TestCase):
         mock_exec.assert_called_once_with(
             'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'mock_fmt',
             '--output=json', test_path, run_as_root=True,
-            prlimit=image_utils.QEMU_IMG_LIMITS)
+            prlimit=mock_limits.return_value)
         self.assertEqual(mock_info.return_value, output)
         mock_detect.assert_called_once_with(path=test_path,
                                             allow_qcow2_backing_file=False)
+        mock_limits.assert_called_once_with(
+            cpu_time=1, address_space=2 * 1024**3)
         mock_abspath.assert_called()
 
+    @mock.patch.object(image_utils.processutils, "ProcessLimits")
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
     @mock.patch('cinder.image.image_utils.os.path.abspath')
     @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
     def test_qemu_img_info_qcow2_backing_ok(
-            self, mock_exec, mock_info, mock_abspath, mock_detect):
+        self, mock_exec, mock_info, mock_abspath, mock_detect, mock_limits
+    ):
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
@@ -75,19 +84,21 @@ class TestQemuImgInfo(test.TestCase):
         mock_exec.assert_called_once_with(
             'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'qcow2',
             '--output=json', test_path, run_as_root=True,
-            prlimit=image_utils.QEMU_IMG_LIMITS)
+            prlimit=mock_limits.return_value)
         self.assertEqual(mock_info.return_value, output)
         mock_detect.assert_called_once_with(path=test_path,
                                             allow_qcow2_backing_file=True)
         mock_abspath.assert_called()
 
+    @mock.patch.object(image_utils.processutils, "ProcessLimits")
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
     @mock.patch('cinder.image.image_utils.os.path.abspath')
     @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
-    def test_qemu_img_info_raw_not_luks(self, mock_exec, mock_info,
-                                        mock_abspath, mock_detect):
+    def test_qemu_img_info_raw_not_luks(
+        self, mock_exec, mock_info, mock_abspath, mock_detect, mock_limits,
+    ):
         """To determine if a raw image is luks, we call qemu-img twice."""
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
@@ -97,6 +108,7 @@ class TestQemuImgInfo(test.TestCase):
         mock_exec.side_effect = [(mock_out, mock_err),
                                  # it's not luks, so raise an error
                                  processutils.ProcessExecutionError]
+
         mock_detect.return_value = 'raw'
 
         mock_data = mock.Mock()
@@ -106,11 +118,11 @@ class TestQemuImgInfo(test.TestCase):
         first = mock.call(
             'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'raw',
             '--output=json', test_path, run_as_root=True,
-            prlimit=image_utils.QEMU_IMG_LIMITS)
+            prlimit=mock_limits.return_value)
         second = mock.call(
             'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'luks',
             '--output=json', test_path, run_as_root=True,
-            prlimit=image_utils.QEMU_IMG_LIMITS)
+            prlimit=mock_limits.return_value)
 
         output = image_utils.qemu_img_info(test_path)
         mock_exec.assert_has_calls([first, second])
@@ -120,13 +132,14 @@ class TestQemuImgInfo(test.TestCase):
                                             allow_qcow2_backing_file=False)
         mock_abspath.assert_called()
 
+    @mock.patch.object(image_utils.processutils, "ProcessLimits")
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
     @mock.patch('cinder.image.image_utils.os.path.abspath')
     @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
     def test_qemu_img_info_luks(self, mock_exec, mock_info,
-                                mock_abspath, mock_detect):
+                                mock_abspath, mock_detect, mock_limits):
         # the format_inspector will identify the image as raw, but
         # we will ask qemu-img for a second opinion, and it say luks
         mock_out = mock.sentinel.out
@@ -146,11 +159,11 @@ class TestQemuImgInfo(test.TestCase):
         first = mock.call(
             'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'raw',
             '--output=json', test_path, run_as_root=True,
-            prlimit=image_utils.QEMU_IMG_LIMITS)
+            prlimit=mock_limits.return_value)
         second = mock.call(
             'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'luks',
             '--output=json', test_path, run_as_root=True,
-            prlimit=image_utils.QEMU_IMG_LIMITS)
+            prlimit=mock_limits.return_value)
 
         output = image_utils.qemu_img_info(test_path)
         mock_exec.assert_has_calls([first, second])
@@ -160,13 +173,15 @@ class TestQemuImgInfo(test.TestCase):
                                             allow_qcow2_backing_file=False)
         mock_abspath.assert_called()
 
+    @mock.patch.object(image_utils.processutils, "ProcessLimits")
     @mock.patch('cinder.privsep.format_inspector.get_format_if_safe')
     @mock.patch('cinder.image.image_utils.os.path.abspath')
     @mock.patch('os.name', new='posix')
     @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
-    def test_qemu_img_info_not_root(self, mock_exec, mock_info,
-                                    mock_abspath, mock_detect):
+    def test_qemu_img_info_not_root(
+        self, mock_exec, mock_info, mock_abspath, mock_detect, mock_limits,
+    ):
         mock_out = mock.sentinel.out
         mock_err = mock.sentinel.err
         test_path = mock.sentinel.path
@@ -181,7 +196,7 @@ class TestQemuImgInfo(test.TestCase):
         mock_exec.assert_called_once_with(
             'env', 'LC_ALL=C', 'qemu-img', 'info', '-f', 'mock_fmt',
             '--output=json', test_path, run_as_root=False,
-            prlimit=image_utils.QEMU_IMG_LIMITS)
+            prlimit=mock_limits.return_value)
         self.assertEqual(mock_info.return_value, output)
         mock_detect.assert_called_once_with(path=test_path,
                                             allow_qcow2_backing_file=False)
