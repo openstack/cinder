@@ -14,6 +14,7 @@
 """Tests for the base chunkedbackupdriver class."""
 
 import json
+import tempfile
 from unittest import mock
 
 from oslo_config import cfg
@@ -457,8 +458,7 @@ class ChunkedDriverTestCase(test.TestCase):
 
     def test_restore(self):
         volume_file = mock.Mock()
-        restore_test = mock.Mock()
-        self.driver._restore_v1 = restore_test
+        restore_test = self.mock_object(self.driver, '_restore_v1')
 
         # Create a second backup
         backup = self._create_backup_db_entry(
@@ -469,6 +469,109 @@ class ChunkedDriverTestCase(test.TestCase):
             self.assertEqual(2, mock_put.call_count)
 
         restore_test.assert_called()
+
+    def test_restore_chain_treats_only_base_as_new(self):
+        # Restoring an incremental chain to a NEW volume must pass
+        # volume_is_new=True only for the base (full) backup applied first;
+        # incrementals layered on top must be written in full (volume_is_new
+        # False) so a region that changed from data to zero overwrites the
+        # base's data instead of being skipped as an all-zero chunk.
+        volume_file = mock.Mock()
+        calls = []
+
+        def fake_restore_v1(backup1, volume_id, metadata, vfile,
+                            volume_is_new, requested):
+            calls.append((backup1.id, volume_is_new))
+
+        self.mock_object(self.driver, '_restore_v1', fake_restore_v1)
+        incr = self._create_backup_db_entry(
+            self.volume, parent_id=self.backup.id)
+        with mock.patch.object(self.driver, 'put_metadata'):
+            self.driver.restore(incr, self.volume, volume_file, True)
+
+        # Base (self.backup) applied first as "new"; incremental is not.
+        self.assertEqual([(self.backup.id, True), (incr.id, False)], calls)
+
+    def test_restore_chain_existing_volume_is_never_new(self):
+        # Restoring the same chain to an EXISTING volume must never treat any
+        # member as new: the target may already hold data, so even the base
+        # has to be written in full rather than skipping all-zero chunks.
+        volume_file = mock.Mock()
+        calls = []
+
+        def fake_restore_v1(backup1, volume_id, metadata, vfile,
+                            volume_is_new, requested):
+            calls.append((backup1.id, volume_is_new))
+
+        self.mock_object(self.driver, '_restore_v1', fake_restore_v1)
+        incr = self._create_backup_db_entry(
+            self.volume, parent_id=self.backup.id)
+        with mock.patch.object(self.driver, 'put_metadata'):
+            self.driver.restore(incr, self.volume, volume_file, False)
+
+        self.assertEqual([(self.backup.id, False), (incr.id, False)], calls)
+
+    def test_restore_chain_zeroes_data_to_zero_region(self):
+        # End-to-end on the bytes, not just the volume_is_new flag: run the
+        # real _restore_v1 over a two-backup chain into a new volume and
+        # check what the restore actually leaves behind.
+        #
+        # The base writes 0xAA at offset 0 and 0xBB at offset 8192.  The
+        # incremental overwrites offset 0 with zeroes and does not touch
+        # 8192.  Restoring the incremental must therefore yield zeroes at
+        # offset 0 -- the bug skipped that all-zero chunk as an
+        # optimisation and left the base's 0xAA behind -- while 0xBB at
+        # 8192 must survive, proving the fix does not over-write regions
+        # the incremental never covered.
+        chunk = 4096
+        base_payload = b'\xaa' * chunk
+        untouched_payload = b'\xbb' * chunk
+        incr_payload = b'\x00' * chunk
+
+        incr = self._create_backup_db_entry(
+            self.volume, parent_id=self.backup.id,
+            status=fields.BackupStatus.RESTORING)
+
+        payloads = {'base_obj': base_payload,
+                    'base_obj_tail': untouched_payload,
+                    'incr_obj': incr_payload}
+
+        def meta_for(backup):
+            if backup.id == self.backup.id:
+                objects = [{'base_obj': {'offset': 0, 'length': chunk,
+                                         'compression': 'none'}},
+                           {'base_obj_tail': {'offset': 8192,
+                                              'length': chunk,
+                                              'compression': 'none'}}]
+            else:
+                objects = [{'incr_obj': {'offset': 0, 'length': chunk,
+                                         'compression': 'none'}}]
+            return {'version': '1.0.0', 'objects': objects,
+                    'extra_metadata': None}
+
+        def reader_for(container, name, extra_metadata=None):
+            reader = mock.MagicMock()
+            reader.__enter__.return_value.read.return_value = payloads[name]
+            return reader
+
+        self.mock_object(self.driver, '_read_metadata', meta_for)
+        self.mock_object(
+            self.driver, '_generate_object_names',
+            lambda backup: list(meta_for(backup)['objects'][0].keys())
+            + (['base_obj_tail'] if backup.id == self.backup.id else []))
+        self.mock_object(self.driver, '_get_object_reader', reader_for)
+
+        with tempfile.NamedTemporaryFile() as volume_file:
+            with mock.patch.object(self.driver, 'put_metadata'):
+                self.driver.restore(incr, self.volume, volume_file, True)
+
+            volume_file.seek(0)
+            restored = volume_file.read()
+
+        # The data-to-zero region is genuinely zeroed, not skipped.
+        self.assertEqual(incr_payload, restored[0:chunk])
+        # A region only the base wrote is untouched by the incremental.
+        self.assertEqual(untouched_payload, restored[8192:8192 + chunk])
 
     def test_delete_backup(self):
         with mock.patch.object(self.driver, 'delete_object') as mock_delete:
