@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder Release Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-10 21:05+0000\n"
+"POT-Creation-Date: 2026-09-11 22:42+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -70,9 +70,6 @@ msgstr "**Anomalies with encrypted volumes**"
 msgid "**Cinder use of cgroups v1**"
 msgstr "**Cinder use of cgroups v1**"
 
-msgid "**Cross-aggregate**: Uses ONTAP LUN copy operation"
-msgstr "**Cross-aggregate**: Uses ONTAP LUN copy operation"
-
 msgid ""
 "**In-use expansion**: Volumes can be expanded while attached to running "
 "instances"
@@ -101,9 +98,6 @@ msgstr "**Policy configuration changes**"
 
 msgid "**RBD driver: Enable Ceph V2 Clone API and Ceph Trash auto purge**"
 msgstr "**RBD driver: Enable Ceph V2 Clone API and Ceph Trash auto purge**"
-
-msgid "**Same FlexVol**: Uses efficient FlexClone (instant clone)"
-msgstr "**Same FlexVol**: Uses efficient FlexClone (instant clone)"
 
 msgid "**Supported Ceph versions**"
 msgstr "**Supported Ceph versions**"
@@ -523,9 +517,6 @@ msgstr "27.0.0"
 
 msgid "28.0.0"
 msgstr "28.0.0"
-
-msgid "28.0.0-4"
-msgstr "28.0.0-4"
 
 msgid ""
 "3. The ``utilization`` capability is not calculated to FlexGroup pools, it "
