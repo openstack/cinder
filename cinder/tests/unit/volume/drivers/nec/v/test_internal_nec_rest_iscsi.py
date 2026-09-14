@@ -17,7 +17,6 @@
 
 from unittest import mock
 
-from oslo_config import cfg
 import requests
 
 from cinder import context as cinder_context
@@ -436,8 +435,7 @@ class VStorageRESTISCSIDriverTest(test.TestCase):
 
         self.configuration.safe_get = self._fake_safe_get
 
-        CONF = cfg.CONF
-        CONF.my_ip = CONFIG_MAP['my_ip']
+        self.override_config('my_ip', CONFIG_MAP['my_ip'])
 
     def _fake_safe_get(self, value):
         """Retrieve a configuration value avoiding throwing an exception."""

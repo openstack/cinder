@@ -19,7 +19,6 @@ import json
 from unittest import mock
 
 import ddt
-from oslo_config import cfg
 import requests
 
 from cinder import context as cinder_context
@@ -887,8 +886,7 @@ class HBSDMIRRORFCDriverTest(test.TestCase):
         self.override_config('replication_device', '',
                              group=conf.SHARED_CONF_GROUP)
 
-        CONF = cfg.CONF
-        CONF.my_ip = CONFIG_MAP['my_ip']
+        self.override_config('my_ip', CONFIG_MAP['my_ip'])
 
     def _fake_safe_get(self, value):
         """Retrieve a configuration value avoiding throwing an exception."""
