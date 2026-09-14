@@ -1,0 +1,20 @@
+---
+fixes:
+  - |
+    `Bug #2160366 <https://bugs.launchpad.net/cinder/+bug/2160366>`__:
+    Fixed an issue in the Pure Storage FlashArray driver where several
+    operations could silently fail when an array limit (such as the maximum
+    volume or snapshot count) had been reached. The py-pure-client REST
+    response was not checked, so the operation was reported to Cinder as
+    successful even though the array did nothing. The driver now inspects the
+    response and fails with a clear error. Affected operations include volume
+    create, volume create from snapshot, cloned volume create, volume extend,
+    revert to snapshot, snapshot create, consistency group create, consistency
+    group snapshot create, consistency group clone and replication failover.
+  - |
+    `Bug #2160366 <https://bugs.launchpad.net/cinder/+bug/2160366>`__:
+    Fixed the Pure Storage FlashArray driver revert to snapshot operation,
+    which passed the snapshot and volume names in the wrong order and so was
+    silently rejected by the array (the error was previously ignored). Revert
+    to snapshot now correctly overwrites the volume with the snapshot
+    contents.
