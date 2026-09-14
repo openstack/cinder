@@ -3072,32 +3072,6 @@ class DBAPIQuotaTestCase(BaseTest):
         self.assertEqual(expected_usage,
                          db.quota_usage_get_all_by_project(self.ctxt, project))
 
-    def test_quota_destroy_sqlalchemy_all_by_project_(self):
-        # Create limits, reservations and usage for project
-        project = 'project1'
-        _quota_reserve(self.ctxt, project)
-        expected_usage = {'project_id': project,
-                          'volumes': {'reserved': 1, 'in_use': 0},
-                          'gigabytes': {'reserved': 2, 'in_use': 0}}
-        expected = {'project_id': project, 'gigabytes': 2, 'volumes': 1}
-        expected_result = {'project_id': project}
-
-        # Check that quotas are there
-        self.assertEqual(expected,
-                         db.quota_get_all_by_project(self.ctxt, project))
-        self.assertEqual(expected_usage,
-                         db.quota_usage_get_all_by_project(self.ctxt, project))
-
-        # Destroy all quotas using SQLAlchemy Implementation
-        sqlalchemy_api.quota_destroy_all_by_project(self.ctxt, project,
-                                                    only_quotas=False)
-
-        # Check that all quotas have been deleted
-        self.assertEqual(expected_result,
-                         db.quota_get_all_by_project(self.ctxt, project))
-        self.assertEqual(expected_result,
-                         db.quota_usage_get_all_by_project(self.ctxt, project))
-
     def test_quota_usage_get_nonexistent(self):
         self.assertRaises(exception.QuotaUsageNotFound,
                           db.quota_usage_get,
