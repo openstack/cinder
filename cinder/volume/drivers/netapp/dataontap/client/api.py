@@ -20,10 +20,10 @@
 Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
 import random
+import threading
 import time
 
 
-from eventlet import semaphore
 from lxml import etree
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
@@ -595,7 +595,7 @@ class SSHUtil(object):
         # limited. Use of SSHPool allows connections to be cached and reused
         # instead of creating a new connection each time a command is executed
         # via SSH.
-        self.ssh_connect_semaphore = semaphore.Semaphore(
+        self.ssh_connect_semaphore = threading.Semaphore(
             self.MAX_CONCURRENT_SSH_CONNECTIONS)
 
     def _init_ssh_pool(self, host, port, username, password):

@@ -17,10 +17,10 @@
 import ast
 import copy
 import json
+import threading
 from unittest import mock
 
 import ddt
-import eventlet
 
 from cinder import context
 from cinder import exception
@@ -2026,14 +2026,14 @@ class DS8KProxyTest(test.TestCase):
                                       provider_location=location,
                                       volume_metadata=metadata)
 
-        self.mock_object(eventlet, 'spawn')
+        self.mock_object(threading, 'Thread')
         mock_get_flashcopy.return_value = [TEST_FLASHCOPY]
         volume_update = self.driver.create_cloned_volume(tgt_vol, src_vol)
         self.assertEqual(
             TEST_VOLUME_ID,
             ast.literal_eval(volume_update['provider_location'])['vol_hex_id'])
         self.assertEqual('started', volume_update['metadata']['flashcopy'])
-        eventlet.spawn.assert_called()
+        threading.Thread.assert_called()
 
     def test_check_async_cloned_volumes_when_initialize_driver(self):
         """initialize driver should check volumes cloned asynchronously."""
@@ -2047,10 +2047,10 @@ class DS8KProxyTest(test.TestCase):
                             source_volid=src_vol.id,
                             provider_location=location,
                             volume_metadata=metadata)
-        self.mock_object(eventlet, 'spawn')
+        self.mock_object(threading, 'Thread')
         self.driver = FakeDS8KProxy(self.storage_info, self.logger,
                                     self.exception, self)
-        eventlet.spawn.assert_called()
+        threading.Thread.assert_called()
 
     @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
     def test_wait_flashcopy_when_async_clone_volume(

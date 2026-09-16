@@ -28,7 +28,7 @@ class TatlinVolumeConnections:
 
     This class keeps connections of volumes to local host where this
     Cinder instance runs. It prevents disconnection of devices and
-    termination of storage links in cases where two Cinder greenthreads
+    termination of storage links in cases where two Cinder threads
     use the same volume (e.g. creation of new volumes from image cache)
     or connection termination of Nova volume if Nova is collocated on
     the same host (e.g. with snapshots while volumes are attached).
