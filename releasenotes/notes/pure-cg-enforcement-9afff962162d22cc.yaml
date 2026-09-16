@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    [Everpure] Fixed an issue where replicated volume types could be
+    added to a non-replicated consistency group without error.
