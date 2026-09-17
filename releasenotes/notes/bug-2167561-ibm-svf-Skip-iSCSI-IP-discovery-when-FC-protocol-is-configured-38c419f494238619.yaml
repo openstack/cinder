@@ -1,0 +1,8 @@
+fixes:
+  - |
+    IBM Spectrum Virtualize family driver: `Bug #2167561
+    https://bugs.launchpad.net/cinder/+bug/2167561
+    Fixed an issue where driver initialization unconditionally
+    executed iSCSI IP discovery (``lsip``) even when Fibre Channel (FC)
+    was configured, which caused setup failure on backends without
+    configured iSCSI IPs.
