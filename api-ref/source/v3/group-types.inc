@@ -212,6 +212,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
+   - is_public: is_public_group_type_query
    - sort: sort
    - sort_key: sort_key
    - sort_dir: sort_dir
