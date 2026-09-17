@@ -940,7 +940,7 @@ port_speed!N/A
                    'unconfigured', '', 'yes', '', 'no']
         rows[9] = ['1', '2', 'node2', ip_addr2, '255.255.255.0',
                    gw, '', '', '', '01:23:45:67:89:02', 'Full',
-                   'online', '1Gb/s', 'no', '', '']
+                   'online', '1Gb/s', 'no', 'active', 'yes']
         rows[10] = ['1', '2', 'node2', '', '', '', '', '', '',
                     '01:23:45:67:89:02', 'Full', 'online', '1Gb/s', 'yes', '',
                     'no']
@@ -16450,16 +16450,15 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
     def test_lsportip(self):
         self.driver.do_setup(None)
         storage_nodes = self.driver._master_state['storage_nodes']
-        no_of_portips_added_in_storage_nodes = len(storage_nodes.keys())
         portips = self.sim._cmd_lsportip()[0]
         portips_list = portips.split('\n')
-        portip_with_host_yes = []
+        nodes_with_host_yes = set()
         if len(portips_list) > 1:
             for portip in portips_list[1:]:
                 portip_details_list = portip.split(' ')
-                host = portip_details_list.pop()
-                if host == 'yes':
-                    portip_with_host_yes.append(portip)
-        no_of_portips_with_host_yes = len(portip_with_host_yes)
-        self.assertEqual(no_of_portips_added_in_storage_nodes,
-                         no_of_portips_with_host_yes)
+                if portip_details_list:
+                    node_id = portip_details_list[1]
+                    host = portip_details_list.pop()
+                    if host == 'yes':
+                        nodes_with_host_yes.add(node_id)
+        self.assertEqual(len(storage_nodes), len(nodes_with_host_yes))
