@@ -928,6 +928,18 @@ class BackupsAPITestCase(test.TestCase):
     def test_create_backup_delta(self, backup_from_snapshot):
         volume = utils.create_volume(self.context, size=5)
         snapshot = None
+
+        # Since we are testing the creation of incremental backups
+        # we first need a full backup to base them on
+        full_backup = utils.create_backup(
+            self.context,
+            volume.id,
+            status=fields.BackupStatus.AVAILABLE,
+            size=1,
+            availability_zone="az1",
+            host="testhost",
+        )
+
         if backup_from_snapshot:
             snapshot = utils.create_snapshot(self.context,
                                              volume.id,
@@ -952,11 +964,6 @@ class BackupsAPITestCase(test.TestCase):
                                "incremental": True,
                                }
                     }
-        backup = utils.create_backup(self.context, volume.id,
-                                     status=fields.BackupStatus.AVAILABLE,
-                                     size=1, availability_zone='az1',
-                                     host='testhost')
-
         req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -968,7 +975,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
 
-        backup.destroy()
+        full_backup.destroy()
         if snapshot:
             snapshot.destroy()
         volume.destroy()

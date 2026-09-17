@@ -6562,6 +6562,46 @@ def backup_get_all_active_by_window(context, begin, end=None, project_id=None):
     return query.all()
 
 
+@require_context
+@main_context_manager.reader
+def backup_get_parent_for_incremental(
+    context,
+    volume_id,
+    volume_project_id,
+    before_data_timestamp=None
+):
+
+    authorize_project_context(context, volume_project_id)
+    # NOTE(crohmann): Find successful backups sorted by most recent
+    # data_timestamp. Apart from an AVAILABLE backup, any backup that is
+    # currently RESTORING to a new volume is also valid, as it's a stable,
+    # read-only source.
+    query = (
+        _backups_get_query(context=context, joined_load=False,
+                           project_only=True)
+        # NOTE(crohmann): required in case of non-project / admin scoped tokens
+        .filter_by(project_id=context.project_id)
+        .filter_by(volume_id=volume_id)
+        .filter(models.Backup.status.in_(
+            (
+                fields.BackupStatus.AVAILABLE,
+                fields.BackupStatus.RESTORING
+            )
+        ))
+        .order_by(
+            desc(models.Backup.data_timestamp),
+            desc(models.Backup.created_at)
+        )
+    )
+    # NOTE(crohmann): In case a backup with a data_timestamp
+    # before a certain time is required add this condition.
+    if before_data_timestamp:
+        query = query.filter(
+            models.Backup.data_timestamp < before_data_timestamp
+        )
+    return query.first()
+
+
 @handle_db_data_error
 @require_context
 @main_context_manager.writer

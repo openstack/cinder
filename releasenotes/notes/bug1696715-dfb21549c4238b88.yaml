@@ -1,0 +1,19 @@
+---
+fixes:
+  - |
+    `Bug #1696715 <https://bugs.launchpad.net/cinder/+bug/1696715>`_:
+    Optimize getting parent backup for new incremental by not fetching all
+    backups from the database, but using a DB query to find the suitable
+    parent. Alongside, a previous bug with finding parents for snapshot backups
+    was fixed. Previously this could select an ineligible parent when backing
+    up a snapshot older than existing backups; that case now raises an error
+    instead of silently creating an incremental against the wrong parent.
+    Additionally the backup status of `RESTORING` was added to the list
+    of valid status, as a restoring backup is indeed a valid, read-only source
+    for a new incremental backup.
+upgrade:
+  - |
+    The ``cinder-manage db sync`` command for this version of cinder will add
+    an additional database index ``backups_volume_id_data_timestamp_idx`` on
+    the backups table. Depending on the table size, this will take time to
+    complete.

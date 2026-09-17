@@ -2362,14 +2362,13 @@ class BackupAPITestCase(BaseBackupTest):
         mock_commit.assert_not_called()
         mock_rollback.assert_called_with(self.ctxt, "fake_reservation")
 
-    @mock.patch('cinder.objects.BackupList.get_all_by_volume')
+    @mock.patch('cinder.objects.Backup.get_parent_for_incremental')
     @mock.patch.object(quota.QUOTAS, 'rollback')
     @mock.patch.object(quota.QUOTAS, 'reserve')
-    def test_create_backup_failed_with_empty_backup_objects(
-            self, mock_reserve, mock_rollback, mock_get_backups):
-        backups = mock.Mock()
-        backups.objects = []
-        mock_get_backups.return_value = backups
+    def test_create_incremental_backup_failed_with_no_parent_backup(
+            self, mock_reserve, mock_rollback,
+            mock_get_parent_for_incremental):
+        mock_get_parent_for_incremental.return_value = None
         is_incremental = True
         self.ctxt.user_id = 'fake_user'
         self.ctxt.project_id = 'fake_project'
@@ -2386,9 +2385,12 @@ class BackupAPITestCase(BaseBackupTest):
                           volume_id, None,
                           incremental=is_incremental)
         mock_rollback.assert_called_with(self.ctxt, "fake_reservation")
-        mock_get_backups.assert_called_once_with(
-            self.ctxt, volume_id, 'vol_proj_id',
-            filters={'project_id': 'fake_project'})
+        mock_get_parent_for_incremental.assert_called_once_with(
+            context=self.ctxt,
+            volume_id=volume_id,
+            volume_project_id="vol_proj_id",
+            before_data_timestamp=None
+        )
 
     @mock.patch('cinder.db.api.backup_get_all_by_volume',
                 return_value=[v3_fakes.fake_backup('fake-1')])
