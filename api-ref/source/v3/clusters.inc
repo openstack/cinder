@@ -287,8 +287,8 @@ Request
    - num_hosts: cluster_num_hosts_query
    - num_down_hosts: cluster_num_down_hosts_query
    - replication_status: cluster_replication_status_query
-   - frozen: cluster_frozen
-   - active_backend_id: cluster_active_backend_id
+   - frozen: cluster_frozen_query
+   - active_backend_id: cluster_active_backend_id_query
 
 Response Parameters
 -------------------
