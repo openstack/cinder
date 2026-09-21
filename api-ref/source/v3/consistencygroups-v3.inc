@@ -3,6 +3,16 @@
 Consistency groups (DEPRECATED)
 ===============================
 
+.. warning::
+
+    Consistency Groups were a special-purpose API that only supported one use
+    case: grouping volumes for consistent snapshots. Generic Volume Groups
+    generalize this concept so that groups of volumes can serve multiple
+    purposes (consistent snapshots, replication, etc.) through configurable
+    group types and group specs, rather than hardcoding the behavior. In the v3
+    API, Consistency Groups are merely a shim over the Groups API internally.
+    As a result, Generic Volume Groups should be preferred in all application.
+
 Consistency groups enable you to create snapshots at the exact same
 point in time from multiple volumes. For example, a database might
 place its tables, logs, and configuration on separate volumes. To
@@ -21,14 +31,12 @@ List project's consistency groups
 
 Lists consistency groups.
 
-
 Response codes
 --------------
 
 .. rest_status_code:: success ../status.yaml
 
    - 200
-
 
 Request
 -------
@@ -43,7 +51,6 @@ Request
    - limit: limit
    - offset: offset
    - marker: marker
-
 
 Response Parameters
 -------------------
@@ -74,7 +81,6 @@ Response codes
 .. rest_status_code:: success ../status.yaml
 
    - 202
-
 
 Request
 -------
@@ -163,14 +169,12 @@ Create a consistency group from source
 
 Creates a consistency group from source.
 
-
 Response codes
 --------------
 
 .. rest_status_code:: success ../status.yaml
 
    - 202
-
 
 Request
 -------
@@ -209,7 +213,6 @@ Response codes
 
    - 202
 
-
 Request
 -------
 
@@ -234,14 +237,12 @@ List consistency groups and details
 
 Lists consistency groups with details.
 
-
 Response codes
 --------------
 
 .. rest_status_code:: success ../status.yaml
 
    - 200
-
 
 Request
 -------
@@ -256,7 +257,6 @@ Request
    - limit: limit
    - offset: offset
    - marker: marker
-
 
 Response Parameters
 -------------------
@@ -287,14 +287,12 @@ Update a consistency group
 
 Updates a consistency group.
 
-
 Response codes
 --------------
 
 .. rest_status_code:: success ../status.yaml
 
    - 202
-
 
 Request
 -------
