@@ -153,6 +153,13 @@ detail:
   in: query
   required: false
   type: boolean
+force_del_qos:
+  description: |
+    To delete a QoS specification even if it is in-
+    use, set to ``true``. Default is ``false``.
+  in: query
+  required: false
+  type: boolean
 image-id:
   description: |
     Creates volume from image ID. Default=None.
@@ -224,6 +231,12 @@ usage:
   in: query
   required: false
   type: boolean
+vol_type_id_query:
+  description: |
+    A volume type ID.
+  in: query
+  required: true
+  type: string
 
 # variables in body
 absolute:
@@ -1437,6 +1450,30 @@ provider_optional:
   in: body
   required: false
   type: string
+qos_association_id:
+  description: |
+    The QoS association ID.
+  in: body
+  required: true
+  type: string
+qos_association_name:
+  description: |
+    The QoS association name.
+  in: body
+  required: true
+  type: string
+qos_association_type:
+  description: |
+    The QoS association type.
+  in: body
+  required: true
+  type: string
+qos_associations:
+  description: |
+    A collection of ``QoS associations``.
+  in: body
+  required: true
+  type: array
 qos_specs:
   description: |
     A ``qos_specs`` object.

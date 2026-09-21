@@ -1,3 +1,0 @@
-{
-    "qos_associations": []
-}
