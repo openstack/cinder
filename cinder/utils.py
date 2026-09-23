@@ -43,7 +43,7 @@ import tempfile
 import time
 import typing
 from typing import Any, Callable, Iterable, Iterator
-from typing import Optional, Type, Union
+from typing import Optional, Type, TypeVar, Union
 
 import eventlet
 from eventlet import tpool
@@ -81,7 +81,11 @@ def cooperative_yield() -> None:
         time.sleep(0)  # noqa: C339
 
 
-def tpool_wrap(obj: Any, autowrap: tuple[Type[Any], ...] = ()) -> Any:
+_TpoolObj = TypeVar('_TpoolObj')
+
+
+def tpool_wrap(obj: _TpoolObj,
+               autowrap: tuple[Type[Any], ...] = ()) -> _TpoolObj:
     """Wrap obj so blocking I/O does not stall the event loop.
 
     Under eventlet, wraps *obj* with ``tpool.Proxy`` so every method call
@@ -91,7 +95,8 @@ def tpool_wrap(obj: Any, autowrap: tuple[Type[Any], ...] = ()) -> Any:
     """
     if concurrency_mode_threading():
         return obj
-    return tpool.Proxy(obj, autowrap)
+
+    return typing.cast(_TpoolObj, tpool.Proxy(obj, autowrap))
 
 
 def get_region_filtered_endpoint(endpoints, endpoint_type, region_name=None):
