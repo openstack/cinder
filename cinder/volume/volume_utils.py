@@ -38,7 +38,6 @@ import uuid
 from castellan.common.credentials import keystone_password
 from castellan.common import exception as castellan_exception
 from castellan import key_manager as castellan_key_manager
-from eventlet import tpool
 from keystoneauth1 import loading as ks_loading
 from os_brick import encryptors
 from os_brick.initiator import connector
@@ -531,6 +530,9 @@ def _transfer_data(src: IO, dest: IO,
                    length: int, chunk_size: int) -> None:
     """Transfer data between files (Python IO objects)."""
 
+    src = utils.tpool_wrap(src)
+    dest = utils.tpool_wrap(dest)
+
     chunks = int(math.ceil(length / chunk_size))
     remaining_length = length
 
@@ -539,14 +541,14 @@ def _transfer_data(src: IO, dest: IO,
 
     for chunk in range(0, chunks):
         before = time.time()
-        data = tpool.execute(src.read, min(chunk_size, remaining_length))
+        data = src.read(min(chunk_size, remaining_length))
 
         # If we have reached end of source, discard any extraneous bytes from
         # destination volume if trim is enabled and stop writing.
         if data == b'':
             break
 
-        tpool.execute(dest.write, data)
+        dest.write(data)
         remaining_length -= len(data)
         delta = (time.time() - before)
         rate = (chunk_size / delta) / units.Ki
@@ -556,7 +558,7 @@ def _transfer_data(src: IO, dest: IO,
         # yield to any other pending operations
         utils.cooperative_yield()
 
-    tpool.execute(dest.flush)
+    dest.flush()
 
 
 def _copy_volume_with_file(src: Union[str, IO],
