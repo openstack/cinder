@@ -32,7 +32,7 @@ from cinder.i18n import _
 from cinder import utils as cinder_utils
 from cinder.volume import volume_types
 
-VERSION = '2.7.2'
+VERSION = '2.8.4'
 CI_WIKI_NAME = 'Hitachi_CI'
 PARAM_PREFIX = 'hitachi'
 VENDOR_NAME = 'Hitachi'
