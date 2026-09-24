@@ -3899,9 +3899,11 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         state['storage_nodes'] = helper.get_node_info()
 
         # Add the iSCSI IP addresses and WWPNs to the storage node info
-        helper.add_iscsi_ip_addrs(state['storage_nodes'], state['code_level'],
-                                  portset=self._storwize_portset)
-        helper.add_fc_wwpns(state['storage_nodes'], state['code_level'])
+        if self.protocol == 'iSCSI':
+            helper.add_iscsi_ip_addrs(state['storage_nodes'], state['code_level'],
+                                      portset=self._storwize_portset)
+        if self.protocol == 'FC':
+            helper.add_fc_wwpns(state['storage_nodes'], state['code_level'])
 
         # For each node, check what connection modes it supports.  Delete any
         # nodes that do not support any types (may be partially configured).
