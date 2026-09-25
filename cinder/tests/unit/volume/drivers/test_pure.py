@@ -1824,16 +1824,33 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_get_volume_type.return_value = vol.volume_type
         snap, snap_name = self.new_fake_snap(vol)
         mock_data = self.flasharray.VolumePost(source=self.flasharray.
-                                               Reference(name=vol_name))
+                                               Reference(name=snap_name))
         context = mock.MagicMock()
         self.driver.revert_to_snapshot(context, vol, snap)
 
-        self.array.post_volumes.assert_called_with(names=[snap_name],
+        self.array.post_volumes.assert_called_with(names=[vol_name],
                                                    overwrite=True,
                                                    volume=mock_data)
         self.assert_error_propagates([self.array.post_volumes],
                                      self.driver.revert_to_snapshot,
                                      context, vol, snap)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
+    def test_revert_to_snapshot_error(self, mock_fa, mock_get_volume_type):
+        # A failed revert (overwrite post_volumes) must be surfaced rather
+        # than reported as a successful revert.
+        vol, vol_name = self.new_fake_vol(set_provider_id=True)
+        mock_get_volume_type.return_value = vol.volume_type
+        snap, snap_name = self.new_fake_snap(vol)
+        context = mock.MagicMock()
+        self.array.post_volumes.return_value = ErrorResponse(
+            400,
+            [DotNotation({'message': 'limit reached'})],
+            {})
+
+        self.assertRaises(pure.PureDriverException,
+                          self.driver.revert_to_snapshot, context, vol, snap)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
@@ -1844,12 +1861,13 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         group, group_name = self.new_fake_group()
         group_snap, group_snap_name = self.new_fake_group_snap(group)
         snap, snap_name = self.new_fake_snap(vol, group_snap)
-        mock_data = self.flasharray.VolumePost(source=self.flasharray.
-                                               Reference(name=vol_name))
+        mock_data = self.flasharray.VolumePost(
+            source=self.flasharray.Reference(
+                name=group_snap_name + '.' + vol_name))
         context = mock.MagicMock()
         self.driver.revert_to_snapshot(context, vol, snap)
         self.array.post_volumes.\
-            assert_called_with(names=[group_snap_name + '.' + vol_name],
+            assert_called_with(names=[vol_name],
                                volume=mock_data,
                                overwrite=True)
 
@@ -2059,6 +2077,49 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_add_to_group.assert_called_once_with(vol_obj, vol_name)
         self.assert_error_propagates([mock_fa],
                                      self.driver.create_volume, vol_obj)
+
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
+    @mock.patch(BASE_DRIVER_OBJ + "._setup_volume")
+    @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")
+    def test_create_volume_array_limit_reached(self, mock_get_repl_type,
+                                               mock_setup_volume, mock_fa):
+        # When the array's volume limit is reached, post_volumes returns a
+        # 400 with "limit reached" rather than raising. The driver must
+        # surface this as a failure and must not report the volume as
+        # created (bug: create silently succeeded).
+        mock_get_repl_type.return_value = None
+        vol_obj = fake_volume.fake_volume_obj(mock.MagicMock(), size=2)
+        mock_fa.return_value = self.array.flasharray.VolumePost(
+            provisioned=2147483648)
+        self.array.safemode = False
+        self.array.post_volumes.return_value = ErrorResponse(
+            400,
+            [DotNotation({'message': 'Volume limit reached'})],
+            {})
+
+        self.assertRaises(pure.PureDriverException,
+                          self.driver.create_volume, vol_obj)
+        mock_setup_volume.assert_not_called()
+
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumePost")
+    @mock.patch(BASE_DRIVER_OBJ + "._setup_volume")
+    @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")
+    def test_create_volume_post_error(self, mock_get_repl_type,
+                                      mock_setup_volume, mock_fa):
+        # Any other 400 from post_volumes must also be surfaced as a failure.
+        mock_get_repl_type.return_value = None
+        vol_obj = fake_volume.fake_volume_obj(mock.MagicMock(), size=2)
+        mock_fa.return_value = self.array.flasharray.VolumePost(
+            provisioned=2147483648)
+        self.array.safemode = False
+        self.array.post_volumes.return_value = ErrorResponse(
+            400,
+            [DotNotation({'message': 'some other error'})],
+            {})
+
+        self.assertRaises(pure.PureDriverException,
+                          self.driver.create_volume, vol_obj)
+        mock_setup_volume.assert_not_called()
 
     @mock.patch(DRIVER_PATH + ".LOG")
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
@@ -2557,6 +2618,24 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assert_error_propagates([self.array.post_volume_snapshots],
                                      self.driver.create_snapshot, snap)
 
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumeSnapshotPost")
+    def test_create_snapshot_error(self, mock_snap):
+        # A failed post_volume_snapshots (e.g. the array snapshot limit
+        # reached) must be surfaced rather than reported as a successful
+        # snapshot.
+        vol, vol_name = self.new_fake_vol()
+        snap = fake_snapshot.fake_snapshot_obj(mock.MagicMock(), volume=vol)
+        suffix_name = snap['name'].split(".")
+        mock_snap.return_value = self.array.flasharray.VolumeSnapshotPost(
+            suffix=suffix_name)
+        self.array.post_volume_snapshots.return_value = ErrorResponse(
+            400,
+            [DotNotation({'message': 'limit reached'})],
+            {})
+
+        self.assertRaises(pure.PureDriverException,
+                          self.driver.create_snapshot, snap)
+
     @mock.patch(DRIVER_PATH + ".LOG")
     @mock.patch(DRIVER_PATH + ".flasharray.VolumeSnapshotPatch")
     def test_delete_snapshot_error(self, mock_snap_patch, mock_logger):
@@ -2860,6 +2939,23 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assert_error_propagates([self.array.patch_volumes],
                                      self.driver.extend_volume, vol, 3)
 
+    @mock.patch(DRIVER_PATH + ".flasharray.VolumePatch")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_extend_volume_error(self, mock_get_volume_type, mock_fa):
+        # A failed patch_volumes must be surfaced rather than reporting the
+        # volume as extended when the array did not resize it.
+        vol, vol_name = self.new_fake_vol(spec={"size": 1})
+        mock_get_volume_type.return_value = vol.volume_type
+        mock_fa.return_value = self.flasharray.VolumePatch(
+            provisioned=3 * units.Gi)
+        self.array.patch_volumes.return_value = ErrorResponse(
+            400,
+            [DotNotation({'message': 'limit reached'})],
+            {})
+
+        self.assertRaises(pure.PureDriverException,
+                          self.driver.extend_volume, vol, 3)
+
     @ddt.data(
         dict(
             repl_types=[None],
@@ -2993,6 +3089,20 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             self.driver.create_consistencygroup, None, cgroup)
 
     @mock.patch(BASE_DRIVER_OBJ + "._group_potential_repl_types")
+    def test_create_consistencygroup_error(self, mock_get_repl_types):
+        # A failed post_protection_groups must be surfaced rather than
+        # reporting the group as available.
+        cgroup = fake_group.fake_group_obj(mock.MagicMock())
+        mock_get_repl_types.return_value = set()
+        self.array.post_protection_groups.return_value = ErrorResponse(
+            400,
+            [DotNotation({'message': 'limit reached'})],
+            {})
+
+        self.assertRaises(pure.PureDriverException,
+                          self.driver.create_consistencygroup, None, cgroup)
+
+    @mock.patch(BASE_DRIVER_OBJ + "._group_potential_repl_types")
     def test_create_consistencygroup_in_pod(self, mock_get_repl_types):
         cgroup = fake_group.fake_group_obj(mock.MagicMock())
         mock_get_repl_types.return_value = ['sync', 'async']
@@ -3084,6 +3194,67 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         )
         mock_create_cg.assert_called_with(ctxt, mock_group, None)
         self.assertTrue(self.array.post_protection_group_snapshots.called)
+        self.assertTrue(self.array.patch_protection_group_snapshots.called)
+
+    @mock.patch(DRIVER_PATH + ".flasharray.ProtectionGroup")
+    @mock.patch(BASE_DRIVER_OBJ + "._group_potential_repl_types")
+    def test_create_consistencygroup_cleanup_on_config_error(
+            self, mock_get_repl_types, mock_pg):
+        # If the group is created but configuring replication fails, the
+        # orphaned protection group must be torn back down.
+        cgroup = fake_group.fake_group_obj(mock.MagicMock())
+        mock_get_repl_types.return_value = set()
+        self.array.post_protection_groups.return_value = ValidResponse(
+            200, None, 1, [], {})
+        self.array.patch_protection_groups.return_value = ErrorResponse(
+            400, [DotNotation({'message': 'limit reached'})], {})
+
+        self.assertRaises(pure.PureDriverException,
+                          self.driver.create_consistencygroup,
+                          None, cgroup, 'async')
+
+        # The orphaned protection group is destroyed as part of cleanup.
+        mock_pg.assert_any_call(destroyed=True)
+
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")
+    @mock.patch(BASE_DRIVER_OBJ + "._add_volume_to_consistency_group")
+    @mock.patch(BASE_DRIVER_OBJ + ".delete_volume", autospec=True)
+    @mock.patch(BASE_DRIVER_OBJ + ".create_consistencygroup")
+    def test_create_consistencygroup_from_cg_cleanup_on_error(
+            self, mock_create_cg, mock_delete_volume, mock_add_vol,
+            mock_repl_type, mock_gp_specs):
+        # A failure part way through cloning must roll back the volumes
+        # already created and still remove the temporary pgroup snapshot.
+        num_volumes = 3
+        ctxt = context.get_admin_context()
+        mock_gp_specs.return_value = '<is> True'
+        mock_group = fake_group.fake_group_obj(
+            None, group_type_id=fake.GROUP_TYPE_ID)
+        mock_source_cg = mock.MagicMock()
+        mock_volumes = [mock.MagicMock() for i in range(num_volumes)]
+        mock_source_vols = [mock.MagicMock() for i in range(num_volumes)]
+        mock_repl_type.return_value = None
+        # update_provider_info reassigns the local volume list, so stub it to
+        # pass the volume objects straight through to the clone loop.
+        self.mock_object(self.driver, 'update_provider_info',
+                         return_value=(mock_volumes, None))
+        # First clone succeeds, the second one fails.
+        self.array.post_volumes.side_effect = [
+            ValidResponse(200, None, 1, [], {}),
+            ErrorResponse(400, [DotNotation({'message': 'limit reached'})],
+                          {}),
+        ]
+
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver.create_consistencygroup_from_src,
+            ctxt, mock_group, mock_volumes,
+            source_cg=mock_source_cg, source_vols=mock_source_vols)
+
+        # Only the single successfully-created clone is cleaned up...
+        self.assertEqual(1, mock_delete_volume.call_count)
+        # ...and the temporary pgroup snapshot is still removed.
         self.assertTrue(self.array.patch_protection_group_snapshots.called)
 
     @mock.patch('cinder.volume.group_types.get_group_type_specs')
@@ -3243,6 +3414,29 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assert_error_propagates(
             [self.array.post_protection_group_snapshots],
             self.driver.create_cgsnapshot, ctxt, mock_cgsnap, [])
+
+    @mock.patch(DRIVER_PATH + ".flasharray.ProtectionGroupSnapshotPost")
+    def test_create_cgsnapshot_error(self, mock_pgsnap):
+        # A failed post_protection_group_snapshots must be surfaced rather
+        # than reported as a successful cgsnapshot.
+        ctxt = context.get_admin_context()
+        mock_group = fake_group.fake_group_obj(ctxt)
+        mock_cgsnap = fake_group_snapshot.fake_group_snapshot_obj(
+            ctxt, group_id=mock_group.id)
+        mock_snap = fake_snapshot.fake_snapshot_obj(ctxt)
+        suffix_name = mock_snap['name'].split(".")
+        mock_pgsnap.return_value = self.array.flasharray.\
+            ProtectionGroupSnapshotPost(suffix=suffix_name)
+        self.array.post_protection_group_snapshots.return_value = \
+            ErrorResponse(400,
+                          [DotNotation({'message': 'limit reached'})],
+                          {})
+
+        with mock.patch('cinder.objects.Group.get_by_id') as mock_get_group:
+            mock_get_group.return_value = mock_group
+            self.assertRaises(pure.PureDriverException,
+                              self.driver.create_cgsnapshot,
+                              ctxt, mock_cgsnap, [mock_snap])
 
     @ddt.data("does not exist", "has been destroyed")
     @mock.patch(DRIVER_PATH + ".LOG")

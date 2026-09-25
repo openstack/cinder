@@ -467,15 +467,17 @@ class PureBaseVolumeDriver(san.SanDriver):
                                                int(vg_bw))
         vg_volname = vgroup + "/" + vol_name
         if self._array.safemode:
-            array.post_volumes(names=[vg_volname],
-                               with_default_protection=self._safemode_enabled,
-                               volume=flasharray.VolumePost(
-                                   source=flasharray.Reference(
-                                       name=snap_name)))
+            res = array.post_volumes(
+                names=[vg_volname],
+                with_default_protection=self._safemode_enabled,
+                volume=flasharray.VolumePost(
+                    source=flasharray.Reference(name=snap_name)))
         else:
-            array.post_volumes(names=[vg_volname],
-                               volume=flasharray.VolumePost(
-                               source=flasharray.Reference(name=snap_name)))
+            res = array.post_volumes(
+                names=[vg_volname],
+                volume=flasharray.VolumePost(
+                    source=flasharray.Reference(name=snap_name)))
+        self._raise_if_failed(res, "create volume", vg_volname)
         return vg_volname
 
     @pure_driver_debug_trace
@@ -502,14 +504,15 @@ class PureBaseVolumeDriver(san.SanDriver):
                                                int(vg_bw))
         vg_volname = vgroup + "/" + vol_name
         if self._array.safemode:
-            array.post_volumes(names=[vg_volname],
-                               with_default_protection=self._safemode_enabled,
-                               volume=flasharray.VolumePost(
-                               provisioned=vol_size))
+            res = array.post_volumes(
+                names=[vg_volname],
+                with_default_protection=self._safemode_enabled,
+                volume=flasharray.VolumePost(provisioned=vol_size))
         else:
-            array.post_volumes(names=[vg_volname],
-                               volume=flasharray.VolumePost(
-                               provisioned=vol_size))
+            res = array.post_volumes(
+                names=[vg_volname],
+                volume=flasharray.VolumePost(provisioned=vol_size))
+        self._raise_if_failed(res, "create volume", vg_volname)
         return vg_volname
 
     @pure_driver_debug_trace
@@ -529,13 +532,13 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         if self._array.safemode:
             if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
-                array.post_volumes(
+                res = array.post_volumes(
                     names=[vol_name],
                     with_default_protection=self._safemode_enabled,
                     volume=flasharray.VolumePost(
                         provisioned=vol_size))
             elif qos['maxIOPS'] == 0:
-                array.post_volumes(
+                res = array.post_volumes(
                     names=[vol_name],
                     with_default_protection=self._safemode_enabled,
                     volume=flasharray.VolumePost(
@@ -543,7 +546,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                         qos=flasharray.Qos(
                             bandwidth_limit=qos['maxBWS'])))
             elif qos['maxBWS'] == 0:
-                array.post_volumes(
+                res = array.post_volumes(
                     names=[vol_name],
                     with_default_protection=self._safemode_enabled,
                     volume=flasharray.VolumePost(
@@ -551,7 +554,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                         qos=flasharray.Qos(
                             iops_limit=qos['maxIOPS'])))
             else:
-                array.post_volumes(
+                res = array.post_volumes(
                     names=[vol_name],
                     with_default_protection=self._safemode_enabled,
                     volume=flasharray.VolumePost(
@@ -561,28 +564,29 @@ class PureBaseVolumeDriver(san.SanDriver):
                             bandwidth_limit=qos['maxBWS'])))
         else:
             if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
-                array.post_volumes(names=[vol_name],
-                                   volume=flasharray.VolumePost(
-                                       provisioned=vol_size))
+                res = array.post_volumes(names=[vol_name],
+                                         volume=flasharray.VolumePost(
+                                             provisioned=vol_size))
             elif qos['maxIOPS'] == 0:
-                array.post_volumes(names=[vol_name],
-                                   volume=flasharray.VolumePost(
-                                       provisioned=vol_size,
-                                       qos=flasharray.Qos(
-                                           bandwidth_limit=qos['maxBWS'])))
+                res = array.post_volumes(names=[vol_name],
+                                         volume=flasharray.VolumePost(
+                                             provisioned=vol_size,
+                                             qos=flasharray.Qos(
+                                                 bandwidth_limit=qos['maxBWS'])))
             elif qos['maxBWS'] == 0:
-                array.post_volumes(names=[vol_name],
-                                   volume=flasharray.VolumePost(
-                                       provisioned=vol_size,
-                                       qos=flasharray.Qos(
-                                           iops_limit=qos['maxIOPS'])))
+                res = array.post_volumes(names=[vol_name],
+                                         volume=flasharray.VolumePost(
+                                             provisioned=vol_size,
+                                             qos=flasharray.Qos(
+                                                 iops_limit=qos['maxIOPS'])))
             else:
-                array.post_volumes(names=[vol_name],
-                                   volume=flasharray.VolumePost(
-                                       provisioned=vol_size,
-                                       qos=flasharray.Qos(
-                                           iops_limit=qos['maxIOPS'],
-                                           bandwidth_limit=qos['maxBWS'])))
+                res = array.post_volumes(names=[vol_name],
+                                         volume=flasharray.VolumePost(
+                                             provisioned=vol_size,
+                                             qos=flasharray.Qos(
+                                                 iops_limit=qos['maxIOPS'],
+                                                 bandwidth_limit=qos['maxBWS'])))
+        self._raise_if_failed(res, "create volume", vol_name)
         return
 
     def do_setup(self, context):
@@ -805,10 +809,35 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         current_array = self._get_current_array(volume=volume)
 
-        current_array.post_volumes(names=[snap_name], overwrite=True,
-                                   volume=flasharray.VolumePost(
-                                       source=flasharray.Reference(
-                                           name=vol_name)))
+        # Revert overwrites the volume with the contents of the snapshot,
+        # so the volume is the target (names) and the snapshot is the source.
+        res = current_array.post_volumes(names=[vol_name], overwrite=True,
+                                         volume=flasharray.VolumePost(
+                                             source=flasharray.Reference(
+                                                 name=snap_name)))
+        self._raise_if_failed(res, "revert volume", vol_name)
+
+    def _raise_if_failed(self, res, action, name):
+        """Check an SDK write response and raise on failure.
+
+        The py-pure-client SDK does not raise on API errors, it returns a
+        response object carrying a status code and errors. An operation that
+        fails - most notably when an array limit (such as the maximum volume
+        or snapshot count) has been reached - must therefore be detected from
+        the response, otherwise the operation is reported to Cinder as having
+        succeeded when the array did nothing.
+        """
+        if res.status_code != 400:
+            return
+        details = _get_error_details(res)
+        if ERR_MSG_ARRAY_LIMIT in details:
+            msg = (_("Unable to %(action)s %(name)s: an array limit has "
+                     "been reached.") %
+                   {"action": action, "name": name})
+        else:
+            msg = (_("Unable to %(action)s %(name)s: %(err)s") %
+                   {"action": action, "name": name, "err": details})
+        raise PureDriverException(reason=msg)
 
     @pure_driver_debug_trace
     def create_volume(self, volume):
@@ -854,15 +883,17 @@ class PureBaseVolumeDriver(san.SanDriver):
             self.create_with_qos(current_array, vol_name, vol_size, qos)
         else:
             if self._array.safemode:
-                current_array.post_volumes(
+                res = current_array.post_volumes(
                     names=[vol_name],
                     with_default_protection=self._safemode_enabled,
                     volume=flasharray.VolumePost(
                         provisioned=vol_size))
             else:
-                current_array.post_volumes(names=[vol_name],
-                                           volume=flasharray.VolumePost(
-                                               provisioned=vol_size))
+                res = current_array.post_volumes(
+                    names=[vol_name],
+                    volume=flasharray.VolumePost(
+                        provisioned=vol_size))
+            self._raise_if_failed(res, "create volume", vol_name)
 
         return self._setup_volume(current_array, volume, vol_name)
 
@@ -908,17 +939,19 @@ class PureBaseVolumeDriver(san.SanDriver):
                 qos = self._get_qos_settings(volume_type)
 
         if self._array.safemode:
-            current_array.post_volumes(
+            res = current_array.post_volumes(
                 names=[vol_name],
                 with_default_protection=self._safemode_enabled,
                 volume=flasharray.VolumePost(
                     source=flasharray.Reference(
                         name=snap_name)))
         else:
-            current_array.post_volumes(names=[vol_name],
-                                      volume=flasharray.VolumePost(
-                                          source=flasharray.Reference(
-                                              name=snap_name)))
+            res = current_array.post_volumes(
+                names=[vol_name],
+                volume=flasharray.VolumePost(
+                    source=flasharray.Reference(
+                        name=snap_name)))
+        self._raise_if_failed(res, "create volume", vol_name)
         self._extend_if_needed(current_array,
                                vol_name,
                                snapshot["volume_size"],
@@ -1179,8 +1212,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         # the source volume may be on the secondary array.
         self._reject_if_group_failed_over(src_vref, _("Cloning a volume"))
         current_array = self._get_current_array()
-        current_array.post_volumes(volume=flasharray.VolumePost(
+        res = current_array.post_volumes(volume=flasharray.VolumePost(
             source=flasharray.Reference(name=src_name)), names=[vol_name])
+        self._raise_if_failed(res, "create volume", vol_name)
         self._extend_if_needed(current_array,
                                vol_name,
                                src_vref["size"],
@@ -1270,8 +1304,10 @@ class PureBaseVolumeDriver(san.SanDriver):
         current_array = self._get_current_array(volume=snapshot.volume)
         vol_name, snap_suff = self._get_snap_name(snapshot).split(".")
         volume_snapshot = flasharray.VolumeSnapshotPost(suffix=snap_suff)
-        current_array.post_volume_snapshots(source_names=[vol_name],
-                                            volume_snapshot=volume_snapshot)
+        res = current_array.post_volume_snapshots(
+            source_names=[vol_name],
+            volume_snapshot=volume_snapshot)
+        self._raise_if_failed(res, "create snapshot for volume", vol_name)
         if not snapshot.metadata:
             snapshot_update = {
                 'metadata': {'array_snapshot_name': self._get_snap_name(
@@ -1716,9 +1752,10 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         vol_name = self._get_vol_name(volume)
         new_size = new_size_gb * units.Gi
-        current_array.patch_volumes(names=[vol_name],
-                                    volume=flasharray.VolumePatch(
-                                    provisioned=new_size))
+        res = current_array.patch_volumes(names=[vol_name],
+                                          volume=flasharray.VolumePatch(
+                                              provisioned=new_size))
+        self._raise_if_failed(res, "extend volume", vol_name)
         ctxt = context.get_admin_context()
         type_id = volume.get('volume_type_id')
         if type_id is not None:
@@ -1743,47 +1780,91 @@ class PureBaseVolumeDriver(san.SanDriver):
         group_name = self._get_pgroup_name(group)
         LOG.debug('Creating Consistency Group %(group_name)s',
                   {'group_name': group_name})
-        current_array.post_protection_groups(
+        res = current_array.post_protection_groups(
             names=[group_name])
-        # Synchronously replicated groups are created inside the ActiveCluster
-        # pod (the pod prefix is already part of group_name), so the stretched
-        # pod provides replication and no async schedule/target setup is
-        # required. Only async and trisync groups need the schedule below.
-        if grp_type in [REPLICATION_TYPE_ASYNC, REPLICATION_TYPE_TRISYNC]:
-            current_array.patch_protection_groups(
-                names=[group_name],
-                protection_group=flasharray.ProtectionGroup(
-                    replication_schedule=flasharray.ReplicationSchedule(
-                        frequency=self._replication_interval)))
-            for target_array in self._replication_target_arrays:
-                # Configure PG to replicate to target_array.
-                current_array.post_protection_groups_targets(
-                    group_names=[group_name],
-                    member_names=[target_array.array_name])
-                # Wait until "Target Group" setting propagates to target_array.
-                pgroup_name_on_target = self._get_pgroup_name_on_target(
-                    current_array.array_name, group_name)
-
-                if grp_type == REPLICATION_TYPE_TRISYNC:
-                    pgroup_name_on_target = group_name.replace("::", ":")
-
-                target_array.patch_protection_groups_targets(
-                    group_names=[pgroup_name_on_target],
-                    target=flasharray.TargetProtectionGroupPostPatch(
-                        allowed=True))
-
-                # Wait until source array acknowledges previous operation.
-                self._wait_until_source_array_allowed(current_array,
-                                                      group_name)
-                # Start replication on the PG.
-                current_array.patch_protection_groups(
+        self._raise_if_failed(res, "create consistency group", group_name)
+        # The protection group now exists on the array. If any of the
+        # replication configuration below fails we must tear it back down,
+        # otherwise an orphaned protection group is left behind.
+        try:
+            # Synchronously replicated groups are created inside the
+            # ActiveCluster pod (the pod prefix is already part of
+            # group_name), so the stretched pod provides replication and no
+            # async schedule/target setup is required. Only async and trisync
+            # groups need the schedule below.
+            if grp_type in [REPLICATION_TYPE_ASYNC, REPLICATION_TYPE_TRISYNC]:
+                res = current_array.patch_protection_groups(
                     names=[group_name],
                     protection_group=flasharray.ProtectionGroup(
                         replication_schedule=flasharray.ReplicationSchedule(
-                            enabled=True)))
+                            frequency=self._replication_interval)))
+                self._raise_if_failed(res, "configure consistency group",
+                                      group_name)
+                for target_array in self._replication_target_arrays:
+                    # Configure PG to replicate to target_array.
+                    res = current_array.post_protection_groups_targets(
+                        group_names=[group_name],
+                        member_names=[target_array.array_name])
+                    self._raise_if_failed(res, "configure replication for "
+                                          "consistency group", group_name)
+                    # Wait until "Target Group" setting propagates to
+                    # target_array.
+                    pgroup_name_on_target = self._get_pgroup_name_on_target(
+                        current_array.array_name, group_name)
+
+                    if grp_type == REPLICATION_TYPE_TRISYNC:
+                        pgroup_name_on_target = group_name.replace("::", ":")
+
+                    res = target_array.patch_protection_groups_targets(
+                        group_names=[pgroup_name_on_target],
+                        target=flasharray.TargetProtectionGroupPostPatch(
+                            allowed=True))
+                    self._raise_if_failed(res, "allow replication for "
+                                          "consistency group", group_name)
+
+                    # Wait until source array acknowledges previous operation.
+                    self._wait_until_source_array_allowed(current_array,
+                                                          group_name)
+                    # Start replication on the PG.
+                    res = current_array.patch_protection_groups(
+                        names=[group_name],
+                        protection_group=flasharray.ProtectionGroup(
+                            replication_schedule=flasharray.ReplicationSchedule(
+                                enabled=True)))
+                    self._raise_if_failed(res, "enable replication for "
+                                          "consistency group", group_name)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error("Error configuring consistency group %s; "
+                          "cleaning up the protection group.", group_name)
+                self._cleanup_pgroup_on_error(current_array, group_name)
 
         model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         return model_update
+
+    def _cleanup_pgroup_on_error(self, array, pgroup_name):
+        """Best-effort teardown of a protection group after a failed create.
+
+        Used to avoid leaking a protection group when an error occurs part
+        way through creating or configuring it. Any failure to clean up is
+        logged and swallowed so the original error is preserved.
+        """
+        try:
+            res = array.patch_protection_groups(
+                names=[pgroup_name],
+                protection_group=flasharray.ProtectionGroup(destroyed=True))
+            if res.status_code != 200:
+                LOG.warning("Unable to clean up protection group %(name)s: "
+                            "%(err)s",
+                            {'name': pgroup_name,
+                             'err': _get_error_details(res)})
+                return
+            if self.configuration.pure_eradicate_on_delete:
+                array.delete_protection_groups(names=[pgroup_name])
+        except Exception:
+            LOG.warning("Unable to clean up protection group %s after an "
+                        "error during consistency group creation.",
+                        pgroup_name)
 
     def _create_cg_from_cgsnap(self, volumes, snapshots):
         """Creates a new consistency group from a cgsnapshot.
@@ -1817,10 +1898,15 @@ class PureBaseVolumeDriver(san.SanDriver):
                    'source_group': source_group.id})
         current_array = self._get_current_array()
         suffix = flasharray.ProtectionGroupSnapshotPost(suffix=tmp_suffix)
-        current_array.post_protection_group_snapshots(
+        res = current_array.post_protection_group_snapshots(
             source_names=[pgroup_name],
             protection_group_snapshot=suffix)
+        self._raise_if_failed(res, "create temporary snapshot for "
+                              "consistency group", pgroup_name)
         volumes, _ = self.update_provider_info(volumes, None)
+        # Track volumes we successfully create so that a failure part way
+        # through the clone loop does not leave orphaned volumes behind.
+        created_vols = []
         try:
             for source_vol, cloned_vol in zip(source_vols, volumes):
                 vol_models.append(cloned_vol)
@@ -1830,10 +1916,12 @@ class PureBaseVolumeDriver(san.SanDriver):
                     self._get_vol_name(source_vol)
                 )
                 cloned_vol_name = self._get_vol_name(cloned_vol)
-                current_array.post_volumes(names=[cloned_vol_name],
-                                           volume=flasharray.VolumePost(
-                                           source=flasharray.Reference(
-                                               name=source_snap_name)))
+                res = current_array.post_volumes(
+                    names=[cloned_vol_name],
+                    volume=flasharray.VolumePost(
+                        source=flasharray.Reference(name=source_snap_name)))
+                self._raise_if_failed(res, "create volume", cloned_vol_name)
+                created_vols.append(cloned_vol)
                 self._add_volume_to_consistency_group(
                     group,
                     cloned_vol_name
@@ -1846,6 +1934,19 @@ class PureBaseVolumeDriver(san.SanDriver):
                     LOG.info('Trisync replication set for new cloned '
                              'volume %s', cloned_vol_name)
 
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error("Error cloning consistency group %(group)s; "
+                          "cleaning up %(count)d partially created volume(s).",
+                          {'group': source_group.id,
+                           'count': len(created_vols)})
+                for vol in created_vols:
+                    try:
+                        self.delete_volume(vol)
+                    except Exception:
+                        LOG.warning("Unable to clean up volume %s after a "
+                                    "consistency group clone error.",
+                                    self._get_vol_name(vol))
         finally:
             self._delete_pgsnapshot(tmp_pgsnap_name)
         return vol_models
@@ -1933,9 +2034,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         pgsnap_suffix = self._get_pgroup_snap_suffix(cgsnapshot)
         current_array = self._get_current_array()
         suffix = flasharray.ProtectionGroupSnapshotPost(suffix=pgsnap_suffix)
-        current_array.post_protection_group_snapshots(
+        res = current_array.post_protection_group_snapshots(
             source_names=[pgroup_name],
             protection_group_snapshot=suffix)
+        self._raise_if_failed(res, "create consistency group snapshot for",
+                              pgroup_name)
 
         return None, None
 
@@ -4136,7 +4239,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                         int(vg_iops),
                         int(vg_bws))
                 if secondary_safemode:
-                    secondary_array.post_volumes(
+                    res = secondary_array.post_volumes(
                         with_default_protection=self._safemode_enabled,
                         volume=flasharray.VolumePost(
                             source=flasharray.Reference(
@@ -4145,13 +4248,14 @@ class PureBaseVolumeDriver(san.SanDriver):
                         names=[vol_name],
                         overwrite=True)
                 else:
-                    secondary_array.post_volumes(
+                    res = secondary_array.post_volumes(
                         volume=flasharray.VolumePost(
                             source=flasharray.Reference(
                                 name=volume_snaps[snap].name)
                         ),
                         names=[vol_name],
                         overwrite=True)
+                self._raise_if_failed(res, "create failover volume", vol_name)
             else:
                 LOG.debug('Ignoring unmanaged volume %(vol)s from replicated '
                           'snapshot %(snap)s.',
