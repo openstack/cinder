@@ -1465,7 +1465,7 @@ class TestCinderRtstoolCmd(test.TestCase):
         with mock.patch('sys.stdout', new=io.StringIO()):
             self.assertRaises(rtslib_fb.utils.RTSLibError,
                               cinder_rtstool.add_initiator,
-                              mock.sentinel.target_iqn,
+                              self.TARGET_IQN,
                               self.INITIATOR_IQN,
                               mock.sentinel.userid,
                               mock.sentinel.password)
@@ -1476,7 +1476,7 @@ class TestCinderRtstoolCmd(test.TestCase):
 
         self.assertRaises(cinder_rtstool.RtstoolError,
                           cinder_rtstool.add_initiator,
-                          mock.sentinel.target_iqn,
+                          self.TARGET_IQN,
                           self.INITIATOR_IQN,
                           mock.sentinel.userid,
                           mock.sentinel.password)
@@ -1515,10 +1515,10 @@ class TestCinderRtstoolCmd(test.TestCase):
         acl = mock.MagicMock(node_wwn=self.INITIATOR_IQN)
         tpg = mock.MagicMock(node_acls=[acl])
         tpgs = iter([tpg])
-        target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
+        target = mock.MagicMock(tpgs=tpgs, wwn=self.TARGET_IQN)
         rtsroot.return_value = mock.MagicMock(targets=[target])
 
-        cinder_rtstool.add_initiator(target_iqn,
+        cinder_rtstool.add_initiator(self.TARGET_IQN,
                                      self.INITIATOR_IQN,
                                      mock.sentinel.userid,
                                      mock.sentinel.password)
@@ -1540,10 +1540,10 @@ class TestCinderRtstoolCmd(test.TestCase):
         acl = mock.MagicMock(node_wwn=iqn_lower)
         tpg = mock.MagicMock(node_acls=[acl])
         tpgs = iter([tpg])
-        target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
+        target = mock.MagicMock(tpgs=tpgs, wwn=self.TARGET_IQN)
         rtsroot.return_value = mock.MagicMock(targets=[target])
 
-        cinder_rtstool.add_initiator(target_iqn,
+        cinder_rtstool.add_initiator(self.TARGET_IQN,
                                      self.INITIATOR_IQN,
                                      mock.sentinel.userid,
                                      mock.sentinel.password)
@@ -1559,14 +1559,14 @@ class TestCinderRtstoolCmd(test.TestCase):
             [{'node_acls': self.INITIATOR_IQN}]
         tpg = mock.MagicMock()
         tpgs = iter([tpg])
-        target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
+        target = mock.MagicMock(tpgs=tpgs, wwn=self.TARGET_IQN)
         rtsroot.return_value = mock.MagicMock(targets=[target])
 
         acl_new = mock.MagicMock(chap_userid=mock.sentinel.userid,
                                  chap_password=mock.sentinel.password)
         node_acl.return_value = acl_new
 
-        cinder_rtstool.add_initiator(target_iqn,
+        cinder_rtstool.add_initiator(self.TARGET_IQN,
                                      self.INITIATOR_IQN,
                                      mock.sentinel.userid,
                                      mock.sentinel.password)
@@ -1574,6 +1574,32 @@ class TestCinderRtstoolCmd(test.TestCase):
                                          self.INITIATOR_IQN,
                                          mode='create')
         mapped_lun.assert_called_once_with(acl_new, 0, tpg_lun=0)
+
+    @mock.patch.object(rtslib_fb, 'MappedLUN')
+    @mock.patch.object(rtslib_fb, 'NodeACL')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
+    def test_add_invalid_initiator(self, rtsroot, node_acl, mapped_lun):
+        target_iqn = mock.MagicMock()
+        target_iqn.tpgs.return_value = \
+            [{'node_acls': self.INITIATOR_IQN}]
+        tpg = mock.MagicMock()
+        tpgs = iter([tpg])
+        target = mock.MagicMock(tpgs=tpgs, wwn=self.TARGET_IQN)
+        rtsroot.return_value = mock.MagicMock(targets=[target])
+
+        acl_new = mock.MagicMock(chap_userid=mock.sentinel.userid,
+                                 chap_password=mock.sentinel.password)
+        node_acl.return_value = acl_new
+
+        self.assertRaises(cinder_rtstool.RtstoolError,
+                          cinder_rtstool.add_initiator,
+                          self.TARGET_IQN,
+                          '../../',
+                          mock.sentinel.userid,
+                          mock.sentinel.password)
+
+        node_acl.assert_not_called()
+        mapped_lun.assert_not_called()
 
     @mock.patch.object(rtslib_fb.root, 'RTSRoot')
     def test_get_targets(self, rtsroot):
@@ -1610,10 +1636,10 @@ class TestCinderRtstoolCmd(test.TestCase):
         acl = mock.MagicMock(node_wwn=self.INITIATOR_IQN)
         tpg = mock.MagicMock(node_acls=[acl])
         tpgs = iter([tpg])
-        target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
+        target = mock.MagicMock(tpgs=tpgs, wwn=self.TARGET_IQN)
         rtsroot.return_value = mock.MagicMock(targets=[target])
 
-        cinder_rtstool.delete_initiator(target_iqn,
+        cinder_rtstool.delete_initiator(self.TARGET_IQN,
                                         self.INITIATOR_IQN)
 
     @mock.patch.object(rtslib_fb, 'MappedLUN')
@@ -1628,10 +1654,10 @@ class TestCinderRtstoolCmd(test.TestCase):
         acl = mock.MagicMock(node_wwn=self.INITIATOR_IQN)
         tpg = mock.MagicMock(node_acls=[acl])
         tpgs = iter([tpg])
-        target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
+        target = mock.MagicMock(tpgs=tpgs, wwn=self.TARGET_IQN)
         rtsroot.return_value = mock.MagicMock(targets=[target])
 
-        cinder_rtstool.delete_initiator(target_iqn,
+        cinder_rtstool.delete_initiator(self.TARGET_IQN,
                                         self.INITIATOR_IQN)
 
     @mock.patch.object(cinder_rtstool, 'os', autospec=True)

@@ -11,6 +11,7 @@
 #    under the License.
 
 import abc
+import re
 
 from oslo_concurrency import processutils
 from oslo_log import log as logging
@@ -287,6 +288,14 @@ class ISCSITarget(driver.Target):
                        'name in the connector.')
             LOG.error(err_msg)
             raise exception.InvalidConnectorException(missing='initiator')
+
+        # Ensure iSCSI IQN only contains valid characters
+        if not re.fullmatch(constants.VALID_ISCSI_IQN_REGEX,
+                            connector['initiator']):
+            err_msg = 'iSCSI initiator%s contains invalid characters'
+            LOG.warning(err_msg, ' ' + connector['initiator'])
+            raise exception.InvalidInput(reason=err_msg % '')
+
         return True
 
     def _iscsi_location(self, ip, target, iqn, lun=None, ip_secondary=None):
