@@ -232,6 +232,24 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
         # enforces a consistent gentype across all pools.
         first_pd = self.storage_pools[0].split(":")[0]
         client.init_powerflex_gen_type(first_pd)
+        # validate powerflex_max_image_cache_vtree_size against
+        # the version-specific vTree snapshot limit
+        max_vtree_size = (
+            self.configuration.powerflex_max_image_cache_vtree_size
+        )
+        if max_vtree_size > 0:
+            if client.check_powerflex_ec_version():
+                vtree_limit = rest_client.MAX_SNAPS_IN_VTREE_V5
+            else:
+                vtree_limit = rest_client.MAX_SNAPS_IN_VTREE
+            if max_vtree_size > vtree_limit:
+                msg = (_("powerflex_max_image_cache_vtree_size is set "
+                         "to %(configured)d but the maximum vTree "
+                         "snapshot limit for this PowerFlex system "
+                         "is %(limit)d.") %
+                       {"configured": max_vtree_size,
+                        "limit": vtree_limit})
+                raise exception.InvalidInput(reason=msg)
         # validate the storage pools and check if zero padding is enabled
         for pool in self.storage_pools:
             try:
@@ -876,24 +894,35 @@ class PowerFlexBaseDriver(driver.VolumeDriver):
         LOG.info("Clone volume %(vol_id)s to %(target_vol_id)s.",
                  {"vol_id": src_vref.id, "target_vol_id": volume.id})
 
-        # Check if source volume is an image cache entry and under the max
-        # vTree size limit
-        max_size = self.configuration.powerflex_max_image_cache_vtree_size
-        if max_size > 0 and volume_utils.is_image_cache_entry(src_vref):
-            client = self._get_client()
-            try:
-                volume_info = client.query_volume(src_vref.provider_id)
-                vtree_id = volume_info["vtreeId"]
-                vtree_stats = client.query_vtree_statistics(vtree_id)
-                num_volumes = int(vtree_stats.get("numOfVolumes", "0"))
-                if num_volumes >= max_size:
-                    raise exception.SnapshotLimitReached(set_limit=max_size)
-            except exception.VolumeBackendAPIException:
-                LOG.warning("Failed to query volume statistics for image "
-                            "cache volume %(vol_id)s. Proceeding with clone.",
-                            {"vol_id": src_vref.id})
-
+        self._check_image_cache_vtree_limit(src_vref)
         return self._create_volume_from_source(volume, src_vref)
+
+    def _check_image_cache_vtree_limit(self, src_vref):
+        """Check if image cache volume exceeds the direct child limit.
+
+        Counts only direct child volumes of the cache volume (filtering by
+        ancestorVolumeId) and raises SnapshotLimitReached if the count
+        meets or exceeds the configured max size.
+        """
+        max_size = self.configuration.powerflex_max_image_cache_vtree_size
+        if max_size <= 0 or not volume_utils.is_image_cache_entry(src_vref):
+            return
+        client = self._get_client()
+        try:
+            volume_info = client.query_volume(src_vref.provider_id)
+            vtree_id = volume_info["vtreeId"]
+            vtree_volumes = client.query_vtree_volumes(vtree_id)
+            count_direct_children = 0
+            for v in vtree_volumes:
+                if v.get("ancestorVolumeId") == src_vref.provider_id:
+                    count_direct_children += 1
+                    if count_direct_children >= max_size:
+                        raise exception.SnapshotLimitReached(
+                            set_limit=max_size)
+        except exception.VolumeBackendAPIException:
+            LOG.warning("Failed to query vTree volumes for image "
+                        "cache volume %(vol_id)s. Proceeding with clone.",
+                        {"vol_id": src_vref.id})
 
     def delete_volume(self, volume):
         """Delete volume from PowerFlex storage backend.

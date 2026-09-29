@@ -41,6 +41,7 @@ TOO_MANY_SNAPS_ERROR = 182
 ILLEGAL_SYNTAX = 0
 
 MAX_SNAPS_IN_VTREE = 126
+MAX_SNAPS_IN_VTREE_V5 = 1024
 TOKEN_REFRESH_SUCC_INTERVAL = 300
 TOKEN_REFRESH_FAIL_INTERVAL = 60
 
@@ -771,6 +772,24 @@ class RestClient(object):
         if r.status_code != http_client.OK:
             msg = (_("Failed to query vtree statistics: %s.")
                    % self._get_response_message(response))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response
+
+    def query_vtree_volumes(self, vtree_id):
+        """Query all volumes belonging to a vTree.
+
+        :param vtree_id: PowerFlex vTree ID
+        :return: list of volume dicts
+        :raises VolumeBackendAPIException: if the API call fails
+        """
+        url = "/instances/VTree::%(vtree_id)s/relationships/Volume"
+
+        r, response = self.execute_powerflex_get_request(url,
+                                                         vtree_id=vtree_id)
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to query vTree volumes: %s.") %
+                   response["message"])
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response

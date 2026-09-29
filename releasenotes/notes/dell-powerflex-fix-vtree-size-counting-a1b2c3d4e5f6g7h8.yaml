@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Dell PowerFlex driver: Fixed image cache vTree size check to count
+    only direct child volumes of the cache volume.
+    Previously, the driver used ``query_vtree_statistics``, which counted
+    all descendants in the vTree, including snapshots and deeper nested
+    volumes. This could incorrectly block clone creation before the cache
+    volume reached the configured direct-child limit.
+    The driver now uses ``query_vtree_volumes`` with the
+    ``ancestorVolumeId`` filter to count only immediate children.
+    The ``powerflex_max_image_cache_vtree_size`` configuration option name
+    and behavior are preserved.

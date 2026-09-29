@@ -25,6 +25,7 @@ from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import powerflex
 from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
 from cinder.volume import configuration
+from cinder.volume.drivers.dell_emc.powerflex import options
 
 
 @ddt.ddt
@@ -144,6 +145,61 @@ class TestMisc(powerflex.TestPowerFlexDriver):
         self.driver.storage_pools = "test"
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
+
+    def test_vtree_size_valid_pf5(self):
+        """Valid vtree size within PF5 limit (1024)."""
+        self.driver.storage_pools = self.STORAGE_POOLS
+        self.override_config(options.POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE,
+                             512, configuration.SHARED_CONF_GROUP)
+        self.driver.check_for_setup_error()
+
+    def test_vtree_size_exceeds_pf5_limit(self):
+        """vtree size exceeds PF5 limit (1024)."""
+        self.driver.storage_pools = self.STORAGE_POOLS
+        self.override_config(options.POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE,
+                             1025, configuration.SHARED_CONF_GROUP)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.check_for_setup_error)
+
+    def test_vtree_size_exceeds_pf4_limit(self):
+        """vtree size exceeds PF4 limit (126)."""
+        self.driver.storage_pools = self.STORAGE_POOLS
+        self.override_config(options.POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE,
+                             200, configuration.SHARED_CONF_GROUP)
+        with self.custom_response_mode(**{
+            'types/ProtectionDomain/instances/action/queryBySelectedIds':
+                mocks.MockHTTPSResponse([
+                    {
+                        'id': self.PROT_DOMAIN_ID,
+                        'genType': 'Mirroring'
+                    }
+                ], 200)
+        }):
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.check_for_setup_error)
+
+    def test_vtree_size_valid_pf4(self):
+        """Valid vtree size within PF4 limit (126)."""
+        self.driver.storage_pools = self.STORAGE_POOLS
+        self.override_config(options.POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE,
+                             100, configuration.SHARED_CONF_GROUP)
+        with self.custom_response_mode(**{
+            'types/ProtectionDomain/instances/action/queryBySelectedIds':
+                mocks.MockHTTPSResponse([
+                    {
+                        'id': self.PROT_DOMAIN_ID,
+                        'genType': 'Mirroring'
+                    }
+                ], 200)
+        }):
+            self.driver.check_for_setup_error()
+
+    def test_vtree_size_zero_skips_validation(self):
+        """vtree size of 0 skips the validation."""
+        self.driver.storage_pools = self.STORAGE_POOLS
+        self.override_config(options.POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE,
+                             0, configuration.SHARED_CONF_GROUP)
+        self.driver.check_for_setup_error()
 
     def test_volume_size_round_true(self):
         self.driver._check_volume_size(1)

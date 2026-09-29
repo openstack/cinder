@@ -63,6 +63,7 @@ class TestPowerFlexClient(test.TestCase):
         self.host_nqn = "nqn.2014-08.org.nvmexpress:uuid:" \
             "fc9aaff0-09bb-4825-b590-4897d1a4eade"
         self.host_name = "hostname"
+        self.vtree_id = "2b713ee600000007"
 
     def _set_overrides(self):
         # Override the defaults to fake values
@@ -458,6 +459,33 @@ class TestPowerFlexClient(test.TestCase):
             ex = self.assertRaises(exception.VolumeBackendAPIException,
                                    self.client.query_hosts)
             self.assertIn("Failed to query hosts: Error message.", ex.msg)
+
+    def test_query_vtree_volumes_success(self):
+        response = self._getJsonFile("query_vtree_volumes_response.json")
+
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_ok,
+                                             response)):
+            result = self.client.query_vtree_volumes(self.vtree_id)
+            self.assertEqual(result, response)
+            self.client.execute_powerflex_get_request.assert_called_with(
+                '/instances/VTree::%(vtree_id)s/relationships/Volume',
+                vtree_id=self.vtree_id
+            )
+
+    def test_query_vtree_volumes_failure(self):
+        vtree_id = "invalid_id"
+
+        with mock.patch.object(self.client,
+                               'execute_powerflex_get_request',
+                               return_value=(self.status_code_bad,
+                                             self.response_error)):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.client.query_vtree_volumes,
+                                   vtree_id)
+            self.assertIn(
+                "Failed to query vTree volumes: Error message.", ex.msg)
 
     def test_query_host_by_nqn_existing_nqn(self):
         response = self._getJsonFile("query_hosts_response.json")

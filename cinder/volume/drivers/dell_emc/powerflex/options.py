@@ -19,7 +19,6 @@ named Dell EMC VxFlex OS).
 
 from oslo_config import cfg
 
-from cinder.volume.drivers.dell_emc.powerflex import rest_client
 from cinder.volume.drivers.dell_emc.powerflex import utils as flex_utils
 
 # deprecated options
@@ -160,10 +159,14 @@ actual_opts = [
                help='Use this value to specify read '
                     'timeout value (in seconds) for rest call.'),
     cfg.IntOpt(POWERFLEX_MAX_IMAGE_CACHE_VTREE_SIZE,
-               default=0, min=0, max=rest_client.MAX_SNAPS_IN_VTREE,
-               help='Maximum size of the vTree associated with an entry in '
-                    'the image volume cache. When the size is exceeded, '
-                    'the cache entry will be replaced with one created from '
-                    'a new vTree. A value of 0 means the size is limited by '
-                    'the PowerFlex vTree snapshot limit.')
+               default=0, min=0,
+               help='Maximum number of direct child volumes allowed for an '
+                    'image volume cache entry. Only immediate clones are '
+                    'counted; grandchildren and deeper descendants are '
+                    'excluded. When the limit is reached, the cache '
+                    'entry will be replaced with one created from a new '
+                    'vTree. A value of 0 means the size is limited by the '
+                    'PowerFlex vTree snapshot limit (126 for PowerFlex 4, '
+                    '1024 for PowerFlex 5). Consult Dell support before '
+                    'changing this value.')
 ]
