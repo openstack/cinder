@@ -16,10 +16,13 @@
 #    limitations under the License.
 
 import os
+import re
 import sys
+from typing import Optional
 
 import rtslib_fb
 
+from cinder.common import constants
 from cinder import i18n
 from cinder.i18n import _
 
@@ -32,6 +35,15 @@ class RtstoolError(Exception):
 
 class RtstoolImportError(RtstoolError):
     pass
+
+
+def _validate_initiator_iqn(iqn: Optional[str]) -> None:
+    # ensure iSCSI IQN only contains valid characters
+    if iqn is None:
+        return
+
+    if not re.fullmatch(constants.VALID_ISCSI_IQN_REGEX, iqn):
+        raise RtstoolError("invalid characters in iqn")
 
 
 def create(backing_device, name, userid, password, iser_enabled,
@@ -66,6 +78,7 @@ def create(backing_device, name, userid, password, iser_enabled,
     if initiator_iqns:
         initiator_iqns = initiator_iqns.strip(' ')
         for i in initiator_iqns.split(','):
+            _validate_initiator_iqn(i)
             acl_new = rtslib_fb.NodeACL(tpg_new, i, mode='create')
             acl_new.chap_userid = userid
             acl_new.chap_password = password
@@ -104,7 +117,7 @@ def create(backing_device, name, userid, password, iser_enabled,
                 raise
 
 
-def _lookup_target(target_iqn, initiator_iqn):
+def _lookup_target(target_iqn: str, initiator_iqn: str):
     try:
         rtsroot = rtslib_fb.root.RTSRoot()
     except rtslib_fb.utils.RTSLibError:
@@ -119,6 +132,8 @@ def _lookup_target(target_iqn, initiator_iqn):
 
 
 def add_initiator(target_iqn, initiator_iqn, userid, password):
+    _validate_initiator_iqn(target_iqn)
+    _validate_initiator_iqn(initiator_iqn)
     target = _lookup_target(target_iqn, initiator_iqn)
     tpg = next(target.tpgs)  # get the first one
     for acl in tpg.node_acls:
@@ -134,7 +149,9 @@ def add_initiator(target_iqn, initiator_iqn, userid, password):
     rtslib_fb.MappedLUN(acl_new, 0, tpg_lun=0)
 
 
-def delete_initiator(target_iqn, initiator_iqn):
+def delete_initiator(target_iqn: str, initiator_iqn: str) -> None:
+    _validate_initiator_iqn(target_iqn)
+    _validate_initiator_iqn(initiator_iqn)
     target = _lookup_target(target_iqn, initiator_iqn)
     tpg = next(target.tpgs)  # get the first one
     for acl in tpg.node_acls:
