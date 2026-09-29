@@ -1077,6 +1077,13 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
         self.assertRaises(exception.InvalidConnectorException,
                           iscsi_driver.validate_connector, connector)
 
+        # Validate a connector with invalid IQN characters
+        connector = {'ip': '192.0.2.2',
+                     'host': 'fakehost',
+                     'initiator': 'iqn.2024-01.test/../../../'}
+        self.assertRaises(exception.InvalidInput,
+                          iscsi_driver.validate_connector, connector)
+
     def test_multiattach_terminate_connection(self):
         # Ensure that target_driver.terminate_connection is only called when a
         # single active volume attachment remains per host for each volume.

@@ -142,6 +142,20 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
         self.assertTrue(bool(self.target.validate_connector),
                         connector)
 
+        for iqn in ('iqn.2026-01.test/../../../',
+                    '!@asdf',
+                    '/',
+                    ''):
+            invalid_iqn_connector = {'initiator': iqn}
+            with self.assertRaises(exception.InvalidInput, msg=iqn):
+                self.target.validate_connector(invalid_iqn_connector)
+
+        for iqn in ('iqn.2026-01.asdf',
+                    '...',
+                    '4'):
+            iqn_connector = {'initiator': iqn}
+            self.target.validate_connector(iqn_connector)
+
     def test_show_target_error(self):
         self.assertRaises(exception.InvalidParameterValue,
                           self.target.show_target,
