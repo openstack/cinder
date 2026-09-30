@@ -1682,7 +1682,24 @@ class PureBaseVolumeDriver(san.SanDriver):
         data["replication_count"] = len(self._replication_target_arrays)
         data["replication_targets"] = [array.backend_id for array
                                        in self._replication_target_arrays]
-        self._stats = data
+
+        # A FlashArray has a single tier of storage, so the backend is its
+        # only pool. Report it as an explicit one-element pools list: the
+        # scheduler only emits capacity.pool and capacity.backend
+        # notifications for backends that report pools, and it skips a
+        # pool that lacks any of its required keys. The pool is named after
+        # the backend, which is the name the scheduler gave the implicit
+        # pool before, so host#pool strings of existing volumes and the
+        # capabilities.<key> names used in filter and goodness functions
+        # are unchanged.
+        backend_keys = ('volume_backend_name', 'vendor_name',
+                        'driver_version', 'storage_protocol')
+        pool = {key: value for key, value in data.items()
+                if key not in backend_keys}
+        pool['pool_name'] = self._backend_name
+        pool['thick_provisioning_support'] = False
+        self._stats = {key: data[key] for key in backend_keys}
+        self._stats['pools'] = [pool]
 
     def _get_replication_capability(self):
         """Discovered connected arrays status for replication"""

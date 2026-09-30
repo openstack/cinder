@@ -28,6 +28,7 @@ from cinder import exception
 from cinder.objects import fields
 from cinder.objects import volume_attachment
 from cinder.objects import volume_type
+from cinder.scheduler import host_manager
 from cinder.tests.unit.consistencygroup import fake_cgsnapshot
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_group
@@ -6579,15 +6580,13 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
         mock_get_replication_capability.return_value = 'sync'
         mock_get_thin_provisioning.return_value = TOTAL_REDUCTION
 
-        expected_result = {
-            'volume_backend_name': VOLUME_BACKEND_NAME,
-            'vendor_name': 'Pure Storage',
-            'driver_version': self.driver.VERSION,
-            'storage_protocol': None,
+        expected_pool = {
+            'pool_name': VOLUME_BACKEND_NAME,
             'consistencygroup_support': True,
             'consistent_group_snapshot_enabled': True,
             'consistent_group_replication_enabled': True,
             'thin_provisioning_support': True,
+            'thick_provisioning_support': False,
             'multiattach': True,
             'QoS_support': True,
             'total_capacity_gb': TOTAL_CAPACITY,
@@ -6619,8 +6618,26 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
             'replication_count': 0,
             'replication_targets': [],
         }
+        expected_result = {
+            'volume_backend_name': VOLUME_BACKEND_NAME,
+            'vendor_name': 'Pure Storage',
+            'driver_version': self.driver.VERSION,
+            'storage_protocol': None,
+            'pools': [expected_pool],
+        }
         real_result = self.driver.get_volume_stats(refresh=True)
         self.assertDictEqual(expected_result, real_result)
+        # The single pool carries every key the scheduler requires before
+        # it will emit capacity notifications for the backend, except
+        # allocated_capacity_gb which the volume manager adds per pool.
+        required = (host_manager.HostManager.REQUIRED_KEYS -
+                    {'allocated_capacity_gb'})
+        self.assertTrue(required.issubset(real_result['pools'][0]))
+        published = deepcopy(real_result)
+        published['pools'][0]['allocated_capacity_gb'] = 0
+        self.assertEqual(
+            published['pools'],
+            host_manager.HostManager()._get_updated_pools({}, published))
 
         # Make sure when refresh=False we are using cached values and not
         # sending additional requests to the array.

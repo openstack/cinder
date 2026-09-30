@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Everpure driver: The backend is now reported to the scheduler as a
+    single pool named after ``volume_backend_name``. The scheduler only
+    emits ``capacity.pool`` and ``capacity.backend`` notifications for
+    backends that report a pools list, so capacity telemetry had never been
+    produced for FlashArray backends. Existing ``host#pool`` values and
+    ``capabilities.<metric>`` references are unchanged.

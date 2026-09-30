@@ -385,6 +385,11 @@ A large number of metrics are reported by the volume driver which can be useful
 in implementing more control over volume placement in multi-backend
 environments using the driver filter and weighter methods.
 
+A FlashArray has a single tier of storage, so the driver reports the whole
+backend as one pool named after ``volume_backend_name``. Volumes are placed on
+``<host>@<backend>#<volume_backend_name>``, and the scheduler emits its
+``capacity.pool`` and ``capacity.backend`` notifications for that pool.
+
 Performance metrics are provided based on an average over the previous
 30 seconds.
 
