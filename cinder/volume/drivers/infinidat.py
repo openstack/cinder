@@ -25,6 +25,7 @@ import uuid
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
+from packaging import version as pkg_version
 
 from cinder.common import constants
 from cinder import context as cinder_context
@@ -60,6 +61,9 @@ LOG = logging.getLogger(__name__)
 
 VENDOR_NAME = 'INFINIDAT'
 BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
+MIN_SDK_VERSION = '250.0.0'
+PROVISIONING_THIN = 'THIN'
+PROVISIONING_THICK = 'THICK'
 QOS_MAX_IOPS = 'maxIOPS'
 QOS_MAX_BWS = 'maxBWS'
 
@@ -132,10 +136,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         1.13 - fixed consistency groups feature
         1.14 - added storage assisted volume migration
         1.15 - fixed backup for attached volume
+        1.16 - added support for snapshot promotion
 
     """
 
-    VERSION = '1.15'
+    VERSION = '1.16'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "INFINIDAT_CI"
@@ -171,9 +176,18 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     def do_setup(self, context):
         """Driver initialization"""
         if infinisdk is None:
-            msg = _("Missing 'infinisdk' python module, ensure the library"
-                    " is installed and available.")
-            raise exception.VolumeDriverException(message=msg)
+            message = (_('The infinisdk Python library >= %(min_sdk_version)s '
+                         'is required but not installed.')
+                       % {'min_sdk_version': MIN_SDK_VERSION})
+            raise exception.VolumeDriverException(message=message)
+        version = infinisdk.core.utils.environment.get_infinisdk_version()
+        if pkg_version.parse(version) < pkg_version.parse(MIN_SDK_VERSION):
+            message = (_('The installed infinisdk Python library version is '
+                         '%(version)s; infinisdk >= %(min_sdk_version)s '
+                         'is required.')
+                       % {'version': version,
+                          'min_sdk_version': MIN_SDK_VERSION})
+            raise exception.VolumeDriverException(message=message)
         auth = (self.configuration.san_login,
                 self.configuration.san_password)
         use_ssl = self.configuration.driver_use_ssl
@@ -628,14 +642,19 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                                       multiattach=True)
         return self._volume_stats
 
+    def _get_volume_provisioning(self):
+        if self.configuration.san_thin_provision:
+            return PROVISIONING_THIN
+        return PROVISIONING_THICK
+
     def _create_volume(self, volume):
         pool = self._get_infinidat_pool()
         volume_name = self._make_volume_name(volume)
-        provtype = "THIN" if self.configuration.san_thin_provision else "THICK"
+        provisioning = self._get_volume_provisioning()
         size = volume.size * capacity.GiB
         create_kwargs = dict(name=volume_name,
                              pool=pool,
-                             provtype=provtype,
+                             provisioning=provisioning,
                              size=size)
         compression_enabled = self.configuration.infinidat_use_compression
         if compression_enabled is not None:
@@ -724,12 +743,83 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             with self._attach_context(connection) as attach_info:
                 yield attach_info
 
-    @infinisdk_to_cinder_exceptions
-    def create_volume_from_snapshot(self, volume, snapshot):
-        """Create volume from snapshot.
+    def _create_promoted_clone(self, volume, infinidat_parent):
+        """Create a cloned volume using snapshot promote.
 
-        InfiniBox does not yet support detached clone so use dd to copy data.
-        This could be a lengthy operation.
+        The clone is created by taking a writable snapshot of the source
+        volume or snapshot and promoting it to a regular volume on the backend.
+
+        Promoted snapshots inherit provisioning and compression from their
+        source. Apply the backend configuration to match normal volume
+        creation, using the pool's compression setting when no override is set.
+
+        On InfiniBox, a promoted snapshot inherits the size of the source
+        volume. However, Cinder allows creating a clone with a larger size
+        than the source volume (for example when a user specifies a larger
+        size during volume create from source).
+
+        In this case the promoted backend volume will initially be smaller
+        than the requested Cinder volume size, so an additional extend
+        operation is required to match the requested size.
+
+        Workflow:
+            1. Create a writable snapshot of the source volume.
+            2. Promote the snapshot to a regular volume.
+            3. Apply provisioning and compression settings.
+            4. If the requested Cinder volume size is larger than the promoted
+               volume size, extend the backend volume.
+            5. Apply QoS and Cinder metadata.
+            6. If the volume belongs to a consistency group snapshot type,
+               add the volume to the corresponding InfiniBox consistency group.
+
+        :param volume: Cinder volume object representing the new volume.
+        :param infinidat_parent: InfiniBox volume object representing the
+                                 clone source.
+        """
+        name = self._make_volume_name(volume)
+        LOG.debug('Creating cloned volume %s from %s',
+                  name, infinidat_parent.get_name())
+        infinidat_snapshot = infinidat_parent.create_snapshot(
+            name=name, write_protected=False)
+        LOG.debug('Promote cloned volume %s', name)
+        infinidat_volume = infinidat_snapshot
+        try:
+            infinidat_volume = infinidat_snapshot.promote_snapshot()
+            provisioning = self._get_volume_provisioning()
+            infinidat_volume.update_provisioning(provisioning)
+            compression = self.configuration.infinidat_use_compression
+            if compression is None:
+                pool = self._get_infinidat_pool()
+                compression = pool.is_compression_enabled()
+            if compression:
+                infinidat_volume.enable_compression()
+            else:
+                infinidat_volume.disable_compression()
+            volume_size = infinidat_volume.get_size()
+            if volume_size < volume.size * capacity.GiB:
+                self.extend_volume(volume, volume.size)
+            self._set_qos(volume, infinidat_volume)
+            self._set_cinder_object_metadata(infinidat_volume, volume)
+            if volume.group_id:
+                group = volume_utils.group_get_by_id(volume.group_id)
+                if volume_utils.is_group_a_cg_snapshot_type(group):
+                    infinidat_group = self._get_infinidat_cg(group)
+                    infinidat_group.add_member(infinidat_volume)
+        except Exception as error:
+            LOG.exception('Failed to create promoted clone %s: %s',
+                          name, error)
+            try:
+                infinidat_volume.delete()
+            except Exception as error:
+                LOG.exception('Failed to cleanup promoted clone %s: %s',
+                              name, error)
+            raise
+
+    def _create_copy_from_snapshot(self, volume, snapshot):
+        """Create a generic clone from a snapshot:
+
+        Old versions of InfiniBox do not support detached clones,
+        so we use dd to copy data. This can be a slow operation:
 
         - create destination volume
         - map source snapshot and destination volume
@@ -752,6 +842,17 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             raise
 
     @infinisdk_to_cinder_exceptions
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot."""
+        if self._system.compat.has_promote_snapshot():
+            infinidat_snapshot = self._get_infinidat_snapshot(snapshot)
+            # InfiniBox supports creating and promoting a snapshot of a
+            # snapshot, so the original snapshot is preserved.
+            self._create_promoted_clone(volume, infinidat_snapshot)
+        else:
+            self._create_copy_from_snapshot(volume, snapshot)
+
+    @infinisdk_to_cinder_exceptions
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
         try:
@@ -760,12 +861,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             return
         snapshot.safe_delete()
 
-    @infinisdk_to_cinder_exceptions
-    def create_cloned_volume(self, volume, src_vref):
-        """Create a clone from source volume.
+    def _create_copy_from_volume(self, volume, src_vref):
+        """Create a generic clone from a volume.
 
-        InfiniBox does not yet support detached clone so use dd to copy data.
-        This could be a lengthy operation.
+        Old versions of InfiniBox do not support detached clones,
+        so we use dd to copy data. This can be a slow operation:
 
         * create temporary snapshot from source volume
         * map temporary snapshot
@@ -782,9 +882,18 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                             volume=src_vref)
         try:
             self.create_snapshot(snapshot)
-            self.create_volume_from_snapshot(volume, snapshot)
+            self._create_copy_from_snapshot(volume, snapshot)
         finally:
             self.delete_snapshot(snapshot)
+
+    @infinisdk_to_cinder_exceptions
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume."""
+        if self._system.compat.has_promote_snapshot():
+            infinidat_volume = self._get_infinidat_volume(src_vref)
+            self._create_promoted_clone(volume, infinidat_volume)
+        else:
+            self._create_copy_from_volume(volume, src_vref)
 
     def _build_initiator_target_map(self, connector, all_target_wwns):
         """Build the target_wwns and the initiator target map."""

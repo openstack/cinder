@@ -1,0 +1,22 @@
+---
+features:
+  - |
+    Infinidat driver: Added support for snapshot promotion, available in
+    InfuzeOS 8.1 and later. Creating volumes from existing volumes or
+    snapshots now uses snapshot promotion when supported by the storage
+    system, producing independent volumes without copying data. Systems
+    without this capability continue to use generic data copy.
+
+    Promoted volumes follow the same provisioning and compression settings
+    as newly created volumes. The ``san_thin_provision`` option selects thin
+    or thick provisioning, and ``infinidat_use_compression`` controls
+    compression. When ``infinidat_use_compression`` is unset, the configured
+    pool's compression setting is applied. Volumes are extended when the
+    requested size exceeds the size inherited from the source.
+upgrade:
+  - |
+    Infinidat driver: The minimum required InfiniSDK version is now
+    ``250.0.0``. Install or upgrade ``infinisdk`` before restarting the
+    ``cinder-volume`` service. The driver will not initialize if the library
+    is missing or older than the required version. This requirement also
+    applies to systems that use generic data copy.
