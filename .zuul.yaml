@@ -40,7 +40,7 @@
             voting: false
             irrelevant-files: *functional-irrelevant-files
         - openstack-tox-pylint:
-            voting: false
+            voting: true
             timeout: 5400
             irrelevant-files:
               - ^.*\.rst$
