@@ -57,7 +57,7 @@ SSC_API_MAP = {
         'netapp_mirrored',
     ],
     '/storage/volumes': [
-        'netapp_flexvol_encryption'
+        'netapp_flexvol_encryption',
         'netapp_dedup',
         'netapp_compression',
     ],
