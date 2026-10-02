@@ -212,7 +212,6 @@ following ``/etc/multipath.conf`` file may be used:
            hardware_handler     "1 alua"
            path_selector        "service-time 0"
            path_checker         tur
-           features             "1 queue_if_no_path"
            no_path_retry        30
            failback             immediate
            fast_io_fail_tmo     5
