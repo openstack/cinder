@@ -660,7 +660,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
             if share.startswith('#'):
                 continue
 
-            share_info = re.split(r'\s+', share, 2)
+            share_info = share.split(None, 2)
 
             share_address = share_info[0].strip()
             nms_url = share_info[1].strip()
