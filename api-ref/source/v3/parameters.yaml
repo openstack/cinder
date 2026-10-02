@@ -309,7 +309,7 @@ filter_consumes_quota:
   min_version: 3.65
 filter_created_at:
   description: |
-    Filters reuslts by a time that resources are created at with time
+    Filters results by a time that resources are created at with time
     comparison operators: gt/gte/eq/neq/lt/lte.
     The date and time stamp format is ISO 8601: CCYY-MM-DDThh:mm:ss±hh:mm.
     The ±hh:mm value, if included, returns the time zone as an offset from UTC.
@@ -319,8 +319,8 @@ filter_created_at:
   min_version: 3.60
 filter_updated_at:
   description: |
-    Filters reuslts by a time that resources are updated at with time
-    comaprison operators: gt/gte/eq/neq/lt/lte.
+    Filters results by a time that resources are updated at with time
+    comparison operators: gt/gte/eq/neq/lt/lte.
     The date and time stamp format is ISO 8601: CCYY-MM-DDThh:mm:ss±hh:mm.
     The ±hh:mm value, if included, returns the time zone as an offset from UTC.
   in: query
