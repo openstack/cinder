@@ -1887,43 +1887,17 @@ def reservation_rollback(context, reservations, project_id=None):
 
 
 @require_context
-def quota_destroy_by_project(context, project_id):
-    """Destroy all limit quotas associated with a project.
-
-    Leaves usage and reservation quotas intact.
-    """
-    quota_destroy_all_by_project(context, project_id, only_quotas=True)
-
-
-# TODO(stephenfin): No one is using this except 'quota_destroy_by_project'
-# above, so the only_quotas=False path could be removed.
-@require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 @main_context_manager.writer
-def quota_destroy_all_by_project(context, project_id, only_quotas=False):
-    """Destroy all quotas associated with a project.
-
-    This includes limit quotas, usage quotas and reservation quotas.
-    Optionally can only remove limit quotas and leave other types as they are.
+def quota_destroy_by_project(context, project_id):
+    """Destroy quotas associated with a project.
 
     :param context: The request context, for access checks.
     :param project_id: The ID of the project being deleted.
-    :param only_quotas: Only delete limit quotas, leave other types intact.
     """
     model_query(context, models.Quota).filter_by(project_id=project_id).update(
         models.Quota.delete_values()
     )
-
-    if only_quotas:
-        return
-
-    model_query(context, models.QuotaUsage, read_deleted="no").filter_by(
-        project_id=project_id
-    ).update(models.QuotaUsage.delete_values())
-
-    model_query(context, models.Reservation, read_deleted="no").filter_by(
-        project_id=project_id
-    ).update(models.Reservation.delete_values())
 
 
 @require_admin_context
