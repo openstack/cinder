@@ -3834,3 +3834,24 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
             if r.get('name') == self.vserver:
                 return r.get('uuid')
         return None
+
+    def get_svm_san_multipathing(self):
+        """Query SVM san-multipathing property via REST.
+
+        Returns the san_multipathing value ('active_active',
+        'local_active') or None if the query fails or the field
+        is not available (e.g. ONTAP < 9.19.1).
+        """
+        try:
+            query = {
+                'name': self.vserver,
+                'fields': 'san_multipathing',
+            }
+            response = self.send_request('/svm/svms', 'get', query=query)
+            records = response.get('records', [])
+            if records:
+                return records[0].get('san_multipathing')
+        except netapp_api.NaApiError:
+            LOG.exception('Failed to query san_multipathing via REST. '
+                          'Defaulting to None.')
+        return None

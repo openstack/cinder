@@ -192,6 +192,9 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             self.ssc_library, '_get_ssc_qos_min_info',
             side_effect=[SSC_QOS_MIN_INFO['volume1'],
                          SSC_QOS_MIN_INFO['volume2']])
+        mock_get_ssc_san_mp_info = self.mock_object(
+            self.ssc_library, '_get_ssc_san_multipathing_info',
+            return_value={})
         if protocol != 'nfs':
             mock_get_ssc_volume_count_info = self.mock_object(
                 self.ssc_library, '_get_ssc_volume_count_info',
@@ -230,6 +233,75 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             mock.call('volume1'), mock.call('volume2')])
         mock_get_ssc_qos_min_info.assert_has_calls([
             mock.call('node1'), mock.call('node2')])
+        mock_get_ssc_san_mp_info.assert_called_once_with()
+
+    @ddt.data('nfs', 'iscsi', 'fc', 'nvme')
+    def test_update_ssc_san_multipathing_protocol_gating(self, protocol):
+        self.ssc_library.protocol = protocol
+
+        self.mock_object(
+            self.ssc_library, '_get_ssc_flexvol_info', return_value={})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_dedupe_info', return_value={})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_mirror_info', return_value={})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_encryption_info', return_value={})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_aggregate_info',
+            return_value={'netapp_node_name': 'node1'})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_qos_min_info', return_value={})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_volume_count_info', return_value={})
+        mock_san_mp_info = self.mock_object(
+            self.ssc_library, '_get_ssc_san_multipathing_info',
+            return_value={'netapp_san_active_active': 'true'})
+
+        flexvol_map = {'volume1': {'pool_name': 'volume1'}}
+
+        self.ssc_library.update_ssc(flexvol_map)
+
+        if protocol == 'nfs':
+            mock_san_mp_info.assert_not_called()
+            self.assertNotIn(
+                'netapp_san_active_active',
+                self.ssc_library.ssc['volume1'])
+        else:
+            mock_san_mp_info.assert_called_once_with()
+            self.assertEqual(
+                'true',
+                self.ssc_library.ssc['volume1']['netapp_san_active_active'])
+
+    def test_update_ssc_san_multipathing_info_empty_not_applied(self):
+        self.ssc_library.protocol = 'iscsi'
+
+        self.mock_object(
+            self.ssc_library, '_get_ssc_flexvol_info', return_value={})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_dedupe_info', return_value={})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_mirror_info', return_value={})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_encryption_info', return_value={})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_aggregate_info',
+            return_value={'netapp_node_name': 'node1'})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_qos_min_info', return_value={})
+        self.mock_object(
+            self.ssc_library, '_get_ssc_volume_count_info', return_value={})
+        mock_san_mp_info = self.mock_object(
+            self.ssc_library, '_get_ssc_san_multipathing_info',
+            return_value={})
+
+        flexvol_map = {'volume1': {'pool_name': 'volume1'}}
+
+        self.ssc_library.update_ssc(flexvol_map)
+
+        mock_san_mp_info.assert_called_once_with()
+        self.assertNotIn(
+            'netapp_san_active_active', self.ssc_library.ssc['volume1'])
 
     def test__update_for_failover(self):
         self.mock_object(self.ssc_library, 'update_ssc')
@@ -725,3 +797,76 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         contains_fg_returned = self.ssc_library.contains_flexgroup_pool()
 
         self.assertEqual(contains_fg_returned, contains_fg)
+
+    def test_get_ssc_san_multipathing_info_version_none(self):
+        self.mock_object(
+            self.zapi_client, 'get_ontap_version', return_value=None)
+
+        result = self.ssc_library._get_ssc_san_multipathing_info()
+
+        self.assertEqual({}, result)
+        self.zapi_client.get_ontap_version.assert_called_once_with(
+            cached=True)
+
+    @ddt.data((9, 17, 1), (9, 14, 0), (9, 18, 0))
+    def test_get_ssc_san_multipathing_info_old_ontap(self, ontap_version):
+        self.mock_object(
+            self.zapi_client, 'get_ontap_version',
+            return_value=ontap_version)
+
+        result = self.ssc_library._get_ssc_san_multipathing_info()
+
+        self.assertEqual({}, result)
+        self.zapi_client.get_svm_san_multipathing.assert_not_called()
+
+    def test_get_ssc_san_multipathing_info_active_active(self):
+        self.mock_object(
+            self.zapi_client, 'get_ontap_version',
+            return_value=(9, 19, 1))
+        self.mock_object(
+            self.zapi_client, 'get_svm_san_multipathing',
+            return_value='active_active')
+
+        result = self.ssc_library._get_ssc_san_multipathing_info()
+
+        self.assertEqual({'netapp_san_active_active': 'true'}, result)
+        self.zapi_client.get_svm_san_multipathing.assert_called_once_with()
+
+    def test_get_ssc_san_multipathing_info_local_active(self):
+        self.mock_object(
+            self.zapi_client, 'get_ontap_version',
+            return_value=(9, 19, 1))
+        self.mock_object(
+            self.zapi_client, 'get_svm_san_multipathing',
+            return_value='local_active')
+
+        result = self.ssc_library._get_ssc_san_multipathing_info()
+
+        self.assertEqual({'netapp_san_active_active': 'false'}, result)
+
+    @ddt.data((9, 19, 1), (9, 20, 0), (10, 0, 0))
+    def test_get_ssc_san_multipathing_info_new_ontap(self, ontap_version):
+        self.mock_object(
+            self.zapi_client, 'get_ontap_version',
+            return_value=ontap_version)
+        self.mock_object(
+            self.zapi_client, 'get_svm_san_multipathing',
+            return_value='local_active')
+
+        result = self.ssc_library._get_ssc_san_multipathing_info()
+
+        self.assertEqual({'netapp_san_active_active': 'false'}, result)
+        self.zapi_client.get_svm_san_multipathing.assert_called_once_with()
+
+    def test_get_ssc_san_multipathing_info_none_response(self):
+        self.mock_object(
+            self.zapi_client, 'get_ontap_version',
+            return_value=(9, 19, 1))
+        self.mock_object(
+            self.zapi_client, 'get_svm_san_multipathing',
+            return_value=None)
+
+        result = self.ssc_library._get_ssc_san_multipathing_info()
+
+        self.assertEqual({}, result)
+        self.zapi_client.get_svm_san_multipathing.assert_called_once_with()

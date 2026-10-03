@@ -2819,3 +2819,54 @@ class Client(client_base.Client, metaclass=volume_utils.TraceWrapperMetaclass):
         }
 
         return provisioning_opts
+
+    def _get_rest_connection(self):
+        """Lazily create a minimal REST connection for REST-only queries."""
+        if not hasattr(self, '_rest_connection'):
+            zapi_cert_path = getattr(
+                self.connection, '_ssl_cert_path', None)
+            # When the ZAPI connection has no explicit CA cert path it
+            # silently disables SSL verification (unverified context).
+            # Mirror that behaviour for the REST session by passing
+            # False so that requests also skips certificate checks.
+            ssl_cert_path = zapi_cert_path if (
+                isinstance(zapi_cert_path, str)) else False
+            self._rest_connection = netapp_api.RestNaServer(
+                host=self.connection._host,
+                transport_type=self.connection._protocol,
+                ssl_cert_path=ssl_cert_path,
+                username=self.connection._username,
+                password=self.connection._password,
+                port=self.connection._port,
+                private_key_file=self.connection._private_key_file,
+                certificate_file=self.connection._certificate_file,
+                ca_certificate_file=(
+                    self.connection._ca_certificate_file),
+                ssl_cert_verify=self.connection._ssl_cert_verify,
+                certificate_host_validation=(
+                    self.connection._certificate_host_validation),
+            )
+        return self._rest_connection
+
+    def get_svm_san_multipathing(self):
+        """Query SVM san-multipathing via REST (no ZAPI equivalent).
+
+        Returns the san_multipathing value ('active_active',
+        'local_active') or None if the query fails or the field
+        is not available (e.g. ONTAP < 9.19.1).
+        """
+        try:
+            rest_conn = self._get_rest_connection()
+            query = {
+                'name': self.vserver,
+                'fields': 'san_multipathing',
+            }
+            _, response = rest_conn.invoke_successfully(
+                'svm/svms', 'get', query=query)
+            records = response.get('records', [])
+            if records:
+                return records[0].get('san_multipathing')
+        except netapp_api.NaApiError:
+            LOG.exception('Failed to query san_multipathing via REST. '
+                          'Defaulting to None.')
+        return None

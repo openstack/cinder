@@ -5887,3 +5887,74 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         result = self.client.get_svm_uuid_by_name()
 
         self.assertIsNone(result)
+
+    def test_get_svm_san_multipathing_active_active(self):
+        self.mock_object(
+            self.client, 'send_request',
+            return_value={'records': [
+                {'san_multipathing': 'active_active'}]})
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertEqual('active_active', result)
+        self.client.send_request.assert_called_once_with(
+            '/svm/svms', 'get',
+            query={'name': self.client.vserver,
+                   'fields': 'san_multipathing'})
+
+    def test_get_svm_san_multipathing_local_active(self):
+        self.mock_object(
+            self.client, 'send_request',
+            return_value={'records': [
+                {'san_multipathing': 'local_active'}]})
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertEqual('local_active', result)
+
+    def test_get_svm_san_multipathing_empty_records(self):
+        self.mock_object(
+            self.client, 'send_request',
+            return_value={'records': []})
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertIsNone(result)
+
+    def test_get_svm_san_multipathing_no_records_key(self):
+        self.mock_object(
+            self.client, 'send_request',
+            return_value={})
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertIsNone(result)
+
+    def test_get_svm_san_multipathing_exception(self):
+        self.mock_object(
+            self.client, 'send_request',
+            side_effect=netapp_api.NaApiError(
+                code=0, message='connection failed'))
+        mock_log = self.mock_object(client_cmode_rest.LOG, 'exception')
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertIsNone(result)
+        mock_log.assert_called_once()
+
+    def test_get_svm_san_multipathing_unexpected_exception(self):
+        self.mock_object(
+            self.client, 'send_request',
+            side_effect=ValueError('connection failed'))
+
+        self.assertRaises(
+            ValueError, self.client.get_svm_san_multipathing)
+
+    def test_get_svm_san_multipathing_missing_field(self):
+        self.mock_object(
+            self.client, 'send_request',
+            return_value={'records': [{'name': 'vs0'}]})
+
+        result = self.client.get_svm_san_multipathing()
+
+        self.assertIsNone(result)
