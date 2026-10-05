@@ -101,7 +101,6 @@ class Cluster(base.CinderPersistentObject, base.CinderObject,
             cluster.services = base.obj_make_list(
                 context,
                 objects.ServiceList(context),
-                objects.Service,
                 db_cluster.services)
 
         cluster.obj_reset_changes()
@@ -213,5 +212,5 @@ class ClusterList(base.ObjectListBase, base.CinderObject):
                                       services_summary=services_summary,
                                       read_deleted=read_deleted,
                                       **filters)
-        return base.obj_make_list(context, cls(context), Cluster, clusters,
+        return base.obj_make_list(context, cls(context), clusters,
                                   expected_attrs=expected_attrs)

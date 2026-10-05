@@ -314,7 +314,6 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         if 'volume_attachment' in expected_attrs:
             attachments = base.obj_make_list(
                 context, objects.VolumeAttachmentList(context),
-                objects.VolumeAttachment,
                 db_volume.get('volume_attachment'))
             volume.volume_attachment = attachments
         if volume.consistencygroup_id and 'consistencygroup' in expected_attrs:
@@ -326,7 +325,6 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         if 'snapshots' in expected_attrs:
             snapshots = base.obj_make_list(
                 context, objects.SnapshotList(context),
-                objects.Snapshot,
                 db_volume['snapshots'])
             volume.snapshots = snapshots
         if 'cluster' in expected_attrs:
@@ -669,14 +667,14 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
                                     sort_keys=sort_keys, sort_dirs=sort_dirs,
                                     filters=filters, offset=offset)
         expected_attrs = cls._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Volume,
+        return base.obj_make_list(context, cls(context),
                                   volumes, expected_attrs=expected_attrs)
 
     @classmethod
     def get_all_by_host(cls, context, host, filters=None):
         volumes = db.volume_get_all_by_host(context, host, filters)
         expected_attrs = cls._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Volume,
+        return base.obj_make_list(context, cls(context),
                                   volumes, expected_attrs=expected_attrs)
 
     @classmethod
@@ -684,7 +682,7 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
         # Consistency group
         volumes = db.volume_get_all_by_group(context, group_id, filters)
         expected_attrs = cls._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Volume,
+        return base.obj_make_list(context, cls(context),
                                   volumes, expected_attrs=expected_attrs)
 
     @classmethod
@@ -693,7 +691,7 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
         volumes = db.volume_get_all_by_generic_group(context, group_id,
                                                      filters)
         expected_attrs = cls._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Volume,
+        return base.obj_make_list(context, cls(context),
                                   volumes, expected_attrs=expected_attrs)
 
     @classmethod
@@ -705,7 +703,7 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
                                                sort_dirs=sort_dirs,
                                                filters=filters, offset=offset)
         expected_attrs = cls._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Volume,
+        return base.obj_make_list(context, cls(context),
                                   volumes, expected_attrs=expected_attrs)
 
     @classmethod
@@ -717,5 +715,5 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
     def get_all_active_by_window(cls, context, begin, end):
         volumes = db.volume_get_all_active_by_window(context, begin, end)
         expected_attrs = cls._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Volume,
+        return base.obj_make_list(context, cls(context),
                                   volumes, expected_attrs=expected_attrs)

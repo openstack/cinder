@@ -259,7 +259,7 @@ class BackupList(base.ObjectListBase, base.CinderObject):
         backups = db.backup_get_all(context, filters, marker, limit, offset,
                                     sort_keys, sort_dirs)
         expected_attrs = Backup._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Backup,
+        return base.obj_make_list(context, cls(context),
                                   backups, expected_attrs=expected_attrs)
 
     @classmethod
@@ -268,7 +268,7 @@ class BackupList(base.ObjectListBase, base.CinderObject):
                         host: str) -> 'BackupList':
         backups = db.backup_get_all_by_host(context, host)
         expected_attrs = Backup._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Backup,
+        return base.obj_make_list(context, cls(context),
                                   backups, expected_attrs=expected_attrs)
 
     @classmethod
@@ -279,7 +279,7 @@ class BackupList(base.ObjectListBase, base.CinderObject):
                                                marker, limit, offset,
                                                sort_keys, sort_dirs)
         expected_attrs = Backup._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Backup,
+        return base.obj_make_list(context, cls(context),
                                   backups, expected_attrs=expected_attrs)
 
     @classmethod
@@ -292,14 +292,14 @@ class BackupList(base.ObjectListBase, base.CinderObject):
         backups = db.backup_get_all_by_volume(
             context, volume_id, vol_project_id, filters)
         expected_attrs = Backup._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Backup,
+        return base.obj_make_list(context, cls(context),
                                   backups, expected_attrs=expected_attrs)
 
     @classmethod
     def get_all_active_by_window(cls, context, begin, end):
         backups = db.backup_get_all_active_by_window(context, begin, end)
         expected_attrs = Backup._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context), objects.Backup,
+        return base.obj_make_list(context, cls(context),
                                   backups, expected_attrs=expected_attrs)
 
 

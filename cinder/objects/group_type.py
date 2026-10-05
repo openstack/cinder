@@ -16,7 +16,6 @@ from oslo_versionedobjects import fields
 
 from cinder import exception
 from cinder.i18n import _
-from cinder import objects
 from cinder.objects import base
 from cinder.volume import group_types
 
@@ -117,6 +116,5 @@ class GroupTypeList(base.ObjectListBase, base.CinderObject):
                                                 sort_dirs=sort_dirs,
                                                 offset=offset)
         expected_attrs = GroupType._get_expected_attrs(context)
-        return base.obj_make_list(context, cls(context),
-                                  objects.GroupType, types.values(),
+        return base.obj_make_list(context, cls(context), types.values(),
                                   expected_attrs=expected_attrs)
