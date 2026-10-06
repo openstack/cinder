@@ -14,7 +14,7 @@
 
 """Tests for code that makes assumptions about ORM relationships."""
 
-from sqlalchemy_utils import functions as saf
+import sqlalchemy as sa
 
 from cinder.db import api as db_api
 from cinder.db import models
@@ -28,17 +28,19 @@ class VolumeRelationshipsTestCase(test.TestCase):
         """Make sure the volume dependent tables list is accurate."""
         # Addresses LP Bug #1542169
 
-        volume_declarative_base = saf.get_declarative_base(models.Volume)
-        volume_fks = saf.get_referencing_foreign_keys(models.Volume)
-
-        dependent_tables = []
-        for table, fks in saf.group_foreign_keys(volume_fks):
-            dependent_tables.append(table)
-
+        mapper = sa.inspect(models.Volume)
+        target_tables = set(mapper.tables)
         found_dependent_models = []
-        for table in dependent_tables:
-            found_dependent_models.append(saf.get_class_by_table(
-                volume_declarative_base, table))
+        for other_mapper in mapper.registry.mappers:
+            if any(table in target_tables for table in other_mapper.tables):
+                continue
+            if any(
+                fk.references(target_table)
+                for table in other_mapper.tables
+                for fk in table.foreign_keys
+                for target_table in target_tables
+            ):
+                found_dependent_models.append(other_mapper.class_)
 
         self.assertEqual(len(found_dependent_models),
                          len(db_api.VOLUME_DEPENDENT_MODELS))
