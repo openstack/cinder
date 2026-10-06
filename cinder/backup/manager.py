@@ -637,7 +637,7 @@ class BackupManager(manager.SizedThreadPoolManager):
         return False
 
     @utils.limit_operations
-    def restore_backup(self, context, backup, volume_id, volume_is_new):
+    def restore_backup(self, context, backup, volume_id, volume_is_new=False):
         """Restore volume backups from configured backup service.
 
         :param context: RequestContext for the restore operation
