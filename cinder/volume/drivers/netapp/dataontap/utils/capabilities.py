@@ -193,12 +193,15 @@ class CapabilitiesLibrary(object):
                          volume_info.get('space-guarantee') == 'volume'))
         thick = self._get_thick_provisioning_support(netapp_thick)
         is_flexgroup = volume_info.get('style-extended') == 'flexgroup'
+        aggregates = volume_info.get('aggregate', [])
 
         return {
             'netapp_thin_provisioned': str(not netapp_thick).lower(),
             'thick_provisioning_support': thick,
             'thin_provisioning_support': not thick,
-            'netapp_aggregate': volume_info.get('aggregate')[0],
+            'netapp_aggregate': (
+                aggregates if is_flexgroup
+                else aggregates[0] if aggregates else None),
             'netapp_is_flexgroup': str(is_flexgroup).lower(),
         }
 

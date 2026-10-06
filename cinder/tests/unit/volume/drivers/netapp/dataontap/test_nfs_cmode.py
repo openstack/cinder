@@ -142,9 +142,11 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     @mock.patch.object(na_utils, 'check_flags')
     def test_do_setup(self, mock_check_flags, mock_super_do_setup,
                       mock_check_api_permissions, mock_cluster_user_supported):
+        config = self.get_config_cmode()
+        config.netapp_use_metrics_based_utilization = False
         self.mock_object(
             dot_utils, 'get_backend_configuration',
-            return_value=self.get_config_cmode())
+            return_value=config)
 
         self.driver.do_setup(mock.Mock())
 

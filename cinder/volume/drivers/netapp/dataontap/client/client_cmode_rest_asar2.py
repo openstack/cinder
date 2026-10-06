@@ -66,6 +66,8 @@ class RestClientASAr2(client_cmode_rest.RestClient,
         self.features.add_feature('SYSTEM_CONSTITUENT_METRICS',
                                   supported=False)
         self.features.add_feature('SYSTEM_METRICS', supported=False)
+        # ASA r2 has no counter-based fallback, so always refresh via metrics.
+        self.features.add_feature('NODE_METRICS', supported=True)
 
         # Add ASA r2 specific features here
         # For example, you might want to enable specific features

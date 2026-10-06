@@ -329,6 +329,142 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         self.assertFalse(mock_get_aggregates_for_pools.called)
 
+    def test_update_performance_cache_uses_metrics_when_enabled(self):
+
+        self.perf_library.use_metrics_based_utilization = True
+        mock_from_metrics = self.mock_object(
+            self.perf_library, '_update_performance_cache_from_metrics')
+        mock_get_aggregates_for_pools = self.mock_object(
+            self.perf_library, '_get_aggregates_for_pools')
+
+        self.perf_library.update_performance_cache(self.fake_volumes)
+
+        mock_from_metrics.assert_called_once_with(self.fake_volumes)
+        self.assertFalse(mock_get_aggregates_for_pools.called)
+
+    @ddt.data({'del_method': True}, {'node_metrics': False})
+    @ddt.unpack
+    def test_update_performance_cache_metrics_unsupported(
+            self, del_method=False, node_metrics=None):
+        # No client method, or ONTAP < 9.8 (NODE_METRICS=False): counter path.
+        self.perf_library.use_metrics_based_utilization = True
+        if del_method:
+            del self.zapi_client.get_node_utilization_from_metrics
+        if node_metrics is not None:
+            self.zapi_client.features.NODE_METRICS = node_metrics
+        self.zapi_client.features.SYSTEM_METRICS = False
+        self.zapi_client.features.SYSTEM_CONSTITUENT_METRICS = False
+        mock_from_metrics = self.mock_object(
+            self.perf_library, '_update_performance_cache_from_metrics')
+
+        self.perf_library.update_performance_cache(self.fake_volumes)
+
+        self.assertFalse(mock_from_metrics.called)
+
+    @ddt.data({'node_metrics': True, 'expected': True},
+              {'node_metrics': False, 'expected': False},
+              {'del_method': True, 'expected': False},
+              {'del_feature': True, 'expected': False})
+    @ddt.unpack
+    def test_is_metrics_based_utilization_supported(
+            self, expected, node_metrics=None, del_method=False,
+            del_feature=False):
+        if node_metrics is not None:
+            self.zapi_client.features.NODE_METRICS = node_metrics
+        if del_method:
+            del self.zapi_client.get_node_utilization_from_metrics
+        if del_feature:
+            del self.zapi_client.features.NODE_METRICS
+
+        self.assertEqual(
+            expected,
+            self.perf_library._is_metrics_based_utilization_supported())
+
+    def test_update_performance_cache_from_metrics(self):
+
+        self.perf_library.use_metrics_based_utilization = True
+        self.mock_object(
+            self.perf_library, '_get_aggregates_for_pools',
+            return_value=self.fake_aggrs)
+        self.mock_object(
+            self.perf_library, '_get_nodes_for_aggregates',
+            return_value=(self.fake_nodes, self.fake_aggr_node_map))
+        # Use values where average (40.0) != DEFAULT (50) to verify FG math.
+        util_map = {'node1': 20.0, 'node2': 60.0}
+        self.zapi_client.get_node_utilization_from_metrics.side_effect = (
+            lambda node_name: util_map[node_name])
+
+        self.perf_library.update_performance_cache(self.fake_volumes)
+
+        expected_pool_utilization = {
+            'pool1': 20.0,
+            'pool2': 60.0,
+            'pool3': 60.0,
+            # FlexGroup pool4 spans aggr1(node1=20) + aggr2(node2=60) → avg 40
+            'pool4': 40.0,
+        }
+        self.assertEqual(expected_pool_utilization,
+                         self.perf_library.pool_utilization)
+        self.assertEqual(
+            len(self.fake_nodes),
+            self.zapi_client.get_node_utilization_from_metrics.call_count)
+        self.zapi_client.get_node_utilization_from_metrics.assert_has_calls(
+            [mock.call('node1'), mock.call('node2')], any_order=True)
+
+    def test_update_performance_cache_from_metrics_fallback(self):
+
+        self.perf_library.use_metrics_based_utilization = True
+        self.mock_object(
+            self.perf_library, '_get_aggregates_for_pools',
+            return_value=self.fake_aggrs)
+        self.mock_object(
+            self.perf_library, '_get_nodes_for_aggregates',
+            return_value=(self.fake_nodes, self.fake_aggr_node_map))
+        self.zapi_client.get_node_utilization_from_metrics.return_value = None
+
+        self.perf_library.update_performance_cache(self.fake_volumes)
+
+        expected_pool_utilization = {
+            'pool1': perf_base.DEFAULT_UTILIZATION,
+            'pool2': perf_base.DEFAULT_UTILIZATION,
+            'pool3': perf_base.DEFAULT_UTILIZATION,
+            'pool4': perf_base.DEFAULT_UTILIZATION,
+        }
+        self.assertEqual(expected_pool_utilization,
+                         self.perf_library.pool_utilization)
+
+    def test_update_performance_cache_from_metrics_asa(self):
+        self.perf_library.use_metrics_based_utilization = True
+        self.zapi_client.features.NODE_METRICS = True
+        self.zapi_client.get_vserver_aggregates.return_value = [
+            'data_aggr1', 'data_aggr2', 'storage_availability_zone_0']
+        node_by_aggregate = {
+            'data_aggr1': 'node1',
+            'data_aggr2': 'node2',
+            'storage_availability_zone_0': None,
+        }
+        self.zapi_client.get_node_for_aggregate.side_effect = (
+            node_by_aggregate.__getitem__)
+        self.zapi_client.get_node_utilization_from_metrics.side_effect = {
+            'node1': 20.0,
+            'node2': 40.0,
+        }.__getitem__
+        ssc_pools = {'asa_pool': {'netapp_aggregate': None}}
+
+        self.perf_library.update_performance_cache(ssc_pools)
+
+        self.assertEqual({'asa_pool': 30.0},
+                         self.perf_library.pool_utilization)
+        self.zapi_client.get_vserver_aggregates.assert_called_once_with()
+        self.zapi_client.get_node_utilization_from_metrics.assert_has_calls([
+            mock.call('node1'), mock.call('node2')], any_order=True)
+
+    def test_get_metrics_fallback_utilization(self):
+
+        result = self.perf_library._get_metrics_fallback_utilization('node1')
+
+        self.assertEqual(perf_base.DEFAULT_UTILIZATION, result)
+
     @ddt.data({'pool': 'pool1', 'expected': 10.0},
               {'pool': 'pool3', 'expected': perf_base.DEFAULT_UTILIZATION})
     @ddt.unpack
@@ -343,10 +479,18 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
     def test__update_for_failover(self):
         self.mock_object(self.perf_library, 'update_performance_cache')
         mock_client = mock.Mock(name='FAKE_ZAPI_CLIENT')
+        self.perf_library._aggr_node_cache = {
+            'node_names': {'old-node'},
+            'aggr_node_map': {'old-aggr': 'old-node'},
+        }
 
         self.perf_library._update_for_failover(mock_client, self.fake_volumes)
 
         self.assertEqual(mock_client, self.perf_library.zapi_client)
+        self.assertEqual(
+            set(), self.perf_library._aggr_node_cache['node_names'])
+        self.assertEqual(
+            {}, self.perf_library._aggr_node_cache['aggr_node_map'])
         self.perf_library.update_performance_cache.assert_called_once_with(
             self.fake_volumes)
 
@@ -354,17 +498,96 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         result = self.perf_library._get_aggregates_for_pools(self.fake_volumes)
 
+        # pool4 (FlexGroup) reuses aggr1/aggr2, already covered by FlexVol.
         expected_aggregate_names = set(['aggr1', 'aggr2'])
         self.assertEqual(expected_aggregate_names, result)
+
+    def test_get_aggregates_for_pools_includes_flexgroup_only_aggr(self):
+        # aggr4 is FlexGroup-only; names stay disjoint to rule out a
+        # coincidental pass.
+        volumes = {
+            'flexvol_pool': {'netapp_aggregate': 'aggr3'},
+            'fg_pool': {'netapp_aggregate': ['aggr1', 'aggr4']},
+        }
+
+        result = self.perf_library._get_aggregates_for_pools(volumes)
+
+        self.assertEqual({'aggr1', 'aggr3', 'aggr4'}, result)
+
+    @ddt.data(True, False)
+    def test_get_aggregates_for_pools_asa(self, resolves):
+        volumes = {'asa_pool': {'netapp_aggregate': None}}
+        if resolves:
+            self.zapi_client.get_vserver_aggregates.return_value = [
+                'data_aggr1', 'data_aggr2', 'storage_availability_zone_0']
+        else:
+            self.zapi_client.get_vserver_aggregates.side_effect = Exception
+
+        result = self.perf_library._get_aggregates_for_pools(volumes)
+
+        expected = ({'data_aggr1', 'data_aggr2', 'storage_availability_zone_0'}
+                    if resolves else {None})
+        self.assertEqual(expected, result)
+        if resolves:
+            self.zapi_client.get_vserver_aggregates.assert_called_once_with()
+
+    @ddt.data({'aggregates': ['aggr1', 'aggr2'],
+               'aggr_node_map': {'aggr1': 'node1', 'aggr2': 'node2'},
+               'node_utilization': {'node1': 20.0, 'node2': 80.0},
+               'expected': 50.0},
+              {'aggregates': ['aggr1', 'aggr_missing'],
+               'aggr_node_map': {'aggr1': 'node1'},
+               'node_utilization': {'node1': 30.0},
+               'expected': 30.0},
+              {'aggregates': ['aggr_x', 'aggr_y'],
+               'aggr_node_map': {},
+               'node_utilization': {},
+               'expected': perf_base.DEFAULT_UTILIZATION})
+    @ddt.unpack
+    def test_map_node_utilization_to_pools_flexgroup(
+            self, aggregates, aggr_node_map, node_utilization, expected):
+        # Covers full averaging, partial node resolution, and no resolution.
+        ssc_pools = {'fg': {'netapp_aggregate': aggregates}}
+
+        result = self.perf_library._map_node_utilization_to_pools(
+            ssc_pools, aggr_node_map, node_utilization)
+
+        self.assertAlmostEqual(expected, result['fg'])
+
+    def test_get_nodes_for_aggregates_asa_uses_cached_nodes(self):
+        self.zapi_client._node_uuid_cache = {
+            'node1': 'uuid1',
+            'node2': 'uuid2',
+        }
+
+        result = self.perf_library._get_nodes_for_aggregates({None})
+
+        self.assertEqual(({'node1', 'node2'}, {}), result)
+        self.zapi_client.get_node_for_aggregate.assert_not_called()
+
+    @ddt.data({'node1': 20.0, 'node2': 40.0}, {})
+    def test_map_node_utilization_to_pools_asa(self, node_utilization):
+        ssc_pools = {'asa_pool': {'netapp_aggregate': None}}
+        expected = (30.0 if node_utilization
+                    else perf_base.DEFAULT_UTILIZATION)
+
+        result = self.perf_library._map_node_utilization_to_pools(
+            ssc_pools, {}, node_utilization)
+
+        self.assertEqual(expected, result['asa_pool'])
 
     def test_get_nodes_for_aggregates(self):
 
         aggregate_names = {'aggr1', 'aggr2', 'aggr3'}
-        aggregate_nodes = ['node1', 'node2', 'node2']
+        aggregate_nodes = {
+            'aggr1': 'node1',
+            'aggr2': 'node2',
+            'aggr3': 'node2',
+        }
 
         mock_get_node_for_aggregate = self.mock_object(
             self.zapi_client, 'get_node_for_aggregate',
-            side_effect=aggregate_nodes)
+            side_effect=lambda name: aggregate_nodes[name])
 
         result = self.perf_library._get_nodes_for_aggregates(aggregate_names)
 
@@ -372,9 +595,8 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         result_node_names, result_aggr_node_map = result
 
         expected_node_names = set(['node1', 'node2'])
-        expected_aggr_node_map = dict(zip(aggregate_names, aggregate_nodes))
         self.assertEqual(expected_node_names, result_node_names)
-        self.assertEqual(expected_aggr_node_map, result_aggr_node_map)
+        self.assertEqual(aggregate_nodes, result_aggr_node_map)
         mock_get_node_for_aggregate.assert_has_calls([
             mock.call('aggr1'), mock.call('aggr2'), mock.call('aggr3')],
             any_order=True)

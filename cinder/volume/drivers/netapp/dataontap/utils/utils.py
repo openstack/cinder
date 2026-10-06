@@ -97,6 +97,17 @@ def get_client_for_backend(backend_name, vserver_name=None, force_rest=False):
     if is_disaggregated:
         force_rest = True
 
+    # The node-metrics API is REST-only, so this option overrides
+    # netapp_use_legacy_client whenever it is enabled.
+    if config.netapp_use_metrics_based_utilization:
+        if config.netapp_use_legacy_client and not force_rest:
+            LOG.info('netapp_use_metrics_based_utilization is True; '
+                     'using the REST client for backend %(backend)s '
+                     'instead of the legacy ZAPI client selected by '
+                     'netapp_use_legacy_client.',
+                     {'backend': backend_name})
+        force_rest = True
+
     if config.netapp_use_legacy_client and not force_rest:
         client = client_cmode.Client(
             transport_type=config.netapp_transport_type,

@@ -1,0 +1,18 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: Added a new boolean configuration option
+    ``netapp_use_metrics_based_utilization`` (default ``True``). When
+    enabled, the driver forces use of the REST client (regardless of
+    ``netapp_use_legacy_client``) and derives the pool ``utilization``
+    value from the ONTAP REST node metrics endpoint instead of the legacy
+    counter-based calculation, reducing ONTAP management API load. ONTAP
+    9.8 or later is required. This REST override is intentional because
+    the node metrics API is REST-only; operators who must keep the
+    ZAPI/legacy client should set
+    ``netapp_use_metrics_based_utilization = False``. ASA r2
+    (disaggregated) backends always use the REST client regardless of
+    this option, but this option still controls their utilization value:
+    ``True`` reports the metrics-based value averaged across cluster
+    nodes, ``False`` always reports the default utilization value since
+    ASA r2 has no counter-based fallback.

@@ -320,6 +320,30 @@ netapp_san_opts = [
                     'ONTAP. Conversely, setting a higher value means the '
                     'performance utilization data may be slightly outdated '
                     'but reduces the load on ONTAP.'),
+    cfg.BoolOpt('netapp_use_metrics_based_utilization',
+                default=True,
+                help='Set to True (the default) to derive ONTAP backend '
+                     'pool utilization from the ONTAP REST node metrics '
+                     'endpoint (processor_utilization) instead of the '
+                     'counter-based synthetic node utilization '
+                     'calculation. The metrics-based value is lighter on '
+                     'ONTAP and the Cinder driver, but is primarily '
+                     'CPU-based and is not behaviorally equivalent to the '
+                     'counter-based value, which also accounts for WAFL, '
+                     'Consistency Point, and Kahuna pressure. When True, '
+                     'the REST client is used regardless of '
+                     'netapp_use_legacy_client, since the node metrics API '
+                     'is REST-only; ONTAP 9.8 or later is required. Existing '
+                     'ZAPI deployments that must keep the legacy client '
+                     'should set this option to False, which uses whichever '
+                     'client netapp_use_legacy_client selects and the '
+                     'legacy counter-based calculation. '
+                     'ASA r2 (disaggregated) backends always use the REST '
+                     'client regardless of this option, but this option '
+                     'still controls their utilization value: True reports '
+                     'the metrics-based value averaged across cluster '
+                     'nodes; False always reports the default utilization '
+                     'value, since ASA r2 has no counter-based fallback.'),
     cfg.IntOpt('netapp_lun_copy_timeout',
                min=60,
                default=300,

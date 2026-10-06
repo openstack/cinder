@@ -529,6 +529,23 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
             fake.VOLUME_NAME, fake.LUN_NAME, 1024, {"OsType": "linux"}
         )
 
+    def test_node_metrics_feature_enabled(self):
+        # NODE_METRICS is always on for ASA r2, unlike the parent client.
+        self.assertTrue(bool(self.client.features.NODE_METRICS))
+        self.assertFalse(bool(self.client.features.SYSTEM_METRICS))
+        self.assertFalse(
+            bool(self.client.features.SYSTEM_CONSTITUENT_METRICS))
+
+    @ddt.data((9, 11, 1), (9, 12, 1), (9, 13, 1), (9, 17, 1))
+    def test_node_metrics_feature_enabled_any_version(self, ontap_version):
+        # NODE_METRICS is True at every version; ASA r2 has no version gate.
+        with mock.patch.object(RestClientASAr2, 'get_ontap_version',
+                               return_value=ontap_version):
+            client = RestClientASAr2(**CONNECTION_INFO)
+        self.assertTrue(bool(client.features.NODE_METRICS))
+        self.assertFalse(bool(client.features.SYSTEM_METRICS))
+        self.assertFalse(bool(client.features.SYSTEM_CONSTITUENT_METRICS))
+
     @patch('cinder.volume.drivers.netapp.dataontap.client.'
            'client_cmode_rest_asar2.RestClientASAr2.send_request')
     def test_destroy_lun(self, mock_send_request):

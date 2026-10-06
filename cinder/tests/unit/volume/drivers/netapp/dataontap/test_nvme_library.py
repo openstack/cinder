@@ -627,12 +627,14 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.assertEqual(expected_ssc, self.library._stats)
 
     @ddt.data({'cluster_credentials': False,
-               'report_provisioned_capacity': False},
+               'report_provisioned_capacity': False, 'is_fg': False},
               {'cluster_credentials': True,
-               'report_provisioned_capacity': True})
+               'report_provisioned_capacity': True, 'is_fg': False},
+              {'cluster_credentials': True,
+               'report_provisioned_capacity': False, 'is_fg': True})
     @ddt.unpack
     def test_get_pool_stats(self, cluster_credentials,
-                            report_provisioned_capacity):
+                            report_provisioned_capacity, is_fg):
         self.library.using_cluster_credentials = cluster_credentials
         conf = self.library.configuration
         conf.netapp_driver_reports_provisioned_capacity = (
@@ -647,10 +649,10 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
                 'netapp_compression': 'false',
                 'netapp_mirrored': 'false',
                 'netapp_dedup': 'true',
-                'netapp_aggregate': 'aggr1',
-                'netapp_raid_type': 'raid_dp',
-                'netapp_disk_type': 'SSD',
-                'netapp_is_flexgroup': 'false',
+                'netapp_aggregate': ['aggr1', 'aggr2'] if is_fg else 'aggr1',
+                'netapp_raid_type': ['raid_dp'] if is_fg else 'raid_dp',
+                'netapp_disk_type': ['SSD'] if is_fg else 'SSD',
+                'netapp_is_flexgroup': 'true' if is_fg else 'false',
             },
         }
         mock_get_ssc = self.mock_object(self.library.ssc_library,
@@ -658,7 +660,7 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
                                         return_value=ssc)
         mock_get_aggrs = self.mock_object(self.library.ssc_library,
                                           'get_ssc_aggregates',
-                                          return_value=['aggr1'])
+                                          return_value=['aggr1', 'aggr2'])
 
         self.library.reserved_percentage = 5
         self.library.max_over_subscription_ratio = 10
@@ -688,6 +690,11 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         aggr_capacities = {
             'aggr1': {
                 'percent-used': 45,
+                'size-available': 59055800320.0,
+                'size-total': 107374182400.0,
+            },
+            'aggr2': {
+                'percent-used': 65,
                 'size-available': 59055800320.0,
                 'size-total': 107374182400.0,
             },
@@ -738,11 +745,60 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
                 'netapp_dedupe_used_percent': 0.0
             })
 
+        if is_fg:
+            # FlexGroup used-percent is averaged: (45 + 65) / 2 = 55.0.
+            expected[0].update({
+                'netapp_is_flexgroup': 'true',
+                'netapp_aggregate': ['aggr1', 'aggr2'],
+                'netapp_raid_type': ['raid_dp'],
+                'netapp_disk_type': ['SSD'],
+                'netapp_aggregate_used_percent': 55.0,
+            })
+
         self.assertEqual(expected, result)
         mock_get_ssc.assert_called_once_with()
         if cluster_credentials:
             mock_get_aggrs.assert_called_once_with()
-            mock_get_aggr_capacities.assert_called_once_with(['aggr1'])
+            mock_get_aggr_capacities.assert_called_once_with(
+                ['aggr1', 'aggr2'])
+
+    @ddt.data(True, False)
+    def test_get_pool_stats_asa_metrics_flag(self, use_metrics):
+        """ASA r2 always refreshes the perf cache, regardless of the flag."""
+        self.override_config('netapp_disaggregated_platform', True)
+        self.override_config('netapp_use_metrics_based_utilization',
+                             use_metrics)
+        self.library.using_cluster_credentials = True
+        ssc = {
+            'asa_pool': {
+                'pool_name': 'asa_pool',
+                'netapp_aggregate': None,
+                'netapp_is_flexgroup': False,
+            },
+        }
+        perf_library = self.library.perf_library
+        client = self.library.client
+        self.library.ssc_library.get_ssc.return_value = ssc
+        perf_library._is_metrics_based_utilization_supported.return_value = (
+            True)
+        perf_library.get_node_utilization_for_pool.return_value = 30.0
+        client.get_storage_availability_zones.return_value = ['saz0']
+        client.get_namespace_sizes_by_svm.return_value = []
+        self.mock_object(self.library, '_get_disaggregated_capacity',
+                         return_value={
+                             'size-total': 10.0,
+                             'size-available': 5.0,
+                         })
+
+        result = self.library._get_pool_stats()
+
+        perf_library.update_performance_cache.assert_called_once_with(ssc)
+        self.library.ssc_library.get_ssc_aggregates.assert_not_called()
+        self.assertEqual(1, len(result))
+        self.assertEqual('asa_pool', result[0]['pool_name'])
+        self.assertEqual(30.0, result[0]['utilization'])
+        self.assertEqual(['saz0'],
+                         result[0]['netapp_storage_availability_zones'])
 
     @ddt.data({}, None)
     def test_get_pool_stats_no_ssc_vols(self, ssc):
@@ -1465,8 +1521,7 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
     @ddt.data(
         # Performance metrics require cluster-scoped credentials.
         (False, False),
-        # Performance metrics are not supported on the disaggregated platform.
-        (True, True),
+        (False, True),
     )
     @ddt.unpack
     def test_get_pool_stats_no_perf_update(self, cluster_credentials,

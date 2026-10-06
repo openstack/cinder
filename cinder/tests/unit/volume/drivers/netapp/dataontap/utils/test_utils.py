@@ -96,7 +96,10 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
 
     @ddt.data(True, False)
     def test_get_client_for_backend(self, use_legacy):
-        self.config.netapp_use_legacy_client = use_legacy
+        self.override_config('netapp_use_legacy_client', use_legacy,
+                             group=self.backend)
+        self.override_config('netapp_use_metrics_based_utilization', False,
+                             group=self.backend)
         self.mock_object(utils, 'get_backend_configuration',
                          return_value=self.config)
 
@@ -129,7 +132,10 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
 
     @ddt.data(True, False)
     def test_get_client_for_backend_with_vserver(self, use_legacy):
-        self.config.netapp_use_legacy_client = use_legacy
+        self.override_config('netapp_use_legacy_client', use_legacy,
+                             group=self.backend)
+        self.override_config('netapp_use_metrics_based_utilization', False,
+                             group=self.backend)
         self.mock_object(utils, 'get_backend_configuration',
                          return_value=self.config)
 
@@ -163,6 +169,21 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                 certificate_host_validation=False,
                 zapi_fallback_enabled=True)
             self.mock_cmode_client.assert_not_called()
+
+    def test_get_client_for_backend_metrics_utilization_forces_rest(self):
+        self.override_config('netapp_use_legacy_client', True,
+                             group=self.backend)
+        self.override_config('netapp_use_metrics_based_utilization', True,
+                             group=self.backend)
+        self.mock_object(utils, 'get_backend_configuration',
+                         return_value=self.config)
+        mock_log = self.mock_object(utils, 'LOG')
+
+        utils.get_client_for_backend(self.backend)
+
+        self.mock_cmode_rest_client.assert_called_once()
+        self.mock_cmode_client.assert_not_called()
+        mock_log.info.assert_called_once()
 
 
 @ddt.ddt

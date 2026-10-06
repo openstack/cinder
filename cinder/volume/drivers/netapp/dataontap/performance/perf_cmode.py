@@ -27,11 +27,12 @@ LOG = logging.getLogger(__name__)
 
 class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
 
-    def __init__(self, zapi_client):
+    def __init__(self, zapi_client, use_metrics_based_utilization=False):
         super(PerformanceCmodeLibrary, self).__init__(zapi_client)
 
         self.performance_counters = {}
         self.pool_utilization = {}
+        self.use_metrics_based_utilization = use_metrics_based_utilization
         self._aggr_node_cache = {
             'node_names': set(),
             'aggr_node_map': {},
@@ -65,6 +66,12 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
     def update_performance_cache(self, ssc_pools):
         """Called periodically to update per-pool node utilization metrics."""
 
+        # Prefer REST node metrics when enabled and supported by the client.
+        if (self.use_metrics_based_utilization and
+                self._is_metrics_based_utilization_supported()):
+            self._update_performance_cache_from_metrics(ssc_pools)
+            return
+
         # Nothing to do on older systems
         if not (self.zapi_client.features.SYSTEM_METRICS or
                 self.zapi_client.features.SYSTEM_CONSTITUENT_METRICS):
@@ -97,21 +104,8 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
                 node_utilization[node_name] = self._get_node_utilization(
                     counters[0], counters[-1], node_name)
 
-        # Update pool utilization map atomically
-        pool_utilization = {}
-        for pool_name, pool_info in ssc_pools.items():
-            aggr_name = pool_info.get('netapp_aggregate', 'unknown')
-
-            if isinstance(aggr_name, list):
-                # NOTE(felipe_rodrigues): for FlexGroup pool, the utilization
-                # is not calculate.
-                pool_utilization[pool_name] = perf_base.DEFAULT_UTILIZATION
-            else:
-                node_name = aggr_node_map.get(aggr_name)
-                pool_utilization[pool_name] = node_utilization.get(
-                    node_name, perf_base.DEFAULT_UTILIZATION)
-
-        self.pool_utilization = pool_utilization
+        self.pool_utilization = self._map_node_utilization_to_pools(
+            ssc_pools, aggr_node_map, node_utilization)
 
     def get_node_utilization_for_pool(self, pool_name):
         """Get the node utilization for the specified pool, if available."""
@@ -119,43 +113,137 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
         return self.pool_utilization.get(pool_name,
                                          perf_base.DEFAULT_UTILIZATION)
 
+    def _is_metrics_based_utilization_supported(self):
+        """True only for a REST client with NODE_METRICS (ONTAP 9.8+)."""
+        if not hasattr(self.zapi_client,
+                       'get_node_utilization_from_metrics'):
+            return False
+        try:
+            return bool(self.zapi_client.features.NODE_METRICS)
+        except AttributeError:
+            return False
+
+    def _update_performance_cache_from_metrics(self, ssc_pools):
+        """Set per-pool utilization from the REST node metrics endpoint."""
+        aggr_names = self._get_aggregates_for_pools(ssc_pools)
+        node_names, aggr_node_map = self._get_nodes_for_aggregates(aggr_names)
+        LOG.debug('Metrics perf cache: aggr_names=%s node_names=%s',
+                  aggr_names, node_names)
+
+        # Read processor_utilization once per node; fall back when missing.
+        node_utilization = {}
+        for node_name in node_names:
+            utilization = self.zapi_client.get_node_utilization_from_metrics(
+                node_name)
+            if utilization is None:
+                utilization = self._get_metrics_fallback_utilization(
+                    node_name)
+            node_utilization[node_name] = utilization
+
+        self.pool_utilization = self._map_node_utilization_to_pools(
+            ssc_pools, aggr_node_map, node_utilization)
+        LOG.debug('Metrics perf cache result: pool_utilization=%s',
+                  self.pool_utilization)
+
+    def _map_node_utilization_to_pools(self, ssc_pools, aggr_node_map,
+                                       node_utilization):
+        """Map each pool to its owning node's utilization."""
+        pool_utilization = {}
+        for pool_name, pool_info in ssc_pools.items():
+            aggr_name = pool_info.get('netapp_aggregate', 'unknown')
+            if isinstance(aggr_name, list):
+                # FlexGroup: average utilization across all resolved nodes.
+                values = [
+                    node_utilization[aggr_node_map[a]]
+                    for a in aggr_name
+                    if a in aggr_node_map
+                    and aggr_node_map[a] in node_utilization
+                ]
+                pool_utilization[pool_name] = (
+                    sum(values) / len(values) if values
+                    else perf_base.DEFAULT_UTILIZATION)
+            elif aggr_name is None:
+                # ASA r2 pools represent the SVM's disaggregated cluster.
+                values = list(node_utilization.values())
+                pool_utilization[pool_name] = (
+                    sum(values) / len(values) if values
+                    else perf_base.DEFAULT_UTILIZATION)
+            else:
+                node_name = aggr_node_map.get(aggr_name)
+                pool_utilization[pool_name] = node_utilization.get(
+                    node_name, perf_base.DEFAULT_UTILIZATION)
+        return pool_utilization
+
+    def _get_metrics_fallback_utilization(self, node_name):
+        """Fall back to the default utilization when metrics are missing."""
+        return perf_base.DEFAULT_UTILIZATION
+
     def _update_for_failover(self, zapi_client, ssc_pools):
         self.zapi_client = zapi_client
+        self._aggr_node_cache = {
+            'node_names': set(),
+            'aggr_node_map': {},
+        }
         self.update_performance_cache(ssc_pools)
 
     def _get_aggregates_for_pools(self, ssc_pools):
         """Get the set of aggregates that contain the specified pools."""
-
         aggr_names = set()
+        svm_aggregates = []
+        svm_aggregates_loaded = False
         for pool_name, pool_info in ssc_pools.items():
             aggr = pool_info.get('netapp_aggregate')
             if isinstance(aggr, list):
-                # NOTE(felipe_rodrigues): for FlexGroup pool, the utilization
-                # is not calculate
-                continue
-            aggr_names.add(aggr)
+                aggr_names.update(aggr)  # FlexGroup: include all constituents
+            elif aggr is None:
+                # ASA r2: pools have no aggregate of their own, so resolve
+                # every aggregate mapped to the SVM instead.
+                if not svm_aggregates_loaded:
+                    get_vserver_aggregates = getattr(
+                        self.zapi_client, 'get_vserver_aggregates', None)
+                    if callable(get_vserver_aggregates):
+                        try:
+                            svm_aggregates = get_vserver_aggregates()
+                        except Exception:
+                            LOG.warning(
+                                'Could not resolve SVM aggregates; falling '
+                                'back to cached cluster nodes.')
+                    svm_aggregates_loaded = True
+                aggr_names.update(svm_aggregates or [None])
+            else:
+                aggr_names.add(aggr)
         return aggr_names
 
     def _get_nodes_for_aggregates(self, aggr_names):
         """Get the cluster nodes that own the specified aggregates."""
 
-        # Only make API call if aggr_names changed
+        include_all_nodes = None in aggr_names
+        lookup_names = {a for a in aggr_names if a is not None}
+
+        # Only make API call if aggregate names changed
         aggr_node_map = self._aggr_node_cache.get('aggr_node_map')
         aggr_list_cache = set(aggr_node_map.keys()) if aggr_node_map else set()
-        if not aggr_names.issubset(aggr_list_cache):
+        if not lookup_names.issubset(aggr_list_cache):
             node_names = set()
             aggr_node_map = {}
-            for aggr_name in aggr_names:
+            for aggr_name in sorted(lookup_names):
                 node_name = self.zapi_client.get_node_for_aggregate(aggr_name)
                 if node_name:
                     node_names.add(node_name)
                     aggr_node_map[aggr_name] = node_name
-            # Update the cache
             self._aggr_node_cache['node_names'] = node_names
             self._aggr_node_cache['aggr_node_map'] = aggr_node_map
 
-        return (self._aggr_node_cache['node_names'],
-                self._aggr_node_cache['aggr_node_map'])
+        node_names = self._aggr_node_cache['node_names']
+        aggr_node_map = self._aggr_node_cache['aggr_node_map']
+
+        if include_all_nodes and not node_names:
+            # SVM aggregate resolution failed; fall back to every node
+            # known to the client so ASA r2 still gets a cluster-wide value.
+            node_names = set(getattr(self.zapi_client, '_node_uuid_cache', {}))
+            return node_names, aggr_node_map
+
+        return node_names, aggr_node_map
 
     def _get_node_utilization_counters(self, node_name):
         """Get all performance counters for calculating node utilization."""
