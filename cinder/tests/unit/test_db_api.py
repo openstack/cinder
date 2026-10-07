@@ -2882,6 +2882,50 @@ class DBAPIMessageTestCase(BaseTest):
                            'project_id': 'fake_id',
                            'expires_at': time})
 
+    def _create_message(self, project_id):
+        message_id = uuidutils.generate_uuid()
+        expires_at = timeutils.utcnow() + datetime.timedelta(days=1)
+        db.message_create(self.context,
+                          {'id': message_id,
+                           'event_id': message_id,
+                           'message_level': 'error',
+                           'project_id': project_id,
+                           'expires_at': expires_at})
+        return message_id
+
+    def test_message_get_all_is_project_scoped(self):
+        project_id = 'project1'
+        other_project_id = 'project2'
+        project_message_id = self._create_message(project_id)
+        other_project_message_id = self._create_message(other_project_id)
+        user_context = context.RequestContext('user1', project_id,
+                                              is_admin=False)
+
+        messages = db.message_get_all(user_context)
+
+        self.assertEqual({project_message_id},
+                         {message['id'] for message in messages})
+        self.assertNotIn(other_project_message_id,
+                         {message['id'] for message in messages})
+        # self.context is an admin context and should see both projects.
+        admin_messages = db.message_get_all(self.context)
+        self.assertEqual({project_message_id, other_project_message_id},
+                         {message['id'] for message in admin_messages})
+
+    def test_message_get_is_project_scoped(self):
+        project_id = 'project1'
+        other_project_id = 'project2'
+        project_message_id = self._create_message(project_id)
+        other_project_message_id = self._create_message(other_project_id)
+        user_context = context.RequestContext('user1', project_id,
+                                              is_admin=False)
+
+        message = db.message_get(user_context, project_message_id)
+        self.assertEqual(project_message_id, message['id'])
+        self.assertRaises(exception.MessageNotFound,
+                          db.message_get, user_context,
+                          other_project_message_id)
+
     def test_cleanup_expired_messages(self):
         now = timeutils.utcnow()
         # message expired 1 day ago
