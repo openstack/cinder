@@ -8289,7 +8289,7 @@ def _process_messages_filters(query, filters):
     return query
 
 
-def _messages_get_query(context, project_only=False):
+def _messages_get_query(context, project_only=True):
     return model_query(context, models.Message, project_only=project_only)
 
 
