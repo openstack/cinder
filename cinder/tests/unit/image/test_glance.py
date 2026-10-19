@@ -933,7 +933,7 @@ class TestGlanceImageService(test.TestCase):
     def test_download_no_data(self):
         class MyGlanceStubClient(glance_stubs.StubGlanceClient):
             """Returns None instead of an iterator."""
-            def data(self, image_id):
+            def data(self, image_id, prefer=None):
                 return None
 
         client = MyGlanceStubClient()
@@ -943,6 +943,31 @@ class TestGlanceImageService(test.TestCase):
                               self.context, image_id)
         self.assertIn('image contains no data', str(e))
         self.assertIn(image_id, str(e))
+
+    def test_download_with_preferred_stores(self):
+        client = mock.MagicMock()
+        client.call.return_value = iter([b'image-data'])
+        image_id = 'fake-image-uuid'
+        writer = NullWriter()
+        service = glance.GlanceImageService(client=client)
+        self.flags(glance_preferred_stores=['local-store', 'regional-store'])
+
+        service.download(self.context, image_id, writer)
+
+        client.call.assert_called_once_with(
+            self.context, 'data', image_id,
+            prefer=['local-store', 'regional-store'])
+
+    def test_download_without_preferred_stores(self):
+        client = mock.MagicMock()
+        client.call.return_value = iter([b'image-data'])
+        image_id = 'fake-image-uuid'
+        writer = NullWriter()
+        service = glance.GlanceImageService(client=client)
+        service.download(self.context, image_id, writer)
+
+        client.call.assert_called_once_with(
+            self.context, 'data', image_id, prefer=[])
 
     def test_client_forbidden_converts_to_imagenotauthed(self):
         class MyGlanceStubClient(glance_stubs.StubGlanceClient):

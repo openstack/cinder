@@ -506,7 +506,9 @@ class GlanceImageService(object):
                     return
 
         try:
-            image_chunks = self._client.call(context, 'data', image_id)
+            image_chunks = self._client.call(
+                context, 'data', image_id,
+                prefer=CONF.glance_preferred_stores)
         except Exception:
             _reraise_translated_image_exception(image_id)
 

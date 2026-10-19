@@ -196,6 +196,27 @@ image_opts = [
                help='http/https timeout value for glance operations. If no '
                     'value (None) is supplied here, the glanceclient default '
                     'value is used.'),
+    cfg.ListOpt('glance_preferred_stores',
+                default=[],
+                help='Ordered list of preferred Glance stores for '
+                     'downloading an image. The stores are tried in the '
+                     'order they are listed. Glance rejects the request '
+                     'with HTTP 400 if multi-store is not enabled or if a '
+                     'listed store is not in its ``enabled_backends``. '
+                     'Because there is no startup validation, a typo in '
+                     'this list causes each create-volume-from-image and '
+                     'image-cache seed download to fail. If none of the '
+                     'preferred stores has the image, Glance selects a '
+                     'store using its own configuration. Requires Glance '
+                     '2026.2 (Hibiscus) or later with multi-store enabled '
+                     'and python-glanceclient 4.12.0 or later. On an older '
+                     'Glance deployment the ``prefer`` query parameter is '
+                     'silently ignored and this option has no effect. '
+                     'Glance does not apply ``prefer`` when its image cache '
+                     'middleware serves the download. If '
+                     '``allowed_direct_url_schemes`` causes Cinder to use a '
+                     'direct file location, the Glance client call is '
+                     'bypassed entirely.'),
 ]
 
 compression_opts = [

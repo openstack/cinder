@@ -1,0 +1,26 @@
+---
+features:
+  - |
+    Adds a new ``glance_preferred_stores`` configuration option. The option
+    is an ordered list of Glance store identifiers that Cinder passes to
+    Glance when downloading an image, allowing deployments with replicated
+    images to prefer a local or co-located store.
+
+    This feature requires Glance 2026.2 (Hibiscus) or later with multi-store
+    enabled and python-glanceclient 4.12.0 or later. On an older Glance
+    deployment, the ``prefer`` query parameter is silently ignored and the
+    option has no effect.
+
+    Troubleshooting:
+
+    * Glance rejects the request with HTTP 400 if multi-store is not enabled
+      or if a configured store is not in its ``enabled_backends``. A typo in
+      this list will therefore cause all volume creation from image requests
+      to fail.
+
+    * Glance does not apply the preference when its image cache middleware
+      serves the download, so the option will have no effect in that case.
+
+    * Direct file downloads, when ``allowed_direct_url_schemes`` is
+      configured, bypass the Glance client and are unaffected by this
+      option.
