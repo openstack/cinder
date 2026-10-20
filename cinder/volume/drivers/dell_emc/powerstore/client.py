@@ -17,6 +17,7 @@
 
 import functools
 import json
+import urllib.parse
 
 from oslo_log import log as logging
 from oslo_utils import strutils
@@ -1006,3 +1007,78 @@ class PowerStoreClient(object):
                      "with id %s.") % host_id)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+    def get_volume_details_by_id(self, volume_id, fields=None):
+        """Return selected fields for a PowerStore volume by UUID.
+
+        If fields is None, returns the full server-provided JSON.
+        """
+        params = {}
+        if fields:
+            params["select"] = ",".join(fields)
+
+        path = "/volume/%s" % urllib.parse.quote(volume_id, safe="")
+        r, response = self._send_get_request(path, params=params)
+        if r.status_code not in self.ok_codes:
+            msg = "Failed to query PowerStore volume with id %s." % volume_id
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        if not response:
+            msg = "PowerStore volume with id %s is not found." % volume_id
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response
+
+    def get_volume_details_by_name(self, name, fields=None):
+        """Return selected fields for a PowerStore volume by name.
+
+        Restricts to Primary/Clone types to avoid snapshot matches.
+        """
+        params = {
+            "name": "eq.%s" % name,
+            "type": "in.(Primary,Clone)",
+        }
+        if fields:
+            params["select"] = ",".join(fields)
+        r, response = self._send_get_request("/volume", params=params)
+        if r.status_code not in self.ok_codes:
+            LOG.error("Failed to query PowerStore volumes by name.")
+            raise exception.VolumeBackendAPIException(
+                data="Failed to query PowerStore volumes by name.")
+        if not response:
+            raise exception.VolumeBackendAPIException(
+                data=("PowerStore volume %s is not found." % name))
+        if len(response) > 1:
+            LOG.error("Multiple PowerStore volumes found for name %s.", name)
+            raise exception.VolumeBackendAPIException(
+                data=("Multiple PowerStore volumes found for name %s."
+                      % name))
+        return response[0]
+
+    def volume_is_mapped(self, volume_id):
+        """Return True if the volume has any host or host-group mapping."""
+        for path, id_key in (
+            ("/host_volume_mapping", "volume_id"),
+            ("/host_virtual_volume_mapping", "virtual_volume_id"),
+        ):
+            params = {
+                id_key: "eq.%s" % volume_id,
+                "select": "host_id,host_group_id",
+            }
+            try:
+                r, response = self._send_get_request(path, params=params)
+            except Exception:
+                msg = ("Failed to query %(path)s for volume "
+                       "%(volume_id)s." %
+                       {"path": path, "volume_id": volume_id})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            if r.status_code not in self.ok_codes:
+                msg = ("Failed to query %(path)s for volume "
+                       "%(volume_id)s. HTTP status: %(status)s." %
+                       {"path": path, "volume_id": volume_id,
+                        "status": r.status_code})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            if response:
+                return True
+        return False

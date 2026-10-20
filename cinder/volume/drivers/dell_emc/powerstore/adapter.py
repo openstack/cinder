@@ -17,6 +17,7 @@
 
 from oslo_log import log as logging
 from oslo_utils import strutils
+from oslo_utils import units
 
 from cinder import coordination
 from cinder import exception
@@ -1221,6 +1222,91 @@ class CommonAdapter(object):
     def get_cluster_name(self):
         """Gets cluster name."""
         return self.client.get_cluster_name()
+
+    def _get_volume_details_by_ref(self, existing_ref, fields):
+        """Resolve existing_ref to volume details from PowerStore.
+
+        existing_ref must contain exactly one of 'source-id' or
+        'source-name'.  Returns the volume details dict from the
+        backend with the requested *fields*.
+        """
+        has_source_id = "source-id" in existing_ref
+        has_source_name = "source-name" in existing_ref
+        if has_source_id and has_source_name:
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=("existing_ref must contain only one of "
+                        "'source-id' or 'source-name', not both."))
+        elif has_source_id:
+            return self.client.get_volume_details_by_id(
+                existing_ref["source-id"], fields=fields)
+        elif has_source_name:
+            return self.client.get_volume_details_by_name(
+                existing_ref["source-name"], fields=fields)
+        raise exception.ManageExistingInvalidReference(
+            existing_ref=existing_ref,
+            reason=("existing_ref must contain 'source-id' or "
+                    "'source-name'."))
+
+    def manage_existing(self, volume, existing_ref):
+        """Import an already-created PowerStore volume into Cinder.
+
+        Validates eligibility and returns model updates.
+        """
+        select_fields = [
+            "id", "name", "size", "state", "type",
+            "is_replication_destination",
+            "migration_session_id",
+            "metro_replication_session_id",
+        ]
+        details = self._get_volume_details_by_ref(
+            existing_ref, select_fields)
+        provider_id = details.get("id")
+        vol_state = details.get("state")
+        vol_type = details.get("type")
+        is_rep_dest = details.get("is_replication_destination")
+        if details.get("migration_session_id"):
+            raise exception.InvalidVolume(
+                reason=("Volume is in a migration session and cannot be "
+                        "managed."))
+        if details.get("metro_replication_session_id"):
+            raise exception.InvalidVolume(
+                reason=("Volume is part of a metro replication session and "
+                        "cannot be managed."))
+        if vol_type not in ("Primary", "Clone"):
+            raise exception.InvalidVolume(
+                reason=("Volume type %s is not manageable." % vol_type))
+        if vol_state not in ("Ready", "Healthy", "Available"):
+            raise exception.InvalidVolume(
+                reason=("Volume state %s is not manageable." % vol_state))
+        if is_rep_dest:
+            raise exception.InvalidVolume(
+                reason=("Volume is a replication destination and cannot be "
+                        "managed."))
+        if self.client.volume_is_mapped(provider_id):
+            raise exception.InvalidVolume(
+                reason=("Volume is mapped/attached to a host or host group "
+                        "and cannot be managed."))
+        LOG.debug(
+            "Managing existing PowerStore volume '%s' for Cinder volume '%s'. "
+            "PowerStore id: %s.",
+            details.get("name"), volume.name, provider_id)
+        return {"provider_id": provider_id}
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size in GiB (rounded up) for a backend volume.
+
+        existing_ref supports {"source-id": "..."} or {"source-name": "..."}.
+        """
+        select_fields = ["id", "name", "size"]
+        details = self._get_volume_details_by_ref(
+            existing_ref, select_fields)
+        size_bytes = details.get("size")
+        if size_bytes is None:
+            raise exception.VolumeBackendAPIException(
+                data="PowerStore volume size is not available.")
+        gib = (size_bytes + units.Gi - 1) // units.Gi
+        return gib
 
 
 class FibreChannelAdapter(CommonAdapter):

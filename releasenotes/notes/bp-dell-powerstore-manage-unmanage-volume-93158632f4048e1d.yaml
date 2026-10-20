@@ -1,0 +1,6 @@
+
+---
+features:
+  - |
+    Dell PowerStore driver: Added support for **manage** and **unmanage**
+    existing volumes.

@@ -55,9 +55,10 @@ class PowerStoreDriver(driver.VolumeDriver):
         1.2.2 - QoS (Quality of Service) support
         1.2.3 - Added Cinder active/active support
         1.2.4 - Added PowerStore metro volume support
+        1.2.5 - Added cinder manage/unmanage volume support
     """
 
-    VERSION = "1.2.4"
+    VERSION = "1.2.5"
     VENDOR = "Dell EMC"
     SUPPORTS_ACTIVE_ACTIVE = True
 
@@ -290,6 +291,22 @@ class PowerStoreDriver(driver.VolumeDriver):
                                                      source,
                                                      snapshots,
                                                      source_vols)
+
+    def manage_existing(self, volume, existing_ref):
+        return self.adapter.manage_existing(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        return self.adapter.manage_existing_get_size(
+            volume, existing_ref
+        )
+
+    def unmanage(self, volume):
+        msg = (
+            "Unmanaging Cinder volume '%s' (id=%s). "
+            "Backend remains intact."
+        )
+        LOG.info(msg, volume.name, volume.id)
+        return {}
 
     @property
     def adapter(self):
