@@ -111,7 +111,7 @@ response_ports = '''<RESPONSE>
                  <PROPERTY name="status">Up</PROPERTY></OBJECT>
                  </RESPONSE>'''
 
-# mccli -x array show-volumes | egrep \
+# mccli -x array show-volumes | grep -E \
 # '(RESPONSE|OBJECT|volume-name|volume-type|serial-number|wwn| \
 #   storage-pool-name|size-numeric|volume-parent)'
 response_vols = '''
