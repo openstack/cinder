@@ -33,7 +33,9 @@ from cinder.db import base
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
-from cinder.objects import fields
+from cinder.objects.fields import BackupStatus
+from cinder.objects.fields import SnapshotStatus
+from cinder.objects.fields import VolumeStatus
 from cinder.policies import backup_actions as backup_action_policy
 from cinder.policies import backups as policy
 import cinder.policy
@@ -93,8 +95,8 @@ class API(base.Base):
         :raises ServiceNotFound:
         """
         context.authorize(policy.DELETE_POLICY, target_obj=backup)
-        if not force and backup.status not in [fields.BackupStatus.AVAILABLE,
-                                               fields.BackupStatus.ERROR]:
+        if not force and backup.status not in (BackupStatus.AVAILABLE,
+                                               BackupStatus.ERROR):
             msg = _('Backup status must be available or error')
             raise exception.InvalidBackup(reason=msg)
         if force and not self._check_support_to_force_delete(context,
@@ -109,7 +111,7 @@ class API(base.Base):
             msg = _('Incremental backups exist for this backup.')
             raise exception.InvalidBackup(reason=msg)
 
-        backup.status = fields.BackupStatus.DELETING
+        backup.status = BackupStatus.DELETING
         backup.host = self._get_available_backup_service_host(
             backup.host, backup.availability_zone)
         backup.save()
@@ -319,10 +321,10 @@ class API(base.Base):
             data_timestamp = snapshot.created_at
             self.db.snapshot_update(
                 context, snapshot_id,
-                {'status': fields.SnapshotStatus.BACKING_UP})
+                {'status': SnapshotStatus.BACKING_UP})
         else:
             self.db.volume_update(context, volume_id,
-                                  {'status': fields.VolumeStatus.BACKING_UP,
+                                  {'status': VolumeStatus.BACKING_UP,
                                    'previous_status': previous_status})
 
         kwargs = {
@@ -331,7 +333,7 @@ class API(base.Base):
             'display_name': name,
             'display_description': description,
             'volume_id': volume_id,
-            'status': fields.BackupStatus.CREATING,
+            'status': BackupStatus.CREATING,
             'container': container,
             'parent_id': parent_id,
             'size': volume['size'],
@@ -374,7 +376,7 @@ class API(base.Base):
         """Make the RPC call to restore a volume backup."""
         backup = self.get(context, backup_id)
         context.authorize(policy.RESTORE_POLICY, target_obj=backup)
-        if backup['status'] != fields.BackupStatus.AVAILABLE:
+        if backup['status'] != BackupStatus.AVAILABLE:
             msg = _('Backup status must be available')
             raise exception.InvalidBackup(reason=msg)
 
@@ -433,7 +435,7 @@ class API(base.Base):
         # for each error condition, it should be a very small window
         backup.host = self._get_available_backup_service_host(
             backup.host, backup.availability_zone)
-        backup.status = fields.BackupStatus.RESTORING
+        backup.status = BackupStatus.RESTORING
         backup.restore_volume_id = volume.id
         backup.save()
         self.db.volume_update(context, volume_id, {'status':
@@ -487,7 +489,7 @@ class API(base.Base):
         """
         backup = self.get(context, backup_id)
         context.authorize(policy.EXPORT_POLICY, target_obj=backup)
-        if backup['status'] != fields.BackupStatus.AVAILABLE:
+        if backup['status'] != BackupStatus.AVAILABLE:
             msg = (_('Backup status must be available and not %s.') %
                    backup['status'])
             raise exception.InvalidBackup(reason=msg)
@@ -554,7 +556,7 @@ class API(base.Base):
 
             # If record exists and it's not deleted we cannot proceed
             # with the import
-            if backup.status != fields.BackupStatus.DELETED:
+            if backup.status != BackupStatus.DELETED:
                 msg = _('Backup already exists in database.')
                 raise exception.InvalidBackup(reason=msg)
         except exception.BackupNotFound:
@@ -575,7 +577,7 @@ class API(base.Base):
             'user_id': context.user_id,
             'project_id': context.project_id,
             'volume_id': IMPORT_VOLUME_ID,
-            'status': fields.BackupStatus.CREATING,
+            'status': BackupStatus.CREATING,
             'deleted_at': None,
             'deleted': False,
             'metadata': {}

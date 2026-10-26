@@ -18,6 +18,7 @@
 
 import ast
 import collections
+from collections.abc import Sequence
 import datetime
 from typing import (Any, DefaultDict, Iterable, Optional, Union)
 
@@ -49,7 +50,9 @@ from cinder.message import api as message_api
 from cinder.message import message_field
 from cinder import objects
 from cinder.objects import base as objects_base
-from cinder.objects import fields
+from cinder.objects.fields import ReplicationStatus
+from cinder.objects.fields import SnapshotStatus
+from cinder.objects.fields import VolumeAttachStatus
 from cinder.objects import volume_type
 from cinder.policies import attachments as attachment_policy
 from cinder.policies import services as svr_policy
@@ -400,8 +403,8 @@ class API(base.Base):
                       "snap_id": snapshot.id})
             raise exception.InvalidVolume(reason=msg)
         s_res = snapshot.update_single_status_where(
-            fields.SnapshotStatus.RESTORING,
-            fields.SnapshotStatus.AVAILABLE)
+            SnapshotStatus.RESTORING,
+            SnapshotStatus.AVAILABLE)
         if not s_res:
             msg = (_("Can't revert volume %(vol_id)s to its latest snapshot "
                      "%(snap_id)s. Snapshot's status must be 'available'.")
@@ -472,7 +475,7 @@ class API(base.Base):
 
         # Build required conditions for conditional update
         expected = {
-            'attach_status': db_utils.Not(fields.VolumeAttachStatus.ATTACHED),
+            'attach_status': db_utils.Not(VolumeAttachStatus.ATTACHED),
             'migration_status': self.AVAILABLE_MIGRATION_STATUS,
             'consistencygroup_id': None,
             'group_id': None}
@@ -802,7 +805,7 @@ class API(base.Base):
         # user to see that the volume is 'detaching'. Having
         # 'migration_status' set will have the same effect internally.
         expected = {'status': 'in-use',
-                    'attach_status': fields.VolumeAttachStatus.ATTACHED,
+                    'attach_status': VolumeAttachStatus.ATTACHED,
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS}
 
         result = volume.conditional_update({'status': 'detaching'}, expected)
@@ -1031,7 +1034,7 @@ class API(base.Base):
                 'group_snapshot_id': group_snapshot_id,
                 'user_id': context.user_id,
                 'project_id': context.project_id,
-                'status': fields.SnapshotStatus.CREATING,
+                'status': SnapshotStatus.CREATING,
                 'progress': '0%',
                 'volume_size': volume['size'],
                 'display_name': name,
@@ -1183,7 +1186,7 @@ class API(base.Base):
                    'group_snapshot_id': group_snapshot_id,
                    'user_id': context.user_id,
                    'project_id': context.project_id,
-                   'status': fields.SnapshotStatus.CREATING,
+                   'status': SnapshotStatus.CREATING,
                    'progress': '0%',
                    'volume_size': volume['size'],
                    'display_name': name,
@@ -1237,12 +1240,12 @@ class API(base.Base):
                                     'group_snapshot_id': None}
         # If not force deleting we have status conditions
         if not force:
-            expected['status'] = (fields.SnapshotStatus.AVAILABLE,
-                                  fields.SnapshotStatus.ERROR)
+            expected['status'] = (SnapshotStatus.AVAILABLE,
+                                  SnapshotStatus.ERROR)
 
-        values = {'status': fields.SnapshotStatus.DELETING}
+        values = {'status': SnapshotStatus.DELETING}
         if unmanage_only is True:
-            values['status'] = fields.SnapshotStatus.UNMANAGING
+            values['status'] = SnapshotStatus.UNMANAGING
         result = snapshot.conditional_update(values, expected)
         if not result:
             status = utils.build_or_str(expected.get('status'),
@@ -1760,8 +1763,8 @@ class API(base.Base):
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS,
                     'replication_status': (
                         None,
-                        fields.ReplicationStatus.DISABLED,
-                        fields.ReplicationStatus.NOT_CAPABLE),
+                        ReplicationStatus.DISABLED,
+                        ReplicationStatus.NOT_CAPABLE),
                     'consistencygroup_id': (None, ''),
                     'group_id': (None, '')}
 
@@ -2225,7 +2228,7 @@ class API(base.Base):
     def _replication_db_change(self,
                                ctxt: context.RequestContext,
                                field: str,
-                               expected_value: Union[bool, list],
+                               expected_value: Union[bool, Sequence],
                                new_value: Union[bool, str],
                                host: str,
                                cluster_name: str,
@@ -2293,9 +2296,9 @@ class API(base.Base):
             msg = _('replication operations with cluster field')
             raise exception.UnavailableDuringUpgrade(action=msg)
 
-        rep_fields = fields.ReplicationStatus
-        expected_values = [rep_fields.ENABLED, rep_fields.FAILED_OVER]
-        new_value = rep_fields.FAILING_OVER
+        expected_values = (ReplicationStatus.ENABLED,
+                           ReplicationStatus.FAILED_OVER)
+        new_value = ReplicationStatus.FAILING_OVER
 
         cluster, services = self._replication_db_change(
             ctxt, 'replication_status', expected_values, new_value, host,
@@ -2671,7 +2674,7 @@ class API(base.Base):
 
         volume = attachment.volume
 
-        if attachment.attach_status == fields.VolumeAttachStatus.RESERVED:
+        if attachment.attach_status == VolumeAttachStatus.RESERVED:
             volume_utils.notify_about_volume_usage(ctxt,
                                                    volume, "detach.start")
         else:
