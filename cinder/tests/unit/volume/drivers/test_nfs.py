@@ -1609,9 +1609,7 @@ class NfsDriverTestCase(test.TestCase):
                 mock.patch.object(drv, 'get_active_image_from_info',
                                   return_value=volume['name']), \
                 mock.patch.object(drv, '_get_new_snap_path',
-                                  return_value=snap_path), \
-                mock.patch.object(fake_snap.volume, 'save') \
-                as mock_vol_save:
+                                  return_value=snap_path):
             self._driver.create_snapshot(fake_snap)
 
         mock_check_support.assert_called_once()
