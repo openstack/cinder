@@ -520,7 +520,7 @@ class HostNotFound(NotFound):
 
 
 class SchedulerHostFilterNotFound(NotFound):
-    message = _("Scheduler Host Filter %(filter_name)s could not be found.")
+    message = _("Scheduler Host Filter(s) %(filter_name)s could not be found.")
 
 
 class SchedulerHostWeigherNotFound(NotFound):
