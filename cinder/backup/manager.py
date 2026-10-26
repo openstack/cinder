@@ -387,7 +387,7 @@ class BackupManager(manager.SizedThreadPoolManager):
 
         self._notify_about_backup_usage(context, backup, "create.start")
 
-        expected_status = "backing-up"
+        expected_status = fields.VolumeStatus.BACKING_UP
         if snapshot:
             actual_status = snapshot['status']
             if actual_status != expected_status:
@@ -425,7 +425,8 @@ class BackupManager(manager.SizedThreadPoolManager):
 
         try:
             if not self.is_working():
-                err = _('Create backup aborted due to backup service is down.')
+                err = _('Create backup aborted due to problems with '
+                        'the backup service.')
                 volume_utils.update_backup_error(backup, err)
                 self.message_api.create_from_request_context(
                     context,
@@ -451,7 +452,8 @@ class BackupManager(manager.SizedThreadPoolManager):
                         self.db.volume_update(
                             context, volume_id,
                             {'status': previous_status,
-                             'previous_status': 'error_backing-up'})
+                             'previous_status':
+                                 fields.VolumeStatus.ERROR_BACKING_UP})
                     except exception.VolumeNotFound:
                         # If the volume was deleted we cannot update its
                         # status but we still want to set the backup to error.
@@ -560,7 +562,8 @@ class BackupManager(manager.SizedThreadPoolManager):
                     self.db.volume_update(
                         context, volume_id,
                         {'status': previous_status,
-                         'previous_status': 'error_backing-up'})
+                         'previous_status':
+                             fields.VolumeStatus.ERROR_BACKING_UP})
                 volume_utils.update_backup_error(backup, str(err))
         finally:
             with backup.as_read_deleted():
@@ -589,9 +592,10 @@ class BackupManager(manager.SizedThreadPoolManager):
                 context, snapshot_id,
                 {'status': fields.SnapshotStatus.AVAILABLE})
         else:
-            self.db.volume_update(context, volume_id,
-                                  {'status': previous_status,
-                                   'previous_status': 'backing-up'})
+            self.db.volume_update(
+                context, volume_id,
+                {'status': previous_status,
+                 'previous_status': fields.VolumeStatus.BACKING_UP})
 
         # continue_backup method above updated the status for the backup, so
         # it will reflect latest status, even if it is deleted
