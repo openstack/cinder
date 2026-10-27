@@ -214,7 +214,7 @@ def save_to_file(destination_file):
                            {'default_path': path_to_file, 'exc': exc})
     try:
         rtsroot.save_to_file(destination_file)
-    except (OSError, IOError) as exc:
+    except OSError as exc:
         raise RtstoolError(_('Could not save configuration to %(file_path)s: '
                              '%(exc)s') %
                            {'file_path': destination_file, 'exc': exc})
@@ -228,7 +228,7 @@ def restore_from_file(configuration_file):
 
     try:
         rtsroot.restore_from_file(configuration_file)
-    except (OSError, IOError) as exc:
+    except OSError as exc:
         raise RtstoolError(_('Could not restore configuration file '
                              '%(file_path)s: %(exc)s'),
                            {'file_path': configuration_file, 'exc': exc})
