@@ -114,7 +114,6 @@ class QuotaSetsController(wsgi.Controller):
                                                              defaults=False)
         quota_values.update(group_quota_values)
         valid_quotas = {}
-        reservations = []
         for key in body['quota_set'].keys():
             if key in NON_QUOTA_KEYS:
                 continue
@@ -135,8 +134,6 @@ class QuotaSetsController(wsgi.Controller):
             except exception.AdminRequired:
                 raise webob.exc.HTTPForbidden()
 
-        if reservations:
-            db.reservation_commit(context, reservations)
         return {'quota_set': self._get_quotas(context, target_project_id)}
 
     def _get_quota_usage(self, quota_obj):
