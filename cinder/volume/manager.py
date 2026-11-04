@@ -4957,13 +4957,12 @@ class VolumeManager(manager.CleanableManager,
             mode = attachment_ref.attach_mode
             connector['mode'] = mode
 
-        connection_info = self._connection_create(context,
-                                                  vref,
-                                                  attachment_ref,
-                                                  connector)
-
         try:
             volume_utils.require_driver_initialized(self.driver)
+            connection_info = self._connection_create(context,
+                                                      vref,
+                                                      attachment_ref,
+                                                      connector)
         except Exception as err:
             self.message_api.create(
                 context, message_field.Action.UPDATE_ATTACHMENT,
