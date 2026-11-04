@@ -683,10 +683,6 @@ def convert_str(text: Union[str, bytes]) -> str:
     """Convert to native string.
 
     Convert bytes and Unicode strings to native strings:
-
-    * convert to bytes on Python 2:
-      encode Unicode using encodeutils.safe_encode()
-    * convert to Unicode on Python 3: decode bytes from UTF-8
     """
     if isinstance(text, bytes):
         return text.decode('utf-8')
