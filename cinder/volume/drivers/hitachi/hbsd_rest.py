@@ -1883,6 +1883,7 @@ class HBSDREST(common.HBSDCommon):
                 'prefix': self.driver_info['driver_prefix'],
                 'pvol': pvol,
             }
+            # pylint: disable-next=bad-string-format-type
             copy_pair_name = '%(prefix)s-%(pvol)d-%(svol)d' % {
                 'prefix': self.driver_info['driver_prefix'],
                 'pvol': pvol,
