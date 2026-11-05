@@ -642,10 +642,10 @@ class TestResizeImage(test.TestCase):
 
 
 class TestFetch(test.TestCase):
-    @mock.patch('eventlet.tpool.Proxy')
+    @mock.patch('cinder.image.image_utils.utils.tpool_wrap')
     @mock.patch('os.stat')
     @mock.patch('cinder.image.image_utils.fileutils')
-    def test_defaults(self, mock_fileutils, mock_stat, mock_proxy):
+    def test_defaults(self, mock_fileutils, mock_stat, mock_tpool_wrap):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_id = mock.sentinel.image_id
@@ -660,9 +660,9 @@ class TestFetch(test.TestCase):
             output = image_utils.fetch(ctxt, image_service, image_id, path,
                                        _user_id, _project_id)
         self.assertIsNone(output)
-        mock_proxy.assert_called_once_with(mock_open.return_value)
-        image_service.download.assert_called_once_with(ctxt, image_id,
-                                                       mock_proxy.return_value)
+        mock_tpool_wrap.assert_called_once_with(mock_open.return_value)
+        image_service.download.assert_called_once_with(
+            ctxt, image_id, mock_tpool_wrap.return_value)
         mock_open.assert_called_once_with(path, 'wb')
         mock_fileutils.remove_path_on_error.assert_called_once_with(path)
         (mock_fileutils.remove_path_on_error.return_value.__enter__
@@ -805,11 +805,13 @@ class TestVerifyImageSignature(test.TestCase):
         mock_get.assert_not_called()
 
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
-    @mock.patch('eventlet.tpool.execute')
+    @mock.patch('cinder.image.image_utils._verify_image')
+    @mock.patch('cinder.image.image_utils.utils.tpool_wrap')
     @mock.patch('cursive.signature_utils.get_verifier')
     @mock.patch('oslo_utils.fileutils.remove_path_on_error')
     def test_image_signature_verify_success(self, mock_remove, mock_get,
-                                            mock_exec, mock_open):
+                                            mock_tpool_wrap, mock_verify,
+                                            mock_open):
         ctxt = mock.sentinel.context
         metadata = {'name': 'test image',
                     'is_public': False,
@@ -830,8 +832,8 @@ class TestVerifyImageSignature(test.TestCase):
         result = image_utils.verify_glance_image_signature(
             ctxt, FakeImageService(), 'fake_id', 'fake_path')
         self.assertTrue(result)
-        mock_exec.assert_called_once_with(
-            image_utils._verify_image,
+        mock_tpool_wrap.assert_called_once_with(mock_verify)
+        mock_tpool_wrap.return_value.assert_called_once_with(
             mock_open.return_value.__enter__.return_value,
             mock_get.return_value)
 
@@ -971,13 +973,13 @@ class TestUploadVolume(test.TestCase):
               (mock.sentinel.disk_format, mock.sentinel.disk_format, False),
               ('ploop', 'parallels', True),
               ('ploop', 'parallels', False))
-    @mock.patch('eventlet.tpool.Proxy')
+    @mock.patch('cinder.image.image_utils.utils.tpool_wrap')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')
     def test_diff_format(self, image_format, mock_temp, mock_convert,
-                         mock_info, mock_open, mock_proxy):
+                         mock_info, mock_open, mock_tpool_wrap):
         input_format, output_format, do_compress = image_format
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
@@ -1004,13 +1006,13 @@ class TestUploadVolume(test.TestCase):
         mock_info.assert_called_with(temp_file, run_as_root=True)
         self.assertEqual(2, mock_info.call_count)
         mock_open.assert_called_once_with(temp_file, 'rb')
-        mock_proxy.assert_called_once_with(
+        mock_tpool_wrap.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock_proxy.return_value,
+            ctxt, image_meta['id'], {}, mock_tpool_wrap.return_value,
             store_id=None, base_image_ref=None)
 
-    @mock.patch('eventlet.tpool.Proxy')
+    @mock.patch('cinder.image.image_utils.utils.tpool_wrap')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1018,7 +1020,7 @@ class TestUploadVolume(test.TestCase):
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_same_format(self, mock_os, mock_temp, mock_convert, mock_info,
-                         mock_open, mock_chown, mock_proxy):
+                         mock_open, mock_chown, mock_tpool_wrap):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_meta = {'id': 'test_id',
@@ -1035,13 +1037,13 @@ class TestUploadVolume(test.TestCase):
         self.assertFalse(mock_info.called)
         mock_chown.assert_called_once_with(volume_path)
         mock_open.assert_called_once_with(volume_path, 'rb')
-        mock_proxy.assert_called_once_with(
+        mock_tpool_wrap.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock_proxy.return_value,
+            ctxt, image_meta['id'], {}, mock_tpool_wrap.return_value,
             store_id=None, base_image_ref=None)
 
-    @mock.patch('eventlet.tpool.Proxy')
+    @mock.patch('cinder.image.image_utils.utils.tpool_wrap')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1049,7 +1051,7 @@ class TestUploadVolume(test.TestCase):
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_same_format_fd(self, mock_os, mock_temp, mock_convert, mock_info,
-                            mock_open, mock_chown, mock_proxy):
+                            mock_open, mock_chown, mock_tpool_wrap):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_meta = {'id': 'test_id',
@@ -1066,15 +1068,15 @@ class TestUploadVolume(test.TestCase):
         self.assertFalse(mock_info.called)
         mock_chown.assert_not_called()
         mock_open.assert_not_called()
-        mock_proxy.assert_called_once_with(mock.sentinel.volume_fd)
+        mock_tpool_wrap.assert_called_once_with(mock.sentinel.volume_fd)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock_proxy.return_value,
+            ctxt, image_meta['id'], {}, mock_tpool_wrap.return_value,
             store_id=None, base_image_ref=None)
 
     @mock.patch('cinder.image.accelerator.ImageAccel._get_engine')
     @mock.patch('cinder.image.accelerator.ImageAccel.is_engine_ready',
                 return_value = True)
-    @mock.patch('eventlet.tpool.Proxy')
+    @mock.patch('cinder.image.image_utils.utils.tpool_wrap')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1082,7 +1084,7 @@ class TestUploadVolume(test.TestCase):
     @mock.patch('cinder.image.image_utils.temporary_file')
     def test_same_format_compressed(self, mock_temp, mock_convert,
                                     mock_info, mock_open,
-                                    mock_chown, mock_proxy,
+                                    mock_chown, mock_tpool_wrap,
                                     mock_engine_ready, mock_get_engine):
         class fakeEngine(object):
 
@@ -1120,10 +1122,10 @@ class TestUploadVolume(test.TestCase):
         mock_info.assert_called_with(temp_file, run_as_root=True)
         self.assertEqual(2, mock_info.call_count)
         mock_open.assert_called_once_with(temp_file, 'rb')
-        mock_proxy.assert_called_once_with(
+        mock_tpool_wrap.assert_called_once_with(
             mock_open.return_value.__enter__.return_value)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock_proxy.return_value,
+            ctxt, image_meta['id'], {}, mock_tpool_wrap.return_value,
             store_id=None, base_image_ref=None)
         mock_engine.compress_img.assert_called()
 
@@ -1156,7 +1158,7 @@ class TestUploadVolume(test.TestCase):
         self.assertEqual(2, mock_info.call_count)
         self.assertFalse(image_service.update.called)
 
-    @mock.patch('eventlet.tpool.Proxy')
+    @mock.patch('cinder.image.image_utils.utils.tpool_wrap')
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
     @mock.patch('cinder.image.image_utils.open', new_callable=mock.mock_open)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -1164,7 +1166,7 @@ class TestUploadVolume(test.TestCase):
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.os')
     def test_base_image_ref(self, mock_os, mock_temp, mock_convert, mock_info,
-                            mock_open, mock_chown, mock_proxy):
+                            mock_open, mock_chown, mock_tpool_wrap):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_meta = {'id': 'test_id',
@@ -1177,8 +1179,10 @@ class TestUploadVolume(test.TestCase):
                                   volume_path, base_image_ref='xyz')
 
         mock_open.assert_called_once_with(volume_path, 'rb')
+        mock_tpool_wrap.assert_called_once_with(
+            mock_open.return_value.__enter__.return_value)
         image_service.update.assert_called_once_with(
-            ctxt, image_meta['id'], {}, mock_proxy.return_value,
+            ctxt, image_meta['id'], {}, mock_tpool_wrap.return_value,
             store_id=None, base_image_ref='xyz')
 
 
