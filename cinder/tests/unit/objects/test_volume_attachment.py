@@ -23,6 +23,7 @@ from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
+from cinder.tests.unit import utils as test_utils
 
 
 @ddt.ddt
@@ -122,12 +123,11 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
                          attachment.attach_status)
 
-    @mock.patch('cinder.db.models.Volume')
-    def test_migrate_attachment_specs(self, mock_volume_model):
-        mock_volume_model.project_id = self.context.project_id
+    def test_migrate_attachment_specs(self):
+        volume = test_utils.create_volume(self.context)
         # Create an attachment
         attachment = objects.VolumeAttachment(
-            self.context, attach_status='attaching', volume_id=fake.VOLUME_ID)
+            self.context, attach_status='attaching', volume_id=volume.id)
         attachment.create()
         # Create some attachment_specs. Note that the key and value have to
         # be strings, the table doesn't handle things like a wwpns list
