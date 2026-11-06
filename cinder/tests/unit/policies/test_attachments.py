@@ -112,6 +112,26 @@ class AttachmentsPolicyTest(base.BasePolicyTest):
                                  rule_name, self.controller.create, req,
                                  body=body)
 
+    def _show_attachment(self, user_id, attachment_id):
+        url = '%s/%s' % (self.api_path, attachment_id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.environ['cinder.context'] = self.create_context(user_id)
+        return self.controller.show(req, id=attachment_id)
+
+    def test_show_attachment_as_project_member(self):
+        attachment_id = self._create_attachment()
+        response = self._show_attachment('project_member', attachment_id)
+        self.assertEqual(attachment_id, response['attachment']['id'])
+
+    @ddt.data('other_project_member', 'other_project_reader')
+    def test_show_attachment_of_another_project(self, user_id):
+        attachment_id = self._create_attachment()
+        # Owning any volume must not expose another project's attachment.
+        test_utils.create_volume(self.create_context(user_id),
+                                 testcase_instance=self)
+        self.assertRaises(exception.VolumeAttachmentNotFound,
+                          self._show_attachment, user_id, attachment_id)
+
     @ddt.data(*authorized_users)
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update')
     def test_update_attachment_policy(self, user_id, mock_attachment_update):
