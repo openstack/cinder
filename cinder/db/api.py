@@ -360,7 +360,9 @@ def model_query(context, model, *args, **kwargs):
             # NOTE(dulek): In case of VolumeAttachment, we need to join
             # `project_id` through `volume` relationship.
             query = query.filter(
-                models.Volume.project_id == context.project_id
+                models.VolumeAttachment.volume.has(
+                    project_id=context.project_id
+                )
             )
         else:
             query = query.filter_by(project_id=context.project_id)

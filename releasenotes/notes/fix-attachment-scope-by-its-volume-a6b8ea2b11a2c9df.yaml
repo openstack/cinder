@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    `Bug #2173158 <https://bugs.launchpad.net/cinder/+bug/2173158>`_: Fixed
+    the attachment access check added for `bug #2138566
+    <https://bugs.launchpad.net/cinder/+bug/2138566>`_, which let a non-admin
+    user show an attachment of another project, including its connection
+    info, when their own project had any volume and they knew the attachment's
+    UUID. The check now looks at the project of the volume the attachment
+    belongs to.
