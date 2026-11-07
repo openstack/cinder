@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Volume usage notifications now include ``cluster_name`` in addition to
+    ``host``.
