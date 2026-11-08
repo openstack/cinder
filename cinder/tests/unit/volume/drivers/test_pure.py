@@ -3938,12 +3938,12 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         cinder_snap = fake_snapshot.fake_snapshot_obj(mock.MagicMock())
         cinder_snap.volume = cinder_vol
         cinder_snaps = [cinder_snap]
-        purity_snaps = MPS.items.copy()
+        purity_snaps = deepcopy(MPS.items)
         purity_snaps[0]['name'] = 'volume-%s-cinder.snapshot-%s' % (
             cinder_vol.id, cinder_snap.id
         )
 
-        expected_refs = MPS_REFS.items.copy()
+        expected_refs = deepcopy(MPS_REFS.items)
         expected_refs[0]['reference'] = {'name': purity_snaps[0]['name']}
         expected_refs[0]['safe_to_manage'] = False
         expected_refs[0]['reason_not_safe'] = 'Snapshot already managed.'
