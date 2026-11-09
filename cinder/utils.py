@@ -201,10 +201,16 @@ def check_ssh_injection(cmd_list: list[str]) -> None:
             if c not in arg:
                 continue
 
-            result = arg.find(c)
-            if not result == -1:
+            # Bug #2163356: need to check that *every* occurrence of c
+            # is escaped (not just the first)
+            start = 0
+            while True:
+                result = arg.find(c, start)
+                if result == -1:
+                    break
                 if result == 0 or not arg[result - 1] == '\\':
                     raise exception.SSHInjectionThreat(command=cmd_list)
+                start = result + 1
 
 
 def check_metadata_properties(
