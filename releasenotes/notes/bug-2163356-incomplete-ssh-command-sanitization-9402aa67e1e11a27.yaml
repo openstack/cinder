@@ -1,0 +1,24 @@
+---
+fixes:
+  - |
+    `Bug #2163356 <https://bugs.launchpad.net/cinder/+bug/2163356>`_:
+    Improved the ssh injection sanitizer utility, which could be tricked
+    into allowing a disallowed character through unescaped in a command from
+    a cinder volume driver to the backend storage, as long as the
+    first occurrence of the character was escaped, leading to possible remote
+    code execution on the backend.  This bug affected only those cinder
+    drivers that use ssh to communicate with the storage backend and use
+    the sanitizer utility, which include IBM Storwize/SVC, Inspur
+    InStorage, TOYOU ACS5000, the generic SAN driver base class, and the
+    Brocade/Cisco FC zone managers.
+security:
+  - |
+    This release contains a fix for `Bug #2163356
+    <https://bugs.launchpad.net/cinder/+bug/2163356>`_ whereby the cinder
+    ssh injection sanitizer utility, could be tricked into allowing a
+    disallowed character through unescaped in a command from a cinder
+    driver to the backend storage, leading to possible remote code execution
+    on the backend.  This bug affected only those cinder drivers that use
+    ssh to communicate with the storage backend and use the sanitizer utility,
+    which include IBM Storwize/SVC, Inspur InStorage, TOYOU ACS5000, the
+    generic SAN driver base class, and the Brocade/Cisco FC zone managers.

@@ -234,6 +234,27 @@ class GenericUtilsTestCase(test.TestCase):
                           utils.check_ssh_injection,
                           with_multiple_quotes)
 
+    def test_check_ssh_injection_escaped_first_occurrence_bypass(self):
+        """Test for Bug #2163356"""
+        # The sanitizer previously only inspected the first occcurrence
+        # of a disallowed character to verify that it was safely escaped;
+        # thus an argument like '\;;payload' would allow ';payload' to
+        # be injected
+        for c in ('`', '$', '|', ';', '&', '>', '<'):
+            bypass = ['cmd', '\\%s%spayload' % (c, c)]
+            self.assertRaises(exception.SSHInjectionThreat,
+                              utils.check_ssh_injection,
+                              bypass)
+
+        # A real-world payload from Bug #2163356
+        real_world_bypass = [
+            'svctask', 'mkhost', '-force', '-hbawwpn',
+            '\\$\\;;echo${IFS}pwned', '-name', '"host01"',
+        ]
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          real_world_bypass)
+
     @mock.patch('os.stat')
     def test_get_file_mode(self, mock_stat):
         class stat_result(object):
