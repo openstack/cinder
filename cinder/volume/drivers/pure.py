@@ -3929,8 +3929,9 @@ class PureBaseVolumeDriver(san.SanDriver):
                 )
             lacps = list(
                 array.get_network_interfaces(
-                    filter=("eth.subtype='lacp_bond'" or
-                            "eth.subtype='vif'")
+                    filter=(
+                        "eth.subtype='lacp_bond' or eth.subtype='vif'"
+                    )
                 ).items
             )
             if lacps:
