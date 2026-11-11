@@ -20,6 +20,16 @@ from cinder.tests.unit import fake_constants
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 
 
+class FakeObject(object):
+    """Fake allowing attribute and dict access, like a Cinder OVO."""
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+
 VOLUME_ID = 'f10d1a84-9b7b-427e-8fec-63c48b509a56'
 LUN_ID = 'ee6b4cc7-477b-4016-aa0c-7127b4e3af86'
 LUN_HANDLE = 'fake_lun_handle'
@@ -153,6 +163,8 @@ NAMESPACE_VOLUME = {
     'host': HOST_STRING,
     'attach_status': DETACHED,
 }
+VOLUME_OBJ = FakeObject(**VOLUME)
+NAMESPACE_VOLUME_OBJ = FakeObject(**NAMESPACE_VOLUME)
 NFS_VOLUME = {
     'name': NFS_FILE_PATH,
     'size': SIZE,
@@ -445,6 +457,7 @@ SNAPSHOT = {
     'busy': False,
     'id': 'fake_id'
 }
+SNAPSHOT_OBJ = FakeObject(**SNAPSHOT)
 
 SNAPSHOT_VOLUME = {
     'id': VOLUME_ID,
@@ -482,6 +495,7 @@ NAMESPACE_WITH_METADATA = {
 }
 
 VOLUME_REF = {'name': 'fake_vref_name', 'size': 42}
+VOLUME_REF_OBJ = FakeObject(**VOLUME_REF)
 
 FAKE_CMODE_VOLUMES = ['open123', 'mixed', 'open321']
 FAKE_CMODE_POOL_MAP = {

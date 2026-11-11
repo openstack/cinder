@@ -1399,13 +1399,19 @@ class NetAppBlockStorageCmodeLibrary(
 
     def migrate_volume(self, context, volume, host):
         """Migrate Cinder volume to the specified pool or vserver."""
+        if self.configuration.netapp_disaggregated_platform:
+            return False, {}
         return self.migrate_volume_ontap_assisted(
             volume, host, self.backend_name, self.configuration.netapp_vserver)
 
     def revert_to_snapshot(self, volume, snapshot):
         """Driver entry point for reverting volume to snapshot."""
         try:
-            self._revert_to_snapshot(volume, snapshot)
+            if self.configuration.netapp_disaggregated_platform:
+                self.zapi_client.restore_snapshot(snapshot['volume_name'],
+                                                  snapshot['name'])
+            else:
+                self._revert_to_snapshot(volume, snapshot)
         except Exception:
             raise exception.VolumeBackendAPIException(
                 "Revert snapshot failed.")

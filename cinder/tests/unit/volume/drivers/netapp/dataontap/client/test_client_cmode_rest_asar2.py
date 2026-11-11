@@ -13,6 +13,7 @@
 #    under the License.
 
 import copy
+import unittest
 from unittest import mock
 from unittest.mock import patch
 import uuid
@@ -107,6 +108,8 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
         self.vserver = CONNECTION_INFO['vserver']
         self.fake_volume = str(uuid.uuid4())
         self.fake_lun = str(uuid.uuid4())
+        self.su_uuid = str(uuid.uuid4())
+        self.snap_uuid = str(uuid.uuid4())
 
     def _mock_api_error(self, code='fake'):
         return mock.Mock(side_effect=netapp_api.NaApiError(code=code))
@@ -550,14 +553,19 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
            'client_cmode_rest_asar2.RestClientASAr2.send_request')
     def test_destroy_lun(self, mock_send_request):
         mock_send_request.return_value = None
-
+        self.client.config = mock.Mock()
+        self.client.config.netapp_clone_split_timeout = 300
+        self.mock_object(self.client, '_get_storage_unit_uuid')
+        self.mock_object(self.client, 'wait_for_split_to_complete')
+        self.mock_object(self.client, '_get_clone_uuids',
+                         mock.Mock(return_value=[]))
         self.client.destroy_lun(fake.LUN_PATH, force=True)
-        lun_name = self.client._get_backend_lun_or_namespace(
+        lun_name = self.client._get_backend_storage_unit(
             fake.LUN_PATH
         )
 
         mock_send_request.assert_called_once_with(
-            '/storage/luns/', 'delete', query={
+            '/storage/luns', 'delete', query={
                 'name': lun_name,
                 'allow_delete_while_mapped': 'true',
             }
@@ -565,16 +573,52 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
 
     @patch('cinder.volume.drivers.netapp.dataontap.client.'
            'client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_destroy_lun_marks_for_deletion_when_clones_exist(
+            self, mock_send_request):
+        # A LUN that still has clones is renamed. The split is not started.
+        error = netapp_api.NaApiError()
+        error.code = netapp_api.EDELETE_SPLIT_CLONE
+        self.client.config = mock.Mock()
+        self.client.config.netapp_clone_split_timeout = 300
+        self.mock_object(self.client, '_get_storage_unit_uuid',
+                         mock.Mock(return_value=self.su_uuid))
+        self.mock_object(self.client, 'wait_for_split_to_complete')
+        self.client._get_backend_storage_unit = mock.Mock(
+            return_value=fake.LUN_NAME
+        )
+        self.client.volume_clone_split_start = mock.Mock()
+        mock_send_request.side_effect = [error, None]
+
+        self.client.destroy_lun(fake.LUN_PATH, force=True)
+
+        self.client.volume_clone_split_start.assert_not_called()
+        self.assertEqual(mock_send_request.call_count, 2)
+        mock_send_request.assert_called_with(
+            f'/storage/luns/{self.su_uuid}', 'patch',
+            body={
+                'name': (client_cmode_rest_asar2.DELETED_PREFIX
+                         + fake.LUN_NAME),
+            }
+        )
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.RestClientASAr2.send_request')
     def test_destroy_lun_handles_non_forced_deletion(self, mock_send_request):
         mock_send_request.return_value = None
+        self.client.config = mock.Mock()
+        self.client.config.netapp_clone_split_timeout = 300
+        self.mock_object(self.client, '_get_storage_unit_uuid')
+        self.mock_object(self.client, 'wait_for_split_to_complete')
+        self.mock_object(self.client, '_get_clone_uuids',
+                         mock.Mock(return_value=[]))
 
         self.client.destroy_lun(fake.LUN_PATH, force=False)
-        lun_name = self.client._get_backend_lun_or_namespace(
+        lun_name = self.client._get_backend_storage_unit(
             fake.LUN_PATH
         )
 
         mock_send_request.assert_called_once_with(
-            '/storage/luns/', 'delete', query={
+            '/storage/luns', 'delete', query={
                 'name': lun_name,
             }
         )
@@ -583,6 +627,8 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
            'client_cmode_rest_asar2.RestClientASAr2.send_request')
     def test_destroy_lun_raises_error_on_failure(self, mock_send_request):
         mock_send_request.side_effect = netapp_api.NaApiError
+        self.client.config = mock.Mock()
+        self.client.config.safe_get = mock.Mock(return_value=10)
         self.assertRaises(
             netapp_api.NaApiError,
             self.client.destroy_lun,
@@ -608,8 +654,14 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
                 'client_cmode_rest_asar2.RestClientASAr2.send_request')
     def test_destroy_namespace(self, mock_send_request):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client.config = mock.Mock()
+        self.client.config.netapp_clone_split_timeout = 300
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=fake.NAMESPACE_NAME)
+        self.mock_object(self.client, '_get_storage_unit_uuid')
+        self.mock_object(self.client, 'wait_for_split_to_complete')
+        self.mock_object(self.client, '_get_clone_uuids',
+                         mock.Mock(return_value=[]))
         self.client.destroy_namespace(fake.PATH_NAMESPACE, force=True)
         mock_send_request.assert_called_once_with(
             '/storage/namespaces', 'delete', query={
@@ -620,16 +672,105 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
         )
 
     @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
+                'client_cmode_rest_asar2.RestClientASAr2.send_request')
+    def test_destroy_namespace_marks_for_deletion_when_clones_exist(
+            self, mock_send_request):
+        error = netapp_api.NaApiError()
+        error.code = netapp_api.EDELETE_SPLIT_CLONE
+        self.client.config = mock.Mock()
+        self.client.config.netapp_clone_split_timeout = 300
+        self.mock_object(self.client, '_get_storage_unit_uuid',
+                         mock.Mock(return_value=self.su_uuid))
+        self.mock_object(self.client, 'wait_for_split_to_complete')
+        self.client._get_backend_storage_unit = mock.Mock(
+            return_value=fake.NAMESPACE_NAME
+        )
+        self.client.volume_clone_split_start = mock.Mock()
+        mock_send_request.side_effect = [error, None]
+
+        self.client.destroy_namespace(fake.PATH_NAMESPACE, force=True)
+
+        # Splitting is left to the periodic cleanup task.
+        self.client.volume_clone_split_start.assert_not_called()
+        self.assertEqual(mock_send_request.call_count, 2)
+        mock_send_request.assert_called_with(
+            f'/storage/namespaces/{self.su_uuid}', 'patch',
+            body={
+                'name': (client_cmode_rest_asar2.DELETED_PREFIX
+                         + fake.NAMESPACE_NAME),
+            }
+        )
+
+    @ddt.data(
+        ['clone-uuid-1'],
+        ['clone-uuid-1', 'clone-uuid-2', 'clone-uuid-3'],
+    )
+    def test_cleanup_namespace_starts_splits_without_waiting(self, clones):
+        """A marked namespace that still has clones is split, not deleted."""
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        mock_get_clones = self.mock_object(
+            self.client, '_get_clone_uuids', mock.Mock(return_value=clones))
+        self.client.volume_clone_split_start = mock.Mock()
+
+        deleted_name = (client_cmode_rest_asar2.DELETED_PREFIX
+                        + fake.NAMESPACE_NAME)
+        self.client._delete_marked_storage_unit({
+            'name': deleted_name,
+            'uuid': self.su_uuid,
+            'type': 'namespace',
+        })
+
+        # Clones keep the name from before the deleted prefix was added.
+        mock_get_clones.assert_called_once_with(
+            storage_unit_name=fake.NAMESPACE_NAME)
+        self.assertEqual(len(clones),
+                         self.client.volume_clone_split_start.call_count)
+        self.client.volume_clone_split_start.assert_has_calls(
+            [mock.call(clone) for clone in clones], any_order=True)
+        mock_send_request.assert_not_called()
+
+    @ddt.data(
+        ('namespace', '/storage/namespaces', True),
+        ('lun', '/storage/luns', False),
+    )
+    @ddt.unpack
+    def test_cleanup_storage_unit_deletes_when_no_clones(
+            self, unit_type, endpoint, include_svm):
+        """A marked storage unit with no clones is deleted."""
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        self.mock_object(
+            self.client, '_get_clone_uuids', mock.Mock(return_value=[]))
+        self.client.volume_clone_split_start = mock.Mock()
+
+        deleted_name = (client_cmode_rest_asar2.DELETED_PREFIX
+                        + fake.NAMESPACE_NAME)
+        self.client._delete_marked_storage_unit({
+            'name': deleted_name,
+            'uuid': self.su_uuid,
+            'type': unit_type,
+        })
+
+        self.client.volume_clone_split_start.assert_not_called()
+        expected_query = {
+            'name': deleted_name,
+            'allow_delete_while_mapped': 'true',
+        }
+        if include_svm:
+            expected_query['svm'] = self.vserver
+        mock_send_request.assert_called_once_with(
+            endpoint, 'delete', query=expected_query)
+
+    @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
                 'client_cmode_rest.RestClient.map_lun')
     def test_map_lun(self, mock_super_map_lun):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=fake.LUN_NAME
         )
         mock_super_map_lun.return_value = 'result'
 
         result = self.client.map_lun(fake.LUN_PATH, 'igroup1', 42)
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             fake.LUN_PATH
         )
         mock_super_map_lun.assert_called_once_with(fake.LUN_NAME,
@@ -640,7 +781,7 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.netapp.dataontap.'
                 'client.client_cmode_rest.RestClient.get_lun_map')
     def test_get_lun_map(self, mock_super_get_lun_map):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=fake.LUN_NAME)
         mock_super_get_lun_map.return_value = [
             {'initiator-group': 'igroup1', 'lun-id': 1, 'vserver': 'svm1'}
@@ -648,7 +789,7 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
 
         result = self.client.get_lun_map(fake.LUN_NAME)
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             fake.LUN_NAME
         )
         mock_super_get_lun_map.assert_called_once_with(fake.LUN_NAME)
@@ -659,11 +800,11 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.netapp.dataontap.'
                 'client.client_cmode_rest.RestClient.unmap_lun')
     def test_unmap_lun(self, mock_super_unmap_lun):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=fake.LUN_NAME
         )
         self.client.unmap_lun(fake.LUN_NAME, fake.IGROUP1, )
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             fake.LUN_NAME
         )
         mock_super_unmap_lun.assert_called_once_with(
@@ -673,7 +814,7 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
                 'client_cmode_rest.RestClient.get_lun_by_args')
     def test_get_lun_by_args_with_path(self, mock_super_get_lun_by_args):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=fake.LUN_NAME
         )
         mock_super_get_lun_by_args.return_value = 'result'
@@ -681,7 +822,7 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
         path_arg = {'path': fake.LUN_PATH}
         result = self.client.get_lun_by_args(path=path_arg)
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             path_arg
         )
         self.assertEqual(path_arg['path'], fake.LUN_NAME)
@@ -699,14 +840,14 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
                 'client_cmode_rest.RestClient.map_namespace')
     def test_maps_namespace(self, mock_super_map_namespace):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=fake.NAMESPACE_NAME
         )
         mock_super_map_namespace.return_value = 'namespace-uuid'
 
         result = self.client.map_namespace(fake.PATH_NAMESPACE, fake.SUBSYSTEM)
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             fake.PATH_NAMESPACE
         )
         mock_super_map_namespace.assert_called_once_with(
@@ -718,14 +859,14 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
                 'client_cmode_rest.RestClient.map_namespace')
     def test_maps_namespace_with_path_containing_hyphens(
             self, mock_super_map_namespace):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value='name_space_2')
         mock_super_map_namespace.return_value = 'uuid-2'
 
         result = self.client.map_namespace('/vol/vol1/name-space-2',
                                            'subsystem2')
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             '/vol/vol1/name-space-2')
         mock_super_map_namespace.assert_called_once_with(
             'name_space_2', 'subsystem2')
@@ -735,12 +876,12 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
                 'client_cmode_rest.RestClient.unmap_namespace')
     def test_unmaps_namespace_with_valid_path_and_subsystem(
             self, mock_super_unmap_namespace):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=fake.NAMESPACE_NAME)
 
         self.client.unmap_namespace(fake.PATH_NAMESPACE, fake.SUBSYSTEM)
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             fake.PATH_NAMESPACE
         )
         mock_super_unmap_namespace.assert_called_once_with(
@@ -751,13 +892,13 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
                 'client_cmode_rest.RestClient.unmap_namespace')
     def test_unmaps_namespace_with_path_containing_special_characters(
             self, mock_super_unmap_namespace):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value='namespace_special')
 
         self.client.unmap_namespace('/vol/vol1/namespace-special',
                                     'subsystem2')
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             '/vol/vol1/namespace-special')
         mock_super_unmap_namespace.assert_called_once_with(
             'namespace_special',
@@ -767,7 +908,7 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.netapp.dataontap.client.'
                 'client_cmode_rest.RestClient.get_namespace_map')
     def test_get_namespace_map(self, mock_super_get_namespace_map):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=fake.NAMESPACE_NAME
         )
         mock_super_get_namespace_map.return_value = {
@@ -775,7 +916,7 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
 
         result = self.client.get_namespace_map(fake.PATH_NAMESPACE)
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             fake.PATH_NAMESPACE
         )
         mock_super_get_namespace_map.assert_called_once_with(
@@ -786,14 +927,14 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
                 'client_cmode_rest.RestClient.get_namespace_map')
     def test_get_namespace_map_with_path_containing_special_characters(
             self, mock_super_get_namespace_map):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value='namespace_special')
         mock_super_get_namespace_map.return_value = {
             'namespace_map': 'special_details'}
 
         result = self.client.get_namespace_map('/vol/vol1/namespace-special')
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             '/vol/vol1/namespace-special')
         mock_super_get_namespace_map.assert_called_once_with(
             'namespace_special')
@@ -815,12 +956,12 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
         'cinder.volume.drivers.netapp.dataontap.client.'
         'client_cmode_rest_asar2.RestClientASAr2._lun_update_by_path')
     def test_resizes_lun(self, mock_lun_update_by_path):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=fake.LUN_NAME)
 
         self.client.do_direct_resize(fake.LUN_PATH, 10)
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             fake.LUN_PATH)
         mock_lun_update_by_path.assert_called_once_with(
             fake.LUN_NAME, {'name': fake.LUN_NAME, 'space.size': 10})
@@ -830,22 +971,22 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
         'client_cmode_rest_asar2.RestClientASAr2._lun_update_by_path'
     )
     def test_resize_lun_with_invalid_path(self, mock_lun_update_by_path):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=None)
         self.client.do_direct_resize('/vol/vol1/invalid_lun', 53)
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             '/vol/vol1/invalid_lun')
         mock_lun_update_by_path.assert_not_called()
 
     @mock.patch('cinder.volume.drivers.netapp.dataontap.'
                 'client.client_cmode_rest_asar2.RestClientASAr2.send_request')
     def test_resizes_namespace(self, mock_send_request):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=fake.NAMESPACE_NAME)
 
         self.client.namespace_resize(fake.PATH_NAMESPACE, fake.SIZE)
 
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             fake.PATH_NAMESPACE)
         mock_send_request.assert_called_once_with(
             '/storage/namespaces',
@@ -944,10 +1085,10 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.netapp.dataontap.'
                 'client.client_cmode_rest_asar2.RestClientASAr2.send_request')
     def test_resize_namespace_with_invalid_path(self, mock_send_request):
-        self.client._get_backend_lun_or_namespace = mock.Mock(
+        self.client._get_backend_storage_unit = mock.Mock(
             return_value=None)
         self.client.namespace_resize('/vol/vol1/invalid_namespace', 5368)
-        self.client._get_backend_lun_or_namespace.assert_called_once_with(
+        self.client._get_backend_storage_unit.assert_called_once_with(
             '/vol/vol1/invalid_namespace')
         mock_send_request.assert_not_called()
 
@@ -1378,3 +1519,574 @@ class NetAppRestCmodeASAr2ClientTestCase(test.TestCase):
                 'fields': 'name,uuid,space.size,type',
             },
         )
+
+    @patch.object(RestClientASAr2, '_get_storage_unit_uuid')
+    @patch.object(RestClientASAr2, 'send_request')
+    def test_create_snapshot(self, mock_send_request,
+                             mock_get_storage_unit_uuid):
+        mock_get_storage_unit_uuid.return_value = 'uuid123'
+        storage_unit = fake_client.STORAGE_UNIT
+        snapshot_name = 'snap1'
+
+        self.client.create_snapshot(storage_unit, snapshot_name)
+        mock_get_storage_unit_uuid.assert_called_once_with(
+            fake_client.ONTAP_STORAGE_UNIT
+        )
+        expected_api = 'storage/storage-units/uuid123/snapshots'
+        expected_body = {'name': snapshot_name}
+        mock_send_request.assert_called_once_with(expected_api,
+                                                  'post',
+                                                  body=expected_body)
+
+    @patch.object(RestClientASAr2, '_get_storage_unit_uuid')
+    @patch.object(RestClientASAr2, 'send_request')
+    def test_delete_snapshot_success(self, mock_send_request,
+                                     mock_get_su_uuid):
+
+        mock_get_su_uuid.return_value = 'su-uuid'
+        snapshot_name = "snap1"
+
+        self.client.delete_snapshot(fake_client.STORAGE_UNIT,
+                                    'snap1')
+
+        mock_get_su_uuid.assert_called_once_with(
+            fake_client.ONTAP_STORAGE_UNIT)
+
+        mock_send_request.assert_called_once_with(
+            f'storage/storage-units/su-uuid/snapshots?name={snapshot_name}',
+            'delete'
+        )
+
+    @patch.object(RestClientASAr2, '_get_storage_unit_uuid')
+    def test_delete_snapshot_storage_unit_or_snapshot_not_found(
+            self,
+            mock_get_su_uuid,
+    ):
+        mock_get_su_uuid.side_effect = netapp_utils.NetAppDriverException(
+            'Not found')
+
+        result = self.client.delete_snapshot(fake_client.STORAGE_UNIT,
+                                             "snap1"
+                                             )
+
+        # mock_log.error.assert_called_once()
+        self.assertIsNone(result)
+
+    @patch.object(RestClientASAr2, 'wait_for_split_to_complete')
+    @patch.object(RestClientASAr2, 'send_request')
+    @patch.object(RestClientASAr2, 'volume_clone_split_start')
+    @patch.object(RestClientASAr2, '_get_clone_uuids')
+    @patch.object(RestClientASAr2, '_get_snapshot_uuid')
+    @patch.object(RestClientASAr2, '_get_storage_unit_uuid')
+    def test_delete_locked_snapshot_marks_for_deletion(
+            self, mock_get_su_uuid, mock_get_snapshot_uuid, mock_get_clones,
+            mock_volume_split, mock_send_request, mock_wait_for_split):
+        """A snapshot that has clones is renamed. The split is not started."""
+        error = netapp_api.NaApiError('Snapshot not expired or is locked')
+        error.code = netapp_api.ESNAPSHOT_EXPIRED_OR_LOCK
+        mock_get_su_uuid.return_value = self.su_uuid
+        mock_get_snapshot_uuid.return_value = 'snap-uuid'
+        mock_send_request.side_effect = [error, None]
+
+        self.client.delete_snapshot(fake_client.ONTAP_STORAGE_UNIT,
+                                    'snap1')
+
+        mock_get_clones.assert_not_called()
+        mock_volume_split.assert_not_called()
+        mock_wait_for_split.assert_not_called()
+        self.assertEqual(2, mock_send_request.call_count)
+        mock_send_request.assert_called_with(
+            f'/storage/storage-units/{self.su_uuid}/snapshots/snap-uuid',
+            'patch',
+            body={'name': client_cmode_rest_asar2.DELETED_PREFIX + 'snap1'})
+
+    @patch.object(RestClientASAr2, 'send_request')
+    @patch.object(RestClientASAr2, '_get_storage_unit_uuid')
+    def test_delete_raises_other_naapi_error(self, mock_get_su_uuid,
+                                             mock_send_request):
+        mock_get_su_uuid.return_value = self.su_uuid
+        error = netapp_api.NaApiError('Some other error')
+        error.message = 'Some other error'
+        mock_send_request.side_effect = error
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.delete_snapshot,
+                          fake_client.STORAGE_UNIT, 'snap1')
+
+    @patch.object(RestClientASAr2, 'send_request')
+    @patch.object(RestClientASAr2, '_get_backend_storage_unit')
+    @patch.object(RestClientASAr2, '_get_storage_unit_uuid')
+    def test_restore_snapshot_not_found(self, mock_get_snap_uuid,
+                                        mock_get_backend,
+                                        mock_send_request):
+        mock_get_backend.return_value = 'test_lun'
+        mock_get_snap_uuid.side_effect = netapp_utils.NetAppDriverException(
+            'Could not find storage unit snapshot with name snap1.'
+        )
+
+        mock_send_request.return_value = (200, {})
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          self.client.restore_snapshot,
+                          fake_client.STORAGE_UNIT, 'snap1')
+
+    @patch.object(RestClientASAr2, 'send_request')
+    @patch.object(RestClientASAr2, '_get_backend_storage_unit')
+    def test_create_volume_from_snapshot(self, mock_get_backend,
+                                         mock_send_request):
+        source = {
+            'volume_name': 'source_vol',
+            'name': 'snapshot1'
+        }
+        volume = {
+            'name': 'dest_vol'
+        }
+        source_backend_name = 'backend_source_vol'
+        dest_backend_name = 'backend_dest_vol'
+
+        # Setup the mock to return backend names in order of calls
+        mock_get_backend.side_effect = [dest_backend_name, source_backend_name]
+
+        self.client.create_volume_from_snapshot(source, volume)
+
+        # Assert _get_backend_storage_unit called for destination
+        # and source volume names
+        expected_calls = [
+            unittest.mock.call(volume['name']),
+            unittest.mock.call(source['volume_name'])
+        ]
+        mock_get_backend.assert_has_calls(expected_calls)
+
+        # Construct expected body
+        expected_body = {
+            "clone": {
+                "is_flexclone": True,
+                "source": {
+                    "storage_unit": {
+                        "name": source_backend_name,
+                    },
+                    "snapshot": {
+                        "name": source['name'],
+                    },
+                },
+                "split_initiated": False
+            },
+            "name": dest_backend_name,
+        }
+
+        # Assert send_request called with correct parameters
+        mock_send_request.assert_called_once_with(
+            "/storage/storage-units/",
+            'post',
+            body=expected_body
+        )
+
+    @patch.object(RestClientASAr2, 'send_request')
+    @patch.object(RestClientASAr2, '_get_backend_storage_unit')
+    def test_create_volume_from_snapshot_without_snapshot_name(
+            self, mock_get_backend, mock_send_request):
+        """Clone without a snapshot name; ONTAP creates it."""
+        source = {
+            'volume_name': 'source_vol',
+        }
+        volume = {
+            'name': 'dest_vol'
+        }
+        source_backend_name = 'backend_source_vol'
+        dest_backend_name = 'backend_dest_vol'
+        mock_get_backend.side_effect = [dest_backend_name, source_backend_name]
+
+        self.client.create_volume_from_snapshot(source, volume)
+
+        expected_body = {
+            "clone": {
+                "is_flexclone": True,
+                "source": {
+                    "storage_unit": {
+                        "name": source_backend_name,
+                    },
+                },
+                "split_initiated": False
+            },
+            "name": dest_backend_name,
+        }
+        mock_send_request.assert_called_once_with(
+            "/storage/storage-units/",
+            'post',
+            body=expected_body
+        )
+
+    @patch.object(RestClientASAr2, '_get_storage_unit_uuid')
+    @patch.object(RestClientASAr2, 'send_request')
+    def test_restore_snapshot_success(self, mock_send_request,
+                                      mock_get_su_uuid):
+        mock_get_su_uuid.return_value = 'su-uuid'
+        snapshot_name = "snap1"
+
+        self.client.restore_snapshot(fake_client.STORAGE_UNIT,
+                                     snapshot_name)
+        mock_get_su_uuid.assert_called_once_with(
+            fake_client.ONTAP_STORAGE_UNIT)
+
+        body = {
+            "restore_to": {
+                "snapshot": {
+                    "name": snapshot_name
+                }
+            }
+        }
+
+        mock_send_request.assert_called_once_with(
+            f'storage/storage-units/{mock_get_su_uuid.return_value}',
+            'patch', body=body, wait_on_accepted=True
+        )
+
+    @patch.object(RestClientASAr2, 'send_request')
+    def test_volume_clone_split_start(self, mock_send_request):
+        clone_volume_uuid = 'uuid-1234-5678'
+        self.client.volume_clone_split_start(clone_volume_uuid)
+        expected_url = f'/storage/storage-units/{clone_volume_uuid}'
+        expected_method = 'patch'
+        expected_body = {
+            "clone": {
+                "split_initiated": True
+            }
+        }
+        mock_send_request.assert_called_once_with(
+            expected_url,
+            expected_method,
+            body=expected_body,
+            wait_on_accepted=False
+        )
+
+    @patch.object(RestClientASAr2, 'send_request')
+    def test_get_storage_unit_uuid_success(self, mock_send_request):
+        mock_send_request.return_value = {'records': [{'uuid': 'uuid-123'}]}
+        result = self.client._get_storage_unit_uuid('test_name')
+        self.assertEqual(result, 'uuid-123')
+        mock_send_request.assert_called_once_with(
+            '/storage/storage-units/', 'get',
+            query={'name': 'test_name', 'fields': 'uuid'}
+        )
+
+    @patch.object(RestClientASAr2, 'send_request')
+    def test_get_storage_unit_uuid_not_found(self, mock_send_request):
+        # Mock send_request to return zero records
+        mock_send_request.return_value = {
+            'records': []
+        }
+
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          self.client._get_storage_unit_uuid,
+                          fake_client.STORAGE_UNIT)
+
+    @patch.object(RestClientASAr2, 'send_request')
+    def test_get_storage_unit_uuid_multiple_records(self, mock_send_request):
+        # Mock send_request to return multiple records
+        mock_send_request.return_value = {
+            'records': [{'uuid': 'uuid1'}, {'uuid': 'uuid2'}]
+        }
+
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          self.client._get_storage_unit_uuid,
+                          fake_client.STORAGE_UNIT)
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.time.sleep')
+    def test_wait_for_split_completes_after_split_starts(self, mock_sleep):
+        su_uuid = 'fake-uuid'
+        responses = [{'clone': {'split_initiated': False}},
+                     {'clone': {'split_initiated': True}},
+                     {'clone': {'split_initiated': False}}]
+        self.client.send_request = mock.Mock(side_effect=responses)
+        result = self.client.wait_for_split_to_complete(
+            su_uuid,
+            wait_interval=10,
+            require_split_start=True,
+        )
+        self.assertIsNone(result)
+        self.client.send_request.assert_called_with(
+            f'/storage/storage-units/{su_uuid}',
+            'get', query={'fields': 'clone.split_initiated'}
+        )
+        self.assertEqual(self.client.send_request.call_count, 3)
+        mock_sleep.assert_has_calls([mock.call(5), mock.call(5)])
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.time.sleep')
+    def test_wait_for_split_retries_when_split_initiated(self, mock_sleep):
+        su_uuid = 'fake-uuid'
+        # Simulate split_initiated True for first call, then False
+        responses = [{'clone': {'split_initiated': True}},
+                     {'clone': {'split_initiated': False}}]
+        self.client.send_request = mock.Mock(side_effect=responses)
+        result = self.client.wait_for_split_to_complete(su_uuid,
+                                                        wait_interval=10)
+        self.assertIsNone(result)
+        self.assertEqual(self.client.send_request.call_count, 2)
+        mock_sleep.assert_called_once_with(5)
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.time.sleep')
+    def test_wait_for_split_raises_when_retries_exhausted(self, mock_sleep):
+        su_uuid = 'fake-uuid'
+        self.client.send_request = mock.Mock(
+            return_value={'clone': {'split_initiated': True}}
+        )
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          self.client.wait_for_split_to_complete,
+                          su_uuid, wait_interval=5)
+        mock_sleep.assert_called_once_with(5)
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.time.sleep')
+    def test_wait_for_split_raises_when_split_never_starts(self,
+                                                           mock_sleep):
+        su_uuid = 'fake-uuid'
+        self.client.send_request = mock.Mock(
+            return_value={'clone': {'split_initiated': False}}
+        )
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          self.client.wait_for_split_to_complete,
+                          su_uuid, wait_interval=5,
+                          require_split_start=True)
+        mock_sleep.assert_called_once_with(5)
+
+    def test_wait_for_split_returns_when_split_not_running(self):
+        su_uuid = 'fake-uuid'
+        self.client.send_request = mock.Mock(
+            return_value={'clone': {'split_initiated': False}}
+        )
+        result = self.client.wait_for_split_to_complete(su_uuid,
+                                                        wait_interval=10)
+        self.assertIsNone(result)
+        self.assertEqual(self.client.send_request.call_count, 1)
+
+    @patch('cinder.volume.drivers.netapp.dataontap.client.'
+           'client_cmode_rest_asar2.time.sleep')
+    def test_wait_for_split_uses_adaptive_polling_intervals(self, mock_sleep):
+        su_uuid = 'fake-uuid'
+        responses = ([{'clone': {'split_initiated': True}}] * 5 +
+                     [{'clone': {'split_initiated': False}}])
+        self.client.send_request = mock.Mock(side_effect=responses)
+
+        result = self.client.wait_for_split_to_complete(
+            su_uuid,
+            wait_interval=120,
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual(self.client.send_request.call_count, 6)
+        mock_sleep.assert_has_calls([
+            mock.call(5),
+            mock.call(10),
+            mock.call(10),
+            mock.call(10),
+            mock.call(10),
+        ])
+
+    @ddt.data(('lun', '/storage/luns'),
+              ('namespace', '/storage/namespaces'))
+    @ddt.unpack
+    def test_mark_storage_unit_for_deletion(self, unit_type, endpoint):
+        self.client.send_request = mock.Mock()
+
+        self.client.mark_storage_unit_for_deletion(
+            'volume_1', unit_type, su_uuid=self.su_uuid)
+
+        # The storage unit endpoint rejects a new name, so the rename has
+        # to go through the protocol endpoint.
+        self.client.send_request.assert_called_once_with(
+            f'{endpoint}/{self.su_uuid}', 'patch',
+            body={'name': client_cmode_rest_asar2.DELETED_PREFIX
+                  + 'volume_1'})
+
+    def test_mark_storage_unit_for_deletion_already_marked(self):
+        self.client.send_request = mock.Mock()
+
+        self.client.mark_storage_unit_for_deletion(
+            client_cmode_rest_asar2.DELETED_PREFIX + 'volume_1', 'lun')
+
+        self.client.send_request.assert_not_called()
+
+    def test_mark_storage_unit_for_deletion_unknown_type(self):
+        self.client.send_request = mock.Mock()
+
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          self.client.mark_storage_unit_for_deletion,
+                          'volume_1', 'flexvol')
+
+        self.client.send_request.assert_not_called()
+
+    @patch.object(RestClientASAr2, '_get_snapshot_uuid')
+    def test_mark_snapshot_for_deletion(self, mock_get_snapshot_uuid):
+        mock_get_snapshot_uuid.return_value = 'snap-uuid'
+        self.client.send_request = mock.Mock()
+
+        self.client.mark_snapshot_for_deletion('volume_1', 'snap1',
+                                               su_uuid=self.su_uuid)
+
+        self.client.send_request.assert_called_once_with(
+            f'/storage/storage-units/{self.su_uuid}/snapshots/snap-uuid',
+            'patch',
+            body={'name': client_cmode_rest_asar2.DELETED_PREFIX + 'snap1'})
+
+    @patch.object(RestClientASAr2, '_get_snapshot_uuid')
+    def test_mark_snapshot_for_deletion_snapshot_gone(
+            self, mock_get_snapshot_uuid):
+        mock_get_snapshot_uuid.return_value = None
+        self.client.send_request = mock.Mock()
+
+        self.client.mark_snapshot_for_deletion('volume_1', 'snap1',
+                                               su_uuid=self.su_uuid)
+
+        self.client.send_request.assert_not_called()
+
+    def test_mark_snapshot_for_deletion_already_marked(self):
+        self.client.send_request = mock.Mock()
+
+        self.client.mark_snapshot_for_deletion(
+            'volume_1', client_cmode_rest_asar2.DELETED_PREFIX + 'snap1')
+
+        self.client.send_request.assert_not_called()
+
+    def test_get_snapshots_marked_for_deletion(self):
+        prefix = client_cmode_rest_asar2.DELETED_PREFIX
+        self.client.get_records = mock.Mock(return_value={
+            'records': [
+                {'name': prefix + 'snap1', 'uuid': 'snap-uuid-1',
+                 'storage_unit': {'name': 'volume_1', 'uuid': 'su-1'}},
+            ],
+        })
+
+        snapshots = self.client.get_snapshots_marked_for_deletion()
+
+        self.client.get_records.assert_called_once_with(
+            client_cmode_rest_asar2.ALL_STORAGE_UNIT_SNAPSHOTS,
+            query={
+                'name': f'{prefix}*',
+                'svm.name': self.client.vserver,
+                'fields': 'name,uuid,storage_unit.name,storage_unit.uuid',
+            })
+        self.assertEqual([{'name': prefix + 'snap1',
+                           'uuid': 'snap-uuid-1',
+                           'storage_unit_name': 'volume_1',
+                           'storage_unit_uuid': 'su-1'}], snapshots)
+
+    def test_get_snapshots_marked_for_deletion_skips_unresolved_unit(self):
+        prefix = client_cmode_rest_asar2.DELETED_PREFIX
+        self.client.get_records = mock.Mock(return_value={
+            'records': [{'name': prefix + 'snap1', 'uuid': 'snap-uuid-1'}],
+        })
+
+        self.assertEqual([], self.client.get_snapshots_marked_for_deletion())
+
+    def test_get_storage_units_marked_for_deletion(self):
+        prefix = client_cmode_rest_asar2.DELETED_PREFIX
+        self.client.get_records = mock.Mock(return_value={
+            'records': [
+                {'name': prefix + 'volume_1', 'uuid': 'su-1', 'type': 'lun'},
+                {'name': prefix + 'volume_2', 'type': 'lun'},
+            ],
+        })
+
+        storage_units = self.client.get_storage_units_marked_for_deletion()
+
+        # A record without a UUID cannot be acted on and is dropped.
+        self.assertEqual([{'name': prefix + 'volume_1',
+                           'uuid': 'su-1',
+                           'type': 'lun'}], storage_units)
+
+    def test_delete_marked_snapshot_starts_splits_when_delete_fails(self):
+        prefix = client_cmode_rest_asar2.DELETED_PREFIX
+        error = netapp_api.NaApiError('Snapshot not expired or is locked')
+        error.code = netapp_api.ESNAPSHOT_EXPIRED_OR_LOCK
+        mock_send_request = self.mock_object(
+            self.client, 'send_request', mock.Mock(side_effect=error))
+        mock_get_clones = self.mock_object(
+            self.client, '_get_clone_uuids',
+            mock.Mock(return_value=['clone-1', 'clone-2']))
+        self.client.volume_clone_split_start = mock.Mock()
+        snapshot = {
+            'name': prefix + 'snap1',
+            'uuid': 'snap-uuid-1',
+            'storage_unit_name': 'volume_1',
+            'storage_unit_uuid': 'su-1',
+        }
+
+        self.client._delete_marked_snapshot(snapshot)
+
+        mock_send_request.assert_called_once_with(
+            f'storage/storage-units/su-1/snapshots?name={prefix}snap1',
+            'delete')
+        mock_get_clones.assert_called_once_with(
+            storage_unit_name='volume_1', snapshot_name='snap1')
+        self.client.volume_clone_split_start.assert_has_calls(
+            [mock.call('clone-1'), mock.call('clone-2')], any_order=True)
+
+    def test_delete_marked_snapshot_deletes_when_no_clones(self):
+        prefix = client_cmode_rest_asar2.DELETED_PREFIX
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        self.client.volume_clone_split_start = mock.Mock()
+        snapshot = {
+            'name': prefix + 'snap1',
+            'uuid': 'snap-uuid-1',
+            'storage_unit_name': 'volume_1',
+            'storage_unit_uuid': 'su-1',
+        }
+
+        self.client._delete_marked_snapshot(snapshot)
+
+        self.client.volume_clone_split_start.assert_not_called()
+        mock_send_request.assert_called_once_with(
+            f'storage/storage-units/su-1/snapshots?name={prefix}snap1',
+            'delete')
+
+    def test_delete_resources_marked_for_deletion(self):
+        prefix = client_cmode_rest_asar2.DELETED_PREFIX
+        self.client.get_snapshots_marked_for_deletion = mock.Mock(
+            return_value=[{'name': prefix + 'snap1',
+                           'uuid': 'snap-uuid-1',
+                           'storage_unit_name': 'volume_1',
+                           'storage_unit_uuid': 'su-1'}])
+        self.client.get_storage_units_marked_for_deletion = mock.Mock(
+            return_value=[{'name': prefix + 'volume_2',
+                           'uuid': 'su-2',
+                           'type': 'lun'}])
+        mock_delete_snap = self.mock_object(
+            self.client, '_delete_marked_snapshot')
+        mock_delete_unit = self.mock_object(
+            self.client, '_delete_marked_storage_unit')
+
+        self.client.delete_resources_marked_for_deletion()
+
+        mock_delete_snap.assert_called_once_with(
+            {'name': prefix + 'snap1',
+             'uuid': 'snap-uuid-1',
+             'storage_unit_name': 'volume_1',
+             'storage_unit_uuid': 'su-1'})
+        mock_delete_unit.assert_called_once_with({'name': prefix + 'volume_2',
+                                                  'uuid': 'su-2',
+                                                  'type': 'lun'})
+
+    def test_delete_resources_marked_for_deletion_continues_on_error(self):
+        prefix = client_cmode_rest_asar2.DELETED_PREFIX
+        self.client.get_snapshots_marked_for_deletion = mock.Mock(
+            return_value=[
+                {'name': prefix + 'snap1', 'uuid': 'snap-uuid-1',
+                 'storage_unit_name': 'volume_1',
+                 'storage_unit_uuid': 'su-1'},
+                {'name': prefix + 'snap2', 'uuid': 'snap-uuid-2',
+                 'storage_unit_name': 'volume_2',
+                 'storage_unit_uuid': 'su-2'},
+            ])
+        self.client.get_storage_units_marked_for_deletion = mock.Mock(
+            return_value=[])
+        mock_delete_snap = self.mock_object(
+            self.client, '_delete_marked_snapshot',
+            mock.Mock(side_effect=[netapp_api.NaApiError(), None]))
+
+        self.client.delete_resources_marked_for_deletion()
+
+        # A snapshot that cannot be deleted must not stop the ones queued
+        # behind it; it is retried on the next run.
+        self.assertEqual(2, mock_delete_snap.call_count)

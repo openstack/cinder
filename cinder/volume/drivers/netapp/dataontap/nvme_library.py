@@ -227,7 +227,9 @@ class NetAppNVMeStorageLibrary(
         namespace_list = self.client.get_namespace_list()
         self._extract_and_populate_namespaces(namespace_list)
         LOG.debug("Success getting list of namespace from server.")
-
+        # Set the config object to ONTAP lib
+        if self.configuration.netapp_disaggregated_platform:
+            self.client.set_config(self.configuration)
         self.loopingcalls.start_tasks()
 
     def _add_looping_tasks(self):
@@ -248,6 +250,21 @@ class NetAppNVMeStorageLibrary(
         self.loopingcalls.add_task(
             self._handle_ems_logging,
             loopingcalls.ONE_HOUR)
+
+        # On ASA r2 snapshots and namespaces that still have dependent
+        # clones are renamed instead of deleted, so they need a cleanup
+        # task to remove them once the clones are gone.
+        if self.configuration.netapp_disaggregated_platform:
+            interval = (
+                self.configuration.netapp_deleted_resource_cleanup_interval)
+            self.loopingcalls.add_task(
+                self._delete_resources_marked_for_deletion,
+                interval,
+                interval)
+
+    def _delete_resources_marked_for_deletion(self):
+        """Clean up the ASA r2 snapshots and namespaces marked for deletion."""
+        self.client.delete_resources_marked_for_deletion()
 
     def _handle_ems_logging(self):
         """Log autosupport messages."""
@@ -369,8 +386,11 @@ class NetAppNVMeStorageLibrary(
     def _create_snapshot(self, snapshot):
         vol_name = snapshot['volume_name']
         snapshot_name = snapshot['name']
-        namespace = self._get_namespace_from_table(vol_name)
-        self._clone_namespace(namespace.name, snapshot_name)
+        if self.configuration.netapp_disaggregated_platform:
+            self.client.create_snapshot(vol_name, snapshot_name)
+        else:
+            namespace = self._get_namespace_from_table(vol_name)
+            self._clone_namespace(namespace.name, snapshot_name)
 
     def _clone_namespace(self, name, new_name):
         """Clone namespace with the given handle to the new name."""
@@ -396,17 +416,39 @@ class NetAppNVMeStorageLibrary(
 
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
-        self._delete_namespace(snapshot['name'])
-        LOG.debug("Snapshot %s deletion successful.", snapshot['name'])
+        if self.configuration.netapp_disaggregated_platform:
+            self.client.delete_snapshot(snapshot.volume_name,
+                                        snapshot.name)
+        else:
+            self._delete_namespace(snapshot.name)
+        LOG.debug("Snapshot %s deletion successful.", snapshot.name)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        source = {'name': snapshot['name'], 'size': snapshot['volume_size']}
-        self._clone_source_to_destination(source, volume)
+        source = {'name': snapshot.name,
+                  'volume_name': snapshot.volume_name,
+                  'size': snapshot.volume_size
+                  }
+        if self.configuration.netapp_disaggregated_platform:
+            self.client.create_volume_from_snapshot(source, volume)
+            # Change the volume size
+            if volume.size != snapshot.volume_size:
+                size_bytes = str(na_utils.get_volume_size_gb(volume))
+                self.client.namespace_resize(volume.name, size_bytes)
+        else:
+            self._clone_source_to_destination(source, volume)
 
     def create_cloned_volume(self, volume, src_vref):
-        src_namespace = self._get_namespace_from_table(src_vref['name'])
-        source = {'name': src_namespace.name, 'size': src_vref['size']}
-        self._clone_source_to_destination(source, volume)
+        if self.configuration.netapp_disaggregated_platform:
+            # Omit snapshot name so ONTAP creates the temporary snapshot.
+            source = {'volume_name': src_vref.name}
+            self.client.create_volume_from_snapshot(source, volume)
+            if volume.size != src_vref.size:
+                size_bytes = str(na_utils.get_volume_size_gb(volume))
+                self.client.namespace_resize(volume.name, size_bytes)
+        else:
+            src_namespace = self._get_namespace_from_table(src_vref.name)
+            source = {'name': src_namespace.name, 'size': src_vref.size}
+            self._clone_source_to_destination(source, volume)
 
     def _clone_source_to_destination(self, source, destination_volume):
         source_size = source['size']
@@ -803,8 +845,12 @@ class NetAppNVMeStorageLibrary(
 
     def _map_namespace(self, name, host_nqn):
         """Maps namespace to the host nqn and returns its ID assigned."""
-        metadata = self._get_namespace_attr(name, 'metadata')
-        path = metadata['Path']
+        if self.configuration.netapp_disaggregated_platform:
+            path = name
+        else:
+            metadata = self._get_namespace_attr(name, 'metadata')
+            path = metadata['Path']
+
         try:
             subsystems = self.client.get_namespace_map(path)
             ns_uuid = subsystem_uuid = None
@@ -924,9 +970,11 @@ class NetAppNVMeStorageLibrary(
             host_nqn = connector.get("nqn")
             LOG.debug("Unmapping namespace %(name)s from the host "
                       "%(host_nqn)s", {'name': name, 'host_nqn': host_nqn})
-
-        metadata = self._get_namespace_attr(name, 'metadata')
-        path = metadata['Path']
+        if self.configuration.netapp_disaggregated_platform:
+            path = name
+        else:
+            metadata = self._get_namespace_attr(name, 'metadata')
+            path = metadata['Path']
         self._unmap_namespace(path, host_nqn)
 
     def create_group(self, group):
@@ -1076,3 +1124,17 @@ class NetAppNVMeStorageLibrary(
                     volume_model_updates.append(volume_model_update)'''
 
         return None, volume_model_updates
+
+    def revert_to_snapshot(self, volume, snapshot):
+        """Driver entry point for reverting volume to snapshot."""
+        if not self.configuration.netapp_disaggregated_platform:
+            raise exception.VolumeBackendAPIException(
+                data=_("Snapshot restore doesn't support for NVMe/TCP "
+                       "unified storage"))
+        try:
+            self.client.restore_snapshot(snapshot.volume_name,
+                                         snapshot.name)
+        except Exception as e:
+            msg = _("Revert snapshot failed: %s")
+            raise exception.VolumeBackendAPIException(data=msg % e)
+        LOG.debug("Snapshot %s reverted successful.", snapshot.name)

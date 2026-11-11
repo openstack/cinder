@@ -839,7 +839,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
             lun_info['Qtree'] = \
                 lun['location'].get('qtree', {}).get('name', '')
             lun_info['Path'] = lun['name']
-            lun_info['OsType'] = lun['os_type']
+            lun_info['OsType'] = lun.get('os_type', 'default')
             lun_info['SpaceReserved'] = lun['space']['guarantee']['requested']
             lun_info['SpaceAllocated'] = \
                 lun['space']['scsi_thin_provisioning_support_enabled']
@@ -882,7 +882,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
             lun_info['Qtree'] = \
                 lun['location'].get('qtree', {}).get('name', '')
             lun_info['Path'] = lun['name']
-            lun_info['OsType'] = lun['os_type']
+            lun_info['OsType'] = lun.get('os_type', 'default')
             lun_info['SpaceReserved'] = lun['space']['guarantee']['requested']
             lun_info['SpaceAllocated'] = \
                 lun['space']['scsi_thin_provisioning_support_enabled']
@@ -3474,7 +3474,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
             namespace_info['Qtree'] = (
                 namespace['location'].get('qtree', {}).get('name', ''))
             namespace_info['Path'] = namespace['name']
-            namespace_info['OsType'] = namespace['os_type']
+            namespace_info['OsType'] = namespace.get('os_type', 'default')
             namespace_info['SpaceReserved'] = (
                 namespace['space']['guarantee']['requested'])
             namespace_info['UUID'] = namespace['uuid']
@@ -3571,7 +3571,7 @@ class RestClient(object, metaclass=volume_utils.TraceWrapperMetaclass):
             namespace_info['Qtree'] = (
                 namespace['location'].get('qtree', {}).get('name', ''))
             namespace_info['Path'] = namespace['name']
-            namespace_info['OsType'] = namespace['os_type']
+            namespace_info['OsType'] = namespace.get('os_type', 'default')
             namespace_info['SpaceReserved'] = (
                 namespace['space']['guarantee']['requested'])
             namespace_info['UUID'] = namespace['uuid']

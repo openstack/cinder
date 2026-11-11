@@ -131,3 +131,6 @@ class NetAppCmodeNVMeDriver(driver.BaseVD):
         return self.library.create_group_from_src(
             group, volumes, group_snapshot=group_snapshot, snapshots=snapshots,
             source_group=source_group, source_vols=source_vols)
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        return self.library.revert_to_snapshot(volume, snapshot)

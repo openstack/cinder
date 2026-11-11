@@ -693,7 +693,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def test_update_ssc_disaggregated_platform(self):
         """Test _update_ssc with disaggregated platform (ASA r2)."""
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         mock_get_cluster_pool_map = self.mock_object(
             self.library, '_get_cluster_to_pool_map',
             return_value=fake.FAKE_CLUSTER_INFO)
@@ -1676,6 +1677,14 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             fake.VSERVER_NAME)
         self.assertEqual({}, result)
 
+    def test_migrate_volume_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        result = self.library.migrate_volume(mock.Mock(),
+                                             mock.Mock(),
+                                             mock.Mock())
+        self.assertEqual((False, {}), result)
+
     def test_revert_to_snapshot(self):
         mock__revert_to_snapshot = self.mock_object(self.library,
                                                     '_revert_to_snapshot')
@@ -1750,16 +1759,17 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         mock_destroy_lun.assert_called_once_with(new_lun_path)
 
     def test_revert_to_snapshot_success_asar2(self):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         volume = {'name': 'vol1'}
         snapshot = {'volume_name': 'vol1', 'name': 'snap1'}
-
-        # Mock _revert_to_snapshot since revert_to_snapshot calls it
-        mock_revert = self.mock_object(self.library, '_revert_to_snapshot')
+        self.library.zapi_client.restore_snapshot.return_value = None
 
         self.library.revert_to_snapshot(volume, snapshot)
-
-        mock_revert.assert_called_once_with(volume, snapshot)
+        self.library.zapi_client.restore_snapshot.assert_called_once_with(
+            'vol1',
+            'snap1'
+        )
 
     def test__clone_snapshot(self):
         lun_obj = block_base.NetAppLun(fake.LUN_WITH_METADATA['handle'],

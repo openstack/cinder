@@ -31,6 +31,7 @@ import re
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 from oslo_utils import netutils
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception
@@ -648,6 +649,10 @@ def get_desired_replication_state(replication_policy):
 
 def create_cg_path(cg_name):
     return "/cg/" + str(cg_name)
+
+
+def get_volume_size_gb(volume):
+    return int(volume.size) * units.Gi
 
 
 class hashabledict(dict):

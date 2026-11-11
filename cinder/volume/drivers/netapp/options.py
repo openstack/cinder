@@ -350,7 +350,21 @@ netapp_san_opts = [
                help='Specifies the maximum time (in seconds) to wait for '
                     'a LUN copy operation to complete during cross-pool '
                     'cloning. The default value of 300 seconds is '
-                    'sufficient for most LUN copy operations.')]
+                    'sufficient for most LUN copy operations.'),
+    cfg.IntOpt('netapp_clone_split_timeout',
+               min=0,
+               default=300,
+               help='Specifies the maximum time (in seconds) to retry'
+                    ' the clone split operation to complete during snapshot'
+                    ' and volume delete operation.'),
+    cfg.IntOpt('netapp_deleted_resource_cleanup_interval',
+               min=60,
+               default=1800,
+               help='Sets the time in seconds between ASA r2 cleanup runs. '
+                    'Each run deletes snapshots and storage units that were '
+                    'marked for deletion and no longer have clones, or '
+                    'starts a clone split when clones are still present. '
+                    'The default is 1800 seconds (30 minutes).')]
 
 netapp_replication_opts = [
     cfg.MultiOpt('netapp_replication_aggregate_map',

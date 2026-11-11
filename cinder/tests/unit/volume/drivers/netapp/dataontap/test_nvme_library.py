@@ -23,6 +23,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
@@ -151,7 +152,8 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             self.library.check_for_setup_error)
 
     def test_check_for_setup_error_disaggregated(self):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         self.mock_object(self.library, '_get_cluster_to_pool_map',
                          return_value=fake.POOL_NAME)
         self.mock_object(self.library, '_add_looping_tasks')
@@ -177,7 +179,8 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
     @ddt.unpack
     def test_check_for_setup_error_error_disaggregated(
             self, pool_map, namespace, host):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         self.mock_object(self.library, '_get_cluster_to_pool_map',
                          return_value=pool_map)
         self.library.namespace_ostype = namespace
@@ -211,7 +214,8 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             fake_metadata)
 
     def test_create_volume_asar2(self):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         volume_size_in_bytes = int(fake.SIZE) * units.Gi
         self.mock_object(volume_utils, 'extract_host',
                          return_value=fake.POOL_NAME)
@@ -232,7 +236,6 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             fake.POOL_NAME, 'fakename', volume_size_in_bytes, fake_metadata)
         self.library._create_namespace_handle.assert_called_once_with(
             fake_metadata)
-        self.library.configuration.netapp_disaggregated_platform = False
 
     def test_create_namespace_handle(self):
         self.library.vserver = fake.VSERVER_NAME
@@ -301,11 +304,11 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.assertEqual(self.fake_namespace, res)
 
     def test__get_namespace_from_table_asar2(self):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         res = self.library._get_namespace_from_table(fake.NAMESPACE_NAME)
 
         self.assertEqual(self.fake_namespace, res)
-        self.library.configuration.netapp_disaggregated_platform = False
 
     @ddt.data(exception.VolumeNotFound, netapp_api.NaApiError)
     def test__get_namespace_attr_error(self, error_obj):
@@ -350,7 +353,8 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             'fake_pool_map')
 
     def test__update_ssc_disaggregated_platform(self):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         mock_get_cluster_pool_map = self.mock_object(
             self.library, '_get_cluster_to_pool_map',
             return_value=fake.FAKE_CLUSTER_POOL_MAP)
@@ -409,7 +413,8 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.assertFalse(has_namespace)
 
     def test__delete_namespace_asar2(self):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         namespace = copy.deepcopy(fake.NAMESPACE_WITH_METADATA)
         self.mock_object(self.library, '_get_namespace_attr',
                          return_value=namespace['metadata'])
@@ -423,7 +428,6 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             namespace['metadata']['Path'])
         has_namespace = fake.NAMESPACE_NAME in self.library.namespace_table
         self.assertFalse(has_namespace)
-        self.library.configuration.netapp_disaggregated_platform = False
 
     def test__delete_namespace_not_found(self):
         namespace = copy.deepcopy(fake.NAMESPACE_WITH_METADATA)
@@ -518,26 +522,76 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
     def test_delete_snapshot(self):
         mock__delete = self.mock_object(self.library, '_delete_namespace')
 
-        self.library.delete_snapshot(fake.SNAPSHOT)
+        self.library.delete_snapshot(fake.SNAPSHOT_OBJ)
 
         mock__delete.assert_called_once_with(fake.SNAPSHOT_NAME)
+
+    def test_delete_snapshot_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        self.library.delete_snapshot(fake.SNAPSHOT_OBJ)
+        self.library.client.delete_snapshot.assert_called_once_with(
+            fake.SNAPSHOT['volume_name'], fake.SNAPSHOT['name'])
 
     def test_create_volume_from_snapshot(self):
         self.mock_object(self.library, '_clone_source_to_destination')
 
         self.library.create_volume_from_snapshot(fake.NAMESPACE_VOLUME,
-                                                 fake.SNAPSHOT)
+                                                 fake.SNAPSHOT_OBJ)
 
         self.library._clone_source_to_destination.assert_called_once_with(
-            {'name': fake.SNAPSHOT_NAME, 'size': fake.SIZE},
+            {'name': fake.SNAPSHOT_NAME,
+             'volume_name': fake.SNAPSHOT['volume_name'],
+             'size': fake.SIZE
+             },
             fake.NAMESPACE_VOLUME)
+
+    def test_create_volume_from_snapshot_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        source = {
+            'name': fake.SNAPSHOT['name'],
+            'volume_name': fake.SNAPSHOT['volume_name'],
+            'size': fake.SNAPSHOT['volume_size'],
+        }
+
+        result = self.library.create_volume_from_snapshot(
+            fake.NAMESPACE_VOLUME_OBJ, fake.SNAPSHOT_OBJ)
+
+        (self.library.client.create_volume_from_snapshot
+         .assert_called_once_with(source, fake.NAMESPACE_VOLUME_OBJ))
+        self.library.client.namespace_resize.assert_not_called()
+        self.assertIsNone(result)
+
+    def test_create_volume_from_snapshot_asar2_resize(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        volume = fake_volume.fake_volume_obj(
+            self.ctxt, size=fake.SNAPSHOT['volume_size'] + 1)
+        source = {
+            'name': fake.SNAPSHOT['name'],
+            'volume_name': fake.SNAPSHOT['volume_name'],
+            'size': fake.SNAPSHOT['volume_size'],
+        }
+        expected_size_bytes = str(int(volume['size']) * units.Gi)
+
+        self.mock_object(self.library.client, 'namespace_resize')
+
+        result = self.library.create_volume_from_snapshot(
+            volume, fake.SNAPSHOT_OBJ)
+
+        (self.library.client.create_volume_from_snapshot
+         .assert_called_once_with(source, volume))
+        self.library.client.namespace_resize.assert_called_once_with(
+            volume.name, expected_size_bytes)
+        self.assertIsNone(result)
 
     def test_create_cloned_volume(self):
         self.mock_object(self.library, '_get_namespace_from_table',
                          return_value=self.fake_namespace)
         self.mock_object(self.library, '_clone_source_to_destination')
 
-        src_volume = {'size': fake.SIZE, 'name': 'fake_name'}
+        src_volume = fake.FakeObject(size=fake.SIZE, name='fake_name')
         self.library.create_cloned_volume(fake.NAMESPACE_VOLUME, src_volume)
 
         self.library._get_namespace_from_table.assert_called_once_with(
@@ -545,6 +599,24 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.library._clone_source_to_destination.assert_called_once_with(
             {'name': fake.NAMESPACE_NAME, 'size': fake.SIZE},
             fake.NAMESPACE_VOLUME)
+
+    def test_create_cloned_volume_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+
+        volume = fake.FakeObject(size=fake.SIZE + 1, name='fake_name')
+        src_vref = fake.FakeObject(
+            size=fake.SIZE, name=fake.NAMESPACE_NAME)
+        self.mock_object(self.library.client, 'namespace_resize')
+        self.library.create_cloned_volume(volume, src_vref)
+
+        self.library.client.create_snapshot.assert_not_called()
+        self.library.client.create_volume_from_snapshot\
+            .assert_called_once_with(
+                {'volume_name': fake.NAMESPACE_NAME}, volume)
+        # Resize to the destination size, not the source size.
+        self.library.client.namespace_resize.assert_called_once_with(
+            volume.name, str(int(volume.size) * units.Gi))
 
     def test_clone_source_to_destination(self):
         self.mock_object(self.library, '_clone_namespace')
@@ -888,6 +960,14 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.library._clone_namespace.assert_called_once_with(
             fake.NAMESPACE_NAME, fake.SNAPSHOT_NAME)
 
+    def test__create_snapshot_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+
+        self.library._create_snapshot(fake.SNAPSHOT)
+        self.library.client.create_snapshot.assert_called_once_with(
+            fake.SNAPSHOT['volume_name'], fake.SNAPSHOT['name'])
+
     def test__clone_namespace_error(self):
         self.mock_object(self.library, '_get_namespace_attr',
                          return_value=fake.NAMESPACE_METADATA)
@@ -958,7 +1038,8 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             fake.PATH_NAMESPACE, new_bytes)
 
     def test__extend_volume_asar2(self):
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
         self.mock_object(self.library, '_get_namespace_from_table',
                          return_value=self.fake_namespace)
         self.mock_object(self.library.client, 'namespace_resize')
@@ -971,7 +1052,6 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
             fake.NAMESPACE_NAME)
         self.library.client.namespace_resize.assert_called_once_with(
             fake.PATH_NAMESPACE, new_bytes)
-        self.library.configuration.netapp_disaggregated_platform = False
 
     def test__map_namespace(self):
         self.library.host_type = 'win'
@@ -1326,8 +1406,8 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         mock_delete_namespace.assert_called_once_with(fake.VG_SNAPSHOT['name'])
 
     def test_netapp_disaggregated_platform_config_true(self):
-        """Test behavior when netapp_disaggregated_platform is True."""
-        self.library.configuration.netapp_disaggregated_platform = True
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
 
         # Mock the cluster pool map method
         mock_cluster_pool_map = self.mock_object(
@@ -1344,7 +1424,8 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
 
     def test_netapp_disaggregated_platform_config_false(self):
         """Test behavior when netapp_disaggregated_platform is False."""
-        self.library.configuration.netapp_disaggregated_platform = False
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', False)
 
         mock_flexvol_pool_map = self.mock_object(
             self.library, '_get_flexvol_to_pool_map',
@@ -1638,3 +1719,29 @@ class NetAppNVMeStorageLibraryTestCase(test.TestCase):
         self.assertGreater(len(pools), 0)
         self.assertEqual(pools[0]['netapp_dedupe_used_percent'], 0.0)
         self.library.client.get_flexvol_dedupe_used_percent.assert_not_called()
+
+    def test_revert_to_snapshot_success_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        volume = fake.FakeObject(name='vol1')
+        snapshot = fake.FakeObject(volume_name='vol1', name='snap1')
+        self.library.client.restore_snapshot.return_value = None
+
+        self.library.revert_to_snapshot(volume, snapshot)
+        self.library.client.restore_snapshot.assert_called_once_with('vol1',
+                                                                     'snap1')
+
+    def test_revert_to_snapshot_restore_fails_asar2(self):
+        self.library.configuration.set_override(
+            'netapp_disaggregated_platform', True)
+        volume = fake.FakeObject(name='vol1')
+        snapshot = fake.FakeObject(volume_name='vol1', name='snap1')
+        self.library.client.restore_snapshot.side_effect = Exception("fail")
+
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.library.revert_to_snapshot,
+            volume, snapshot
+        )
+        self.library.client.restore_snapshot.assert_called_once_with(
+            snapshot['volume_name'], snapshot['name'])
