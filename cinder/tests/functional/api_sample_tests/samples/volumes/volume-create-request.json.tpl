@@ -4,7 +4,6 @@
         "availability_zone": null,
         "source_volid": null,
         "description": null,
-        "multiattach": false,
         "snapshot_id": null,
         "backup_id": null,
         "name": null,
