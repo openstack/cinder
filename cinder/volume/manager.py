@@ -77,7 +77,12 @@ from cinder.message import message_field
 from cinder import objects
 from cinder.objects import cgsnapshot
 from cinder.objects import consistencygroup
-from cinder.objects import fields
+from cinder.objects.fields import GroupSnapshotStatus
+from cinder.objects.fields import GroupStatus
+from cinder.objects.fields import ReplicationStatus
+from cinder.objects.fields import SnapshotStatus
+from cinder.objects.fields import VolumeAttachStatus
+from cinder.objects.fields import VolumeStatus
 from cinder import quota
 from cinder import utils
 from cinder import volume as cinder_volume
@@ -103,7 +108,7 @@ VALID_REMOVE_VOL_FROM_GROUP_STATUS = (
 VALID_ADD_VOL_TO_GROUP_STATUS = (
     'available',
     'in-use')
-VALID_CREATE_GROUP_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
+VALID_CREATE_GROUP_SRC_SNAP_STATUS = (SnapshotStatus.AVAILABLE,)
 VALID_CREATE_GROUP_SRC_GROUP_STATUS = ('available',)
 VA_LIST = objects.VolumeAttachmentList
 
@@ -667,11 +672,11 @@ class VolumeManager(manager.CleanableManager,
             with excutils.save_and_reraise_exception():
                 LOG.error("Service not found for updating replication_status.")
 
-        if service.replication_status != fields.ReplicationStatus.FAILED_OVER:
+        if service.replication_status != ReplicationStatus.FAILED_OVER:
             if stats and stats.get('replication_enabled', False):
-                replication_status = fields.ReplicationStatus.ENABLED
+                replication_status = ReplicationStatus.ENABLED
             else:
-                replication_status = fields.ReplicationStatus.DISABLED
+                replication_status = ReplicationStatus.DISABLED
 
             if replication_status != service.replication_status:
                 service.replication_status = replication_status
@@ -960,7 +965,7 @@ class VolumeManager(manager.CleanableManager,
         else:
             project_id = context.project_id
 
-        if volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
+        if volume['attach_status'] == VolumeAttachStatus.ATTACHED:
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume.id)
         self._check_is_our_resource(volume)
@@ -996,7 +1001,7 @@ class VolumeManager(manager.CleanableManager,
                 snapshots = objects.SnapshotList.get_all_for_volume(context,
                                                                     volume.id)
                 for s in snapshots:
-                    if s.status != fields.SnapshotStatus.DELETING:
+                    if s.status != SnapshotStatus.DELETING:
                         self._clear_db(volume, 'error_deleting')
 
                         msg = (_("Snapshot %(id)s was found in state "
@@ -1101,7 +1106,7 @@ class VolumeManager(manager.CleanableManager,
             ctxt = context.get_internal_tenant_context() or ctxt
             temp_vol = self.driver._create_temp_volume_from_snapshot(
                 ctxt, volume, snapshot, volume_options=v_options,
-                status=fields.VolumeStatus.IN_USE)
+                status=VolumeStatus.IN_USE)
             self._copy_volume_data(ctxt, temp_vol, volume)
             self.driver_delete_volume(temp_vol)
             temp_vol.destroy()
@@ -1113,7 +1118,7 @@ class VolumeManager(manager.CleanableManager,
                     " %(volume)s.",
                     {'snapshot': snapshot.id,
                      'volume': volume.id})
-                if temp_vol and temp_vol.status == fields.VolumeStatus.IN_USE:
+                if temp_vol and temp_vol.status == VolumeStatus.IN_USE:
                     self.driver_delete_volume(temp_vol)
                     temp_vol.destroy()
 
@@ -1132,7 +1137,7 @@ class VolumeManager(manager.CleanableManager,
             'volume_id': volume.id,
             'user_id': context.user_id,
             'project_id': context.project_id,
-            'status': fields.SnapshotStatus.CREATING,
+            'status': SnapshotStatus.CREATING,
             'progress': '0%',
             'volume_size': volume.size,
             'display_name': '[revert] volume %s backup snapshot' % volume.id,
@@ -1196,12 +1201,11 @@ class VolumeManager(manager.CleanableManager,
                             "status to %(status)s.") % msg_args
 
                 s_res = snapshot.update_single_status_where(
-                    fields.SnapshotStatus.AVAILABLE,
-                    fields.SnapshotStatus.RESTORING)
+                    SnapshotStatus.AVAILABLE,
+                    SnapshotStatus.RESTORING)
                 if not s_res:
                     msg_args = {"id": snapshot.id,
-                                "status":
-                                    fields.SnapshotStatus.AVAILABLE}
+                                "status": SnapshotStatus.AVAILABLE}
                     msg += ("Failed to reset snapshot %(id)s "
                             "status to %(status)s." % msg_args)
                 LOG.exception(msg, msg_args)
@@ -1217,12 +1221,12 @@ class VolumeManager(manager.CleanableManager,
             raise exception.BadResetResourceStatus(reason=msg)
 
         s_res = snapshot.update_single_status_where(
-            fields.SnapshotStatus.AVAILABLE,
-            fields.SnapshotStatus.RESTORING)
+            SnapshotStatus.AVAILABLE,
+            SnapshotStatus.RESTORING)
         if not s_res:
             msg_args = {"id": snapshot.id,
                         "status":
-                            fields.SnapshotStatus.AVAILABLE}
+                            SnapshotStatus.AVAILABLE}
             msg = _("Revert finished, but failed to reset "
                     "snapshot %(id)s status to %(status)s, "
                     "please manually reset it.") % msg_args
@@ -1258,7 +1262,7 @@ class VolumeManager(manager.CleanableManager,
 
         except Exception as create_error:
             with excutils.save_and_reraise_exception():
-                snapshot.status = fields.SnapshotStatus.ERROR
+                snapshot.status = SnapshotStatus.ERROR
                 snapshot.save()
                 self.message_api.create(
                     context,
@@ -1284,7 +1288,7 @@ class VolumeManager(manager.CleanableManager,
                               " %(volume_id)s metadata",
                               {'volume_id': snapshot.volume_id},
                               resource=snapshot)
-                snapshot.status = fields.SnapshotStatus.ERROR
+                snapshot.status = SnapshotStatus.ERROR
                 snapshot.save()
                 self.message_api.create(
                     context,
@@ -1296,7 +1300,7 @@ class VolumeManager(manager.CleanableManager,
                 )
                 raise exception.MetadataCopyFailure(reason=str(ex))
 
-        snapshot.status = fields.SnapshotStatus.AVAILABLE
+        snapshot.status = SnapshotStatus.AVAILABLE
         snapshot.progress = '100%'
         # Resync with the volume's DB value. This addresses the case where
         # the snapshot creation was in flight just prior to when the volume's
@@ -1338,7 +1342,7 @@ class VolumeManager(manager.CleanableManager,
         except exception.SnapshotIsBusy as busy_error:
             LOG.error("Delete snapshot failed, due to snapshot busy.",
                       resource=snapshot)
-            snapshot.status = fields.SnapshotStatus.AVAILABLE
+            snapshot.status = SnapshotStatus.AVAILABLE
             snapshot.save()
             self.message_api.create(
                 context,
@@ -1349,7 +1353,7 @@ class VolumeManager(manager.CleanableManager,
             return True  # Let caller know we skipped deletion
         except Exception as delete_error:
             with excutils.save_and_reraise_exception():
-                snapshot.status = fields.SnapshotStatus.ERROR_DELETING
+                snapshot.status = SnapshotStatus.ERROR_DELETING
                 snapshot.save()
                 self.message_api.create(
                     context,
@@ -1445,8 +1449,7 @@ class VolumeManager(manager.CleanableManager,
         attachment = volume.begin_attach(mode)
 
         if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
-            attachment.attach_status = (
-                fields.VolumeAttachStatus.ERROR_ATTACHING)
+            attachment.attach_status = VolumeAttachStatus.ERROR_ATTACHING
             attachment.save()
             raise exception.InvalidUUID(uuid=instance_uuid)
 
@@ -1469,8 +1472,7 @@ class VolumeManager(manager.CleanableManager,
                     message_field.Action.ATTACH_VOLUME,
                     resource_uuid=volume_id,
                     exception=excep)
-                attachment.attach_status = (
-                    fields.VolumeAttachStatus.ERROR_ATTACHING)
+                attachment.attach_status = VolumeAttachStatus.ERROR_ATTACHING
                 attachment.save()
 
         volume = attachment.finish_attach(
@@ -1527,7 +1529,7 @@ class VolumeManager(manager.CleanableManager,
                 LOG.info("Volume detach called, but volume not attached.",
                          resource=volume)
                 volume.status = 'available'
-                volume.attach_status = fields.VolumeAttachStatus.DETACHED
+                volume.attach_status = VolumeAttachStatus.DETACHED
                 volume.save()
                 return
 
@@ -1544,8 +1546,7 @@ class VolumeManager(manager.CleanableManager,
             with excutils.save_and_reraise_exception():
                 self.db.volume_attachment_update(
                     context, attachment.get('id'), {
-                        'attach_status':
-                            fields.VolumeAttachStatus.ERROR_DETACHING})
+                        'attach_status': VolumeAttachStatus.ERROR_DETACHING})
 
         # NOTE(jdg): We used to do an ensure export here to
         # catch upgrades while volumes were attached (E->F)
@@ -1637,8 +1638,7 @@ class VolumeManager(manager.CleanableManager,
         try:
             new_vol_values = {k: volume[k] for k in set(volume.keys()) - skip}
             new_vol_values['volume_type_id'] = volume_type_id
-            new_vol_values['attach_status'] = (
-                fields.VolumeAttachStatus.DETACHED)
+            new_vol_values['attach_status'] = VolumeAttachStatus.DETACHED
             new_vol_values['status'] = 'creating'
             new_vol_values['user_id'] = ctx.user_id
             new_vol_values['project_id'] = ctx.project_id
@@ -2388,7 +2388,7 @@ class VolumeManager(manager.CleanableManager,
             availability_zone=dst_service.availability_zone,
             cluster_name=backend.get('cluster_name'),
             status='creating',
-            attach_status=fields.VolumeAttachStatus.DETACHED,
+            attach_status=VolumeAttachStatus.DETACHED,
             migration_status='target:%s' % volume['id'],
             use_quota=False,  # Don't use quota for temporary volume
             **new_vol_values
@@ -2795,7 +2795,7 @@ class VolumeManager(manager.CleanableManager,
             # 'error' in volume_stats, get model updates from driver
             # and update db
             if volume_stats.get('replication_status') == (
-                    fields.ReplicationStatus.ERROR):
+                    ReplicationStatus.ERROR):
                 filters = self._get_cluster_or_host_filters()
                 groups = objects.GroupList.get_all_replicated(
                     context, filters=filters)
@@ -3179,8 +3179,8 @@ class VolumeManager(manager.CleanableManager,
             # Don't allow volume with replicas to be migrated
             rep_status = volume.replication_status
             if (rep_status is not None and rep_status not in
-                    [fields.ReplicationStatus.DISABLED,
-                     fields.ReplicationStatus.NOT_CAPABLE]):
+                    [ReplicationStatus.DISABLED,
+                     ReplicationStatus.NOT_CAPABLE]):
                 _retype_error(context, volume, old_reservations,
                               new_reservations, status_update)
                 msg = _("Volume must not be replicated.")
@@ -3236,9 +3236,9 @@ class VolumeManager(manager.CleanableManager,
         if replication_diff:
             is_replicated = volume_utils.is_boolean_str(replication_diff[1])
             if is_replicated:
-                replication_status = fields.ReplicationStatus.ENABLED
+                replication_status = ReplicationStatus.ENABLED
             else:
-                replication_status = fields.ReplicationStatus.DISABLED
+                replication_status = ReplicationStatus.DISABLED
             model_update['replication_status'] = replication_status
 
     def manage_existing(self,
@@ -3401,8 +3401,7 @@ class VolumeManager(manager.CleanableManager,
                         context, cg)
 
             if model_update:
-                if (model_update['status'] ==
-                        fields.GroupStatus.ERROR):
+                if (model_update['status'] == GroupStatus.ERROR):
                     msg = (_('Create group failed.'))
                     LOG.error(msg,
                               resource={'type': 'group',
@@ -3413,12 +3412,12 @@ class VolumeManager(manager.CleanableManager,
                     group.save()
         except Exception:
             with excutils.save_and_reraise_exception():
-                group.status = fields.GroupStatus.ERROR
+                group.status = GroupStatus.ERROR
                 group.save()
                 LOG.error("Group %s: create failed",
                           group.name)
 
-        group.status = fields.GroupStatus.AVAILABLE
+        group.status = GroupStatus.AVAILABLE
         group.created_at = timeutils.utcnow()
         group.save()
         LOG.info("Group %s: created successfully", group.name)
@@ -3560,7 +3559,7 @@ class VolumeManager(manager.CleanableManager,
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                group.status = fields.GroupStatus.ERROR
+                group.status = GroupStatus.ERROR
                 group.save()
                 LOG.error("Create group "
                           "from source %(source)s failed.",
@@ -3732,7 +3731,7 @@ class VolumeManager(manager.CleanableManager,
             self.db.volume_update(context, vol['id'],
                                   {'status': 'error'})
             if group:
-                group.status = fields.GroupStatus.ERROR
+                group.status = GroupStatus.ERROR
                 group.save()
             raise
         except exception.VolumeNotFound:
@@ -3742,7 +3741,7 @@ class VolumeManager(manager.CleanableManager,
             self.db.volume_update(context, vol['id'],
                                   {'status': 'error'})
             if group:
-                group.status = fields.GroupStatus.ERROR
+                group.status = GroupStatus.ERROR
                 group.save()
             raise
         except exception.CinderException as ex:
@@ -3754,7 +3753,7 @@ class VolumeManager(manager.CleanableManager,
             self.db.volume_update(context, vol['id'],
                                   {'status': 'error'})
             if group:
-                group.status = fields.GroupStatus.ERROR
+                group.status = GroupStatus.ERROR
                 group.save()
             raise exception.MetadataCopyFailure(reason=str(ex))
 
@@ -3849,7 +3848,7 @@ class VolumeManager(manager.CleanableManager,
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                group.status = fields.GroupStatus.ERROR
+                group.status = GroupStatus.ERROR
                 group.save()
                 # Update volume status to 'error' if driver returns
                 # None for volumes_model_update.
@@ -3971,7 +3970,7 @@ class VolumeManager(manager.CleanableManager,
                               group) -> dict:
         """Creates a group."""
         # A group entry is already created in db. Just returns a status here.
-        model_update = {'status': fields.GroupStatus.AVAILABLE,
+        model_update = {'status': GroupStatus.AVAILABLE,
                         'created_at': timeutils.utcnow()}
         return model_update
 
@@ -3992,7 +3991,7 @@ class VolumeManager(manager.CleanableManager,
                 volume_model_update['status'] = 'available'
             except Exception:
                 volume_model_update['status'] = 'error'
-                model_update['status'] = fields.GroupStatus.ERROR
+                model_update['status'] = GroupStatus.ERROR
             volume_model_updates.append(volume_model_update)
 
         return model_update, volume_model_updates
@@ -4107,7 +4106,7 @@ class VolumeManager(manager.CleanableManager,
 
             if model_update:
                 if model_update['status'] in (
-                        [fields.GroupStatus.ERROR]):
+                        [GroupStatus.ERROR]):
                     msg = (_('Error occurred when updating group '
                              '%s.') % group.id)
                     LOG.error(msg)
@@ -4124,7 +4123,7 @@ class VolumeManager(manager.CleanableManager,
                 else:
                     LOG.error("Failed to update group %(group_id)s.",
                               {'group_id': group.id})
-                group.status = fields.GroupStatus.ERROR
+                group.status = GroupStatus.ERROR
                 group.save()
                 for add_vol in add_volumes_ref:
                     add_vol.status = 'error'
@@ -4142,7 +4141,7 @@ class VolumeManager(manager.CleanableManager,
         for rem_vol in remove_volumes_ref:
             rem_vol.group_id = None
             rem_vol.save()
-        group.status = fields.GroupStatus.AVAILABLE
+        group.status = GroupStatus.AVAILABLE
         group.save()
 
         self._notify_about_group_usage(
@@ -4209,15 +4208,15 @@ class VolumeManager(manager.CleanableManager,
                     snap_obj.update(snap_model)
                     snap_obj.save()
                     if (snap_model['status'] in [
-                        fields.SnapshotStatus.ERROR_DELETING,
-                        fields.SnapshotStatus.ERROR] and
+                        SnapshotStatus.ERROR_DELETING,
+                        SnapshotStatus.ERROR] and
                             model_update['status'] not in
-                            [fields.GroupSnapshotStatus.ERROR_DELETING,
-                             fields.GroupSnapshotStatus.ERROR]):
+                            [GroupSnapshotStatus.ERROR_DELETING,
+                             GroupSnapshotStatus.ERROR]):
                         model_update['status'] = snap_model['status']
 
             if model_update:
-                if model_update['status'] == fields.GroupSnapshotStatus.ERROR:
+                if model_update['status'] == GroupSnapshotStatus.ERROR:
                     msg = (_('Error occurred when creating group_snapshot '
                              '%s.') % group_snapshot.id)
                     LOG.error(msg)
@@ -4228,14 +4227,14 @@ class VolumeManager(manager.CleanableManager,
 
         except exception.CinderException:
             with excutils.save_and_reraise_exception():
-                group_snapshot.status = fields.GroupSnapshotStatus.ERROR
+                group_snapshot.status = GroupSnapshotStatus.ERROR
                 group_snapshot.save()
                 # Update snapshot status to 'error' if driver returns
                 # None for snapshots_model_update.
                 self._remove_cgsnapshot_id_from_snapshots(snapshots)
                 if not snapshots_model_update:
                     for snapshot in snapshots:
-                        snapshot.status = fields.SnapshotStatus.ERROR
+                        snapshot.status = SnapshotStatus.ERROR
                         snapshot.save()
 
         for snapshot in snapshots:
@@ -4257,16 +4256,16 @@ class VolumeManager(manager.CleanableManager,
                               " %(volume_id)s metadata.",
                               {'volume_id': volume_id,
                                'snapshot_id': snapshot_id})
-                    snapshot.status = fields.SnapshotStatus.ERROR
+                    snapshot.status = SnapshotStatus.ERROR
                     snapshot.save()
                     raise exception.MetadataCopyFailure(
                         reason=str(ex))
 
-            snapshot.status = fields.SnapshotStatus.AVAILABLE
+            snapshot.status = SnapshotStatus.AVAILABLE
             snapshot.progress = '100%'
             snapshot.save()
 
-        group_snapshot.status = fields.GroupSnapshotStatus.AVAILABLE
+        group_snapshot.status = GroupSnapshotStatus.AVAILABLE
         group_snapshot.save()
 
         LOG.info("group_snapshot %s: created successfully",
@@ -4291,11 +4290,9 @@ class VolumeManager(manager.CleanableManager,
                     driver_update.pop('id', None)
                     snapshot_model_update.update(driver_update)
                 if 'status' not in snapshot_model_update:
-                    snapshot_model_update['status'] = (
-                        fields.SnapshotStatus.AVAILABLE)
+                    snapshot_model_update['status'] = SnapshotStatus.AVAILABLE
             except Exception:
-                snapshot_model_update['status'] = (
-                    fields.SnapshotStatus.ERROR)
+                snapshot_model_update['status'] = SnapshotStatus.ERROR
                 model_update['status'] = 'error'
             snapshot_model_updates.append(snapshot_model_update)
 
@@ -4313,14 +4310,11 @@ class VolumeManager(manager.CleanableManager,
             snapshot_model_update = {'id': snapshot.id}
             try:
                 self.driver_delete_snapshot(snapshot)
-                snapshot_model_update['status'] = (
-                    fields.SnapshotStatus.DELETED)
+                snapshot_model_update['status'] = SnapshotStatus.DELETED
             except exception.SnapshotIsBusy:
-                snapshot_model_update['status'] = (
-                    fields.SnapshotStatus.AVAILABLE)
+                snapshot_model_update['status'] = SnapshotStatus.AVAILABLE
             except Exception:
-                snapshot_model_update['status'] = (
-                    fields.SnapshotStatus.ERROR)
+                snapshot_model_update['status'] = SnapshotStatus.ERROR
                 model_update['status'] = 'error'
             snapshot_model_updates.append(snapshot_model_update)
 
@@ -4387,8 +4381,8 @@ class VolumeManager(manager.CleanableManager,
                         snap.save()
 
                     if (snap_model['status'] in
-                            [fields.SnapshotStatus.ERROR_DELETING,
-                             fields.SnapshotStatus.ERROR] and
+                            [SnapshotStatus.ERROR_DELETING,
+                             SnapshotStatus.ERROR] and
                             model_update['status'] not in
                             ['error_deleting', 'error']):
                         model_update['status'] = snap_model['status']
@@ -4405,14 +4399,14 @@ class VolumeManager(manager.CleanableManager,
 
         except exception.CinderException:
             with excutils.save_and_reraise_exception():
-                group_snapshot.status = fields.GroupSnapshotStatus.ERROR
+                group_snapshot.status = GroupSnapshotStatus.ERROR
                 group_snapshot.save()
                 # Update snapshot status to 'error' if driver returns
                 # None for snapshots_model_update.
                 if not snapshots_model_update:
                     self._remove_cgsnapshot_id_from_snapshots(snapshots)
                     for snapshot in snapshots:
-                        snapshot.status = fields.SnapshotStatus.ERROR
+                        snapshot.status = SnapshotStatus.ERROR
                         snapshot.save()
 
         for snapshot in snapshots:
@@ -4515,7 +4509,6 @@ class VolumeManager(manager.CleanableManager,
         :param secondary_backend_id: Specifies backend_id to fail over to
         """
         updates = {}
-        repl_status = fields.ReplicationStatus
 
         service = self._get_service()
 
@@ -4530,17 +4523,18 @@ class VolumeManager(manager.CleanableManager,
 
         replicated_vols = []
         for volume in volumes:
-            if volume.replication_status not in (repl_status.DISABLED,
-                                                 repl_status.NOT_CAPABLE):
+            if volume.replication_status not in (
+                    ReplicationStatus.DISABLED,
+                    ReplicationStatus.NOT_CAPABLE):
                 replicated_vols.append(volume)
             elif secondary_backend_id != self.FAILBACK_SENTINEL:
                 volume.previous_status = volume.status
                 volume.status = 'error'
-                volume.replication_status = repl_status.NOT_CAPABLE
+                volume.replication_status = ReplicationStatus.NOT_CAPABLE
                 volume.save()
 
                 for snapshot in volume.snapshots:
-                    snapshot.status = fields.SnapshotStatus.ERROR
+                    snapshot.status = SnapshotStatus.ERROR
                     snapshot.save()
 
         volume_update_list = None
@@ -4594,13 +4588,15 @@ class VolumeManager(manager.CleanableManager,
                 # secondary to another secondary. In both cases
                 # active_backend_id will be set.
                 if service.active_backend_id:
-                    updates['replication_status'] = repl_status.FAILED_OVER
+                    updates['replication_status'] = (
+                        ReplicationStatus.FAILED_OVER)
                 else:
-                    updates['replication_status'] = repl_status.ENABLED
+                    updates['replication_status'] = ReplicationStatus.ENABLED
             else:
                 log_method = LOG.exception
-                updates.update(disabled=True,
-                               replication_status=repl_status.FAILOVER_ERROR)
+                updates.update(
+                    disabled=True,
+                    replication_status=ReplicationStatus.FAILOVER_ERROR)
 
             log_method("Error encountered during failover on host: %(host)s "
                        "to %(backend_id)s: %(error)s",
@@ -4612,12 +4608,12 @@ class VolumeManager(manager.CleanableManager,
             return
 
         if secondary_backend_id == "default":
-            updates['replication_status'] = repl_status.ENABLED
+            updates['replication_status'] = ReplicationStatus.ENABLED
             updates['active_backend_id'] = ''
             updates['disabled'] = service.frozen
             updates['disabled_reason'] = 'frozen' if service.frozen else ''
         else:
-            updates['replication_status'] = repl_status.FAILED_OVER
+            updates['replication_status'] = ReplicationStatus.FAILED_OVER
             updates['active_backend_id'] = active_backend_id
             updates['disabled'] = True
             updates['disabled_reason'] = 'failed-over'
@@ -4627,16 +4623,18 @@ class VolumeManager(manager.CleanableManager,
         for volume in replicated_vols:
             update = update_data.get(volume.id, {})
             if update.get('status', '') == 'error':
-                update['replication_status'] = repl_status.FAILOVER_ERROR
-            elif update.get('replication_status') in (None,
-                                                      repl_status.FAILED_OVER):
+                update['replication_status'] = ReplicationStatus.FAILOVER_ERROR
+            elif update.get('replication_status') in (
+                    None,
+                    ReplicationStatus.FAILED_OVER):
                 update['replication_status'] = updates['replication_status']
 
-            if update['replication_status'] == repl_status.FAILOVER_ERROR:
+            if update['replication_status'] == (
+                    ReplicationStatus.FAILOVER_ERROR):
                 update.setdefault('status', 'error')
                 # Set all volume snapshots to error
                 for snapshot in volume.snapshots:
-                    snapshot.status = fields.SnapshotStatus.ERROR
+                    snapshot.status = SnapshotStatus.ERROR
                     snapshot.save()
             if 'status' in update:
                 update['previous_status'] = volume.status
@@ -4646,12 +4644,14 @@ class VolumeManager(manager.CleanableManager,
         for grp in groups:
             update = update_group_data.get(grp.id, {})
             if update.get('status', '') == 'error':
-                update['replication_status'] = repl_status.FAILOVER_ERROR
-            elif update.get('replication_status') in (None,
-                                                      repl_status.FAILED_OVER):
+                update['replication_status'] = ReplicationStatus.FAILOVER_ERROR
+            elif update.get('replication_status') in (
+                    None,
+                    ReplicationStatus.FAILED_OVER):
                 update['replication_status'] = updates['replication_status']
 
-            if update['replication_status'] == repl_status.FAILOVER_ERROR:
+            if update['replication_status'] == (
+                    ReplicationStatus.FAILOVER_ERROR):
                 update.setdefault('status', 'error')
             grp.update(update)
             grp.save()
@@ -4703,8 +4703,7 @@ class VolumeManager(manager.CleanableManager,
             LOG.exception(msg)
             service.disabled = True
             service.disabled_reason = msg
-            service.replication_status = (
-                fields.ReplicationStatus.ERROR)
+            service.replication_status = ReplicationStatus.ERROR
         service.save()
 
     def freeze_host(self, context: context.RequestContext) -> bool:
@@ -4971,8 +4970,7 @@ class VolumeManager(manager.CleanableManager,
             with excutils.save_and_reraise_exception():
                 self.db.volume_attachment_update(
                     context, attachment_ref.id,
-                    {'attach_status':
-                     fields.VolumeAttachStatus.ERROR_ATTACHING})
+                    {'attach_status': VolumeAttachStatus.ERROR_ATTACHING})
 
         self.db.volume_attached(context.elevated(),
                                 attachment_ref.id,
@@ -5068,7 +5066,7 @@ class VolumeManager(manager.CleanableManager,
                            group: objects.Group) -> None:
         """Enable replication."""
         group.refresh()
-        if group.replication_status != fields.ReplicationStatus.ENABLING:
+        if group.replication_status != ReplicationStatus.ENABLING:
             msg = _("Replication status in group %s is not "
                     "enabling. Cannot enable replication.") % group.id
             LOG.error(msg)
@@ -5077,7 +5075,7 @@ class VolumeManager(manager.CleanableManager,
         volumes = group.volumes
         for vol in volumes:
             vol.refresh()
-            if vol.replication_status != fields.ReplicationStatus.ENABLING:
+            if vol.replication_status != ReplicationStatus.ENABLING:
                 msg = _("Replication status in volume %s is not "
                         "enabling. Cannot enable replication.") % vol.id
                 LOG.error(msg)
@@ -5102,15 +5100,15 @@ class VolumeManager(manager.CleanableManager,
                     # If we failed to enable a volume, make sure the status
                     # for the group is set to error as well
                     if (update.get('replication_status') ==
-                            fields.ReplicationStatus.ERROR and
+                            ReplicationStatus.ERROR and
                             model_update.get('replication_status') !=
-                            fields.ReplicationStatus.ERROR):
+                            ReplicationStatus.ERROR):
                         model_update['replication_status'] = update.get(
                             'replication_status')
 
             if model_update:
                 if (model_update.get('replication_status') ==
-                        fields.ReplicationStatus.ERROR):
+                        ReplicationStatus.ERROR):
                     msg = _('Enable replication failed.')
                     LOG.error(msg,
                               resource={'type': 'group',
@@ -5121,24 +5119,24 @@ class VolumeManager(manager.CleanableManager,
                     group.save()
 
         except exception.CinderException as ex:
-            group.status = fields.GroupStatus.ERROR
-            group.replication_status = fields.ReplicationStatus.ERROR
+            group.status = GroupStatus.ERROR
+            group.replication_status = ReplicationStatus.ERROR
             group.save()
             # Update volume status to 'error' if driver returns
             # None for volumes_model_update.
             if not volumes_model_update:
                 for vol in volumes:
                     vol.status = 'error'
-                    vol.replication_status = fields.ReplicationStatus.ERROR
+                    vol.replication_status = ReplicationStatus.ERROR
                     vol.save()
             err_msg = _("Enable replication group failed: %s.") % ex
             raise exception.ReplicationGroupError(reason=err_msg,
                                                   group_id=group.id)
 
         for vol in volumes:
-            vol.replication_status = fields.ReplicationStatus.ENABLED
+            vol.replication_status = ReplicationStatus.ENABLED
             vol.save()
-        group.replication_status = fields.ReplicationStatus.ENABLED
+        group.replication_status = ReplicationStatus.ENABLED
         group.save()
 
         self._notify_about_group_usage(
@@ -5153,7 +5151,7 @@ class VolumeManager(manager.CleanableManager,
                             group: objects.Group) -> None:
         """Disable replication."""
         group.refresh()
-        if group.replication_status != fields.ReplicationStatus.DISABLING:
+        if group.replication_status != ReplicationStatus.DISABLING:
             msg = _("Replication status in group %s is not "
                     "disabling. Cannot disable replication.") % group.id
             LOG.error(msg)
@@ -5162,8 +5160,7 @@ class VolumeManager(manager.CleanableManager,
         volumes = group.volumes
         for vol in volumes:
             vol.refresh()
-            if (vol.replication_status !=
-                    fields.ReplicationStatus.DISABLING):
+            if (vol.replication_status != ReplicationStatus.DISABLING):
                 msg = _("Replication status in volume %s is not "
                         "disabling. Cannot disable replication.") % vol.id
                 LOG.error(msg)
@@ -5188,15 +5185,15 @@ class VolumeManager(manager.CleanableManager,
                     # If we failed to enable a volume, make sure the status
                     # for the group is set to error as well
                     if (update.get('replication_status') ==
-                            fields.ReplicationStatus.ERROR and
+                            ReplicationStatus.ERROR and
                             model_update.get('replication_status') !=
-                            fields.ReplicationStatus.ERROR):
+                            ReplicationStatus.ERROR):
                         model_update['replication_status'] = update.get(
                             'replication_status')
 
             if model_update:
                 if (model_update.get('replication_status') ==
-                        fields.ReplicationStatus.ERROR):
+                        ReplicationStatus.ERROR):
                     msg = _('Disable replication failed.')
                     LOG.error(msg,
                               resource={'type': 'group',
@@ -5207,24 +5204,24 @@ class VolumeManager(manager.CleanableManager,
                     group.save()
 
         except exception.CinderException as ex:
-            group.status = fields.GroupStatus.ERROR
-            group.replication_status = fields.ReplicationStatus.ERROR
+            group.status = GroupStatus.ERROR
+            group.replication_status = ReplicationStatus.ERROR
             group.save()
             # Update volume status to 'error' if driver returns
             # None for volumes_model_update.
             if not volumes_model_update:
                 for vol in volumes:
                     vol.status = 'error'
-                    vol.replication_status = fields.ReplicationStatus.ERROR
+                    vol.replication_status = ReplicationStatus.ERROR
                     vol.save()
             err_msg = _("Disable replication group failed: %s.") % ex
             raise exception.ReplicationGroupError(reason=err_msg,
                                                   group_id=group.id)
 
         for vol in volumes:
-            vol.replication_status = fields.ReplicationStatus.DISABLED
+            vol.replication_status = ReplicationStatus.DISABLED
             vol.save()
-        group.replication_status = fields.ReplicationStatus.DISABLED
+        group.replication_status = ReplicationStatus.DISABLED
         group.save()
 
         self._notify_about_group_usage(
@@ -5240,7 +5237,7 @@ class VolumeManager(manager.CleanableManager,
                              secondary_backend_id=None) -> None:
         """Failover replication."""
         group.refresh()
-        if group.replication_status != fields.ReplicationStatus.FAILING_OVER:
+        if group.replication_status != ReplicationStatus.FAILING_OVER:
             msg = _("Replication status in group %s is not "
                     "failing-over. Cannot failover replication.") % group.id
             LOG.error(msg)
@@ -5254,8 +5251,7 @@ class VolumeManager(manager.CleanableManager,
                         "is False. Cannot failover replication.") % vol.id
                 LOG.error(msg)
                 raise exception.InvalidVolume(reason=msg)
-            if (vol.replication_status !=
-                    fields.ReplicationStatus.FAILING_OVER):
+            if (vol.replication_status != ReplicationStatus.FAILING_OVER):
                 msg = _("Replication status in volume %s is not "
                         "failing-over. Cannot failover replication.") % vol.id
                 LOG.error(msg)
@@ -5281,15 +5277,15 @@ class VolumeManager(manager.CleanableManager,
                     # If we failed to enable a volume, make sure the status
                     # for the group is set to error as well
                     if (update.get('replication_status') ==
-                            fields.ReplicationStatus.ERROR and
+                            ReplicationStatus.ERROR and
                             model_update.get('replication_status') !=
-                            fields.ReplicationStatus.ERROR):
+                            ReplicationStatus.ERROR):
                         model_update['replication_status'] = update.get(
                             'replication_status')
 
             if model_update:
                 if (model_update.get('replication_status') ==
-                        fields.ReplicationStatus.ERROR):
+                        ReplicationStatus.ERROR):
                     msg = _('Failover replication failed.')
                     LOG.error(msg,
                               resource={'type': 'group',
@@ -5300,15 +5296,15 @@ class VolumeManager(manager.CleanableManager,
                     group.save()
 
         except exception.CinderException as ex:
-            group.status = fields.GroupStatus.ERROR
-            group.replication_status = fields.ReplicationStatus.ERROR
+            group.status = GroupStatus.ERROR
+            group.replication_status = ReplicationStatus.ERROR
             group.save()
             # Update volume status to 'error' if driver returns
             # None for volumes_model_update.
             if not volumes_model_update:
                 for vol in volumes:
                     vol.status = 'error'
-                    vol.replication_status = fields.ReplicationStatus.ERROR
+                    vol.replication_status = ReplicationStatus.ERROR
                     vol.save()
             err_msg = _("Failover replication group failed: %s.") % ex
             raise exception.ReplicationGroupError(reason=err_msg,
@@ -5316,15 +5312,14 @@ class VolumeManager(manager.CleanableManager,
 
         for vol in volumes:
             if secondary_backend_id == "default":
-                vol.replication_status = fields.ReplicationStatus.ENABLED
+                vol.replication_status = ReplicationStatus.ENABLED
             else:
-                vol.replication_status = (
-                    fields.ReplicationStatus.FAILED_OVER)
+                vol.replication_status = ReplicationStatus.FAILED_OVER
             vol.save()
         if secondary_backend_id == "default":
-            group.replication_status = fields.ReplicationStatus.ENABLED
+            group.replication_status = ReplicationStatus.ENABLED
         else:
-            group.replication_status = fields.ReplicationStatus.FAILED_OVER
+            group.replication_status = ReplicationStatus.FAILED_OVER
         group.save()
 
         self._notify_about_group_usage(

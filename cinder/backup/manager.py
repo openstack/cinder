@@ -54,7 +54,9 @@ from cinder import manager
 from cinder.message import api as message_api
 from cinder.message import message_field
 from cinder import objects
-from cinder.objects import fields
+from cinder.objects.fields import BackupStatus
+from cinder.objects.fields import SnapshotStatus
+from cinder.objects.fields import VolumeStatus
 from cinder import quota
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
@@ -199,8 +201,8 @@ class BackupManager(manager.SizedThreadPoolManager):
         # operations on restart (rather than simply resetting).
         # We only need to deal with the backups that aren't complete.
         # N.B. NULL status is possible and we consider it incomplete.
-        incomplete_status = list(fields.BackupStatus.ALL)
-        incomplete_status.remove(fields.BackupStatus.AVAILABLE)
+        incomplete_status = list(BackupStatus.ALL)
+        incomplete_status.remove(BackupStatus.AVAILABLE)
         incomplete_status.append(None)
         backups = objects.BackupList.get_all(
             ctxt, filters={'host': self.host, 'status': incomplete_status})
@@ -251,13 +253,13 @@ class BackupManager(manager.SizedThreadPoolManager):
             LOG.info('Resetting snapshot %(snap_id)s to previous '
                      'status %(status)s (was backing-up).',
                      {'snap_id': snapshot['id'],
-                      'status': fields.SnapshotStatus.AVAILABLE})
+                      'status': SnapshotStatus.AVAILABLE})
 
-            snapshot.status = fields.SnapshotStatus.AVAILABLE
+            snapshot.status = SnapshotStatus.AVAILABLE
             snapshot.save()
 
     def _cleanup_one_backup(self, ctxt, backup):
-        if backup['status'] == fields.BackupStatus.CREATING:
+        if backup['status'] == BackupStatus.CREATING:
             LOG.info('Resetting backup %s to error (was creating).',
                      backup['id'])
             self._cleanup_one_volume(ctxt, backup.volume_id)
@@ -265,16 +267,16 @@ class BackupManager(manager.SizedThreadPoolManager):
                 self._cleanup_one_snapshot(ctxt, backup.snapshot_id)
             err = 'incomplete backup reset on manager restart'
             volume_utils.update_backup_error(backup, err)
-        elif backup['status'] == fields.BackupStatus.RESTORING:
+        elif backup['status'] == BackupStatus.RESTORING:
             LOG.info('Resetting backup %s to '
                      'available (was restoring).',
                      backup['id'])
             self._cleanup_one_volume(ctxt, backup.restore_volume_id)
             if backup.snapshot_id:
                 self._cleanup_one_snapshot(ctxt, backup.snapshot_id)
-            backup.status = fields.BackupStatus.AVAILABLE
+            backup.status = BackupStatus.AVAILABLE
             backup.save()
-        elif backup['status'] == fields.BackupStatus.DELETING:
+        elif backup['status'] == BackupStatus.DELETING:
             # Don't resume deleting the backup of an encrypted volume. The
             # admin context won't be sufficient to delete the backup's copy
             # of the encryption key ID (a real user context is required).
@@ -293,7 +295,7 @@ class BackupManager(manager.SizedThreadPoolManager):
                          'volume, resetting backup %s to error_deleting '
                          '(was deleting).',
                          backup.id)
-                backup.status = fields.BackupStatus.ERROR_DELETING
+                backup.status = BackupStatus.ERROR_DELETING
                 backup.save()
 
     def _detach_all_attachments(self, ctxt, volume):
@@ -328,7 +330,7 @@ class BackupManager(manager.SizedThreadPoolManager):
                 ctxt, backup.temp_snapshot_id)
             # We may want to consider routing those calls through the
             # cinder API.
-            temp_snapshot.status = fields.SnapshotStatus.DELETING
+            temp_snapshot.status = SnapshotStatus.DELETING
             temp_snapshot.save()
             self.volume_rpcapi.delete_snapshot(ctxt, temp_snapshot)
         except exception.SnapshotNotFound:
@@ -345,11 +347,11 @@ class BackupManager(manager.SizedThreadPoolManager):
         # that are not deleted. Make sure any temporary volumes or snapshots
         # create by the backup job are deleted when service is started.
         if (backup.temp_volume_id
-                and backup.status == fields.BackupStatus.ERROR):
+                and backup.status == BackupStatus.ERROR):
             self._delete_temp_volume(ctxt, backup)
 
         if (backup.temp_snapshot_id
-                and backup.status == fields.BackupStatus.ERROR):
+                and backup.status == BackupStatus.ERROR):
             self._delete_temp_snapshot(ctxt, backup)
 
     def _cleanup_temp_volumes_snapshots_when_backup_created(
@@ -387,7 +389,7 @@ class BackupManager(manager.SizedThreadPoolManager):
 
         self._notify_about_backup_usage(context, backup, "create.start")
 
-        expected_status = fields.VolumeStatus.BACKING_UP
+        expected_status = VolumeStatus.BACKING_UP
         if snapshot:
             actual_status = snapshot['status']
             if actual_status != expected_status:
@@ -409,7 +411,7 @@ class BackupManager(manager.SizedThreadPoolManager):
                 volume_utils.update_backup_error(backup, err)
                 raise exception.InvalidVolume(reason=err)
 
-        expected_status = fields.BackupStatus.CREATING
+        expected_status = BackupStatus.CREATING
         actual_status = backup.status
         if actual_status != expected_status:
             err = _('Create backup aborted, expected backup status '
@@ -445,15 +447,14 @@ class BackupManager(manager.SizedThreadPoolManager):
             with excutils.save_and_reraise_exception():
                 if snapshot_id:
                     assert snapshot is not None
-                    snapshot.status = fields.SnapshotStatus.AVAILABLE
+                    snapshot.status = SnapshotStatus.AVAILABLE
                     snapshot.save()
                 else:
                     try:
                         self.db.volume_update(
                             context, volume_id,
                             {'status': previous_status,
-                             'previous_status':
-                                 fields.VolumeStatus.ERROR_BACKING_UP})
+                             'previous_status': VolumeStatus.ERROR_BACKING_UP})
                     except exception.VolumeNotFound:
                         # If the volume was deleted we cannot update its
                         # status but we still want to set the backup to error.
@@ -556,14 +557,14 @@ class BackupManager(manager.SizedThreadPoolManager):
         except Exception as err:
             with excutils.save_and_reraise_exception():
                 if snapshot:
-                    snapshot.status = fields.SnapshotStatus.AVAILABLE
+                    snapshot.status = SnapshotStatus.AVAILABLE
                     snapshot.save()
                 else:
                     self.db.volume_update(
                         context, volume_id,
                         {'status': previous_status,
                          'previous_status':
-                             fields.VolumeStatus.ERROR_BACKING_UP})
+                             VolumeStatus.ERROR_BACKING_UP})
                 volume_utils.update_backup_error(backup, str(err))
         finally:
             with backup.as_read_deleted():
@@ -590,21 +591,21 @@ class BackupManager(manager.SizedThreadPoolManager):
         if snapshot_id:
             self.db.snapshot_update(
                 context, snapshot_id,
-                {'status': fields.SnapshotStatus.AVAILABLE})
+                {'status': SnapshotStatus.AVAILABLE})
         else:
             self.db.volume_update(
                 context, volume_id,
                 {'status': previous_status,
-                 'previous_status': fields.VolumeStatus.BACKING_UP})
+                 'previous_status': VolumeStatus.BACKING_UP})
 
         # continue_backup method above updated the status for the backup, so
         # it will reflect latest status, even if it is deleted
         completion_msg = 'finished'
-        if backup.status in (fields.BackupStatus.DELETING,
-                             fields.BackupStatus.DELETED):
+        if backup.status in (BackupStatus.DELETING,
+                             BackupStatus.DELETED):
             completion_msg = 'aborted'
         else:
-            backup.status = fields.BackupStatus.AVAILABLE
+            backup.status = BackupStatus.AVAILABLE
             backup.size = volume['size']
 
             if updates:
@@ -660,22 +661,22 @@ class BackupManager(manager.SizedThreadPoolManager):
         volume = objects.Volume.get_by_id(context, volume_id)
         self._notify_about_backup_usage(context, backup, "restore.start")
 
-        expected_status = [fields.VolumeStatus.RESTORING_BACKUP,
-                           fields.VolumeStatus.CREATING]
+        expected_status = (VolumeStatus.RESTORING_BACKUP,
+                           VolumeStatus.CREATING)
         volume_previous_status = volume['status']
         if volume_previous_status not in expected_status:
             err = (_('Restore backup aborted, expected volume status '
                      '%(expected_status)s but got %(actual_status)s.') %
                    {'expected_status': ','.join(expected_status),
                     'actual_status': volume_previous_status})
-            backup.status = fields.BackupStatus.AVAILABLE
+            backup.status = BackupStatus.AVAILABLE
             backup.save()
             self.db.volume_update(
                 context, volume_id,
                 {'status':
-                 (fields.VolumeStatus.ERROR if
-                  volume_previous_status == fields.VolumeStatus.CREATING else
-                  fields.VolumeStatus.ERROR_RESTORING)})
+                 (VolumeStatus.ERROR if
+                  volume_previous_status == VolumeStatus.CREATING else
+                  VolumeStatus.ERROR_RESTORING)})
             self.message_api.create(
                 context,
                 action=message_field.Action.BACKUP_RESTORE,
@@ -684,7 +685,7 @@ class BackupManager(manager.SizedThreadPoolManager):
                 detail=message_field.Detail.VOLUME_INVALID_STATE)
             raise exception.InvalidVolume(reason=err)
 
-        expected_status = fields.BackupStatus.RESTORING
+        expected_status = BackupStatus.RESTORING
         actual_status = backup['status']
         if actual_status != expected_status:
             err = (_('Restore backup aborted: expected backup status '
@@ -693,7 +694,7 @@ class BackupManager(manager.SizedThreadPoolManager):
                     'actual_status': actual_status})
             volume_utils.update_backup_error(backup, err)
             self.db.volume_update(context, volume_id,
-                                  {'status': fields.VolumeStatus.ERROR})
+                                  {'status': VolumeStatus.ERROR})
             self.message_api.create_from_request_context(
                 context,
                 detail=message_field.Detail.BACKUP_INVALID_STATE)
@@ -716,10 +717,10 @@ class BackupManager(manager.SizedThreadPoolManager):
                 'configured_service': self.driver_name,
                 'backup_service': backup.service,
             }
-            backup.status = fields.BackupStatus.AVAILABLE
+            backup.status = BackupStatus.AVAILABLE
             backup.save()
             self.db.volume_update(context, volume_id,
-                                  {'status': fields.VolumeStatus.ERROR})
+                                  {'status': VolumeStatus.ERROR})
             raise exception.InvalidBackup(reason=err)
 
         canceled = False
@@ -731,20 +732,20 @@ class BackupManager(manager.SizedThreadPoolManager):
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(
                     context, volume_id,
-                    {'status': (fields.VolumeStatus.ERROR if
-                                actual_status == fields.VolumeStatus.CREATING
-                                else fields.VolumeStatus.ERROR_RESTORING)})
-                backup.status = fields.BackupStatus.AVAILABLE
+                    {'status': (VolumeStatus.ERROR if
+                                actual_status == VolumeStatus.CREATING
+                                else VolumeStatus.ERROR_RESTORING)})
+                backup.status = BackupStatus.AVAILABLE
                 backup.save()
 
         if canceled:
-            volume.status = fields.VolumeStatus.ERROR
+            volume.status = VolumeStatus.ERROR
         else:
-            volume.status = fields.VolumeStatus.AVAILABLE
+            volume.status = VolumeStatus.AVAILABLE
             # NOTE(tommylikehu): If previous status is 'creating', this is
             # just a new created volume and we need update the 'launched_at'
             # attribute as well.
-            if volume_previous_status == fields.VolumeStatus.CREATING:
+            if volume_previous_status == VolumeStatus.CREATING:
                 volume['launched_at'] = timeutils.utcnow()
         old_src_backup_id = self.db.volume_metadata_get(
             context, volume_id).get("src_backup_id", None)
@@ -757,7 +758,7 @@ class BackupManager(manager.SizedThreadPoolManager):
                 False)
 
         volume.save()
-        backup.status = fields.BackupStatus.AVAILABLE
+        backup.status = BackupStatus.AVAILABLE
         backup.save()
         LOG.info('%(result)s restoring backup %(backup_id)s to volume '
                  '%(volume_id)s.',
@@ -886,7 +887,7 @@ class BackupManager(manager.SizedThreadPoolManager):
         context.message_resource_id = backup.id
         context.message_resource_type = message_field.Resource.VOLUME_BACKUP
         context.message_action = message_field.Action.BACKUP_DELETE
-        expected_status = fields.BackupStatus.DELETING
+        expected_status = BackupStatus.DELETING
         actual_status = backup.status
         if actual_status != expected_status:
             err = _('Delete_backup aborted, expected backup status '
@@ -901,7 +902,7 @@ class BackupManager(manager.SizedThreadPoolManager):
 
         if backup.service and not self.is_working():
             err = _('Delete backup is aborted due to backup service is down.')
-            status = fields.BackupStatus.ERROR_DELETING
+            status = BackupStatus.ERROR_DELETING
             volume_utils.update_backup_error(backup, err, status)
             self.message_api.create_from_request_context(
                 context,
@@ -987,7 +988,7 @@ class BackupManager(manager.SizedThreadPoolManager):
         """
         LOG.info('Export record started, backup: %s.', backup.id)
 
-        expected_status = fields.BackupStatus.AVAILABLE
+        expected_status = BackupStatus.AVAILABLE
         actual_status = backup.status
         if actual_status != expected_status:
             err = (_('Export backup aborted, expected backup status '
@@ -1115,7 +1116,7 @@ class BackupManager(manager.SizedThreadPoolManager):
             backup.save()
 
             # Update the backup's status
-            backup.update({"status": fields.BackupStatus.AVAILABLE})
+            backup.update({"status": BackupStatus.AVAILABLE})
             backup.save()
 
             LOG.info('Import record id %s metadata from driver '
