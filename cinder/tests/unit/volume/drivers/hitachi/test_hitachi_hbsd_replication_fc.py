@@ -15,6 +15,7 @@
 #
 """Unit tests for Hitachi HBSD Driver."""
 
+import copy
 import json
 from unittest import mock
 
@@ -2771,8 +2772,8 @@ class HBSDREPLICATIONFCDriverTest(test.TestCase):
             return FakeResponse(
                 500, ERROR_RESULT, headers={'Content-Type': 'json'})
         request.side_effect = _request_side_effect
-        self.test_vol_add = TEST_VOLUME[6]
-        attrs = {'objects': [TEST_SNAPSHOT[5]]}
+        self.test_vol_add = copy.deepcopy(TEST_VOLUME[6])
+        attrs = {'objects': [copy.deepcopy(TEST_SNAPSHOT[5])]}
         snaplist_obj = objects.SnapshotList(CTXT, **attrs)
         self.test_vol_add['snapshots'] = snaplist_obj
         self.assertRaises(exception.SnapshotNotFound,
