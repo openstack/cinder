@@ -123,8 +123,10 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
                          attachment.attach_status)
 
-    def test_migrate_attachment_specs(self):
-        # Create an attachment.
+    @mock.patch('cinder.db.sqlalchemy.models.Volume')
+    def test_migrate_attachment_specs(self, mock_volume_model):
+        mock_volume_model.project_id = self.context.project_id
+        # Create an attachment
         attachment = objects.VolumeAttachment(
             self.context, attach_status='attaching', volume_id=fake.VOLUME_ID)
         attachment.create()
