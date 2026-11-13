@@ -228,7 +228,9 @@ Connector configuration
 
 .. note::
 
-   Since 2025.2 release, users do not need to create connector configuration.
+   Since the 2025.2 release, connector configuration is no longer required
+   for new attachments. The connector.conf file must still be retained for
+   legacy attached volumes until they are fully detached.
 
 Before using attach/detach volume operations PowerFlex connector must be
 properly configured. On each node where PowerFlex SDC is installed do the
