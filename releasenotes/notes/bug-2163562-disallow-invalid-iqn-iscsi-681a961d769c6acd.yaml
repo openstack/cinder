@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    `Bug #2163562 <https://bugs.launchpad.net/cinder/+bug/2163562>`_: Cinder
+    now blocks invalid iSCSI IQNs when creating attachments with the LIO iSCSI
+    target driver. This target driver is typically used with the LVM volume
+    driver. This prevents manipulation of files/paths on the cinder-volume host.
