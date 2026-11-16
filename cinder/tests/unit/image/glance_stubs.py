@@ -76,7 +76,7 @@ class StubGlanceClient(object):
                 return locations
         raise glanceclient.exc.NotFound(image_id)
 
-    def data(self, image_id):
+    def data(self, image_id, prefer=None):
         image = self.get(image_id)
         if getattr(image, 'size', 0):
             return ['*' * image.size]
